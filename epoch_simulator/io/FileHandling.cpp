@@ -3,12 +3,12 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <string>
 #include <sstream>
 #include <vector>
 
 #include "../Definitions.h"
-
 
 
 
@@ -192,4 +192,72 @@ void appendCSV(std::string absfilepath, const std::vector<std::pair<std::string,
 	}
 
 	outFile.close();
+}
+
+// Custom function to convert a struct to a JSON object
+nlohmann::json structToJson(const InputValues& data, const MemberMapping mappings[], size_t Size) {
+	nlohmann::json jsonObj;
+	for (size_t i = 0; i < Size; ++i) {
+		const auto& mapping = mappings[i];
+		if (mapping.getFloat) {
+			jsonObj[mapping.name] = mapping.getFloat(data);
+		}
+		else if (mapping.getInt) {
+			jsonObj[mapping.name] = mapping.getInt(data);
+		}
+	}
+	return jsonObj;
+}
+
+
+// Custom function to convert a struct to a JSON object
+nlohmann::json structToJsonOut(const OutputValues& data, const OutMemberMapping mappings[], size_t Size) {
+	nlohmann::json jsonObj;
+	for (size_t i = 0; i < Size; ++i) {
+		const auto& mapping = mappings[i];
+		if (mapping.getFloat) {
+			jsonObj[mapping.name] = mapping.getFloat(data);
+		}
+		else if (mapping.getInt) {
+			jsonObj[mapping.name] = mapping.getInt(data);
+		}
+	}
+	return jsonObj;
+}
+
+// function to group the keys in a JSON, such that we have a key-tuple JSON describing parameter ranges
+nlohmann::json convert_to_ranges(nlohmann::json& j) {
+	// This regex matches strings ending with "_lower", "_upper", or "_step"
+	std::regex param_regex("(.+)(_lower|_upper|_step)$");
+	std::smatch match;
+
+	nlohmann::json new_json;
+	for (auto& el : j.items()) {
+		std::string key = el.key();
+		if (std::regex_match(key, match, param_regex)) {
+			// Extract the base parameter name and the suffix
+			std::string param_base = match[1].str();
+			std::string suffix = match[2].str();
+
+			// Initialize the tuple if it doesn't exist
+			if (!new_json.contains(param_base)) {
+				//				new_json[param_base] = nlohmann::json::array({ nullptr, nullptr, nullptr });
+				new_json[param_base] = nlohmann::json::array({ 0.0, 0.0, 0.0 });
+			}
+
+			// Assign the value to the correct position in the tuple
+//			if (suffix == "_lower") new_json[param_base][0] = el.value();
+//			else if (suffix == "_upper") new_json[param_base][1] = el.value();
+//			else if (suffix == "_step") new_json[param_base][2] = el.value();
+			if (suffix == "_lower") new_json[param_base][0] = el.value().is_null() ? nlohmann::json(0.0) : el.value();
+			else if (suffix == "_upper") new_json[param_base][1] = el.value().is_null() ? nlohmann::json(0.0) : el.value();
+			else if (suffix == "_step") new_json[param_base][2] = el.value().is_null() ? nlohmann::json(0.0) : el.value();
+		}
+		else {
+			// Copy over any keys that don't match the pattern
+			new_json[key] = el.value();
+		}
+	}
+
+	return new_json;
 }
