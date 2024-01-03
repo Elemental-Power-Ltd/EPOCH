@@ -63,6 +63,15 @@
     <ClInclude Include="Costs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Optimiser\Optimiser.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="io\FileHandling.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Optimisation\Optimiser.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EP_FE_full.rc">
@@ -71,6 +80,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EP_FE_full.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Optimisation\Optimiser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="io\FileHandling.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\Simulate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

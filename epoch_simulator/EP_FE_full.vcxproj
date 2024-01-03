@@ -145,7 +145,9 @@
     <ClInclude Include="Grid.h" />
     <ClInclude Include="Header.h" />
     <ClInclude Include="Hload.h" />
+    <ClInclude Include="io\FileHandling.hpp" />
     <ClInclude Include="json.hpp" />
+    <ClInclude Include="Optimisation\Optimiser.hpp" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="RGen.h" />
     <ClInclude Include="targetver.h" />
@@ -157,6 +159,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EP_FE_full.cpp" />
+    <ClCompile Include="io\FileHandling.cpp" />
+    <ClCompile Include="Optimisation\Optimiser.cpp" />
+    <ClCompile Include="Simulation\Simulate.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

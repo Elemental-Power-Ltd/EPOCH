@@ -1,9 +1,12 @@
 #pragma once
 
-//helper function for queue
-using CustomDataTable = std::vector<std::pair<std::string, std::vector<float>>>;
+#include <mutex>
+#include <optional>
+#include <queue>
 
-std::optional<float> getSpecificFloat(const CustomDataTable& dataTable, const std::string& columnName) {
+#include "Definitions.h"
+
+inline std::optional<float> getSpecificFloat(const CustomDataTable& dataTable, const std::string& columnName) {
     for (const auto& column : dataTable) {
         if (column.first == columnName) {
             if (!column.second.empty()) {

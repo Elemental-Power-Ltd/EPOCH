@@ -1,7 +1,9 @@
 #pragma once
 
-//#include <vector>
-//#include <iostream>
+#include <emmintrin.h>
+#include <iostream>
+#include <numeric>
+#include <vector>
 
 class year_TS {
 public:

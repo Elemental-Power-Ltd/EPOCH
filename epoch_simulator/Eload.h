@@ -1,4 +1,7 @@
 #pragma once
+
+#include "Timeseries.h"
+
 class Eload
 {
 	public:
