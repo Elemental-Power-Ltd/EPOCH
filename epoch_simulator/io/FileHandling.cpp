@@ -261,3 +261,30 @@ nlohmann::json convert_to_ranges(nlohmann::json& j) {
 
 	return new_json;
 }
+
+nlohmann::json handleJsonConversion(const InputValues& inputValues, const MemberMapping memberMappings[], size_t size) {
+	// Aim: to export 'inputvalues' to a json file that can be read e.g. as a Python dict, s.t. other EPL software can use this as an input
+
+	nlohmann::json jsonObj = structToJson(inputValues, memberMappings, size);
+	writeJsonToFile(jsonObj, "parameters.json");
+
+	nlohmann::json converted_json = convert_to_ranges(jsonObj);
+	writeJsonToFile(converted_json, "parameters_grouped.json");
+
+	std::cout << "JSON file written successfully!" << std::endl;
+
+	return converted_json;
+
+}
+
+void writeJsonToFile(const nlohmann::json& jsonObj, std::string filename) {
+	try {
+		std::ofstream file(filename);
+		file << jsonObj.dump(4);  // The "4" argument adds pretty-printing with indentation
+		file.close();
+	}
+	catch (const std::exception e) {
+		std::cerr << "Error: " << e.what() << std::endl;
+	}
+}
+	

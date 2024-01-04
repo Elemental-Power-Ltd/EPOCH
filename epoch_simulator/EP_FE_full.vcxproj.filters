@@ -63,9 +63,6 @@
     <ClInclude Include="Costs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Optimiser\Optimiser.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="io\FileHandling.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

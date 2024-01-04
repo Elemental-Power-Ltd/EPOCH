@@ -249,8 +249,6 @@ OutMemberMapping OutmemberMappings[] = {
 	OUT_MEMBER_MAPPING_INT(num_scenarios), OUT_MEMBER_MAPPING_FLOAT(est_hours), OUT_MEMBER_MAPPING_FLOAT(est_seconds)
 };
 
-
-
 void workerFunction(SafeQueue<std::map<std::string, float>>& taskQueue) {
 	std::map<std::string, float> task;
 	while (taskQueue.pop(task)) {
@@ -3267,6 +3265,695 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 //handle scrolling
 
+InputValues readInputFromForm() {
+
+	wchar_t buffer1[100];
+	wchar_t buffer2[100];
+	wchar_t buffer3[100];
+	wchar_t buffer4[100];
+	wchar_t buffer5[100];
+	wchar_t buffer6[100];
+	wchar_t buffer7[100];
+	wchar_t buffer8[100];
+	wchar_t buffer9[100];
+	wchar_t buffer10[100];
+	wchar_t buffer11[100];
+	wchar_t buffer12[100];
+	wchar_t buffer13[100];
+	wchar_t buffer14[100];
+	wchar_t buffer15[100];
+	wchar_t buffer16[100];
+	wchar_t buffer17[100];
+	wchar_t buffer18[100];
+	wchar_t buffer19[100];
+	wchar_t buffer20[100];
+	wchar_t buffer21[100];
+	wchar_t buffer22[100];
+	wchar_t buffer23[100];
+	wchar_t buffer24[100];
+	wchar_t buffer25[100];
+	wchar_t buffer26[100];
+	wchar_t buffer27[100];
+	wchar_t buffer28[100];
+	wchar_t buffer29[100];
+	wchar_t buffer30[100];
+	wchar_t buffer31[100];
+	wchar_t buffer32[100];
+	wchar_t buffer33[100];
+	wchar_t buffer34[100];
+	wchar_t buffer35[100];
+	wchar_t buffer36[100];
+	wchar_t buffer37[100];
+	wchar_t buffer38[100];
+	wchar_t buffer39[100];
+	wchar_t buffer40[100];
+	wchar_t buffer41[100];
+	wchar_t buffer42[100];
+	wchar_t buffer43[100];
+	wchar_t buffer44[100];
+	wchar_t buffer45[100];
+	wchar_t buffer46[100];
+	wchar_t buffer47[100];
+	wchar_t buffer48[100];
+	wchar_t buffer49[100];
+	wchar_t buffer50[100];
+	wchar_t buffer51[100];
+	wchar_t buffer52[100];
+	wchar_t buffer53[100];
+	wchar_t buffer54[100];
+	wchar_t buffer55[100];
+	wchar_t buffer56[100];
+	wchar_t buffer57[100];
+	wchar_t buffer58[100];
+	wchar_t buffer59[100];
+	wchar_t buffer60[100];
+	wchar_t buffer61[100];
+	wchar_t buffer62[100];
+	wchar_t buffer63[100];
+	wchar_t buffer64[100];
+	wchar_t buffer65[100];
+	wchar_t buffer66[100];
+	wchar_t buffer67[100];
+	wchar_t buffer68[100];
+	wchar_t buffer69[100];
+	wchar_t buffer70[100];
+	wchar_t buffer71[100];
+	wchar_t buffer72[100];
+	wchar_t buffer73[100];
+	wchar_t buffer74[100];
+	wchar_t buffer75[100];
+	wchar_t buffer76[100];
+	wchar_t buffer77[100];
+	wchar_t buffer78[100];
+	wchar_t buffer79[100];
+	wchar_t buffer80[100];
+	wchar_t buffer81[100];
+	wchar_t buffer82[100];
+	wchar_t buffer83[100];
+	wchar_t buffer84[100];
+	wchar_t buffer85[100];
+
+	GetWindowText(hTextbox1, buffer1, 100);
+	GetWindowText(hTextbox2, buffer2, 100);
+	GetWindowText(hTextbox3, buffer3, 100);
+	GetWindowText(hTextbox4, buffer4, 100);
+	GetWindowText(hTextbox5, buffer5, 100);
+	GetWindowText(hTextbox6, buffer6, 100);
+	GetWindowText(hTextbox7, buffer7, 100);
+	GetWindowText(hTextbox8, buffer8, 100);
+	GetWindowText(hTextbox9, buffer9, 100);
+	GetWindowText(hTextbox10, buffer10, 100);
+	GetWindowText(hTextbox11, buffer11, 100);
+	GetWindowText(hTextbox12, buffer12, 100);
+	GetWindowText(hTextbox13, buffer13, 100);
+	GetWindowText(hTextbox14, buffer14, 100);
+	GetWindowText(hTextbox15, buffer15, 100);
+	GetWindowText(hTextbox16, buffer16, 100);
+	GetWindowText(hTextbox17, buffer17, 100);
+	GetWindowText(hTextbox18, buffer18, 100);
+	GetWindowText(hTextbox19, buffer19, 100);
+	GetWindowText(hTextbox20, buffer20, 100);
+	GetWindowText(hTextbox21, buffer21, 100);
+	GetWindowText(hTextbox22, buffer22, 100);
+	GetWindowText(hTextbox23, buffer23, 100);
+	GetWindowText(hTextbox24, buffer24, 100);
+	GetWindowText(hTextbox25, buffer25, 100);
+	GetWindowText(hTextbox26, buffer26, 100);
+	GetWindowText(hTextbox27, buffer27, 100);
+	GetWindowText(hTextbox28, buffer28, 100);
+	GetWindowText(hTextbox29, buffer29, 100);
+	GetWindowText(hTextbox30, buffer30, 100);
+	GetWindowText(hTextbox31, buffer31, 100);
+	GetWindowText(hTextbox32, buffer32, 100);
+	GetWindowText(hTextbox33, buffer33, 100);
+	GetWindowText(hTextbox34, buffer34, 100);
+	GetWindowText(hTextbox35, buffer35, 100);
+	GetWindowText(hTextbox36, buffer36, 100);
+	GetWindowText(hTextbox37, buffer37, 100);
+	GetWindowText(hTextbox38, buffer38, 100);
+	GetWindowText(hTextbox39, buffer39, 100);
+	GetWindowText(hTextbox40, buffer40, 100);
+	GetWindowText(hTextbox41, buffer41, 100);
+	GetWindowText(hTextbox42, buffer42, 100);
+	GetWindowText(hTextbox43, buffer43, 100);
+	GetWindowText(hTextbox44, buffer44, 100);
+	GetWindowText(hTextbox45, buffer45, 100);
+	GetWindowText(hTextbox46, buffer46, 100);
+	GetWindowText(hTextbox47, buffer47, 100);
+	GetWindowText(hTextbox48, buffer48, 100);
+	GetWindowText(hTextbox49, buffer49, 100);
+	GetWindowText(hTextbox50, buffer50, 100);
+	GetWindowText(hTextbox51, buffer51, 100);
+	GetWindowText(hTextbox52, buffer52, 100);
+	GetWindowText(hTextbox53, buffer53, 100);
+	GetWindowText(hTextbox54, buffer54, 100);
+	GetWindowText(hTextbox55, buffer55, 100);
+	GetWindowText(hTextbox56, buffer56, 100);
+	GetWindowText(hTextbox57, buffer57, 100);
+	GetWindowText(hTextbox58, buffer58, 100);
+	GetWindowText(hTextbox59, buffer59, 100);
+	GetWindowText(hTextbox60, buffer60, 100);
+	GetWindowText(hTextbox61, buffer61, 100);
+	GetWindowText(hTextbox62, buffer62, 100);
+	GetWindowText(hTextbox63, buffer63, 100);
+	GetWindowText(hTextbox64, buffer64, 100);
+	GetWindowText(hTextbox65, buffer65, 100);
+	GetWindowText(hTextbox66, buffer66, 100);
+	GetWindowText(hTextbox67, buffer67, 100);
+	GetWindowText(hTextbox68, buffer68, 100);
+	GetWindowText(hTextbox69, buffer69, 100);
+	GetWindowText(hTextbox70, buffer70, 100);
+	GetWindowText(hTextbox71, buffer71, 100);
+	GetWindowText(hTextbox72, buffer72, 100);
+	GetWindowText(hTextbox73, buffer73, 100);
+	GetWindowText(hTextbox74, buffer74, 100);
+	GetWindowText(hTextbox75, buffer75, 100);
+	GetWindowText(hTextbox76, buffer76, 100);
+	GetWindowText(hTextbox77, buffer77, 100);
+	GetWindowText(hTextbox78, buffer78, 100);
+	GetWindowText(hTextbox79, buffer79, 100);
+	GetWindowText(hTextbox80, buffer80, 100);
+	GetWindowText(hTextbox81, buffer81, 100);
+	GetWindowText(hTextbox82, buffer82, 100);
+	GetWindowText(hTextbox83, buffer83, 100);
+	GetWindowText(hTextbox84, buffer84, 100);
+	GetWindowText(hTextbox85, buffer85, 100);
+
+	// ... retrieve text from more textboxes as needed
+
+	//InputValues inputvalues =
+
+	/*float BESS_Energy_lower = _wtof(buffer1);
+	float BESS_Energy_upper = _wtof(buffer2);
+	float BESS_Energy_step = _wtof(buffer3); */
+
+	float timestep_minutes = static_cast<float>(_wtof(buffer4));
+
+	float timestep_hours = static_cast<float>(_wtof(buffer5));
+	float timewindow = static_cast<float>(_wtof(buffer6));
+
+	float Fixed_load1_scalar_lower = static_cast<float>(_wtof(buffer7));
+	float Fixed_load1_scalar_upper = static_cast<float>(_wtof(buffer8));
+	float Fixed_load1_scalar_step = static_cast<float>(_wtof(buffer9));
+
+	float Fixed_load2_scalar_lower = static_cast<float>(_wtof(buffer10));
+	float Fixed_load2_scalar_upper = static_cast<float>(_wtof(buffer11));
+	float Fixed_load2_scalar_step = static_cast<float>(_wtof(buffer12));
+
+	float Flex_load_max_lower = static_cast<float>(_wtof(buffer13));
+	float Flex_load_max_upper = static_cast<float>(_wtof(buffer14));
+	float Flex_load_max_step = static_cast<float>(_wtof(buffer15));
+
+	float Mop_load_max_lower = static_cast<float>(_wtof(buffer16));
+	float Mop_load_max_upper = static_cast<float>(_wtof(buffer17));
+	float Mop_load_max_step = static_cast<float>(_wtof(buffer18));
+
+	float ScalarRG1_lower = static_cast<float>(_wtof(buffer19));
+	float ScalarRG1_upper = static_cast<float>(_wtof(buffer20));
+	float ScalarRG1_step = static_cast<float>(_wtof(buffer21));
+
+	float ScalarRG2_lower = static_cast<float>(_wtof(buffer22));
+	float ScalarRG2_upper = static_cast<float>(_wtof(buffer23));
+	float ScalarRG2_step = static_cast<float>(_wtof(buffer24));
+
+	float ScalarRG3_lower = static_cast<float>(_wtof(buffer25));
+	float ScalarRG3_upper = static_cast<float>(_wtof(buffer26));
+	float ScalarRG3_step = static_cast<float>(_wtof(buffer27));
+
+	float ScalarRG4_lower = static_cast<float>(_wtof(buffer28));
+	float ScalarRG4_upper = static_cast<float>(_wtof(buffer29));
+	float ScalarRG4_step = static_cast<float>(_wtof(buffer30));
+
+	float ScalarHL1_lower = static_cast<float>(_wtof(buffer31));
+	float ScalarHL1_upper = static_cast<float>(_wtof(buffer32));
+	float ScalarHL1_step = static_cast<float>(_wtof(buffer33));
+
+	float ScalarHYield1_lower = static_cast<float>(_wtof(buffer34));
+	float ScalarHYield1_upper = static_cast<float>(_wtof(buffer35));
+	float ScalarHYield1_step = static_cast<float>(_wtof(buffer36));
+
+	float ScalarHYield2_lower = static_cast<float>(_wtof(buffer37));
+	float ScalarHYield2_upper = static_cast<float>(_wtof(buffer38));
+	float ScalarHYield2_step = static_cast<float>(_wtof(buffer39));
+
+	float ScalarHYield3_lower = static_cast<float>(_wtof(buffer40));
+	float ScalarHYield3_upper = static_cast<float>(_wtof(buffer41));
+	float ScalarHYield3_step = static_cast<float>(_wtof(buffer42));
+
+	float ScalarHYield4_lower = static_cast<float>(_wtof(buffer43));
+	float ScalarHYield4_upper = static_cast<float>(_wtof(buffer44));
+	float ScalarHYield4_step = static_cast<float>(_wtof(buffer45));
+
+	float GridImport_lower = static_cast<float>(_wtof(buffer46));
+	float GridImport_upper = static_cast<float>(_wtof(buffer47));
+	float GridImport_step = static_cast<float>(_wtof(buffer48));
+
+	float GridExport_lower = static_cast<float>(_wtof(buffer49));
+	float GridExport_upper = static_cast<float>(_wtof(buffer50));
+	float GridExport_step = static_cast<float>(_wtof(buffer51));
+
+	float Import_headroom_lower = static_cast<float>(_wtof(buffer52));
+	float Import_headroom_upper = static_cast<float>(_wtof(buffer53));
+	float Import_headroom_step = static_cast<float>(_wtof(buffer54));
+
+	float Export_headroom_lower = static_cast<float>(_wtof(buffer55));
+	float Export_headroom_upper = static_cast<float>(_wtof(buffer56));
+	float Export_headroom_step = static_cast<float>(_wtof(buffer57));
+
+	float ESS_charge_power_lower = static_cast<float>(_wtof(buffer58));
+	float ESS_charge_power_upper = static_cast<float>(_wtof(buffer59));
+	float ESS_charge_power_step = static_cast<float>(_wtof(buffer60));
+
+	float ESS_discharge_power_lower = static_cast<float>(_wtof(buffer61));
+	float ESS_discharge_power_upper = static_cast<float>(_wtof(buffer62));
+	float ESS_discharge_power_step = static_cast<float>(_wtof(buffer63));
+
+	float ESS_capacity_lower = static_cast<float>(_wtof(buffer64));
+	float ESS_capacity_upper = static_cast<float>(_wtof(buffer65));
+	float ESS_capacity_step = static_cast<float>(_wtof(buffer66));
+
+	float ESS_RTE_lower = static_cast<float>(_wtof(buffer67));
+	float ESS_RTE_upper = static_cast<float>(_wtof(buffer68));
+	float ESS_RTE_step = static_cast<float>(_wtof(buffer69));
+
+	float ESS_aux_load_lower = static_cast<float>(_wtof(buffer70));
+	float ESS_aux_load_upper = static_cast<float>(_wtof(buffer71));
+	float ESS_aux_load_step = static_cast<float>(_wtof(buffer72)); // JSM changed ESS_aux_step to ESS_aux_load_step
+
+	float ESS_start_SoC_lower = static_cast<float>(_wtof(buffer73));
+	float ESS_start_SoC_upper = static_cast<float>(_wtof(buffer74));
+	float ESS_start_SoC_step = static_cast<float>(_wtof(buffer75));
+
+	int ESS_charge_mode_lower = static_cast<int>(_wtoi(buffer76));
+	int ESS_charge_mode_upper = static_cast<int>(_wtoi(buffer77));
+
+	int ESS_discharge_mode_lower = static_cast<int>(_wtoi(buffer78));
+	int ESS_discharge_mode_upper = static_cast<int>(_wtoi(buffer79));
+
+	float import_kWh_price = static_cast<float>(_wtof(buffer80));
+	float export_kWh_price = static_cast<float>(_wtof(buffer81));
+
+	float time_budget_min = static_cast<float>(_wtof(buffer82));
+
+	int target_max_concurrency = static_cast<float>(_wtoi(buffer83));
+
+	float CAPEX_limit = static_cast<float>(_wtof(buffer84));
+	float OPEX_limit = static_cast<float>(_wtof(buffer85));
+
+	InputValues inputValues = {
+		timestep_minutes, timestep_hours, timewindow,
+		Fixed_load1_scalar_lower, Fixed_load1_scalar_upper, Fixed_load1_scalar_step,
+		Fixed_load2_scalar_lower, Fixed_load2_scalar_upper, Fixed_load2_scalar_step,
+		Flex_load_max_lower, Flex_load_max_upper, Flex_load_max_step,
+		Mop_load_max_lower, Mop_load_max_upper, Mop_load_max_step,
+		ScalarRG1_lower, ScalarRG1_upper, ScalarRG1_step,
+		ScalarRG2_lower, ScalarRG2_upper, ScalarRG2_step,
+		ScalarRG3_lower, ScalarRG3_upper, ScalarRG3_step,
+		ScalarRG4_lower, ScalarRG4_upper, ScalarRG4_step,
+		ScalarHL1_lower, ScalarHL1_upper, ScalarHL1_step,
+		ScalarHYield1_lower, ScalarHYield1_upper, ScalarHYield1_step,
+		ScalarHYield2_lower, ScalarHYield2_upper, ScalarHYield2_step,
+		ScalarHYield3_lower, ScalarHYield3_upper, ScalarHYield3_step,
+		ScalarHYield4_lower, ScalarHYield4_upper, ScalarHYield4_step,
+		GridImport_lower, GridImport_upper, GridImport_step,
+		GridExport_lower, GridExport_upper, GridExport_step,
+		Import_headroom_lower, Import_headroom_upper, Import_headroom_step,
+		Export_headroom_lower, Export_headroom_upper, Export_headroom_step,
+		ESS_charge_power_lower, ESS_charge_power_upper, ESS_charge_power_step,
+		ESS_discharge_power_lower, ESS_discharge_power_upper, ESS_discharge_power_step,
+		ESS_capacity_lower, ESS_capacity_upper, ESS_capacity_step,
+		ESS_RTE_lower, ESS_RTE_upper, ESS_RTE_step,
+		ESS_aux_load_lower, ESS_aux_load_upper, ESS_aux_load_step,
+		ESS_start_SoC_lower, ESS_start_SoC_upper, ESS_start_SoC_step,
+		ESS_charge_mode_lower, ESS_charge_mode_upper,
+		ESS_discharge_mode_lower, ESS_discharge_mode_upper,
+		import_kWh_price, export_kWh_price,
+		time_budget_min, target_max_concurrency,
+		CAPEX_limit, OPEX_limit
+	};
+
+	return inputValues;
+}
+
+
+void writeOutputToForm(const OutputValues& output) {
+	std::cout << "Output.Max: " << output.maxVal << ", Output.Min: " << output.minVal << ", Output.Mean: " << output.meanVal << std::endl;
+	wchar_t buffer[300];
+	swprintf_s(buffer, 300, L"%f", output.maxVal);
+	SetWindowText(hOutput1, buffer);
+	swprintf_s(buffer, 300, L"%f", output.minVal);
+	SetWindowText(hOutput2, buffer);
+	swprintf_s(buffer, 300, L"%f", output.meanVal);
+	SetWindowText(hOutput3, buffer);
+
+	swprintf_s(buffer, 300, L"%f", output.CAPEX);
+	SetWindowText(hOutput5, buffer);
+	swprintf_s(buffer, 300, L"%f", output.annualised);
+	SetWindowText(hOutput6, buffer);
+	swprintf_s(buffer, 300, L"%f", output.scenario_cost_balance);
+	SetWindowText(hOutput7, buffer);
+
+	swprintf_s(buffer, 300, L"%f", output.payback_horizon);
+	SetWindowText(hOutput8, buffer);
+	swprintf_s(buffer, 300, L"%f", output.scenario_carbon_balance);
+	SetWindowText(hOutput9, buffer);
+
+	swprintf_s(buffer, 300, L"%d", output.CAPEX_index);
+	SetWindowText(hOutput13, buffer);
+	swprintf_s(buffer, 300, L"%d", output.annualised_index);
+	SetWindowText(hOutput14, buffer);
+	swprintf_s(buffer, 300, L"%d", output.scenario_cost_balance_index);
+	SetWindowText(hOutput15, buffer);
+	swprintf_s(buffer, 300, L"%d", output.payback_horizon_index);
+	SetWindowText(hOutput16, buffer);
+	swprintf_s(buffer, 300, L"%d", output.scenario_carbon_balance_index);
+	SetWindowText(hOutput17, buffer);
+}
+
+void writeInitialiseEstimatesToForm(const OutputValues& output) {
+	wchar_t buffer[300];
+	swprintf_s(buffer, 300, L"%i", output.num_scenarios);
+	SetWindowText(hOutput10, buffer);
+	swprintf_s(buffer, 300, L"%f", output.est_hours);
+	SetWindowText(hOutput11, buffer);
+	swprintf_s(buffer, 300, L"%f", output.est_seconds);
+	SetWindowText(hOutput12, buffer);
+}
+
+void writeTimingsToForm(std::chrono::steady_clock::time_point start_long) {
+
+	auto end_long = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> total_elapsed = end_long - start_long;  // calculate total elaspsed run time
+	std::cout << "Total Runtime: " << total_elapsed.count() << " seconds" << std::endl; // print elapsed run time
+	float elapsed_float = static_cast<float>(total_elapsed.count());
+	wchar_t buffer[300];
+	swprintf_s(buffer, 300, L"%f", elapsed_float);
+	SetWindowText(hOutput4, buffer);
+}
+
+void writeRecallValuesToForm(const OutputValues& output) {
+
+	wchar_t buffer[300];
+	swprintf_s(buffer, 300, L"%f", output.Fixed_load1_scalar);
+	SetWindowText(hTextbox7, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox8, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox9, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.Fixed_load2_scalar);
+	SetWindowText(hTextbox10, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox11, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox12, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.Flex_load_max);
+	SetWindowText(hTextbox13, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox14, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox15, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.Mop_load_max);
+	SetWindowText(hTextbox16, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox17, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox18, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarRG1);
+	SetWindowText(hTextbox19, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox20, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox21, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarRG2);
+	SetWindowText(hTextbox22, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox23, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox24, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarRG3);
+	SetWindowText(hTextbox25, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox26, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox27, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarRG4);
+	SetWindowText(hTextbox28, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox29, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox30, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarHL1);
+	SetWindowText(hTextbox31, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox32, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox33, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarHYield1);
+	SetWindowText(hTextbox34, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox35, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox36, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarHYield2);
+	SetWindowText(hTextbox37, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox38, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox39, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarHYield3);
+	SetWindowText(hTextbox40, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox41, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox42, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ScalarHYield4);
+	SetWindowText(hTextbox43, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox44, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox45, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.GridImport);
+	SetWindowText(hTextbox46, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox47, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox48, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.GridExport);
+	SetWindowText(hTextbox49, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox50, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox51, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.Import_headroom);
+	SetWindowText(hTextbox52, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox53, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox54, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.Export_headroom);
+	SetWindowText(hTextbox55, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox56, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox57, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ESS_charge_power);
+	SetWindowText(hTextbox58, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox59, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox60, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ESS_discharge_power);
+	SetWindowText(hTextbox61, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox62, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox63, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ESS_capacity);
+	SetWindowText(hTextbox64, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox65, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox66, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ESS_RTE);
+	SetWindowText(hTextbox67, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox68, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox69, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ESS_aux_load);
+	SetWindowText(hTextbox70, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox71, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox72, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.ESS_start_SoC);
+	SetWindowText(hTextbox73, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox74, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox75, buffer);
+
+
+	swprintf_s(buffer, 300, L"%d", output.ESS_charge_mode);
+	SetWindowText(hTextbox76, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox77, buffer);
+
+
+	swprintf_s(buffer, 300, L"%d", output.ESS_discharge_mode);
+	SetWindowText(hTextbox78, buffer);
+
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox79, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.import_kWh_price);
+	SetWindowText(hTextbox80, buffer);
+
+
+	swprintf_s(buffer, 300, L"%f", output.export_kWh_price);
+	SetWindowText(hTextbox81, buffer);
+}
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -3399,406 +4086,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 		case ID_BUTTON1: // this the RUN button for main otpimisation
 			if (wmEvent == BN_CLICKED) {
-				wchar_t buffer1[100];
-				wchar_t buffer2[100];
-				wchar_t buffer3[100];
-				wchar_t buffer4[100];
-				wchar_t buffer5[100];
-				wchar_t buffer6[100];
-				wchar_t buffer7[100];
-				wchar_t buffer8[100];
-				wchar_t buffer9[100];
-				wchar_t buffer10[100];
-				wchar_t buffer11[100];
-				wchar_t buffer12[100];
-				wchar_t buffer13[100];
-				wchar_t buffer14[100];
-				wchar_t buffer15[100];
-				wchar_t buffer16[100];
-				wchar_t buffer17[100];
-				wchar_t buffer18[100];
-				wchar_t buffer19[100];
-				wchar_t buffer20[100];
-				wchar_t buffer21[100];
-				wchar_t buffer22[100];
-				wchar_t buffer23[100];
-				wchar_t buffer24[100];
-				wchar_t buffer25[100];
-				wchar_t buffer26[100];
-				wchar_t buffer27[100];
-				wchar_t buffer28[100];
-				wchar_t buffer29[100];
-				wchar_t buffer30[100];
-				wchar_t buffer31[100];
-				wchar_t buffer32[100];
-				wchar_t buffer33[100];
-				wchar_t buffer34[100];
-				wchar_t buffer35[100];
-				wchar_t buffer36[100];
-				wchar_t buffer37[100];
-				wchar_t buffer38[100];
-				wchar_t buffer39[100];
-				wchar_t buffer40[100];
-				wchar_t buffer41[100];
-				wchar_t buffer42[100];
-				wchar_t buffer43[100];
-				wchar_t buffer44[100];
-				wchar_t buffer45[100];
-				wchar_t buffer46[100];
-				wchar_t buffer47[100];
-				wchar_t buffer48[100];
-				wchar_t buffer49[100];
-				wchar_t buffer50[100];
-				wchar_t buffer51[100];
-				wchar_t buffer52[100];
-				wchar_t buffer53[100];
-				wchar_t buffer54[100];
-				wchar_t buffer55[100];
-				wchar_t buffer56[100];
-				wchar_t buffer57[100];
-				wchar_t buffer58[100];
-				wchar_t buffer59[100];
-				wchar_t buffer60[100];
-				wchar_t buffer61[100];
-				wchar_t buffer62[100];
-				wchar_t buffer63[100];
-				wchar_t buffer64[100];
-				wchar_t buffer65[100];
-				wchar_t buffer66[100];
-				wchar_t buffer67[100];
-				wchar_t buffer68[100];
-				wchar_t buffer69[100];
-				wchar_t buffer70[100];
-				wchar_t buffer71[100];
-				wchar_t buffer72[100];
-				wchar_t buffer73[100];
-				wchar_t buffer74[100];
-				wchar_t buffer75[100];
-				wchar_t buffer76[100];
-				wchar_t buffer77[100];
-				wchar_t buffer78[100];
-				wchar_t buffer79[100];
-				wchar_t buffer80[100];
-				wchar_t buffer81[100];
-				wchar_t buffer82[100];
-				wchar_t buffer83[100];
-				wchar_t buffer84[100];
-				wchar_t buffer85[100];
-
-				GetWindowText(hTextbox1, buffer1, 100);
-				GetWindowText(hTextbox2, buffer2, 100);
-				GetWindowText(hTextbox3, buffer3, 100);
-				GetWindowText(hTextbox4, buffer4, 100);
-				GetWindowText(hTextbox5, buffer5, 100);
-				GetWindowText(hTextbox6, buffer6, 100);
-				GetWindowText(hTextbox7, buffer7, 100);
-				GetWindowText(hTextbox8, buffer8, 100);
-				GetWindowText(hTextbox9, buffer9, 100);
-				GetWindowText(hTextbox10, buffer10, 100);
-				GetWindowText(hTextbox11, buffer11, 100);
-				GetWindowText(hTextbox12, buffer12, 100);
-				GetWindowText(hTextbox13, buffer13, 100);
-				GetWindowText(hTextbox14, buffer14, 100);
-				GetWindowText(hTextbox15, buffer15, 100);
-				GetWindowText(hTextbox16, buffer16, 100);
-				GetWindowText(hTextbox17, buffer17, 100);
-				GetWindowText(hTextbox18, buffer18, 100);
-				GetWindowText(hTextbox19, buffer19, 100);
-				GetWindowText(hTextbox20, buffer20, 100);
-				GetWindowText(hTextbox21, buffer21, 100);
-				GetWindowText(hTextbox22, buffer22, 100);
-				GetWindowText(hTextbox23, buffer23, 100);
-				GetWindowText(hTextbox24, buffer24, 100);
-				GetWindowText(hTextbox25, buffer25, 100);
-				GetWindowText(hTextbox26, buffer26, 100);
-				GetWindowText(hTextbox27, buffer27, 100);
-				GetWindowText(hTextbox28, buffer28, 100);
-				GetWindowText(hTextbox29, buffer29, 100);
-				GetWindowText(hTextbox30, buffer30, 100);
-				GetWindowText(hTextbox31, buffer31, 100);
-				GetWindowText(hTextbox32, buffer32, 100);
-				GetWindowText(hTextbox33, buffer33, 100);
-				GetWindowText(hTextbox34, buffer34, 100);
-				GetWindowText(hTextbox35, buffer35, 100);
-				GetWindowText(hTextbox36, buffer36, 100);
-				GetWindowText(hTextbox37, buffer37, 100);
-				GetWindowText(hTextbox38, buffer38, 100);
-				GetWindowText(hTextbox39, buffer39, 100);
-				GetWindowText(hTextbox40, buffer40, 100);
-				GetWindowText(hTextbox41, buffer41, 100);
-				GetWindowText(hTextbox42, buffer42, 100);
-				GetWindowText(hTextbox43, buffer43, 100);
-				GetWindowText(hTextbox44, buffer44, 100);
-				GetWindowText(hTextbox45, buffer45, 100);
-				GetWindowText(hTextbox46, buffer46, 100);
-				GetWindowText(hTextbox47, buffer47, 100);
-				GetWindowText(hTextbox48, buffer48, 100);
-				GetWindowText(hTextbox49, buffer49, 100);
-				GetWindowText(hTextbox50, buffer50, 100);
-				GetWindowText(hTextbox51, buffer51, 100);
-				GetWindowText(hTextbox52, buffer52, 100);
-				GetWindowText(hTextbox53, buffer53, 100);
-				GetWindowText(hTextbox54, buffer54, 100);
-				GetWindowText(hTextbox55, buffer55, 100);
-				GetWindowText(hTextbox56, buffer56, 100);
-				GetWindowText(hTextbox57, buffer57, 100);
-				GetWindowText(hTextbox58, buffer58, 100);
-				GetWindowText(hTextbox59, buffer59, 100);
-				GetWindowText(hTextbox60, buffer60, 100);
-				GetWindowText(hTextbox61, buffer61, 100);
-				GetWindowText(hTextbox62, buffer62, 100);
-				GetWindowText(hTextbox63, buffer63, 100);
-				GetWindowText(hTextbox64, buffer64, 100);
-				GetWindowText(hTextbox65, buffer65, 100);
-				GetWindowText(hTextbox66, buffer66, 100);
-				GetWindowText(hTextbox67, buffer67, 100);
-				GetWindowText(hTextbox68, buffer68, 100);
-				GetWindowText(hTextbox69, buffer69, 100);
-				GetWindowText(hTextbox70, buffer70, 100);
-				GetWindowText(hTextbox71, buffer71, 100);
-				GetWindowText(hTextbox72, buffer72, 100);
-				GetWindowText(hTextbox73, buffer73, 100);
-				GetWindowText(hTextbox74, buffer74, 100);
-				GetWindowText(hTextbox75, buffer75, 100);
-				GetWindowText(hTextbox76, buffer76, 100);
-				GetWindowText(hTextbox77, buffer77, 100);
-				GetWindowText(hTextbox78, buffer78, 100);
-				GetWindowText(hTextbox79, buffer79, 100);
-				GetWindowText(hTextbox80, buffer80, 100);
-				GetWindowText(hTextbox81, buffer81, 100);
-				GetWindowText(hTextbox82, buffer82, 100);
-				GetWindowText(hTextbox83, buffer83, 100);
-				GetWindowText(hTextbox84, buffer84, 100);
-				GetWindowText(hTextbox85, buffer85, 100);
-
-				// ... retrieve text from more textboxes as needed
-
-				//InputValues inputvalues =
-
-				/*float BESS_Energy_lower = _wtof(buffer1);
-				float BESS_Energy_upper = _wtof(buffer2);
-				float BESS_Energy_step = _wtof(buffer3); */
-
-				float timestep_minutes = static_cast<float>(_wtof(buffer4));
-				
-				float timestep_hours = static_cast<float>(_wtof(buffer5));
-				float timewindow = static_cast<float>(_wtof(buffer6));
-
-				float Fixed_load1_scalar_lower = static_cast<float>(_wtof(buffer7));
-				float Fixed_load1_scalar_upper = static_cast<float>(_wtof(buffer8));
-				float Fixed_load1_scalar_step = static_cast<float>(_wtof(buffer9));
-
-				float Fixed_load2_scalar_lower = static_cast<float>(_wtof(buffer10));
-				float Fixed_load2_scalar_upper = static_cast<float>(_wtof(buffer11));
-				float Fixed_load2_scalar_step = static_cast<float>(_wtof(buffer12));
-
-				float Flex_load_max_lower = static_cast<float>(_wtof(buffer13));
-				float Flex_load_max_upper = static_cast<float>(_wtof(buffer14));
-				float Flex_load_max_step = static_cast<float>(_wtof(buffer15));
-
-				float Mop_load_max_lower = static_cast<float>(_wtof(buffer16));
-				float Mop_load_max_upper = static_cast<float>(_wtof(buffer17));
-				float Mop_load_max_step = static_cast<float>(_wtof(buffer18));
-
-				float ScalarRG1_lower = static_cast<float>(_wtof(buffer19));
-				float ScalarRG1_upper = static_cast<float>(_wtof(buffer20));
-				float ScalarRG1_step = static_cast<float>(_wtof(buffer21));
-
-				float ScalarRG2_lower = static_cast<float>(_wtof(buffer22));
-				float ScalarRG2_upper = static_cast<float>(_wtof(buffer23));
-				float ScalarRG2_step = static_cast<float>(_wtof(buffer24));
-
-				float ScalarRG3_lower = static_cast<float>(_wtof(buffer25));
-				float ScalarRG3_upper = static_cast<float>(_wtof(buffer26));
-				float ScalarRG3_step = static_cast<float>(_wtof(buffer27));
-
-				float ScalarRG4_lower = static_cast<float>(_wtof(buffer28));
-				float ScalarRG4_upper = static_cast<float>(_wtof(buffer29));
-				float ScalarRG4_step = static_cast<float>(_wtof(buffer30));
-
-				float ScalarHL1_lower = static_cast<float>(_wtof(buffer31));
-				float ScalarHL1_upper = static_cast<float>(_wtof(buffer32));
-				float ScalarHL1_step = static_cast<float>(_wtof(buffer33));
-
-				float ScalarHYield1_lower = static_cast<float>(_wtof(buffer34));
-				float ScalarHYield1_upper = static_cast<float>(_wtof(buffer35));
-				float ScalarHYield1_step = static_cast<float>(_wtof(buffer36));
-
-				float ScalarHYield2_lower = static_cast<float>(_wtof(buffer37));
-				float ScalarHYield2_upper = static_cast<float>(_wtof(buffer38));
-				float ScalarHYield2_step = static_cast<float>(_wtof(buffer39));
-
-				float ScalarHYield3_lower = static_cast<float>(_wtof(buffer40));
-				float ScalarHYield3_upper = static_cast<float>(_wtof(buffer41));
-				float ScalarHYield3_step = static_cast<float>(_wtof(buffer42));
-
-				float ScalarHYield4_lower = static_cast<float>(_wtof(buffer43));
-				float ScalarHYield4_upper = static_cast<float>(_wtof(buffer44));
-				float ScalarHYield4_step = static_cast<float>(_wtof(buffer45));
-
-				float GridImport_lower = static_cast<float>(_wtof(buffer46));
-				float GridImport_upper = static_cast<float>(_wtof(buffer47));
-				float GridImport_step = static_cast<float>(_wtof(buffer48));
-
-				float GridExport_lower = static_cast<float>(_wtof(buffer49));
-				float GridExport_upper = static_cast<float>(_wtof(buffer50));
-				float GridExport_step = static_cast<float>(_wtof(buffer51));
-
-				float Import_headroom_lower = static_cast<float>(_wtof(buffer52));
-				float Import_headroom_upper = static_cast<float>(_wtof(buffer53));
-				float Import_headroom_step = static_cast<float>(_wtof(buffer54));
-
-				float Export_headroom_lower = static_cast<float>(_wtof(buffer55));
-				float Export_headroom_upper = static_cast<float>(_wtof(buffer56));
-				float Export_headroom_step = static_cast<float>(_wtof(buffer57));
-
-				float ESS_charge_power_lower = static_cast<float>(_wtof(buffer58));
-				float ESS_charge_power_upper = static_cast<float>(_wtof(buffer59));
-				float ESS_charge_power_step = static_cast<float>(_wtof(buffer60));
-
-				float ESS_discharge_power_lower = static_cast<float>(_wtof(buffer61));
-				float ESS_discharge_power_upper = static_cast<float>(_wtof(buffer62));
-				float ESS_discharge_power_step = static_cast<float>(_wtof(buffer63));
-
-				float ESS_capacity_lower = static_cast<float>(_wtof(buffer64));
-				float ESS_capacity_upper = static_cast<float>(_wtof(buffer65));
-				float ESS_capacity_step = static_cast<float>(_wtof(buffer66));
-
-				float ESS_RTE_lower = static_cast<float>(_wtof(buffer67));
-				float ESS_RTE_upper = static_cast<float>(_wtof(buffer68));
-				float ESS_RTE_step = static_cast<float>(_wtof(buffer69));
-
-				float ESS_aux_load_lower = static_cast<float>(_wtof(buffer70));
-				float ESS_aux_load_upper = static_cast<float>(_wtof(buffer71));
-				float ESS_aux_load_step = static_cast<float>(_wtof(buffer72)); // JSM changed ESS_aux_step to ESS_aux_load_step
-
-				float ESS_start_SoC_lower = static_cast<float>(_wtof(buffer73));
-				float ESS_start_SoC_upper = static_cast<float>(_wtof(buffer74));
-				float ESS_start_SoC_step = static_cast<float>(_wtof(buffer75));
-
-				int ESS_charge_mode_lower = static_cast<int>(_wtoi(buffer76));
-				int ESS_charge_mode_upper = static_cast<int>(_wtoi(buffer77));
-
-				int ESS_discharge_mode_lower = static_cast<int>(_wtoi(buffer78));
-				int ESS_discharge_mode_upper = static_cast<int>(_wtoi(buffer79));
-
-				float import_kWh_price = static_cast<float>(_wtof(buffer80));
-				float export_kWh_price = static_cast<float>(_wtof(buffer81));
-
-				float time_budget_min = static_cast<float>(_wtof(buffer82));
-
-				int target_max_concurrency = static_cast<float>(_wtoi(buffer83));
-
-				float CAPEX_limit = static_cast<float>(_wtof(buffer84));
-				float OPEX_limit = static_cast<float>(_wtof(buffer85));
 
 				InitConsole();
+				InputValues inputValues = readInputFromForm();
 
-				InputValues inputvalues = {
-	timestep_minutes, timestep_hours, timewindow,
-	Fixed_load1_scalar_lower, Fixed_load1_scalar_upper, Fixed_load1_scalar_step,
-	Fixed_load2_scalar_lower, Fixed_load2_scalar_upper, Fixed_load2_scalar_step,
-	Flex_load_max_lower, Flex_load_max_upper, Flex_load_max_step,
-	Mop_load_max_lower, Mop_load_max_upper, Mop_load_max_step,
-	ScalarRG1_lower, ScalarRG1_upper, ScalarRG1_step,
-	ScalarRG2_lower, ScalarRG2_upper, ScalarRG2_step,
-	ScalarRG3_lower, ScalarRG3_upper, ScalarRG3_step,
-	ScalarRG4_lower, ScalarRG4_upper, ScalarRG4_step,
-	ScalarHL1_lower, ScalarHL1_upper, ScalarHL1_step,
-	ScalarHYield1_lower, ScalarHYield1_upper, ScalarHYield1_step,
-	ScalarHYield2_lower, ScalarHYield2_upper, ScalarHYield2_step,
-	ScalarHYield3_lower, ScalarHYield3_upper, ScalarHYield3_step,
-	ScalarHYield4_lower, ScalarHYield4_upper, ScalarHYield4_step,
-	GridImport_lower, GridImport_upper, GridImport_step,
-	GridExport_lower, GridExport_upper, GridExport_step,
-	Import_headroom_lower, Import_headroom_upper, Import_headroom_step,
-	Export_headroom_lower, Export_headroom_upper, Export_headroom_step,
-	ESS_charge_power_lower, ESS_charge_power_upper, ESS_charge_power_step,
-	ESS_discharge_power_lower, ESS_discharge_power_upper, ESS_discharge_power_step,
-	ESS_capacity_lower, ESS_capacity_upper, ESS_capacity_step,
-	ESS_RTE_lower, ESS_RTE_upper, ESS_RTE_step,
-	ESS_aux_load_lower, ESS_aux_load_upper, ESS_aux_load_step,
-	ESS_start_SoC_lower, ESS_start_SoC_upper, ESS_start_SoC_step,
-	ESS_charge_mode_lower, ESS_charge_mode_upper,
-	ESS_discharge_mode_lower, ESS_discharge_mode_upper,
-	import_kWh_price, export_kWh_price,
-	time_budget_min, target_max_concurrency,
-	CAPEX_limit, OPEX_limit
-				};
-
-				/* ==== JSM CODE HERE ==================================================================== */
-				// Aim: to export 'inputvalues' to a json file that can be read e.g. as a Python dict, s.t. other EPL software can use this as an input
-				// These are 2 lines to produce debug output -- not functionally important!
-				//std::cout << "Hello. We are here now." << std::endl;
-				//std::cout << inputvalues.ESS_aux_load_lower << std::endl;
-
-				// Convert the InputValues struct to a JSON object using the mapping
-				nlohmann::json jsonObj = structToJson(inputvalues, memberMappings, std::size(memberMappings));
-
-				// Write the JSON to a file
-				std::ofstream file("parameters.json");
-				file << jsonObj.dump(4); // The "4" argument adds pretty-printing with indentation
-				file.close();
-
-				nlohmann::json converted_json = convert_to_ranges(jsonObj);
-				std::ofstream file3("parameters_grouped.json");
-				file3 << converted_json.dump(4); // The "4" argument adds pretty-printing with indentation
-				file3.close();
-
-				std::cout << "JSON file written successfully!" << std::endl;
-				/* ======================================================================================== */
+				auto converted_json = handleJsonConversion(inputValues, memberMappings, std::size(memberMappings));
 
 				OutputValues output = optimiser.runMainOptimisation(converted_json);
 
-				std::cout << "Output.Max: " << output.maxVal << ", Output.Min: " << output.minVal << ", Output.Mean: " << output.meanVal << std::endl;
-				wchar_t buffer[300];
-				swprintf_s(buffer, 300, L"%f", output.maxVal);
-				SetWindowText(hOutput1, buffer);
-				swprintf_s(buffer, 300, L"%f", output.minVal);
-				SetWindowText(hOutput2, buffer);
-				swprintf_s(buffer, 300, L"%f", output.meanVal);
-				SetWindowText(hOutput3, buffer);
+				writeOutputToForm(output);
 
-				swprintf_s(buffer, 300, L"%f", output.CAPEX);
-				SetWindowText(hOutput5, buffer);
-				swprintf_s(buffer, 300, L"%f", output.annualised);
-				SetWindowText(hOutput6, buffer);
-				swprintf_s(buffer, 300, L"%f", output.scenario_cost_balance);
-				SetWindowText(hOutput7, buffer);
-
-				swprintf_s(buffer, 300, L"%f", output.payback_horizon);
-				SetWindowText(hOutput8, buffer);
-				swprintf_s(buffer, 300, L"%f", output.scenario_carbon_balance);
-				SetWindowText(hOutput9, buffer);
-				
-				swprintf_s(buffer, 300, L"%d", output.CAPEX_index);
-				SetWindowText(hOutput13, buffer);
-				swprintf_s(buffer, 300, L"%d", output.annualised_index);
-				SetWindowText(hOutput14, buffer);
-				swprintf_s(buffer, 300, L"%d", output.scenario_cost_balance_index);
-				SetWindowText(hOutput15, buffer);
-				swprintf_s(buffer, 300, L"%d", output.payback_horizon_index);
-				SetWindowText(hOutput16, buffer);
-				swprintf_s(buffer, 300, L"%d", output.scenario_carbon_balance_index);
-				SetWindowText(hOutput17, buffer);
-
-
-				// Convert the InputValues struct to a JSON object using the mapping
-				nlohmann::json jsonObj2 = structToJsonOut(output, OutmemberMappings, std::size(OutmemberMappings));
-
-				// Write the JSON to a file
-				std::ofstream file2("outputparameters.json");
-				file2 << jsonObj2.dump(4); // The "4" argument adds pretty-printing with indentation
-				file2.close();
-
+				// Convert the OutputValues struct to a JSON object using the mapping
+				nlohmann::json jsonObj = structToJsonOut(output, OutmemberMappings, std::size(OutmemberMappings));
+				writeJsonToFile(jsonObj, "outputparameters.json");
 				std::cout << "JSON file written successfully!" << std::endl;
 
-				auto end_long = std::chrono::high_resolution_clock::now();
-				std::chrono::duration<double> total_elapsed = end_long - start_long;  // calculate total elaspsed run time
-				std::cout << "Total Runtime: " << total_elapsed.count() << " seconds" << std::endl; // print elapsed run time
-				float elapsed_float = static_cast<float>(total_elapsed.count());
-				swprintf_s(buffer, 300, L"%f", elapsed_float);
-				SetWindowText(hOutput4, buffer);
+				writeTimingsToForm(start_long);
 
 				std::cout << "Sleeping for 5 seconds..."; // this allows time to read the console if needed. Adjust if needed
 				//std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer
@@ -3813,385 +4116,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case ID_BUTTON0: // this is the INITIALISE button to estimate the optimisation time
 			if (wmEvent == BN_CLICKED) {
-				wchar_t buffer1[100];
-				wchar_t buffer2[100];
-				wchar_t buffer3[100];
-				wchar_t buffer4[100];
-				wchar_t buffer5[100];
-				wchar_t buffer6[100];
-				wchar_t buffer7[100];
-				wchar_t buffer8[100];
-				wchar_t buffer9[100];
-				wchar_t buffer10[100];
-				wchar_t buffer11[100];
-				wchar_t buffer12[100];
-				wchar_t buffer13[100];
-				wchar_t buffer14[100];
-				wchar_t buffer15[100];
-				wchar_t buffer16[100];
-				wchar_t buffer17[100];
-				wchar_t buffer18[100];
-				wchar_t buffer19[100];
-				wchar_t buffer20[100];
-				wchar_t buffer21[100];
-				wchar_t buffer22[100];
-				wchar_t buffer23[100];
-				wchar_t buffer24[100];
-				wchar_t buffer25[100];
-				wchar_t buffer26[100];
-				wchar_t buffer27[100];
-				wchar_t buffer28[100];
-				wchar_t buffer29[100];
-				wchar_t buffer30[100];
-				wchar_t buffer31[100];
-				wchar_t buffer32[100];
-				wchar_t buffer33[100];
-				wchar_t buffer34[100];
-				wchar_t buffer35[100];
-				wchar_t buffer36[100];
-				wchar_t buffer37[100];
-				wchar_t buffer38[100];
-				wchar_t buffer39[100];
-				wchar_t buffer40[100];
-				wchar_t buffer41[100];
-				wchar_t buffer42[100];
-				wchar_t buffer43[100];
-				wchar_t buffer44[100];
-				wchar_t buffer45[100];
-				wchar_t buffer46[100];
-				wchar_t buffer47[100];
-				wchar_t buffer48[100];
-				wchar_t buffer49[100];
-				wchar_t buffer50[100];
-				wchar_t buffer51[100];
-				wchar_t buffer52[100];
-				wchar_t buffer53[100];
-				wchar_t buffer54[100];
-				wchar_t buffer55[100];
-				wchar_t buffer56[100];
-				wchar_t buffer57[100];
-				wchar_t buffer58[100];
-				wchar_t buffer59[100];
-				wchar_t buffer60[100];
-				wchar_t buffer61[100];
-				wchar_t buffer62[100];
-				wchar_t buffer63[100];
-				wchar_t buffer64[100];
-				wchar_t buffer65[100];
-				wchar_t buffer66[100];
-				wchar_t buffer67[100];
-				wchar_t buffer68[100];
-				wchar_t buffer69[100];
-				wchar_t buffer70[100];
-				wchar_t buffer71[100];
-				wchar_t buffer72[100];
-				wchar_t buffer73[100];
-				wchar_t buffer74[100];
-				wchar_t buffer75[100];
-				wchar_t buffer76[100];
-				wchar_t buffer77[100];
-				wchar_t buffer78[100];
-				wchar_t buffer79[100];
-				wchar_t buffer80[100];
-				wchar_t buffer81[100];
-				wchar_t buffer82[100];
-				wchar_t buffer83[100];
-				wchar_t buffer84[100];
-				wchar_t buffer85[100];
-
-				GetWindowText(hTextbox1, buffer1, 100);
-				GetWindowText(hTextbox2, buffer2, 100);
-				GetWindowText(hTextbox3, buffer3, 100);
-				GetWindowText(hTextbox4, buffer4, 100);
-				GetWindowText(hTextbox5, buffer5, 100);
-				GetWindowText(hTextbox6, buffer6, 100);
-				GetWindowText(hTextbox7, buffer7, 100);
-				GetWindowText(hTextbox8, buffer8, 100);
-				GetWindowText(hTextbox9, buffer9, 100);
-				GetWindowText(hTextbox10, buffer10, 100);
-				GetWindowText(hTextbox11, buffer11, 100);
-				GetWindowText(hTextbox12, buffer12, 100);
-				GetWindowText(hTextbox13, buffer13, 100);
-				GetWindowText(hTextbox14, buffer14, 100);
-				GetWindowText(hTextbox15, buffer15, 100);
-				GetWindowText(hTextbox16, buffer16, 100);
-				GetWindowText(hTextbox17, buffer17, 100);
-				GetWindowText(hTextbox18, buffer18, 100);
-				GetWindowText(hTextbox19, buffer19, 100);
-				GetWindowText(hTextbox20, buffer20, 100);
-				GetWindowText(hTextbox21, buffer21, 100);
-				GetWindowText(hTextbox22, buffer22, 100);
-				GetWindowText(hTextbox23, buffer23, 100);
-				GetWindowText(hTextbox24, buffer24, 100);
-				GetWindowText(hTextbox25, buffer25, 100);
-				GetWindowText(hTextbox26, buffer26, 100);
-				GetWindowText(hTextbox27, buffer27, 100);
-				GetWindowText(hTextbox28, buffer28, 100);
-				GetWindowText(hTextbox29, buffer29, 100);
-				GetWindowText(hTextbox30, buffer30, 100);
-				GetWindowText(hTextbox31, buffer31, 100);
-				GetWindowText(hTextbox32, buffer32, 100);
-				GetWindowText(hTextbox33, buffer33, 100);
-				GetWindowText(hTextbox34, buffer34, 100);
-				GetWindowText(hTextbox35, buffer35, 100);
-				GetWindowText(hTextbox36, buffer36, 100);
-				GetWindowText(hTextbox37, buffer37, 100);
-				GetWindowText(hTextbox38, buffer38, 100);
-				GetWindowText(hTextbox39, buffer39, 100);
-				GetWindowText(hTextbox40, buffer40, 100);
-				GetWindowText(hTextbox41, buffer41, 100);
-				GetWindowText(hTextbox42, buffer42, 100);
-				GetWindowText(hTextbox43, buffer43, 100);
-				GetWindowText(hTextbox44, buffer44, 100);
-				GetWindowText(hTextbox45, buffer45, 100);
-				GetWindowText(hTextbox46, buffer46, 100);
-				GetWindowText(hTextbox47, buffer47, 100);
-				GetWindowText(hTextbox48, buffer48, 100);
-				GetWindowText(hTextbox49, buffer49, 100);
-				GetWindowText(hTextbox50, buffer50, 100);
-				GetWindowText(hTextbox51, buffer51, 100);
-				GetWindowText(hTextbox52, buffer52, 100);
-				GetWindowText(hTextbox53, buffer53, 100);
-				GetWindowText(hTextbox54, buffer54, 100);
-				GetWindowText(hTextbox55, buffer55, 100);
-				GetWindowText(hTextbox56, buffer56, 100);
-				GetWindowText(hTextbox57, buffer57, 100);
-				GetWindowText(hTextbox58, buffer58, 100);
-				GetWindowText(hTextbox59, buffer59, 100);
-				GetWindowText(hTextbox60, buffer60, 100);
-				GetWindowText(hTextbox61, buffer61, 100);
-				GetWindowText(hTextbox62, buffer62, 100);
-				GetWindowText(hTextbox63, buffer63, 100);
-				GetWindowText(hTextbox64, buffer64, 100);
-				GetWindowText(hTextbox65, buffer65, 100);
-				GetWindowText(hTextbox66, buffer66, 100);
-				GetWindowText(hTextbox67, buffer67, 100);
-				GetWindowText(hTextbox68, buffer68, 100);
-				GetWindowText(hTextbox69, buffer69, 100);
-				GetWindowText(hTextbox70, buffer70, 100);
-				GetWindowText(hTextbox71, buffer71, 100);
-				GetWindowText(hTextbox72, buffer72, 100);
-				GetWindowText(hTextbox73, buffer73, 100);
-				GetWindowText(hTextbox74, buffer74, 100);
-				GetWindowText(hTextbox75, buffer75, 100);
-				GetWindowText(hTextbox76, buffer76, 100);
-				GetWindowText(hTextbox77, buffer77, 100);
-				GetWindowText(hTextbox78, buffer78, 100);
-				GetWindowText(hTextbox79, buffer79, 100);
-				GetWindowText(hTextbox80, buffer80, 100);
-				GetWindowText(hTextbox81, buffer81, 100);
-				GetWindowText(hTextbox82, buffer82, 100);
-				GetWindowText(hTextbox83, buffer83, 100);
-				GetWindowText(hTextbox84, buffer84, 100);
-				GetWindowText(hTextbox85, buffer85, 100);
-
-				// ... retrieve text from more textboxes as needed
-
-				//InputValues inputvalues =
-
-				/*float BESS_Energy_lower = _wtof(buffer1);
-				float BESS_Energy_upper = _wtof(buffer2);
-				float BESS_Energy_step = _wtof(buffer3); */
-
-				float timestep_minutes = static_cast<float>(_wtof(buffer4));
-
-				float timestep_hours = static_cast<float>(_wtof(buffer5));
-				float timewindow = static_cast<float>(_wtof(buffer6));
-
-				float Fixed_load1_scalar_lower = static_cast<float>(_wtof(buffer7));
-				float Fixed_load1_scalar_upper = static_cast<float>(_wtof(buffer8));
-				float Fixed_load1_scalar_step = static_cast<float>(_wtof(buffer9));
-
-				float Fixed_load2_scalar_lower = static_cast<float>(_wtof(buffer10));
-				float Fixed_load2_scalar_upper = static_cast<float>(_wtof(buffer11));
-				float Fixed_load2_scalar_step = static_cast<float>(_wtof(buffer12));
-
-				float Flex_load_max_lower = static_cast<float>(_wtof(buffer13));
-				float Flex_load_max_upper = static_cast<float>(_wtof(buffer14));
-				float Flex_load_max_step = static_cast<float>(_wtof(buffer15));
-
-				float Mop_load_max_lower = static_cast<float>(_wtof(buffer16));
-				float Mop_load_max_upper = static_cast<float>(_wtof(buffer17));
-				float Mop_load_max_step = static_cast<float>(_wtof(buffer18));
-
-				float ScalarRG1_lower = static_cast<float>(_wtof(buffer19));
-				float ScalarRG1_upper = static_cast<float>(_wtof(buffer20));
-				float ScalarRG1_step = static_cast<float>(_wtof(buffer21));
-
-				float ScalarRG2_lower = static_cast<float>(_wtof(buffer22));
-				float ScalarRG2_upper = static_cast<float>(_wtof(buffer23));
-				float ScalarRG2_step = static_cast<float>(_wtof(buffer24));
-
-				float ScalarRG3_lower = static_cast<float>(_wtof(buffer25));
-				float ScalarRG3_upper = static_cast<float>(_wtof(buffer26));
-				float ScalarRG3_step = static_cast<float>(_wtof(buffer27));
-
-				float ScalarRG4_lower = static_cast<float>(_wtof(buffer28));
-				float ScalarRG4_upper = static_cast<float>(_wtof(buffer29));
-				float ScalarRG4_step = static_cast<float>(_wtof(buffer30));
-
-				float ScalarHL1_lower = static_cast<float>(_wtof(buffer31));
-				float ScalarHL1_upper = static_cast<float>(_wtof(buffer32));
-				float ScalarHL1_step = static_cast<float>(_wtof(buffer33));
-
-				float ScalarHYield1_lower = static_cast<float>(_wtof(buffer34));
-				float ScalarHYield1_upper = static_cast<float>(_wtof(buffer35));
-				float ScalarHYield1_step = static_cast<float>(_wtof(buffer36));
-
-				float ScalarHYield2_lower = static_cast<float>(_wtof(buffer37));
-				float ScalarHYield2_upper = static_cast<float>(_wtof(buffer38));
-				float ScalarHYield2_step = static_cast<float>(_wtof(buffer39));
-
-				float ScalarHYield3_lower = static_cast<float>(_wtof(buffer40));
-				float ScalarHYield3_upper = static_cast<float>(_wtof(buffer41));
-				float ScalarHYield3_step = static_cast<float>(_wtof(buffer42));
-
-				float ScalarHYield4_lower = static_cast<float>(_wtof(buffer43));
-				float ScalarHYield4_upper = static_cast<float>(_wtof(buffer44));
-				float ScalarHYield4_step = static_cast<float>(_wtof(buffer45));
-
-				float GridImport_lower = static_cast<float>(_wtof(buffer46));
-				float GridImport_upper = static_cast<float>(_wtof(buffer47));
-				float GridImport_step = static_cast<float>(_wtof(buffer48));
-
-				float GridExport_lower = static_cast<float>(_wtof(buffer49));
-				float GridExport_upper = static_cast<float>(_wtof(buffer50));
-				float GridExport_step = static_cast<float>(_wtof(buffer51));
-
-				float Import_headroom_lower = static_cast<float>(_wtof(buffer52));
-				float Import_headroom_upper = static_cast<float>(_wtof(buffer53));
-				float Import_headroom_step = static_cast<float>(_wtof(buffer54));
-
-				float Export_headroom_lower = static_cast<float>(_wtof(buffer55));
-				float Export_headroom_upper = static_cast<float>(_wtof(buffer56));
-				float Export_headroom_step = static_cast<float>(_wtof(buffer57));
-
-				float ESS_charge_power_lower = static_cast<float>(_wtof(buffer58));
-				float ESS_charge_power_upper = static_cast<float>(_wtof(buffer59));
-				float ESS_charge_power_step = static_cast<float>(_wtof(buffer60));
-
-				float ESS_discharge_power_lower = static_cast<float>(_wtof(buffer61));
-				float ESS_discharge_power_upper = static_cast<float>(_wtof(buffer62));
-				float ESS_discharge_power_step = static_cast<float>(_wtof(buffer63));
-
-				float ESS_capacity_lower = static_cast<float>(_wtof(buffer64));
-				float ESS_capacity_upper = static_cast<float>(_wtof(buffer65));
-				float ESS_capacity_step = static_cast<float>(_wtof(buffer66));
-
-				float ESS_RTE_lower = static_cast<float>(_wtof(buffer67));
-				float ESS_RTE_upper = static_cast<float>(_wtof(buffer68));
-				float ESS_RTE_step = static_cast<float>(_wtof(buffer69));
-
-				float ESS_aux_load_lower = static_cast<float>(_wtof(buffer70));
-				float ESS_aux_load_upper = static_cast<float>(_wtof(buffer71));
-				float ESS_aux_load_step = static_cast<float>(_wtof(buffer72)); // JSM changed ESS_aux_step to ESS_aux_load_step
-
-				float ESS_start_SoC_lower = static_cast<float>(_wtof(buffer73));
-				float ESS_start_SoC_upper = static_cast<float>(_wtof(buffer74));
-				float ESS_start_SoC_step = static_cast<float>(_wtof(buffer75));
-
-				int ESS_charge_mode_lower = static_cast<int>(_wtoi(buffer76));
-				int ESS_charge_mode_upper = static_cast<int>(_wtoi(buffer77));
-
-				int ESS_discharge_mode_lower = static_cast<int>(_wtoi(buffer78));
-				int ESS_discharge_mode_upper = static_cast<int>(_wtoi(buffer79));
-
-				float import_kWh_price = static_cast<float>(_wtof(buffer80));
-				float export_kWh_price = static_cast<float>(_wtof(buffer81));
-
-				float time_budget_min = static_cast<float>(_wtof(buffer82));
-
-				int target_max_concurrency = static_cast<float>(_wtoi(buffer83));
-
-				float CAPEX_limit = static_cast<float>(_wtof(buffer84));
-				float OPEX_limit = static_cast<float>(_wtof(buffer85));
 
 				InitConsole();
+				InputValues inputValues = readInputFromForm();
 
-				InputValues inputvalues = {
-	timestep_minutes, timestep_hours, timewindow,
-	Fixed_load1_scalar_lower, Fixed_load1_scalar_upper, Fixed_load1_scalar_step,
-	Fixed_load2_scalar_lower, Fixed_load2_scalar_upper, Fixed_load2_scalar_step,
-	Flex_load_max_lower, Flex_load_max_upper, Flex_load_max_step,
-	Mop_load_max_lower, Mop_load_max_upper, Mop_load_max_step,
-	ScalarRG1_lower, ScalarRG1_upper, ScalarRG1_step,
-	ScalarRG2_lower, ScalarRG2_upper, ScalarRG2_step,
-	ScalarRG3_lower, ScalarRG3_upper, ScalarRG3_step,
-	ScalarRG4_lower, ScalarRG4_upper, ScalarRG4_step,
-	ScalarHL1_lower, ScalarHL1_upper, ScalarHL1_step,
-	ScalarHYield1_lower, ScalarHYield1_upper, ScalarHYield1_step,
-	ScalarHYield2_lower, ScalarHYield2_upper, ScalarHYield2_step,
-	ScalarHYield3_lower, ScalarHYield3_upper, ScalarHYield3_step,
-	ScalarHYield4_lower, ScalarHYield4_upper, ScalarHYield4_step,
-	GridImport_lower, GridImport_upper, GridImport_step,
-	GridExport_lower, GridExport_upper, GridExport_step,
-	Import_headroom_lower, Import_headroom_upper, Import_headroom_step,
-	Export_headroom_lower, Export_headroom_upper, Export_headroom_step,
-	ESS_charge_power_lower, ESS_charge_power_upper, ESS_charge_power_step,
-	ESS_discharge_power_lower, ESS_discharge_power_upper, ESS_discharge_power_step,
-	ESS_capacity_lower, ESS_capacity_upper, ESS_capacity_step,
-	ESS_RTE_lower, ESS_RTE_upper, ESS_RTE_step,
-	ESS_aux_load_lower, ESS_aux_load_upper, ESS_aux_load_step,
-	ESS_start_SoC_lower, ESS_start_SoC_upper, ESS_start_SoC_step,
-	ESS_charge_mode_lower, ESS_charge_mode_upper,
-	ESS_discharge_mode_lower, ESS_discharge_mode_upper,
-	import_kWh_price, export_kWh_price,
-	time_budget_min, target_max_concurrency,
-	CAPEX_limit, OPEX_limit
-				};
-
-				/* ==== JSM CODE HERE ==================================================================== */
-				// Aim: to export 'inputvalues' to a json file that can be read e.g. as a Python dict, s.t. other EPL software can use this as an input
-				// These are 2 lines to produce debug output -- not functionally important!
-				//std::cout << "Hello. We are here now." << std::endl;
-				//std::cout << inputvalues.ESS_aux_load_lower << std::endl;
-
-				// Convert the InputValues struct to a JSON object using the mapping
-				nlohmann::json jsonObj = structToJson(inputvalues, memberMappings, std::size(memberMappings));
-
-				// Write the JSON to a file
-				std::ofstream file("parameters.json");
-				file << jsonObj.dump(4); // The "4" argument adds pretty-printing with indentation
-				file.close();
-
-				nlohmann::json converted_json = convert_to_ranges(jsonObj);
-				std::ofstream file3("parameters_grouped.json");
-				file3 << converted_json.dump(4); // The "4" argument adds pretty-printing with indentation
-				file3.close();
-
-				std::cout << "JSON file written successfully!" << std::endl;
-				/* ======================================================================================== */
-
-				//OutputValues output = RunMainOptimisation(converted_json);
+				auto converted_json = handleJsonConversion(inputValues, memberMappings, std::size(memberMappings));
 
 				OutputValues output = optimiser.initialiseOptimisation(converted_json);
 
-				//std::cout << "Output.Max: " << output.maxVal << ", Output.Min: " << output.minVal << ", Output.Mean: " << output.meanVal << std::endl;
-				wchar_t buffer[300];
-				swprintf_s(buffer, 300, L"%i", output.num_scenarios);
-				SetWindowText(hOutput10, buffer);
-				swprintf_s(buffer, 300, L"%f", output.est_hours);
-				SetWindowText(hOutput11, buffer);
-				swprintf_s(buffer, 300, L"%f", output.est_seconds);
-				SetWindowText(hOutput12, buffer);
+				writeInitialiseEstimatesToForm(output);
 
 				// Convert the InputValues struct to a JSON object using the mapping
-				nlohmann::json jsonObj2 = structToJsonOut(output, OutmemberMappings, std::size(OutmemberMappings));
+				nlohmann::json jsonObj = structToJsonOut(output, OutmemberMappings, std::size(OutmemberMappings));
 
 				// Write the JSON to a file
-				std::ofstream file2("outputparameters_init.json");
-				file2 << jsonObj2.dump(4); // The "4" argument adds pretty-printing with indentation
-				file2.close();
-
+				writeJsonToFile(jsonObj, "outputparameters_init.json");
 				std::cout << "JSON file written successfully!" << std::endl;
 
-
-				auto end_long = std::chrono::high_resolution_clock::now();
-				std::chrono::duration<double> total_elapsed = end_long - start_long;  // calculate total elaspsed run time
-				std::cout << "Total Runtime: " << total_elapsed.count() << " seconds" << std::endl; // print elapsed run time
-				float elapsed_float = static_cast<float>(total_elapsed.count());
-				swprintf_s(buffer, 300, L"%f", elapsed_float);
-				SetWindowText(hOutput4, buffer);
+				writeTimingsToForm(start_long);
 
 				std::cout << "Sleeping for 1 seconds..."; // this allows time to read the console if needed. Adjust if needed
 				//std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer
@@ -4205,674 +4147,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case ID_BUTTON2: // this is the RECALL button to recall a parameter slice by index
 			if (wmEvent == BN_CLICKED) {
-				{
-					wchar_t buffer1[100];
-					wchar_t buffer2[100];
-					wchar_t buffer3[100];
-					wchar_t buffer4[100];
-					wchar_t buffer5[100];
-					wchar_t buffer6[100];
-					wchar_t buffer7[100];
-					wchar_t buffer8[100];
-					wchar_t buffer9[100];
-					wchar_t buffer10[100];
-					wchar_t buffer11[100];
-					wchar_t buffer12[100];
-					wchar_t buffer13[100];
-					wchar_t buffer14[100];
-					wchar_t buffer15[100];
-					wchar_t buffer16[100];
-					wchar_t buffer17[100];
-					wchar_t buffer18[100];
-					wchar_t buffer19[100];
-					wchar_t buffer20[100];
-					wchar_t buffer21[100];
-					wchar_t buffer22[100];
-					wchar_t buffer23[100];
-					wchar_t buffer24[100];
-					wchar_t buffer25[100];
-					wchar_t buffer26[100];
-					wchar_t buffer27[100];
-					wchar_t buffer28[100];
-					wchar_t buffer29[100];
-					wchar_t buffer30[100];
-					wchar_t buffer31[100];
-					wchar_t buffer32[100];
-					wchar_t buffer33[100];
-					wchar_t buffer34[100];
-					wchar_t buffer35[100];
-					wchar_t buffer36[100];
-					wchar_t buffer37[100];
-					wchar_t buffer38[100];
-					wchar_t buffer39[100];
-					wchar_t buffer40[100];
-					wchar_t buffer41[100];
-					wchar_t buffer42[100];
-					wchar_t buffer43[100];
-					wchar_t buffer44[100];
-					wchar_t buffer45[100];
-					wchar_t buffer46[100];
-					wchar_t buffer47[100];
-					wchar_t buffer48[100];
-					wchar_t buffer49[100];
-					wchar_t buffer50[100];
-					wchar_t buffer51[100];
-					wchar_t buffer52[100];
-					wchar_t buffer53[100];
-					wchar_t buffer54[100];
-					wchar_t buffer55[100];
-					wchar_t buffer56[100];
-					wchar_t buffer57[100];
-					wchar_t buffer58[100];
-					wchar_t buffer59[100];
-					wchar_t buffer60[100];
-					wchar_t buffer61[100];
-					wchar_t buffer62[100];
-					wchar_t buffer63[100];
-					wchar_t buffer64[100];
-					wchar_t buffer65[100];
-					wchar_t buffer66[100];
-					wchar_t buffer67[100];
-					wchar_t buffer68[100];
-					wchar_t buffer69[100];
-					wchar_t buffer70[100];
-					wchar_t buffer71[100];
-					wchar_t buffer72[100];
-					wchar_t buffer73[100];
-					wchar_t buffer74[100];
-					wchar_t buffer75[100];
-					wchar_t buffer76[100];
-					wchar_t buffer77[100];
-					wchar_t buffer78[100];
-					wchar_t buffer79[100];
-					wchar_t buffer80[100];
-					wchar_t buffer81[100];
-					wchar_t buffer82[100];
-					wchar_t buffer83[100];
-					wchar_t buffer84[100];
-					wchar_t buffer85[100];
+				InitConsole();
+				InputValues inputValues = readInputFromForm();
 
-					GetWindowText(hTextbox1, buffer1, 100);
-					GetWindowText(hTextbox2, buffer2, 100);
-					GetWindowText(hTextbox3, buffer3, 100);
-					GetWindowText(hTextbox4, buffer4, 100);
-					GetWindowText(hTextbox5, buffer5, 100);
-					GetWindowText(hTextbox6, buffer6, 100);
-					GetWindowText(hTextbox7, buffer7, 100);
-					GetWindowText(hTextbox8, buffer8, 100);
-					GetWindowText(hTextbox9, buffer9, 100);
-					GetWindowText(hTextbox10, buffer10, 100);
-					GetWindowText(hTextbox11, buffer11, 100);
-					GetWindowText(hTextbox12, buffer12, 100);
-					GetWindowText(hTextbox13, buffer13, 100);
-					GetWindowText(hTextbox14, buffer14, 100);
-					GetWindowText(hTextbox15, buffer15, 100);
-					GetWindowText(hTextbox16, buffer16, 100);
-					GetWindowText(hTextbox17, buffer17, 100);
-					GetWindowText(hTextbox18, buffer18, 100);
-					GetWindowText(hTextbox19, buffer19, 100);
-					GetWindowText(hTextbox20, buffer20, 100);
-					GetWindowText(hTextbox21, buffer21, 100);
-					GetWindowText(hTextbox22, buffer22, 100);
-					GetWindowText(hTextbox23, buffer23, 100);
-					GetWindowText(hTextbox24, buffer24, 100);
-					GetWindowText(hTextbox25, buffer25, 100);
-					GetWindowText(hTextbox26, buffer26, 100);
-					GetWindowText(hTextbox27, buffer27, 100);
-					GetWindowText(hTextbox28, buffer28, 100);
-					GetWindowText(hTextbox29, buffer29, 100);
-					GetWindowText(hTextbox30, buffer30, 100);
-					GetWindowText(hTextbox31, buffer31, 100);
-					GetWindowText(hTextbox32, buffer32, 100);
-					GetWindowText(hTextbox33, buffer33, 100);
-					GetWindowText(hTextbox34, buffer34, 100);
-					GetWindowText(hTextbox35, buffer35, 100);
-					GetWindowText(hTextbox36, buffer36, 100);
-					GetWindowText(hTextbox37, buffer37, 100);
-					GetWindowText(hTextbox38, buffer38, 100);
-					GetWindowText(hTextbox39, buffer39, 100);
-					GetWindowText(hTextbox40, buffer40, 100);
-					GetWindowText(hTextbox41, buffer41, 100);
-					GetWindowText(hTextbox42, buffer42, 100);
-					GetWindowText(hTextbox43, buffer43, 100);
-					GetWindowText(hTextbox44, buffer44, 100);
-					GetWindowText(hTextbox45, buffer45, 100);
-					GetWindowText(hTextbox46, buffer46, 100);
-					GetWindowText(hTextbox47, buffer47, 100);
-					GetWindowText(hTextbox48, buffer48, 100);
-					GetWindowText(hTextbox49, buffer49, 100);
-					GetWindowText(hTextbox50, buffer50, 100);
-					GetWindowText(hTextbox51, buffer51, 100);
-					GetWindowText(hTextbox52, buffer52, 100);
-					GetWindowText(hTextbox53, buffer53, 100);
-					GetWindowText(hTextbox54, buffer54, 100);
-					GetWindowText(hTextbox55, buffer55, 100);
-					GetWindowText(hTextbox56, buffer56, 100);
-					GetWindowText(hTextbox57, buffer57, 100);
-					GetWindowText(hTextbox58, buffer58, 100);
-					GetWindowText(hTextbox59, buffer59, 100);
-					GetWindowText(hTextbox60, buffer60, 100);
-					GetWindowText(hTextbox61, buffer61, 100);
-					GetWindowText(hTextbox62, buffer62, 100);
-					GetWindowText(hTextbox63, buffer63, 100);
-					GetWindowText(hTextbox64, buffer64, 100);
-					GetWindowText(hTextbox65, buffer65, 100);
-					GetWindowText(hTextbox66, buffer66, 100);
-					GetWindowText(hTextbox67, buffer67, 100);
-					GetWindowText(hTextbox68, buffer68, 100);
-					GetWindowText(hTextbox69, buffer69, 100);
-					GetWindowText(hTextbox70, buffer70, 100);
-					GetWindowText(hTextbox71, buffer71, 100);
-					GetWindowText(hTextbox72, buffer72, 100);
-					GetWindowText(hTextbox73, buffer73, 100);
-					GetWindowText(hTextbox74, buffer74, 100);
-					GetWindowText(hTextbox75, buffer75, 100);
-					GetWindowText(hTextbox76, buffer76, 100);
-					GetWindowText(hTextbox77, buffer77, 100);
-					GetWindowText(hTextbox78, buffer78, 100);
-					GetWindowText(hTextbox79, buffer79, 100);
-					GetWindowText(hTextbox80, buffer80, 100);
-					GetWindowText(hTextbox81, buffer81, 100);
-					GetWindowText(hTextbox82, buffer82, 100);
-					GetWindowText(hTextbox83, buffer83, 100);
-					GetWindowText(hTextbox84, buffer84, 100);
-					GetWindowText(hTextbox85, buffer85, 100);
-
-					// ... retrieve text from more textboxes as needed
-
-					//InputValues inputvalues =
-
-					/*float BESS_Energy_lower = _wtof(buffer1);
-					float BESS_Energy_upper = _wtof(buffer2);
-					float BESS_Energy_step = _wtof(buffer3); */
-
-					float timestep_minutes = static_cast<float>(_wtof(buffer4));
-
-					float timestep_hours = static_cast<float>(_wtof(buffer5));
-					float timewindow = static_cast<float>(_wtof(buffer6));
-
-					float Fixed_load1_scalar_lower = static_cast<float>(_wtof(buffer7));
-					float Fixed_load1_scalar_upper = static_cast<float>(_wtof(buffer8));
-					float Fixed_load1_scalar_step = static_cast<float>(_wtof(buffer9));
-
-					float Fixed_load2_scalar_lower = static_cast<float>(_wtof(buffer10));
-					float Fixed_load2_scalar_upper = static_cast<float>(_wtof(buffer11));
-					float Fixed_load2_scalar_step = static_cast<float>(_wtof(buffer12));
-
-					float Flex_load_max_lower = static_cast<float>(_wtof(buffer13));
-					float Flex_load_max_upper = static_cast<float>(_wtof(buffer14));
-					float Flex_load_max_step = static_cast<float>(_wtof(buffer15));
-
-					float Mop_load_max_lower = static_cast<float>(_wtof(buffer16));
-					float Mop_load_max_upper = static_cast<float>(_wtof(buffer17));
-					float Mop_load_max_step = static_cast<float>(_wtof(buffer18));
-
-					float ScalarRG1_lower = static_cast<float>(_wtof(buffer19));
-					float ScalarRG1_upper = static_cast<float>(_wtof(buffer20));
-					float ScalarRG1_step = static_cast<float>(_wtof(buffer21));
-
-					float ScalarRG2_lower = static_cast<float>(_wtof(buffer22));
-					float ScalarRG2_upper = static_cast<float>(_wtof(buffer23));
-					float ScalarRG2_step = static_cast<float>(_wtof(buffer24));
-
-					float ScalarRG3_lower = static_cast<float>(_wtof(buffer25));
-					float ScalarRG3_upper = static_cast<float>(_wtof(buffer26));
-					float ScalarRG3_step = static_cast<float>(_wtof(buffer27));
-
-					float ScalarRG4_lower = static_cast<float>(_wtof(buffer28));
-					float ScalarRG4_upper = static_cast<float>(_wtof(buffer29));
-					float ScalarRG4_step = static_cast<float>(_wtof(buffer30));
-
-					float ScalarHL1_lower = static_cast<float>(_wtof(buffer31));
-					float ScalarHL1_upper = static_cast<float>(_wtof(buffer32));
-					float ScalarHL1_step = static_cast<float>(_wtof(buffer33));
-
-					float ScalarHYield1_lower = static_cast<float>(_wtof(buffer34));
-					float ScalarHYield1_upper = static_cast<float>(_wtof(buffer35));
-					float ScalarHYield1_step = static_cast<float>(_wtof(buffer36));
-
-					float ScalarHYield2_lower = static_cast<float>(_wtof(buffer37));
-					float ScalarHYield2_upper = static_cast<float>(_wtof(buffer38));
-					float ScalarHYield2_step = static_cast<float>(_wtof(buffer39));
-
-					float ScalarHYield3_lower = static_cast<float>(_wtof(buffer40));
-					float ScalarHYield3_upper = static_cast<float>(_wtof(buffer41));
-					float ScalarHYield3_step = static_cast<float>(_wtof(buffer42));
-
-					float ScalarHYield4_lower = static_cast<float>(_wtof(buffer43));
-					float ScalarHYield4_upper = static_cast<float>(_wtof(buffer44));
-					float ScalarHYield4_step = static_cast<float>(_wtof(buffer45));
-
-					float GridImport_lower = static_cast<float>(_wtof(buffer46));
-					float GridImport_upper = static_cast<float>(_wtof(buffer47));
-					float GridImport_step = static_cast<float>(_wtof(buffer48));
-
-					float GridExport_lower = static_cast<float>(_wtof(buffer49));
-					float GridExport_upper = static_cast<float>(_wtof(buffer50));
-					float GridExport_step = static_cast<float>(_wtof(buffer51));
-
-					float Import_headroom_lower = static_cast<float>(_wtof(buffer52));
-					float Import_headroom_upper = static_cast<float>(_wtof(buffer53));
-					float Import_headroom_step = static_cast<float>(_wtof(buffer54));
-
-					float Export_headroom_lower = static_cast<float>(_wtof(buffer55));
-					float Export_headroom_upper = static_cast<float>(_wtof(buffer56));
-					float Export_headroom_step = static_cast<float>(_wtof(buffer57));
-
-					float ESS_charge_power_lower = static_cast<float>(_wtof(buffer58));
-					float ESS_charge_power_upper = static_cast<float>(_wtof(buffer59));
-					float ESS_charge_power_step = static_cast<float>(_wtof(buffer60));
-
-					float ESS_discharge_power_lower = static_cast<float>(_wtof(buffer61));
-					float ESS_discharge_power_upper = static_cast<float>(_wtof(buffer62));
-					float ESS_discharge_power_step = static_cast<float>(_wtof(buffer63));
-
-					float ESS_capacity_lower = static_cast<float>(_wtof(buffer64));
-					float ESS_capacity_upper = static_cast<float>(_wtof(buffer65));
-					float ESS_capacity_step = static_cast<float>(_wtof(buffer66));
-
-					float ESS_RTE_lower = static_cast<float>(_wtof(buffer67));
-					float ESS_RTE_upper = static_cast<float>(_wtof(buffer68));
-					float ESS_RTE_step = static_cast<float>(_wtof(buffer69));
-
-					float ESS_aux_load_lower = static_cast<float>(_wtof(buffer70));
-					float ESS_aux_load_upper = static_cast<float>(_wtof(buffer71));
-					float ESS_aux_load_step = static_cast<float>(_wtof(buffer72)); // JSM changed ESS_aux_step to ESS_aux_load_step
-
-					float ESS_start_SoC_lower = static_cast<float>(_wtof(buffer73));
-					float ESS_start_SoC_upper = static_cast<float>(_wtof(buffer74));
-					float ESS_start_SoC_step = static_cast<float>(_wtof(buffer75));
-
-					int ESS_charge_mode_lower = static_cast<int>(_wtoi(buffer76));
-					int ESS_charge_mode_upper = static_cast<int>(_wtoi(buffer77));
-
-					int ESS_discharge_mode_lower = static_cast<int>(_wtoi(buffer78));
-					int ESS_discharge_mode_upper = static_cast<int>(_wtoi(buffer79));
-
-					float import_kWh_price = static_cast<float>(_wtof(buffer80));
-					float export_kWh_price = static_cast<float>(_wtof(buffer81));
-
-					float time_budget_min = static_cast<float>(_wtof(buffer82));
-
-					int target_max_concurrency = static_cast<float>(_wtoi(buffer83));
-
-					float CAPEX_limit = static_cast<float>(_wtof(buffer84));
-					float OPEX_limit = static_cast<float>(_wtof(buffer85));
-
-					InitConsole();
-
-					InputValues inputvalues = {
-		timestep_minutes, timestep_hours, timewindow,
-		Fixed_load1_scalar_lower, Fixed_load1_scalar_upper, Fixed_load1_scalar_step,
-		Fixed_load2_scalar_lower, Fixed_load2_scalar_upper, Fixed_load2_scalar_step,
-		Flex_load_max_lower, Flex_load_max_upper, Flex_load_max_step,
-		Mop_load_max_lower, Mop_load_max_upper, Mop_load_max_step,
-		ScalarRG1_lower, ScalarRG1_upper, ScalarRG1_step,
-		ScalarRG2_lower, ScalarRG2_upper, ScalarRG2_step,
-		ScalarRG3_lower, ScalarRG3_upper, ScalarRG3_step,
-		ScalarRG4_lower, ScalarRG4_upper, ScalarRG4_step,
-		ScalarHL1_lower, ScalarHL1_upper, ScalarHL1_step,
-		ScalarHYield1_lower, ScalarHYield1_upper, ScalarHYield1_step,
-		ScalarHYield2_lower, ScalarHYield2_upper, ScalarHYield2_step,
-		ScalarHYield3_lower, ScalarHYield3_upper, ScalarHYield3_step,
-		ScalarHYield4_lower, ScalarHYield4_upper, ScalarHYield4_step,
-		GridImport_lower, GridImport_upper, GridImport_step,
-		GridExport_lower, GridExport_upper, GridExport_step,
-		Import_headroom_lower, Import_headroom_upper, Import_headroom_step,
-		Export_headroom_lower, Export_headroom_upper, Export_headroom_step,
-		ESS_charge_power_lower, ESS_charge_power_upper, ESS_charge_power_step,
-		ESS_discharge_power_lower, ESS_discharge_power_upper, ESS_discharge_power_step,
-		ESS_capacity_lower, ESS_capacity_upper, ESS_capacity_step,
-		ESS_RTE_lower, ESS_RTE_upper, ESS_RTE_step,
-		ESS_aux_load_lower, ESS_aux_load_upper, ESS_aux_load_step,
-		ESS_start_SoC_lower, ESS_start_SoC_upper, ESS_start_SoC_step,
-		ESS_charge_mode_lower, ESS_charge_mode_upper,
-		ESS_discharge_mode_lower, ESS_discharge_mode_upper,
-		import_kWh_price, export_kWh_price,
-		time_budget_min, target_max_concurrency,
-		CAPEX_limit, OPEX_limit
-					};
-
-					/* ==== JSM CODE HERE ==================================================================== */
-					// Aim: to export 'inputvalues' to a json file that can be read e.g. as a Python dict, s.t. other EPL software can use this as an input
-					// These are 2 lines to produce debug output -- not functionally important!
-					//std::cout << "Hello. We are here now." << std::endl;
-					//std::cout << inputvalues.ESS_aux_load_lower << std::endl;
-
-					// Convert the InputValues struct to a JSON object using the mapping
-					nlohmann::json jsonObj = structToJson(inputvalues, memberMappings, std::size(memberMappings));
-
-					// Write the JSON to a file
-					std::ofstream file("parameters.json");
-					file << jsonObj.dump(4); // The "4" argument adds pretty-printing with indentation
-					file.close();
-
-					nlohmann::json converted_json = convert_to_ranges(jsonObj);
-					std::ofstream file3("parameters_grouped.json");
-					file3 << converted_json.dump(4); // The "4" argument adds pretty-printing with indentation
-					file3.close();
-
-					std::cout << "JSON file written successfully!" << std::endl;
-					/* ======================================================================================== */
+				auto converted_json = handleJsonConversion(inputValues, memberMappings, std::size(memberMappings));
 
 				wchar_t buffer100[100];
-				
 				GetWindowText(hTextbox200, buffer100, 100);
-
 				int recall_index = _wtof(buffer100);
 			
-				SetWindowText(hTextbox4, buffer1);
-
 				OutputValues output = optimiser.RecallIndex(converted_json, recall_index);
 
-				wchar_t buffer[300];
-				swprintf_s(buffer, 300, L"%f", output.Fixed_load1_scalar);
-				SetWindowText(hTextbox7, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox8, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox9, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.Fixed_load2_scalar);
-				SetWindowText(hTextbox10, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox11, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox12, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.Flex_load_max);
-				SetWindowText(hTextbox13, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox14, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox15, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.Mop_load_max);
-				SetWindowText(hTextbox16, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox17, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox18, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarRG1);
-				SetWindowText(hTextbox19, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox20, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox21, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarRG2);
-				SetWindowText(hTextbox22, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox23, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox24, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarRG3);
-				SetWindowText(hTextbox25, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox26, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox27, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarRG4);
-				SetWindowText(hTextbox28, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox29, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox30, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarHL1);
-				SetWindowText(hTextbox31, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox32, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox33, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarHYield1);
-				SetWindowText(hTextbox34, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox35, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox36, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarHYield2);
-				SetWindowText(hTextbox37, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox38, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox39, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarHYield3);
-				SetWindowText(hTextbox40, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox41, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox42, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ScalarHYield4);
-				SetWindowText(hTextbox43, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox44, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox45, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.GridImport);
-				SetWindowText(hTextbox46, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox47, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox48, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.GridExport);
-				SetWindowText(hTextbox49, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox50, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox51, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.Import_headroom);
-				SetWindowText(hTextbox52, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox53, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox54, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.Export_headroom);
-				SetWindowText(hTextbox55, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox56, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox57, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ESS_charge_power);
-				SetWindowText(hTextbox58, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox59, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox60, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ESS_discharge_power);
-				SetWindowText(hTextbox61, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox62, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox63, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ESS_capacity);
-				SetWindowText(hTextbox64, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox65, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox66, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ESS_RTE);
-				SetWindowText(hTextbox67, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox68, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox69, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ESS_aux_load);
-				SetWindowText(hTextbox70, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox71, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox72, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.ESS_start_SoC);
-				SetWindowText(hTextbox73, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox74, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox75, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%d", output.ESS_charge_mode);
-				SetWindowText(hTextbox76, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox77, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%d", output.ESS_discharge_mode);
-				SetWindowText(hTextbox78, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%s", L"_");
-				SetWindowText(hTextbox79, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.import_kWh_price);
-				SetWindowText(hTextbox80, buffer);
-
-				 
-				swprintf_s(buffer, 300, L"%f", output.export_kWh_price);
-				SetWindowText(hTextbox81, buffer);
-
+				writeRecallValuesToForm(output);
 			}
 			CloseConsole();
 			break;
-
-		}
 		}
 	}
-
 
 	case WM_PAINT:
 	{
