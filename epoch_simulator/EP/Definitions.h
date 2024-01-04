@@ -7,7 +7,6 @@
 // Elemental Power definitions
 
 
-
 using CustomDataTable = std::vector<std::pair<std::string, std::vector<float>>>;
 
 struct OutputValues {

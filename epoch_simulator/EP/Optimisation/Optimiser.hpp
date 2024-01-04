@@ -4,9 +4,9 @@
 #include <thread>
 #include <vector>
 
-#include "../json.hpp"
+#include "../dependencies/json.hpp"
 #include "../FileIO.h"
-#include "../Threadsafe.h"
+#include "Threadsafe.h"
 #include "../Definitions.h"
 
 

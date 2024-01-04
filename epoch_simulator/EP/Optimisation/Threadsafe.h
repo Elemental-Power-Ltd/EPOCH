@@ -1,10 +1,12 @@
 #pragma once
 
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <queue>
 
-#include "Definitions.h"
+#include "../Definitions.h"
+
 
 inline std::optional<float> getSpecificFloat(const CustomDataTable& dataTable, const std::string& columnName) {
     for (const auto& column : dataTable) {

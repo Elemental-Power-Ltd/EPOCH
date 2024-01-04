@@ -135,33 +135,31 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Simulation\Assets.h" />
-    <ClInclude Include="Simulation\Config.h" />
-    <ClInclude Include="Simulation\Costs.h" />
-    <ClInclude Include="Simulation\Eload.h" />
+    <ClInclude Include="EP\Simulation\Assets.h" />
+    <ClInclude Include="EP\Simulation\Config.h" />
+    <ClInclude Include="EP\Simulation\Costs.h" />
+    <ClInclude Include="EP\Simulation\Eload.h" />
     <ClInclude Include="EP_FE_full.h" />
-    <ClInclude Include="FileIO.h" />
-    <ClInclude Include="framework.h" />
-    <ClInclude Include="Simulation\Grid.h" />
-    <ClInclude Include="Header.h" />
-    <ClInclude Include="Simulation\Hload.h" />
-    <ClInclude Include="io\FileHandling.hpp" />
-    <ClInclude Include="json.hpp" />
-    <ClInclude Include="Optimisation\Optimiser.hpp" />
+    <ClInclude Include="EP\FileIO.h" />
+    <ClInclude Include="EP\Simulation\Grid.h" />
+    <ClInclude Include="EP\Simulation\Hload.h" />
+    <ClInclude Include="EP\io\FileHandling.hpp" />
+    <ClInclude Include="EP\dependencies\json.hpp" />
+    <ClInclude Include="EP\Optimisation\Optimiser.hpp" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="Simulation\RGen.h" />
+    <ClInclude Include="EP\Simulation\RGen.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Threadsafe.h" />
-    <ClInclude Include="Simulation\Timeseries.h" />
+    <ClInclude Include="EP\Optimisation\Threadsafe.h" />
+    <ClInclude Include="EP\Simulation\Timeseries.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EP_FE_full.rc" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EP_FE_full.cpp" />
-    <ClCompile Include="io\FileHandling.cpp" />
-    <ClCompile Include="Optimisation\Optimiser.cpp" />
-    <ClCompile Include="Simulation\Simulate.cpp" />
+    <ClCompile Include="EP\io\FileHandling.cpp" />
+    <ClCompile Include="EP\Optimisation\Optimiser.cpp" />
+    <ClCompile Include="EP\Simulation\Simulate.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

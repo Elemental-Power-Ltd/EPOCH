@@ -1,39 +1,35 @@
 #pragma once
 
-// EP_FE_full.cpp : Defines the entry point for the application.
-//
-#include <iostream> 
-#include <chrono> // this is run time profiler
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <string>
-#include <utility>
-#include <xmmintrin.h> 
-#include <thread>
-#include <future>
-#include <numeric>
-#include <algorithm>
-#include <limits>
-#define NOMINMAX
-#include <windows.h>
-#include <map>
-#include <mutex>
-#include <queue>
-#include <condition_variable>
-#include <optional>
+#define NOMINMAX  // necessary before including windows.h
 
 #include "EP_FE_full.h"
 
-#include "Optimisation/Optimiser.hpp"
-#include "io/FileHandling.hpp"
-
-
-/* ==== JSM CODE HERE ======================================================================*/
+#include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <fstream>
 #include <functional>
-#include "json.hpp"
+#include <future>
+#include <iostream> 
+#include <limits>
+#include <map>
+#include <mutex>
+#include <numeric>
+#include <optional>
+#include <queue>
 #include <regex>
-/*==========================================================================================*/
+#include <sstream>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+#include <xmmintrin.h> 
+#include <windows.h>
+
+#include "EP/dependencies/json.hpp"
+#include "EP/io/FileHandling.hpp"
+#include "EP/Optimisation/Optimiser.hpp"
+
 
 #define MAX_LOADSTRING 100
 #define ID_BUTTON0 0

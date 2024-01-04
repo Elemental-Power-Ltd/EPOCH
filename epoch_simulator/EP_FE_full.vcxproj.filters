@@ -15,58 +15,52 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Simulation\Timeseries.h">
+    <ClInclude Include="EP\Simulation\Timeseries.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Simulation\RGen.h">
+    <ClInclude Include="EP\Simulation\RGen.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="json.hpp">
+    <ClInclude Include="EP\dependencies\json.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Simulation\Hload.h">
+    <ClInclude Include="EP\Simulation\Hload.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Simulation\Grid.h">
+    <ClInclude Include="EP\Simulation\Grid.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="framework.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="FileIO.h">
+    <ClInclude Include="EP\FileIO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EP_FE_full.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Simulation\Eload.h">
+    <ClInclude Include="EP\Simulation\Eload.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Simulation\Config.h">
+    <ClInclude Include="EP\Simulation\Config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Simulation\Assets.h">
+    <ClInclude Include="EP\Simulation\Assets.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Threadsafe.h">
+    <ClInclude Include="EP\Optimisation\Threadsafe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Header.h">
+    <ClInclude Include="EP\Simulation\Costs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Simulation\Costs.h">
+    <ClInclude Include="EP\io\FileHandling.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="io\FileHandling.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Optimisation\Optimiser.hpp">
+    <ClInclude Include="EP\Optimisation\Optimiser.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -79,13 +73,13 @@
     <ClCompile Include="EP_FE_full.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Optimisation\Optimiser.cpp">
+    <ClCompile Include="EP\Optimisation\Optimiser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="io\FileHandling.cpp">
+    <ClCompile Include="EP\io\FileHandling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Simulation\Simulate.cpp">
+    <ClCompile Include="EP\Simulation\Simulate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
