@@ -135,24 +135,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Assets.h" />
-    <ClInclude Include="Config.h" />
-    <ClInclude Include="Costs.h" />
-    <ClInclude Include="Eload.h" />
+    <ClInclude Include="Simulation\Assets.h" />
+    <ClInclude Include="Simulation\Config.h" />
+    <ClInclude Include="Simulation\Costs.h" />
+    <ClInclude Include="Simulation\Eload.h" />
     <ClInclude Include="EP_FE_full.h" />
     <ClInclude Include="FileIO.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="Grid.h" />
+    <ClInclude Include="Simulation\Grid.h" />
     <ClInclude Include="Header.h" />
-    <ClInclude Include="Hload.h" />
+    <ClInclude Include="Simulation\Hload.h" />
     <ClInclude Include="io\FileHandling.hpp" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="Optimisation\Optimiser.hpp" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="RGen.h" />
+    <ClInclude Include="Simulation\RGen.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Threadsafe.h" />
-    <ClInclude Include="Timeseries.h" />
+    <ClInclude Include="Simulation\Timeseries.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EP_FE_full.rc" />

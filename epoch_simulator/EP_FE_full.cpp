@@ -22,19 +22,7 @@
 #include <queue>
 #include <condition_variable>
 #include <optional>
-#include "FileIO.h"
-#include "Config.h"
-#include "Timeseries.h" // this is the Timeseries.h header file that contains class declarations of the timeseries vector
-#include "Assets.h" // this the Assets.h header file that contains class declarations of the assets
-#include "Eload.h" // Electrical load data
-#include "RGen.h" // Local renewable yield
-#include "Grid.h" // Grid connection data and cals
-#include "Hload.h" // Heat load data
-#include "Costs.h"
-//#include "optimisation.cpp"
-//#include "EP_BE_body.cpp"
-#include "framework.h"
-#include "Threadsafe.h"
+
 #include "EP_FE_full.h"
 
 #include "Optimisation/Optimiser.hpp"

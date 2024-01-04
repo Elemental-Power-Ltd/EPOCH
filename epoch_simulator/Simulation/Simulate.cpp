@@ -2,13 +2,13 @@
 
 #include <chrono>
 
-#include "../Assets.h"
-#include "../Config.h"
-#include "../Eload.h"
-#include "../RGen.h"
-#include "../Grid.h"
-#include "../Hload.h"
-#include "../Costs.h"
+#include "Assets.h"
+#include "Config.h"
+#include "Eload.h"
+#include "RGen.h"
+#include "Grid.h"
+#include "Hload.h"
+#include "Costs.h"
 
 
 CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pair<std::string, float>> paramSlice)
