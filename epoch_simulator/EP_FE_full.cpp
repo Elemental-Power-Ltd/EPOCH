@@ -1,36 +1,12 @@
 #pragma once
 
-#define NOMINMAX  // necessary before including windows.h
 
 #include "EP_FE_full.h"
 
-#include <algorithm>
-#include <chrono>
-#include <condition_variable>
-#include <fstream>
-#include <functional>
-#include <future>
-#include <iostream> 
-#include <limits>
-#include <map>
-#include <mutex>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <regex>
-#include <sstream>
-#include <string>
-#include <thread>
-#include <utility>
-#include <vector>
-#include <xmmintrin.h> 
+#define NOMINMAX  // necessary before including windows.h
 #include <windows.h>
 
 #include "GUI/gui.hpp"
-
-#include "EP/dependencies/json.hpp"
-#include "EP/io/FileHandling.hpp"
-#include "EP/Optimisation/Optimiser.hpp"
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -71,4 +47,3 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	return (int)msg.wParam;
 }
-
