@@ -8,15 +8,13 @@
 #include "../EP/io/FileHandling.hpp"
 
 #define MAX_LOADSTRING 100
-#define ID_BUTTON0 0
-#define ID_BUTTON1 1 
-#define ID_BUTTON2 200
+#define BUTTON_INITIALISE 0
+#define BUTTON_OPTIMISE 1 
+#define BUTTON_RECALL 200
 
-#define ID_TEXTBOX2 2
-#define ID_TEXTBOX3 3
-#define ID_TEXTBOX4 4
-#define ID_TEXTBOX5 5
-#define ID_TEXTBOX6 6
+#define ID_TEXTBOX_TIMESTEP_MINUTES 4
+#define ID_TEXTBOX_TIMESTEP_HOURS 5
+#define ID_TEXTBOX_TIME_WINDOW_HOURS 6
 #define ID_TEXTBOX7 7
 #define ID_TEXTBOX8 8
 #define ID_TEXTBOX9 9
@@ -110,7 +108,7 @@
 #define ID_TEXTBOX88 98
 #define ID_TEXTBOX89 99
 
-#define ID_TEXTBOX200 200
+#define ID_TEXTBOX_INDEX 200
 
 #define ID_OUTPUT1 99
 #define ID_OUTPUT2 100
@@ -167,7 +165,7 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 //si.nMax = 100;
 //si.nPage = 10;
 
-HWND hTextbox1; HWND hTextbox2; HWND hTextbox3; HWND hTextbox4; HWND hTextbox5; HWND hTextbox6; HWND hTextbox7; HWND hTextbox8; HWND hTextbox9; HWND hTextbox10;
+HWND hTextbox1; HWND hTextbox2; HWND hTextbox3; HWND hTextboxTimestepMinutes; HWND hTextboxTimestepHours; HWND hTextboxTimeWindowHours; HWND hTextbox7; HWND hTextbox8; HWND hTextbox9; HWND hTextbox10;
 HWND hTextbox11; HWND hTextbox12; HWND hTextbox13; HWND hTextbox14; HWND hTextbox15; HWND hTextbox16; HWND hTextbox17; HWND hTextbox18; HWND hTextbox19; HWND hTextbox20;
 HWND hTextbox21; HWND hTextbox22; HWND hTextbox23; HWND hTextbox24; HWND hTextbox25; HWND hTextbox26; HWND hTextbox27; HWND hTextbox28; HWND hTextbox29; HWND hTextbox30;
 HWND hTextbox31; HWND hTextbox32; HWND hTextbox33; HWND hTextbox34; HWND hTextbox35; HWND hTextbox36; HWND hTextbox37; HWND hTextbox38; HWND hTextbox39; HWND hTextbox40;
@@ -177,7 +175,7 @@ HWND hTextbox61; HWND hTextbox62; HWND hTextbox63; HWND hTextbox64; HWND hTextbo
 HWND hTextbox71; HWND hTextbox72; HWND hTextbox73; HWND hTextbox74; HWND hTextbox75; HWND hTextbox76; HWND hTextbox77; HWND hTextbox78; HWND hTextbox79; HWND hTextbox80;
 HWND hTextbox81; HWND hTextbox82; HWND hTextbox83; HWND hTextbox84; HWND hTextbox85; HWND hTextbox86; HWND hTextbox87; HWND hTextbox88; HWND hTextbox89;
 
-HWND hTextbox200;
+HWND hTextboxIndex;
 
 HWND hOutput1; HWND hOutput2; HWND hOutput3; HWND hOutput4; HWND hOutput5; HWND hOutput6; HWND hOutput7; HWND hOutput8; HWND hOutput9; HWND hOutput10;
 HWND hOutput11; HWND hOutput12; HWND hOutput13; HWND hOutput14; HWND hOutput15; HWND hOutput16; HWND hOutput17; HWND hOutput18; HWND hOutput19; HWND hOutput20;
@@ -211,16 +209,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	return RegisterClassExW(&wcex);
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
+
 
 BOOL InitConsole()
 {
@@ -251,6 +240,41 @@ BOOL CloseConsole() {
 }
 
 
+HWND makeTextBox(HWND parent, HINSTANCE hInstance, HMENU textboxID, int x, int y, int w, int h, LPCWSTR initialText) {
+	return CreateWindowW(
+		L"EDIT",
+		initialText,
+		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
+		x, y, w, h,
+		parent,
+		(HMENU)textboxID,
+		hInstance,
+		NULL);
+}
+
+HWND makeLabel(HWND parent, HINSTANCE hInstance, LPCWSTR text, int x, int y, int w, int h) {
+	return CreateWindowW(
+		L"STATIC",
+		text,
+		WS_VISIBLE | WS_CHILD,
+		x, y, w, h,
+		parent,
+		NULL,
+		hInstance,
+		NULL);
+}
+
+
+//
+//   FUNCTION: InitInstance(HINSTANCE, int)
+//
+//   PURPOSE: Saves instance handle and creates main window
+//
+//   COMMENTS:
+//
+//        In this function, we save the instance handle in a global variable and
+//        create and display the main program window.
+//
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
@@ -264,7 +288,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		2000, // height
 		nullptr, nullptr, hInstance, nullptr);
 
-	HWND hButton0 = CreateWindow(
+	HWND hButtonInitialise = CreateWindow(
 		L"BUTTON",  // Predefined class; Unicode assumed.
 		L"INITIALISE",      // Button text.
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles.
@@ -273,12 +297,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		100,        // Button width.
 		30,         // Button height.
 		hWnd,       // Parent window.
-		(HMENU)ID_BUTTON0,       // No menu.
+		(HMENU)BUTTON_INITIALISE,       // No menu.
 		(HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
 		NULL);      // Pointer not needed.
 	// ... add more textboxes as needed
 
-	HWND hButton1 = CreateWindow(
+	HWND hButtonOptimise = CreateWindow(
 		L"BUTTON",  // Predefined class; Unicode assumed.
 		L"RUN",      // Button text.
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles.
@@ -287,11 +311,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		100,        // Button width.
 		30,         // Button height.
 		hWnd,       // Parent window.
-		(HMENU)ID_BUTTON1,       // No menu.
+		(HMENU)BUTTON_OPTIMISE,       // No menu.
 		(HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
 		NULL);      // Pointer not needed.
 
-	HWND hButton2 = CreateWindow(
+	HWND hButtonRecall = CreateWindow(
 		L"BUTTON",  // Predefined class; Unicode assumed.
 		L"RECALL",      // Button text.
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles.
@@ -300,2664 +324,328 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		100,        // Button width.
 		30,         // Button height.
 		hWnd,       // Parent window.
-		(HMENU)ID_BUTTON2,       // No menu.
+		(HMENU)BUTTON_RECALL,       // No menu.
 		(HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
 		NULL);      // Pointer not needed.
 
-	HWND hLabelout18 = CreateWindowW(
-		L"STATIC",
-		L"INDEX",
-		WS_VISIBLE | WS_CHILD,
-		10,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		30,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelIndex = makeLabel(hWnd, hInstance, L"INDEX", 10, 180, 100, 30);
 
-	hTextbox200 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		10,   // x position
-		210,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_TEXTBOX200,
-		hInstance,
-		NULL);
+	hTextboxIndex = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_INDEX, 10, 210, 100, 30, L"");
 
+	HWND hLabelEstimatedTime = makeLabel(hWnd, hInstance, L"ESTIMATED TIME", 120, 10, 100, 50);
 
-	// ... add more textboxes as needed
+	HWND hLabelNumScenarios = makeLabel(hWnd, hInstance, L"# Scenarios", 240, 10, 100, 20);
 
-	HWND hLabel00 = CreateWindowW(
-		L"STATIC",
-		L"ESTIMATED TIME",
-		WS_VISIBLE | WS_CHILD,
-		120,         // x position.
-		10,         // y position.
-		100,       //width
-		50,		//height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelHours = makeLabel(hWnd, hInstance, L"Hours", 360, 10, 100, 20);
 
-	HWND hLabel1 = CreateWindowW(
-		L"STATIC",
-		L"# Scenarios",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		10,  // y position (above the text box)
-		100, // width
-		20,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelSeconds = makeLabel(hWnd, hInstance, L"Seconds", 480, 10, 100, 20);
 
-	//hTextbox1 = CreateWindowW(  now used for output box in initialsise
-	   // L"EDIT",
-	   // L"",  // Enter default value
-	   // WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-	   // 240,
-	   // 30,
-	   // 100,
-	   // 30,
-	   // hWnd,
-	   // (HMENU)ID_TEXTBOX2,  // ID for the textbox
-	   // hInstance,
-	   // NULL);  
+	HWND hLabelInputs = makeLabel(hWnd, hInstance, L"INPUTS (overwrite default values)", 120, 80, 100, 80);
 
-	HWND hLabel2 = CreateWindowW(
-		L"STATIC",
-		L"Hours",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		10,  // y position (above the text box)
-		100, // width
-		20,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelTimestepMinutes = makeLabel(hWnd, hInstance, L"Timestep, Minutes", 240, 80, 100, 50);
 
-	//hTextbox2 = CreateWindowW(
-	   // L"EDIT",
-	   // L"",  // No text initially.
-	   // WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-	   // 360,
-	   // 30,
-	   // 100,
-	   // 30,
-	   // hWnd,
-	   // (HMENU)ID_TEXTBOX3,  // ID for the textbox
-	   // hInstance,
-	   // NULL);
+	hTextboxTimestepMinutes = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_TIMESTEP_MINUTES, 240, 130, 100, 30, L"60");
 
-	HWND hLabel3 = CreateWindowW(
-		L"STATIC",
-		L"Seconds",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		10,  // y position (above the text box)
-		100, // width
-		20,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelTimestepHours = makeLabel(hWnd, hInstance, L"Timestep, Hours", 360, 80, 100, 50);
 
-	//hTextbox3 = CreateWindowW(
-	   // L"EDIT",
-	   // L"",  // No text initially.
-	   // WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-	   // 480,
-	   // 30,
-	   // 100,
-	   // 30,
-	   // hWnd,
-	   // (HMENU)ID_TEXTBOX3,  // ID for the textbox
-	   // hInstance,
-	   // NULL);
+	hTextboxTimestepHours = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_TIMESTEP_HOURS, 360, 130, 100, 30, L"1");
 
+	HWND hLabelTimeWindowHours = makeLabel(hWnd, hInstance, L"Time window, hours", 480, 80, 100, 50);
 
-	HWND hLabel0 = CreateWindowW(
-		L"STATIC",
-		L"INPUTS (overwrite default values)",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		80,  // y position (above the text box)
-		100, // width
-		80,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-
-
-	HWND hLabel4 = CreateWindowW(
-		L"STATIC",
-		L"Timestep, Minutes",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		80,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-
-	hTextbox4 = CreateWindowW(
-		L"EDIT",
-		L"60",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		130,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX4,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel5 = CreateWindowW(
-		L"STATIC",
-		L"Timestep, Hours",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		80,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox5 = CreateWindowW(
-		L"EDIT",
-		L"1",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		130,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX5,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel6 = CreateWindowW(
-		L"STATIC",
-		L"Time window, hours",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		80,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox6 = CreateWindowW(
-		L"EDIT",
-		L"8760",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		480,
-		130,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX6,  // ID for the textbox
-		hInstance,
-		NULL);
+	hTextboxTimeWindowHours = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_TIME_WINDOW_HOURS, 480, 130, 100, 30, L"8760");
 
 	// new button row 
 
-	HWND hLabel7 = CreateWindowW(
-		L"STATIC",
-		L"Fixed load1 scalar lower",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel7 = makeLabel(hWnd, hInstance, L"Fixed load1 scalar lower", 120, 180, 100, 50);
+	hTextbox7 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX7, 120, 230, 100, 30, L"1");
 
-	hTextbox7 = CreateWindowW(
-		L"EDIT",
-		L"1",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		120,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX7,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel8 = makeLabel(hWnd, hInstance, L"Fixed load1 scalar upper", 240, 180, 100, 50);
+	hTextbox8 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX8, 240, 230, 100, 30, L"1");
 
-	HWND hLabel8 = CreateWindowW(
-		L"STATIC",
-		L"Fixed load1 scalar upper",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel9 = makeLabel(hWnd, hInstance, L"Fixed load1 scalar step", 360, 180, 100, 50);
+	hTextbox9 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX9, 360, 230, 100, 30, L"0");
 
-	hTextbox8 = CreateWindowW(
-		L"EDIT",
-		L"1",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX8,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel10 = makeLabel(hWnd, hInstance, L"Fixed load2 scalar lower", 480, 180, 100, 50);
+	hTextbox10 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX10, 480, 230, 100, 30, L"3");
 
-	HWND hLabel9 = CreateWindowW(
-		L"STATIC",
-		L"Fixed load1 scalar step",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel11 = makeLabel(hWnd, hInstance, L"Fixed load2 scalar upper", 600, 180, 100, 50);
+	hTextbox11 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX11, 600, 230, 100, 30, L"3");
 
-	hTextbox9 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX9,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel12 = makeLabel(hWnd, hInstance, L"Fixed load2 scalar step", 720, 180, 100, 50);
+	hTextbox12 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX12, 720, 230, 100, 30, L"0");
 
-	HWND hLabel10 = CreateWindowW(
-		L"STATIC",
-		L"Fixed load2 scalar lower",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel13 = makeLabel(hWnd, hInstance, L"Flex max lower", 840, 180, 100, 50);
+	hTextbox13 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX13, 840, 230, 100, 30, L"50.0");
 
+	HWND hLabel14 = makeLabel(hWnd, hInstance, L"Flex max lower upper", 960, 180, 100, 50);
+	hTextbox14 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX14, 960, 230, 100, 30, L"50.0");
 
-	hTextbox10 = CreateWindowW(
-		L"EDIT",
-		L"3",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		480,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX10,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel15 = makeLabel(hWnd, hInstance, L"Flex max lower step", 1080, 180, 100, 50);
+	hTextbox15 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX15, 1080, 230, 100, 30, L"0");
 
-	HWND hLabel11 = CreateWindowW(
-		L"STATIC",
-		L"Fixed load2 scalar upper",
-		WS_VISIBLE | WS_CHILD,
-		600,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel16 = makeLabel(hWnd, hInstance, L"Mop load max lower", 1200, 180, 100, 50);
+	hTextbox16 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX16, 1200, 230, 100, 30, L"300.0");
 
-	hTextbox11 = CreateWindowW(
-		L"EDIT",
-		L"3",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		600,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX11,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel17 = makeLabel(hWnd, hInstance, L"Mop load max upper", 1320, 180, 100, 50);
+	hTextbox17 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX17, 1320, 230, 100, 30, L"300.0");
 
-	HWND hLabel12 = CreateWindowW(
-		L"STATIC",
-		L"Fixed load2 scalar step",
-		WS_VISIBLE | WS_CHILD,
-		720,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox12 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		720,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX12,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel13 = CreateWindowW(
-		L"STATIC",
-		L"Flex max lower",
-		WS_VISIBLE | WS_CHILD,
-		840,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox13 = CreateWindowW(
-		L"EDIT",
-		L"50.0",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		840,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX13,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel14 = CreateWindowW(
-		L"STATIC",
-		L"Flex max lower upper",
-		WS_VISIBLE | WS_CHILD,
-		960,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox14 = CreateWindowW(
-		L"EDIT",
-		L"50.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		960,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX14,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel15 = CreateWindowW(
-		L"STATIC",
-		L"Flex max lower step",
-		WS_VISIBLE | WS_CHILD,
-		1080,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox15 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1080,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX15,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel16 = CreateWindowW(
-		L"STATIC",
-		L"Mop load max lower",
-		WS_VISIBLE | WS_CHILD,
-		1200,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-
-	hTextbox16 = CreateWindowW(
-		L"EDIT",
-		L"300.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1200,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX16,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel17 = CreateWindowW(
-		L"STATIC",
-		L"Mop load max upper",
-		WS_VISIBLE | WS_CHILD,
-		1320,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox17 = CreateWindowW(
-		L"EDIT",
-		L"300.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1320,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX17,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel18 = CreateWindowW(
-		L"STATIC",
-		L"Mop load max step",
-		WS_VISIBLE | WS_CHILD,
-		1440,  // x position
-		180,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox18 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1440,
-		230,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX18,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel18 = makeLabel(hWnd, hInstance, L"Mop load max step", 1440, 180, 100, 50);
+	hTextbox18 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX18, 1440, 230, 100, 30, L"0");
 
 	// new GUI row 
 
-	HWND hLabel19 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG1 lower",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel19 = makeLabel(hWnd, hInstance, L"Scalar RG1 lower", 120, 280, 100, 50);
+	hTextbox19 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX19, 120, 330, 100, 30, L"599.2");
 
-	hTextbox19 = CreateWindowW(
-		L"EDIT",
-		L"599.2",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		120,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX19,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel20 = makeLabel(hWnd, hInstance, L"Scalar RG1 upper", 240, 280, 100, 50);
+	hTextbox20 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX20, 240, 330, 100, 30, L"599.2");
 
-	HWND hLabel20 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG1 upper",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel21 = makeLabel(hWnd, hInstance, L"Scalar RG1 step", 360, 280, 100, 50);
+	hTextbox21 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX21, 360, 330, 100, 30, L"0");
 
-	hTextbox20 = CreateWindowW(
-		L"EDIT",
-		L"599.2",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX20,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel22 = makeLabel(hWnd, hInstance, L"Scalar RG2 lower", 480, 280, 100, 50);
+	hTextbox22 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX22, 480, 330, 100, 30, L"75.6");
 
-	HWND hLabel21 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG1 step",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel23 = makeLabel(hWnd, hInstance, L"Scalar RG2 upper", 600, 280, 100, 50);
+	hTextbox23 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX23, 600, 330, 100, 30, L"75.6");
 
-	hTextbox21 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX21,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel24 = makeLabel(hWnd, hInstance, L"Scalar RG2 step", 720, 280, 100, 50);
+	hTextbox24 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX24, 720, 330, 100, 30, L"0");
 
-	HWND hLabel22 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG2 lower",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel25 = makeLabel(hWnd, hInstance, L"Scalar RG3 lower", 840, 280, 100, 50);
+	hTextbox25 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX25, 840, 330, 100, 30, L"60.48");
 
+	HWND hLabel26 = makeLabel(hWnd, hInstance, L"Scalar RG3 upper", 960, 280, 100, 50);
+	hTextbox26 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX26, 960, 330, 100, 30, L"60.48");
 
-	hTextbox22 = CreateWindowW(
-		L"EDIT",
-		L"75.6",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		480,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX22,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel27 = makeLabel(hWnd, hInstance, L"Scalar RG3 step", 1080, 280, 100, 50);
+	hTextbox27 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX27, 1080, 330, 100, 30, L"0");
 
-	HWND hLabel23 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG2 upper",
-		WS_VISIBLE | WS_CHILD,
-		600,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel28 = makeLabel(hWnd, hInstance, L"Scalar RG4 lower", 1200, 280, 100, 50);
+	hTextbox28 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX28, 1200, 330, 100, 30, L"0.0");
 
-	hTextbox23 = CreateWindowW(
-		L"EDIT",
-		L"75.6",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		600,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX23,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel29 = makeLabel(hWnd, hInstance, L"Scalar RG4 upper", 1320, 280, 100, 50);
+	hTextbox29 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX29, 1320, 330, 100, 30, L"0.0");
 
-	HWND hLabel24 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG2 step",
-		WS_VISIBLE | WS_CHILD,
-		720,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox24 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		720,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX24,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel25 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG3 lower",
-		WS_VISIBLE | WS_CHILD,
-		840,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox25 = CreateWindowW(
-		L"EDIT",
-		L"60.48",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		840,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX25,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel26 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG3 upper",
-		WS_VISIBLE | WS_CHILD,
-		960,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox26 = CreateWindowW(
-		L"EDIT",
-		L"60.48",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		960,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX26,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel27 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG3 step",
-		WS_VISIBLE | WS_CHILD,
-		1080,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox27 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1080,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX27,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel28 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG4 lower",
-		WS_VISIBLE | WS_CHILD,
-		1200,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-
-	hTextbox28 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1200,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX28,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel29 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG4 upper",
-		WS_VISIBLE | WS_CHILD,
-		1320,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox29 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1320,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX29,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel30 = CreateWindowW(
-		L"STATIC",
-		L"Scalar RG4 step",
-		WS_VISIBLE | WS_CHILD,
-		1440,  // x position
-		280,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox30 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1440,
-		330,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX30,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel30 = makeLabel(hWnd, hInstance, L"Scalar RG4 step", 1440, 280, 100, 50);
+	hTextbox30 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX30, 1440, 330, 100, 30, L"0");
 
 	// New GUI row
 
-	HWND hLabel31 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HL1 lower",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox31 = CreateWindowW(
-		L"EDIT",
-		L"1.0",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		120,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX31,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel32 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HL1 upper",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox32 = CreateWindowW(
-		L"EDIT",
-		L"1.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX32,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel33 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HL1 step",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox33 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX33,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel34 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield1 lower",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-
-	hTextbox34 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		480,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX34,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel35 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield1 upper",
-		WS_VISIBLE | WS_CHILD,
-		600,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox35 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		600,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX35,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel36 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield1 step",
-		WS_VISIBLE | WS_CHILD,
-		720,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox36 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		720,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX36,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel37 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield2 lower",
-		WS_VISIBLE | WS_CHILD,
-		840,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox37 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		840,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX37,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel38 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield2 upper",
-		WS_VISIBLE | WS_CHILD,
-		960,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox38 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		960,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX38,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel39 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield2 step",
-		WS_VISIBLE | WS_CHILD,
-		1080,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox39 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1080,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX39,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel40 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield3 lower",
-		WS_VISIBLE | WS_CHILD,
-		1200,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox40 = CreateWindowW(
-		L"EDIT",
-		L"0.75",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1200,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX40,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel41 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield3 upper",
-		WS_VISIBLE | WS_CHILD,
-		1320,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox41 = CreateWindowW(
-		L"EDIT",
-		L"0.75",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1320,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX41,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel42 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield3 step",
-		WS_VISIBLE | WS_CHILD,
-		1440,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox42 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1440,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX42,  // ID for the textbox
-		hInstance,
-		NULL);
-
-
-	HWND hLabel43 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield4 lower",
-		WS_VISIBLE | WS_CHILD,
-		1560,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-
-	hTextbox43 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1560,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX43,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel44 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield4 upper",
-		WS_VISIBLE | WS_CHILD,
-		1680,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox44 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1680,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX44,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel45 = CreateWindowW(
-		L"STATIC",
-		L"Scalar HYield4 step",
-		WS_VISIBLE | WS_CHILD,
-		1800,  // x position
-		380,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox45 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1800,
-		430,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX45,  // ID for the textbox
-		hInstance,
-		NULL);
-
-
-	HWND hLabel46 = CreateWindowW(
-		L"STATIC",
-		L"Grid import lower",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox46 = CreateWindowW(
-		L"EDIT",
-		L"98.29",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		120,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX46,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel47 = CreateWindowW(
-		L"STATIC",
-		L"Grid import upper",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox47 = CreateWindowW(
-		L"EDIT",
-		L"98.29",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX47,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel48 = CreateWindowW(
-		L"STATIC",
-		L"Grid import step",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox48 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX48,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel49 = CreateWindowW(
-		L"STATIC",
-		L"Grid export lower",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-
-	hTextbox49 = CreateWindowW(
-		L"EDIT",
-		L"95.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		480,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX49,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel50 = CreateWindowW(
-		L"STATIC",
-		L"Grid export upper",
-		WS_VISIBLE | WS_CHILD,
-		600,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox50 = CreateWindowW(
-		L"EDIT",
-		L"95.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		600,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX50,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel51 = CreateWindowW(
-		L"STATIC",
-		L"Grid export step",
-		WS_VISIBLE | WS_CHILD,
-		720,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox51 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		720,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX51,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel52 = CreateWindowW(
-		L"STATIC",
-		L"Import headroom lower",
-		WS_VISIBLE | WS_CHILD,
-		840,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox52 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		840,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX52,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel53 = CreateWindowW(
-		L"STATIC",
-		L"Import headroom upper",
-		WS_VISIBLE | WS_CHILD,
-		960,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox53 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		960,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX53,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel54 = CreateWindowW(
-		L"STATIC",
-		L"Import headroom step",
-		WS_VISIBLE | WS_CHILD,
-		1080,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox54 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1080,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX54,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel55 = CreateWindowW(
-		L"STATIC",
-		L"Export headroom lower",
-		WS_VISIBLE | WS_CHILD,
-		1200,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox55 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1200,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX55,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel56 = CreateWindowW(
-		L"STATIC",
-		L"Export headroom upper",
-		WS_VISIBLE | WS_CHILD,
-		1320,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox56 = CreateWindowW(
-		L"EDIT",
-		L"0.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1320,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX56,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel57 = CreateWindowW(
-		L"STATIC",
-		L"Export headroom step",
-		WS_VISIBLE | WS_CHILD,
-		1440,  // x position
-		480,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox57 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1440,
-		530,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX57,  // ID for the textbox
-		hInstance,
-		NULL);
-
-
-	HWND hLabel58 = CreateWindowW(
-		L"STATIC",
-		L"ESS charge power lower",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox58 = CreateWindowW(
-		L"EDIT",
-		L"300.0",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		120,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX58,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel59 = CreateWindowW(
-		L"STATIC",
-		L"ESS charge power upper",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox59 = CreateWindowW(
-		L"EDIT",
-		L"600.0",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX59,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel60 = CreateWindowW(
-		L"STATIC",
-		L"ESS charge power step",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox60 = CreateWindowW(
-		L"EDIT",
-		L"300.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX60,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel61 = CreateWindowW(
-		L"STATIC",
-		L"ESS discharge power lower",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox61 = CreateWindowW(
-		L"EDIT",
-		L"300.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		480,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX61,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel62 = CreateWindowW(
-		L"STATIC",
-		L"ESS discharge power upper",
-		WS_VISIBLE | WS_CHILD,
-		600,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox62 = CreateWindowW(
-		L"EDIT",
-		L"600.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		600,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX62,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel63 = CreateWindowW(
-		L"STATIC",
-		L"ESS discharge power step",
-		WS_VISIBLE | WS_CHILD,
-		720,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox63 = CreateWindowW(
-		L"EDIT",
-		L"300.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		720,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX63,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel64 = CreateWindowW(
-		L"STATIC",
-		L"ESS capacity lower",
-		WS_VISIBLE | WS_CHILD,
-		840,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox64 = CreateWindowW(
-		L"EDIT",
-		L"800.0",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		840,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX64,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel65 = CreateWindowW(
-		L"STATIC",
-		L"ESS capacity upper",
-		WS_VISIBLE | WS_CHILD,
-		960,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox65 = CreateWindowW(
-		L"EDIT",
-		L"900.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		960,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX65,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel66 = CreateWindowW(
-		L"STATIC",
-		L"ESS capacity step",
-		WS_VISIBLE | WS_CHILD,
-		1080,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox66 = CreateWindowW(
-		L"EDIT",
-		L"20",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1080,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX66,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel67 = CreateWindowW(
-		L"STATIC",
-		L"ESS RTE lower",
-		WS_VISIBLE | WS_CHILD,
-		1200,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-
-	hTextbox67 = CreateWindowW(
-		L"EDIT",
-		L"0.86",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1200,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX16,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel68 = CreateWindowW(
-		L"STATIC",
-		L"ESS RTE upper",
-		WS_VISIBLE | WS_CHILD,
-		1320,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox68 = CreateWindowW(
-		L"EDIT",
-		L"0.86",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1320,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX68,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel69 = CreateWindowW(
-		L"STATIC",
-		L"ESS RTE step",
-		WS_VISIBLE | WS_CHILD,
-		1440,  // x position
-		580,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox69 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1440,
-		630,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX69,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel31 = makeLabel(hWnd, hInstance, L"Scalar HL1 lower", 120, 380, 100, 50);
+	hTextbox31 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX31, 120, 430, 100, 30, L"1.0");
+
+	HWND hLabel32 = makeLabel(hWnd, hInstance, L"Scalar HL1 upper", 240, 380, 100, 50);
+	hTextbox32 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX32, 240, 430, 100, 30, L"1.0");
+
+	HWND hLabel33 = makeLabel(hWnd, hInstance, L"Scalar HL1 step", 360, 380, 100, 50);
+	hTextbox33 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX33, 360, 430, 100, 30, L"0");
+
+	HWND hLabel34 = makeLabel(hWnd, hInstance, L"Scalar HYield1 lower", 480, 380, 100, 50);
+	hTextbox34 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX34, 480, 430, 100, 30, L"0.0");
+
+	HWND hLabel35 = makeLabel(hWnd, hInstance, L"Scalar HYield1 upper", 600, 380, 100, 50);
+	hTextbox35 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX35, 600, 430, 100, 30, L"0.0");
+
+	HWND hLabel36 = makeLabel(hWnd, hInstance, L"Scalar HYield1 step", 720, 380, 100, 50);
+	hTextbox36 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX36, 720, 430, 100, 30, L"0");
+
+	HWND hLabel37 = makeLabel(hWnd, hInstance, L"Scalar HYield2 lower", 840, 380, 100, 50);
+	hTextbox37 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX37, 840, 430, 100, 30, L"0.0");
+
+	HWND hLabel38 = makeLabel(hWnd, hInstance, L"Scalar HYield2 upper", 960, 380, 100, 50);
+	hTextbox38 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX38, 960, 430, 100, 30, L"0.0");
+
+	HWND hLabel39 = makeLabel(hWnd, hInstance, L"Scalar HYield2 step", 1080, 380, 100, 50);
+	hTextbox39 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX39, 1080, 430, 100, 30, L"0");
+
+	HWND hLabel40 = makeLabel(hWnd, hInstance, L"Scalar HYield3 lower", 1200, 380, 100, 50);
+	hTextbox40 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX40, 1200, 430, 100, 30, L"0.75");
+
+	HWND hLabel41 = makeLabel(hWnd, hInstance, L"Scalar HYield3 upper", 1320, 380, 100, 50);
+	hTextbox41 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX41, 1320, 430, 100, 30, L"0.75");
+
+	HWND hLabel42 = makeLabel(hWnd, hInstance, L"Scalar HYield3 step", 1440, 380, 100, 50);
+	hTextbox42 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX42, 1440, 430, 100, 30, L"0");
+
+	HWND hLabel43 = makeLabel(hWnd, hInstance, L"Scalar HYield4 lower", 1560, 380, 100, 50);
+	hTextbox43 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX43, 1560, 430, 100, 30, L"0.0");
+
+	HWND hLabel44 = makeLabel(hWnd, hInstance, L"Scalar HYield4 upper", 1680, 380, 100, 50);
+	hTextbox44 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX44, 1680, 430, 100, 30, L"0.0");
+
+	HWND hLabel45 = makeLabel(hWnd, hInstance, L"Scalar HYield4 step", 1800, 380, 100, 50);
+	hTextbox45 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX45, 1800, 430, 100, 30, L"0");
+
+	// New GUI row
+
+	HWND hLabel46 = makeLabel(hWnd, hInstance, L"Grid import lower", 120, 480, 100, 50);
+	hTextbox46 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX46, 120, 530, 100, 30, L"98.29");
+
+	HWND hLabel47 = makeLabel(hWnd, hInstance, L"Grid import upper", 240, 480, 100, 50);
+	hTextbox47 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX47, 240, 530, 100, 30, L"98.29");
+
+	HWND hLabel48 = makeLabel(hWnd, hInstance, L"Grid import step", 360, 480, 100, 50);
+	hTextbox48 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX48, 360, 530, 100, 30, L"0.0");
+
+	HWND hLabel49 = makeLabel(hWnd, hInstance, L"Grid export lower", 480, 480, 100, 50);
+	hTextbox49 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX49, 480, 530, 100, 30, L"95.0");
+
+	HWND hLabel50 = makeLabel(hWnd, hInstance, L"Grid export upper", 600, 480, 100, 50);
+	hTextbox50 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX50, 600, 530, 100, 30, L"95.0");
+
+	HWND hLabel51 = makeLabel(hWnd, hInstance, L"Grid export step", 720, 480, 100, 50);
+	hTextbox51 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX51, 720, 530, 100, 30, L"0");
+
+	HWND hLabel52 = makeLabel(hWnd, hInstance, L"Import headroom lower", 840, 480, 100, 50);
+	hTextbox52 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX52, 840, 530, 100, 30, L"0.0");
+
+	HWND hLabel53 = makeLabel(hWnd, hInstance, L"Import headroom upper", 960, 480, 100, 50);
+	hTextbox53 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX53, 960, 530, 100, 30, L"0.0");
+
+	HWND hLabel54 = makeLabel(hWnd, hInstance, L"Import headroom step", 1080, 480, 100, 50);
+	hTextbox54 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX54, 1080, 530, 100, 30, L"0");
+
+	HWND hLabel55 = makeLabel(hWnd, hInstance, L"Export headroom lower", 1200, 480, 100, 50);
+	hTextbox55 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX55, 1200, 530, 100, 30, L"0.0");
+
+	HWND hLabel56 = makeLabel(hWnd, hInstance, L"Export headroom upper", 1320, 480, 100, 50);
+	hTextbox56 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX56, 1320, 530, 100, 30, L"0.0");
+
+	HWND hLabel57 = makeLabel(hWnd, hInstance, L"Export headroom step", 1440, 480, 100, 50);
+	hTextbox57 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX57, 1440, 530, 100, 30, L"0");
+
+	// New GUI row
+
+	HWND hLabel58 = makeLabel(hWnd, hInstance, L"ESS charge power lower", 120, 580, 100, 50);
+	hTextbox58 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX58, 120, 630, 100, 30, L"300.0");
+
+	HWND hLabel59 = makeLabel(hWnd, hInstance, L"ESS charge power upper", 240, 580, 100, 50);
+	hTextbox59 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX59, 240, 630, 100, 30, L"600.0");
+
+	HWND hLabel60 = makeLabel(hWnd, hInstance, L"ESS charge power step", 360, 580, 100, 50);
+	hTextbox60 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX60, 360, 630, 100, 30, L"300.0");
+
+	HWND hLabel61 = makeLabel(hWnd, hInstance, L"ESS discharge power lower", 480, 580, 100, 50);
+	hTextbox61 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX61, 480, 630, 100, 30, L"300.0");
+
+	HWND hLabel62 = makeLabel(hWnd, hInstance, L"ESS discharge power upper", 600, 580, 100, 50);
+	hTextbox62 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX62, 600, 630, 100, 30, L"600.0");
+
+	HWND hLabel63 = makeLabel(hWnd, hInstance, L"ESS discharge power step", 720, 580, 100, 50);
+	hTextbox63 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX63, 720, 630, 100, 30, L"300.0");
+
+	HWND hLabel64 = makeLabel(hWnd, hInstance, L"ESS capacity lower", 840, 580, 100, 50);
+	hTextbox64 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX64, 840, 630, 100, 30, L"800.0");
+
+	HWND hLabel65 = makeLabel(hWnd, hInstance, L"ESS capacity upper", 960, 580, 100, 50);
+	hTextbox65 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX65, 960, 630, 100, 30, L"900.0");
+
+	HWND hLabel66 = makeLabel(hWnd, hInstance, L"ESS capacity step", 1080, 580, 100, 50);
+	hTextbox66 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX66, 1080, 630, 100, 30, L"20");
+
+	HWND hLabel67 = makeLabel(hWnd, hInstance, L"ESS RTE lower", 1200, 580, 100, 50);
+	hTextbox67 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX67, 1200, 630, 100, 30, L"0.86");
+
+	HWND hLabel68 = makeLabel(hWnd, hInstance, L"ESS RTE upper", 1320, 580, 100, 50);
+	hTextbox68 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX68, 1320, 630, 100, 30, L"0.86");
+
+	HWND hLabel69 = makeLabel(hWnd, hInstance, L"ESS RTE step", 1440, 580, 100, 50);
+	hTextbox69 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX69, 1440, 630, 100, 30, L"0");
 
 	// new GUI row 
 
-	HWND hLabel70 = CreateWindowW(
-		L"STATIC",
-		L"ESS aux load lower",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel70 = makeLabel(hWnd, hInstance, L"ESS aux load lower", 120, 680, 100, 50);
+	hTextbox70 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX70, 120, 730, 100, 30, L"0.75");
 
-	hTextbox70 = CreateWindowW(
-		L"EDIT",
-		L"0.75",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		120,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX70,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel71 = makeLabel(hWnd, hInstance, L"ESS aux load upper", 240, 680, 100, 50);
+	hTextbox71 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX71, 240, 730, 100, 30, L"0.75");
 
-	HWND hLabel71 = CreateWindowW(
-		L"STATIC",
-		L"ESS aux load upper",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel72 = makeLabel(hWnd, hInstance, L"ESS aux load step", 360, 680, 100, 50);
+	hTextbox72 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX72, 360, 730, 100, 30, L"0");
 
-	hTextbox71 = CreateWindowW(
-		L"EDIT",
-		L"0.75",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX71,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel73 = makeLabel(hWnd, hInstance, L"ESS start SoC lower", 480, 680, 100, 50);
+	hTextbox73 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX73, 480, 730, 100, 30, L"0.5");
 
-	HWND hLabel72 = CreateWindowW(
-		L"STATIC",
-		L"ESS aux load step",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel74 = makeLabel(hWnd, hInstance, L"ESS start SoC Upper", 600, 680, 100, 50);
+	hTextbox74 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX74, 600, 730, 100, 30, L"0.5");
 
-	hTextbox72 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX72,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel75 = makeLabel(hWnd, hInstance, L"ESS start SoC step", 720, 680, 100, 50);
+	hTextbox75 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX75, 720, 730, 100, 30, L"0");
 
-	HWND hLabel73 = CreateWindowW(
-		L"STATIC",
-		L"ESS start SoC lower",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel76 = makeLabel(hWnd, hInstance, L"ESS charge mode lower", 840, 680, 100, 50);
+	hTextbox76 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX76, 840, 730, 100, 30, L"1");
 
-	hTextbox73 = CreateWindowW(
-		L"EDIT",
-		L"0.5",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		480,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX73,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel77 = makeLabel(hWnd, hInstance, L"ESS charge mode upper", 960, 680, 100, 50);
+	hTextbox77 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX77, 960, 730, 100, 30, L"1");
 
-	HWND hLabel74 = CreateWindowW(
-		L"STATIC",
-		L"ESS start SoC Upper",
-		WS_VISIBLE | WS_CHILD,
-		600,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel78 = makeLabel(hWnd, hInstance, L"ESS discharge mode lower", 1080, 680, 100, 50);
+	hTextbox78 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX78, 1080, 730, 100, 30, L"1");
 
-	hTextbox74 = CreateWindowW(
-		L"EDIT",
-		L"0.5",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		600,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX74,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel79 = makeLabel(hWnd, hInstance, L"ESS discharge mode upper", 1200, 680, 100, 50);
+	hTextbox79 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX79, 1200, 730, 100, 30, L"1");
 
-	HWND hLabel75 = CreateWindowW(
-		L"STATIC",
-		L"ESS start SoC step",
-		WS_VISIBLE | WS_CHILD,
-		720,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	// new GUI row 
+	HWND hLabel80 = makeLabel(hWnd, hInstance, L"Import Price p/kWh", 120, 780, 100, 50);
+	hTextbox80 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX80, 120, 830, 100, 30, L"30");
 
-	hTextbox75 = CreateWindowW(
-		L"EDIT",
-		L"0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		720,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX75,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel81 = makeLabel(hWnd, hInstance, L"Export Price p/kWh", 240, 780, 100, 50);
+	hTextbox81 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX81, 240, 830, 100, 30, L"5");
 
-	HWND hLabel76 = CreateWindowW(
-		L"STATIC",
-		L"ESS charge mode lower",
-		WS_VISIBLE | WS_CHILD,
-		840,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel82 = makeLabel(hWnd, hInstance, L"Time budget, minutes", 360, 780, 100, 50);
+	hTextbox82 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX85, 360, 830, 100, 30, L"1.0");
 
-	hTextbox76 = CreateWindowW(
-		L"EDIT",
-		L"1",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		840,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX76,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel83 = makeLabel(hWnd, hInstance, L"Target Max Concurrency", 480, 780, 100, 50);
+	hTextbox83 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX86, 480, 830, 100, 30, L"44");
 
-	HWND hLabel77 = CreateWindowW(
-		L"STATIC",
-		L"ESS charge mode upper",
-		WS_VISIBLE | WS_CHILD,
-		960,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabel84 = makeLabel(hWnd, hInstance, L"CAPEX limit, £k", 600, 780, 100, 50);
+	hTextbox84 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX87, 600, 830, 100, 30, L"500");
 
-	hTextbox77 = CreateWindowW(
-		L"EDIT",
-		L"1",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		960,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX77,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabel85 = makeLabel(hWnd, hInstance, L"OPEX limit, £k", 720, 780, 100, 50);
+	hTextbox85 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX88, 720, 830, 100, 30, L"20");
 
-	HWND hLabel78 = CreateWindowW(
-		L"STATIC",
-		L"ESS discharge mode lower",
-		WS_VISIBLE | WS_CHILD,
-		1080,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	// new GUI row 
 
-	hTextbox78 = CreateWindowW(
-		L"EDIT",
-		L"1",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1080,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX78,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabelout0 = makeLabel(hWnd, hInstance, L"OUTPUTS", 10, 890, 100, 50);
 
-	HWND hLabel79 = CreateWindowW(
-		L"STATIC",
-		L"ESS discharge mode upper",
-		WS_VISIBLE | WS_CHILD,
-		1200,  // x position
-		680,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelout1 = makeLabel(hWnd, hInstance, L"Scenario Max Time, s", 120, 890, 100, 50);
 
-	hTextbox79 = CreateWindowW(
-		L"EDIT",
-		L"1",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		1200,
-		730,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX79,  // ID for the textbox
-		hInstance,
-		NULL);
+	hOutput1 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT1, 120, 950, 100, 30, L"");
 
-	HWND hLabel80 = CreateWindowW(
-		L"STATIC",
-		L"Import Price p/kWh",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		780,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelout2 = makeLabel(hWnd, hInstance, L"Scenario Min Time, s", 240, 890, 100, 50);
+	hOutput2 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT2, 240, 950, 100, 30, L"");
 
-	hTextbox80 = CreateWindowW(
-		L"EDIT",
-		L"30",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		120,
-		830,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX80,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabelout3 = makeLabel(hWnd, hInstance, L"Scenario Mean Time, s", 360, 890, 100, 50);
+	hOutput3 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT3, 360, 950, 100, 30, L"");
 
-	HWND hLabel81 = CreateWindowW(
-		L"STATIC",
-		L"Export Price p/kWh",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		780,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelout4 = makeLabel(hWnd, hInstance, L"Total time taken, s", 480, 890, 100, 50);
+	hOutput4 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT4, 480, 950, 100, 30, L"");
 
-	hTextbox81 = CreateWindowW(
-		L"EDIT",
-		L"5",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		830,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX81,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabelout5 = makeLabel(hWnd, hInstance, L"CAPEX, £", 600, 890, 100, 50);
+	hOutput5 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT5, 600, 950, 100, 30, L"");
 
-	HWND hLabel82 = CreateWindowW(
-		L"STATIC",
-		L"Time budget, minutes",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		780,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelout6 = makeLabel(hWnd, hInstance, L"Annualised, £", 720, 890, 100, 50);
+	hOutput6 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT6, 720, 950, 100, 30, L"");
 
-	hTextbox82 = CreateWindowW(
-		L"EDIT",
-		L"1.0",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		830,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX85,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabelout7 = makeLabel(hWnd, hInstance, L"Cost balance, £", 840, 890, 100, 50);
+	hOutput7 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT7, 840, 950, 100, 30, L"");
 
-	HWND hLabel83 = CreateWindowW(
-		L"STATIC",
-		L"Target Max Concurrency",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		780,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	HWND hLabelout8 = makeLabel(hWnd, hInstance, L"Breakeven years", 960, 890, 100, 50);
+	hOutput8 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT8, 960, 950, 100, 30, L"");
 
-	hTextbox83 = CreateWindowW(
-		L"EDIT",
-		L"44",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		480,
-		830,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX86,  // ID for the textbox
-		hInstance,
-		NULL);
+	HWND hLabelout9 = makeLabel(hWnd, hInstance, L"Carbon balance, kgC02e", 1080, 890, 100, 50);
+	hOutput9 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT9, 1080, 950, 100, 30, L"");
 
-	HWND hLabel84 = CreateWindowW(
-		L"STATIC",
-		L"CAPEX limit, £k",
-		WS_VISIBLE | WS_CHILD,
-		600,  // x position
-		780,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
+	hOutput10 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT10, 240, 30, 100, 30, L"");
+	hOutput11 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT11, 360, 30, 100, 30, L"");
+	hOutput12 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT12, 480, 30, 100, 30, L"");
 
-	hTextbox84 = CreateWindowW(
-		L"EDIT",
-		L"500",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		600,
-		830,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX87,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabel85 = CreateWindowW(
-		L"STATIC",
-		L"OPEX limit, £k",
-		WS_VISIBLE | WS_CHILD,
-		720,  // x position
-		780,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hTextbox85 = CreateWindowW(
-		L"EDIT",
-		L"20",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		720,
-		830,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_TEXTBOX88,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	HWND hLabelout0 = CreateWindowW(
-		L"STATIC",
-		L"OUTPUTS",
-		WS_VISIBLE | WS_CHILD,
-		10,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	HWND hLabelout1 = CreateWindowW(
-		L"STATIC",
-		L"Scenario Max Time, s",
-		WS_VISIBLE | WS_CHILD,
-		120,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput1 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		120,   // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT1,
-		hInstance,
-		NULL);
-
-	HWND hLabelout2 = CreateWindowW(
-		L"STATIC",
-		L"Scenario Min Time, s",
-		WS_VISIBLE | WS_CHILD,
-		240,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput2 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		240,  // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT2,
-		hInstance,
-		NULL);
-
-	HWND hLabelout3 = CreateWindowW(
-		L"STATIC",
-		L"Scenario Mean Time, s",
-		WS_VISIBLE | WS_CHILD,
-		360,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput3 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		360,  // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT3,
-		hInstance,
-		NULL);
-
-	HWND hLabelout4 = CreateWindowW(
-		L"STATIC",
-		L"Total time taken, s",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput4 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		480,  // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT4,
-		hInstance,
-		NULL);
-
-	HWND hLabelout5 = CreateWindowW(
-		L"STATIC",
-		L"CAPEX, £",
-		WS_VISIBLE | WS_CHILD,
-		600,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput5 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		600,   // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT5,
-		hInstance,
-		NULL);
-
-	HWND hLabelout6 = CreateWindowW(
-		L"STATIC",
-		L"Annualised, £",
-		WS_VISIBLE | WS_CHILD,
-		720,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput6 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		720,  // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT6,
-		hInstance,
-		NULL);
-
-	HWND hLabelout7 = CreateWindowW(
-		L"STATIC",
-		L"Cost balance, £",
-		WS_VISIBLE | WS_CHILD,
-		840,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput7 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		840,  // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT7,
-		hInstance,
-		NULL);
-
-
-	HWND hLabelout8 = CreateWindowW(
-		L"STATIC",
-		L"Breakeven years",
-		WS_VISIBLE | WS_CHILD,
-		960,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput8 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		960,  // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT8,
-		hInstance,
-		NULL);
-
-	HWND hLabelout9 = CreateWindowW(
-		L"STATIC",
-		L"Carbon balance, kgC02e",
-		WS_VISIBLE | WS_CHILD,
-		1080,  // x position
-		890,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput9 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		1080,  // x position
-		950,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT9,
-		hInstance,
-		NULL);
-
-
-	hOutput10 = CreateWindowW(
-		L"EDIT",
-		L"",  // Enter default value
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		240,
-		30,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_OUTPUT10,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	hOutput11 = CreateWindowW(
-		L"EDIT",
-		L"",  // No text initially.
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-		360,
-		30,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_OUTPUT11,  // ID for the textbox
-		hInstance,
-		NULL);
-
-	hOutput12 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		480,
-		30,
-		100,
-		30,
-		hWnd,
-		(HMENU)ID_OUTPUT12,
-		hInstance,
-		NULL);
-
-	HWND hLabelout13 = CreateWindowW(
-		L"STATIC",
-		L"INDEX",
-		WS_VISIBLE | WS_CHILD,
-		480,  // x position
-		1010,  // y position (above the text box)
-		100, // width
-		50,  // height
-		hWnd,
-		NULL,
-		hInstance,
-		NULL);
-
-	hOutput13 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		600,   // x position
-		1010,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT13,
-		hInstance,
-		NULL);
-
-	hOutput14 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		720,  // x position
-		1010,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT14,
-		hInstance,
-		NULL);
-
-	hOutput15 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		840,  // x position
-		1010,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT15,
-		hInstance,
-		NULL);
-
-	hOutput16 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		960,  // x position
-		1010,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT16,
-		hInstance,
-		NULL);
-
-	hOutput17 = CreateWindowW(
-		L"EDIT",
-		L"",  // initial text
-		WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, //| ES_READONLY,
-		1080,  // x position
-		1010,  // y position
-		100,  // width
-		30,   // height
-		hWnd,
-		(HMENU)ID_OUTPUT17,
-		hInstance,
-		NULL);
-
+	HWND hLabelout13 = makeLabel(hWnd, hInstance, L"INDEX", 480, 1010, 100, 50);
+	hOutput13 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT13, 600, 1010, 100, 30, L"");
+	hOutput14 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT14, 720, 1010, 100, 30, L"");
+	hOutput15 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT15, 840, 1010, 100, 30, L"");
+	hOutput16 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT16, 960, 1010, 100, 30, L"");
+	hOutput17 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT17, 1080, 1010, 100, 30, L"");
 
 	// ... add more textboxes as needed
 
@@ -3064,9 +752,9 @@ InputValues readInputFromForm() {
 	GetWindowText(hTextbox1, buffer1, 100);
 	GetWindowText(hTextbox2, buffer2, 100);
 	GetWindowText(hTextbox3, buffer3, 100);
-	GetWindowText(hTextbox4, buffer4, 100);
-	GetWindowText(hTextbox5, buffer5, 100);
-	GetWindowText(hTextbox6, buffer6, 100);
+	GetWindowText(hTextboxTimestepMinutes, buffer4, 100);
+	GetWindowText(hTextboxTimestepHours, buffer5, 100);
+	GetWindowText(hTextboxTimeWindowHours, buffer6, 100);
 	GetWindowText(hTextbox7, buffer7, 100);
 	GetWindowText(hTextbox8, buffer8, 100);
 	GetWindowText(hTextbox9, buffer9, 100);
@@ -3793,7 +1481,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// Parse the menu selections:
 		switch (wmId)
 		{
-		case ID_BUTTON1: // this the RUN button for main otpimisation
+		case BUTTON_OPTIMISE: // this the RUN button for main otpimisation
 			if (wmEvent == BN_CLICKED) {
 
 				InitConsole();
@@ -3823,7 +1511,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			CloseConsole();
 			break;
 
-		case ID_BUTTON0: // this is the INITIALISE button to estimate the optimisation time
+		case BUTTON_INITIALISE: // this is the INITIALISE button to estimate the optimisation time
 			if (wmEvent == BN_CLICKED) {
 
 				InitConsole();
@@ -3854,7 +1542,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			CloseConsole();
 			break;
 
-		case ID_BUTTON2: // this is the RECALL button to recall a parameter slice by index
+		case BUTTON_RECALL: // this is the RECALL button to recall a parameter slice by index
 			if (wmEvent == BN_CLICKED) {
 				InitConsole();
 				InputValues inputValues = readInputFromForm();
@@ -3862,7 +1550,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				auto converted_json = handleJsonConversion(inputValues);
 
 				wchar_t buffer100[100];
-				GetWindowText(hTextbox200, buffer100, 100);
+				GetWindowText(hTextboxIndex, buffer100, 100);
 				int recall_index = _wtof(buffer100);
 
 				OutputValues output = optimiser.RecallIndex(converted_json, recall_index);
