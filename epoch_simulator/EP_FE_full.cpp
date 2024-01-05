@@ -1,11 +1,7 @@
 #pragma once
-
 #include "EP_FE_full.h"
 
-#include <iostream>
-
 #ifdef EP_GUI
-
 // run with the gui
 
 #define NOMINMAX  // necessary before including windows.h
@@ -51,11 +47,33 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 }
 
 #else
-
 // run the application headlessly
 
+#include <iostream>
+#include "EP/Optimisation/Optimiser.hpp"
+#include "EP/io/FileHandling.hpp"
+
+
 int main(int argc, char* argv[]) {
-	std::cout << "hello world";
+
+	std::cout << "Running in headless mode";
+
+	InputValues inputValues{};
+
+	auto converted_json = handleJsonConversion(inputValues);
+
+	std::cout << "Starting Optimisation";
+
+	Optimiser optimiser{};
+	OutputValues output = optimiser.runMainOptimisation(converted_json);
+
+	std::cout << "Finished Optimisation";
+
+	nlohmann::json jsonObj = outputToJson(output);
+	writeJsonToFile(jsonObj, "outputparameters.json");
+
+	std::cout << "Wrote results to file";
+
 }
 
 #endif
