@@ -1,67 +1,80 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Simulation">
+      <UniqueIdentifier>{17bfac1c-59e1-4057-b6b6-0ed110938dd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Optimisation">
+      <UniqueIdentifier>{5be8da87-d322-4f1f-9bdc-40e25296d126}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dependencies">
+      <UniqueIdentifier>{cde71a9b-beb9-4c21-b22b-cc1d6b50b1a9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="io">
+      <UniqueIdentifier>{a4912649-57ad-458c-9c7d-a817ed41d5f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="core">
+      <UniqueIdentifier>{b702e595-9020-4116-a396-43b7b5e16fb0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="EP\Simulation\Timeseries.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP\Simulation\RGen.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP\dependencies\json.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP\Simulation\Hload.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP\Simulation\Grid.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP\FileIO.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP_FE_full.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP\Simulation\Eload.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="EP\Simulation\Assets.h">
+      <Filter>Simulation</Filter>
     </ClInclude>
     <ClInclude Include="EP\Simulation\Config.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP\Simulation\Assets.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EP\Optimisation\Threadsafe.h">
-      <Filter>Header Files</Filter>
+      <Filter>Simulation</Filter>
     </ClInclude>
     <ClInclude Include="EP\Simulation\Costs.h">
-      <Filter>Header Files</Filter>
+      <Filter>Simulation</Filter>
     </ClInclude>
-    <ClInclude Include="EP\io\FileHandling.hpp">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="EP\Simulation\Eload.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\Simulation\Grid.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\Simulation\Hload.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\Simulation\RGen.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\Simulation\Timeseries.h">
+      <Filter>Simulation</Filter>
     </ClInclude>
     <ClInclude Include="EP\Optimisation\Optimiser.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>Optimisation</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\dependencies\json.hpp">
+      <Filter>dependencies</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\Simulation\Simulate.hpp">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\io\FileHandling.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\Optimisation\Threadsafe.h">
+      <Filter>Optimisation</Filter>
+    </ClInclude>
+    <ClInclude Include="EP_FE_full.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\FileIO.h">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\Definitions.h">
+      <Filter>core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -70,17 +83,17 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="EP_FE_full.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="EP\Simulation\Simulate.cpp">
+      <Filter>Simulation</Filter>
     </ClCompile>
     <ClCompile Include="EP\Optimisation\Optimiser.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Optimisation</Filter>
     </ClCompile>
     <ClCompile Include="EP\io\FileHandling.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>io</Filter>
     </ClCompile>
-    <ClCompile Include="EP\Simulation\Simulate.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="EP_FE_full.cpp">
+      <Filter>core</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
