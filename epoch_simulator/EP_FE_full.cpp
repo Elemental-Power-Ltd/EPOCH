@@ -1,7 +1,12 @@
 #pragma once
 
-
 #include "EP_FE_full.h"
+
+#include <iostream>
+
+#ifdef EP_GUI
+
+// run with the gui
 
 #define NOMINMAX  // necessary before including windows.h
 #include <windows.h>
@@ -16,9 +21,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
-
-	// TODO: Place code here.
-
 
 	// Initialize global strings
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -47,3 +49,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	return (int)msg.wParam;
 }
+
+#else
+
+// run the application headlessly
+
+int main(int argc, char* argv[]) {
+	std::cout << "hello world";
+}
+
+#endif
