@@ -148,6 +148,7 @@
     <ClInclude Include="EP\io\FileHandling.hpp" />
     <ClInclude Include="EP\dependencies\json.hpp" />
     <ClInclude Include="EP\Optimisation\Optimiser.hpp" />
+    <ClInclude Include="GUI\gui.hpp" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="EP\Simulation\RGen.h" />
     <ClInclude Include="targetver.h" />
@@ -162,6 +163,7 @@
     <ClCompile Include="EP\io\FileHandling.cpp" />
     <ClCompile Include="EP\Optimisation\Optimiser.cpp" />
     <ClCompile Include="EP\Simulation\Simulate.cpp" />
+    <ClCompile Include="GUI\gui.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

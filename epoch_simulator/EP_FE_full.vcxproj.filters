@@ -20,6 +20,9 @@
     <Filter Include="core">
       <UniqueIdentifier>{b702e595-9020-4116-a396-43b7b5e16fb0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GUI">
+      <UniqueIdentifier>{cd671205-4ab9-4b8a-b2b2-ec27a56d90f1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EP\Simulation\Assets.h">
@@ -76,6 +79,9 @@
     <ClInclude Include="EP\Definitions.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="GUI\gui.hpp">
+      <Filter>GUI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EP_FE_full.rc">
@@ -94,6 +100,9 @@
     </ClCompile>
     <ClCompile Include="EP_FE_full.cpp">
       <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI\gui.cpp">
+      <Filter>GUI</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
