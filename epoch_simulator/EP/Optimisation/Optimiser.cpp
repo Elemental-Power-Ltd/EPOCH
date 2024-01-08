@@ -199,7 +199,7 @@ OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
 	output.payback_horizon = valandindex.first;
 	output.payback_horizon_index = valandindex.second;
 
-	valandindex = findMinValueandIndex(cumDataColumns, "Scenario Carbon Balance (kgC02e)");
+	valandindex = findMaxValueandIndex(cumDataColumns, "Scenario Carbon Balance (kgC02e)"); // larger is better!
 	output.scenario_carbon_balance = valandindex.first;
 	output.scenario_carbon_balance_index = valandindex.second;
 
