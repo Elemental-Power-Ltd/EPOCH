@@ -58,9 +58,7 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "Running in headless mode";
 
-	InputValues inputValues{};
-
-	auto converted_json = handleJsonConversion(inputValues);
+	auto converted_json = handleJsonConversion(defaultInput);
 
 	std::cout << "Starting Optimisation";
 
