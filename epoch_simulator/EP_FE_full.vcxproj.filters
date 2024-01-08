@@ -73,14 +73,14 @@
     <ClInclude Include="targetver.h">
       <Filter>core</Filter>
     </ClInclude>
-    <ClInclude Include="EP\FileIO.h">
-      <Filter>io</Filter>
-    </ClInclude>
     <ClInclude Include="EP\Definitions.h">
       <Filter>core</Filter>
     </ClInclude>
     <ClInclude Include="GUI\gui.hpp">
       <Filter>GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="EP\io\FileIO.h">
+      <Filter>io</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

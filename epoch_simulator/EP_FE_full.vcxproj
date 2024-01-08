@@ -252,13 +252,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="EP\Definitions.h" />
+    <ClInclude Include="EP\io\FileIO.h" />
     <ClInclude Include="EP\Simulation\Assets.h" />
     <ClInclude Include="EP\Simulation\Config.h" />
     <ClInclude Include="EP\Simulation\Costs.h" />
     <ClInclude Include="EP\Simulation\Eload.h" />
     <ClInclude Include="EP\Simulation\Simulate.hpp" />
     <ClInclude Include="EP_FE_full.h" />
-    <ClInclude Include="EP\FileIO.h" />
     <ClInclude Include="EP\Simulation\Grid.h" />
     <ClInclude Include="EP\Simulation\Hload.h" />
     <ClInclude Include="EP\io\FileHandling.hpp" />
