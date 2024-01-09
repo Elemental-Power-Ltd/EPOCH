@@ -13,11 +13,6 @@
 
 CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pair<std::string, float>> paramSlice)
 {
-	// REMOVE FOLLOWING LINES -- THESE ARE USED TO READ Eload DATA FROM CSV; THIS DATA IS INCLUDED IN inputdata THOUGH
-	//FileIO myFileIO;
-	//std::string testpath = myFileIO.getEloadfilepath(); 
-	//std::string absfilepath = myFileIO.getEloadfilepath();
-
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 

@@ -74,7 +74,7 @@ OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_INT(num_scenarios), OUT_MEMBER_MAPPING_FLOAT(est_hours), OUT_MEMBER_MAPPING_FLOAT(est_seconds)
 };
 
-std::vector<float> readCSVColumn(const std::string& filename, int column) {
+std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column) {
 	std::ifstream file(filename);
 	std::vector<float> columnValues;
 	std::string line;
@@ -150,7 +150,7 @@ bool isValidFloat(const std::string& str) {
 }
 
 
-void writeToCSV(std::string absfilepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns) {
+void writeToCSV(std::filesystem::path absfilepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns) {
 	if (dataColumns.empty()) {
 		std::cerr << "Data columns are empty!" << std::endl;
 		return;
@@ -201,7 +201,7 @@ void writeToCSV(std::string absfilepath, const std::vector<std::pair<std::string
 
 
 
-void appendCSV(std::string absfilepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns) {
+void appendCSV(std::filesystem::path filepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns) {
 	if (dataColumns.empty()) {
 		std::cerr << "Data columns are empty!" << std::endl;
 		return;
@@ -221,7 +221,7 @@ void appendCSV(std::string absfilepath, const std::vector<std::pair<std::string,
 	}
 
 	// Open file in append mode
-	std::ofstream outFile(absfilepath, std::ios::app);
+	std::ofstream outFile(filepath, std::ios::app);
 
 	if (!outFile.is_open()) {
 		std::cerr << "Failed to open the output file!" << std::endl;
@@ -330,14 +330,16 @@ nlohmann::json convert_to_ranges(nlohmann::json& j) {
 	return new_json;
 }
 
-nlohmann::json handleJsonConversion(const InputValues& inputValues) {
+nlohmann::json handleJsonConversion(const InputValues& inputValues, std::filesystem::path inputDir) {
 	// Aim: to export 'inputvalues' to a json file that can be read e.g. as a Python dict, s.t. other EPL software can use this as an input
 
 	nlohmann::json jsonObj = inputToJson(inputValues);
-	writeJsonToFile(jsonObj, "parameters.json");
+	std::filesystem::path paramPath = inputDir / "parameters.json";
+	writeJsonToFile(jsonObj, paramPath);
 
 	nlohmann::json converted_json = convert_to_ranges(jsonObj);
-	writeJsonToFile(converted_json, "parameters_grouped.json");
+	std::filesystem::path paramGroupedPath = inputDir / "parameters_grouped.json";
+	writeJsonToFile(converted_json, paramGroupedPath);
 
 	std::cout << "JSON file written successfully!" << std::endl;
 
@@ -345,9 +347,9 @@ nlohmann::json handleJsonConversion(const InputValues& inputValues) {
 
 }
 
-void writeJsonToFile(const nlohmann::json& jsonObj, std::string filename) {
+void writeJsonToFile(const nlohmann::json& jsonObj, std::filesystem::path filepath) {
 	try {
-		std::ofstream file(filename);
+		std::ofstream file(filepath);
 		file << jsonObj.dump(4);  // The "4" argument adds pretty-printing with indentation
 		file.close();
 	}

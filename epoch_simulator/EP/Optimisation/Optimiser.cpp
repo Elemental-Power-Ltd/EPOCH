@@ -7,8 +7,9 @@
 #include "../Simulation/Simulate.hpp"
 
 
-Optimiser::Optimiser()
+Optimiser::Optimiser(FileConfig fileConfig)
 {
+	mFileConfig = fileConfig;
 }
 
 OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
@@ -52,36 +53,7 @@ OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
 
 	/*READ DATA SECTION - START PROFILING AFTER SECTION*/
 
-	FileIO myFileIO;
-	//std::string testpath = myFileIO.getEloadfilepath(); // REMOVE -- testpath not used again
-	std::string absfilepath = myFileIO.getEloadfilepath();
-
-	//read the electric load data
-	std::vector<float> hotel_eload_data = readCSVColumn(absfilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> ev_eload_data = readCSVColumn(absfilepath, 5); // read the column of the CSV data and store in vector data
-
-	//read the heat load data
-	absfilepath = myFileIO.getHloadfilepath();
-	std::vector<float> heatload_data = readCSVColumn(absfilepath, 4); // read the column of the CSV data and store in vector data
-
-	//read the renewable generation data
-	absfilepath = myFileIO.getRgenfilepath();
-	std::vector<float> RGen_data_1 = readCSVColumn(absfilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> RGen_data_2 = readCSVColumn(absfilepath, 5);
-	std::vector<float> RGen_data_3 = readCSVColumn(absfilepath, 6);
-	std::vector<float> RGen_data_4 = readCSVColumn(absfilepath, 7);
-
-	CustomDataTable inputdata = {
-	   {"hotel_eload_data", hotel_eload_data},
-	   {"ev_eload_data", ev_eload_data},
-	   {"heatload_data", heatload_data},
-	   {"RGen_data_1", RGen_data_1 },
-	   {"RGen_data_2", RGen_data_2},
-	   {"RGen_data_3", RGen_data_3},
-	   {"RGen_data_4", RGen_data_4}
-	};
-
-	absfilepath = myFileIO.getOutfilepath();
+	CustomDataTable inputData = readInputData();
 
 	int numWorkers = std::thread::hardware_concurrency(); // interrogate the hardware to find number of logical cores, base concurrency loop on that
 
@@ -105,24 +77,18 @@ OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
 
 	std::vector<std::thread> workers;
 
-	//std::thread minMaxThread(computeMin, std::ref(resultsQueue), "Scenario Balance (£)");
-
-
 	std::atomic<bool> tasksCompleted(false);
 
 	std::mutex scenario_call_mutex;
 	int scenario_call = 1;
 
 	for (int i = 0; i < (numWorkers - 1); ++i) { //keep one worker back for the main thread - need to do A/B test on whether this is performant
-		workers.emplace_back([&taskQueue, &resultsQueue, &inputdata, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
+		workers.emplace_back([&taskQueue, &resultsQueue, &inputData, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
 			std::vector<std::pair<std::string, float>> paramSlice;
 			while (true) {
 				if (taskQueue.pop(paramSlice)) {
-					CustomDataTable result = simulateScenario(inputdata, paramSlice);// this is the call to scenario 
-					//std::optional<std::pair<float, float>> MinMax = resultsQueue.minMaxInColumn("Scenario Balance(£)");
-					//std::cout << "MinMax pair " << MinMax << std::endl;
+					CustomDataTable result = simulateScenario(inputData, paramSlice);
 					// add running statistics here 
-					//auto [currentMin, currentMax] = resultsQueue.getMinMax();
 					resultsQueue.push(result); // this pushes the result to the results queue. Need to only do this if it's a worthy result  
 					{
 						std::lock_guard<std::mutex> lock(scenario_call_mutex);
@@ -178,8 +144,8 @@ OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
 		}
 	} while (isResultAvailable);
 
-
-	writeToCSV(absfilepath, cumDataColumns);// comment out if you don't want a smaller CSV file of summed output that takes a few seconds to write
+	std::filesystem::path outputFilepath = mFileConfig.getOutputCSVFilepath();
+	writeToCSV(outputFilepath, cumDataColumns);// comment out if you don't want a smaller CSV file of summed output that takes a few seconds to write
 
 	float CAPEX, scenario_index = 0;
 
@@ -294,36 +260,7 @@ OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 
 	/*READ DATA SECTION - START PROFILING AFTER SECTION*/
 
-	FileIO myFileIO;
-	//std::string testpath = myFileIO.getEloadfilepath(); // REMOVE -- testpath not used again
-	std::string absfilepath = myFileIO.getEloadfilepath();
-
-	//read the electric load data
-	std::vector<float> hotel_eload_data = readCSVColumn(absfilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> ev_eload_data = readCSVColumn(absfilepath, 5); // read the column of the CSV data and store in vector data
-
-	//read the heat load data
-	absfilepath = myFileIO.getHloadfilepath();
-	std::vector<float> heatload_data = readCSVColumn(absfilepath, 4); // read the column of the CSV data and store in vector data
-
-	//read the renewable generation data
-	absfilepath = myFileIO.getRgenfilepath();
-	std::vector<float> RGen_data_1 = readCSVColumn(absfilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> RGen_data_2 = readCSVColumn(absfilepath, 5);
-	std::vector<float> RGen_data_3 = readCSVColumn(absfilepath, 6);
-	std::vector<float> RGen_data_4 = readCSVColumn(absfilepath, 7);
-
-	CustomDataTable inputdata = {
-	   {"hotel_eload_data", hotel_eload_data},
-	   {"ev_eload_data", ev_eload_data},
-	   {"heatload_data", heatload_data},
-	   {"RGen_data_1", RGen_data_1},
-	   {"RGen_data_2", RGen_data_2},
-	   {"RGen_data_3", RGen_data_3},
-	   {"RGen_data_4", RGen_data_4}
-	};
-
-	absfilepath = myFileIO.getOutfilepath();
+	CustomDataTable inputData = readInputData();
 
 	int numWorkers = std::thread::hardware_concurrency(); // interrogate the hardware to find number of logical cores, base concurrency loop on that
 
@@ -358,11 +295,11 @@ OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 	int scenario_call = 1;
 
 	for (int i = 0; i < numWorkers - 1; ++i) { // keep one worker back for the queues
-		workers.emplace_back([&taskQueue, &resultsQueue, &inputdata, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
+		workers.emplace_back([&taskQueue, &resultsQueue, &inputData, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
 			std::vector<std::pair<std::string, float>> paramSlice;
 			while (scenario_call < 100) {
 				if (taskQueue.pop(paramSlice)) {
-					CustomDataTable result = simulateScenario(inputdata, paramSlice);
+					CustomDataTable result = simulateScenario(inputData, paramSlice);
 					resultsQueue.push(result);
 					{
 						std::lock_guard<std::mutex> lock(scenario_call_mutex);
@@ -432,6 +369,36 @@ OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 
 	return output;
 
+}
+
+CustomDataTable Optimiser::readInputData() {
+
+	std::filesystem::path eloadFilepath = mFileConfig.getEloadFilepath();
+
+	//read the electric load data
+	std::vector<float> hotel_eload_data = readCSVColumn(eloadFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> ev_eload_data = readCSVColumn(eloadFilepath, 5); // read the column of the CSV data and store in vector data
+
+	//read the heat load data
+	std::filesystem::path hloadFilepath = mFileConfig.getHloadFilepath();
+	std::vector<float> heatload_data = readCSVColumn(hloadFilepath, 4); // read the column of the CSV data and store in vector data
+
+	//read the renewable generation data
+	std::filesystem::path rgenFilepath = mFileConfig.getRgenFilepath();
+	std::vector<float> RGen_data_1 = readCSVColumn(rgenFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> RGen_data_2 = readCSVColumn(rgenFilepath, 5);
+	std::vector<float> RGen_data_3 = readCSVColumn(rgenFilepath, 6);
+	std::vector<float> RGen_data_4 = readCSVColumn(rgenFilepath, 7);
+
+	return {
+	   {"hotel_eload_data", hotel_eload_data},
+	   {"ev_eload_data", ev_eload_data},
+	   {"heatload_data", heatload_data},
+	   {"RGen_data_1", RGen_data_1 },
+	   {"RGen_data_2", RGen_data_2},
+	   {"RGen_data_3", RGen_data_3},
+	   {"RGen_data_4", RGen_data_4}
+	};
 }
 
 

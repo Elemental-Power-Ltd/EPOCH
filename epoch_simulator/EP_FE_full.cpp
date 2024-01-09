@@ -58,19 +58,20 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "Running in headless mode";
 
-	auto converted_json = handleJsonConversion(defaultInput);
+	FileConfig fileConfig{};
+	auto converted_json = handleJsonConversion(defaultInput, fileConfig.getInputDir());
 
 	std::cout << "Starting Optimisation";
 
-	Optimiser optimiser{};
+	auto optimiser = Optimiser(fileConfig);
 	OutputValues output = optimiser.runMainOptimisation(converted_json);
 
-	std::cout << "Finished Optimisation";
+	std::cout << "Finished Optimisation" << std::endl;
 
 	nlohmann::json jsonObj = outputToJson(output);
-	writeJsonToFile(jsonObj, "outputparameters.json");
+	writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
 
-	std::cout << "Wrote results to file";
+	std::cout << "Wrote results to file" << std::endl;
 
 }
 

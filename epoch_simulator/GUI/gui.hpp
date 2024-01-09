@@ -1368,7 +1368,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	SCROLLINFO si = { sizeof(si), SIF_ALL };
 
-	auto optimiser = Optimiser();
+	FileConfig fileConfig{};
+	auto optimiser = Optimiser(fileConfig);
 
 	switch (message)
 	{
@@ -1488,7 +1489,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				InitConsole();
 				InputValues inputValues = readInputFromForm();
 
-				auto converted_json = handleJsonConversion(inputValues);
+				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputDir());
 
 				OutputValues output = optimiser.runMainOptimisation(converted_json);
 
@@ -1496,7 +1497,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				// Convert the OutputValues struct to a JSON object using the mapping
 				nlohmann::json jsonObj = outputToJson(output);
-				writeJsonToFile(jsonObj, "outputparameters.json");
+				writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
 				std::cout << "JSON file written successfully!" << std::endl;
 
 				writeTimingsToForm(start_long);
@@ -1518,7 +1519,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				InitConsole();
 				InputValues inputValues = readInputFromForm();
 
-				auto converted_json = handleJsonConversion(inputValues);
+				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputDir());
 
 				OutputValues output = optimiser.initialiseOptimisation(converted_json);
 
@@ -1528,7 +1529,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				nlohmann::json jsonObj = outputToJson(output);
 
 				// Write the JSON to a file
-				writeJsonToFile(jsonObj, "outputparameters_init.json");
+				writeJsonToFile(jsonObj, fileConfig.getOutputJsonInitFilepath());
 				std::cout << "JSON file written successfully!" << std::endl;
 
 				writeTimingsToForm(start_long);
@@ -1548,7 +1549,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				InitConsole();
 				InputValues inputValues = readInputFromForm();
 
-				auto converted_json = handleJsonConversion(inputValues);
+				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputDir());
 
 				wchar_t buffer100[100];
 				GetWindowText(hTextboxIndex, buffer100, 100);

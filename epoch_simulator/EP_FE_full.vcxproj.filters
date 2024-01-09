@@ -79,7 +79,7 @@
     <ClInclude Include="GUI\gui.hpp">
       <Filter>GUI</Filter>
     </ClInclude>
-    <ClInclude Include="EP\io\FileIO.h">
+    <ClInclude Include="EP\io\FileConfig.h">
       <Filter>io</Filter>
     </ClInclude>
   </ItemGroup>

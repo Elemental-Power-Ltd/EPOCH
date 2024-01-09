@@ -252,7 +252,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="EP\Definitions.h" />
-    <ClInclude Include="EP\io\FileIO.h" />
+    <ClInclude Include="EP\io\FileConfig.h" />
     <ClInclude Include="EP\Simulation\Assets.h" />
     <ClInclude Include="EP\Simulation\Config.h" />
     <ClInclude Include="EP\Simulation\Costs.h" />
