@@ -65,6 +65,7 @@ public:
         return rootDir / outputDir / outputJsonInitFilename;
     }
 
+    // for more fine-grained controlled, get the inputDir or outputDir and then choose the filename at the call site
     std::filesystem::path getInputDir() {
         return rootDir / inputDir;
     }
