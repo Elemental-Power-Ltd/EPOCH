@@ -258,7 +258,7 @@
     <ClInclude Include="EP\Simulation\Costs.h" />
     <ClInclude Include="EP\Simulation\Eload.h" />
     <ClInclude Include="EP\Simulation\Simulate.hpp" />
-    <ClInclude Include="EP_FE_full.h" />
+    <ClInclude Include="EP_main.h" />
     <ClInclude Include="EP\Simulation\Grid.h" />
     <ClInclude Include="EP\Simulation\Hload.h" />
     <ClInclude Include="EP\io\FileHandling.hpp" />
@@ -275,7 +275,7 @@
     <ResourceCompile Include="EP_FE_full.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="EP_FE_full.cpp" />
+    <ClCompile Include="EP_main.cpp" />
     <ClCompile Include="EP\io\FileHandling.cpp" />
     <ClCompile Include="EP\Optimisation\Optimiser.cpp" />
     <ClCompile Include="EP\Simulation\Simulate.cpp" />

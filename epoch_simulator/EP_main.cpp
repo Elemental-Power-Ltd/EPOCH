@@ -1,5 +1,5 @@
 #pragma once
-#include "EP_FE_full.h"
+#include "EP_main.h"
 
 #ifdef EP_GUI
 // run with the gui

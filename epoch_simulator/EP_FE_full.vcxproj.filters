@@ -64,7 +64,7 @@
     <ClInclude Include="EP\Optimisation\Threadsafe.h">
       <Filter>Optimisation</Filter>
     </ClInclude>
-    <ClInclude Include="EP_FE_full.h">
+    <ClInclude Include="EP_main.h">
       <Filter>core</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
@@ -98,7 +98,7 @@
     <ClCompile Include="EP\io\FileHandling.cpp">
       <Filter>io</Filter>
     </ClCompile>
-    <ClCompile Include="EP_FE_full.cpp">
+    <ClCompile Include="EP_main.cpp">
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="GUI\gui.cpp">
