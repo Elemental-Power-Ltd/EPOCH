@@ -622,19 +622,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hLabelout4 = makeLabel(hWnd, hInstance, L"Total time taken, s", 480, 890, 100, 50);
 	hOutput4 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT4, 480, 950, 100, 30, L"");
 
-	HWND hLabelout5 = makeLabel(hWnd, hInstance, L"CAPEX, £", 600, 890, 100, 50);
+	HWND hLabelout5 = makeLabel(hWnd, hInstance, L"Min CAPEX, £", 600, 890, 100, 50);
 	hOutput5 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT5, 600, 950, 100, 30, L"");
 
-	HWND hLabelout6 = makeLabel(hWnd, hInstance, L"Annualised, £", 720, 890, 100, 50);
+	HWND hLabelout6 = makeLabel(hWnd, hInstance, L"Min Annualised, £", 720, 890, 100, 50);
 	hOutput6 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT6, 720, 950, 100, 30, L"");
 
-	HWND hLabelout7 = makeLabel(hWnd, hInstance, L"Cost balance, £", 840, 890, 100, 50);
+	HWND hLabelout7 = makeLabel(hWnd, hInstance, L"Max Cost balance, £", 840, 890, 100, 50);
 	hOutput7 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT7, 840, 950, 100, 30, L"");
 
-	HWND hLabelout8 = makeLabel(hWnd, hInstance, L"Breakeven years", 960, 890, 100, 50);
+	HWND hLabelout8 = makeLabel(hWnd, hInstance, L"Min Breakeven years", 960, 890, 100, 50);
 	hOutput8 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT8, 960, 950, 100, 30, L"");
 
-	HWND hLabelout9 = makeLabel(hWnd, hInstance, L"Carbon balance, kgC02e", 1080, 890, 100, 50);
+	HWND hLabelout9 = makeLabel(hWnd, hInstance, L"Max Carbon balance, kgC02e", 1080, 890, 100, 50);
 	hOutput9 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT9, 1080, 950, 100, 30, L"");
 
 	hOutput10 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT10, 240, 30, 100, 30, L"");
