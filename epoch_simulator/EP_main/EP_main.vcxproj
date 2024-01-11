@@ -37,8 +37,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{f6d1de29-56cf-4ebd-914e-4b0d9d7283fb}</ProjectGuid>
-    <RootNamespace>EPFEfull</RootNamespace>
+    <ProjectGuid>{e53f1f79-5e0f-4679-a4c3-91cbcb00b9d6}</ProjectGuid>
+    <RootNamespace>EPmain</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -124,19 +124,12 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Gui-Debug|x64'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Headless-Debug|x64'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Gui-Release|x64'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Headless-Release|x64'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Gui-Debug|Win32'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Gui-Release|Win32'" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Gui-Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -149,7 +142,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -164,7 +156,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -181,7 +172,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -196,11 +186,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;EP_GUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Headless-Debug|x64'">
@@ -209,11 +201,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Gui-Release|x64'">
@@ -224,7 +218,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;EP_GUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -241,7 +235,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -251,35 +245,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="EP\Definitions.h" />
-    <ClInclude Include="EP\io\FileConfig.h" />
-    <ClInclude Include="EP\Simulation\Assets.h" />
-    <ClInclude Include="EP\Simulation\Config.h" />
-    <ClInclude Include="EP\Simulation\Costs.h" />
-    <ClInclude Include="EP\Simulation\Eload.h" />
-    <ClInclude Include="EP\Simulation\Simulate.hpp" />
     <ClInclude Include="EP_main.h" />
-    <ClInclude Include="EP\Simulation\Grid.h" />
-    <ClInclude Include="EP\Simulation\Hload.h" />
-    <ClInclude Include="EP\io\FileHandling.hpp" />
-    <ClInclude Include="EP\dependencies\json.hpp" />
-    <ClInclude Include="EP\Optimisation\Optimiser.hpp" />
+    <ClInclude Include="framework.h" />
     <ClInclude Include="GUI\gui.hpp" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="EP\Simulation\RGen.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="EP\Optimisation\Threadsafe.h" />
-    <ClInclude Include="EP\Simulation\Timeseries.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="EP_FE_full.rc" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EP_main.cpp" />
-    <ClCompile Include="EP\io\FileHandling.cpp" />
-    <ClCompile Include="EP\Optimisation\Optimiser.cpp" />
-    <ClCompile Include="EP\Simulation\Simulate.cpp" />
     <ClCompile Include="GUI\gui.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="EP_main.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="EP_main.ico" />
+    <Image Include="small.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EP\EP.vcxproj">
+      <Project>{a67f8da9-dcc3-40d4-966f-76006bb020cf}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

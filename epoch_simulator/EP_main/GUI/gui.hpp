@@ -3,9 +3,9 @@
 #define NOMINMAX  // necessary before including windows.h
 #include <Windows.h>
 
-#include "../EP/Definitions.h"
-#include "../EP/Optimisation/Optimiser.hpp"
-#include "../EP/io/FileHandling.hpp"
+#include "../../EP/Definitions.h"
+#include "../../EP/Optimisation/Optimiser.hpp"
+#include "../../EP/io/FileHandling.hpp"
 
 #define MAX_LOADSTRING 100
 #define BUTTON_INITIALISE 0
@@ -200,10 +200,10 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
 	wcex.hInstance = hInstance;
-	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_EPFEFULL));
+	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_EPMAIN));
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_EPFEFULL);
+	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_EPMAIN);
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
