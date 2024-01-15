@@ -194,6 +194,12 @@
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(ProjectDir)InputData" "$(OutDir)InputData" /E /I /Y</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying Input Data to build folder</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Headless-Debug|x64'">
     <ClCompile>
@@ -209,6 +215,12 @@
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(ProjectDir)InputData" "$(OutDir)InputData" /E /I /Y</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying Input Data to build folder</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Gui-Release|x64'">
     <ClCompile>
@@ -226,6 +238,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(ProjectDir)InputData" "$(OutDir)InputData" /E /I /Y</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying Input Data to build folder</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Headless-Release|x64'">
     <ClCompile>
@@ -243,6 +261,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(ProjectDir)InputData" "$(OutDir)InputData" /E /I /Y</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying Input Data to build folder</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="EP_main.h" />
