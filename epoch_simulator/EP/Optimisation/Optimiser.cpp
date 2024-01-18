@@ -25,7 +25,7 @@ OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 	return doOptimisation(inputJson, true);
 }
 
-CustomDataTable Optimiser::readInputData() {
+CustomDataTable Optimiser::readHistoricalData() {
 
 	std::filesystem::path eloadFilepath = mFileConfig.getEloadFilepath();
 
@@ -635,7 +635,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	resetTimeProfiler();
 
 	auto paramGrid = makeParamGrid(inputJson);
-	CustomDataTable inputData = readInputData();
+	CustomDataTable inputData = readHistoricalData();
 
 	int numWorkers = determineWorkerCount();
 

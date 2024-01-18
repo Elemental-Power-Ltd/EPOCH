@@ -39,7 +39,7 @@ public:
 
 
 private:
-	CustomDataTable readInputData();
+	CustomDataTable readHistoricalData();
 	std::vector<paramRange> makeParamGrid(const nlohmann::json& inputJson);
 	int generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue, bool initialisationOnly);
 	OutputValues doOptimisation(nlohmann::json inputJson, bool initialisationOnly=false);
