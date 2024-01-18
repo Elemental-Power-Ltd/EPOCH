@@ -44,12 +44,6 @@ private:
 	int generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue, bool initialisationOnly);
 	OutputValues doOptimisation(nlohmann::json inputJson, bool initialisationOnly=false);
 	int determineWorkerCount();
-	void appendSumToDataTable(CustomDataTable& outTable, CustomDataTable& singleTable);
-	std::pair<float, float> findMinValueandIndex(const CustomDataTable& dataColumns, const std::string& columnName);
-	std::pair<float, float> findMaxValueandIndex(const CustomDataTable& dataColumns, const std::string& columnName);
-	std::tuple<float, float, float> getColumnStats(const std::vector<std::pair<std::string, std::vector<float>>>& CustomDataTable);
-	void appendDataColumns(std::vector<std::pair<std::string, std::vector<float>>>& cumDataColumns, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumnsN);
-	CustomDataTable SumDataTable(const CustomDataTable& dataTable);
 
 	void findBestResults(const std::vector<SimulationResult>& allResults, OutputValues& output);
 	void resetTimeProfiler();
