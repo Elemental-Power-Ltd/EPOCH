@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <limits>
 #include <thread>
 #include <vector>
 
@@ -15,6 +16,19 @@ struct paramRange {
 	float min, max, step;
 };
 
+// A simple struct for tracking the min/max/mean time per scenario
+struct TimeProfile {
+	// minTime cannot default to 0
+	float minTime = std::numeric_limits<float>::max();
+	float maxTime;
+	float totalTime;
+	int count;
+};
+
+// Limit initialisation to running only the first 100 scenarios
+const int INITIALISATION_MAX_SCENARIOS = 100;
+
+
 class Optimiser {
 public:
 	Optimiser(FileConfig fileConfig);
@@ -26,7 +40,10 @@ public:
 
 private:
 	CustomDataTable readInputData();
-	int generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue);
+	std::vector<paramRange> makeParamGrid(const nlohmann::json& inputJson);
+	int generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue, bool initialisationOnly);
+	OutputValues doOptimisation(nlohmann::json inputJson, bool initialisationOnly=false);
+	int determineWorkerCount();
 	void appendSumToDataTable(CustomDataTable& outTable, CustomDataTable& singleTable);
 	std::pair<float, float> findMinValueandIndex(const CustomDataTable& dataColumns, const std::string& columnName);
 	std::pair<float, float> findMaxValueandIndex(const CustomDataTable& dataColumns, const std::string& columnName);
@@ -34,9 +51,13 @@ private:
 	void appendDataColumns(std::vector<std::pair<std::string, std::vector<float>>>& cumDataColumns, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumnsN);
 	CustomDataTable SumDataTable(const CustomDataTable& dataTable);
 
+	void findBestResults(const std::vector<SimulationResult>& allResults, OutputValues& output);
+	void resetTimeProfiler();
+	void addTimeToProfiler(float timeTaken);
+
 	std::vector<std::pair<std::string, float>> TaskRecall(const std::vector<paramRange>& paramGrid, int index);
 
 	FileConfig mFileConfig;
-
+	TimeProfile mTimeProfile;
 };
 

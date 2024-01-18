@@ -14,361 +14,15 @@ Optimiser::Optimiser(FileConfig fileConfig)
 
 OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
 {
-
-	OutputValues output;
-	output.maxVal = 0;
-	output.minVal = 0;
-	output.meanVal = 0;
-	std::cout << "EP_BE: Elemental Power Back End" << std::endl; // here we are in main() function...!
-
-	/*DEFINE PARAMETER GRID TO ITERATE THROUGH*/
-	// initialise empty parameter grid
-	std::vector<paramRange> paramGrid;
-
-	// input argument should be a JSON object containing a dictionary of key-tuple pairs
-	// each key should be the name of a parameter to be iterated over; the tuple should provide the range and step size of the iterator
-	// fill the parameter grid using the JSON input
-	try {
-		// Loop through all key-value/key-tuple pairs
-		for (const auto& item : inputJson.items()) {
-			if (item.value().is_array()) {
-				// the item is a key-tuple pair
-				paramGrid.push_back({ item.key(), item.value()[0], item.value()[1], item.value()[2] });
-				std::cout << "(" << item.key() << "," << item.value()[0] << ":" << item.value()[1] << ":" << item.value()[2] << ")" << std::endl;
-			}
-			else {
-				// the item is a key-value pair
-				paramGrid.push_back({ item.key(), item.value(), item.value(), 0.0 });
-			}
-		}
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error: " << e.what() << std::endl;
-		return output;
-	}
-
-	if (paramGrid.empty()) return output;
-
-	/*NEED SOME NULL ACTION HERE - EXECUTE WITH DEFAULT CONFIG PARAMETERS*/
-
-	/*READ DATA SECTION - START PROFILING AFTER SECTION*/
-
-	CustomDataTable inputData = readInputData();
-
-	int numWorkers = std::thread::hardware_concurrency(); // interrogate the hardware to find number of logical cores, base concurrency loop on that
-
-	if (numWorkers == 0) {
-		std::cerr << "Unable to determine the number of logical cores." << std::endl;
-		return output;
-	}
-
-	std::cout << "Number of logical cores found is " << numWorkers << std::endl;
-
-	CustomDataTable cumDataColumns;
-	 
-	SafeQueue<std::vector<std::pair<std::string, float>>> taskQueue;
-	SafeQueue<CustomDataTable> resultsQueue;
-
-	int number = 0;
-
-	number = generateTasks(paramGrid, taskQueue);
-
-	std::cout << "Total number of scenarios is: " << number << std::endl;
-
-	std::vector<std::thread> workers;
-
-	std::atomic<bool> tasksCompleted(false);
-
-	std::mutex scenario_call_mutex;
-	int scenario_call = 1;
-
-	for (int i = 0; i < (numWorkers - 1); ++i) { //keep one worker back for the main thread - need to do A/B test on whether this is performant
-		workers.emplace_back([&taskQueue, &resultsQueue, &inputData, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
-			std::vector<std::pair<std::string, float>> paramSlice;
-			while (true) {
-				if (taskQueue.pop(paramSlice)) {
-					CustomDataTable result = simulateScenario(inputData, paramSlice);
-					// add running statistics here 
-					resultsQueue.push(result); // this pushes the result to the results queue. Need to only do this if it's a worthy result  
-					{
-						std::lock_guard<std::mutex> lock(scenario_call_mutex);
-						std::cout << "scenario called " << scenario_call << " times" << std::endl;
-						scenario_call++;
-					}
-				}
-				else {
-					std::cout << "sleeping for 10 ms" << std::endl;
-					std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Short sleep
-					if (tasksCompleted.load()) {
-						std::cout << "Worker " << i << ": no more tasks, exiting." << std::endl;
-						break;
-					}
-				}
-			}
-			});
-	}
-
-	// After all tasks are generated
-	tasksCompleted.store(true);
-	std::cout << "tasksCompleted" << std::endl;
-
-	for (auto& worker : workers) {
-		if (worker.joinable()) {
-			worker.join();
-		}
-	}
-	std::cout << "workers joined" << std::endl;
-	std::cout << "workers joined" << std::endl;
-	//// Retrieve and process results
-	CustomDataTable result;
-	CustomDataTable resultSum;
-
-	bool isResultAvailable = false;
-	do {
-		isResultAvailable = resultsQueue.pop(result);
-		if (isResultAvailable) {
-			/* if you want to store all data columns from each calculative step:- */
-			//appendDataColumns(cumDataColumns, result);
-
-			/* if you want to store e.g. the column sums */
-			// If resultSum has not yet been initialised, do so now...
-			if (cumDataColumns.size() == 0) {
-				// initialize resultSum with the same keys as result but with empty vectors
-				cumDataColumns.reserve(result.size()); // Reserve space for efficiency
-				for (const auto& pair : result) {
-					cumDataColumns.emplace_back(pair.first, std::vector<float>{}); // Use the key with an empty vector
-				}
-			}
-			// ...then append sums for each result
-			appendSumToDataTable(cumDataColumns, result);
-		}
-	} while (isResultAvailable);
-
-	std::filesystem::path outputFilepath = mFileConfig.getOutputCSVFilepath();
-	writeToCSV(outputFilepath, cumDataColumns);// comment out if you don't want a smaller CSV file of summed output that takes a few seconds to write
-
-	float CAPEX, scenario_index = 0;
-
-	std::pair<float, float> valandindex = findMinValueandIndex(cumDataColumns, "Project CAPEX");
-	output.CAPEX = valandindex.first;
-	output.CAPEX_index = valandindex.second;
-
-	valandindex = findMinValueandIndex(cumDataColumns, "Annualised cost");
-	output.annualised = valandindex.first;
-	output.annualised_index = valandindex.second;
-
-	valandindex = findMaxValueandIndex(cumDataColumns, "Scenario Balance (£)"); // larger is better!
-	output.scenario_cost_balance = valandindex.first;
-	output.scenario_cost_balance_index = valandindex.second;
-
-	valandindex = findMinValueandIndex(cumDataColumns, "Payback horizon (yrs)");
-	output.payback_horizon = valandindex.first;
-	output.payback_horizon_index = valandindex.second;
-
-	valandindex = findMaxValueandIndex(cumDataColumns, "Scenario Carbon Balance (kgC02e)"); // larger is better!
-	output.scenario_carbon_balance = valandindex.first;
-	output.scenario_carbon_balance_index = valandindex.second;
-
-	//	std::tie(output.maxVal, output.minVal, output.meanVal) = getColumnStats(resultSum); //do this in window handle
-
-	std::tie(output.maxVal, output.minVal, output.meanVal) = getColumnStats(cumDataColumns);
-
-	std::cout << "Max: " << output.maxVal << ", Min: " << output.minVal << ", Mean: " << output.meanVal << std::endl;
-
-	/* DUMMY OUTPUT -- NEEDS REPLACED WITH SENSIBLE OUTPUT */
-
-	//std::vector<float> dummyvec = getDataForKey(cumDataColumns, "Calculative execution time (s)");
-
-	//output.time_taken = dummyvec[0]; // should be total time over all iterations
-
-	output.Fixed_load1_scalar = 1.0;
-	output.Fixed_load2_scalar = 2.0;
-	output.Flex_load_max = 3.0;
-	output.Mop_load_max = 4.0;
-	output.ScalarRG1 = 5.0;
-	output.ScalarRG2 = 6.0;
-	output.ScalarRG3 = 7.0;
-	output.ScalarRG4 = 8.0;
-	output.ScalarHL1 = 9.0;
-	output.ScalarHYield1 = 10.0;
-	output.ScalarHYield2 = 11.0;
-	output.ScalarHYield3 = 12.0;
-	output.ScalarHYield4 = 13.0;
-	output.GridImport = 14.0;
-	output.GridExport = 15.0;
-	output.Import_headroom = 16.0;
-	output.Export_headroom = 17.0;
-	output.ESS_charge_power = 18.0;
-	output.ESS_discharge_power = 19.0;
-	output.ESS_capacity = 20.0;
-	output.ESS_RTE = 21.0;
-	output.ESS_aux_load = 22.0;
-	output.ESS_start_SoC = 23.0;
-	output.ESS_charge_mode = 24.0;
-	output.ESS_discharge_mode = 25.0;
-	//output.CAPEX = 26.0;
-	//output.annualised = 27.0;
-	//output.scenario_cost_balance = 28.0;
-	//output.payback_horizon = 30.0;
-	//output.scenario_carbon_balance = 29.0;
-	//output.scenario_index = 30.0;
-	return output;
+	std::cout << "Starting Optimisation" << std::endl;
+	return doOptimisation(inputJson);
 }
 
 
 OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 
-	OutputValues output;
-	output.maxVal = 0;
-	output.minVal = 0;
-	output.meanVal = 0;
-	output.num_scenarios = 0;
-	output.est_hours = 0;
-	output.est_seconds = 0;
-
-	std::cout << "EP_BE: Elemental Power Back End" << std::endl; // here we are in main() function...!
-
-	/*DEFINE PARAMETER GRID TO ITERATE THROUGH*/
-	// initialise empty parameter grid
-	std::vector<paramRange> paramGrid;
-
-	// input argument should be a JSON object containing a dictionary of key-tuple pairs
-	// each key should be the name of a parameter to be iterated over; the tuple should provide the range and step size of the iterator
-	// fill the parameter grid using the JSON input
-	try {
-		// Loop through all key-value/key-tuple pairs
-		for (const auto& item : inputJson.items()) {
-			if (item.value().is_array()) {
-				// the item is a key-tuple pair
-				paramGrid.push_back({ item.key(), item.value()[0], item.value()[1], item.value()[2] });
-				std::cout << "(" << item.key() << "," << item.value()[0] << ":" << item.value()[1] << ":" << item.value()[2] << ")" << std::endl;
-			}
-			else {
-				// the item is a key-value pair
-				paramGrid.push_back({ item.key(), item.value(), item.value(), 0.0 });
-			}
-		}
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error: " << e.what() << std::endl;
-		return output;
-	}
-
-	if (paramGrid.empty()) return output;
-
-	/*NEED SOME NULL ACTION HERE - EXECUTE WITH DEFAULT CONFIG PARAMETERS*/
-
-	/*READ DATA SECTION - START PROFILING AFTER SECTION*/
-
-	CustomDataTable inputData = readInputData();
-
-	int numWorkers = std::thread::hardware_concurrency(); // interrogate the hardware to find number of logical cores, base concurrency loop on that
-
-	if (numWorkers == 0) {
-		std::cerr << "Unable to determine the number of logical cores." << std::endl;
-		return output;
-	}
-
-	std::cout << "Number of logical cores found is " << numWorkers << std::endl;
-
-	CustomDataTable cumDataColumns;
-
-	SafeQueue<std::vector<std::pair<std::string, float>>> taskQueue;
-	SafeQueue<CustomDataTable> resultsQueue;
-
-	//std::cout << "Profiler pause: waiting for 10 seconds..." << std::endl;
-	//std::this_thread::sleep_for(std::chrono::seconds(10));
-
-	int number = 0;
-
-	//number = get_number_of_scenarios(paramGrid); // get 
-	number = generateTasks(paramGrid, taskQueue);
-
-	std::cout << "Total number of scenarios is: " << number << std::endl;
-
-	//std::cout << "Profiler pause: waiting for 10 seconds..." << std::endl;
-	//std::this_thread::sleep_for(std::chrono::seconds(10));
-	std::vector<std::thread> workers;
-	std::atomic<bool> tasksCompleted(false);
-
-	std::mutex scenario_call_mutex;
-	int scenario_call = 1;
-
-	for (int i = 0; i < numWorkers - 1; ++i) { // keep one worker back for the queues
-		workers.emplace_back([&taskQueue, &resultsQueue, &inputData, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
-			std::vector<std::pair<std::string, float>> paramSlice;
-			while (scenario_call < 100) {
-				if (taskQueue.pop(paramSlice)) {
-					CustomDataTable result = simulateScenario(inputData, paramSlice);
-					resultsQueue.push(result);
-					{
-						std::lock_guard<std::mutex> lock(scenario_call_mutex);
-						std::cout << "scenario called " << scenario_call << " times" << std::endl;
-						scenario_call++;
-					}
-				}
-				else {
-					std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Short sleep
-					if (tasksCompleted.load()) {
-						std::cout << "Worker " << i << ": no more tasks, exiting." << std::endl;
-						break;
-					}
-				}
-			}
-			});
-	}
-	// ***** any points at which this hangs? check transcript
-
-		// After all tasks are generated
-	tasksCompleted.store(true);
-	std::cout << "tasksCompleted" << std::endl;
-
-	for (auto& worker : workers) {
-		if (worker.joinable()) {
-			worker.join();
-		}
-	}
-	std::cout << "workers joined" << std::endl;
-
-	//// Retrieve and process results
-	CustomDataTable result;
-	CustomDataTable resultSum;
-
-	bool isResultAvailable = false;
-	do {
-		isResultAvailable = resultsQueue.pop(result);
-		if (isResultAvailable) {
-			/* if you want to store all data columns from each calculative step:- */
-			appendDataColumns(cumDataColumns, result);
-
-			/* if you want to store e.g. the column sums */
-			// If resultSum has not yet been initialised, do so now...
-			if (resultSum.size() == 0) {
-				// initialize resultSum with the same keys as result but with empty vectors
-				resultSum.reserve(result.size()); // Reserve space for efficiency
-				for (const auto& pair : result) {
-					resultSum.emplace_back(pair.first, std::vector<float>{}); // Use the key with an empty vector
-				}
-			}
-			// ...then append sums for each result
-			appendSumToDataTable(resultSum, result);
-		}
-	} while (isResultAvailable);
-
-
-	std::tie(output.maxVal, output.minVal, output.meanVal) = getColumnStats(cumDataColumns); //do this in window handle
-	std::cout << "Max: " << output.maxVal << ", Min: " << output.minVal << ", Mean: " << output.meanVal << std::endl;
-
-	float float_numWorkers = float(numWorkers);
-
-	output.num_scenarios = number;
-	output.est_seconds = (output.num_scenarios * output.meanVal) / (float_numWorkers - 1.0);
-	output.est_hours = (output.num_scenarios * output.meanVal) / (3600 * (float_numWorkers - 1.0));
-
-	std::cout << "Number of scenarios: " << output.num_scenarios << ", Hours: " << output.est_hours << ", Seconds: " << output.est_seconds << std::endl;
-
-	return output;
-
+	std::cout << "Running initial optimisation" << std::endl;
+	return doOptimisation(inputJson, true);
 }
 
 CustomDataTable Optimiser::readInputData() {
@@ -399,6 +53,34 @@ CustomDataTable Optimiser::readInputData() {
 	   {"RGen_data_3", RGen_data_3},
 	   {"RGen_data_4", RGen_data_4}
 	};
+}
+
+std::vector<paramRange> Optimiser::makeParamGrid(const nlohmann::json& inputJson)
+{
+	/*DEFINE PARAMETER GRID TO ITERATE THROUGH*/
+	std::vector<paramRange> paramGrid;
+
+	// input argument should be a JSON object containing a dictionary of key-tuple pairs
+	// each key should be the name of a parameter to be iterated over; the tuple should provide the range and step size of the iterator
+	try {
+		// Loop through all key-value/key-tuple pairs
+		for (const auto& item : inputJson.items()) {
+			if (item.value().is_array()) {
+				// the item is a key-tuple pair
+				paramGrid.push_back({ item.key(), item.value()[0], item.value()[1], item.value()[2] });
+				std::cout << "(" << item.key() << "," << item.value()[0] << ":" << item.value()[1] << ":" << item.value()[2] << ")" << std::endl;
+			}
+			else {
+				// the item is a key-value pair
+				paramGrid.push_back({ item.key(), item.value(), item.value(), 0.0 });
+			}
+		}
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Error: " << e.what() << std::endl;
+		throw std::exception();
+	}
+	return paramGrid;
 }
 
 
@@ -882,8 +564,7 @@ std::vector<std::pair<std::string, float>> Optimiser::TaskRecall(const std::vect
 }
 
 
-int Optimiser::generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue)
-
+int Optimiser::generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue, bool initialisationOnly)
 {
 	int j = 0;
 	/* Use an iterative approach as follows */
@@ -902,8 +583,12 @@ int Optimiser::generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue
 	bool finished = false;
 
 	while (!finished) {
+
+		if (initialisationOnly && j > INITIALISATION_MAX_SCENARIOS) {
+			break;
+		}
+
 		j++;
-		//std::cout << j << " scenarios" << std::endl;
 
 		// Create a new task with the current combination of parameters
 		std::vector<std::pair<std::string, float>> currentTask;
@@ -942,6 +627,143 @@ int Optimiser::generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue
 		}
 	}
 	return j;
+}
+
+OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
+{
+	OutputValues output;
+	resetTimeProfiler();
+
+	auto paramGrid = makeParamGrid(inputJson);
+	CustomDataTable inputData = readInputData();
+
+	int numWorkers = determineWorkerCount();
+
+	SafeQueue<std::vector<std::pair<std::string, float>>> taskQueue;
+	SafeQueue<SimulationResult> resultsQueue;
+
+	int numScenarios = generateTasks(paramGrid, taskQueue, initialisationOnly);
+	std::cout << "Total number of scenarios is: " << numScenarios << std::endl;
+
+	std::vector<std::thread> workers;
+	std::atomic<bool> tasksCompleted(false);
+	std::mutex scenario_call_mutex;
+	int scenario_call = 1;
+
+	for (int i = 0; i < (numWorkers - 1); ++i) { //keep one worker back for the main thread - need to do A/B test on whether this is performant
+		workers.emplace_back([this, &taskQueue, &resultsQueue, &inputData, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
+			std::vector<std::pair<std::string, float>> paramSlice;
+			while (true) {
+				if (taskQueue.pop(paramSlice)) {
+					SimulationResult result = simulateScenarioAndSum(inputData, paramSlice);
+
+					// add running statistics here 
+					resultsQueue.push(result); // this pushes the result to the results queue. Need to only do this if it's a worthy result  
+					addTimeToProfiler(result.runtime);
+					{
+						std::lock_guard<std::mutex> lock(scenario_call_mutex);
+						std::cout << "scenario called " << scenario_call << " times" << std::endl;
+						scenario_call++;
+					}
+				}
+				else {
+					std::cout << "sleeping for 10 ms" << std::endl;
+					std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Short sleep
+					if (tasksCompleted.load()) {
+						std::cout << "Worker " << i << ": no more tasks, exiting." << std::endl;
+						break;
+					}
+				}
+			}
+			});
+	}
+
+	// After all tasks are generated
+	tasksCompleted.store(true);
+	std::cout << "tasksCompleted" << std::endl;
+
+	for (auto& worker : workers) {
+		if (worker.joinable()) {
+			worker.join();
+		}
+	}
+	std::cout << "workers joined" << std::endl;
+
+	//// Retrieve and process results
+	SimulationResult result;
+	std::vector<SimulationResult> allResults{};
+	while (resultsQueue.pop(result)) {
+		allResults.emplace_back(result);
+	}
+
+	findBestResults(allResults, output);
+
+	// Commented out until the CustomDataTable types are reworked
+	//std::filesystem::path outputFilepath = mFileConfig.getOutputCSVFilepath();
+	//writeToCSV(outputFilepath, cumDataColumns);// comment out if you don't want a smaller CSV file of summed output that takes a few seconds to write
+
+	output.maxVal = mTimeProfile.maxTime;
+	output.minVal = mTimeProfile.minTime;
+	output.meanVal = mTimeProfile.totalTime / mTimeProfile.count;
+
+	std::cout << "Max: " << output.maxVal << ", Min: " << output.minVal << ", Mean: " << output.meanVal << std::endl;
+
+	if (initialisationOnly) {
+		// Compute the per-scenario estimates
+		float float_numWorkers = float(numWorkers);
+
+		// FIXME: Enormously inefficient temporary approach to count the number of tasks for a full run-through
+		int totalScenarios = generateTasks(paramGrid, taskQueue, false);
+
+		output.num_scenarios = totalScenarios;
+		output.est_seconds = (totalScenarios * output.meanVal) / (float_numWorkers - 1.0);
+		output.est_hours = (totalScenarios * output.meanVal) / (3600 * (float_numWorkers - 1.0));
+
+		std::cout << "Number of scenarios: " << output.num_scenarios << ", Hours: " << output.est_hours << ", Seconds: " << output.est_seconds << std::endl;
+	}
+
+	/* DUMMY OUTPUT -- NEEDS REPLACED WITH SENSIBLE OUTPUT */
+	output.Fixed_load1_scalar = 1.0;
+	output.Fixed_load2_scalar = 2.0;
+	output.Flex_load_max = 3.0;
+	output.Mop_load_max = 4.0;
+	output.ScalarRG1 = 5.0;
+	output.ScalarRG2 = 6.0;
+	output.ScalarRG3 = 7.0;
+	output.ScalarRG4 = 8.0;
+	output.ScalarHL1 = 9.0;
+	output.ScalarHYield1 = 10.0;
+	output.ScalarHYield2 = 11.0;
+	output.ScalarHYield3 = 12.0;
+	output.ScalarHYield4 = 13.0;
+	output.GridImport = 14.0;
+	output.GridExport = 15.0;
+	output.Import_headroom = 16.0;
+	output.Export_headroom = 17.0;
+	output.ESS_charge_power = 18.0;
+	output.ESS_discharge_power = 19.0;
+	output.ESS_capacity = 20.0;
+	output.ESS_RTE = 21.0;
+	output.ESS_aux_load = 22.0;
+	output.ESS_start_SoC = 23.0;
+	output.ESS_charge_mode = 24.0;
+	output.ESS_discharge_mode = 25.0;
+
+	return output;
+}
+
+int Optimiser::determineWorkerCount()
+{
+	// interrogate the hardware to find number of logical cores, base concurrency loop on that
+	int numWorkers = std::thread::hardware_concurrency();
+
+	if (numWorkers == 0) {
+		std::cerr << "Unable to determine the number of logical cores." << std::endl;
+		throw std::exception();
+	}
+
+	std::cout << "Number of logical cores found is " << numWorkers << std::endl;
+	return numWorkers;
 }
 
 
@@ -1103,4 +925,67 @@ CustomDataTable Optimiser::SumDataTable(const CustomDataTable& dataTable) {
 	}
 
 	return result;
+}
+
+void Optimiser::findBestResults(const std::vector<SimulationResult>& allResults, OutputValues& output) {
+
+	// CAPEX
+	auto it1 = std::min_element(allResults.begin(), allResults.end(),
+		[](const SimulationResult& a, const SimulationResult& b) {
+			return a.TS_project_CAPEX < b.TS_project_CAPEX;
+		});
+	output.CAPEX = it1->TS_project_CAPEX;
+	output.CAPEX_index = it1->paramIndex;
+
+	// Annualised cost
+	auto it2 = std::min_element(allResults.begin(), allResults.end(),
+		[](const SimulationResult& a, const SimulationResult& b) {
+			return a.total_annualised_cost < b.total_annualised_cost;
+		});
+	output.annualised = it2->total_annualised_cost;
+	output.annualised_index = it2->paramIndex;
+
+	// Scenario Balance(£)
+	auto it3 = std::max_element(allResults.begin(), allResults.end(),
+		[](const SimulationResult& a, const SimulationResult& b) {
+			return a.TS_scenario_cost_balance < b.TS_scenario_cost_balance;
+		});
+	output.scenario_cost_balance = it3->TS_scenario_cost_balance;
+	output.scenario_cost_balance_index = it3->paramIndex;
+
+	// Payback horizon (yrs)
+	auto it4 = std::min_element(allResults.begin(), allResults.end(),
+		[](const SimulationResult& a, const SimulationResult& b) {
+			return a.TS_payback_horizon_years < b.TS_payback_horizon_years;
+		});
+	output.payback_horizon = it4->TS_payback_horizon_years;
+	output.payback_horizon_index = it4->paramIndex;
+
+	// Scenario Carbon Balance (kgC02e)
+	auto it5 = std::max_element(allResults.begin(), allResults.end(),
+		[](const SimulationResult& a, const SimulationResult& b) {
+			return a.TS_scenario_carbon_balance < b.TS_scenario_carbon_balance;
+		});
+	output.scenario_carbon_balance = it5->TS_scenario_carbon_balance;
+	output.scenario_carbon_balance_index = it5->paramIndex;
+}
+
+void Optimiser::resetTimeProfiler()
+{
+	mTimeProfile = TimeProfile{};
+}
+
+
+void Optimiser::addTimeToProfiler(float timeTaken)
+{
+	// For truly correct behaviour, a synchronization mechanism is needed
+	// but we don't actually care if this is 100% accurate
+	mTimeProfile.totalTime += timeTaken;
+	if (timeTaken < mTimeProfile.minTime) {
+		mTimeProfile.minTime = timeTaken;
+	}
+	if (timeTaken > mTimeProfile.maxTime) {
+		mTimeProfile.maxTime = timeTaken;
+	}
+	mTimeProfile.count++;
 }

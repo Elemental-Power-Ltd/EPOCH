@@ -450,12 +450,11 @@ CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pai
 		{"Total_scaled_target_load", Total_load_vect},
 		{"Total load minus Rgen (ESUM)", ESUM_vect},
 		{"ESS_available_discharge_power", ESS_available_discharge_power_vect},
-		{"ESS_available_charge_power ", ESS_available_charge_power_vect},
-		{"TS_ESS_Rgen_only_charge_vect ", TS_ESS_Rgen_only_charge_vect},
-		{"TS_ESS_discharge_vect ", TS_ESS_discharge_vect},
-		{"TS_ESS_charge_vect ", TS_ESS_charge_vect},
-		{"TS_ESS_Rgen_only_charge ", TS_ESS_Rgen_only_charge_vect},
-		{"TS_ESS_resulting_SoC ", TS_ESS_resulting_SoC_vect},
+		{"ESS_available_charge_power", ESS_available_charge_power_vect},
+		{"TS_ESS_Rgen_only_charge_vect", TS_ESS_Rgen_only_charge_vect},
+		{"TS_ESS_discharge_vect", TS_ESS_discharge_vect},
+		{"TS_ESS_charge_vect", TS_ESS_charge_vect},
+		{"TS_ESS_resulting_SoC", TS_ESS_resulting_SoC_vect},
 		{"Pre_grid_balance", TS_Pre_grid_balance_vect},
 		{"Grid Import", TS_Grid_Import_vect},
 		{"Grid Export", TS_Grid_Export_vect},
@@ -471,6 +470,7 @@ CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pai
 		{"Electrical load scaled heat", Electrical_load_scaled_heat_yield_vect},
 		{"Heat shortfall", TS_Heat_shortfall_vect},
 		{"Heat surplus", TS_Heat_surplus_vect},
+
 		{"Calculative execution time (s)", runtime_vect},
 		{"Parameter index", paramIndex_vect},
 		{"Annualised cost", total_annualised_cost_vect},
@@ -491,6 +491,59 @@ CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pai
 	//return sumDataColumns;
 }
 
+SimulationResult simulateScenarioAndSum(CustomDataTable inputdata, std::vector<std::pair<std::string, float>> paramSlice)
+{
+	const auto& table = simulateScenario(inputdata, paramSlice);
+
+	SimulationResult dataSum;
+	
+	// Commented out for performance as we only need the values at the bottom (for now)
+	//dataSum.Rgen_total = vec2sum(table, "Scaled RGen_total");
+	//dataSum.Total_load = vec2sum(table, "Total_scaled_target_load");
+	//dataSum.ESUM = vec2sum(table, "Total load minus Rgen (ESUM)");
+	//dataSum.ESS_available_discharge_power = vec2sum(table, "ESS_available_discharge_power");
+	//dataSum.ESS_available_charge_power = vec2sum(table, "ESS_available_charge_power");
+	//dataSum.TS_ESS_Rgen_only_charge = vec2sum(table, "TS_ESS_Rgen_only_charge_vect");
+	//dataSum.TS_ESS_discharge = vec2sum(table, "TS_ESS_discharge_vect");
+	//dataSum.TS_ESS_charge = vec2sum(table, "TS_ESS_charge_vect");
+	//dataSum.TS_ESS_resulting_SoC = vec2sum(table, "TS_ESS_resulting_SoC");
+	//dataSum.TS_Pre_grid_balance = vec2sum(table, "Pre_grid_balance");
+	//dataSum.TS_Grid_Import = vec2sum(table, "Grid Import");
+	//dataSum.TS_Grid_Export = vec2sum(table, "Grid Export");
+	//dataSum.TS_Post_grid_balance = vec2sum(table, "Post_grid_balance");
+	//dataSum.TS_Pre_flex_import_shortfall = vec2sum(table, "Pre_flex_import_shortfall");
+	//dataSum.TS_Pre_Mop_curtailed_export = vec2sum(table, "Pre_mop_curtailed Export");
+	//dataSum.TS_Actual_import_shortfall = vec2sum(table, "Actual import shortfall");
+	//dataSum.TS_Actual_curtailed_export = vec2sum(table, "Actual curtailed export");
+	//dataSum.TS_Actual_high_priority_load = vec2sum(table, "Actual high priority load");
+	//dataSum.TS_Actual_low_priority_load = vec2sum(table, "Actual low priority load");
+	//dataSum.heatload = vec2sum(table, "Heat load");
+	//dataSum.scaled_heatload = vec2sum(table, "Scaled Heat load");
+	//dataSum.Electrical_load_scaled_heat_yield = vec2sum(table, "Electrical load scaled heat");
+	//dataSum.TS_Heat_shortfall = vec2sum(table, "Heat shortfall");
+	//dataSum.TS_Heat_surplus = vec2sum(table, "Heat surplus");
+
+	dataSum.runtime = vec2first(table, "Calculative execution time (s)");
+	dataSum.paramIndex = vec2first(table, "Parameter index");
+	dataSum.total_annualised_cost = vec2first(table, "Annualised cost");
+	dataSum.TS_project_CAPEX = vec2first(table, "Project CAPEX");
+	dataSum.TS_scenario_cost_balance = vec2first(table, "Scenario Balance (£)");
+	dataSum.TS_payback_horizon_years = vec2first(table, "Payback horizon (yrs)");
+	dataSum.TS_scenario_carbon_balance = vec2first(table, "Scenario Carbon Balance (kgC02e)");
+
+	return dataSum;
+}
+
+float vec2sum(CustomDataTable table, std::string key) {
+	const std::vector<float> vec = getDataForKey(table, key);
+	return std::accumulate(vec.begin(), vec.end(), 0.0f);
+}
+
+float vec2first(CustomDataTable table, std::string key) {
+	const std::vector<float> vec = getDataForKey(table, key);
+	return vec[0];
+}
+
 
 std::vector<float> getDataForKey(const CustomDataTable& table, const std::string& key) {
 	for (const auto& entry : table) {
@@ -498,6 +551,5 @@ std::vector<float> getDataForKey(const CustomDataTable& table, const std::string
 			return entry.second;
 		}
 	}
-	// Return an empty vector if key not found
-	return {};
+	throw std::exception{};
 }

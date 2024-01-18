@@ -9,6 +9,41 @@
 
 using CustomDataTable = std::vector<std::pair<std::string, std::vector<float>>>;
 
+struct SimulationResult {
+	float Rgen_total;
+	float Total_load;
+	float ESUM;
+	float ESS_available_discharge_power;
+	float ESS_available_charge_power;
+	float TS_ESS_Rgen_only_charge;
+	float TS_ESS_discharge;
+	float TS_ESS_charge;
+	float TS_ESS_resulting_SoC;
+	float TS_Pre_grid_balance;
+	float TS_Grid_Import;
+	float TS_Grid_Export;
+	float TS_Post_grid_balance;
+	float TS_Pre_flex_import_shortfall;
+	float TS_Pre_Mop_curtailed_export;
+	float TS_Actual_import_shortfall;
+	float TS_Actual_curtailed_export;
+	float TS_Actual_high_priority_load;
+	float TS_Actual_low_priority_load;
+	float heatload;
+	float scaled_heatload;
+	float Electrical_load_scaled_heat_yield;
+	float TS_Heat_shortfall;
+	float TS_Heat_surplus;
+	float runtime;
+	float paramIndex;
+	float total_annualised_cost;
+	float TS_project_CAPEX;
+	float TS_scenario_cost_balance;
+	float TS_payback_horizon_years;
+	float TS_scenario_carbon_balance;
+};
+
+
 struct OutputValues {
 	float maxVal;
 	float minVal;
