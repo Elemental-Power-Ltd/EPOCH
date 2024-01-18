@@ -25,7 +25,7 @@ OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 	return doOptimisation(inputJson, true);
 }
 
-CustomDataTable Optimiser::readHistoricalData() {
+HistoricalData Optimiser::readHistoricalData() {
 
 	std::filesystem::path eloadFilepath = mFileConfig.getEloadFilepath();
 
@@ -45,13 +45,13 @@ CustomDataTable Optimiser::readHistoricalData() {
 	std::vector<float> RGen_data_4 = readCSVColumn(rgenFilepath, 7);
 
 	return {
-	   {"hotel_eload_data", hotel_eload_data},
-	   {"ev_eload_data", ev_eload_data},
-	   {"heatload_data", heatload_data},
-	   {"RGen_data_1", RGen_data_1 },
-	   {"RGen_data_2", RGen_data_2},
-	   {"RGen_data_3", RGen_data_3},
-	   {"RGen_data_4", RGen_data_4}
+	   hotel_eload_data,
+	   ev_eload_data,
+	   heatload_data,
+	   RGen_data_1,
+	   RGen_data_2,
+	   RGen_data_3,
+	   RGen_data_4
 	};
 }
 
@@ -635,7 +635,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	resetTimeProfiler();
 
 	auto paramGrid = makeParamGrid(inputJson);
-	CustomDataTable inputData = readHistoricalData();
+	HistoricalData inputData = readHistoricalData();
 
 	int numWorkers = determineWorkerCount();
 

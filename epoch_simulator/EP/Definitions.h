@@ -96,6 +96,16 @@ struct InputValues {
 	float CAPEX_limit; float OPEX_limit;
 };
 
+struct HistoricalData {
+	std::vector<float> hotel_eload_data;
+	std::vector<float> ev_eload_data;
+	std::vector<float> heatload_data;
+	std::vector<float> RGen_data_1;
+	std::vector<float> RGen_data_2;
+	std::vector<float> RGen_data_3;
+	std::vector<float> RGen_data_4;
+};
+
 // temporarily store the defaults as a constexpr struct
 // ultimately the defaults should be read from a file
 constexpr InputValues defaultInput = {

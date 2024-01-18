@@ -11,7 +11,7 @@
 #include "Costs.h"
 
 
-CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pair<std::string, float>> paramSlice)
+CustomDataTable simulateScenario(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice)
 {
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
@@ -39,21 +39,13 @@ CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pai
 
 	Eload MountEload(myConfig.getESS_aux_load()); //create a Eload object called Mount_eload and pass the total ESS aux_load to it
 
-	std::vector<float> hotel_eload_data = getDataForKey(inputdata, "hotel_eload_data");
-	std::vector<float> ev_eload_data = getDataForKey(inputdata, "ev_eload_data");
-	std::vector<float> heatload_data = getDataForKey(inputdata, "heatload_data");
-	std::vector<float> RGen_data_1 = getDataForKey(inputdata, "RGen_data_1");
-	std::vector<float> RGen_data_2 = getDataForKey(inputdata, "RGen_data_2");
-	std::vector<float> RGen_data_3 = getDataForKey(inputdata, "RGen_data_3");
-	std::vector<float> RGen_data_4 = getDataForKey(inputdata, "RGen_data_4");
-
 	year_TS hotel_eload(hours);
-	hotel_eload.setTSvalues(hotel_eload_data);
+	hotel_eload.setTSvalues(historicalData.hotel_eload_data);
 	hotel_eload.scaleTSvalues(myConfig.getFixed_load1_scalar()); // scale the data
 	MountEload.writeTS_Fix_load_1(hotel_eload); // set the values with the imported hotel load data
 
 	year_TS ev_eload(hours);
-	ev_eload.setTSvalues(ev_eload_data);
+	ev_eload.setTSvalues(historicalData.ev_eload_data);
 	ev_eload.scaleTSvalues(myConfig.getFixed_load2_scalar());
 	MountEload.writeTS_Fix_load_2(ev_eload); // set the values with the imported hotel load data
 	MountEload.calculateTS_ESS_aux_load(); // calculate ESS aux load 
@@ -63,9 +55,12 @@ CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pai
 	//fixed_eload = MountEload.getTS_Total_fix_load(); // create a new timeseries of total fixed load
 
 	// check the Rgen data is all of the same size.
-	if (RGen_data_1.size() != RGen_data_2.size() || RGen_data_1.size() != RGen_data_3.size() || RGen_data_1.size() != RGen_data_4.size()) {
+	if (historicalData.RGen_data_1.size() != historicalData.RGen_data_2.size() ||
+		historicalData.RGen_data_1.size() != historicalData.RGen_data_3.size() ||
+		historicalData.RGen_data_1.size() != historicalData.RGen_data_4.size()
+		) {
 		std::cerr << "R_Gen vectors are not of the same size!" << std::endl;
-		return initial_alocation;
+		throw std::exception();
 	}
 
 	RGen MountRGen; // Create RGen object called MountRGen 
@@ -75,19 +70,19 @@ CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pai
 	year_TS RGen_3(hours);
 	year_TS RGen_4(hours);
 
-	RGen_1.setTSvalues(RGen_data_1); // set the values with the imported RGen data
+	RGen_1.setTSvalues(historicalData.RGen_data_1); // set the values with the imported RGen data
 	RGen_1.scaleTSvalues(myConfig.getScalarRG1()); // scale RGen with ScalarRG1 in config
 	MountRGen.writeTS_RGen_1(RGen_1); //send scaled values to RGen1
 
-	RGen_2.setTSvalues(RGen_data_2);
+	RGen_2.setTSvalues(historicalData.RGen_data_2);
 	RGen_2.scaleTSvalues(myConfig.getScalarRG2());
 	MountRGen.writeTS_RGen_2(RGen_2);
 
-	RGen_3.setTSvalues(RGen_data_3);
+	RGen_3.setTSvalues(historicalData.RGen_data_3);
 	RGen_3.scaleTSvalues(myConfig.getScalarRG3());
 	MountRGen.writeTS_RGen_3(RGen_3);
 
-	RGen_4.setTSvalues(RGen_data_4);
+	RGen_4.setTSvalues(historicalData.RGen_data_4);
 	RGen_4.scaleTSvalues(myConfig.getScalarRG4());
 	MountRGen.writeTS_RGen_4(RGen_4); //send scaled values to RGen2
 
@@ -219,7 +214,7 @@ CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pai
 	//Heat load: HSUM tab
 	Hload MountHload;
 
-	MountHload.writeTS_Heatload(heatload_data);
+	MountHload.writeTS_Heatload(historicalData.heatload_data);
 
 	std::vector<float> heatload_vect = MountHload.getTS_Heatload().getData();
 
@@ -491,9 +486,9 @@ CustomDataTable simulateScenario(CustomDataTable inputdata, std::vector<std::pai
 	//return sumDataColumns;
 }
 
-SimulationResult simulateScenarioAndSum(CustomDataTable inputdata, std::vector<std::pair<std::string, float>> paramSlice)
+SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice)
 {
-	const auto& table = simulateScenario(inputdata, paramSlice);
+	const auto& table = simulateScenario(historicalData, paramSlice);
 
 	SimulationResult dataSum;
 	
