@@ -7,8 +7,6 @@
 // Elemental Power definitions
 
 
-using CustomDataTable = std::vector<std::pair<std::string, std::vector<float>>>;
-
 struct SimulationResult {
 	float Rgen_total;
 	float Total_load;
@@ -34,6 +32,41 @@ struct SimulationResult {
 	float Electrical_load_scaled_heat_yield;
 	float TS_Heat_shortfall;
 	float TS_Heat_surplus;
+	float runtime;
+	float paramIndex;
+	float total_annualised_cost;
+	float TS_project_CAPEX;
+	float TS_scenario_cost_balance;
+	float TS_payback_horizon_years;
+	float TS_scenario_carbon_balance;
+};
+
+struct FullSimulationResult {
+	std::vector<float> Rgen_total;
+	std::vector<float> Total_load;
+	std::vector<float> ESUM;
+	std::vector<float> ESS_available_discharge_power;
+	std::vector<float> ESS_available_charge_power;
+	std::vector<float> TS_ESS_Rgen_only_charge;
+	std::vector<float> TS_ESS_discharge;
+	std::vector<float> TS_ESS_charge;
+	std::vector<float> TS_ESS_resulting_SoC;
+	std::vector<float> TS_Pre_grid_balance;
+	std::vector<float> TS_Grid_Import;
+	std::vector<float> TS_Grid_Export;
+	std::vector<float> TS_Post_grid_balance;
+	std::vector<float> TS_Pre_flex_import_shortfall;
+	std::vector<float> TS_Pre_Mop_curtailed_export;
+	std::vector<float> TS_Actual_import_shortfall;
+	std::vector<float> TS_Actual_curtailed_export;
+	std::vector<float> TS_Actual_high_priority_load;
+	std::vector<float> TS_Actual_low_priority_load;
+	std::vector<float> heatload;
+	std::vector<float> scaled_heatload;
+	std::vector<float> Electrical_load_scaled_heat_yield;
+	std::vector<float> TS_Heat_shortfall;
+	std::vector<float> TS_Heat_surplus;
+
 	float runtime;
 	float paramIndex;
 	float total_annualised_cost;

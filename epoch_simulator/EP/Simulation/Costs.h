@@ -483,8 +483,6 @@ public:
 		float Project_cost_grid = Grid_CAPEX * project_plan_develop_Grid;
 		project_CAPEX = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX + Project_cost + Project_cost_grid);
 
-		TS_project_CAPEX.setValue(0, project_CAPEX);
-
 		return;
 	}
 
@@ -572,18 +570,12 @@ public:
 	void calculate_scenario_cost_balance(float Project_annualised_cost)
 	{
 		scenario_cost_balance = (baseline_elec_cost + baseline_fuel_cost) - (scenario_import_cost + scenario_fuel_cost + scenario_export_cost + Project_annualised_cost);
-
-		TS_scenario_cost_balance.setValue(0, scenario_cost_balance);
-
 		return;
 	};
 
 	void calculate_payback_horizon()
 	{
 		payback_horizon_years = project_CAPEX / scenario_cost_balance;
-
-		TS_payback_horizon_years.setValue(0, payback_horizon_years);
-
 		return;
 	};
 
@@ -638,37 +630,29 @@ public:
 
 	void calculate_scenario_carbon_balance()
 	{
-		float scenario_balance = (baseline_elec_CO2e + baseline_fuel_CO2e) - (scenario_elec_CO2e + scenario_fuel_CO2e + scenario_export_CO2e);
-
-		TS_scenario_carbon_balance.setValue(0, scenario_balance);
-
+		scenario_carbon_balance = (baseline_elec_CO2e + baseline_fuel_CO2e) - (scenario_elec_CO2e + scenario_fuel_CO2e + scenario_export_CO2e);
 		return;
 	};
 
-	//Accessor member functions for TS_year
-	year_TS getTS_annualised_cost()
+
+	float get_project_CAPEX()
 	{
-		return TS_annualised_cost;
+		return project_CAPEX;
 	}
 
-	year_TS getTS_project_CAPEX()
+	float get_scenario_cost_balance()
 	{
-		return TS_project_CAPEX;
+		return scenario_cost_balance;
 	}
 
-	year_TS getTS_scenario_cost_balance()
+	float get_payback_horizon_years()
 	{
-		return TS_scenario_cost_balance;
+		return payback_horizon_years;
 	}
 
-	year_TS getTS_payback_horizon_years()
+	float get_scenario_carbon_balance()
 	{
-		return TS_payback_horizon_years;
-	}
-
-	year_TS getTS_scenario_carbon_balance()
-	{
-		return TS_scenario_carbon_balance;
+		return scenario_carbon_balance;
 	}
 
 	// "hard wired" constants for the moment
@@ -714,12 +698,6 @@ public:
 		float scenario_fuel_CO2e;
 		float scenario_export_CO2e;
 
-		// time series for output
-		year_TS TS_annualised_cost;
-		year_TS TS_project_CAPEX;
-		year_TS TS_scenario_cost_balance;
-		year_TS TS_payback_horizon_years;
-		year_TS TS_scenario_carbon_balance;
-
+		float scenario_carbon_balance;
 };
 

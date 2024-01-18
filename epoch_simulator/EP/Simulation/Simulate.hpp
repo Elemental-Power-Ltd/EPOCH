@@ -6,11 +6,8 @@
 #include "../Definitions.h"
 
 
-CustomDataTable simulateScenario(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice);
+FullSimulationResult simulateScenario(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice);
 
 SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice);
 
-std::vector<float> getDataForKey(const CustomDataTable& table, const std::string& key);
-
-float vec2sum(CustomDataTable table, std::string key);
-float vec2first(CustomDataTable table, std::string key);
+float sumVector(const std::vector<float>& v);

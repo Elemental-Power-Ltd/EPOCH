@@ -11,14 +11,10 @@
 #include "Costs.h"
 
 
-CustomDataTable simulateScenario(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice)
+FullSimulationResult simulateScenario(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice)
 {
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
-
-	CustomDataTable initial_alocation;
-
-	initial_alocation.push_back({ "place holder", {0.0f, 0.0f, 0.0f} });
 
 	Config myConfig; // initialise a config object with default data
 
@@ -278,19 +274,13 @@ CustomDataTable simulateScenario(const HistoricalData& historicalData, std::vect
 	std::vector<float> TS_Heat_shortfall_vect = MountHload.getTS_Heat_shortfall().getData();
 	std::vector<float> TS_Heat_surplus_vect = MountHload.getTS_Heat_surplus().getData();
 
-	year_TS Runtime;
-	//std::chrono::duration<double> double = elapsed.count();
-
 	// Get parameter index
-	year_TS paramIndex;
-	float paramIndex_float;
+	float paramIndex;
 	for (const auto& kv : paramSlice) {
 		if (kv.first == "Parameter index") {
-			paramIndex_float = static_cast<float>(kv.second);
+			paramIndex = kv.second;
 		}
 	}
-	paramIndex.setValue(0, paramIndex_float);
-	std::vector<float> paramIndex_vect = paramIndex.getData();
 
 	//  Calculate infrastructure costs section
 	Costs myCost;
@@ -406,145 +396,96 @@ CustomDataTable simulateScenario(const HistoricalData& historicalData, std::vect
 	/*WRITE DATA SECTION - AFTER PROFILING CLOCK STOPPED*/
 
 	//End profiling
+
+	// calculate elaspsed run time
 	auto end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> elapsed = end - start;  // calculate elaspsed run time
+	std::chrono::duration<double> elapsed = end - start;
+	float runtime = static_cast<float>(elapsed.count());
+
 	std::cout << "Runtime: " << elapsed.count() << " seconds" << std::endl; // print elapsed run time
-	float runtime_float = static_cast<float>(elapsed.count());
-	Runtime.setValue(0, runtime_float);
-	std::vector<float> runtime_vect = Runtime.getData();
 
-	// USE ACCESSOR FUNCTIONS TO GET THE COST OUTPUTS FROM Costs.h
+	FullSimulationResult fullSimulationResult;
 
-	year_TS Annualised_cost;
-	Annualised_cost.setValue(0, total_annualised_cost);
-	std::vector<float> total_annualised_cost_vect = Annualised_cost.getData();
-	//std::vector<float> TS_annualised_cost = myCost.getTS_annualised_cost().getData();
+	fullSimulationResult.Rgen_total = RGen_total_vect;
+	fullSimulationResult.Total_load = Total_load_vect;
+	fullSimulationResult.ESUM = ESUM_vect;
+	fullSimulationResult.ESS_available_discharge_power = ESS_available_discharge_power_vect;
+	fullSimulationResult.ESS_available_charge_power = ESS_available_charge_power_vect;
+	fullSimulationResult.TS_ESS_Rgen_only_charge = TS_ESS_Rgen_only_charge_vect;
+	fullSimulationResult.TS_ESS_discharge = TS_ESS_discharge_vect;
+	fullSimulationResult.TS_ESS_charge = TS_ESS_charge_vect;
+	fullSimulationResult.TS_ESS_resulting_SoC = TS_ESS_resulting_SoC_vect;
+	fullSimulationResult.TS_Pre_grid_balance = TS_Pre_grid_balance_vect;
+	fullSimulationResult.TS_Grid_Import = TS_Grid_Import_vect;
+	fullSimulationResult.TS_Grid_Export = TS_Grid_Export_vect;
+	fullSimulationResult.TS_Post_grid_balance = TS_Post_grid_balance_vect;
+	fullSimulationResult.TS_Pre_flex_import_shortfall = TS_Pre_flex_import_shortfall_vect;
+	fullSimulationResult.TS_Pre_Mop_curtailed_export = TS_Pre_Mop_curtailed_export_vect;
+	fullSimulationResult.TS_Actual_import_shortfall = TS_Actual_import_shortfall_vect;
+	fullSimulationResult.TS_Actual_curtailed_export = TS_Actual_curtailed_export_vect;
+	fullSimulationResult.TS_Actual_high_priority_load = TS_Actual_high_priority_load_vect;
+	fullSimulationResult.TS_Actual_low_priority_load = TS_Actual_low_priority_load_vect;
+	fullSimulationResult.heatload = heatload_vect;
+	fullSimulationResult.scaled_heatload = scaled_heatload_vect;
+	fullSimulationResult.Electrical_load_scaled_heat_yield = Electrical_load_scaled_heat_yield_vect;
+	fullSimulationResult.TS_Heat_shortfall = TS_Heat_shortfall_vect;
+	fullSimulationResult.TS_Heat_surplus = TS_Heat_surplus_vect;
 
-	//year_TS Project_CAPEX;
-	//Project_CAPEX.setValue(0, project_CAPEX);
-	//std::vector<float> Project_CAPEX_vect = Project_CAPEX.getData();
-	std::vector<float> TS_project_CAPEX = myCost.getTS_project_CAPEX().getData();
+	fullSimulationResult.runtime = runtime;
+	fullSimulationResult.paramIndex = paramIndex;
+	fullSimulationResult.total_annualised_cost = total_annualised_cost;
+	fullSimulationResult.TS_project_CAPEX = myCost.get_project_CAPEX();
+	fullSimulationResult.TS_scenario_cost_balance = myCost.get_scenario_cost_balance();
+	fullSimulationResult.TS_payback_horizon_years = myCost.get_payback_horizon_years();
+	fullSimulationResult.TS_scenario_carbon_balance = myCost.get_scenario_carbon_balance();
 
-	//year_TS Scenario_cost_balance;
-	//Scenario_cost_balance.setValue(0, scenario_cost_balance);
-	//std::vector<float> Scenario_cost_balance_vect = Scenario_cost_balance.getData();
-	std::vector<float> TS_scenario_cost_balance = myCost.getTS_scenario_cost_balance().getData();
+	return fullSimulationResult;
 
-	//year_TS Payback_horizon_years;
-	//Payback_horizon_years.setValue(0, payback_horizon_years);
-	//std::vector<float> Payback_horizon_years_vect = Payback_horizon_years.getData();
-	std::vector<float> TS_payback_horizon_years = myCost.getTS_payback_horizon_years().getData();
-
-	//year_TS Scenario_carbon_balance;
-	//Scenario_carbon_balance.setValue(0, scenario_carbon_balance); 
-	//std::vector<float> Scenario_carbon_balance_vect = Scenario_carbon_balance.getData();
-	std::vector<float> TS_scenario_carbon_balance = myCost.getTS_scenario_carbon_balance().getData();
-
-	CustomDataTable dataColumns = {
-		{"Scaled RGen_total", RGen_total_vect},
-		{"Total_scaled_target_load", Total_load_vect},
-		{"Total load minus Rgen (ESUM)", ESUM_vect},
-		{"ESS_available_discharge_power", ESS_available_discharge_power_vect},
-		{"ESS_available_charge_power", ESS_available_charge_power_vect},
-		{"TS_ESS_Rgen_only_charge_vect", TS_ESS_Rgen_only_charge_vect},
-		{"TS_ESS_discharge_vect", TS_ESS_discharge_vect},
-		{"TS_ESS_charge_vect", TS_ESS_charge_vect},
-		{"TS_ESS_resulting_SoC", TS_ESS_resulting_SoC_vect},
-		{"Pre_grid_balance", TS_Pre_grid_balance_vect},
-		{"Grid Import", TS_Grid_Import_vect},
-		{"Grid Export", TS_Grid_Export_vect},
-		{"Post_grid_balance", TS_Post_grid_balance_vect},
-		{"Pre_flex_import_shortfall", TS_Pre_flex_import_shortfall_vect},
-		{"Pre_mop_curtailed Export", TS_Pre_Mop_curtailed_export_vect},
-		{"Actual import shortfall", TS_Actual_import_shortfall_vect},
-		{"Actual curtailed export", TS_Actual_curtailed_export_vect},
-		{"Actual high priority load", TS_Actual_high_priority_load_vect},
-		{"Actual low priority load", TS_Actual_low_priority_load_vect},
-		{"Heat load", heatload_vect},
-		{"Scaled Heat load", scaled_heatload_vect},
-		{"Electrical load scaled heat", Electrical_load_scaled_heat_yield_vect},
-		{"Heat shortfall", TS_Heat_shortfall_vect},
-		{"Heat surplus", TS_Heat_surplus_vect},
-
-		{"Calculative execution time (s)", runtime_vect},
-		{"Parameter index", paramIndex_vect},
-		{"Annualised cost", total_annualised_cost_vect},
-		{"Project CAPEX", TS_project_CAPEX},
-		{"Scenario Balance (£)", TS_scenario_cost_balance},
-		{"Payback horizon (yrs)", TS_payback_horizon_years},
-		{"Scenario Carbon Balance (kgC02e)", TS_scenario_carbon_balance}
-	};
-
-	//CustomDataTable sumDataColumns;
-
-	//appendSumToDataTable(sumDataColumns, dataColumns);
-
-	//sumDataColumns = SumDataTable(dataColumns);
-
-	return dataColumns;
-
-	//return sumDataColumns;
 }
 
 SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice)
 {
-	const auto& table = simulateScenario(historicalData, paramSlice);
+	const FullSimulationResult& fullSimulationResult = simulateScenario(historicalData, paramSlice);
 
-	SimulationResult dataSum;
+	SimulationResult simResult;
 	
 	// Commented out for performance as we only need the values at the bottom (for now)
-	//dataSum.Rgen_total = vec2sum(table, "Scaled RGen_total");
-	//dataSum.Total_load = vec2sum(table, "Total_scaled_target_load");
-	//dataSum.ESUM = vec2sum(table, "Total load minus Rgen (ESUM)");
-	//dataSum.ESS_available_discharge_power = vec2sum(table, "ESS_available_discharge_power");
-	//dataSum.ESS_available_charge_power = vec2sum(table, "ESS_available_charge_power");
-	//dataSum.TS_ESS_Rgen_only_charge = vec2sum(table, "TS_ESS_Rgen_only_charge_vect");
-	//dataSum.TS_ESS_discharge = vec2sum(table, "TS_ESS_discharge_vect");
-	//dataSum.TS_ESS_charge = vec2sum(table, "TS_ESS_charge_vect");
-	//dataSum.TS_ESS_resulting_SoC = vec2sum(table, "TS_ESS_resulting_SoC");
-	//dataSum.TS_Pre_grid_balance = vec2sum(table, "Pre_grid_balance");
-	//dataSum.TS_Grid_Import = vec2sum(table, "Grid Import");
-	//dataSum.TS_Grid_Export = vec2sum(table, "Grid Export");
-	//dataSum.TS_Post_grid_balance = vec2sum(table, "Post_grid_balance");
-	//dataSum.TS_Pre_flex_import_shortfall = vec2sum(table, "Pre_flex_import_shortfall");
-	//dataSum.TS_Pre_Mop_curtailed_export = vec2sum(table, "Pre_mop_curtailed Export");
-	//dataSum.TS_Actual_import_shortfall = vec2sum(table, "Actual import shortfall");
-	//dataSum.TS_Actual_curtailed_export = vec2sum(table, "Actual curtailed export");
-	//dataSum.TS_Actual_high_priority_load = vec2sum(table, "Actual high priority load");
-	//dataSum.TS_Actual_low_priority_load = vec2sum(table, "Actual low priority load");
-	//dataSum.heatload = vec2sum(table, "Heat load");
-	//dataSum.scaled_heatload = vec2sum(table, "Scaled Heat load");
-	//dataSum.Electrical_load_scaled_heat_yield = vec2sum(table, "Electrical load scaled heat");
-	//dataSum.TS_Heat_shortfall = vec2sum(table, "Heat shortfall");
-	//dataSum.TS_Heat_surplus = vec2sum(table, "Heat surplus");
+	//simResult.Rgen_total = sumVector(fullSimulationResult.Rgen_total);
+	//simResult.Total_load = sumVector(fullSimulationResult.Total_load);
+	//simResult.ESUM = sumVector(fullSimulationResult.ESUM);
+	//simResult.ESS_available_discharge_power = sumVector(fullSimulationResult.ESS_available_discharge_power);
+	//simResult.ESS_available_charge_power = sumVector(fullSimulationResult.ESS_available_charge_power);
+	//simResult.TS_ESS_Rgen_only_charge = sumVector(fullSimulationResult.TS_ESS_Rgen_only_charge);
+	//simResult.TS_ESS_discharge = sumVector(fullSimulationResult.TS_ESS_discharge);
+	//simResult.TS_ESS_charge = sumVector(fullSimulationResult.TS_ESS_charge);
+	//simResult.TS_ESS_resulting_SoC = sumVector(fullSimulationResult.TS_ESS_resulting_SoC);
+	//simResult.TS_Pre_grid_balance = sumVector(fullSimulationResult.TS_Pre_grid_balance);
+	//simResult.TS_Grid_Import = sumVector(fullSimulationResult.TS_Grid_Import);
+	//simResult.TS_Grid_Export = sumVector(fullSimulationResult.TS_Grid_Export);
+	//simResult.TS_Post_grid_balance = sumVector(fullSimulationResult.TS_Post_grid_balance);
+	//simResult.TS_Pre_flex_import_shortfall = sumVector(fullSimulationResult.TS_Pre_flex_import_shortfall);
+	//simResult.TS_Pre_Mop_curtailed_export = sumVector(fullSimulationResult.TS_Pre_Mop_curtailed_export);
+	//simResult.TS_Actual_import_shortfall = sumVector(fullSimulationResult.TS_Actual_import_shortfall);
+	//simResult.TS_Actual_curtailed_export = sumVector(fullSimulationResult.TS_Actual_curtailed_export);
+	//simResult.TS_Actual_high_priority_load = sumVector(fullSimulationResult.TS_Actual_high_priority_load);
+	//simResult.TS_Actual_low_priority_load = sumVector(fullSimulationResult.TS_Actual_low_priority_load);
+	//simResult.heatload = sumVector(fullSimulationResult.heatload);
+	//simResult.scaled_heatload = sumVector(fullSimulationResult.scaled_heatload);
+	//simResult.Electrical_load_scaled_heat_yield = sumVector(fullSimulationResult.Electrical_load_scaled_heat_yield);
+	//simResult.TS_Heat_shortfall = sumVector(fullSimulationResult.TS_Heat_shortfall);
+	//simResult.TS_Heat_surplus = sumVector(fullSimulationResult.TS_Heat_surplus);
 
-	dataSum.runtime = vec2first(table, "Calculative execution time (s)");
-	dataSum.paramIndex = vec2first(table, "Parameter index");
-	dataSum.total_annualised_cost = vec2first(table, "Annualised cost");
-	dataSum.TS_project_CAPEX = vec2first(table, "Project CAPEX");
-	dataSum.TS_scenario_cost_balance = vec2first(table, "Scenario Balance (£)");
-	dataSum.TS_payback_horizon_years = vec2first(table, "Payback horizon (yrs)");
-	dataSum.TS_scenario_carbon_balance = vec2first(table, "Scenario Carbon Balance (kgC02e)");
+	simResult.runtime = fullSimulationResult.runtime;
+	simResult.paramIndex = fullSimulationResult.paramIndex;
+	simResult.total_annualised_cost = fullSimulationResult.total_annualised_cost;
+	simResult.TS_project_CAPEX = fullSimulationResult.TS_project_CAPEX;
+	simResult.TS_scenario_cost_balance = fullSimulationResult.TS_scenario_cost_balance;
+	simResult.TS_payback_horizon_years = fullSimulationResult.TS_payback_horizon_years;
+	simResult.TS_scenario_carbon_balance = fullSimulationResult.TS_scenario_carbon_balance;
 
-	return dataSum;
+	return simResult;
 }
 
-float vec2sum(CustomDataTable table, std::string key) {
-	const std::vector<float> vec = getDataForKey(table, key);
-	return std::accumulate(vec.begin(), vec.end(), 0.0f);
-}
-
-float vec2first(CustomDataTable table, std::string key) {
-	const std::vector<float> vec = getDataForKey(table, key);
-	return vec[0];
-}
-
-
-std::vector<float> getDataForKey(const CustomDataTable& table, const std::string& key) {
-	for (const auto& entry : table) {
-		if (entry.first == key) {
-			return entry.second;
-		}
-	}
-	throw std::exception{};
+float sumVector(const std::vector<float>& v) {
+	return std::accumulate(v.begin(), v.end(), 0.0f);
 }
