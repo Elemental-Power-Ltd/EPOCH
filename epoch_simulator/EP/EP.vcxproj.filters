@@ -63,6 +63,9 @@
     <ClInclude Include="dependencies\json.hpp">
       <Filter>Dependencies</Filter>
     </ClInclude>
+    <ClInclude Include="Optimisation\LeagueTable.h">
+      <Filter>Optimisation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Optimisation\Optimiser.cpp">
@@ -74,5 +77,6 @@
     <ClCompile Include="Simulation\Simulate.cpp">
       <Filter>Simulation</Filter>
     </ClCompile>
+    <ClCompile Include="Optimisation\LeagueTable.cpp" />
   </ItemGroup>
 </Project>

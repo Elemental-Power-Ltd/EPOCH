@@ -9,6 +9,7 @@
 #include "../io/FileConfig.h"
 #include "Threadsafe.h"
 #include "../Definitions.h"
+#include "LeagueTable.h"
 
 
 struct paramRange {
@@ -45,7 +46,7 @@ private:
 	OutputValues doOptimisation(nlohmann::json inputJson, bool initialisationOnly=false);
 	int determineWorkerCount();
 
-	void findBestResults(const std::vector<SimulationResult>& allResults, OutputValues& output);
+	void findBestResults(const LeagueTable& leagueTable, OutputValues& output);
 	void resetTimeProfiler();
 	void addTimeToProfiler(float timeTaken);
 

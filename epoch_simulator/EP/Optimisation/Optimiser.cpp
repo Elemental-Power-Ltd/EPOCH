@@ -2,7 +2,7 @@
 
 #include <mutex>
 
-
+#include "LeagueTable.h"
 #include "../io/FileHandling.hpp"
 #include "../Simulation/Simulate.hpp"
 
@@ -640,7 +640,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	int numWorkers = determineWorkerCount();
 
 	SafeQueue<std::vector<std::pair<std::string, float>>> taskQueue;
-	SafeQueue<SimulationResult> resultsQueue;
+	LeagueTable leagueTable = LeagueTable(CAPACITY_PER_LEAGUE_TABLE);
 
 	int numScenarios = generateTasks(paramGrid, taskQueue, initialisationOnly);
 	std::cout << "Total number of scenarios is: " << numScenarios << std::endl;
@@ -651,14 +651,15 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	int scenario_call = 1;
 
 	for (int i = 0; i < (numWorkers - 1); ++i) { //keep one worker back for the main thread - need to do A/B test on whether this is performant
-		workers.emplace_back([this, &taskQueue, &resultsQueue, &inputData, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
+		workers.emplace_back([this, &taskQueue, &leagueTable, &inputData, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
 			std::vector<std::pair<std::string, float>> paramSlice;
 			while (true) {
 				if (taskQueue.pop(paramSlice)) {
 					SimulationResult result = simulateScenarioAndSum(inputData, paramSlice);
 
 					// add running statistics here 
-					resultsQueue.push(result); // this pushes the result to the results queue. Need to only do this if it's a worthy result  
+					leagueTable.considerResult(result);
+
 					addTimeToProfiler(result.runtime);
 					{
 						std::lock_guard<std::mutex> lock(scenario_call_mutex);
@@ -690,13 +691,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	std::cout << "workers joined" << std::endl;
 
 	//// Retrieve and process results
-	SimulationResult result;
-	std::vector<SimulationResult> allResults{};
-	while (resultsQueue.pop(result)) {
-		allResults.emplace_back(result);
-	}
-
-	findBestResults(allResults, output);
+	findBestResults(leagueTable, output);
 
 	// Commented out until the CustomDataTable types are reworked
 	//std::filesystem::path outputFilepath = mFileConfig.getOutputCSVFilepath();
@@ -766,47 +761,32 @@ int Optimiser::determineWorkerCount()
 	return numWorkers;
 }
 
-void Optimiser::findBestResults(const std::vector<SimulationResult>& allResults, OutputValues& output) {
+void Optimiser::findBestResults(const LeagueTable& leagueTable, OutputValues& output) {
 
 	// CAPEX
-	auto it1 = std::min_element(allResults.begin(), allResults.end(),
-		[](const SimulationResult& a, const SimulationResult& b) {
-			return a.TS_project_CAPEX < b.TS_project_CAPEX;
-		});
-	output.CAPEX = it1->TS_project_CAPEX;
-	output.CAPEX_index = it1->paramIndex;
+	auto bestCapex = leagueTable.getBestCapex();
+	output.CAPEX = bestCapex.second;
+	output.CAPEX_index = bestCapex.first;
 
 	// Annualised cost
-	auto it2 = std::min_element(allResults.begin(), allResults.end(),
-		[](const SimulationResult& a, const SimulationResult& b) {
-			return a.total_annualised_cost < b.total_annualised_cost;
-		});
-	output.annualised = it2->total_annualised_cost;
-	output.annualised_index = it2->paramIndex;
+	auto bestAnnualisedCost = leagueTable.getBestAnnualisedCost();
+	output.annualised = bestAnnualisedCost.second;
+	output.annualised_index = bestAnnualisedCost.first;
 
 	// Scenario Balance(£)
-	auto it3 = std::max_element(allResults.begin(), allResults.end(),
-		[](const SimulationResult& a, const SimulationResult& b) {
-			return a.TS_scenario_cost_balance < b.TS_scenario_cost_balance;
-		});
-	output.scenario_cost_balance = it3->TS_scenario_cost_balance;
-	output.scenario_cost_balance_index = it3->paramIndex;
+	auto bestCostBalance = leagueTable.getBestCostBalance();
+	output.scenario_cost_balance = bestCostBalance.second;
+	output.scenario_cost_balance_index = bestCostBalance.first;
 
 	// Payback horizon (yrs)
-	auto it4 = std::min_element(allResults.begin(), allResults.end(),
-		[](const SimulationResult& a, const SimulationResult& b) {
-			return a.TS_payback_horizon_years < b.TS_payback_horizon_years;
-		});
-	output.payback_horizon = it4->TS_payback_horizon_years;
-	output.payback_horizon_index = it4->paramIndex;
+	auto bestPaybackHorizon = leagueTable.getBestPaybackHorizon();
+	output.payback_horizon = bestPaybackHorizon.second;
+	output.payback_horizon_index = bestPaybackHorizon.first;
 
 	// Scenario Carbon Balance (kgC02e)
-	auto it5 = std::max_element(allResults.begin(), allResults.end(),
-		[](const SimulationResult& a, const SimulationResult& b) {
-			return a.TS_scenario_carbon_balance < b.TS_scenario_carbon_balance;
-		});
-	output.scenario_carbon_balance = it5->TS_scenario_carbon_balance;
-	output.scenario_carbon_balance_index = it5->paramIndex;
+	auto bestCarbonBalance = leagueTable.getBestCarbonBalance();
+	output.scenario_carbon_balance = bestCarbonBalance.second;
+	output.scenario_carbon_balance_index = bestCarbonBalance.first;
 }
 
 void Optimiser::resetTimeProfiler()

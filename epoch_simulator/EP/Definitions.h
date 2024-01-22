@@ -32,6 +32,7 @@ struct SimulationResult {
 	float Electrical_load_scaled_heat_yield;
 	float TS_Heat_shortfall;
 	float TS_Heat_surplus;
+
 	float runtime;
 	float paramIndex;
 	float total_annualised_cost;
@@ -244,4 +245,4 @@ struct OutMemberMapping {
 	std::function<int(const OutputValues&)> getInt;
 };
 
-
+constexpr int CAPACITY_PER_LEAGUE_TABLE = 400;

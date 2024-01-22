@@ -145,6 +145,7 @@
     <ClInclude Include="dependencies\json.hpp" />
     <ClInclude Include="io\FileConfig.h" />
     <ClInclude Include="io\FileHandling.hpp" />
+    <ClInclude Include="Optimisation\LeagueTable.h" />
     <ClInclude Include="Optimisation\Optimiser.hpp" />
     <ClInclude Include="Optimisation\Threadsafe.h" />
     <ClInclude Include="Simulation\Assets.h" />
@@ -159,6 +160,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="io\FileHandling.cpp" />
+    <ClCompile Include="Optimisation\LeagueTable.cpp" />
     <ClCompile Include="Optimisation\Optimiser.cpp" />
     <ClCompile Include="Simulation\Simulate.cpp" />
   </ItemGroup>
