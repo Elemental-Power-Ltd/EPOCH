@@ -36,10 +36,10 @@ struct SimulationResult {
 	float runtime;
 	float paramIndex;
 	float total_annualised_cost;
-	float TS_project_CAPEX;
-	float TS_scenario_cost_balance;
-	float TS_payback_horizon_years;
-	float TS_scenario_carbon_balance;
+	float project_CAPEX;
+	float scenario_cost_balance;
+	float payback_horizon_years;
+	float scenario_carbon_balance;
 };
 
 struct FullSimulationResult {
@@ -71,10 +71,10 @@ struct FullSimulationResult {
 	float runtime;
 	float paramIndex;
 	float total_annualised_cost;
-	float TS_project_CAPEX;
-	float TS_scenario_cost_balance;
-	float TS_payback_horizon_years;
-	float TS_scenario_carbon_balance;
+	float project_CAPEX;
+	float scenario_cost_balance;
+	float payback_horizon_years;
+	float scenario_carbon_balance;
 };
 
 

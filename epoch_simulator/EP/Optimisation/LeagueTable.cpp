@@ -10,19 +10,19 @@ LeagueTable::LeagueTable(int capacity)
 void LeagueTable::considerResult(const SimulationResult& r)
 {
 	// CAPEX
-	considerMinimum(mCapex, r.TS_project_CAPEX, r.paramIndex);
+	considerMinimum(mCapex, r.project_CAPEX, r.paramIndex);
 
 	// Annualised Cost
 	considerMinimum(mAnnualisedCost, r.total_annualised_cost, r.paramIndex);
 
 	// Cost Balance
-	considerMaximum(mCostBalance, r.TS_scenario_cost_balance, r.paramIndex);
+	considerMaximum(mCostBalance, r.scenario_cost_balance, r.paramIndex);
 
 	// Payback Horizon
-	considerMinimum(mPaybackHorizon, r.TS_payback_horizon_years, r.paramIndex);
+	considerMinimum(mPaybackHorizon, r.payback_horizon_years, r.paramIndex);
 
 	// Carbon Balance
-	considerMaximum(mCarbonBalance, r.TS_scenario_carbon_balance, r.paramIndex);
+	considerMaximum(mCarbonBalance, r.scenario_carbon_balance, r.paramIndex);
 }
 
 std::pair<int, float> LeagueTable::getBestCapex() const

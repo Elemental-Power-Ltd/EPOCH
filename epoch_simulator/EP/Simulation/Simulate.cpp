@@ -434,10 +434,10 @@ FullSimulationResult simulateScenario(const HistoricalData& historicalData, std:
 	fullSimulationResult.runtime = runtime;
 	fullSimulationResult.paramIndex = paramIndex;
 	fullSimulationResult.total_annualised_cost = total_annualised_cost;
-	fullSimulationResult.TS_project_CAPEX = myCost.get_project_CAPEX();
-	fullSimulationResult.TS_scenario_cost_balance = myCost.get_scenario_cost_balance();
-	fullSimulationResult.TS_payback_horizon_years = myCost.get_payback_horizon_years();
-	fullSimulationResult.TS_scenario_carbon_balance = myCost.get_scenario_carbon_balance();
+	fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
+	fullSimulationResult.scenario_cost_balance = myCost.get_scenario_cost_balance();
+	fullSimulationResult.payback_horizon_years = myCost.get_payback_horizon_years();
+	fullSimulationResult.scenario_carbon_balance = myCost.get_scenario_carbon_balance();
 
 	return fullSimulationResult;
 
@@ -478,10 +478,10 @@ SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, st
 	simResult.runtime = fullSimulationResult.runtime;
 	simResult.paramIndex = fullSimulationResult.paramIndex;
 	simResult.total_annualised_cost = fullSimulationResult.total_annualised_cost;
-	simResult.TS_project_CAPEX = fullSimulationResult.TS_project_CAPEX;
-	simResult.TS_scenario_cost_balance = fullSimulationResult.TS_scenario_cost_balance;
-	simResult.TS_payback_horizon_years = fullSimulationResult.TS_payback_horizon_years;
-	simResult.TS_scenario_carbon_balance = fullSimulationResult.TS_scenario_carbon_balance;
+	simResult.project_CAPEX = fullSimulationResult.project_CAPEX;
+	simResult.scenario_cost_balance = fullSimulationResult.scenario_cost_balance;
+	simResult.payback_horizon_years = fullSimulationResult.payback_horizon_years;
+	simResult.scenario_carbon_balance = fullSimulationResult.scenario_carbon_balance;
 
 	return simResult;
 }
