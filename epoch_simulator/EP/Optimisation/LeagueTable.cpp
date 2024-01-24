@@ -1,4 +1,4 @@
-#include "LeagueTable.h"
+#include "LeagueTable.hpp"
 
 #include <set>
 

@@ -2,7 +2,7 @@
 
 #include <mutex>
 
-#include "LeagueTable.h"
+#include "LeagueTable.hpp"
 #include "../io/FileHandling.hpp"
 #include "../Simulation/Simulate.hpp"
 

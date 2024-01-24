@@ -9,7 +9,7 @@
 #include "../io/FileConfig.h"
 #include "Threadsafe.h"
 #include "../Definitions.h"
-#include "LeagueTable.h"
+#include "LeagueTable.hpp"
 
 
 struct paramRange {

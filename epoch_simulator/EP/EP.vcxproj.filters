@@ -63,7 +63,10 @@
     <ClInclude Include="dependencies\json.hpp">
       <Filter>Dependencies</Filter>
     </ClInclude>
-    <ClInclude Include="Optimisation\LeagueTable.h">
+    <ClInclude Include="Optimisation\LeagueTable.hpp">
+      <Filter>Optimisation</Filter>
+    </ClInclude>
+    <ClInclude Include="TaskGenerator.hpp">
       <Filter>Optimisation</Filter>
     </ClInclude>
   </ItemGroup>
