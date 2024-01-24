@@ -95,7 +95,7 @@ std::vector<int> LeagueTable::toParamIndexList()
 
 // consider inserting a simulation result (identified by paramIndex and value)
 // we are trying to minimise the value
-void LeagueTable::considerMinimum(std::map<float, int>& subTable, float value, int paramIndex)
+void LeagueTable::considerMinimum(std::multimap<float, int>& subTable, float value, int paramIndex)
 {
 	if (subTable.size() < mCapacity) {
 		// We are below the capacity of the league table
@@ -113,7 +113,7 @@ void LeagueTable::considerMinimum(std::map<float, int>& subTable, float value, i
 
 // consider inserting a simulation result (identified by paramIndex and value)
 // we are trying to maximise the value
-void LeagueTable::considerMaximum(std::map<float, int>& subTable, float value, int paramIndex)
+void LeagueTable::considerMaximum(std::multimap<float, int>& subTable, float value, int paramIndex)
 {
 	if (subTable.size() < mCapacity) {
 		// We are below the capacity of the league table
@@ -129,14 +129,15 @@ void LeagueTable::considerMaximum(std::map<float, int>& subTable, float value, i
 	}
 }
 
-void LeagueTable::considerMinimumUnderMutex(std::map<float, int>& subTable, float value, int paramIndex)
+void LeagueTable::considerMinimumUnderMutex(std::multimap<float, int>& subTable, float value, int paramIndex)
 {
 	std::lock_guard<std::mutex> guard(mMutex);
 
 	if (subTable.size() < mCapacity) {
 		// We are below the capacity of the league table
 		// Insert the result
-		subTable[value] = paramIndex;
+		subTable.insert({ value, paramIndex });
+
 		return;
 	}
 
@@ -149,18 +150,18 @@ void LeagueTable::considerMinimumUnderMutex(std::map<float, int>& subTable, floa
 		subTable.erase(worst);
 
 		// insert the new result from r
-		subTable[value] = paramIndex;
+		subTable.insert({ value, paramIndex });
 	}
 }
 
-void LeagueTable::considerMaximumUnderMutex(std::map<float, int>& subTable, float value, int paramIndex)
+void LeagueTable::considerMaximumUnderMutex(std::multimap<float, int>& subTable, float value, int paramIndex)
 {
 	std::lock_guard<std::mutex> guard(mMutex);
 
 	if (subTable.size() < mCapacity) {
 		// We are below the capacity of the league table
 		// Insert the result
-		subTable[value] = paramIndex;
+		subTable.insert({ value, paramIndex });
 		return;
 	}
 
@@ -171,6 +172,6 @@ void LeagueTable::considerMaximumUnderMutex(std::map<float, int>& subTable, floa
 		subTable.erase(subTable.begin());
 
 		// insert the new result from r
-		subTable[value] = paramIndex;
+		subTable.insert({ value, paramIndex });
 	}
 }
