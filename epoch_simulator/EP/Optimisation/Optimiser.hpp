@@ -51,6 +51,8 @@ private:
 	void addTimeToProfiler(float timeTaken);
 
 	std::vector<std::pair<std::string, float>> TaskRecall(const std::vector<paramRange>& paramGrid, int index);
+	std::vector<SimulationResult> reproduceResults(const std::vector<int>& paramIndices);
+	SimulationResult reproduceResult(int paramIndex);
 
 	FileConfig mFileConfig;
 	TimeProfile mTimeProfile;

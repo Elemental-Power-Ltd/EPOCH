@@ -20,6 +20,8 @@ public:
 	std::pair<int, float> getBestPaybackHorizon() const;
 	std::pair<int, float> getBestCarbonBalance() const;
 
+	std::vector<int> toParamIndexList();
+
 private:
 	int mCapacity;
 

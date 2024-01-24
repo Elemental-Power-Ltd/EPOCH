@@ -199,6 +199,65 @@ void writeToCSV(std::filesystem::path absfilepath, const std::vector<std::pair<s
 	outFile.close();
 }
 
+void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results)
+{
+	std::ofstream outFile(filepath);
+
+	// TODO exception instead
+	if (!outFile.is_open()) {
+		std::cerr << "Failed to open the output file!" << std::endl;
+		return;
+	}
+
+	// write the column headers
+	for (int i = 0; i < resultHeader.size() - 1; i++) {
+		outFile << resultHeader[i];
+		outFile << ",";
+	}
+	// write the final column without a comma
+	outFile << resultHeader[resultHeader.size() - 1];
+	outFile << "\n";
+
+	// write each result
+	for (const auto& result : results) {
+		// These must be written in exactly the same order as the resultHeader
+		outFile << result.paramIndex << ",";
+		outFile << result.runtime << ",";
+
+		outFile << result.total_annualised_cost << ",";
+		outFile << result.project_CAPEX << ",";
+		outFile << result.scenario_cost_balance << ",";
+		outFile << result.payback_horizon_years << ",";
+		outFile << result.scenario_carbon_balance << ",";
+
+		outFile << result.Rgen_total << ",";
+		outFile << result.Total_load << ",";
+		outFile << result.ESUM << ",";
+		outFile << result.ESS_available_discharge_power << ",";
+		outFile << result.ESS_available_charge_power << ",";
+		outFile << result.ESS_Rgen_only_charge << ",";
+		outFile << result.ESS_discharge << ",";
+		outFile << result.ESS_charge << ",";
+		outFile << result.ESS_resulting_SoC << ",";
+		outFile << result.Pre_grid_balance << ",";
+		outFile << result.Grid_Import << ",";
+		outFile << result.Grid_Export << ",";
+		outFile << result.Post_grid_balance << ",";
+		outFile << result.Pre_flex_import_shortfall << ",";
+		outFile << result.Pre_Mop_curtailed_export << ",";
+		outFile << result.Actual_import_shortfall << ",";
+		outFile << result.Actual_curtailed_export << ",";
+		outFile << result.Actual_high_priority_load << ",";
+		outFile << result.Actual_low_priority_load << ",";
+		outFile << result.heatload << ",";
+		outFile << result.scaled_heatload << ",";
+		outFile << result.Electrical_load_scaled_heat_yield << ",";
+		outFile << result.Heat_shortfall << ",";
+		outFile << result.Heat_surplus;  // no comma
+		outFile << '\n';
+	}
+}
+
 
 
 void appendCSV(std::filesystem::path filepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns) {

@@ -563,6 +563,31 @@ std::vector<std::pair<std::string, float>> Optimiser::TaskRecall(const std::vect
 	return paramSlice;
 }
 
+std::vector<SimulationResult> Optimiser::reproduceResults(const std::vector<int>& paramIndices)
+{
+	std::vector<SimulationResult> results{};
+	results.reserve(paramIndices.size());
+
+	for (int paramIndex : paramIndices) {
+		results.emplace_back(reproduceResult(paramIndex));
+	}
+
+	return results;
+}
+
+// Given a ParamIndex that was used to produce a certain result
+// Reproduce the full SimulationResult that it would produce
+SimulationResult Optimiser::reproduceResult(int paramIndex)
+{
+	SimulationResult r{};
+
+	// TODO - this method doesn't currently do anything
+	// we need to rework the ParamGrid generation first
+	r.paramIndex = paramIndex;
+
+	return r;
+}
+
 
 int Optimiser::generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue, bool initialisationOnly)
 {
@@ -666,6 +691,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 						std::cout << "scenario called " << scenario_call << " times" << std::endl;
 						scenario_call++;
 					}
+
 				}
 				else {
 					std::cout << "sleeping for 10 ms" << std::endl;
@@ -693,9 +719,10 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	//// Retrieve and process results
 	findBestResults(leagueTable, output);
 
-	// Commented out until the CustomDataTable types are reworked
-	//std::filesystem::path outputFilepath = mFileConfig.getOutputCSVFilepath();
-	//writeToCSV(outputFilepath, cumDataColumns);// comment out if you don't want a smaller CSV file of summed output that takes a few seconds to write
+	// write the results to a CSV file
+	std::filesystem::path outputFilepath = mFileConfig.getOutputCSVFilepath();
+	std::vector<SimulationResult> results = reproduceResults(leagueTable.toParamIndexList());
+	writeResultsToCSV(outputFilepath, results);
 
 	output.maxVal = mTimeProfile.maxTime;
 	output.minVal = mTimeProfile.minTime;

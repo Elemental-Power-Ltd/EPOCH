@@ -1,6 +1,6 @@
 #include "LeagueTable.h"
 
-
+#include <set>
 
 LeagueTable::LeagueTable(int capacity)
 {
@@ -58,6 +58,39 @@ std::pair<int, float> LeagueTable::getBestCarbonBalance() const
 	// last/largest is best
 	auto best = mCarbonBalance.rbegin();
 	return std::pair<int, float>(best->second, best->first);
+}
+
+// return the parameter indices of the results held in the league table
+// each paramIndex can then be used to reproduce the full result
+std::vector<int> LeagueTable::toParamIndexList()
+{
+	// It is possible to have the same paramIndex in multiple of the subTables
+	// For this reason, put the results into a set first to remove duplicates
+	std::set<int> resultSet = {};
+
+	for (const auto& res : mCapex) {
+		resultSet.insert(res.second);
+	}
+
+	for (const auto& res : mAnnualisedCost) {
+		resultSet.insert(res.second);
+	}
+
+	for (const auto& res : mCostBalance) {
+		resultSet.insert(res.second);
+	}
+
+	for (const auto& res : mPaybackHorizon) {
+		resultSet.insert(res.second);
+	}
+
+	for (const auto& res : mCarbonBalance) {
+		resultSet.insert(res.second);
+	}
+
+	std::vector<int> results(resultSet.begin(), resultSet.end());
+
+	return results;
 }
 
 // consider inserting a simulation result (identified by paramIndex and value)
