@@ -58,35 +58,6 @@ const HistoricalData Optimiser::readHistoricalData() {
 	};
 }
 
-std::vector<paramRange> Optimiser::makeParamGrid(const nlohmann::json& inputJson)
-{
-	/*DEFINE PARAMETER GRID TO ITERATE THROUGH*/
-	std::vector<paramRange> paramGrid;
-
-	// input argument should be a JSON object containing a dictionary of key-tuple pairs
-	// each key should be the name of a parameter to be iterated over; the tuple should provide the range and step size of the iterator
-	try {
-		// Loop through all key-value/key-tuple pairs
-		for (const auto& item : inputJson.items()) {
-			if (item.value().is_array()) {
-				// the item is a key-tuple pair
-				paramGrid.push_back({ item.key(), item.value()[0], item.value()[1], item.value()[2] });
-				std::cout << "(" << item.key() << "," << item.value()[0] << ":" << item.value()[1] << ":" << item.value()[2] << ")" << std::endl;
-			}
-			else {
-				// the item is a key-value pair
-				paramGrid.push_back({ item.key(), item.value(), item.value(), 0.0 });
-			}
-		}
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error: " << e.what() << std::endl;
-		throw std::exception();
-	}
-	return paramGrid;
-}
-
-
 OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, int recallindex) {
 
 	OutputValues output;
@@ -589,72 +560,6 @@ SimulationResult Optimiser::reproduceResult(int paramIndex)
 	Config config = mTaskGenerator->getTask(paramIndex);
 
 	return simulateScenarioAndSum(mHistoricalData, config);
-}
-
-
-int Optimiser::generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue, bool initialisationOnly)
-{
-	int j = 0;
-	/* Use an iterative approach as follows */
-	size_t numParameters = paramGrid.size();
-	if (numParameters == 0) return j;
-
-	// Vectors to keep track of the current indices and values for each parameter
-	std::vector<size_t> indices(numParameters, 0);
-	std::vector<float> current_values(numParameters, 0);
-
-	// Initialize current values to the min values
-	for (size_t i = 0; i < numParameters; ++i) {
-		current_values[i] = paramGrid[i].min;
-	}
-
-	bool finished = false;
-
-	while (!finished) {
-
-		if (initialisationOnly && j > INITIALISATION_MAX_SCENARIOS) {
-			break;
-		}
-
-		j++;
-
-		// Create a new task with the current combination of parameters
-		std::vector<std::pair<std::string, float>> currentTask;
-		for (size_t i = 0; i < numParameters; ++i) {
-			currentTask.emplace_back(paramGrid[i].name, current_values[i]);
-		}
-		// Add task index to currentTask, to keep track of ordering through parallelisation
-		currentTask.emplace_back("Parameter index", j);
-		// Push the new task onto the task queue
-		taskQueue.push(currentTask);
-
-		// Move to the next combination
-		for (size_t i = 0; i < numParameters; ++i) {
-			// If step is 0, default it to cover the entire range as one step
-			float step = paramGrid[i].step != 0 ? paramGrid[i].step : (paramGrid[i].max - paramGrid[i].min);
-			// Guard against non-positive step sizes
-			if (step <= 0) {
-				step = 1;
-			}
-
-			current_values[i] += step;
-
-			if (current_values[i] > paramGrid[i].max) {
-				if (i == numParameters - 1) {
-					finished = true;
-					break;
-				}
-				else {
-					current_values[i] = paramGrid[i].min;  // Reset this parameter and carry '1' to the next
-					// No need to break, continue to update the next parameter
-				}
-			}
-			else {
-				break; // Found the next combination, break out of the loop
-			}
-		}
-	}
-	return j;
 }
 
 OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
