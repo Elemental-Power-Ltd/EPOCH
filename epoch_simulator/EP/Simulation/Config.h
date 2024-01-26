@@ -1,7 +1,8 @@
 #pragma once
 
-#include <unordered_map>
+#include <iostream>
 #include <string>
+#include <unordered_map>
 
 class Config {
 
@@ -15,7 +16,7 @@ public:
         int ESS_charge_mode_val = 1, int ESS_discharge_mode_val = 1,
         float import_kWh_price_val = 5.0f, float export_kWh_price_val = 30.0f,
         float time_budget_min_val = 1.0f, int target_max_concurrency_val = 44,
-        float CAPEX_limit_val = 500.0f, float OPEX_limit_val = 20.0f)
+        float CAPEX_limit_val = 500.0f, float OPEX_limit_val = 20.0f, int paramIndex_val = 0)
         : years(years_val), days(days_val), hours(hours_val), timestep_minutes(timestep_minutes_val), timestep_hours(timestep_hours_val), timewindow(timewindow_val), 
         Fixed_load1_scalar(Fixed_load1_scalar_val), Fixed_load2_scalar(Fixed_load2_scalar_val), Flex_load_max(Flex_load_max_val), Mop_load_max(Mop_load_max_val),
         ScalarRG1(ScalarRG1_val), ScalarRG2(ScalarRG2_val), ScalarRG3(ScalarRG3_val), ScalarRG4(ScalarRG4_val),
@@ -25,7 +26,7 @@ public:
         ESS_charge_mode(ESS_charge_mode_val), ESS_discharge_mode(ESS_discharge_mode_val),
         import_kWh_price(import_kWh_price_val), export_kWh_price(export_kWh_price_val),
         time_budget_min(time_budget_min_val), target_max_concurrency(target_max_concurrency_val),
-        CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val),
+        CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val),
         // initialize unordered maps to allow setting of member variables using (string) dictionary keys
         param_map_float({ {"years",&years}, { "days",&days }, { "hours",&hours }, { "timestep_minutes",&timestep_minutes }, { "timestep_hours",&timestep_hours }, { "timewindow",&timewindow },
             { "Fixed_load1_scalar",&Fixed_load1_scalar }, { "Fixed_load2_scalar",&Fixed_load2_scalar }, { "Flex_load_max",&Flex_load_max }, { "Mop_load_max",&Mop_load_max },
@@ -39,7 +40,7 @@ public:
     
     // calculate number of timesteps
 
-    int calculate_timesteps()
+    int calculate_timesteps() const
     {
         float float_timestep = timewindow / timestep_hours;
         int int_timestep = static_cast<int>(float_timestep);
@@ -197,6 +198,14 @@ public:
         return OPEX_limit;
     }
 
+    int getParamIndex() const {
+        return paramIndex;
+    }
+
+    void setParamIndex(int index) {
+        paramIndex = index;
+    }
+
 
     // Setter functions to set the value of data members
     // NB: this function is overloaded, and can be called using either a float or int. 
@@ -275,4 +284,5 @@ private:
     float CAPEX_limit;
     float OPEX_limit;
 
+    int paramIndex;
 };

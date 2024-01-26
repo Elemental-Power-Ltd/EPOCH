@@ -1350,7 +1350,11 @@ void writeRecallValuesToForm(const OutputValues& output) {
 	SetWindowText(hTextbox81, buffer);
 }
 
-
+// These need to be defined outside of the callback
+// else they will be recreated every time the callback occurs
+// (and continually try to open/read the CSV input data)
+FileConfig fileConfig{};
+auto optimiser = Optimiser(fileConfig);
 
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
@@ -1368,8 +1372,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	SCROLLINFO si = { sizeof(si), SIF_ALL };
 
-	FileConfig fileConfig{};
-	auto optimiser = Optimiser(fileConfig);
 
 	switch (message)
 	{

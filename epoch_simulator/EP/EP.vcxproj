@@ -147,6 +147,7 @@
     <ClInclude Include="io\FileHandling.hpp" />
     <ClInclude Include="Optimisation\LeagueTable.hpp" />
     <ClInclude Include="Optimisation\Optimiser.hpp" />
+    <ClInclude Include="Optimisation\TaskGenerator.hpp" />
     <ClInclude Include="Optimisation\Threadsafe.h" />
     <ClInclude Include="Simulation\Assets.h" />
     <ClInclude Include="Simulation\Config.h" />
@@ -157,12 +158,12 @@
     <ClInclude Include="Simulation\RGen.h" />
     <ClInclude Include="Simulation\Simulate.hpp" />
     <ClInclude Include="Simulation\Timeseries.h" />
-    <ClInclude Include="TaskGenerator.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="io\FileHandling.cpp" />
     <ClCompile Include="Optimisation\LeagueTable.cpp" />
     <ClCompile Include="Optimisation\Optimiser.cpp" />
+    <ClCompile Include="Optimisation\TaskGenerator.cpp" />
     <ClCompile Include="Simulation\Simulate.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

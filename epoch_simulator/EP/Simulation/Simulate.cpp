@@ -11,25 +11,10 @@
 #include "Costs.h"
 
 
-FullSimulationResult simulateScenario(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice)
+FullSimulationResult simulateScenario(const HistoricalData& historicalData, const Config& myConfig)
 {
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
-
-	Config myConfig; // initialise a config object with default data
-
-	// Change the config parameters to the current set of values in the parameter grid
-	for (size_t i = 0; i < paramSlice.size(); ++i) {
-		if (myConfig.param_map_float.find(paramSlice[i].first) != myConfig.param_map_float.end()) {
-			myConfig.set_param_float(paramSlice[i].first, paramSlice[i].second);
-			//			myConfig.print_param_float(paramSlice[i].first);
-		}
-		else {
-			myConfig.set_param_int(paramSlice[i].first, paramSlice[i].second);
-			//			myConfig.print_param_int(paramSlice[i].first);
-		}
-
-	}
 
 	int hours = myConfig.calculate_timesteps(); // number of hours is a float in case we need sub-hourly timewindows
 
@@ -275,12 +260,7 @@ FullSimulationResult simulateScenario(const HistoricalData& historicalData, std:
 	std::vector<float> TS_Heat_surplus_vect = MountHload.getTS_Heat_surplus().getData();
 
 	// Get parameter index
-	float paramIndex;
-	for (const auto& kv : paramSlice) {
-		if (kv.first == "Parameter index") {
-			paramIndex = kv.second;
-		}
-	}
+	float paramIndex = myConfig.getParamIndex();
 
 	//  Calculate infrastructure costs section
 	Costs myCost;
@@ -443,11 +423,11 @@ FullSimulationResult simulateScenario(const HistoricalData& historicalData, std:
 
 }
 
-SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice)
+SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config)
 {
-	const FullSimulationResult& fullSimulationResult = simulateScenario(historicalData, paramSlice);
+	const FullSimulationResult& fullSimulationResult = simulateScenario(historicalData, config);
 
-	SimulationResult simResult;
+	SimulationResult simResult{};
 	
 	// Commented out for performance as we only need the values at the bottom (for now)
 	//simResult.Rgen_total = sumVector(fullSimulationResult.Rgen_total);

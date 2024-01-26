@@ -3,13 +3,16 @@
 #include <mutex>
 
 #include "LeagueTable.hpp"
+#include "TaskGenerator.hpp"
 #include "../io/FileHandling.hpp"
 #include "../Simulation/Simulate.hpp"
 
 
-Optimiser::Optimiser(FileConfig fileConfig)
+Optimiser::Optimiser(FileConfig fileConfig) :
+	mFileConfig(fileConfig),
+	mHistoricalData(readHistoricalData())
 {
-	mFileConfig = fileConfig;
+
 }
 
 OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
@@ -25,7 +28,7 @@ OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 	return doOptimisation(inputJson, true);
 }
 
-HistoricalData Optimiser::readHistoricalData() {
+const HistoricalData Optimiser::readHistoricalData() {
 
 	std::filesystem::path eloadFilepath = mFileConfig.getEloadFilepath();
 
@@ -579,13 +582,13 @@ std::vector<SimulationResult> Optimiser::reproduceResults(const std::vector<int>
 // Reproduce the full SimulationResult that it would produce
 SimulationResult Optimiser::reproduceResult(int paramIndex)
 {
-	SimulationResult r{};
+	if (!mTaskGenerator) {
+		throw std::exception();
+	}
 
-	// TODO - this method doesn't currently do anything
-	// we need to rework the ParamGrid generation first
-	r.paramIndex = paramIndex;
+	Config config = mTaskGenerator->getTask(paramIndex);
 
-	return r;
+	return simulateScenarioAndSum(mHistoricalData, config);
 }
 
 
@@ -659,61 +662,36 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	OutputValues output;
 	resetTimeProfiler();
 
-	auto paramGrid = makeParamGrid(inputJson);
-	HistoricalData inputData = readHistoricalData();
+	mTaskGenerator = std::make_unique<TaskGenerator>(inputJson, initialisationOnly);
 
 	int numWorkers = determineWorkerCount();
 
-	SafeQueue<std::vector<std::pair<std::string, float>>> taskQueue;
 	LeagueTable leagueTable = LeagueTable(CAPACITY_PER_LEAGUE_TABLE);
 
-	int numScenarios = generateTasks(paramGrid, taskQueue, initialisationOnly);
-	std::cout << "Total number of scenarios is: " << numScenarios << std::endl;
+	std::cout << "Total number of scenarios is: " << mTaskGenerator->totalScenarios() << std::endl;
 
 	std::vector<std::thread> workers;
-	std::atomic<bool> tasksCompleted(false);
-	std::mutex scenario_call_mutex;
-	int scenario_call = 1;
 
 	for (int i = 0; i < (numWorkers - 1); ++i) { //keep one worker back for the main thread - need to do A/B test on whether this is performant
-		workers.emplace_back([this, &taskQueue, &leagueTable, &inputData, &tasksCompleted, &scenario_call, &scenario_call_mutex, i]() {
-			std::vector<std::pair<std::string, float>> paramSlice;
-			while (true) {
-				if (taskQueue.pop(paramSlice)) {
-					SimulationResult result = simulateScenarioAndSum(inputData, paramSlice);
+		workers.emplace_back([this, &leagueTable]() {
 
-					// add running statistics here 
-					leagueTable.considerResult(result);
+			Config config;
 
-					addTimeToProfiler(result.runtime);
-					{
-						std::lock_guard<std::mutex> lock(scenario_call_mutex);
-						std::cout << "scenario called " << scenario_call << " times" << std::endl;
-						scenario_call++;
-					}
-
-				}
-				else {
-					std::cout << "sleeping for 10 ms" << std::endl;
-					std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Short sleep
-					if (tasksCompleted.load()) {
-						std::cout << "Worker " << i << ": no more tasks, exiting." << std::endl;
-						break;
-					}
-				}
+			while (mTaskGenerator->nextTask(config)) {
+				SimulationResult result = simulateScenarioAndSum(mHistoricalData, config);
+				leagueTable.considerResult(result);
+				addTimeToProfiler(result.runtime);
 			}
-			});
+		});
 	}
-
-	// After all tasks are generated
-	tasksCompleted.store(true);
-	std::cout << "tasksCompleted" << std::endl;
 
 	for (auto& worker : workers) {
 		if (worker.joinable()) {
 			worker.join();
 		}
 	}
+
+	std::cout << "tasksCompleted" << std::endl;
 	std::cout << "workers joined" << std::endl;
 
 	//// Retrieve and process results
@@ -734,8 +712,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 		// Compute the per-scenario estimates
 		float float_numWorkers = float(numWorkers);
 
-		// FIXME: Enormously inefficient temporary approach to count the number of tasks for a full run-through
-		int totalScenarios = generateTasks(paramGrid, taskQueue, false);
+		int totalScenarios = mTaskGenerator->totalScenarios();
 
 		output.num_scenarios = totalScenarios;
 		output.est_seconds = (totalScenarios * output.meanVal) / (float_numWorkers - 1.0);

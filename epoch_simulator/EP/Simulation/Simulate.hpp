@@ -4,10 +4,11 @@
 #include <string>
 
 #include "../Definitions.h"
+#include "Config.h"
 
 
-FullSimulationResult simulateScenario(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice);
+FullSimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config);
 
-SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, std::vector<std::pair<std::string, float>> paramSlice);
+SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config);
 
 float sumVector(const std::vector<float>& v);

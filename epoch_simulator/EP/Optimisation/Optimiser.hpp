@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <thread>
 #include <vector>
 
@@ -10,6 +11,7 @@
 #include "Threadsafe.h"
 #include "../Definitions.h"
 #include "LeagueTable.hpp"
+#include "TaskGenerator.hpp"
 
 
 struct paramRange {
@@ -40,7 +42,7 @@ public:
 
 
 private:
-	HistoricalData readHistoricalData();
+	const HistoricalData readHistoricalData();
 	std::vector<paramRange> makeParamGrid(const nlohmann::json& inputJson);
 	int generateTasks(const std::vector<paramRange>& paramGrid, SafeQueue<std::vector<std::pair<std::string, float>>>& taskQueue, bool initialisationOnly);
 	OutputValues doOptimisation(nlohmann::json inputJson, bool initialisationOnly=false);
@@ -56,5 +58,7 @@ private:
 
 	FileConfig mFileConfig;
 	TimeProfile mTimeProfile;
+	std::unique_ptr<TaskGenerator> mTaskGenerator;
+	const HistoricalData mHistoricalData;
 };
 
