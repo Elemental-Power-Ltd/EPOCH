@@ -423,37 +423,40 @@ FullSimulationResult simulateScenario(const HistoricalData& historicalData, cons
 
 }
 
-SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config)
+SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config, bool computeAllSums)
 {
 	const FullSimulationResult& fullSimulationResult = simulateScenario(historicalData, config);
 
 	SimulationResult simResult{};
 	
-	// Commented out for performance as we only need the values at the bottom (for now)
-	//simResult.Rgen_total = sumVector(fullSimulationResult.Rgen_total);
-	//simResult.Total_load = sumVector(fullSimulationResult.Total_load);
-	//simResult.ESUM = sumVector(fullSimulationResult.ESUM);
-	//simResult.ESS_available_discharge_power = sumVector(fullSimulationResult.ESS_available_discharge_power);
-	//simResult.ESS_available_charge_power = sumVector(fullSimulationResult.ESS_available_charge_power);
-	//simResult.TS_ESS_Rgen_only_charge = sumVector(fullSimulationResult.TS_ESS_Rgen_only_charge);
-	//simResult.TS_ESS_discharge = sumVector(fullSimulationResult.TS_ESS_discharge);
-	//simResult.TS_ESS_charge = sumVector(fullSimulationResult.TS_ESS_charge);
-	//simResult.TS_ESS_resulting_SoC = sumVector(fullSimulationResult.TS_ESS_resulting_SoC);
-	//simResult.TS_Pre_grid_balance = sumVector(fullSimulationResult.TS_Pre_grid_balance);
-	//simResult.TS_Grid_Import = sumVector(fullSimulationResult.TS_Grid_Import);
-	//simResult.TS_Grid_Export = sumVector(fullSimulationResult.TS_Grid_Export);
-	//simResult.TS_Post_grid_balance = sumVector(fullSimulationResult.TS_Post_grid_balance);
-	//simResult.TS_Pre_flex_import_shortfall = sumVector(fullSimulationResult.TS_Pre_flex_import_shortfall);
-	//simResult.TS_Pre_Mop_curtailed_export = sumVector(fullSimulationResult.TS_Pre_Mop_curtailed_export);
-	//simResult.TS_Actual_import_shortfall = sumVector(fullSimulationResult.TS_Actual_import_shortfall);
-	//simResult.TS_Actual_curtailed_export = sumVector(fullSimulationResult.TS_Actual_curtailed_export);
-	//simResult.TS_Actual_high_priority_load = sumVector(fullSimulationResult.TS_Actual_high_priority_load);
-	//simResult.TS_Actual_low_priority_load = sumVector(fullSimulationResult.TS_Actual_low_priority_load);
-	//simResult.heatload = sumVector(fullSimulationResult.heatload);
-	//simResult.scaled_heatload = sumVector(fullSimulationResult.scaled_heatload);
-	//simResult.Electrical_load_scaled_heat_yield = sumVector(fullSimulationResult.Electrical_load_scaled_heat_yield);
-	//simResult.TS_Heat_shortfall = sumVector(fullSimulationResult.TS_Heat_shortfall);
-	//simResult.TS_Heat_surplus = sumVector(fullSimulationResult.TS_Heat_surplus);
+	// By default we don't compute these sums during the main optimisation as we're only concerned with the output results
+	// but for recall of specific scenarios (e.g. to write to a csv) we want to compute these
+	if (computeAllSums) {
+		simResult.Rgen_total = sumVector(fullSimulationResult.Rgen_total);
+		simResult.Total_load = sumVector(fullSimulationResult.Total_load);
+		simResult.ESUM = sumVector(fullSimulationResult.ESUM);
+		simResult.ESS_available_discharge_power = sumVector(fullSimulationResult.ESS_available_discharge_power);
+		simResult.ESS_available_charge_power = sumVector(fullSimulationResult.ESS_available_charge_power);
+		simResult.ESS_Rgen_only_charge = sumVector(fullSimulationResult.ESS_Rgen_only_charge);
+		simResult.ESS_discharge = sumVector(fullSimulationResult.ESS_discharge);
+		simResult.ESS_charge = sumVector(fullSimulationResult.ESS_charge);
+		simResult.ESS_resulting_SoC = sumVector(fullSimulationResult.ESS_resulting_SoC);
+		simResult.Pre_grid_balance = sumVector(fullSimulationResult.Pre_grid_balance);
+		simResult.Grid_Import = sumVector(fullSimulationResult.Grid_Import);
+		simResult.Grid_Export = sumVector(fullSimulationResult.Grid_Export);
+		simResult.Post_grid_balance = sumVector(fullSimulationResult.Post_grid_balance);
+		simResult.Pre_flex_import_shortfall = sumVector(fullSimulationResult.Pre_flex_import_shortfall);
+		simResult.Pre_Mop_curtailed_export = sumVector(fullSimulationResult.Pre_Mop_curtailed_export);
+		simResult.Actual_import_shortfall = sumVector(fullSimulationResult.Actual_import_shortfall);
+		simResult.Actual_curtailed_export = sumVector(fullSimulationResult.Actual_curtailed_export);
+		simResult.Actual_high_priority_load = sumVector(fullSimulationResult.Actual_high_priority_load);
+		simResult.Actual_low_priority_load = sumVector(fullSimulationResult.Actual_low_priority_load);
+		simResult.heatload = sumVector(fullSimulationResult.heatload);
+		simResult.scaled_heatload = sumVector(fullSimulationResult.scaled_heatload);
+		simResult.Electrical_load_scaled_heat_yield = sumVector(fullSimulationResult.Electrical_load_scaled_heat_yield);
+		simResult.Heat_shortfall = sumVector(fullSimulationResult.Heat_shortfall);
+		simResult.Heat_surplus = sumVector(fullSimulationResult.Heat_surplus);
+	}
 
 	simResult.runtime = fullSimulationResult.runtime;
 	simResult.paramIndex = fullSimulationResult.paramIndex;

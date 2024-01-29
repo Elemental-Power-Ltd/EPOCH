@@ -9,6 +9,6 @@
 
 FullSimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config);
 
-SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config);
+SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config, bool computeAllSums=false);
 
 float sumVector(const std::vector<float>& v);

@@ -123,7 +123,7 @@ SimulationResult Optimiser::reproduceResult(int paramIndex)
 
 	Config config = mTaskGenerator->getTask(paramIndex);
 
-	return simulateScenarioAndSum(mHistoricalData, config);
+	return simulateScenarioAndSum(mHistoricalData, config, true);
 }
 
 OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
