@@ -12,8 +12,7 @@ TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisatio
 
 	for (const auto& paramRange: mParamGrid) {
 
-		// TODO - validation is important
-		// esp that we don't have a negative step size or a flipped min/max
+		validateParamRange(paramRange);
 
 		std::vector<float> rangeValues;
 
@@ -132,4 +131,22 @@ std::vector<ParamRange> TaskGenerator::makeParamGrid(const nlohmann::json& input
 		throw std::exception();
 	}
 	return paramGrid;
+}
+
+void TaskGenerator::validateParamRange(const ParamRange& paramRange)
+{
+	if (paramRange.max < paramRange.min) {
+		std::cerr << "Maximum is less than manimum - for " << paramRange.name << std::endl;
+		throw std::exception{};
+	}
+
+	if (paramRange.step == 0 && paramRange.min != paramRange.max) {
+		std::cerr << "Increment of 0 but minimum and maximum are not equal - for " << paramRange.name << std::endl;
+		throw std::exception{};
+	}
+
+	if (paramRange.step < 0) {
+		std::cerr << "Cannot have a negative increment - for " << paramRange.name << std::endl;
+		throw std::exception{};
+	}
 }
