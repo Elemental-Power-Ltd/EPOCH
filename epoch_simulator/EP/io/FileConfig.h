@@ -16,9 +16,10 @@ public:
         std::filesystem::path hloadFilename = "CSVHload.csv",
         std::filesystem::path rgenFilename = "CSVRGen.csv",
 
+        std::filesystem::path inputParameters = "inputParameters.json",
         std::filesystem::path resultsFilename = "EP_Results.csv",
-        std::filesystem::path outputJsonFilename = "outputparameters.json",
-        std::filesystem::path outputJsonInitFilename = "outputparameters_init.json"
+        std::filesystem::path outputJsonFilename = "outputParameters.json",
+        std::filesystem::path outputJsonInitFilename = "outputParameters_fromInitialise.json"
     )
         : rootDir(rootDir),
         inputDir(inputDir),
@@ -26,6 +27,7 @@ public:
         eloadFilename(eloadFilename),
         hloadFilename(hloadFilename),
         rgenFilename(rgenFilename),
+        inputParameters(inputParameters),
         resultsFilename(resultsFilename),
         outputJsonFilename(outputJsonFilename),
         outputJsonInitFilename(outputJsonInitFilename)
@@ -51,6 +53,10 @@ public:
 
     std::filesystem::path getRgenFilepath() {
         return rootDir / inputDir / rgenFilename;
+    }
+
+    std::filesystem::path getInputJsonFilepath() {
+        return rootDir / inputDir / inputParameters;
     }
 
     std::filesystem::path getOutputCSVFilepath() {
@@ -82,6 +88,8 @@ private:
     std::filesystem::path eloadFilename;
     std::filesystem::path hloadFilename;
     std::filesystem::path rgenFilename;
+
+    std::filesystem::path inputParameters;
 
     std::filesystem::path resultsFilename;
 

@@ -14,25 +14,20 @@ TEST(EPTestCase, MatchesKnownOutput) {
 	FileConfig fileConfig = FileConfig{
 		"", "KnownInput", "OutputData",
 		"CSVEload.csv", "CSVHload.csv", "CSVRGen.csv",
-		"TestResults.csv", "TestOutputParameters.json", "TestOuputParametersFromInit.json"
+		"knownInput.json", "TestResults.csv", "TestOutputParameters.json", "TestOuputParametersFromInit.json"
 	};
 
 	Optimiser opt = Optimiser(fileConfig);
 
 	// Run the Optimiser on known input
-	// TODO defaultInput -> knownInput
-	auto converted_json = handleJsonConversion(defaultInput, fileConfig.getInputDir());
-	OutputValues testOutput = opt.runMainOptimisation(converted_json);
+	auto inputJson = readJsonFromFile(fileConfig.getInputJsonFilepath());
+	OutputValues testOutput = opt.runMainOptimisation(inputJson);
 	auto testJson = outputToJson(testOutput);
 	writeJsonToFile(testJson, fileConfig.getOutputJsonFilepath());
 
 	//// Load the known output
 	fs::path knownOutputFile = fs::path{ "KnownOutput" } / fs::path{ "KnownOutput.json" };
-
-
-	std::ifstream f(knownOutputFile);
-	auto knownJson = nlohmann::json::parse(f);
-
+	auto knownJson = readJsonFromFile(knownOutputFile);
 
 	EXPECT_EQ(testJson["CAPEX"], knownJson["CAPEX"]);
 	//EXPECT_EQ(testJson["CAPEX_index"], knownJson["CAPEX_index"]);

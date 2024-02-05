@@ -389,17 +389,13 @@ nlohmann::json convert_to_ranges(nlohmann::json& j) {
 	return new_json;
 }
 
-nlohmann::json handleJsonConversion(const InputValues& inputValues, std::filesystem::path inputDir) {
+nlohmann::json handleJsonConversion(const InputValues& inputValues, std::filesystem::path inputParametersFilepath) {
 	// Aim: to export 'inputvalues' to a json file that can be read e.g. as a Python dict, s.t. other EPL software can use this as an input
 
 	nlohmann::json jsonObj = inputToJson(inputValues);
-	std::filesystem::path paramPath = inputDir / "parameters.json";
-	writeJsonToFile(jsonObj, paramPath);
-
 	nlohmann::json converted_json = convert_to_ranges(jsonObj);
-	std::filesystem::path paramGroupedPath = inputDir / "parameters_grouped.json";
-	writeJsonToFile(converted_json, paramGroupedPath);
 
+	writeJsonToFile(converted_json, inputParametersFilepath);
 	std::cout << "JSON file written successfully!" << std::endl;
 
 	return converted_json;
@@ -415,5 +411,11 @@ void writeJsonToFile(const nlohmann::json& jsonObj, std::filesystem::path filepa
 	catch (const std::exception e) {
 		std::cerr << "Error: " << e.what() << std::endl;
 	}
+}
+
+nlohmann::json readJsonFromFile(std::filesystem::path filepath)
+{
+	std::ifstream f(filepath);
+	return nlohmann::json::parse(f);
 }
 	

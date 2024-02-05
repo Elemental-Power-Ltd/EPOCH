@@ -59,7 +59,8 @@ int main(int argc, char* argv[]) {
 	std::cout << "Running in headless mode" << std::endl;
 
 	FileConfig fileConfig{};
-	auto converted_json = handleJsonConversion(defaultInput, fileConfig.getInputDir());
+
+	auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
 
 	std::cout << "Starting Optimisation" << std::endl;
 

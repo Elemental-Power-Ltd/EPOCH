@@ -1491,7 +1491,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				InitConsole();
 				InputValues inputValues = readInputFromForm();
 
-				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputDir());
+				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputJsonFilepath());
 
 				OutputValues output = optimiser.runMainOptimisation(converted_json);
 
@@ -1521,7 +1521,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				InitConsole();
 				InputValues inputValues = readInputFromForm();
 
-				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputDir());
+				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputJsonFilepath());
 
 				OutputValues output = optimiser.initialiseOptimisation(converted_json);
 
@@ -1551,7 +1551,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				InitConsole();
 				InputValues inputValues = readInputFromForm();
 
-				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputDir());
+				auto converted_json = handleJsonConversion(inputValues, fileConfig.getInputJsonFilepath());
 
 				wchar_t buffer100[100];
 				GetWindowText(hTextboxIndex, buffer100, 100);
