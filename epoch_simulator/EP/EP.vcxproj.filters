@@ -24,13 +24,7 @@
     <ClInclude Include="Optimisation\Optimiser.hpp">
       <Filter>Optimisation</Filter>
     </ClInclude>
-    <ClInclude Include="Simulation\Timeseries.h">
-      <Filter>Simulation</Filter>
-    </ClInclude>
     <ClInclude Include="Simulation\Simulate.hpp">
-      <Filter>Simulation</Filter>
-    </ClInclude>
-    <ClInclude Include="Simulation\RGen.h">
       <Filter>Simulation</Filter>
     </ClInclude>
     <ClInclude Include="Simulation\Hload.h">
@@ -84,5 +78,8 @@
     <ClCompile Include="Optimisation\TaskGenerator.cpp">
       <Filter>Optimisation</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="Eigen.natvis" />
   </ItemGroup>
 </Project>

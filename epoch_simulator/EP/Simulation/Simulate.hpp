@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Eigen/Core>
 #include <vector>
 #include <string>
 
@@ -7,8 +8,13 @@
 #include "Config.h"
 
 
-FullSimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config);
+class Simulator {
+public:
+	Simulator();
 
-SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config, bool computeAllSums=false);
+	FullSimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config) const;
 
-float sumVector(const std::vector<float>& v);
+	SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config, bool computeAllSums = false) const;
+
+	year_TS calculateRGenTotal(const HistoricalData& historicalData, const Config& config) const;
+};
