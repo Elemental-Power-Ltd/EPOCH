@@ -196,7 +196,7 @@ private:
 	const float mGridExport;
 	const float mImportHeadroom;
 	const float mExportHeadroom;
-	const float mTimesteps;
+	const int mTimesteps;
 	const float mFlexLoadMax;
 	const float mMopLoadMax;
 

@@ -35,7 +35,8 @@ struct SimulationResult {
 	float Heat_surplus;
 
 	float runtime;
-	float paramIndex;
+	int paramIndex;
+
 	float total_annualised_cost;
 	float project_CAPEX;
 	float scenario_cost_balance;
@@ -70,7 +71,8 @@ struct FullSimulationResult {
 	year_TS Heat_surplus;
 
 	float runtime;
-	float paramIndex;
+	int paramIndex;
+
 	float total_annualised_cost;
 	float project_CAPEX;
 	float scenario_cost_balance;

@@ -53,7 +53,7 @@ public:
 		float EV_CP_Cost = calculate_EV_CP_cost(0, 3, 0, 0);
 		float EV_CP_install = calculate_EV_CP_install(0, 3, 0, 0);
 		// need to add aditional grid capacity max (imp/exp) and out to Config
-		float Grid_CAPEX = calculate_Grid_CAPEX(std::max(0, 0));
+		float Grid_CAPEX = calculate_Grid_CAPEX(std::max(0.0f, 0.0f));
 		// need to add num HP capacity to Config
 		float ASHP_CAPEX = calculate_ASHP_CAPEX(12.0);
 

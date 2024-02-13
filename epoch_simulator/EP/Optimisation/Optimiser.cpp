@@ -200,8 +200,8 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 		int totalScenarios = mTaskGenerator->totalScenarios();
 
 		output.num_scenarios = totalScenarios;
-		output.est_seconds = (totalScenarios * output.meanVal) / (float_numWorkers - 1.0);
-		output.est_hours = (totalScenarios * output.meanVal) / (3600 * (float_numWorkers - 1.0));
+		output.est_seconds = (totalScenarios * output.meanVal) / (float_numWorkers - 1.0f);
+		output.est_hours = (totalScenarios * output.meanVal) / (3600 * (float_numWorkers - 1.0f));
 
 		std::cout << "Number of scenarios: " << output.num_scenarios << ", Hours: " << output.est_hours << ", Seconds: " << output.est_seconds << std::endl;
 	}
@@ -230,8 +230,8 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	output.ESS_RTE = 21.0;
 	output.ESS_aux_load = 22.0;
 	output.ESS_start_SoC = 23.0;
-	output.ESS_charge_mode = 24.0;
-	output.ESS_discharge_mode = 25.0;
+	output.ESS_charge_mode = 24;
+	output.ESS_discharge_mode = 25;
 
 	return output;
 }

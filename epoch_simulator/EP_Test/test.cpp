@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include "../EP/io/FileConfig.h";
+#include "../EP/io/FileConfig.h"
 #include "../EP/Optimisation/Optimiser.hpp"
 #include "../EP/io/FileHandling.hpp"
 
