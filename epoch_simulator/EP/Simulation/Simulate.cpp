@@ -35,32 +35,46 @@ FullSimulationResult Simulator::simulateScenario(const HistoricalData& historica
 	Hload MountHload{ historicalData, myConfig };
 	MountHload.performHeatCalculations(historicalData, myConfig, MountGrid);
 
-	//Data reporting
-	Eigen::VectorXf Total_load_vect = MountEload.getTS_Total_load();
 
-	Eigen::VectorXf ESS_available_discharge_power_vect = MountBESS.getTS_ESS_available_discharge_power();
-	Eigen::VectorXf ESS_available_charge_power_vect = MountBESS.getTS_ESS_available_charge_power();
-	Eigen::VectorXf TS_ESS_Rgen_only_charge_vect = MountBESS.getTS_ESS_Rgen_only_charge();
-	Eigen::VectorXf TS_ESS_discharge_vect = MountBESS.getTS_ESS_discharge();
-	Eigen::VectorXf TS_ESS_charge_vect = MountBESS.getTS_ESS_charge();
-	Eigen::VectorXf TS_ESS_resulting_SoC_vect = MountBESS.getTS_ESS_resulting_SoC();
-	Eigen::VectorXf TS_Pre_grid_balance_vect = MountGrid.getTS_Pre_grid_balance();
-	Eigen::VectorXf TS_Grid_Import_vect = MountGrid.getTS_GridImport();
-	Eigen::VectorXf TS_Grid_Export_vect = MountGrid.getTS_GridExport();
-	Eigen::VectorXf TS_Post_grid_balance_vect = MountGrid.getTS_Post_grid_balance();
-	Eigen::VectorXf TS_Pre_flex_import_shortfall_vect = MountGrid.getTS_Pre_flex_import_shortfall();
-	Eigen::VectorXf TS_Pre_Mop_curtailed_export_vect = MountGrid.getTS_Pre_Mop_curtailed_Export();
-	Eigen::VectorXf TS_Actual_import_shortfall_vect = MountGrid.getTS_Actual_import_shortfall();
-	Eigen::VectorXf TS_Actual_curtailed_export_vect = MountGrid.getTS_Actual_curtailed_export();
-	Eigen::VectorXf TS_Actual_high_priority_load_vect = MountGrid.getActualHighPriorityLoad();
-	Eigen::VectorXf TS_Actual_low_priority_load_vect = MountGrid.getActualLowPriorityLoad();
-	Eigen::VectorXf scaled_heatload_vect = MountHload.getTS_Heatload();
-	Eigen::VectorXf Electrical_load_scaled_heat_yield_vect = MountHload.getTS_Electrical_load_scaled_heat_yield();
-	Eigen::VectorXf TS_Heat_shortfall_vect = MountHload.getTS_Heat_shortfall();
-	Eigen::VectorXf TS_Heat_surplus_vect = MountHload.getTS_Heat_surplus();
 
 	Costs myCost(myConfig);
 	myCost.calculateCosts(MountEload, MountHload, MountGrid);
+
+	//Data reporting
+
+	FullSimulationResult fullSimulationResult;
+
+	fullSimulationResult.Rgen_total = RGen_total;
+	fullSimulationResult.Total_load = MountEload.getTS_Total_load();
+	fullSimulationResult.ESUM = ESUM;
+	fullSimulationResult.ESS_available_discharge_power = MountBESS.getTS_ESS_available_discharge_power();;
+	fullSimulationResult.ESS_available_charge_power = MountBESS.getTS_ESS_available_charge_power();
+	fullSimulationResult.ESS_Rgen_only_charge = MountBESS.getTS_ESS_Rgen_only_charge();
+	fullSimulationResult.ESS_discharge = MountBESS.getTS_ESS_discharge();
+	fullSimulationResult.ESS_charge = MountBESS.getTS_ESS_charge();
+	fullSimulationResult.ESS_resulting_SoC = MountBESS.getTS_ESS_resulting_SoC();
+	fullSimulationResult.Pre_grid_balance = MountGrid.getTS_Pre_grid_balance();
+	fullSimulationResult.Grid_Import = MountGrid.getTS_GridImport();
+	fullSimulationResult.Grid_Export = MountGrid.getTS_GridExport();
+	fullSimulationResult.Post_grid_balance = MountGrid.getTS_Post_grid_balance();
+	fullSimulationResult.Pre_flex_import_shortfall = MountGrid.getTS_Pre_flex_import_shortfall();
+	fullSimulationResult.Pre_Mop_curtailed_export = MountGrid.getTS_Pre_Mop_curtailed_Export();
+	fullSimulationResult.Actual_import_shortfall = MountGrid.getTS_Actual_import_shortfall();
+	fullSimulationResult.Actual_curtailed_export = MountGrid.getTS_Actual_curtailed_export();
+	fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
+	fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
+	fullSimulationResult.heatload = historicalData.heatload_data;
+	fullSimulationResult.scaled_heatload = MountHload.getTS_Heatload();
+	fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getTS_Electrical_load_scaled_heat_yield();
+	fullSimulationResult.Heat_shortfall = MountHload.getTS_Heat_shortfall();
+	fullSimulationResult.Heat_surplus = MountHload.getTS_Heat_surplus();
+
+	fullSimulationResult.paramIndex = myConfig.getParamIndex();
+	fullSimulationResult.total_annualised_cost = myCost.get_total_annualised_cost();
+	fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
+	fullSimulationResult.scenario_cost_balance = myCost.get_scenario_cost_balance();
+	fullSimulationResult.payback_horizon_years = myCost.get_payback_horizon_years();
+	fullSimulationResult.scenario_carbon_balance = myCost.get_scenario_carbon_balance();
 
 
 	//========================================
@@ -75,41 +89,8 @@ FullSimulationResult Simulator::simulateScenario(const HistoricalData& historica
 	float runtime = static_cast<float>(elapsed.count());
 
 	std::cout << "Runtime: " << elapsed.count() << " seconds" << '\n'; // print elapsed run time
-
-	FullSimulationResult fullSimulationResult;
-
-	fullSimulationResult.Rgen_total = RGen_total;
-	fullSimulationResult.Total_load = Total_load_vect;
-	fullSimulationResult.ESUM = ESUM;
-	fullSimulationResult.ESS_available_discharge_power = ESS_available_discharge_power_vect;
-	fullSimulationResult.ESS_available_charge_power = ESS_available_charge_power_vect;
-	fullSimulationResult.ESS_Rgen_only_charge = TS_ESS_Rgen_only_charge_vect;
-	fullSimulationResult.ESS_discharge = TS_ESS_discharge_vect;
-	fullSimulationResult.ESS_charge = TS_ESS_charge_vect;
-	fullSimulationResult.ESS_resulting_SoC = TS_ESS_resulting_SoC_vect;
-	fullSimulationResult.Pre_grid_balance = TS_Pre_grid_balance_vect;
-	fullSimulationResult.Grid_Import = TS_Grid_Import_vect;
-	fullSimulationResult.Grid_Export = TS_Grid_Export_vect;
-	fullSimulationResult.Post_grid_balance = TS_Post_grid_balance_vect;
-	fullSimulationResult.Pre_flex_import_shortfall = TS_Pre_flex_import_shortfall_vect;
-	fullSimulationResult.Pre_Mop_curtailed_export = TS_Pre_Mop_curtailed_export_vect;
-	fullSimulationResult.Actual_import_shortfall = TS_Actual_import_shortfall_vect;
-	fullSimulationResult.Actual_curtailed_export = TS_Actual_curtailed_export_vect;
-	fullSimulationResult.Actual_high_priority_load = TS_Actual_high_priority_load_vect;
-	fullSimulationResult.Actual_low_priority_load = TS_Actual_low_priority_load_vect;
-	fullSimulationResult.heatload = historicalData.heatload_data;
-	fullSimulationResult.scaled_heatload = scaled_heatload_vect;
-	fullSimulationResult.Electrical_load_scaled_heat_yield = Electrical_load_scaled_heat_yield_vect;
-	fullSimulationResult.Heat_shortfall = TS_Heat_shortfall_vect;
-	fullSimulationResult.Heat_surplus = TS_Heat_surplus_vect;
-
 	fullSimulationResult.runtime = runtime;
-	fullSimulationResult.paramIndex = myConfig.getParamIndex();
-	fullSimulationResult.total_annualised_cost = myCost.get_total_annualised_cost();
-	fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
-	fullSimulationResult.scenario_cost_balance = myCost.get_scenario_cost_balance();
-	fullSimulationResult.payback_horizon_years = myCost.get_payback_horizon_years();
-	fullSimulationResult.scenario_carbon_balance = myCost.get_scenario_carbon_balance();
+
 
 	return fullSimulationResult;
 
