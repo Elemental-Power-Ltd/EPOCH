@@ -43,6 +43,7 @@ public:
 
 private:
 	const HistoricalData readHistoricalData();
+	Eigen::VectorXf toEigen(const std::vector<float>& vec);
 	OutputValues doOptimisation(nlohmann::json inputJson, bool initialisationOnly=false);
 	int determineWorkerCount();
 

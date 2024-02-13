@@ -2,6 +2,8 @@
 
 #include <mutex>
 
+#include <Eigen/Core>
+
 #include "LeagueTable.hpp"
 #include "TaskGenerator.hpp"
 #include "../io/FileHandling.hpp"
@@ -48,14 +50,25 @@ const HistoricalData Optimiser::readHistoricalData() {
 	std::vector<float> RGen_data_4 = readCSVColumn(rgenFilepath, 7);
 
 	return {
-	   hotel_eload_data,
-	   ev_eload_data,
-	   heatload_data,
-	   RGen_data_1,
-	   RGen_data_2,
-	   RGen_data_3,
-	   RGen_data_4
+	   toEigen(hotel_eload_data),
+	   toEigen(ev_eload_data),
+	   toEigen(heatload_data),
+	   toEigen(RGen_data_1),
+	   toEigen(RGen_data_2),
+	   toEigen(RGen_data_3),
+	   toEigen(RGen_data_4)
 	};
+}
+
+Eigen::VectorXf Optimiser::toEigen(const std::vector<float>& vec)
+{
+	Eigen::VectorXf eig = Eigen::VectorXf(vec.size());
+
+	for (int i = 0; i < vec.size(); i++) {
+		eig[i] = vec[i];
+	}
+
+	return eig;
 }
 
 OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, int recallindex) {
@@ -123,7 +136,9 @@ SimulationResult Optimiser::reproduceResult(int paramIndex)
 
 	Config config = mTaskGenerator->getTask(paramIndex);
 
-	return simulateScenarioAndSum(mHistoricalData, config, true);
+	Simulator sim{};
+
+	return sim.simulateScenario(mHistoricalData, config, SimulationType::FullReporting);
 }
 
 OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
@@ -133,7 +148,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 
 	mTaskGenerator = std::make_unique<TaskGenerator>(inputJson, initialisationOnly);
 
-	int numWorkers = determineWorkerCount();
+	int numWorkers = std::min(determineWorkerCount(), (int)inputJson["target_max_concurrency"]);
 
 	LeagueTable leagueTable = LeagueTable(CAPACITY_PER_LEAGUE_TABLE);
 
@@ -141,13 +156,14 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 
 	std::vector<std::thread> workers;
 
-	for (int i = 0; i < (numWorkers - 1); ++i) { //keep one worker back for the main thread - need to do A/B test on whether this is performant
+	for (int i = 0; i < numWorkers; ++i) {
 		workers.emplace_back([this, &leagueTable]() {
 
 			Config config;
+			Simulator sim{};
 
 			while (mTaskGenerator->nextTask(config)) {
-				SimulationResult result = simulateScenarioAndSum(mHistoricalData, config);
+				SimulationResult result = sim.simulateScenario(mHistoricalData, config);
 				leagueTable.considerResult(result);
 				addTimeToProfiler(result.runtime);
 			}

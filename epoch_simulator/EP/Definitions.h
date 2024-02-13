@@ -1,11 +1,12 @@
 #pragma once
 
+#include <Eigen/Core>
 #include <functional>
 #include <string>
-#include <vector>
 
 // Elemental Power definitions
 
+using year_TS = Eigen::VectorXf;
 
 struct SimulationResult {
 	float Rgen_total;
@@ -43,30 +44,30 @@ struct SimulationResult {
 };
 
 struct FullSimulationResult {
-	std::vector<float> Rgen_total;
-	std::vector<float> Total_load;
-	std::vector<float> ESUM;
-	std::vector<float> ESS_available_discharge_power;
-	std::vector<float> ESS_available_charge_power;
-	std::vector<float> ESS_Rgen_only_charge;
-	std::vector<float> ESS_discharge;
-	std::vector<float> ESS_charge;
-	std::vector<float> ESS_resulting_SoC;
-	std::vector<float> Pre_grid_balance;
-	std::vector<float> Grid_Import;
-	std::vector<float> Grid_Export;
-	std::vector<float> Post_grid_balance;
-	std::vector<float> Pre_flex_import_shortfall;
-	std::vector<float> Pre_Mop_curtailed_export;
-	std::vector<float> Actual_import_shortfall;
-	std::vector<float> Actual_curtailed_export;
-	std::vector<float> Actual_high_priority_load;
-	std::vector<float> Actual_low_priority_load;
-	std::vector<float> heatload;
-	std::vector<float> scaled_heatload;
-	std::vector<float> Electrical_load_scaled_heat_yield;
-	std::vector<float> Heat_shortfall;
-	std::vector<float> Heat_surplus;
+	year_TS Rgen_total;
+	year_TS Total_load;
+	year_TS ESUM;
+	year_TS ESS_available_discharge_power;
+	year_TS ESS_available_charge_power;
+	year_TS ESS_Rgen_only_charge;
+	year_TS ESS_discharge;
+	year_TS ESS_charge;
+	year_TS ESS_resulting_SoC;
+	year_TS Pre_grid_balance;
+	year_TS Grid_Import;
+	year_TS Grid_Export;
+	year_TS Post_grid_balance;
+	year_TS Pre_flex_import_shortfall;
+	year_TS Pre_Mop_curtailed_export;
+	year_TS Actual_import_shortfall;
+	year_TS Actual_curtailed_export;
+	year_TS Actual_high_priority_load;
+	year_TS Actual_low_priority_load;
+	year_TS heatload;
+	year_TS scaled_heatload;
+	year_TS Electrical_load_scaled_heat_yield;
+	year_TS Heat_shortfall;
+	year_TS Heat_surplus;
 
 	float runtime;
 	float paramIndex;
@@ -131,13 +132,13 @@ struct InputValues {
 };
 
 struct HistoricalData {
-	std::vector<float> hotel_eload_data;
-	std::vector<float> ev_eload_data;
-	std::vector<float> heatload_data;
-	std::vector<float> RGen_data_1;
-	std::vector<float> RGen_data_2;
-	std::vector<float> RGen_data_3;
-	std::vector<float> RGen_data_4;
+	year_TS hotel_eload_data;
+	year_TS ev_eload_data;
+	year_TS heatload_data;
+	year_TS RGen_data_1;
+	year_TS RGen_data_2;
+	year_TS RGen_data_3;
+	year_TS RGen_data_4;
 };
 
 // Define a struct that represents the mapping between member names and pointers

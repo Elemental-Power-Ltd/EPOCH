@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Eigen/Core>
 #include <vector>
 #include <string>
 
@@ -7,8 +8,19 @@
 #include "Config.h"
 
 
-FullSimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config);
+enum class SimulationType {
+	FullReporting,
+	ResultOnly
+};
 
-SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config, bool computeAllSums=false);
 
-float sumVector(const std::vector<float>& v);
+class Simulator {
+public:
+	Simulator();
+
+	SimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config, SimulationType simulationType = SimulationType::ResultOnly) const;
+
+	FullSimulationResult simulateScenarioFull(const HistoricalData& historicalData, const Config& config, SimulationType simulationType) const;
+
+	year_TS calculateRGenTotal(const HistoricalData& historicalData, const Config& config) const;
+};

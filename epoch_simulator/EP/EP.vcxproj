@@ -113,6 +113,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>..\external-dependencies\eigen-3.4.0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -131,6 +133,9 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>..\external-dependencies\eigen-3.4.0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Precise</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -155,9 +160,7 @@
     <ClInclude Include="Simulation\Eload.h" />
     <ClInclude Include="Simulation\Grid.h" />
     <ClInclude Include="Simulation\Hload.h" />
-    <ClInclude Include="Simulation\RGen.h" />
     <ClInclude Include="Simulation\Simulate.hpp" />
-    <ClInclude Include="Simulation\Timeseries.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="io\FileHandling.cpp" />
@@ -165,6 +168,9 @@
     <ClCompile Include="Optimisation\Optimiser.cpp" />
     <ClCompile Include="Optimisation\TaskGenerator.cpp" />
     <ClCompile Include="Simulation\Simulate.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="Eigen.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

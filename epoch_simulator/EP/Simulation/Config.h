@@ -38,10 +38,8 @@ public:
         param_map_int({ {"ESS_charge_mode",&ESS_charge_mode}, {"ESS_discharge_mode",&ESS_discharge_mode}, {"target_max_concurrency",&target_max_concurrency }})
         {}
     
-    // calculate number of timesteps
-
-    int calculate_timesteps() const
-    {
+    int calculate_timesteps() const {
+        // number of hours is a float in case we need sub-hourly timewindows
         float float_timestep = timewindow / timestep_hours;
         int int_timestep = static_cast<int>(float_timestep);
         return int_timestep;
