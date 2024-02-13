@@ -8,13 +8,19 @@
 #include "Config.h"
 
 
+enum class SimulationType {
+	FullReporting,
+	ResultOnly
+};
+
+
 class Simulator {
 public:
 	Simulator();
 
-	FullSimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config) const;
+	SimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config, SimulationType simulationType = SimulationType::ResultOnly) const;
 
-	SimulationResult simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config, bool computeAllSums = false) const;
+	FullSimulationResult simulateScenarioFull(const HistoricalData& historicalData, const Config& config, SimulationType simulationType) const;
 
 	year_TS calculateRGenTotal(const HistoricalData& historicalData, const Config& config) const;
 };

@@ -16,7 +16,7 @@ Simulator::Simulator() {
 }
 
 
-FullSimulationResult Simulator::simulateScenario(const HistoricalData& historicalData, const Config& myConfig) const {
+FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& historicalData, const Config& myConfig, SimulationType simulationType) const {
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
@@ -44,30 +44,33 @@ FullSimulationResult Simulator::simulateScenario(const HistoricalData& historica
 
 	FullSimulationResult fullSimulationResult;
 
-	fullSimulationResult.Rgen_total = RGen_total;
-	fullSimulationResult.Total_load = MountEload.getTS_Total_load();
-	fullSimulationResult.ESUM = ESUM;
-	fullSimulationResult.ESS_available_discharge_power = MountBESS.getTS_ESS_available_discharge_power();;
-	fullSimulationResult.ESS_available_charge_power = MountBESS.getTS_ESS_available_charge_power();
-	fullSimulationResult.ESS_Rgen_only_charge = MountBESS.getTS_ESS_Rgen_only_charge();
-	fullSimulationResult.ESS_discharge = MountBESS.getTS_ESS_discharge();
-	fullSimulationResult.ESS_charge = MountBESS.getTS_ESS_charge();
-	fullSimulationResult.ESS_resulting_SoC = MountBESS.getTS_ESS_resulting_SoC();
-	fullSimulationResult.Pre_grid_balance = MountGrid.getTS_Pre_grid_balance();
-	fullSimulationResult.Grid_Import = MountGrid.getTS_GridImport();
-	fullSimulationResult.Grid_Export = MountGrid.getTS_GridExport();
-	fullSimulationResult.Post_grid_balance = MountGrid.getTS_Post_grid_balance();
-	fullSimulationResult.Pre_flex_import_shortfall = MountGrid.getTS_Pre_flex_import_shortfall();
-	fullSimulationResult.Pre_Mop_curtailed_export = MountGrid.getTS_Pre_Mop_curtailed_Export();
-	fullSimulationResult.Actual_import_shortfall = MountGrid.getTS_Actual_import_shortfall();
-	fullSimulationResult.Actual_curtailed_export = MountGrid.getTS_Actual_curtailed_export();
-	fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
-	fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
-	fullSimulationResult.heatload = historicalData.heatload_data;
-	fullSimulationResult.scaled_heatload = MountHload.getTS_Heatload();
-	fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getTS_Electrical_load_scaled_heat_yield();
-	fullSimulationResult.Heat_shortfall = MountHload.getTS_Heat_shortfall();
-	fullSimulationResult.Heat_surplus = MountHload.getTS_Heat_surplus();
+	if (simulationType == SimulationType::FullReporting) {
+		fullSimulationResult.Rgen_total = RGen_total;
+		fullSimulationResult.Total_load = MountEload.getTS_Total_load();
+		fullSimulationResult.ESUM = ESUM;
+		fullSimulationResult.ESS_available_discharge_power = MountBESS.getTS_ESS_available_discharge_power();;
+		fullSimulationResult.ESS_available_charge_power = MountBESS.getTS_ESS_available_charge_power();
+		fullSimulationResult.ESS_Rgen_only_charge = MountBESS.getTS_ESS_Rgen_only_charge();
+		fullSimulationResult.ESS_discharge = MountBESS.getTS_ESS_discharge();
+		fullSimulationResult.ESS_charge = MountBESS.getTS_ESS_charge();
+		fullSimulationResult.ESS_resulting_SoC = MountBESS.getTS_ESS_resulting_SoC();
+		fullSimulationResult.Pre_grid_balance = MountGrid.getTS_Pre_grid_balance();
+		fullSimulationResult.Grid_Import = MountGrid.getTS_GridImport();
+		fullSimulationResult.Grid_Export = MountGrid.getTS_GridExport();
+		fullSimulationResult.Post_grid_balance = MountGrid.getTS_Post_grid_balance();
+		fullSimulationResult.Pre_flex_import_shortfall = MountGrid.getTS_Pre_flex_import_shortfall();
+		fullSimulationResult.Pre_Mop_curtailed_export = MountGrid.getTS_Pre_Mop_curtailed_Export();
+		fullSimulationResult.Actual_import_shortfall = MountGrid.getTS_Actual_import_shortfall();
+		fullSimulationResult.Actual_curtailed_export = MountGrid.getTS_Actual_curtailed_export();
+		fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
+		fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
+		fullSimulationResult.heatload = historicalData.heatload_data;
+		fullSimulationResult.scaled_heatload = MountHload.getTS_Heatload();
+		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getTS_Electrical_load_scaled_heat_yield();
+		fullSimulationResult.Heat_shortfall = MountHload.getTS_Heat_shortfall();
+		fullSimulationResult.Heat_surplus = MountHload.getTS_Heat_surplus();
+	}
+
 
 	fullSimulationResult.paramIndex = myConfig.getParamIndex();
 	fullSimulationResult.total_annualised_cost = myCost.get_total_annualised_cost();
@@ -96,14 +99,14 @@ FullSimulationResult Simulator::simulateScenario(const HistoricalData& historica
 
 }
 
-SimulationResult Simulator::simulateScenarioAndSum(const HistoricalData& historicalData, const Config& config, bool computeAllSums) const {
-	const FullSimulationResult& fullSimulationResult = simulateScenario(historicalData, config);
+SimulationResult Simulator::simulateScenario(const HistoricalData& historicalData, const Config& config, SimulationType simulationType) const {
 
+	const FullSimulationResult& fullSimulationResult = simulateScenarioFull(historicalData, config, simulationType);
 	SimulationResult simResult{};
 
 	// By default we don't compute these sums during the main optimisation as we're only concerned with the output results
 	// but for recall of specific scenarios (e.g. to write to a csv) we want to compute these
-	if (computeAllSums) {
+	if (simulationType == SimulationType::FullReporting) {
 		simResult.Rgen_total = fullSimulationResult.Rgen_total.sum();
 		simResult.Total_load = fullSimulationResult.Total_load.sum();
 		simResult.ESUM = fullSimulationResult.ESUM.sum();

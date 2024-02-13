@@ -138,7 +138,7 @@ SimulationResult Optimiser::reproduceResult(int paramIndex)
 
 	Simulator sim{};
 
-	return sim.simulateScenarioAndSum(mHistoricalData, config, true);
+	return sim.simulateScenario(mHistoricalData, config, SimulationType::FullReporting);
 }
 
 OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
@@ -163,7 +163,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 			Simulator sim{};
 
 			while (mTaskGenerator->nextTask(config)) {
-				SimulationResult result = sim.simulateScenarioAndSum(mHistoricalData, config);
+				SimulationResult result = sim.simulateScenario(mHistoricalData, config);
 				leagueTable.considerResult(result);
 				addTimeToProfiler(result.runtime);
 			}
