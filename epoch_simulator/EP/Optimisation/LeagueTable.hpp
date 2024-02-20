@@ -16,8 +16,8 @@ public:
 
 	std::pair<int, float> getBestCapex() const;
 	std::pair<int, float> getBestAnnualisedCost() const;
-	std::pair<int, float> getBestCostBalance() const;
 	std::pair<int, float> getBestPaybackHorizon() const;
+	std::pair<int, float> getBestCostBalance() const;
 	std::pair<int, float> getBestCarbonBalance() const;
 
 	std::vector<int> toParamIndexList(bool includeWorst=true);
@@ -37,16 +37,16 @@ private:
 
 	std::multimap<float, int> mCapex;
 	std::multimap<float, int> mAnnualisedCost;
-	std::multimap<float, int> mCostBalance;
 	std::multimap<float, int> mPaybackHorizon;
+	std::multimap<float, int> mCostBalance;
 	std::multimap<float, int> mCarbonBalance;
 
 	// While it might otherwise make more sense for these to be <int, float>  (ie index, value)
 	// we keep these in the same order as the multimaps above for internal consistency within the class
 	std::pair<float, int> mWorstCapex;
 	std::pair<float, int> mWorstAnnualisedCost;
-	std::pair<float, int> mWorstCostBalance;
 	std::pair<float, int> mWorstPaybackHorizon;
+	std::pair<float, int> mWorstCostBalance;
 	std::pair<float, int> mWorstCarbonBalance;
 
 

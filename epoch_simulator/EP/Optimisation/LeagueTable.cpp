@@ -6,8 +6,8 @@ LeagueTable::LeagueTable(int capacity):
 	mCapacity(capacity),
 	mWorstCapex{ -FLT_MAX, 0},
 	mWorstAnnualisedCost{ -FLT_MAX, 0 },
-	mWorstCostBalance{ FLT_MAX, 0 },
 	mWorstPaybackHorizon{ -FLT_MAX ,0},
+	mWorstCostBalance{ FLT_MAX, 0 },
 	mWorstCarbonBalance{ FLT_MAX, 0 }
 {}
 
@@ -19,11 +19,11 @@ void LeagueTable::considerResult(const SimulationResult& r)
 	// Annualised Cost
 	considerMinimum(mAnnualisedCost, r.total_annualised_cost, r.paramIndex);
 
-	// Cost Balance
-	considerMaximum(mCostBalance, r.scenario_cost_balance, r.paramIndex);
-
 	// Payback Horizon
 	considerMinimum(mPaybackHorizon, r.payback_horizon_years, r.paramIndex);
+
+	// Cost Balance
+	considerMaximum(mCostBalance, r.scenario_cost_balance, r.paramIndex);
 
 	// Carbon Balance
 	considerMaximum(mCarbonBalance, r.scenario_carbon_balance, r.paramIndex);
@@ -45,17 +45,17 @@ std::pair<int, float> LeagueTable::getBestAnnualisedCost() const
 	return std::pair<int, float>(best->second, best->first);
 }
 
-std::pair<int, float> LeagueTable::getBestCostBalance() const
-{
-	// last/largest is best
-	auto best = mCostBalance.rbegin();
-	return std::pair<int, float>(best->second, best->first);
-}
-
 std::pair<int, float> LeagueTable::getBestPaybackHorizon() const
 {
 	// first/smallest is best
 	auto best = mPaybackHorizon.begin();
+	return std::pair<int, float>(best->second, best->first);
+}
+
+std::pair<int, float> LeagueTable::getBestCostBalance() const
+{
+	// last/largest is best
+	auto best = mCostBalance.rbegin();
 	return std::pair<int, float>(best->second, best->first);
 }
 
@@ -82,11 +82,11 @@ std::vector<int> LeagueTable::toParamIndexList(bool includeWorst)
 		resultSet.insert(res.second);
 	}
 
-	for (const auto& res : mCostBalance) {
+	for (const auto& res : mPaybackHorizon) {
 		resultSet.insert(res.second);
 	}
 
-	for (const auto& res : mPaybackHorizon) {
+	for (const auto& res : mCostBalance) {
 		resultSet.insert(res.second);
 	}
 
@@ -97,8 +97,8 @@ std::vector<int> LeagueTable::toParamIndexList(bool includeWorst)
 	if (includeWorst) {
 		resultSet.insert(mWorstCapex.second);
 		resultSet.insert(mWorstAnnualisedCost.second);
-		resultSet.insert(mWorstCostBalance.second);
 		resultSet.insert(mWorstPaybackHorizon.second);
+		resultSet.insert(mWorstCostBalance.second);
 		resultSet.insert(mWorstCarbonBalance.second);
 	}
 
