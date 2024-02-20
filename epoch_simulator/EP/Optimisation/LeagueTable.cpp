@@ -2,10 +2,14 @@
 
 #include <set>
 
-LeagueTable::LeagueTable(int capacity)
-{
-	mCapacity = capacity;
-}
+LeagueTable::LeagueTable(int capacity):
+	mCapacity(capacity),
+	mWorstCapex{ -FLT_MAX, 0},
+	mWorstAnnualisedCost{ -FLT_MAX, 0 },
+	mWorstCostBalance{ FLT_MAX, 0 },
+	mWorstPaybackHorizon{ -FLT_MAX ,0},
+	mWorstCarbonBalance{ FLT_MAX, 0 }
+{}
 
 void LeagueTable::considerResult(const SimulationResult& r)
 {
@@ -23,6 +27,8 @@ void LeagueTable::considerResult(const SimulationResult& r)
 
 	// Carbon Balance
 	considerMaximum(mCarbonBalance, r.scenario_carbon_balance, r.paramIndex);
+
+	considerAsWorst(r);
 }
 
 std::pair<int, float> LeagueTable::getBestCapex() const
@@ -62,7 +68,7 @@ std::pair<int, float> LeagueTable::getBestCarbonBalance() const
 
 // return the parameter indices of the results held in the league table
 // each paramIndex can then be used to reproduce the full result
-std::vector<int> LeagueTable::toParamIndexList()
+std::vector<int> LeagueTable::toParamIndexList(bool includeWorst)
 {
 	// It is possible to have the same paramIndex in multiple of the subTables
 	// For this reason, put the results into a set first to remove duplicates
@@ -86,6 +92,14 @@ std::vector<int> LeagueTable::toParamIndexList()
 
 	for (const auto& res : mCarbonBalance) {
 		resultSet.insert(res.second);
+	}
+
+	if (includeWorst) {
+		resultSet.insert(mWorstCapex.second);
+		resultSet.insert(mWorstAnnualisedCost.second);
+		resultSet.insert(mWorstCostBalance.second);
+		resultSet.insert(mWorstPaybackHorizon.second);
+		resultSet.insert(mWorstCarbonBalance.second);
 	}
 
 	std::vector<int> results(resultSet.begin(), resultSet.end());
@@ -173,5 +187,51 @@ void LeagueTable::considerMaximumUnderMutex(std::multimap<float, int>& subTable,
 
 		// insert the new result from r
 		subTable.insert({ value, paramIndex });
+	}
+}
+
+void LeagueTable::considerAsWorst(const SimulationResult& r)
+{
+	// if any of the objectives are the worst seen so far, acquire the mutex and check again
+	if (r.project_CAPEX > mWorstCapex.first ||
+		r.total_annualised_cost > mWorstAnnualisedCost.first ||
+		r.payback_horizon_years > mWorstPaybackHorizon.first ||
+		r.scenario_cost_balance < mWorstCostBalance.first ||
+		r.scenario_carbon_balance < mWorstCarbonBalance.first
+		) {
+		considerAsWorstUnderMutex(r);
+	}
+}
+
+void LeagueTable::considerAsWorstUnderMutex(const SimulationResult& r)
+{
+	std::lock_guard<std::mutex> guard(mMutex);
+
+	//////// Minimising objectives ////////
+	// CAPEX
+	if (r.project_CAPEX > mWorstCapex.first) {
+		mWorstCapex = { r.project_CAPEX, r.paramIndex };
+	}
+
+	// Annualised Cost
+	if (r.total_annualised_cost > mWorstAnnualisedCost.first) {
+		mWorstAnnualisedCost = { r.total_annualised_cost, r.paramIndex };
+	}
+
+	// Payback Horizon
+	if (r.payback_horizon_years > mWorstPaybackHorizon.first) {
+		mWorstPaybackHorizon = { r.payback_horizon_years, r.paramIndex };
+	}
+
+
+	//////// Maximising objectives ////////
+	// Cost Balance
+	if (r.scenario_cost_balance < mWorstCostBalance.first) {
+		mWorstCostBalance = { r.scenario_cost_balance, r.paramIndex };
+	}
+
+	// Carbon Balance
+	if (r.scenario_carbon_balance < mWorstCarbonBalance.first) {
+		mWorstCarbonBalance = { r.scenario_carbon_balance, r.paramIndex };
 	}
 }
