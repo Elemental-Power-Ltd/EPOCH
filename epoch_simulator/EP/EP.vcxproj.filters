@@ -74,8 +74,10 @@
     <ClCompile Include="Simulation\Simulate.cpp">
       <Filter>Simulation</Filter>
     </ClCompile>
-    <ClCompile Include="Optimisation\LeagueTable.cpp" />
     <ClCompile Include="Optimisation\TaskGenerator.cpp">
+      <Filter>Optimisation</Filter>
+    </ClCompile>
+    <ClCompile Include="Optimisation\LeagueTable.cpp">
       <Filter>Optimisation</Filter>
     </ClCompile>
   </ItemGroup>
