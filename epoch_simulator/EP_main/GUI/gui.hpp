@@ -1036,14 +1036,9 @@ void writeInitialiseEstimatesToForm(const OutputValues& output) {
 	SetWindowText(hOutput12, buffer);
 }
 
-void writeTimingsToForm(std::chrono::steady_clock::time_point start_long) {
-
-	auto end_long = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> total_elapsed = end_long - start_long;  // calculate total elaspsed run time
-	std::cout << "Total Runtime: " << total_elapsed.count() << " seconds" << std::endl; // print elapsed run time
-	float elapsed_float = static_cast<float>(total_elapsed.count());
+void writeTimingsToForm(const OutputValues& output) {
 	wchar_t buffer[300];
-	swprintf_s(buffer, 300, L"%f", elapsed_float);
+	swprintf_s(buffer, 300, L"%f", output.time_taken);
 	SetWindowText(hOutput4, buffer);
 }
 
@@ -1479,7 +1474,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_COMMAND:
 	{
-		auto start_long = std::chrono::high_resolution_clock::now();
 		int wmId = LOWORD(wParam);
 		int wmEvent = HIWORD(wParam);
 		// Parse the menu selections:
@@ -1502,7 +1496,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
 				std::cout << "JSON file written successfully!" << std::endl;
 
-				writeTimingsToForm(start_long);
+				writeTimingsToForm(output);
 
 				std::cout << "Sleeping for 5 seconds..."; // this allows time to read the console if needed. Adjust if needed
 				//std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer
@@ -1534,7 +1528,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				writeJsonToFile(jsonObj, fileConfig.getOutputJsonInitFilepath());
 				std::cout << "JSON file written successfully!" << std::endl;
 
-				writeTimingsToForm(start_long);
+				writeTimingsToForm(output);
 
 				std::cout << "Sleeping for 1 seconds..."; // this allows time to read the console if needed. Adjust if needed
 				//std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer

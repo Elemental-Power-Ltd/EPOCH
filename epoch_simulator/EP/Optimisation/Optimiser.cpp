@@ -143,6 +143,7 @@ SimulationResult Optimiser::reproduceResult(int paramIndex)
 
 OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
 {
+	auto clockStart = std::chrono::steady_clock::now();
 	OutputValues output;
 	resetTimeProfiler();
 
@@ -191,7 +192,11 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	output.minVal = mTimeProfile.minTime;
 	output.meanVal = mTimeProfile.totalTime / mTimeProfile.count;
 
+	std::chrono::duration<double> elapsedTime = std::chrono::steady_clock::now() - clockStart;
+	output.time_taken = static_cast<float>(elapsedTime.count());
+
 	std::cout << "Max: " << output.maxVal << ", Min: " << output.minVal << ", Mean: " << output.meanVal << std::endl;
+	std::cout << "Total Runtime: " << output.time_taken << "s" << std::endl;
 
 	if (initialisationOnly) {
 		// Compute the per-scenario estimates
