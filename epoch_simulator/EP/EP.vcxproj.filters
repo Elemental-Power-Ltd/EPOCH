@@ -13,9 +13,6 @@
     <Filter Include="io">
       <UniqueIdentifier>{c2ac5ece-d4f7-4a12-ba11-ba9832d35ecd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Dependencies">
-      <UniqueIdentifier>{3db7024f-57aa-49b3-a40f-883d88a39aac}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Optimisation\Threadsafe.h">
@@ -53,9 +50,6 @@
     </ClInclude>
     <ClInclude Include="io\FileHandling.hpp">
       <Filter>io</Filter>
-    </ClInclude>
-    <ClInclude Include="dependencies\json.hpp">
-      <Filter>Dependencies</Filter>
     </ClInclude>
     <ClInclude Include="Optimisation\LeagueTable.hpp">
       <Filter>Optimisation</Filter>

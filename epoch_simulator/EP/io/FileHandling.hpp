@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../dependencies/json.hpp"
 #include "../Definitions.h"
+
+#include <nlohmann/json.hpp>
 
 #include <filesystem>
 #include <string>
