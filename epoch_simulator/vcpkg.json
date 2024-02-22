@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "eigen3",
+    "mimalloc",
     "nlohmann-json"
   ]
 }
