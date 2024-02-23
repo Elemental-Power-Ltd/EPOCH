@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <math.h>
 
 
 TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisationOnly)
@@ -12,20 +13,7 @@ TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisatio
 
 	for (const auto& paramRange: mParamGrid) {
 
-		validateParamRange(paramRange);
-
-		std::vector<float> rangeValues;
-
-		if (paramRange.min == paramRange.max) {
-			rangeValues.emplace_back(paramRange.min);
-		}
-		else {
-			float value = paramRange.min;
-			while (value <= paramRange.max) {
-				rangeValues.emplace_back(value);
-				value += paramRange.step;
-			};
-		}
+		std::vector<float> rangeValues = makeRange(paramRange);
 
 		mExpandedParamGrid.emplace_back(paramRange.name, rangeValues, cumulativeProduct);
 
@@ -135,6 +123,9 @@ std::vector<ParamRange> TaskGenerator::makeParamGrid(const nlohmann::json& input
 
 void TaskGenerator::validateParamRange(const ParamRange& paramRange)
 {
+	// note: no check is currently made that the steps fit evenly from min->max
+	// This means that the last result could be greater than max
+
 	if (paramRange.max < paramRange.min) {
 		std::cerr << "Maximum is less than manimum - for " << paramRange.name << std::endl;
 		throw std::exception{};
@@ -149,4 +140,28 @@ void TaskGenerator::validateParamRange(const ParamRange& paramRange)
 		std::cerr << "Cannot have a negative increment - for " << paramRange.name << std::endl;
 		throw std::exception{};
 	}
+}
+
+std::vector<float> TaskGenerator::makeRange(const ParamRange& paramRange)
+{
+	validateParamRange(paramRange);
+
+	if (paramRange.min == paramRange.max) {
+		return std::vector{ paramRange.min };
+	}
+
+	// in order to ensure we generate a range with the correct number of values
+	// we create a vector of the correct size and then populate it with multiples of the step
+
+	double num_values = (paramRange.max - paramRange.min) / paramRange.step;
+	// The range includes both the min and the max
+	num_values += 1;
+
+	auto rangeValues = std::vector<float>(std::round(num_values));
+
+	for (int i = 0; i < rangeValues.size(); i++) {
+		rangeValues[i] = paramRange.min + (i * paramRange.step);
+	}
+
+	return rangeValues;
 }

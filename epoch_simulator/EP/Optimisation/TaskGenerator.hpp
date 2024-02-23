@@ -31,6 +31,7 @@ public:
 private:
 	std::vector<ParamRange> makeParamGrid(const nlohmann::json& inputJson);
 	void validateParamRange(const ParamRange& paramRange);
+	std::vector<float> makeRange(const ParamRange& paramRange);
 
 	std::atomic<int> mScenarioCounter;
 	int mTotalScenarios;
