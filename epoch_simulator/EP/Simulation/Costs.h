@@ -548,8 +548,8 @@ public:
 		//std::cout << "in function scenario_export_cost " << scenario_export_cost << std::endl;
 	};
 
-	void calculate_scenario_cost_balance(float Project_annualised_cost) {
-		mScenario_cost_balance = (mBaseline_elec_cost + mBaseline_fuel_cost) - (mScenario_import_cost + mScenario_fuel_cost + mScenario_export_cost + Project_annualised_cost);
+	void calculate_scenario_cost_balance(float Total_annualised_cost) {
+		mScenario_cost_balance = (mBaseline_elec_cost + mBaseline_fuel_cost) - (mScenario_import_cost + mScenario_fuel_cost + mScenario_export_cost + Total_annualised_cost);
 	};
 
 	void calculate_payback_horizon() {
