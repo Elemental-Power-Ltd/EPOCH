@@ -10,22 +10,22 @@ class Grid
 {
 public:
 	Grid(const Config& config): 
-		mGridImport(config.getGridImport()),
-		mGridExport(config.getGridExport()),
+		mMaxGridImport(config.getGridImport()),
+		mMaxGridExport(config.getGridExport()),
 		mImportHeadroom(config.getImport_headroom()),
 		mExportHeadroom(config.getExport_headroom()),
 		mTimesteps(config.calculate_timesteps()),
 		mFlexLoadMax(config.getFlex_load_max()),
 		mMopLoadMax(config.getMop_load_max()),
 
-		mTS_GridImport(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_GridExport(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Pre_grid_balance(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Post_grid_balance(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Pre_flex_import_shortfall(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Pre_Mop_curtailed_Export(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Actual_import_shortfall(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Actual_curtailed_export(Eigen::VectorXf::Zero(mTimesteps)),
+		mGridImport(Eigen::VectorXf::Zero(mTimesteps)),
+		mGridExport(Eigen::VectorXf::Zero(mTimesteps)),
+		mPreGridBalance(Eigen::VectorXf::Zero(mTimesteps)),
+		mPostGridBalance(Eigen::VectorXf::Zero(mTimesteps)),
+		mPreFlexImportShortfall(Eigen::VectorXf::Zero(mTimesteps)),
+		mPreMopCurtailedExport(Eigen::VectorXf::Zero(mTimesteps)),
+		mActualImportShortfall(Eigen::VectorXf::Zero(mTimesteps)),
+		mActualCurtailedExport(Eigen::VectorXf::Zero(mTimesteps)),
 
 		mActualHighPriorityLoad(Eigen::VectorXf::Zero(mTimesteps)),
 		mActualLowPriorityLoad(Eigen::VectorXf::Zero(mTimesteps))
@@ -34,7 +34,7 @@ public:
 	void performGridCalculations(const year_TS& ESUM, const ESS& ess) {
 
 		// calculate the pre-grid balance
-		mTS_Pre_grid_balance = ESUM - ess.getTS_ESS_discharge() + ess.getTS_ESS_charge();
+		mPreGridBalance = ESUM - ess.getESSDischarge() + ess.getESSCharge();
 
 		//Calculate Grid Import = IF(BB4>0,MIN(BB4,Grid_imp),0)
 		calculateGridImport();
@@ -43,19 +43,19 @@ public:
 		calculateGridExport();
 
 		//Calculate Post-grid balance = BB4-B4+AB4
-		mTS_Post_grid_balance = mTS_Pre_grid_balance - mTS_GridImport + mTS_GridExport;
+		mPostGridBalance = mPreGridBalance - mGridImport + mGridExport;
 
 		//Calulate Pre-Flex Import shortfall = IF(CB>0, CB4, 0)
-		calculatePre_flex_import_shortfall();
+		calculatePreFlexImportShortfall();
 
 		//Calculate Pre-Mop Curtailed Export = IF(CB<0,-CB4,0)
-		calculatePre_Mop_curtailed_Export();
+		calculatePreMopCurtailedExport();
 
 		//Actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
-		calculateActual_import_shortfall();
+		calculateActualImportShortfall();
 
 		//Actual Curtailed Export = IF(EB>ESum!EB4,EB4-ESum!EB4,0)
-		calculateActual_curtailed_export();
+		calculateActualCurtailedExport();
 
 		calculateActualHighPriorityLoad();
 		calculateActualLowPriorityLoad();
@@ -65,12 +65,12 @@ public:
 	// Functionality
 	// these functions account for headroom built in to Grid_connection to take import/export power peaks intratimestep
 	float calculate_Grid_imp() const {
-		float Grid_imp = mGridImport * (1 - mImportHeadroom);
+		float Grid_imp = mMaxGridImport * (1 - mImportHeadroom);
 		return Grid_imp;
 	}
 
 	float calculate_Grid_exp() const {
-		float Grid_exp = mGridExport * (1 - mExportHeadroom);
+		float Grid_exp = mMaxGridExport * (1 - mExportHeadroom);
 		return Grid_exp;
 	}
 
@@ -79,10 +79,10 @@ public:
 		float gridImp = calculate_Grid_imp();
 
 		for (int index = 0; index < mTimesteps; index++) {
-			if (mTS_Pre_grid_balance[index] > 0) {
-				mTS_GridImport[index] = std::min(mTS_Pre_grid_balance[index], gridImp);;
+			if (mPreGridBalance[index] > 0) {
+				mGridImport[index] = std::min(mPreGridBalance[index], gridImp);;
 			} else {
-				mTS_GridImport[index] = 0;
+				mGridImport[index] = 0;
 			}
 		}
 	}
@@ -92,44 +92,44 @@ public:
 		float gridExp = calculate_Grid_exp();
 
 		for (int index = 0; index < mTimesteps; index++) {
-			if (mTS_Pre_grid_balance[index] < 0) {
-				mTS_GridExport[index] = std::min(-1.0f * mTS_Pre_grid_balance[index], gridExp);
+			if (mPreGridBalance[index] < 0) {
+				mGridExport[index] = std::min(-1.0f * mPreGridBalance[index], gridExp);
 			} else {
-				mTS_GridExport[index] = 0;
+				mGridExport[index] = 0;
 			}
 		}
 	}
 
 	//Calulate Pre-Flex Import shortfall = IF(CB>0, CB4, 0)
-	void calculatePre_flex_import_shortfall() {
+	void calculatePreFlexImportShortfall() {
 		for (int index = 0; index < mTimesteps; index++) {
-			mTS_Pre_flex_import_shortfall[index] = std::max(mTS_Post_grid_balance[index], 0.0f);
+			mPreFlexImportShortfall[index] = std::max(mPostGridBalance[index], 0.0f);
 		}
 	}
 
 	//Calculate Pre-Mop Curtailed Export = IF(CB<0,-CB4,0)
-	void calculatePre_Mop_curtailed_Export() {
+	void calculatePreMopCurtailedExport() {
 		for (int index = 0; index < mTimesteps; index++) {
-			mTS_Pre_Mop_curtailed_Export[index] = std::min(mTS_Post_grid_balance[index], 0.0f);
+			mPreMopCurtailedExport[index] = std::min(mPostGridBalance[index], 0.0f);
 		}
 		// we want the positive counterpart at each timestep, so multiply the vector by -1
-		mTS_Pre_Mop_curtailed_Export *= -1.0f;
+		mPreMopCurtailedExport *= -1.0f;
 	}
 
 	//Calculate actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
-	void calculateActual_import_shortfall() {
+	void calculateActualImportShortfall() {
 		for (int index = 0; index < mTimesteps; index++) {
-			mTS_Actual_import_shortfall[index] = std::max(
-				mTS_Pre_flex_import_shortfall[index] - mFlexLoadMax,
+			mActualImportShortfall[index] = std::max(
+				mPreFlexImportShortfall[index] - mFlexLoadMax,
 				0.0f
 			);
 		}
 	}
 
-	void calculateActual_curtailed_export() {
+	void calculateActualCurtailedExport() {
 		for (int index = 0; index < mTimesteps; index++) {
-			mTS_Actual_curtailed_export[index] = std::max(
-				mTS_Pre_Mop_curtailed_Export[index] - mMopLoadMax,
+			mActualCurtailedExport[index] = std::max(
+				mPreMopCurtailedExport[index] - mMopLoadMax,
 				0.0f
 			);
 		}
@@ -138,7 +138,7 @@ public:
 	void calculateActualHighPriorityLoad() {
 		for (int index = 0; index < mTimesteps; index++) {
 			mActualHighPriorityLoad[index] = std::max(
-				mFlexLoadMax - mTS_Pre_flex_import_shortfall[index],
+				mFlexLoadMax - mPreFlexImportShortfall[index],
 				0.0f
 			);
 		}
@@ -146,40 +146,40 @@ public:
 
 	void calculateActualLowPriorityLoad() {
 		for (int index = 0; index < mTimesteps; index++) {
-			mActualLowPriorityLoad[index] = std::min(mTS_Pre_Mop_curtailed_Export[index], mMopLoadMax);
+			mActualLowPriorityLoad[index] = std::min(mPreMopCurtailedExport[index], mMopLoadMax);
 		}
 	}
 
-	year_TS getTS_GridImport() const {
-		return mTS_GridImport;
+	year_TS getGridImport() const {
+		return mGridImport;
 	}
 
-	year_TS getTS_GridExport() const {
-		return mTS_GridExport;
+	year_TS getGridExport() const {
+		return mGridExport;
 	}
 
-	year_TS getTS_Pre_grid_balance() const {
-		return mTS_Pre_grid_balance;
+	year_TS getPreGridBalance() const {
+		return mPreGridBalance;
 	}
 
-	year_TS getTS_Post_grid_balance() const {
-		return mTS_Post_grid_balance;
+	year_TS getPostGridBalance() const {
+		return mPostGridBalance;
 	}
 
-	year_TS getTS_Pre_flex_import_shortfall() const {
-		return mTS_Pre_flex_import_shortfall;
+	year_TS getPreFlexImportShortfall() const {
+		return mPreFlexImportShortfall;
 	}
 
-	year_TS getTS_Pre_Mop_curtailed_Export() const {
-		return mTS_Pre_Mop_curtailed_Export;
+	year_TS getPreMopCurtailedExport() const {
+		return mPreMopCurtailedExport;
 	}
 
-	year_TS getTS_Actual_import_shortfall() const {
-		return mTS_Actual_import_shortfall;
+	year_TS getActualImportShortfall() const {
+		return mActualImportShortfall;
 	}
 
-	year_TS getTS_Actual_curtailed_export() const {
-		return mTS_Actual_curtailed_export;
+	year_TS getActualCurtailedExport() const {
+		return mActualCurtailedExport;
 	}
 
 	year_TS getActualHighPriorityLoad() const {
@@ -192,23 +192,22 @@ public:
 
 
 private:
-	const float mGridImport;
-	const float mGridExport;
+	const float mMaxGridImport;
+	const float mMaxGridExport;
 	const float mImportHeadroom;
 	const float mExportHeadroom;
 	const int mTimesteps;
 	const float mFlexLoadMax;
 	const float mMopLoadMax;
 
-	year_TS mTS_GridImport;
-	year_TS mTS_GridExport;
-	year_TS mTS_Pre_grid_balance;
-	year_TS mTS_Post_grid_balance;
-	year_TS mTS_Pre_flex_import_shortfall;
-	year_TS mTS_Pre_Mop_curtailed_Export;
-	year_TS mTS_Actual_import_shortfall;
-	year_TS mTS_Actual_curtailed_export;
-
+	year_TS mGridImport;
+	year_TS mGridExport;
+	year_TS mPreGridBalance;
+	year_TS mPostGridBalance;
+	year_TS mPreFlexImportShortfall;
+	year_TS mPreMopCurtailedExport;
+	year_TS mActualImportShortfall;
+	year_TS mActualCurtailedExport;
 	year_TS mActualHighPriorityLoad;
 	year_TS mActualLowPriorityLoad;
 };

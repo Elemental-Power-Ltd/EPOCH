@@ -67,7 +67,7 @@ public:
 		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.getExport_kWh_price()) };
 
 
-		year_TS baseline_elec_load = eload.getTS_Total_fix_load() + grid.getActualHighPriorityLoad();
+		year_TS baseline_elec_load = eload.getTotalFixLoad() + grid.getActualHighPriorityLoad();
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
 
@@ -76,13 +76,13 @@ public:
 		const float IMPORT_FUEL_PRICE = 12.2f;
 		const float BOILER_EFFICIENCY = 0.9f;
 
-		year_TS baseline_heat_load = hload.getTS_Heatload() + grid.getActualLowPriorityLoad();
+		year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad();
 		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), IMPORT_FUEL_PRICE) };
 
 		calculate_baseline_fuel_cost(baseline_heat_load, import_fuel_prices, BOILER_EFFICIENCY);
-		calculate_scenario_elec_cost(grid.getTS_GridImport(), import_elec_prices);
-		calculate_scenario_fuel_cost(hload.getTS_Heat_shortfall(), import_fuel_prices);
-		calculate_scenario_export_cost(grid.getTS_GridExport(), export_elec_prices);
+		calculate_scenario_elec_cost(grid.getGridImport(), import_elec_prices);
+		calculate_scenario_fuel_cost(hload.getHeatShortfall(), import_fuel_prices);
+		calculate_scenario_export_cost(grid.getGridExport(), export_elec_prices);
 
 		// TODO - variable names are potentially confusing/misleading here. Is this total_annualised_cost or project_annualised_cost?
 		calculate_scenario_cost_balance(mTotal_annualised_cost);
@@ -103,11 +103,11 @@ public:
 
 		calculate_baseline_fuel_CO2e(baseline_heat_load);
 
-		calculate_scenario_elec_CO2e(grid.getTS_GridImport());
+		calculate_scenario_elec_CO2e(grid.getGridImport());
 
-		calculate_scenario_fuel_CO2e(hload.getTS_Heat_shortfall());
+		calculate_scenario_fuel_CO2e(hload.getHeatShortfall());
 
-		calculate_scenario_export_CO2e(grid.getTS_GridExport());
+		calculate_scenario_export_CO2e(grid.getGridExport());
 
 		calculate_scenario_carbon_balance();
 	}

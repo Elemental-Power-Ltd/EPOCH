@@ -28,8 +28,8 @@ struct SimulationResult {
 	float Actual_curtailed_export;
 	float Actual_high_priority_load;
 	float Actual_low_priority_load;
-	float heatload;
-	float scaled_heatload;
+	float Heatload;
+	float Scaled_heatload;
 	float Electrical_load_scaled_heat_yield;
 	float Heat_shortfall;
 	float Heat_surplus;
@@ -64,8 +64,8 @@ struct FullSimulationResult {
 	year_TS Actual_curtailed_export;
 	year_TS Actual_high_priority_load;
 	year_TS Actual_low_priority_load;
-	year_TS heatload;
-	year_TS scaled_heatload;
+	year_TS Heatload;
+	year_TS Scaled_heatload;
 	year_TS Electrical_load_scaled_heat_yield;
 	year_TS Heat_shortfall;
 	year_TS Heat_surplus;

@@ -11,110 +11,110 @@ class Hload
 public:
 	Hload(const HistoricalData& historicalData, const Config& config) :
 		mTimesteps(config.calculate_timesteps()),
-		mTS_Heatload(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Heat_shortfall(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Heat_surplus(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Scaled_electrical_fix_heat_load_1(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Scaled_electrical_fix_heat_load_2(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Scaled_electrical_highflex_heat_load(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Scaled_electrical_lowflex_heat_load(Eigen::VectorXf::Zero(mTimesteps)),
-		mTS_Electrical_load_scaled_heat_yield(Eigen::VectorXf::Zero(mTimesteps))
+		mHeatload(Eigen::VectorXf::Zero(mTimesteps)),
+		mHeatShortfall(Eigen::VectorXf::Zero(mTimesteps)),
+		mHeatSurplus(Eigen::VectorXf::Zero(mTimesteps)),
+		mScaledElectricalFixHeatLoad_1(Eigen::VectorXf::Zero(mTimesteps)),
+		mScaledElectricalFixHeatLoad_2(Eigen::VectorXf::Zero(mTimesteps)),
+		mScaledElectricalHighFlexHeatLoad(Eigen::VectorXf::Zero(mTimesteps)),
+		mScaledElectricalLowFlexHeatLoad(Eigen::VectorXf::Zero(mTimesteps)),
+		mElectricalLoadScaledHeatYield(Eigen::VectorXf::Zero(mTimesteps))
 	{}
 
 
 	void performHeatCalculations(const HistoricalData& historicalData, const Config& config, const Grid& grid) {
 
-		mTS_Heatload = historicalData.heatload_data * config.getScalarHL1();
+		mHeatload = historicalData.heatload_data * config.getScalarHL1();
 
 		// scale historical data by heat hield scalar
-		mTS_Scaled_electrical_fix_heat_load_1 = historicalData.hotel_eload_data * config.getScalarHYield1();
-		mTS_Scaled_electrical_fix_heat_load_2 = historicalData.ev_eload_data * config.getScalarHYield2();
+		mScaledElectricalFixHeatLoad_1 = historicalData.hotel_eload_data * config.getScalarHYield1();
+		mScaledElectricalFixHeatLoad_2 = historicalData.ev_eload_data * config.getScalarHYield2();
 
-		calculateElectrical_load_scaled_heat_yield(
+		calculateElectricalLoadScaledHeatYield(
 			grid.getActualHighPriorityLoad(), grid.getActualLowPriorityLoad(), 
 			config.getScalarHYield3(), config.getScalarHYield4()
 		);
 
 		//Heat shortfall
 		//IF(B4>AB4,B4-AB4,0)
-		calculateHeat_shortfall();
+		calculateHeatShortfall();
 
 		//Heat surplus
 		//IF(B4<AB4,AB3-B4,0)
-		calculateHeat_surplus();
+		calculateHeatSurplus();
 	}
 
-	void calculateElectrical_load_scaled_heat_yield(const year_TS& TS_Actual_high_priority_load,
-		const year_TS& TS_Actual_low_priority_load, float ScalarHYield3, float ScalarHYield4) {
+	void calculateElectricalLoadScaledHeatYield(const year_TS& ActualHighPriorityLoad,
+		const year_TS& ActualLowPriorityLoad, float ScalarHYield3, float ScalarHYield4) {
 
-		mTS_Electrical_load_scaled_heat_yield += mTS_Scaled_electrical_fix_heat_load_1;
-		mTS_Electrical_load_scaled_heat_yield += mTS_Scaled_electrical_fix_heat_load_2;
-		mTS_Electrical_load_scaled_heat_yield += (TS_Actual_high_priority_load * ScalarHYield3);
-		mTS_Electrical_load_scaled_heat_yield += (TS_Actual_low_priority_load * ScalarHYield4);
+		mElectricalLoadScaledHeatYield += mScaledElectricalFixHeatLoad_1;
+		mElectricalLoadScaledHeatYield += mScaledElectricalFixHeatLoad_2;
+		mElectricalLoadScaledHeatYield += (ActualHighPriorityLoad * ScalarHYield3);
+		mElectricalLoadScaledHeatYield += (ActualLowPriorityLoad * ScalarHYield4);
 	}
 
-	void calculateHeat_shortfall() {
+	void calculateHeatShortfall() {
 		for (int index = 0; index < mTimesteps; index++) {
-			mTS_Heat_shortfall[index] = std::max(
-				mTS_Heatload[index] - mTS_Electrical_load_scaled_heat_yield[index],
+			mHeatShortfall[index] = std::max(
+				mHeatload[index] - mElectricalLoadScaledHeatYield[index],
 				0.0f
 			);
 		}
 	}
 
-	void calculateHeat_surplus() {
+	void calculateHeatSurplus() {
 		for (int index = 0; index < mTimesteps; index++) {
-			mTS_Heat_surplus[index] = std::max(
-				mTS_Electrical_load_scaled_heat_yield[index] - mTS_Heatload[index],
+			mHeatSurplus[index] = std::max(
+				mElectricalLoadScaledHeatYield[index] - mHeatload[index],
 				0.0f
 			);
 		}
 	}
 
 		
-	year_TS getTS_Heatload() const {
-		return mTS_Heatload;
+	year_TS getHeatload() const {
+		return mHeatload;
 	}
 
-	year_TS getTS_Heat_shortfall() const {
-		return mTS_Heat_shortfall;
+	year_TS getHeatShortfall() const {
+		return mHeatShortfall;
 	}
 
-	year_TS getTS_Heat_surplus() const {
-		return mTS_Heat_surplus;
+	year_TS getHeatSurplus() const {
+		return mHeatSurplus;
 	}
 
-	year_TS getTS_Scaled_electrical_fix_heat_load_1() const {
-		return mTS_Scaled_electrical_fix_heat_load_1;
+	year_TS getScaledElectricalFixHeatLoad_1() const {
+		return mScaledElectricalFixHeatLoad_1;
 	}
 
-	year_TS getTS_Scaled_electrical_fix_heat_load_2() const {
-		return mTS_Scaled_electrical_fix_heat_load_2;
+	year_TS getScaledElectricalFixHeatLoad_2() const {
+		return mScaledElectricalFixHeatLoad_2;
 	}
 
-	year_TS getTS_Scaled_electrical_highflex_heat_load() const {
-		return mTS_Scaled_electrical_highflex_heat_load;
+	year_TS getScaledElectricalHighFlexHeatLoad() const {
+		return mScaledElectricalHighFlexHeatLoad;
 	}
 
-	year_TS getTS_Scaled_electrical_lowflex_heat_load() const {
-		return mTS_Scaled_electrical_lowflex_heat_load;
+	year_TS getScaledElectricalLowFlexHeatLoad() const {
+		return mScaledElectricalLowFlexHeatLoad;
 	}
 
-	year_TS getTS_Electrical_load_scaled_heat_yield() const {
-		return mTS_Electrical_load_scaled_heat_yield;
+	year_TS getElectricalLoadScaledHeatYield() const {
+		return mElectricalLoadScaledHeatYield;
 	}
 
 
 private:
 	const int mTimesteps;
 
-	year_TS mTS_Heatload;
-	year_TS mTS_Heat_shortfall;
-	year_TS mTS_Heat_surplus;
-	year_TS mTS_Scaled_electrical_fix_heat_load_1; 
-	year_TS mTS_Scaled_electrical_fix_heat_load_2; 
-	year_TS mTS_Scaled_electrical_highflex_heat_load;
-	year_TS mTS_Scaled_electrical_lowflex_heat_load;
-	year_TS mTS_Electrical_load_scaled_heat_yield;
+	year_TS mHeatload;
+	year_TS mHeatShortfall;
+	year_TS mHeatSurplus;
+	year_TS mScaledElectricalFixHeatLoad_1; 
+	year_TS mScaledElectricalFixHeatLoad_2; 
+	year_TS mScaledElectricalHighFlexHeatLoad;
+	year_TS mScaledElectricalLowFlexHeatLoad;
+	year_TS mElectricalLoadScaledHeatYield;
 };
 

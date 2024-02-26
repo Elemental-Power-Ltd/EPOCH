@@ -249,8 +249,8 @@ void writeResultsToCSV(std::filesystem::path filepath, const std::vector<Simulat
 		outFile << result.Actual_curtailed_export << ",";
 		outFile << result.Actual_high_priority_load << ",";
 		outFile << result.Actual_low_priority_load << ",";
-		outFile << result.heatload << ",";
-		outFile << result.scaled_heatload << ",";
+		outFile << result.Heatload << ",";
+		outFile << result.Scaled_heatload << ",";
 		outFile << result.Electrical_load_scaled_heat_yield << ",";
 		outFile << result.Heat_shortfall << ",";
 		outFile << result.Heat_surplus;  // no comma
