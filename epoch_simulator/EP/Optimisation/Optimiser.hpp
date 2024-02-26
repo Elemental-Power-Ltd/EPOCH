@@ -6,7 +6,8 @@
 #include <thread>
 #include <vector>
 
-#include "../dependencies/json.hpp"
+#include <nlohmann/json.hpp>
+
 #include "../io/FileConfig.h"
 #include "Threadsafe.h"
 #include "../Definitions.h"

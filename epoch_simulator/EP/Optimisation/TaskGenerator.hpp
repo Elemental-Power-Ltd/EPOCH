@@ -3,7 +3,8 @@
 #include <mutex>
 #include <vector>
 
-#include "../dependencies/json.hpp"
+#include <nlohmann/json.hpp>
+
 #include "../Simulation/Config.h"
 
 
