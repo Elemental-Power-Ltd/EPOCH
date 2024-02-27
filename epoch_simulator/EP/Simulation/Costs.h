@@ -84,7 +84,6 @@ public:
 		calculate_scenario_fuel_cost(hload.getHeatShortfall(), import_fuel_prices);
 		calculate_scenario_export_cost(grid.getGridExport(), export_elec_prices);
 
-		// TODO - variable names are potentially confusing/misleading here. Is this total_annualised_cost or project_annualised_cost?
 		calculate_scenario_cost_balance(mTotal_annualised_cost);
 
 		//========================================
