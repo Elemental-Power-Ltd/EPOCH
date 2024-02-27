@@ -34,43 +34,16 @@ public:
 	void calculateCosts(const Eload& eload, const Hload& hload, const Grid& grid) {
 
 		float ESS_kW = std::max(mConfig.getESS_charge_power(), mConfig.getESS_discharge_power());
-		float ESS_PCS_CAPEX = calculate_ESS_PCS_CAPEX(ESS_kW);
-		float ESS_PCS_OPEX = calculate_ESS_PCS_OPEX(ESS_kW);
-
-		float ESS_ENCLOSURE_CAPEX = calculate_ESS_ENCLOSURE_CAPEX(mConfig.getESS_capacity());
-		float ESS_ENCLOSURE_OPEX = calculate_ESS_ENCLOSURE_OPEX(mConfig.getESS_capacity());
-		float ESS_ENCLOSURE_DISPOSAL = calculate_ESS_ENCLOSURE_DISPOSAL(mConfig.getESS_capacity());
-
 		float PV_kWp_total = mConfig.getScalarRG1() + mConfig.getScalarRG2() + mConfig.getScalarRG3() + mConfig.getScalarRG4();
-		float PVpanel_CAPEX = calculate_PVpanel_CAPEX(PV_kWp_total);
-		float PVBoP_CAPEX = calculate_PVBoP_CAPEX(PV_kWp_total);
-		// there is no roof mount in the mount project example, need to add to input parameters
-		float PVroof_CAPEX = calculate_PVroof_CAPEX(0);
-		float PVground_CAPEX = calculate_PVground_CAPEX(PV_kWp_total);
-		float PV_OPEX = calculate_PV_OPEX(PV_kWp_total);
-
-		// need to add num EV charge points to Config
-		float EV_CP_Cost = calculate_EV_CP_cost(0, 3, 0, 0);
-		float EV_CP_install = calculate_EV_CP_install(0, 3, 0, 0);
-		// need to add aditional grid capacity max (imp/exp) and out to Config
-		float Grid_CAPEX = calculate_Grid_CAPEX(std::max(0.0f, 0.0f));
-		// need to add num HP capacity to Config
-		float ASHP_CAPEX = calculate_ASHP_CAPEX(12.0);
-
-
-		float annualised_project_cost = calculate_Project_annualised_cost(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, 0, 3, 0, 0, 0, 12.0);
 
 		calculate_total_annualised_cost(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, 0, 3, 0, 0, 0, 12.0);
 
 		// for now, simply fix import/export price
 		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.getImport_kWh_price()) };
 		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.getExport_kWh_price()) };
-
-
 		year_TS baseline_elec_load = eload.getTotalFixLoad() + grid.getActualHighPriorityLoad();
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
-
 
 		// need to add a new config parameter here
 		const float IMPORT_FUEL_PRICE = 12.2f;
