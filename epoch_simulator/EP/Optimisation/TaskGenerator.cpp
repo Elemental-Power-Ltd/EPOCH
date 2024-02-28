@@ -36,7 +36,7 @@ TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisatio
 }
 
 
-const int TaskGenerator::totalScenarios()
+int TaskGenerator::totalScenarios() const
 {
 	return mTotalScenarios;
 }
@@ -53,8 +53,7 @@ bool TaskGenerator::nextTask(Config& config)
 	return true;
 }
 
-Config TaskGenerator::getTask(int index)
-{
+Config TaskGenerator::getTask(int index) const {
 	// the user facing index starts at 1
 	// but the logic in here assumes a 0 index
 	index -= 1;

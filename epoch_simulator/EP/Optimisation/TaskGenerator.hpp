@@ -25,9 +25,9 @@ class TaskGenerator {
 public:
 	TaskGenerator(const nlohmann::json& inputJson, bool initialisationOnly);
 
-	const int totalScenarios();
+	int totalScenarios() const;
 	bool nextTask(Config& config);
-	Config getTask(int index);
+	Config getTask(int index) const;
 
 private:
 	std::vector<ParamRange> makeParamGrid(const nlohmann::json& inputJson);

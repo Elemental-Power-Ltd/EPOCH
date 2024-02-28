@@ -1,6 +1,7 @@
 #include "Optimiser.hpp"
 
 #include <mutex>
+#include <filesystem>
 
 #include <Eigen/Core>
 
@@ -114,8 +115,44 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, int recallindex) {
 	return output;
 }
 
-std::vector<SimulationResult> Optimiser::reproduceResults(const std::vector<int>& paramIndices)
+// Write the saved results from the league table to CSV files
+// Currently we write one CSV per objective, each containing the N best entries followed by the single worst entry
+void Optimiser::writeResultsToCSVs(const LeagueTable& leagueTable)
 {
+
+	auto capexIndices = leagueTable.getResultsForObjective(Objective::CAPEX);
+	reproduceAndWriteToCSV(capexIndices, "CAPEX.csv");
+
+	auto annualisedCostIndices = leagueTable.getResultsForObjective(Objective::AnnualisedCost);
+	reproduceAndWriteToCSV(annualisedCostIndices, "AnnualisedCost.csv");
+
+	auto paybackHorizonIndices = leagueTable.getResultsForObjective(Objective::PaybackHorizon);
+	reproduceAndWriteToCSV(paybackHorizonIndices, "PaybackHorizon.csv");
+
+	auto costBalanceIndices = leagueTable.getResultsForObjective(Objective::CostBalance);
+	reproduceAndWriteToCSV(costBalanceIndices, "CostBalance.csv");
+
+	auto carbonBalanceIndices = leagueTable.getResultsForObjective(Objective::CarbonBalance);
+	reproduceAndWriteToCSV(carbonBalanceIndices, "CarbonBalance.csv");
+
+	// write all of the (unique) results to a CSV
+	std::vector<int> allResults = leagueTable.getAllResults();
+	std::vector<SimulationResult> fullResults = reproduceResults(allResults);
+	writeResultsToCSV(mFileConfig.getOutputCSVFilepath(), fullResults);
+
+}
+
+void Optimiser::reproduceAndWriteToCSV(ResultIndices resultIndices, std::string fileName) const {
+
+	std::vector<SimulationResult> results = reproduceResults(resultIndices.bestIndices);
+	SimulationResult worst = reproduceResult(resultIndices.worstIndex);
+	results.emplace_back(worst);
+
+	auto fullPath = mFileConfig.getOutputDir() / fileName;
+	writeResultsToCSV(fullPath, results);
+}
+
+std::vector<SimulationResult> Optimiser::reproduceResults(const std::vector<int>& paramIndices) const {
 	std::vector<SimulationResult> results{};
 	results.reserve(paramIndices.size());
 
@@ -128,8 +165,7 @@ std::vector<SimulationResult> Optimiser::reproduceResults(const std::vector<int>
 
 // Given a ParamIndex that was used to produce a certain result
 // Reproduce the full SimulationResult that it would produce
-SimulationResult Optimiser::reproduceResult(int paramIndex)
-{
+SimulationResult Optimiser::reproduceResult(int paramIndex) const {
 	if (!mTaskGenerator) {
 		throw std::exception();
 	}
@@ -182,11 +218,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 
 	//// Retrieve and process results
 	findBestResults(leagueTable, output);
-
-	// write the results to a CSV file
-	std::filesystem::path outputFilepath = mFileConfig.getOutputCSVFilepath();
-	std::vector<SimulationResult> results = reproduceResults(leagueTable.toParamIndexList());
-	writeResultsToCSV(outputFilepath, results);
+	writeResultsToCSVs(leagueTable);
 
 	output.maxVal = mTimeProfile.maxTime;
 	output.minVal = mTimeProfile.minTime;

@@ -68,8 +68,7 @@ std::pair<int, float> LeagueTable::getBestCarbonBalance() const
 
 // return the parameter indices of the results held in the league table
 // each paramIndex can then be used to reproduce the full result
-std::vector<int> LeagueTable::toParamIndexList(bool includeWorst)
-{
+std::vector<int> LeagueTable::getAllResults(bool includeWorst) const {
 	// It is possible to have the same paramIndex in multiple of the subTables
 	// For this reason, put the results into a set first to remove duplicates
 	std::set<int> resultSet = {};
@@ -105,6 +104,34 @@ std::vector<int> LeagueTable::toParamIndexList(bool includeWorst)
 	std::vector<int> results(resultSet.begin(), resultSet.end());
 
 	return results;
+}
+
+ResultIndices LeagueTable::getResultsForObjective(Objective objective) const {
+
+	ResultIndices result;
+
+	switch (objective) {
+	case Objective::CAPEX:
+		result.bestIndices = mapToParamIndices(mCapex);
+		result.worstIndex = mWorstCapex.second;
+		return result;
+	case Objective::AnnualisedCost:
+		result.bestIndices = mapToParamIndices(mAnnualisedCost);
+		result.worstIndex = mWorstAnnualisedCost.second;
+		return result;
+	case Objective::PaybackHorizon:
+		result.bestIndices = mapToParamIndices(mPaybackHorizon);
+		result.worstIndex = mWorstPaybackHorizon.second;
+		return result;
+	case Objective::CarbonBalance:
+		result.bestIndices = mapToParamIndices(mCarbonBalance);
+		result.worstIndex = mWorstCarbonBalance.second;
+		return result;
+	case Objective::CostBalance:
+		result.bestIndices = mapToParamIndices(mCostBalance);
+		result.worstIndex = mWorstCostBalance.second;
+		return result;
+	}
 }
 
 // consider inserting a simulation result (identified by paramIndex and value)
@@ -234,4 +261,16 @@ void LeagueTable::considerAsWorstUnderMutex(const SimulationResult& r)
 	if (r.scenario_carbon_balance < mWorstCarbonBalance.first) {
 		mWorstCarbonBalance = { r.scenario_carbon_balance, r.paramIndex };
 	}
+}
+
+std::vector<int> LeagueTable::mapToParamIndices(const std::multimap<float, int>& subTable) const {
+
+	std::vector<int> indices{};
+	indices.reserve(subTable.size());
+
+	for (const auto& [_, paramIndex] : subTable) {
+		indices.emplace_back(paramIndex);
+	}
+
+	return indices;
 }

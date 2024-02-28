@@ -43,40 +43,40 @@ public:
     // so the full filepath will be:
     //      rootDirectory / subdirectory / filepath
 
-    std::filesystem::path getEloadFilepath() {
+    std::filesystem::path getEloadFilepath() const {
         return rootDir / inputDir / eloadFilename;
     }
 
-    std::filesystem::path getHloadFilepath() {
+    std::filesystem::path getHloadFilepath() const {
         return rootDir / inputDir / hloadFilename;
     }
 
-    std::filesystem::path getRgenFilepath() {
+    std::filesystem::path getRgenFilepath() const {
         return rootDir / inputDir / rgenFilename;
     }
 
-    std::filesystem::path getInputJsonFilepath() {
+    std::filesystem::path getInputJsonFilepath() const {
         return rootDir / inputDir / inputParameters;
     }
 
-    std::filesystem::path getOutputCSVFilepath() {
+    std::filesystem::path getOutputCSVFilepath() const {
         return rootDir / outputDir / resultsFilename;
     }
 
-    std::filesystem::path getOutputJsonFilepath() {
+    std::filesystem::path getOutputJsonFilepath() const {
         return rootDir / outputDir / outputJsonFilename;
     }
 
-    std::filesystem::path getOutputJsonInitFilepath() {
+    std::filesystem::path getOutputJsonInitFilepath() const {
         return rootDir / outputDir / outputJsonInitFilename;
     }
 
     // for more fine-grained controlled, get the inputDir or outputDir and then choose the filename at the call site
-    std::filesystem::path getInputDir() {
+    std::filesystem::path getInputDir() const {
         return rootDir / inputDir;
     }
 
-    std::filesystem::path getOutputDir() {
+    std::filesystem::path getOutputDir() const {
         return rootDir / outputDir;
     }
 

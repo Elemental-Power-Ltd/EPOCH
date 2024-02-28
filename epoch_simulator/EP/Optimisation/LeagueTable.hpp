@@ -1,11 +1,14 @@
 #pragma once
 
-
-
 #include <map>
 #include <mutex>
 
 #include "../Definitions.h"
+
+struct ResultIndices {
+	std::vector<int> bestIndices;
+	int worstIndex;
+};
 
 
 class LeagueTable {
@@ -20,7 +23,8 @@ public:
 	std::pair<int, float> getBestCostBalance() const;
 	std::pair<int, float> getBestCarbonBalance() const;
 
-	std::vector<int> toParamIndexList(bool includeWorst=true);
+	std::vector<int> getAllResults(bool includeWorst=true) const;
+	ResultIndices getResultsForObjective(Objective objective) const;
 
 private:
 	int mCapacity;
@@ -33,6 +37,8 @@ private:
 
 	void considerAsWorst(const SimulationResult& r);
 	void considerAsWorstUnderMutex(const SimulationResult& r);
+
+	std::vector<int> mapToParamIndices(const std::multimap<float, int>& subTable) const;
 
 
 	std::multimap<float, int> mCapex;

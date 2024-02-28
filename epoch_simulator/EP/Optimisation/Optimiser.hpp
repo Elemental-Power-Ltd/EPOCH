@@ -52,8 +52,10 @@ private:
 	void resetTimeProfiler();
 	void addTimeToProfiler(float timeTaken);
 
-	std::vector<SimulationResult> reproduceResults(const std::vector<int>& paramIndices);
-	SimulationResult reproduceResult(int paramIndex);
+	void writeResultsToCSVs(const LeagueTable& leagueTable);
+	void reproduceAndWriteToCSV(ResultIndices resultIndices, std::string fileName) const;
+	std::vector<SimulationResult> reproduceResults(const std::vector<int>& paramIndices) const;
+	SimulationResult reproduceResult(int paramIndex) const;
 
 	FileConfig mFileConfig;
 	TimeProfile mTimeProfile;

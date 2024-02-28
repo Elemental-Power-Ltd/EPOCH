@@ -158,3 +158,5 @@ struct OutMemberMapping {
 };
 
 constexpr int CAPACITY_PER_LEAGUE_TABLE = 400;
+
+enum class Objective { CAPEX, AnnualisedCost, PaybackHorizon, CostBalance, CarbonBalance };
