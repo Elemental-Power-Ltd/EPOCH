@@ -150,55 +150,6 @@ bool isValidFloat(const std::string& str) {
 }
 
 
-void writeToCSV(std::filesystem::path absfilepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns) {
-	if (dataColumns.empty()) {
-		std::cerr << "Data columns are empty!" << std::endl;
-		return;
-	}
-
-	std::size_t numColumns = dataColumns.size();
-	std::size_t numRows = dataColumns[0].second.size();
-
-	// Check if all vectors are of the same length
-	for (const auto& dataColumn : dataColumns) {
-		if (dataColumn.second.size() != numRows) {
-			std::cerr << "Data columns are not of the same length!" << std::endl;
-			std::cerr << "Number of rows is:" << dataColumns[0].second.size() << std::endl;
-			std::cerr << "Data column is:" << dataColumn.second.size() << std::endl;
-			return;
-		}
-	}
-
-	std::ofstream outFile(absfilepath);
-
-	if (!outFile.is_open()) {
-		std::cerr << "Failed to open the output file!" << std::endl;
-		return;
-	}
-
-	// Write column names as the first row
-	for (std::size_t i = 0; i < numColumns; ++i) {
-		outFile << dataColumns[i].first;
-		if (i < numColumns - 1) {
-			outFile << ",";
-		}
-	}
-	outFile << std::endl;
-
-	// Write data rows
-	for (std::size_t i = 0; i < numRows; ++i) {
-		for (std::size_t j = 0; j < numColumns; ++j) {
-			outFile << dataColumns[j].second[i];
-			if (j < numColumns - 1) {
-				outFile << ",";
-			}
-		}
-		outFile << std::endl;
-	}
-
-	outFile.close();
-}
-
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results)
 {
 	std::ofstream outFile(filepath);
@@ -258,62 +209,83 @@ void writeResultsToCSV(std::filesystem::path filepath, const std::vector<Simulat
 	}
 }
 
+void writeResultsToCSV(std::filesystem::path filepath, const std::vector<ObjectiveResult>& results)
+{
+	std::ofstream outFile(filepath);
 
-
-void appendCSV(std::filesystem::path filepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns) {
-	if (dataColumns.empty()) {
-		std::cerr << "Data columns are empty!" << std::endl;
-		return;
-	}
-
-	std::size_t numColumns = dataColumns.size();
-	std::size_t numRows = dataColumns[0].second.size();
-
-	// Check if all vectors are of the same length
-	for (const auto& dataColumn : dataColumns) {
-		if (dataColumn.second.size() != numRows) {
-			std::cerr << "Data columns are not of the same length!" << std::endl;
-			std::cerr << "Number of rows is:" << dataColumns[0].second.size() << std::endl;
-			std::cerr << "Data column is:" << dataColumn.second.size() << std::endl;
-			return;
-		}
-	}
-
-	// Open file in append mode
-	std::ofstream outFile(filepath, std::ios::app);
-
+	// TODO exception instead
 	if (!outFile.is_open()) {
 		std::cerr << "Failed to open the output file!" << std::endl;
 		return;
 	}
 
-	// Check if the file is empty; if it is, write the headers
-	outFile.seekp(0, std::ios::end);
-	bool isEmpty = !outFile.tellp();
-	if (isEmpty) {
-		// Write column names as the first row
-		for (std::size_t i = 0; i < numColumns; ++i) {
-			outFile << dataColumns[i].first;
-			if (i < numColumns - 1) {
-				outFile << ",";
-			}
-		}
-		outFile << std::endl;
-	}
+	// write the column headers
 
-	// Write data rows
-	for (std::size_t i = 0; i < numRows; ++i) {
-		for (std::size_t j = 0; j < numColumns; ++j) {
-			outFile << dataColumns[j].second[i];
-			if (j < numColumns - 1) {
-				outFile << ",";
-			}
-		}
-		outFile << std::endl;
-	}
+	outFile << "Parameter index" << ",";
+	outFile << "Annualised cost" << ",";
+	outFile << "Project CAPEX" << ",";
+	outFile << "Scenario Balance (£)" << ",";
+	outFile << "Payback horizon (yrs)" << ",";
+	outFile << "Scenario Carbon Balance (kgC02e)";
 
-	outFile.close();
+	// deliberately omit the comma for carbon balance
+	// to allow the loop to have a comma for each entry (before)
+
+	for (auto paramName: configParamNames) {
+		outFile << ",";
+		outFile << paramName;
+	}
+	// no trailing comma
+	outFile << "\n";
+
+
+	// write each result
+	for (const auto& result : results) {
+		// These must be written in exactly the same order as the header
+		outFile << result.config.getParamIndex() << ",";
+
+		outFile << result.total_annualised_cost << ",";
+		outFile << result.project_CAPEX << ",";
+		outFile << result.scenario_cost_balance << ",";
+		outFile << result.payback_horizon_years << ",";
+		outFile << result.scenario_carbon_balance << ",";
+
+		const Config& config = result.config;
+
+		outFile << config.getFixed_load1_scalar() << ",";
+		outFile << config.getFixed_load2_scalar() << ",";
+		outFile << config.getFlex_load_max() << ",";
+		outFile << config.getMop_load_max() << ",";
+		outFile << config.getScalarRG1() << ",";
+		outFile << config.getScalarRG2() << ",";
+		outFile << config.getScalarRG3() << ",";
+		outFile << config.getScalarRG4() << ",";
+		outFile << config.getScalarHL1() << ",";
+		outFile << config.getScalarHYield1() << ",";
+		outFile << config.getScalarHYield2() << ",";
+		outFile << config.getScalarHYield3() << ",";
+		outFile << config.getScalarHYield4() << ",";
+		outFile << config.getGridImport() << ",";
+		outFile << config.getGridExport() << ",";
+		outFile << config.getImport_headroom() << ",";
+		outFile << config.getExport_headroom() << ",";
+		outFile << config.getESS_charge_power() << ",";
+		outFile << config.getESS_discharge_power() << ",";
+		outFile << config.getESS_capacity() << ",";
+		outFile << config.getESS_RTE() << ",";
+		outFile << config.getESS_aux_load() << ",";
+		outFile << config.getESS_start_SoC() << ",";
+		outFile << config.getImport_kWh_price() << ",";
+		outFile << config.getExport_kWh_price() << ",";
+		outFile << config.getTime_budget_min() << ",";
+		outFile << config.getCAPEX_limit() << ",";
+		outFile << config.getOPEX_limit() << ",";
+		outFile << config.getESS_charge_mode() << ",";
+		outFile << config.getESS_discharge_mode(); // no trailing comma
+		outFile << "\n";
+	}
 }
+
 
 // Custom function to convert a struct to a JSON object
 nlohmann::json inputToJson(const InputValues& data) {

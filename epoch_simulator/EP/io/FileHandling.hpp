@@ -11,9 +11,8 @@
 
 std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column);
 bool isValidFloat(const std::string& str);
-void writeToCSV(std::filesystem::path filepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns);
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results);
-void appendCSV(std::filesystem::path filepath, const std::vector<std::pair<std::string, std::vector<float>>>& dataColumns);
+void writeResultsToCSV(std::filesystem::path filepath, const std::vector<ObjectiveResult>& results);
 
 nlohmann::json inputToJson(const InputValues& data);
 nlohmann::json outputToJson(const OutputValues& data);
@@ -57,4 +56,38 @@ constexpr std::array<std::string_view, 31> resultHeader = {
 	"Electrical load scaled heat",
 	"Heat shortfall",
 	"Heat surplus",
+};
+
+// The subset of values in the Config class that we want to write to the output CSVs
+constexpr std::array<std::string_view, 30> configParamNames = {
+	"Fixed_load1_scalar",
+	"Fixed_load2_scalar",
+	"Flex_load_max",
+	"Mop_load_max",
+	"ScalarRG1",
+	"ScalarRG2",
+	"ScalarRG3",
+	"ScalarRG4",
+	"ScalarHL1",
+	"ScalarHYield1",
+	"ScalarHYield2",
+	"ScalarHYield3",
+	"ScalarHYield4",
+	"GridImport",
+	"GridExport",
+	"Import_headroom",
+	"Export_headroom",
+	"ESS_charge_power",
+	"ESS_discharge_power",
+	"ESS_capacity",
+	"ESS_RTE",
+	"ESS_aux_load",
+	"ESS_start_SoC",
+	"import_kWh_price",
+	"export_kWh_price",
+	"time_budget_min",
+	"CAPEX_limit",
+	"OPEX_limit",
+	"ESS_charge_mode",
+	"ESS_discharge_mode"
 };

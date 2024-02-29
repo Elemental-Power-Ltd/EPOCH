@@ -4,6 +4,8 @@
 #include <functional>
 #include <string>
 
+#include "Simulation/Config.h"
+
 // Elemental Power definitions
 
 using year_TS = Eigen::VectorXf;
@@ -81,6 +83,18 @@ struct FullSimulationResult {
 };
 
 
+// Contains the five objectives and the Config that was used to produce the result
+struct ObjectiveResult {
+	float total_annualised_cost;
+	float project_CAPEX;
+	float scenario_cost_balance;
+	float payback_horizon_years;
+	float scenario_carbon_balance;
+
+	Config config;
+};
+
+
 struct OutputValues {
 	float maxVal;
 	float minVal;
@@ -98,7 +112,6 @@ struct OutputValues {
 	int scenario_index;
 	int num_scenarios; float est_hours; float est_seconds;
 };
-
 
 
 struct InputValues {

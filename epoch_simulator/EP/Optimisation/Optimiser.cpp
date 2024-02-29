@@ -117,8 +117,7 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, int recallindex) {
 
 // Write the saved results from the league table to CSV files
 // Currently we write one CSV per objective, each containing the N best entries followed by the single worst entry
-void Optimiser::writeResultsToCSVs(const LeagueTable& leagueTable)
-{
+void Optimiser::writeResultsToCSVs(const LeagueTable& leagueTable) {
 
 	auto capexIndices = leagueTable.getResultsForObjective(Objective::CAPEX);
 	reproduceAndWriteToCSV(capexIndices, "CAPEX.csv");
@@ -137,23 +136,23 @@ void Optimiser::writeResultsToCSVs(const LeagueTable& leagueTable)
 
 	// write all of the (unique) results to a CSV
 	std::vector<int> allResults = leagueTable.getAllResults();
-	std::vector<SimulationResult> fullResults = reproduceResults(allResults);
+	std::vector<ObjectiveResult> fullResults = reproduceResults(allResults);
 	writeResultsToCSV(mFileConfig.getOutputCSVFilepath(), fullResults);
 
 }
 
 void Optimiser::reproduceAndWriteToCSV(ResultIndices resultIndices, std::string fileName) const {
 
-	std::vector<SimulationResult> results = reproduceResults(resultIndices.bestIndices);
-	SimulationResult worst = reproduceResult(resultIndices.worstIndex);
+	std::vector<ObjectiveResult> results = reproduceResults(resultIndices.bestIndices);
+	ObjectiveResult worst = reproduceResult(resultIndices.worstIndex);
 	results.emplace_back(worst);
 
 	auto fullPath = mFileConfig.getOutputDir() / fileName;
 	writeResultsToCSV(fullPath, results);
 }
 
-std::vector<SimulationResult> Optimiser::reproduceResults(const std::vector<int>& paramIndices) const {
-	std::vector<SimulationResult> results{};
+std::vector<ObjectiveResult> Optimiser::reproduceResults(const std::vector<int>& paramIndices) const {
+	std::vector<ObjectiveResult> results{};
 	results.reserve(paramIndices.size());
 
 	for (int paramIndex : paramIndices) {
@@ -163,9 +162,8 @@ std::vector<SimulationResult> Optimiser::reproduceResults(const std::vector<int>
 	return results;
 }
 
-// Given a ParamIndex that was used to produce a certain result
-// Reproduce the full SimulationResult that it would produce
-SimulationResult Optimiser::reproduceResult(int paramIndex) const {
+// Given a ParamIndex that was used to produce a certain result, reproduce it to obtain the full result
+ObjectiveResult Optimiser::reproduceResult(int paramIndex) const {
 	if (!mTaskGenerator) {
 		throw std::exception();
 	}
@@ -174,7 +172,19 @@ SimulationResult Optimiser::reproduceResult(int paramIndex) const {
 
 	Simulator sim{};
 
-	return sim.simulateScenario(mHistoricalData, config, SimulationType::FullReporting);
+	SimulationResult simResult = sim.simulateScenario(mHistoricalData, config, SimulationType::FullReporting);
+
+	ObjectiveResult objectiveResult;
+
+	objectiveResult.config = config;
+
+	objectiveResult.project_CAPEX = simResult.project_CAPEX;
+	objectiveResult.payback_horizon_years = simResult.payback_horizon_years;
+	objectiveResult.total_annualised_cost = simResult.total_annualised_cost;
+	objectiveResult.scenario_cost_balance = simResult.scenario_cost_balance;
+	objectiveResult.scenario_carbon_balance = simResult.scenario_carbon_balance;
+
+	return objectiveResult;
 }
 
 OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
