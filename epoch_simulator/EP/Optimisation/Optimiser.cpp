@@ -228,7 +228,6 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 
 	//// Retrieve and process results
 	findBestResults(leagueTable, output);
-	writeResultsToCSVs(leagueTable);
 
 	output.maxVal = mTimeProfile.maxTime;
 	output.minVal = mTimeProfile.minTime;
@@ -279,6 +278,8 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	output.ESS_start_SoC = 23.0;
 	output.ESS_charge_mode = 24;
 	output.ESS_discharge_mode = 25;
+
+	writeResultsToCSVs(leagueTable);
 
 	return output;
 }
