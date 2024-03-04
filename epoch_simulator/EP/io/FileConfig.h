@@ -17,7 +17,7 @@ public:
         std::filesystem::path rgenFilename = "CSVRGen.csv",
 
         std::filesystem::path inputParameters = "inputParameters.json",
-        std::filesystem::path resultsFilename = "EP_Results.csv",
+        std::filesystem::path resultsFilename = "AllResults.csv",
         std::filesystem::path outputJsonFilename = "outputParameters.json",
         std::filesystem::path outputJsonInitFilename = "outputParameters_fromInitialise.json"
     )

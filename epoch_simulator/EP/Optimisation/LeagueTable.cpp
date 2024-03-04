@@ -71,39 +71,32 @@ std::pair<uint64_t, float> LeagueTable::getBestCarbonBalance() const
 std::vector<uint64_t> LeagueTable::getAllResults(bool includeWorst) const {
 	// It is possible to have the same paramIndex in multiple of the subTables
 	// For this reason, put the results into a set first to remove duplicates
-	std::set<uint64_t> resultSet = {};
+	std::vector<uint64_t> allResults{};
 
-	for (const auto& res : mCapex) {
-		resultSet.insert(res.second);
-	}
+	auto capexResults = getResultsForObjective(Objective::CAPEX);
+	allResults.insert(allResults.end(), capexResults.bestIndices.begin(), capexResults.bestIndices.end());
 
-	for (const auto& res : mAnnualisedCost) {
-		resultSet.insert(res.second);
-	}
+	auto annualisedCostResults = getResultsForObjective(Objective::AnnualisedCost);
+	allResults.insert(allResults.end(), annualisedCostResults.bestIndices.begin(), annualisedCostResults.bestIndices.end());
 
-	for (const auto& res : mPaybackHorizon) {
-		resultSet.insert(res.second);
-	}
+	auto paybackHorizonResults = getResultsForObjective(Objective::PaybackHorizon);
+	allResults.insert(allResults.end(), paybackHorizonResults.bestIndices.begin(), paybackHorizonResults.bestIndices.end());
 
-	for (const auto& res : mCostBalance) {
-		resultSet.insert(res.second);
-	}
+	auto costBalanceResults = getResultsForObjective(Objective::CostBalance);
+	allResults.insert(allResults.end(), costBalanceResults.bestIndices.begin(), costBalanceResults.bestIndices.end());
 
-	for (const auto& res : mCarbonBalance) {
-		resultSet.insert(res.second);
-	}
+	auto carbonBalanceResults = getResultsForObjective(Objective::CarbonBalance);
+	allResults.insert(allResults.end(), carbonBalanceResults.bestIndices.begin(), carbonBalanceResults.bestIndices.end());
 
 	if (includeWorst) {
-		resultSet.insert(mWorstCapex.second);
-		resultSet.insert(mWorstAnnualisedCost.second);
-		resultSet.insert(mWorstPaybackHorizon.second);
-		resultSet.insert(mWorstCostBalance.second);
-		resultSet.insert(mWorstCarbonBalance.second);
+		allResults.emplace_back(mWorstCapex.second);
+		allResults.emplace_back(mWorstAnnualisedCost.second);
+		allResults.emplace_back(mWorstPaybackHorizon.second);
+		allResults.emplace_back(mWorstCostBalance.second);
+		allResults.emplace_back(mWorstCarbonBalance.second);
 	}
 
-	std::vector<uint64_t> results(resultSet.begin(), resultSet.end());
-
-	return results;
+	return allResults;
 }
 
 ResultIndices LeagueTable::getResultsForObjective(Objective objective) const {

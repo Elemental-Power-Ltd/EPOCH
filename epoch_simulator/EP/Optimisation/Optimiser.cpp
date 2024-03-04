@@ -139,7 +139,7 @@ void Optimiser::writeResultsToCSVs(const LeagueTable& leagueTable) {
 	auto carbonBalanceIndices = leagueTable.getResultsForObjective(Objective::CarbonBalance);
 	reproduceAndWriteToCSV(carbonBalanceIndices, "CarbonBalance.csv");
 
-	// write all of the (unique) results to a CSV
+	// write all the results to a single summary CSV
 	std::vector<uint64_t> allResults = leagueTable.getAllResults();
 	std::vector<ObjectiveResult> fullResults = reproduceResults(allResults);
 	writeResultsToCSV(mFileConfig.getOutputCSVFilepath(), fullResults);
