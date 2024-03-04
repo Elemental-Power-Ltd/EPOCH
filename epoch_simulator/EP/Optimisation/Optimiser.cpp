@@ -72,13 +72,18 @@ Eigen::VectorXf Optimiser::toEigen(const std::vector<float>& vec)
 	return eig;
 }
 
-OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, int recallindex) {
+OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallindex) {
 
 	OutputValues output{};
 
 	if (!mTaskGenerator) {
 		// Neither initOptimisation nor runMainOptimisation has been called previously
 		// there are no tasks to recall
+		throw std::exception();
+	}
+
+	if (recallindex < 1 || recallindex > mTaskGenerator->totalScenarios()) {
+		// check that the paramIndex is within bounds
 		throw std::exception();
 	}
 
@@ -135,7 +140,7 @@ void Optimiser::writeResultsToCSVs(const LeagueTable& leagueTable) {
 	reproduceAndWriteToCSV(carbonBalanceIndices, "CarbonBalance.csv");
 
 	// write all of the (unique) results to a CSV
-	std::vector<int> allResults = leagueTable.getAllResults();
+	std::vector<uint64_t> allResults = leagueTable.getAllResults();
 	std::vector<ObjectiveResult> fullResults = reproduceResults(allResults);
 	writeResultsToCSV(mFileConfig.getOutputCSVFilepath(), fullResults);
 
@@ -151,11 +156,11 @@ void Optimiser::reproduceAndWriteToCSV(ResultIndices resultIndices, std::string 
 	writeResultsToCSV(fullPath, results);
 }
 
-std::vector<ObjectiveResult> Optimiser::reproduceResults(const std::vector<int>& paramIndices) const {
+std::vector<ObjectiveResult> Optimiser::reproduceResults(const std::vector<uint64_t>& paramIndices) const {
 	std::vector<ObjectiveResult> results{};
 	results.reserve(paramIndices.size());
 
-	for (int paramIndex : paramIndices) {
+	for (uint64_t paramIndex : paramIndices) {
 		results.emplace_back(reproduceResult(paramIndex));
 	}
 
@@ -163,7 +168,7 @@ std::vector<ObjectiveResult> Optimiser::reproduceResults(const std::vector<int>&
 }
 
 // Given a ParamIndex that was used to produce a certain result, reproduce it to obtain the full result
-ObjectiveResult Optimiser::reproduceResult(int paramIndex) const {
+ObjectiveResult Optimiser::reproduceResult(uint64_t paramIndex) const {
 	if (!mTaskGenerator) {
 		throw std::exception();
 	}
@@ -243,7 +248,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 		// Compute the per-scenario estimates
 		float float_numWorkers = float(numWorkers);
 
-		int totalScenarios = mTaskGenerator->totalScenarios();
+		uint64_t totalScenarios = mTaskGenerator->totalScenarios();
 
 		output.num_scenarios = totalScenarios;
 		output.est_seconds = (totalScenarios * output.meanVal) / (float_numWorkers - 1.0f);

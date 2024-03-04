@@ -16,27 +16,27 @@ struct ParamRange {
 struct ExpandedParamRange {
 	std::string name;
 	std::vector<float> values;
-	int cumulativeProduct;
+	uint64_t cumulativeProduct;
 };
 
-constexpr int MAX_SCENARIOS_FOR_INITIALISATION = 100;
+constexpr uint64_t MAX_SCENARIOS_FOR_INITIALISATION = 100;
 
 class TaskGenerator {
 public:
 	TaskGenerator(const nlohmann::json& inputJson, bool initialisationOnly);
 
-	int totalScenarios() const;
+	uint64_t totalScenarios() const;
 	bool nextTask(Config& config);
-	Config getTask(int index) const;
+	Config getTask(uint64_t index) const;
 
 private:
 	std::vector<ParamRange> makeParamGrid(const nlohmann::json& inputJson);
 	void validateParamRange(const ParamRange& paramRange);
 	std::vector<float> makeRange(const ParamRange& paramRange);
 
-	std::atomic<int> mScenarioCounter;
-	int mTotalScenarios;
-	int mScenarioLimit;
+	std::atomic<uint64_t> mScenarioCounter;
+	uint64_t mTotalScenarios;
+	uint64_t mScenarioLimit;
 	std::vector<ParamRange> mParamGrid;
 	std::vector<ExpandedParamRange> mExpandedParamGrid;
 };

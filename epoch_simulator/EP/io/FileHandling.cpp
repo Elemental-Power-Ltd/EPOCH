@@ -52,6 +52,7 @@ MemberMapping memberMappings[] = {
 // Define macros to simplify creating the mapping for each struct member
 #define OUT_MEMBER_MAPPING_FLOAT(member) {#member, [](const OutputValues& s) -> float { return s.member; }, nullptr}
 #define OUT_MEMBER_MAPPING_INT(member) {#member, nullptr, [](const OutputValues& s) -> int { return s.member; }}
+#define OUT_MEMBER_MAPPING_UINT64(member) {#member, nullptr, [](const OutputValues& s) -> uint64_t { return s.member; }}
 
 OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_FLOAT(maxVal),
@@ -59,7 +60,7 @@ OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_FLOAT(meanVal),
 	OUT_MEMBER_MAPPING_FLOAT(est_seconds),
 	OUT_MEMBER_MAPPING_FLOAT(est_hours),
-	OUT_MEMBER_MAPPING_INT(num_scenarios),
+	OUT_MEMBER_MAPPING_UINT64(num_scenarios),
 	OUT_MEMBER_MAPPING_FLOAT(time_taken),
 	OUT_MEMBER_MAPPING_FLOAT(Fixed_load1_scalar), OUT_MEMBER_MAPPING_FLOAT(Fixed_load2_scalar), OUT_MEMBER_MAPPING_FLOAT(Flex_load_max), OUT_MEMBER_MAPPING_FLOAT(Mop_load_max),
 	OUT_MEMBER_MAPPING_FLOAT(ScalarRG1), OUT_MEMBER_MAPPING_FLOAT(ScalarRG2), OUT_MEMBER_MAPPING_FLOAT(ScalarRG3), OUT_MEMBER_MAPPING_FLOAT(ScalarRG4),
@@ -69,9 +70,9 @@ OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_INT(ESS_charge_mode), OUT_MEMBER_MAPPING_INT(ESS_discharge_mode),
 	OUT_MEMBER_MAPPING_FLOAT(import_kWh_price), OUT_MEMBER_MAPPING_FLOAT(export_kWh_price),
 	OUT_MEMBER_MAPPING_FLOAT(CAPEX), OUT_MEMBER_MAPPING_FLOAT(annualised), OUT_MEMBER_MAPPING_FLOAT(scenario_cost_balance), OUT_MEMBER_MAPPING_FLOAT(payback_horizon), OUT_MEMBER_MAPPING_FLOAT(scenario_carbon_balance),
-	OUT_MEMBER_MAPPING_INT(CAPEX_index), OUT_MEMBER_MAPPING_INT(annualised_index), OUT_MEMBER_MAPPING_INT(scenario_cost_balance_index), OUT_MEMBER_MAPPING_INT(payback_horizon_index), OUT_MEMBER_MAPPING_INT(scenario_carbon_balance_index),
-	OUT_MEMBER_MAPPING_INT(scenario_index),
-	OUT_MEMBER_MAPPING_INT(num_scenarios), OUT_MEMBER_MAPPING_FLOAT(est_hours), OUT_MEMBER_MAPPING_FLOAT(est_seconds)
+	OUT_MEMBER_MAPPING_UINT64(CAPEX_index), OUT_MEMBER_MAPPING_UINT64(annualised_index), OUT_MEMBER_MAPPING_UINT64(scenario_cost_balance_index), OUT_MEMBER_MAPPING_UINT64(payback_horizon_index), OUT_MEMBER_MAPPING_UINT64(scenario_carbon_balance_index),
+	OUT_MEMBER_MAPPING_UINT64(scenario_index),
+	OUT_MEMBER_MAPPING_UINT64(num_scenarios), OUT_MEMBER_MAPPING_FLOAT(est_hours), OUT_MEMBER_MAPPING_FLOAT(est_seconds)
 };
 
 std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column) {

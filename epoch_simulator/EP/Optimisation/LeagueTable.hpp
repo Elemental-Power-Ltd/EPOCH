@@ -6,8 +6,8 @@
 #include "../Definitions.h"
 
 struct ResultIndices {
-	std::vector<int> bestIndices;
-	int worstIndex;
+	std::vector<uint64_t> bestIndices;
+	uint64_t worstIndex;
 };
 
 
@@ -17,43 +17,43 @@ public:
 
 	void considerResult(const SimulationResult& r);
 
-	std::pair<int, float> getBestCapex() const;
-	std::pair<int, float> getBestAnnualisedCost() const;
-	std::pair<int, float> getBestPaybackHorizon() const;
-	std::pair<int, float> getBestCostBalance() const;
-	std::pair<int, float> getBestCarbonBalance() const;
+	std::pair<uint64_t, float> getBestCapex() const;
+	std::pair<uint64_t, float> getBestAnnualisedCost() const;
+	std::pair<uint64_t, float> getBestPaybackHorizon() const;
+	std::pair<uint64_t, float> getBestCostBalance() const;
+	std::pair<uint64_t, float> getBestCarbonBalance() const;
 
-	std::vector<int> getAllResults(bool includeWorst=true) const;
+	std::vector<uint64_t> getAllResults(bool includeWorst=true) const;
 	ResultIndices getResultsForObjective(Objective objective) const;
 
 private:
 	int mCapacity;
 
-	void considerMinimum(std::multimap<float, int>& subTable, float value, int paramIndex);
-	void considerMaximum(std::multimap<float, int>& subTable, float value, int paramIndex);
+	void considerMinimum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
+	void considerMaximum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
 
-	void considerMinimumUnderMutex(std::multimap<float, int>& subTable, float value, int paramIndex);
-	void considerMaximumUnderMutex(std::multimap<float, int>& subTable, float value, int paramIndex);
+	void considerMinimumUnderMutex(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
+	void considerMaximumUnderMutex(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
 
 	void considerAsWorst(const SimulationResult& r);
 	void considerAsWorstUnderMutex(const SimulationResult& r);
 
-	std::vector<int> mapToParamIndices(const std::multimap<float, int>& subTable) const;
+	std::vector<uint64_t> mapToParamIndices(const std::multimap<float, uint64_t>& subTable) const;
 
 
-	std::multimap<float, int> mCapex;
-	std::multimap<float, int> mAnnualisedCost;
-	std::multimap<float, int> mPaybackHorizon;
-	std::multimap<float, int> mCostBalance;
-	std::multimap<float, int> mCarbonBalance;
+	std::multimap<float, uint64_t> mCapex;
+	std::multimap<float, uint64_t> mAnnualisedCost;
+	std::multimap<float, uint64_t> mPaybackHorizon;
+	std::multimap<float, uint64_t> mCostBalance;
+	std::multimap<float, uint64_t> mCarbonBalance;
 
 	// While it might otherwise make more sense for these to be <int, float>  (ie index, value)
 	// we keep these in the same order as the multimaps above for internal consistency within the class
-	std::pair<float, int> mWorstCapex;
-	std::pair<float, int> mWorstAnnualisedCost;
-	std::pair<float, int> mWorstPaybackHorizon;
-	std::pair<float, int> mWorstCostBalance;
-	std::pair<float, int> mWorstCarbonBalance;
+	std::pair<float, uint64_t> mWorstCapex;
+	std::pair<float, uint64_t> mWorstAnnualisedCost;
+	std::pair<float, uint64_t> mWorstPaybackHorizon;
+	std::pair<float, uint64_t> mWorstCostBalance;
+	std::pair<float, uint64_t> mWorstCarbonBalance;
 
 
 	std::mutex mMutex;

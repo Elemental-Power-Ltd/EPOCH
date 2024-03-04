@@ -9,7 +9,7 @@ TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisatio
 {
 	mParamGrid = makeParamGrid(inputJson);
 
-	long cumulativeProduct = 1;
+	uint64_t cumulativeProduct = 1;
 
 	for (const auto& paramRange: mParamGrid) {
 
@@ -36,7 +36,7 @@ TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisatio
 }
 
 
-int TaskGenerator::totalScenarios() const
+uint64_t TaskGenerator::totalScenarios() const
 {
 	return mTotalScenarios;
 }
@@ -53,7 +53,7 @@ bool TaskGenerator::nextTask(Config& config)
 	return true;
 }
 
-Config TaskGenerator::getTask(int index) const {
+Config TaskGenerator::getTask(uint64_t index) const {
 	// the user facing index starts at 1
 	// but the logic in here assumes a 0 index
 	index -= 1;
@@ -65,7 +65,7 @@ Config TaskGenerator::getTask(int index) const {
 		//	1. perform integer division by the cumulative product of previous parameter ranges
 		//	   (this parameter should be fixed while we iterate through all permutations of those variables)
 		//  2. take modulo of the size
-		int i = (index / paramRange.cumulativeProduct) % paramRange.values.size();
+		uint64_t i = (index / paramRange.cumulativeProduct) % paramRange.values.size();
 		float value = paramRange.values[i];
 
 		paramSlice.emplace_back(paramRange.name, paramRange.values[i]);
@@ -153,12 +153,11 @@ std::vector<float> TaskGenerator::makeRange(const ParamRange& paramRange)
 	// we create a vector of the correct size and then populate it with multiples of the step
 
 	double num_values = (paramRange.max - paramRange.min) / paramRange.step;
-	// The range includes both the min and the max
+	// Add 1 as the range includes both the min and the max
 	num_values += 1;
+	auto rangeValues = std::vector<float>(std::lround(num_values));
 
-	auto rangeValues = std::vector<float>(std::round(num_values));
-
-	for (int i = 0; i < rangeValues.size(); i++) {
+	for (size_t i = 0; i < rangeValues.size(); i++) {
 		rangeValues[i] = paramRange.min + (i * paramRange.step);
 	}
 

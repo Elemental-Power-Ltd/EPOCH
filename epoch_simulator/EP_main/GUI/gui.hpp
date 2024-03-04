@@ -1014,21 +1014,21 @@ void writeOutputToForm(const OutputValues& output) {
 	swprintf_s(buffer, 300, L"%f", output.scenario_carbon_balance);
 	SetWindowText(hOutput9, buffer);
 
-	swprintf_s(buffer, 300, L"%d", output.CAPEX_index);
+	swprintf_s(buffer, 300, L"%llu", output.CAPEX_index);
 	SetWindowText(hOutput13, buffer);
-	swprintf_s(buffer, 300, L"%d", output.annualised_index);
+	swprintf_s(buffer, 300, L"%llu", output.annualised_index);
 	SetWindowText(hOutput14, buffer);
-	swprintf_s(buffer, 300, L"%d", output.scenario_cost_balance_index);
+	swprintf_s(buffer, 300, L"%llu", output.scenario_cost_balance_index);
 	SetWindowText(hOutput15, buffer);
-	swprintf_s(buffer, 300, L"%d", output.payback_horizon_index);
+	swprintf_s(buffer, 300, L"%llu", output.payback_horizon_index);
 	SetWindowText(hOutput16, buffer);
-	swprintf_s(buffer, 300, L"%d", output.scenario_carbon_balance_index);
+	swprintf_s(buffer, 300, L"%llu", output.scenario_carbon_balance_index);
 	SetWindowText(hOutput17, buffer);
 }
 
 void writeInitialiseEstimatesToForm(const OutputValues& output) {
 	wchar_t buffer[300];
-	swprintf_s(buffer, 300, L"%i", output.num_scenarios);
+	swprintf_s(buffer, 300, L"%llu", output.num_scenarios);
 	SetWindowText(hOutput10, buffer);
 	swprintf_s(buffer, 300, L"%f", output.est_hours);
 	SetWindowText(hOutput11, buffer);

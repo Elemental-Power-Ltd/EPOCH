@@ -31,47 +31,47 @@ void LeagueTable::considerResult(const SimulationResult& r)
 	considerAsWorst(r);
 }
 
-std::pair<int, float> LeagueTable::getBestCapex() const
+std::pair<uint64_t, float> LeagueTable::getBestCapex() const
 {
 	// first/smallest is best
 	auto best = mCapex.begin();
-	return std::pair<int, float>(best->second, best->first);
+	return std::pair<uint64_t, float>(best->second, best->first);
 }
 
-std::pair<int, float> LeagueTable::getBestAnnualisedCost() const
+std::pair<uint64_t, float> LeagueTable::getBestAnnualisedCost() const
 {
 	// first/smallest is best
 	auto best = mAnnualisedCost.begin();
-	return std::pair<int, float>(best->second, best->first);
+	return std::pair<uint64_t, float>(best->second, best->first);
 }
 
-std::pair<int, float> LeagueTable::getBestPaybackHorizon() const
+std::pair<uint64_t, float> LeagueTable::getBestPaybackHorizon() const
 {
 	// first/smallest is best
 	auto best = mPaybackHorizon.begin();
-	return std::pair<int, float>(best->second, best->first);
+	return std::pair<uint64_t, float>(best->second, best->first);
 }
 
-std::pair<int, float> LeagueTable::getBestCostBalance() const
+std::pair<uint64_t, float> LeagueTable::getBestCostBalance() const
 {
 	// last/largest is best
 	auto best = mCostBalance.rbegin();
-	return std::pair<int, float>(best->second, best->first);
+	return std::pair<uint64_t, float>(best->second, best->first);
 }
 
-std::pair<int, float> LeagueTable::getBestCarbonBalance() const
+std::pair<uint64_t, float> LeagueTable::getBestCarbonBalance() const
 {
 	// last/largest is best
 	auto best = mCarbonBalance.rbegin();
-	return std::pair<int, float>(best->second, best->first);
+	return std::pair<uint64_t, float>(best->second, best->first);
 }
 
 // return the parameter indices of the results held in the league table
 // each paramIndex can then be used to reproduce the full result
-std::vector<int> LeagueTable::getAllResults(bool includeWorst) const {
+std::vector<uint64_t> LeagueTable::getAllResults(bool includeWorst) const {
 	// It is possible to have the same paramIndex in multiple of the subTables
 	// For this reason, put the results into a set first to remove duplicates
-	std::set<int> resultSet = {};
+	std::set<uint64_t> resultSet = {};
 
 	for (const auto& res : mCapex) {
 		resultSet.insert(res.second);
@@ -101,7 +101,7 @@ std::vector<int> LeagueTable::getAllResults(bool includeWorst) const {
 		resultSet.insert(mWorstCarbonBalance.second);
 	}
 
-	std::vector<int> results(resultSet.begin(), resultSet.end());
+	std::vector<uint64_t> results(resultSet.begin(), resultSet.end());
 
 	return results;
 }
@@ -136,7 +136,7 @@ ResultIndices LeagueTable::getResultsForObjective(Objective objective) const {
 
 // consider inserting a simulation result (identified by paramIndex and value)
 // we are trying to minimise the value
-void LeagueTable::considerMinimum(std::multimap<float, int>& subTable, float value, int paramIndex)
+void LeagueTable::considerMinimum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex)
 {
 	if (subTable.size() < mCapacity) {
 		// We are below the capacity of the league table
@@ -154,7 +154,7 @@ void LeagueTable::considerMinimum(std::multimap<float, int>& subTable, float val
 
 // consider inserting a simulation result (identified by paramIndex and value)
 // we are trying to maximise the value
-void LeagueTable::considerMaximum(std::multimap<float, int>& subTable, float value, int paramIndex)
+void LeagueTable::considerMaximum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex)
 {
 	if (subTable.size() < mCapacity) {
 		// We are below the capacity of the league table
@@ -170,7 +170,7 @@ void LeagueTable::considerMaximum(std::multimap<float, int>& subTable, float val
 	}
 }
 
-void LeagueTable::considerMinimumUnderMutex(std::multimap<float, int>& subTable, float value, int paramIndex)
+void LeagueTable::considerMinimumUnderMutex(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex)
 {
 	std::lock_guard<std::mutex> guard(mMutex);
 
@@ -195,7 +195,7 @@ void LeagueTable::considerMinimumUnderMutex(std::multimap<float, int>& subTable,
 	}
 }
 
-void LeagueTable::considerMaximumUnderMutex(std::multimap<float, int>& subTable, float value, int paramIndex)
+void LeagueTable::considerMaximumUnderMutex(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex)
 {
 	std::lock_guard<std::mutex> guard(mMutex);
 
@@ -263,9 +263,9 @@ void LeagueTable::considerAsWorstUnderMutex(const SimulationResult& r)
 	}
 }
 
-std::vector<int> LeagueTable::mapToParamIndices(const std::multimap<float, int>& subTable) const {
+std::vector<uint64_t> LeagueTable::mapToParamIndices(const std::multimap<float, uint64_t>& subTable) const {
 
-	std::vector<int> indices{};
+	std::vector<uint64_t> indices{};
 	indices.reserve(subTable.size());
 
 	for (const auto& [_, paramIndex] : subTable) {

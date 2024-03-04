@@ -26,11 +26,11 @@ struct TimeProfile {
 	float minTime = std::numeric_limits<float>::max();
 	float maxTime;
 	float totalTime;
-	int count;
+	uint64_t count;
 };
 
 // Limit initialisation to running only the first 100 scenarios
-const int INITIALISATION_MAX_SCENARIOS = 100;
+const uint64_t INITIALISATION_MAX_SCENARIOS = 100;
 
 
 class Optimiser {
@@ -39,7 +39,7 @@ public:
 
 	OutputValues runMainOptimisation(nlohmann::json inputJson);
 	OutputValues initialiseOptimisation(nlohmann::json inputJson);
-	OutputValues RecallIndex(nlohmann::json inputJson, int recallindex);
+	OutputValues RecallIndex(nlohmann::json inputJson, uint64_t recallindex);
 
 
 private:
@@ -54,8 +54,8 @@ private:
 
 	void writeResultsToCSVs(const LeagueTable& leagueTable);
 	void reproduceAndWriteToCSV(ResultIndices resultIndices, std::string fileName) const;
-	std::vector<ObjectiveResult> reproduceResults(const std::vector<int>& paramIndices) const;
-	ObjectiveResult reproduceResult(int paramIndex) const;
+	std::vector<ObjectiveResult> reproduceResults(const std::vector<uint64_t>& paramIndices) const;
+	ObjectiveResult reproduceResult(uint64_t paramIndex) const;
 
 	FileConfig mFileConfig;
 	TimeProfile mTimeProfile;

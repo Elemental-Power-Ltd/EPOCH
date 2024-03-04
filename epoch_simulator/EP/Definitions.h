@@ -37,7 +37,7 @@ struct SimulationResult {
 	float Heat_surplus;
 
 	float runtime;
-	int paramIndex;
+	uint64_t paramIndex;
 
 	float total_annualised_cost;
 	float project_CAPEX;
@@ -73,7 +73,7 @@ struct FullSimulationResult {
 	year_TS Heat_surplus;
 
 	float runtime;
-	int paramIndex;
+	uint64_t paramIndex;
 
 	float total_annualised_cost;
 	float project_CAPEX;
@@ -108,9 +108,9 @@ struct OutputValues {
 	int ESS_charge_mode; int ESS_discharge_mode;
 	float import_kWh_price; float export_kWh_price;
 	float CAPEX; float annualised; float scenario_cost_balance; float payback_horizon; float scenario_carbon_balance;
-	int CAPEX_index; int annualised_index; int scenario_cost_balance_index; int payback_horizon_index; int scenario_carbon_balance_index;
-	int scenario_index;
-	int num_scenarios; float est_hours; float est_seconds;
+	uint64_t CAPEX_index; uint64_t annualised_index; uint64_t scenario_cost_balance_index; uint64_t payback_horizon_index; uint64_t scenario_carbon_balance_index;
+	uint64_t scenario_index;
+	uint64_t num_scenarios; float est_hours; float est_seconds;
 };
 
 

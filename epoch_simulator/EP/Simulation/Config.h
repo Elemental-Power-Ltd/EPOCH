@@ -196,11 +196,11 @@ public:
         return OPEX_limit;
     }
 
-    int getParamIndex() const {
+    uint64_t getParamIndex() const {
         return paramIndex;
     }
 
-    void setParamIndex(int index) {
+    void setParamIndex(uint64_t index) {
         paramIndex = index;
     }
 
@@ -282,5 +282,5 @@ private:
     float CAPEX_limit;
     float OPEX_limit;
 
-    int paramIndex;
+    uint64_t paramIndex;
 };
