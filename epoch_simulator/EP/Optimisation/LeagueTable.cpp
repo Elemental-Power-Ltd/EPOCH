@@ -124,11 +124,11 @@ ResultIndices LeagueTable::getResultsForObjective(Objective objective) const {
 		result.worstIndex = mWorstPaybackHorizon.second;
 		return result;
 	case Objective::CarbonBalance:
-		result.bestIndices = mapToParamIndices(mCarbonBalance);
+		result.bestIndices = mapToParamIndices(mCarbonBalance, TableOrder::DESCENDING);
 		result.worstIndex = mWorstCarbonBalance.second;
 		return result;
 	case Objective::CostBalance:
-		result.bestIndices = mapToParamIndices(mCostBalance);
+		result.bestIndices = mapToParamIndices(mCostBalance, TableOrder::DESCENDING);
 		result.worstIndex = mWorstCostBalance.second;
 		return result;
 	}
@@ -263,13 +263,20 @@ void LeagueTable::considerAsWorstUnderMutex(const SimulationResult& r)
 	}
 }
 
-std::vector<uint64_t> LeagueTable::mapToParamIndices(const std::multimap<float, uint64_t>& subTable) const {
+std::vector<uint64_t> LeagueTable::mapToParamIndices(const std::multimap<float, uint64_t>& subTable, TableOrder order) const {
 
 	std::vector<uint64_t> indices{};
 	indices.reserve(subTable.size());
 
-	for (const auto& [_, paramIndex] : subTable) {
-		indices.emplace_back(paramIndex);
+	if (order == TableOrder::ASCENDING) {
+		for (const auto& [_, paramIndex] : subTable) {
+			indices.emplace_back(paramIndex);
+		}
+	} else {  //TableOrder::DESCENDING
+		// This objective is a maximising objective, use a reverse iterator to return the largest result first
+		for (auto it = subTable.rbegin(); it != subTable.rend(); ++it) {
+			indices.emplace_back(it->second);
+		}
 	}
 
 	return indices;

@@ -26,6 +26,7 @@ public:
 	std::vector<uint64_t> getAllResults(bool includeWorst=true) const;
 	ResultIndices getResultsForObjective(Objective objective) const;
 
+
 private:
 	int mCapacity;
 
@@ -38,7 +39,8 @@ private:
 	void considerAsWorst(const SimulationResult& r);
 	void considerAsWorstUnderMutex(const SimulationResult& r);
 
-	std::vector<uint64_t> mapToParamIndices(const std::multimap<float, uint64_t>& subTable) const;
+	enum class TableOrder { ASCENDING, DESCENDING };
+	std::vector<uint64_t> mapToParamIndices(const std::multimap<float, uint64_t>& subTable, TableOrder order=TableOrder::ASCENDING) const;
 
 
 	std::multimap<float, uint64_t> mCapex;
