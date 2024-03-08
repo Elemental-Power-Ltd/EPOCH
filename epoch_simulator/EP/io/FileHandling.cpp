@@ -8,6 +8,8 @@
 #include <sstream>
 #include <vector>
 
+#include <spdlog/spdlog.h>
+
 #include "../Definitions.h"
 
 // Define macros to simplify creating the mapping for each struct member
@@ -369,8 +371,7 @@ nlohmann::json handleJsonConversion(const InputValues& inputValues, std::filesys
 	nlohmann::json converted_json = convert_to_ranges(jsonObj);
 
 	writeJsonToFile(converted_json, inputParametersFilepath);
-	std::cout << "JSON file written successfully!" << std::endl;
-
+	spdlog::info("JSON input saved succesfully");
 	return converted_json;
 
 }
@@ -382,7 +383,7 @@ void writeJsonToFile(const nlohmann::json& jsonObj, std::filesystem::path filepa
 		file.close();
 	}
 	catch (const std::exception e) {
-		std::cerr << "Error: " << e.what() << std::endl;
+		spdlog::warn("Error: {}", e.what());
 	}
 }
 

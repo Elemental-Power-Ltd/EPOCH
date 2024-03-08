@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <spdlog/spdlog.h>
+
 class Config {
 
 public:
@@ -214,7 +216,7 @@ public:
             *(it->second) = value;
         }
         else {
-            std::cout << "Parameter " << key << " not found!" << std::endl;
+            spdlog::warn("Parameter {} not found!", key);
         }
     }
 
@@ -226,7 +228,7 @@ public:
         }
         else {
             if (key != "Parameter index") {
-                std::cout << "Parameter " << key << " not found!" << std::endl;
+                spdlog::warn("Parameter {} not found!", key);
             }
         }
     }

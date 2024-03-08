@@ -91,7 +91,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	std::chrono::duration<double> elapsed = end - start;
 	float runtime = static_cast<float>(elapsed.count());
 
-	//std::cout << "Runtime: " << elapsed.count() << " seconds" << '\n'; // print elapsed run time
 	fullSimulationResult.runtime = runtime;
 
 

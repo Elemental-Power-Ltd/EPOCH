@@ -56,23 +56,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 int main(int argc, char* argv[]) {
 
-	std::cout << "Running in headless mode" << std::endl;
-
 	FileConfig fileConfig{};
 
 	auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
 
-	std::cout << "Starting Optimisation" << std::endl;
-
 	auto optimiser = Optimiser(fileConfig);
 	OutputValues output = optimiser.runMainOptimisation(converted_json);
 
-	std::cout << "Finished Optimisation" << std::endl;
 
 	nlohmann::json jsonObj = outputToJson(output);
 	writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
-
-	std::cout << "Wrote results to file" << std::endl;
 
 }
 

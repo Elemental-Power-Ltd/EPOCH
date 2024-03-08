@@ -4,6 +4,7 @@
 #include <iostream>
 #include <math.h>
 
+#include <spdlog/spdlog.h>
 
 TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisationOnly)
 {
@@ -77,11 +78,9 @@ Config TaskGenerator::getTask(uint64_t index) const {
 	for (size_t i = 0; i < paramSlice.size(); ++i) {
 		if (config.param_map_float.find(paramSlice[i].first) != config.param_map_float.end()) {
 			config.set_param_float(paramSlice[i].first, paramSlice[i].second);
-			//			myConfig.print_param_float(paramSlice[i].first);
 		}
 		else {
 			config.set_param_int(paramSlice[i].first, paramSlice[i].second);
-			//			myConfig.print_param_int(paramSlice[i].first);
 		}
 	}
 
@@ -105,7 +104,8 @@ std::vector<ParamRange> TaskGenerator::makeParamGrid(const nlohmann::json& input
 			if (item.value().is_array()) {
 				// the item is a key-tuple pair
 				paramGrid.push_back({ item.key(), item.value()[0], item.value()[1], item.value()[2] });
-				std::cout << "(" << item.key() << "," << item.value()[0] << ":" << item.value()[1] << ":" << item.value()[2] << ")" << std::endl;
+
+				spdlog::debug("({},{}:{}:{})", item.key(), double(item.value()[0]), double(item.value()[1]), double(item.value()[2]));
 			}
 			else {
 				// the item is a key-value pair
@@ -114,7 +114,7 @@ std::vector<ParamRange> TaskGenerator::makeParamGrid(const nlohmann::json& input
 		}
 	}
 	catch (const std::exception& e) {
-		std::cerr << "Error: " << e.what() << std::endl;
+		spdlog::warn("Error: {}", e.what());
 		throw std::exception();
 	}
 	return paramGrid;
@@ -126,17 +126,17 @@ void TaskGenerator::validateParamRange(const ParamRange& paramRange)
 	// This means that the last result could be greater than max
 
 	if (paramRange.max < paramRange.min) {
-		std::cerr << "Maximum is less than manimum - for " << paramRange.name << std::endl;
+		spdlog::warn("Maximum is less than manimum - for {}", paramRange.name);
 		throw std::exception{};
 	}
 
 	if (paramRange.step == 0 && paramRange.min != paramRange.max) {
-		std::cerr << "Increment of 0 but minimum and maximum are not equal - for " << paramRange.name << std::endl;
+		spdlog::warn("Increment of 0 but minimum and maximum are not equal - for {}", paramRange.name);
 		throw std::exception{};
 	}
 
 	if (paramRange.step < 0) {
-		std::cerr << "Cannot have a negative increment - for " << paramRange.name << std::endl;
+		spdlog::warn("Cannot have a negative increment - for {}", paramRange.name);
 		throw std::exception{};
 	}
 }

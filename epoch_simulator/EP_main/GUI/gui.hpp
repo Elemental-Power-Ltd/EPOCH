@@ -7,6 +7,8 @@
 #include "../../EP/Optimisation/Optimiser.hpp"
 #include "../../EP/io/FileHandling.hpp"
 
+#include <spdlog/spdlog.h>
+
 #define MAX_LOADSTRING 100
 #define BUTTON_INITIALISE 0
 #define BUTTON_OPTIMISE 1 
@@ -221,8 +223,6 @@ BOOL InitConsole()
 	FILE* pCout;
 	freopen_s(&pCout, "CONOUT$", "w", stdout);
 
-	//std::cout << "Console initialized!\n";
-
 	return TRUE;
 }
 
@@ -234,8 +234,6 @@ BOOL CloseConsole() {
 	if (!FreeConsole()) {
 		return FALSE;
 	}
-
-	//std::cout << "Console closed!\n"; // This won't be shown in the console
 
 	return TRUE;
 }
@@ -993,7 +991,7 @@ InputValues readInputFromForm() {
 }
 
 void writeOutputToForm(const OutputValues& output) {
-	std::cout << "Output.Max: " << output.maxVal << ", Output.Min: " << output.minVal << ", Output.Mean: " << output.meanVal << std::endl;
+	spdlog::info("Output.Max: {}, Output.Min: {}, Output.Mean: {}", output.maxVal, output.minVal, output.meanVal);
 	wchar_t buffer[300];
 	swprintf_s(buffer, 300, L"%f", output.maxVal);
 	SetWindowText(hOutput1, buffer);
@@ -1494,11 +1492,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				// Convert the OutputValues struct to a JSON object using the mapping
 				nlohmann::json jsonObj = outputToJson(output);
 				writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
-				std::cout << "JSON file written successfully!" << std::endl;
+				spdlog::info("JSON file written successfully!");
 
 				writeTimingsToForm(output);
 
-				std::cout << "Sleeping for 5 seconds..."; // this allows time to read the console if needed. Adjust if needed
+				spdlog::info("Sleeping for 5 seconds...");
+				// this allows time to read the console if needed. Adjust if needed
 				//std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer
 				//std::cin.get(); // Wait for keystroke
 
@@ -1526,11 +1525,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				// Write the JSON to a file
 				writeJsonToFile(jsonObj, fileConfig.getOutputJsonInitFilepath());
-				std::cout << "JSON file written successfully!" << std::endl;
+				spdlog::info("JSON file written successfully!");
 
 				writeTimingsToForm(output);
 
-				std::cout << "Sleeping for 1 seconds..."; // this allows time to read the console if needed. Adjust if needed
+				spdlog::info("Sleeping for 1 seconds...");
+				// this allows time to read the console if needed. Adjust if needed
 				//std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer
 				//std::cin.get(); // Wait for keystroke
 

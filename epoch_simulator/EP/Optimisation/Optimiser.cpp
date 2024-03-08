@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include <Eigen/Core>
+#include <spdlog/spdlog.h>
 
 #include "LeagueTable.hpp"
 #include "TaskGenerator.hpp"
@@ -20,14 +21,14 @@ Optimiser::Optimiser(FileConfig fileConfig) :
 
 OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
 {
-	std::cout << "Starting Optimisation" << std::endl;
+	spdlog::info("Starting Optimisation");
 	return doOptimisation(inputJson);
 }
 
 
 OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 
-	std::cout << "Running initial optimisation" << std::endl;
+	spdlog::info("Running initial optimisation");
 	return doOptimisation(inputJson, true);
 }
 
@@ -124,6 +125,8 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallind
 // Currently we write one CSV per objective, each containing the N best entries followed by the single worst entry
 void Optimiser::writeResultsToCSVs(const LeagueTable& leagueTable) {
 
+	spdlog::info("Writing results to CSVs");
+
 	auto capexIndices = leagueTable.getResultsForObjective(Objective::CAPEX);
 	reproduceAndWriteToCSV(capexIndices, "CAPEX.csv");
 
@@ -204,7 +207,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 
 	LeagueTable leagueTable = LeagueTable(CAPACITY_PER_LEAGUE_TABLE);
 
-	std::cout << "Total number of scenarios is: " << mTaskGenerator->totalScenarios() << std::endl;
+	spdlog::info("Total number of scenarios is: {}", mTaskGenerator->totalScenarios());
 
 	std::vector<std::thread> workers;
 
@@ -228,8 +231,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 		}
 	}
 
-	std::cout << "tasksCompleted" << std::endl;
-	std::cout << "workers joined" << std::endl;
+	spdlog::info("Optimisation completed, processing results...");
 
 	//// Retrieve and process results
 	findBestResults(leagueTable, output);
@@ -241,8 +243,8 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	std::chrono::duration<double> elapsedTime = std::chrono::steady_clock::now() - clockStart;
 	output.time_taken = static_cast<float>(elapsedTime.count());
 
-	std::cout << "Max: " << output.maxVal << ", Min: " << output.minVal << ", Mean: " << output.meanVal << std::endl;
-	std::cout << "Total Runtime: " << output.time_taken << "s" << std::endl;
+	spdlog::info("Max: {}s, Min: {}s, Mean: {}s", output.maxVal, output.minVal, output.meanVal);
+	spdlog::info("Total Runtime: {}s", output.time_taken);
 
 	if (initialisationOnly) {
 		// Compute the per-scenario estimates
@@ -254,7 +256,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 		output.est_seconds = (totalScenarios * output.meanVal) / (float_numWorkers - 1.0f);
 		output.est_hours = (totalScenarios * output.meanVal) / (3600 * (float_numWorkers - 1.0f));
 
-		std::cout << "Number of scenarios: " << output.num_scenarios << ", Hours: " << output.est_hours << ", Seconds: " << output.est_seconds << std::endl;
+		spdlog::info("Number of scenarios: {} Estimated time: {} hours ({} seconds)", output.num_scenarios, output.est_hours, output.est_seconds);
 	}
 
 	/* DUMMY OUTPUT -- NEEDS REPLACED WITH SENSIBLE OUTPUT */
@@ -295,11 +297,11 @@ int Optimiser::determineWorkerCount()
 	int numWorkers = std::thread::hardware_concurrency();
 
 	if (numWorkers == 0) {
-		std::cerr << "Unable to determine the number of logical cores." << std::endl;
-		throw std::exception();
+		spdlog::warn("Unable to determine the number of logical cores. defaulting to 16");
+		return 16;
 	}
 
-	std::cout << "Number of logical cores found is " << numWorkers << std::endl;
+	spdlog::debug("Number of logical cores found is {}", numWorkers);
 	return numWorkers;
 }
 

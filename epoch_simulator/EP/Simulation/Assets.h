@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <Eigen/Core>
+#include <spdlog/spdlog.h>
 
 #include "Config.h"
 #include "../Definitions.h"
@@ -191,7 +192,7 @@ public:
         if (mDischargeMode == 1) {
             mDischarge[timestep] = mBeforeGridDischarge[timestep];
         } else {
-            std::cerr << "err: discharge_mode does not yet exist";
+            spdlog::warn("err: discharge_mode does not yet exist");
         }
     }
 
@@ -199,7 +200,7 @@ public:
         if (mChargeMode == 1) {
             mCharge[timestep] = mRgenOnlyCharge[timestep];
         } else {
-            std::cerr << "err: charge_mode does not yet exist";
+            spdlog::warn("err: charge_mode does not yet exist");
         }
     }
 

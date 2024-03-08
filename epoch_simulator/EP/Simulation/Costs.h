@@ -483,32 +483,24 @@ public:
 		float baseline_elec_load_sum = baseline_elec_load.sum();
 
 		mBaseline_elec_cost = (baseline_elec_load_sum * import_elec_prices[0]) / 100; // just use fixed value for now
-
-		//std::cout << "in function baseline_elec_cost " << baseline_elec_cost << std::endl;
 	};
 
 	void calculate_baseline_fuel_cost(const year_TS& baseline_heat_load, const year_TS& import_fuel_prices, float boiler_efficiency) {
 		float baseline_heat_load_sum = baseline_heat_load.sum();
 
 		mBaseline_fuel_cost = (baseline_heat_load_sum * import_fuel_prices[0] / boiler_efficiency) / 100; // this should be changed to divided by boiler efficiency
-
-		//std::cout << "in function baseline_fuel_cost " << baseline_fuel_cost << std::endl;
 	};
 
 	void calculate_scenario_elec_cost(const year_TS& grid_import, const year_TS& import_elec_prices) {
 		float grid_import_sum = grid_import.sum();
 
 		mScenario_import_cost = (grid_import_sum * import_elec_prices[0]) / 100; // just use fixed value for now
-
-		//std::cout << "in function grid_import_cost " << grid_import_cost << std::endl;
 	};
 
 	void calculate_scenario_fuel_cost(const year_TS& total_heat_shortfall, const year_TS& import_fuel_prices) {
 		float total_heat_shortfall_sum = total_heat_shortfall.sum();
 
 		mScenario_fuel_cost = (total_heat_shortfall_sum * import_fuel_prices[0] / mBoiler_efficiency) / 100; // this should be changed to divided by boiler efficiency
-
-		//std::cout << "in function scenario_fuel_cost " << scenario_fuel_cost << std::endl;
 	};
 
 	void calculate_scenario_export_cost(const year_TS& grid_export, const year_TS& export_elec_prices) {
@@ -516,8 +508,6 @@ public:
 
 		// just use fixed value for now
 		mScenario_export_cost = (-grid_export_sum * export_elec_prices[0]) / 100;
-
-		//std::cout << "in function scenario_export_cost " << scenario_export_cost << std::endl;
 	};
 
 	void calculate_scenario_cost_balance(float Total_annualised_cost) {

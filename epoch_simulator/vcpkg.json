@@ -2,6 +2,7 @@
   "dependencies": [
     "eigen3",
     "mimalloc",
-    "nlohmann-json"
+    "nlohmann-json",
+    "spdlog"
   ]
 }
