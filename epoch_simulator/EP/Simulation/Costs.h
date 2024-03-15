@@ -36,7 +36,19 @@ public:
 		float ESS_kW = std::max(mConfig.getESS_charge_power(), mConfig.getESS_discharge_power());
 		float PV_kWp_total = mConfig.getScalarRG1() + mConfig.getScalarRG2() + mConfig.getScalarRG3() + mConfig.getScalarRG4();
 
-		calculate_total_annualised_cost(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, 0, 3, 0, 0, 0, 12.0);
+		// need to add a new config parameter here
+		const float IMPORT_FUEL_PRICE = 12.2f;
+		const float BOILER_EFFICIENCY = 0.9f;
+
+		const int s7_EV_CP_number = 0;
+		const int f22_EV_CP_number = 3;
+		const int r50_EV_CP_number = 0;
+		const int u150_EV_CP_number = 0;
+		const float kw_grid_upgrade = 0; 
+		const float kW_elec = 12.0;
+
+		calculate_total_annualised_cost(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, s7_EV_CP_number,
+			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, kW_elec);
 
 		// for now, simply fix import/export price
 		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.getImport_kWh_price()) };
@@ -44,10 +56,6 @@ public:
 		year_TS baseline_elec_load = eload.getTotalFixLoad() + grid.getActualHighPriorityLoad();
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
-
-		// need to add a new config parameter here
-		const float IMPORT_FUEL_PRICE = 12.2f;
-		const float BOILER_EFFICIENCY = 0.9f;
 
 		year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad();
 		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), IMPORT_FUEL_PRICE) };
@@ -61,7 +69,8 @@ public:
 
 		//========================================
 
-		calculate_Project_CAPEX(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, 0, 3, 0, 0, 0, 12.0);
+		calculate_Project_CAPEX(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, s7_EV_CP_number,
+			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, kW_elec);
 
 		//========================================
 
