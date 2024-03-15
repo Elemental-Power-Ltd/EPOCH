@@ -72,7 +72,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	}
 
 
-	fullSimulationResult.paramIndex = myConfig.getParamIndex();
+	fullSimulationResult.paramIndex = myConfig.paramIndex;
 	fullSimulationResult.total_annualised_cost = myCost.get_total_annualised_cost();
 	fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
 	fullSimulationResult.scenario_cost_balance = myCost.get_scenario_cost_balance();
@@ -145,10 +145,10 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 
 
 year_TS Simulator::calculateRGenTotal(const HistoricalData& historicalData, const Config& config) const {
-	year_TS RGen1 = historicalData.RGen_data_1 * config.getScalarRG1();
-	year_TS RGen2 = historicalData.RGen_data_2 * config.getScalarRG2();
-	year_TS RGen3 = historicalData.RGen_data_3 * config.getScalarRG3();
-	year_TS RGen4 = historicalData.RGen_data_4 * config.getScalarRG4();
+	year_TS RGen1 = historicalData.RGen_data_1 * config.ScalarRG1;
+	year_TS RGen2 = historicalData.RGen_data_2 * config.ScalarRG2;
+	year_TS RGen3 = historicalData.RGen_data_3 * config.ScalarRG3;
+	year_TS RGen4 = historicalData.RGen_data_4 * config.ScalarRG4;
 
 	return RGen1 + RGen2 + RGen3 + RGen4;
 }

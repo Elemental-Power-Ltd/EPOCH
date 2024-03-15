@@ -33,14 +33,14 @@ public:
 
 	void calculateCosts(const Eload& eload, const Hload& hload, const Grid& grid) {
 
-		float ESS_kW = std::max(mConfig.getESS_charge_power(), mConfig.getESS_discharge_power());
-		float PV_kWp_total = mConfig.getScalarRG1() + mConfig.getScalarRG2() + mConfig.getScalarRG3() + mConfig.getScalarRG4();
+		float ESS_kW = std::max(mConfig.ESS_charge_power, mConfig.ESS_discharge_power);
+		float PV_kWp_total = mConfig.ScalarRG1 + mConfig.ScalarRG2 + mConfig.ScalarRG3 + mConfig.ScalarRG4;
 
-		calculate_total_annualised_cost(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, 0, 3, 0, 0, 0, 12.0);
+		calculate_total_annualised_cost(ESS_kW, mConfig.ESS_capacity, PV_kWp_total, 0, 3, 0, 0, 0, 12.0);
 
 		// for now, simply fix import/export price
-		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.getImport_kWh_price()) };
-		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.getExport_kWh_price()) };
+		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.Import_kWh_price) };
+		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.Export_kWh_price) };
 		year_TS baseline_elec_load = eload.getTotalFixLoad() + grid.getActualHighPriorityLoad();
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
@@ -61,7 +61,7 @@ public:
 
 		//========================================
 
-		calculate_Project_CAPEX(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, 0, 3, 0, 0, 0, 12.0);
+		calculate_Project_CAPEX(ESS_kW, mConfig.ESS_capacity, PV_kWp_total, 0, 3, 0, 0, 0, 12.0);
 
 		//========================================
 

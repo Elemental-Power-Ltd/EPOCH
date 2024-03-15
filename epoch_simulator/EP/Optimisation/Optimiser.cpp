@@ -14,7 +14,7 @@
 
 Optimiser::Optimiser(FileConfig fileConfig) :
 	mFileConfig(fileConfig),
-	mHistoricalData(readHistoricalData())
+	mHistoricalData(readHistoricalData(mFileConfig))
 {
 
 }
@@ -30,47 +30,6 @@ OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 
 	spdlog::info("Running initial optimisation");
 	return doOptimisation(inputJson, true);
-}
-
-const HistoricalData Optimiser::readHistoricalData() {
-
-	std::filesystem::path eloadFilepath = mFileConfig.getEloadFilepath();
-
-	//read the electric load data
-	std::vector<float> hotel_eload_data = readCSVColumn(eloadFilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> ev_eload_data = readCSVColumn(eloadFilepath, 5); // read the column of the CSV data and store in vector data
-
-	//read the heat load data
-	std::filesystem::path hloadFilepath = mFileConfig.getHloadFilepath();
-	std::vector<float> heatload_data = readCSVColumn(hloadFilepath, 4); // read the column of the CSV data and store in vector data
-
-	//read the renewable generation data
-	std::filesystem::path rgenFilepath = mFileConfig.getRgenFilepath();
-	std::vector<float> RGen_data_1 = readCSVColumn(rgenFilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> RGen_data_2 = readCSVColumn(rgenFilepath, 5);
-	std::vector<float> RGen_data_3 = readCSVColumn(rgenFilepath, 6);
-	std::vector<float> RGen_data_4 = readCSVColumn(rgenFilepath, 7);
-
-	return {
-	   toEigen(hotel_eload_data),
-	   toEigen(ev_eload_data),
-	   toEigen(heatload_data),
-	   toEigen(RGen_data_1),
-	   toEigen(RGen_data_2),
-	   toEigen(RGen_data_3),
-	   toEigen(RGen_data_4)
-	};
-}
-
-Eigen::VectorXf Optimiser::toEigen(const std::vector<float>& vec)
-{
-	Eigen::VectorXf eig = Eigen::VectorXf(vec.size());
-
-	for (int i = 0; i < vec.size(); i++) {
-		eig[i] = vec[i];
-	}
-
-	return eig;
 }
 
 OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallindex) {
@@ -90,33 +49,33 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallind
 
 	Config config = mTaskGenerator->getTask(recallindex);
 
-	output.Fixed_load1_scalar = config.getFixed_load1_scalar();
-	output.Fixed_load2_scalar = config.getFixed_load2_scalar();
-	output.Flex_load_max = config.getFlex_load_max();
-	output.Mop_load_max = config.getMop_load_max();
-	output.ScalarRG1 = config.getScalarRG1();
-	output.ScalarRG2 = config.getScalarRG2();
-	output.ScalarRG3 = config.getScalarRG3();
-	output.ScalarRG4 = config.getScalarRG4();
-	output.ScalarHL1 = config.getScalarHL1();
-	output.ScalarHYield1 = config.getScalarHYield1();
-	output.ScalarHYield2 = config.getScalarHYield2();
-	output.ScalarHYield3 = config.getScalarHYield3();
-	output.ScalarHYield4 = config.getScalarHYield4();
-	output.GridImport = config.getGridImport();
-	output.GridExport = config.getGridExport();
-	output.Import_headroom = config.getImport_headroom();
-	output.Export_headroom = config.getExport_headroom();
-	output.ESS_charge_power = config.getESS_charge_power();
-	output.ESS_discharge_power = config.getESS_discharge_power();
-	output.ESS_capacity = config.getESS_capacity();
-	output.ESS_RTE = config.getESS_RTE();
-	output.ESS_aux_load = config.getESS_aux_load();
-	output.ESS_start_SoC = config.getESS_start_SoC();
-	output.ESS_charge_mode = config.getESS_charge_mode();
-	output.ESS_discharge_mode = config.getESS_discharge_mode();
-	output.import_kWh_price = config.getImport_kWh_price();
-	output.export_kWh_price = config.getExport_kWh_price();
+	output.Fixed_load1_scalar = config.Fixed_load1_scalar;
+	output.Fixed_load2_scalar = config.Fixed_load2_scalar;
+	output.Flex_load_max = config.Flex_load_max;
+	output.Mop_load_max = config.Mop_load_max;
+	output.ScalarRG1 = config.ScalarRG1;
+	output.ScalarRG2 = config.ScalarRG2;
+	output.ScalarRG3 = config.ScalarRG3;
+	output.ScalarRG4 = config.ScalarRG4;
+	output.ScalarHL1 = config.ScalarHL1;
+	output.ScalarHYield1 = config.ScalarHYield1;
+	output.ScalarHYield2 = config.ScalarHYield2;
+	output.ScalarHYield3 = config.ScalarHYield3;
+	output.ScalarHYield4 = config.ScalarHYield4;
+	output.GridImport = config.GridImport;
+	output.GridExport = config.GridExport;
+	output.Import_headroom = config.Import_headroom;
+	output.Export_headroom = config.Export_headroom;
+	output.ESS_charge_power = config.ESS_charge_power;
+	output.ESS_discharge_power = config.ESS_discharge_power;
+	output.ESS_capacity = config.ESS_capacity;
+	output.ESS_RTE = config.ESS_RTE;
+	output.ESS_aux_load = config.ESS_aux_load;
+	output.ESS_start_SoC = config.ESS_start_SoC;
+	output.ESS_charge_mode = config.ESS_charge_mode;
+	output.ESS_discharge_mode = config.ESS_discharge_mode;
+	output.import_kWh_price = config.Import_kWh_price;
+	output.export_kWh_price = config.Export_kWh_price;
 
 	return output;
 }

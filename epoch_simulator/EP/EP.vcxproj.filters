@@ -13,6 +13,9 @@
     <Filter Include="io">
       <UniqueIdentifier>{c2ac5ece-d4f7-4a12-ba11-ba9832d35ecd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="PyBind">
+      <UniqueIdentifier>{1bab8954-1d30-47be-8e1b-a880ba240a91}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Optimisation\Threadsafe.h">
@@ -57,6 +60,12 @@
     <ClInclude Include="Optimisation\TaskGenerator.hpp">
       <Filter>Optimisation</Filter>
     </ClInclude>
+    <ClInclude Include="PyBind\Bindings.hpp">
+      <Filter>PyBind</Filter>
+    </ClInclude>
+    <ClInclude Include="PyBind\Simulate_py.hpp">
+      <Filter>PyBind</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Optimisation\Optimiser.cpp">
@@ -74,6 +83,10 @@
     <ClCompile Include="Optimisation\LeagueTable.cpp">
       <Filter>Optimisation</Filter>
     </ClCompile>
+    <ClCompile Include="PyBind\Bindings.cpp">
+      <Filter>PyBind</Filter>
+    </ClCompile>
+    <ClCompile Include="PyBind\Simulate_py.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="Eigen.natvis" />
