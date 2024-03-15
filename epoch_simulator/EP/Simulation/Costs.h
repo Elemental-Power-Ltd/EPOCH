@@ -45,10 +45,10 @@ public:
 		const int r50_EV_CP_number = 0;
 		const int u150_EV_CP_number = 0;
 		const float kw_grid_upgrade = 0; 
-		const float kW_elec = 12.0;
+		const float heatpump_electrical_capacity = 12.0;
 
 		calculate_total_annualised_cost(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, s7_EV_CP_number,
-			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, kW_elec);
+			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
 
 		// for now, simply fix import/export price
 		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.getImport_kWh_price()) };
@@ -70,7 +70,7 @@ public:
 		//========================================
 
 		calculate_Project_CAPEX(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, s7_EV_CP_number,
-			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, kW_elec);
+			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
 
 		//========================================
 
@@ -381,7 +381,7 @@ public:
 
 	// ASHP CAPEX costs
 
-	float calculate_ASHP_CAPEX(float kW_elec) const {
+	float calculate_ASHP_CAPEX(float heatpump_electrical_capacity) const {
 		float small_thresh = 10;
 		float mid_thresh = 100;
 
@@ -392,12 +392,12 @@ public:
 
 		float ASHP_CAPEX = 0;
 
-		if (kW_elec < small_thresh) {
-			ASHP_CAPEX = small_cost * kW_elec;
-		} else if (small_thresh < kW_elec && kW_elec < mid_thresh) {
-			ASHP_CAPEX = (small_cost * small_thresh) + ((kW_elec - small_thresh) * mid_cost);
-		} else if (kW_elec > mid_thresh) {
-			ASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((kW_elec - small_thresh - mid_thresh) * large_cost);
+		if (heatpump_electrical_capacity < small_thresh) {
+			ASHP_CAPEX = small_cost * heatpump_electrical_capacity;
+		} else if (small_thresh < heatpump_electrical_capacity && heatpump_electrical_capacity < mid_thresh) {
+			ASHP_CAPEX = (small_cost * small_thresh) + ((heatpump_electrical_capacity - small_thresh) * mid_cost);
+		} else if (heatpump_electrical_capacity > mid_thresh) {
+			ASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((heatpump_electrical_capacity - small_thresh - mid_thresh) * large_cost);
 		}
 
 		return ASHP_CAPEX;
@@ -424,8 +424,8 @@ public:
 		return EV_CP_annualised_cost;
 	}
 
-	float calculate_ASHP_annualised_cost(float kW_elec) const {
-		float ASHP_annualised_cost = calculate_ASHP_CAPEX(kW_elec) / mASHP_lifetime;
+	float calculate_ASHP_annualised_cost(float heatpump_electrical_capacity) const {
+		float ASHP_annualised_cost = calculate_ASHP_CAPEX(heatpump_electrical_capacity) / mASHP_lifetime;
 		return ASHP_annualised_cost;
 	}
 
@@ -435,12 +435,12 @@ public:
 	}
 
 	float calculate_Project_annualised_cost(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float kW_elec) const {
+		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_electrical_capacity) const {
 
 		float ESS_CAPEX = calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh);
 		float PV_CAPEX = calculate_PVpanel_CAPEX(PV_kWp_total) + calculate_PVBoP_CAPEX(PV_kWp_total) + calculate_PVroof_CAPEX(0) + calculate_PVground_CAPEX(PV_kWp_total);
 		float EV_CP_CAPEX = calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number) + calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
-		float ASHP_CAPEX = calculate_ASHP_CAPEX(kW_elec);
+		float ASHP_CAPEX = calculate_ASHP_CAPEX(heatpump_electrical_capacity);
 		float Grid_CAPEX = calculate_Grid_CAPEX(kw_grid_upgrade);
 
 		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
@@ -452,12 +452,12 @@ public:
 	}
 
 	void calculate_Project_CAPEX(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float kW_elec) {
+		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_electrical_capacity) {
 
 		float ESS_CAPEX = calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh);
 		float PV_CAPEX = calculate_PVpanel_CAPEX(PV_kWp_total) + calculate_PVBoP_CAPEX(PV_kWp_total) + calculate_PVroof_CAPEX(0) + calculate_PVground_CAPEX(PV_kWp_total);
 		float EV_CP_CAPEX = calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number) + calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
-		float ASHP_CAPEX = calculate_ASHP_CAPEX(kW_elec);
+		float ASHP_CAPEX = calculate_ASHP_CAPEX(heatpump_electrical_capacity);
 		float Grid_CAPEX = calculate_Grid_CAPEX(kw_grid_upgrade);
 
 		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
@@ -469,7 +469,7 @@ public:
 	// Calculate annualised costs
 
 	void calculate_total_annualised_cost(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float kW_elec) {
+		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_electrical_capacity) {
 
 		float ESS_annualised_cost = ((calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh)) / mESS_lifetime) + calculate_ESS_PCS_OPEX(ESS_kW) + calculate_ESS_ENCLOSURE_OPEX(ESS_kWh);
 		
@@ -479,9 +479,9 @@ public:
 
 		float Grid_annualised_cost = calculate_Grid_annualised_cost(kw_grid_upgrade);
 
-		float ASHP_annualised_cost = calculate_ASHP_annualised_cost(kW_elec);
+		float ASHP_annualised_cost = calculate_ASHP_annualised_cost(heatpump_electrical_capacity);
 
-		float Project_annualised_cost = calculate_Project_annualised_cost(ESS_kW, ESS_kWh, PV_kWp_total, s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, kW_elec);
+		float Project_annualised_cost = calculate_Project_annualised_cost(ESS_kW, ESS_kWh, PV_kWp_total, s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
 
 		mTotal_annualised_cost = Project_annualised_cost + ESS_annualised_cost + PV_annualised_cost + EV_CP_annualised_cost + Grid_annualised_cost + ASHP_annualised_cost;
 	}
