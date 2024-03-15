@@ -45,7 +45,7 @@ public:
 		const int r50_EV_CP_number = 0;
 		const int u150_EV_CP_number = 0;
 		const float kw_grid_upgrade = 0; 
-		const float heatpump_electrical_capacity = 12.0;
+		const float heatpump_electrical_capacity = 70.0;
 
 		calculate_total_annualised_cost(ESS_kW, mConfig.getESS_capacity(), PV_kWp_total, s7_EV_CP_number,
 			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
