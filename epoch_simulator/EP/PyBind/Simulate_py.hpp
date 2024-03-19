@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef PYTHON_BINDINGS
+
 #include "../Simulation/Simulate.hpp"
 
 // This class is a thin wrapper around the Simulator class
@@ -18,3 +20,7 @@ private:
 	Simulator mSimulator;
 	HistoricalData mHistoricalData;
 };
+
+#endif 
+
+
