@@ -84,7 +84,7 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 	bool columnHasValues = false;
 
 	if (!file.is_open()) {
-		std::cerr << "Could not open the file!" << std::endl;
+		spdlog::warn("Could not open the file!");
 		return columnValues; // Return empty vector
 	}
 
@@ -245,7 +245,7 @@ void writeResultsToCSV(std::filesystem::path filepath, const std::vector<Objecti
 	// write each result
 	for (const auto& result : results) {
 		// These must be written in exactly the same order as the header
-		outFile << result.config.getParamIndex() << ",";
+		outFile << result.config.paramIndex << ",";
 
 		outFile << result.total_annualised_cost << ",";
 		outFile << result.project_CAPEX << ",";
@@ -255,36 +255,36 @@ void writeResultsToCSV(std::filesystem::path filepath, const std::vector<Objecti
 
 		const Config& config = result.config;
 
-		outFile << config.getFixed_load1_scalar() << ",";
-		outFile << config.getFixed_load2_scalar() << ",";
-		outFile << config.getFlex_load_max() << ",";
-		outFile << config.getMop_load_max() << ",";
-		outFile << config.getScalarRG1() << ",";
-		outFile << config.getScalarRG2() << ",";
-		outFile << config.getScalarRG3() << ",";
-		outFile << config.getScalarRG4() << ",";
-		outFile << config.getScalarHL1() << ",";
-		outFile << config.getScalarHYield1() << ",";
-		outFile << config.getScalarHYield2() << ",";
-		outFile << config.getScalarHYield3() << ",";
-		outFile << config.getScalarHYield4() << ",";
-		outFile << config.getGridImport() << ",";
-		outFile << config.getGridExport() << ",";
-		outFile << config.getImport_headroom() << ",";
-		outFile << config.getExport_headroom() << ",";
-		outFile << config.getESS_charge_power() << ",";
-		outFile << config.getESS_discharge_power() << ",";
-		outFile << config.getESS_capacity() << ",";
-		outFile << config.getESS_RTE() << ",";
-		outFile << config.getESS_aux_load() << ",";
-		outFile << config.getESS_start_SoC() << ",";
-		outFile << config.getImport_kWh_price() << ",";
-		outFile << config.getExport_kWh_price() << ",";
-		outFile << config.getTime_budget_min() << ",";
-		outFile << config.getCAPEX_limit() << ",";
-		outFile << config.getOPEX_limit() << ",";
-		outFile << config.getESS_charge_mode() << ",";
-		outFile << config.getESS_discharge_mode(); // no trailing comma
+		outFile << config.Fixed_load1_scalar << ",";
+		outFile << config.Fixed_load2_scalar << ",";
+		outFile << config.Flex_load_max << ",";
+		outFile << config.Mop_load_max << ",";
+		outFile << config.ScalarRG1 << ",";
+		outFile << config.ScalarRG2 << ",";
+		outFile << config.ScalarRG3 << ",";
+		outFile << config.ScalarRG4 << ",";
+		outFile << config.ScalarHL1 << ",";
+		outFile << config.ScalarHYield1 << ",";
+		outFile << config.ScalarHYield2 << ",";
+		outFile << config.ScalarHYield3 << ",";
+		outFile << config.ScalarHYield4 << ",";
+		outFile << config.GridImport << ",";
+		outFile << config.GridExport << ",";
+		outFile << config.Import_headroom << ",";
+		outFile << config.Export_headroom << ",";
+		outFile << config.ESS_charge_power << ",";
+		outFile << config.ESS_discharge_power << ",";
+		outFile << config.ESS_capacity << ",";
+		outFile << config.ESS_RTE << ",";
+		outFile << config.ESS_aux_load << ",";
+		outFile << config.ESS_start_SoC << ",";
+		outFile << config.Import_kWh_price << ",";
+		outFile << config.Export_kWh_price << ",";
+		outFile << config.time_budget_min << ",";
+		outFile << config.CAPEX_limit << ",";
+		outFile << config.OPEX_limit << ",";
+		outFile << config.ESS_charge_mode << ",";
+		outFile << config.ESS_discharge_mode; // no trailing comma
 		outFile << "\n";
 	}
 }
@@ -391,5 +391,46 @@ nlohmann::json readJsonFromFile(std::filesystem::path filepath)
 {
 	std::ifstream f(filepath);
 	return nlohmann::json::parse(f);
+}
+
+const HistoricalData readHistoricalData(const FileConfig& fileConfig)
+{
+	std::filesystem::path eloadFilepath = fileConfig.getEloadFilepath();
+
+	//read the electric load data
+	std::vector<float> hotel_eload_data = readCSVColumn(eloadFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> ev_eload_data = readCSVColumn(eloadFilepath, 5); // read the column of the CSV data and store in vector data
+
+	//read the heat load data
+	std::filesystem::path hloadFilepath = fileConfig.getHloadFilepath();
+	std::vector<float> heatload_data = readCSVColumn(hloadFilepath, 4); // read the column of the CSV data and store in vector data
+
+	//read the renewable generation data
+	std::filesystem::path rgenFilepath = fileConfig.getRgenFilepath();
+	std::vector<float> RGen_data_1 = readCSVColumn(rgenFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> RGen_data_2 = readCSVColumn(rgenFilepath, 5);
+	std::vector<float> RGen_data_3 = readCSVColumn(rgenFilepath, 6);
+	std::vector<float> RGen_data_4 = readCSVColumn(rgenFilepath, 7);
+
+	return {
+	   toEigen(hotel_eload_data),
+	   toEigen(ev_eload_data),
+	   toEigen(heatload_data),
+	   toEigen(RGen_data_1),
+	   toEigen(RGen_data_2),
+	   toEigen(RGen_data_3),
+	   toEigen(RGen_data_4)
+	};
+}
+
+Eigen::VectorXf toEigen(const std::vector<float>& vec)
+{
+	Eigen::VectorXf eig = Eigen::VectorXf(vec.size());
+
+	for (int i = 0; i < vec.size(); i++) {
+		eig[i] = vec[i];
+	}
+
+	return eig;
 }
 	

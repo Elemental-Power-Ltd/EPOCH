@@ -85,7 +85,7 @@ Config TaskGenerator::getTask(uint64_t index) const {
 	}
 
 	// set the 1-based index
-	config.setParamIndex(index + 1);
+	config.paramIndex = index + 1;
 
 
 	return config;

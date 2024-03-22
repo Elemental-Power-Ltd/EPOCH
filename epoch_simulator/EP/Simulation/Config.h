@@ -26,7 +26,7 @@ public:
         GridImport(GridImport_val), GridExport(GridExport_val), Import_headroom(Import_headroom_val), Export_headroom(Export_headroom_val), 
         ESS_charge_power(ESS_charge_power_val), ESS_discharge_power(ESS_discharge_power_val), ESS_capacity(ESS_capacity_val), ESS_RTE(ESS_RTE_val), ESS_aux_load(ESS_aux_load_val), ESS_start_SoC(ESS_start_SoC_val),
         ESS_charge_mode(ESS_charge_mode_val), ESS_discharge_mode(ESS_discharge_mode_val),
-        import_kWh_price(import_kWh_price_val), export_kWh_price(export_kWh_price_val),
+        Import_kWh_price(import_kWh_price_val), Export_kWh_price(export_kWh_price_val),
         time_budget_min(time_budget_min_val), target_max_concurrency(target_max_concurrency_val),
         CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val),
         // initialize unordered maps to allow setting of member variables using (string) dictionary keys
@@ -36,7 +36,7 @@ public:
             { "ScalarHL1",&ScalarHL1 }, { "ScalarHYield1",&ScalarHYield1 }, { "ScalarHYield2",&ScalarHYield2 }, { "ScalarHYield3",&ScalarHYield3 }, { "ScalarHYield4",&ScalarHYield4 },
             { "GridImport",&GridImport }, { "GridExport",&GridExport }, { "Import_headroom",&Import_headroom }, { "Export_headroom",&Export_headroom },
             { "ESS_charge_power",&ESS_charge_power }, { "ESS_discharge_power",&ESS_discharge_power }, {"ESS_capacity",&ESS_capacity}, {"ESS_RTE",&ESS_RTE}, {"ESS_aux_load",&ESS_aux_load}, {"ESS_start_SoC",&ESS_start_SoC},
-            { "import_kWh_price",&import_kWh_price }, { "export_kWh_price",&export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit }}),
+            { "import_kWh_price",&Import_kWh_price }, { "export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit }}),
         param_map_int({ {"ESS_charge_mode",&ESS_charge_mode}, {"ESS_discharge_mode",&ESS_discharge_mode}, {"target_max_concurrency",&target_max_concurrency }})
         {}
     
@@ -47,168 +47,7 @@ public:
         return int_timestep;
     }
 
-
-    // Accessor functions to get the value of data members
-    float getYears() const {
-        return years;
-    }
-
-    float getDays() const {
-        return days;
-    }
-
-    float getHours() const {
-        return hours;
-    }
-
-    float getTimeStep_minutes() const {
-        return timestep_minutes;
-    }
-
-    float getTimeStep_hours() const {
-        return timestep_hours;
-    }
-
-    float getTimeWindow() const {
-        return timewindow;
-    }
-
-    float getFlex_load_max() const {
-        return Flex_load_max;
-    }
-    
-    float getMop_load_max() const {
-        return Mop_load_max;
-    }
-
-    float getFixed_load1_scalar() const {
-        return Fixed_load1_scalar;
-    }
-
-    float getFixed_load2_scalar() const {
-        return Fixed_load2_scalar;
-    }
-
-    float getScalarRG1() const {
-        return ScalarRG1;
-    }
-
-    float getScalarRG2() const {
-        return ScalarRG2;
-    }
-
-    float getScalarRG3() const {
-        return ScalarRG3;
-    }
-
-    float getScalarRG4() const {
-        return ScalarRG4;
-    }
-
-    float getScalarHL1() const {
-        return ScalarHL1;
-    }
-
-    float getScalarHYield1() const {
-        return ScalarHYield1;
-    }
-    
-    float getScalarHYield2() const {
-        return ScalarHYield2;
-    }
-
-    float getScalarHYield3() const {
-        return ScalarHYield3;
-    }
-
-    float getScalarHYield4() const {
-        return ScalarHYield4;
-    }
-
-    float getGridImport() const {
-        return GridImport;
-    }
-
-    float getGridExport() const {
-        return GridExport;
-    }
-
-    float getImport_headroom() const {
-        return Import_headroom;
-    }
-
-    float getExport_headroom() const {
-        return Export_headroom;
-    }
-
-    float getESS_charge_power() const {
-        return ESS_charge_power;
-    }
-
-    float getESS_discharge_power() const {
-        return ESS_discharge_power;
-    }
-
-    float getESS_capacity() const {
-        return ESS_capacity;
-    }
-
-    float getESS_RTE() const {
-        return ESS_RTE;
-    }
-
-    float getESS_aux_load() const {
-        return ESS_aux_load;
-    }
-
-
-    float getESS_start_SoC() const {
-        return ESS_start_SoC;
-    }
-
-    int getESS_charge_mode() const {
-        return ESS_charge_mode;
-    }
-
-    int getESS_discharge_mode() const {
-        return ESS_discharge_mode;
-    }
-
-    float getImport_kWh_price() const {
-        return import_kWh_price;
-    }
-
-    float getExport_kWh_price() const {
-        return export_kWh_price;
-    }
-
-    float getTime_budget_min() const {
-        return time_budget_min;
-    }
-
-    int getTarget_max_concurrency() const {
-        return target_max_concurrency;
-    }
-
-    float getCAPEX_limit() const {
-        return CAPEX_limit;
-    }
-
-    float getOPEX_limit() const {
-        return OPEX_limit;
-    }
-
-    uint64_t getParamIndex() const {
-        return paramIndex;
-    }
-
-    void setParamIndex(uint64_t index) {
-        paramIndex = index;
-    }
-
-
     // Setter functions to set the value of data members
-    // NB: this function is overloaded, and can be called using either a float or int. 
     void set_param_float(const std::string& key, float value) {
         // insert type checking to ensure that the two int parameters are not set using a float?
         auto it = param_map_float.find(key);
@@ -245,7 +84,6 @@ public:
     std::unordered_map<std::string, float*> param_map_float;
     std::unordered_map<std::string, int*> param_map_int;
 
-private:
     float years;
     float days;
     float hours;
@@ -277,8 +115,8 @@ private:
     float ESS_start_SoC;
     int   ESS_charge_mode;
     int   ESS_discharge_mode;
-    float import_kWh_price; 
-    float export_kWh_price;
+    float Import_kWh_price; 
+    float Export_kWh_price;
     float time_budget_min;
     int target_max_concurrency;
     float CAPEX_limit;

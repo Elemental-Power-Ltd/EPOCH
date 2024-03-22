@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Definitions.h"
+#include "FileConfig.h"
 
 #include <nlohmann/json.hpp>
 
@@ -21,6 +22,10 @@ nlohmann::json convert_to_ranges(nlohmann::json& j);
 nlohmann::json handleJsonConversion(const InputValues& inputValues, std::filesystem::path inputParametersFilepath);
 void writeJsonToFile(const nlohmann::json& jsonObj, std::filesystem::path filepath);
 nlohmann::json readJsonFromFile(std::filesystem::path filepath);
+
+const HistoricalData readHistoricalData(const FileConfig& fileConfig);
+Eigen::VectorXf toEigen(const std::vector<float>& vec);
+
 
 constexpr std::array<std::string_view, 31> resultHeader = {
 	"Parameter index",

@@ -24,15 +24,15 @@ public:
 
 	void performHeatCalculations(const HistoricalData& historicalData, const Config& config, const Grid& grid) {
 
-		mHeatload = historicalData.heatload_data * config.getScalarHL1();
+		mHeatload = historicalData.heatload_data * config.ScalarHL1;
 
 		// scale historical data by heat hield scalar
-		mScaledElectricalFixHeatLoad_1 = historicalData.hotel_eload_data * config.getScalarHYield1();
-		mScaledElectricalFixHeatLoad_2 = historicalData.ev_eload_data * config.getScalarHYield2();
+		mScaledElectricalFixHeatLoad_1 = historicalData.hotel_eload_data * config.ScalarHYield1;
+		mScaledElectricalFixHeatLoad_2 = historicalData.ev_eload_data * config.ScalarHYield2;
 
 		calculateElectricalLoadScaledHeatYield(
 			grid.getActualHighPriorityLoad(), grid.getActualLowPriorityLoad(), 
-			config.getScalarHYield3(), config.getScalarHYield4()
+			config.ScalarHYield3, config.ScalarHYield4
 		);
 
 		//Heat shortfall

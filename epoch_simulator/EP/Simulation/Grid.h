@@ -10,13 +10,13 @@ class Grid
 {
 public:
 	Grid(const Config& config): 
-		mMaxGridImport(config.getGridImport()),
-		mMaxGridExport(config.getGridExport()),
-		mImportHeadroom(config.getImport_headroom()),
-		mExportHeadroom(config.getExport_headroom()),
+		mMaxGridImport(config.GridImport),
+		mMaxGridExport(config.GridExport),
+		mImportHeadroom(config.Import_headroom),
+		mExportHeadroom(config.Export_headroom),
 		mTimesteps(config.calculate_timesteps()),
-		mFlexLoadMax(config.getFlex_load_max()),
-		mMopLoadMax(config.getMop_load_max()),
+		mFlexLoadMax(config.Flex_load_max),
+		mMopLoadMax(config.Mop_load_max),
 
 		mGridImport(Eigen::VectorXf::Zero(mTimesteps)),
 		mGridExport(Eigen::VectorXf::Zero(mTimesteps)),

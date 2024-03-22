@@ -3,6 +3,7 @@
     "eigen3",
     "mimalloc",
     "nlohmann-json",
+    "pybind11",
     "spdlog"
   ]
 }

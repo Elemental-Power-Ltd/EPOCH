@@ -12,15 +12,15 @@ class ESS {
 
 public:
     ESS(const Config& config) :
-        mChargePower(config.getESS_charge_power()),
-        mDischargePower(config.getESS_discharge_power()),
-        mCapacity(config.getESS_capacity()),
-        mRTE(config.getESS_RTE()),
-        mAuxLoad(config.getESS_aux_load()),
-        mStartSoC(config.getESS_start_SoC()),
+        mChargePower(config.ESS_charge_power),
+        mDischargePower(config.ESS_discharge_power),
+        mCapacity(config.ESS_capacity),
+        mRTE(config.ESS_RTE),
+        mAuxLoad(config.ESS_aux_load),
+        mStartSoC(config.ESS_start_SoC),
 
         mTimesteps(config.calculate_timesteps()),
-        mTimestep_hours(config.getTimeStep_hours()),
+        mTimestep_hours(config.timestep_hours),
 
         // TODO - this should likely be an enum
         mChargeMode(1),
