@@ -86,7 +86,9 @@
     <ClCompile Include="PyBind\Bindings.cpp">
       <Filter>PyBind</Filter>
     </ClCompile>
-    <ClCompile Include="PyBind\Simulate_py.cpp" />
+    <ClCompile Include="PyBind\Simulate_py.cpp">
+      <Filter>PyBind</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="Eigen.natvis" />
