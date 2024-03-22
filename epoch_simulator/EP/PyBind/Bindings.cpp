@@ -2,6 +2,8 @@
 
 #include "Bindings.hpp"
 
+#include <format>
+
 #include "Simulate_py.hpp"
 #include "../Simulation/Config.h"
 
@@ -43,7 +45,8 @@ PYBIND11_MODULE(EPSimulator, m) {
 		.def_readwrite("time_budget_min", &Config::time_budget_min)
 		.def_readwrite("target_max_concurrency", &Config::target_max_concurrency)
 		.def_readwrite("CAPEX_limit", &Config::CAPEX_limit)
-		.def_readwrite("OPEX_limit", &Config::OPEX_limit);
+		.def_readwrite("OPEX_limit", &Config::OPEX_limit)
+		.def("__repr__", &configToString);
 
 
 	pybind11::class_<SimulationResult>(m, "SimulationResult")
@@ -51,7 +54,63 @@ PYBIND11_MODULE(EPSimulator, m) {
 		.def_readwrite("cost_balance", &SimulationResult::scenario_cost_balance)
 		.def_readwrite("capex", &SimulationResult::project_CAPEX)
 		.def_readwrite("payback_horizon", &SimulationResult::payback_horizon_years)
-		.def_readwrite("annualised_cost", &SimulationResult::total_annualised_cost);
+		.def_readwrite("annualised_cost", &SimulationResult::total_annualised_cost)
+		.def("__repr__", &resultToString);
 }
 
+
+
+
+std::string resultToString(const SimulationResult& result)
+{
+	return std::format(
+		"SimulationResult(carbon_balance: {}, "
+		"cost_balance: {}, capex: {}, payback_horizon: {}, annualised_cost: {})",
+		result.scenario_carbon_balance, 
+		result.scenario_cost_balance, 
+		result.project_CAPEX, 
+		result.payback_horizon_years, 
+		result.total_annualised_cost
+	);
+}
+std::string configToString(const Config& config)
+{
+	const int maxLineLength = 100;
+	std::string configAsString = "Config(";
+
+	std::string currentLine = "";
+
+	for (const auto& [key, value] : config.param_map_float) {
+		std::string currentField = std::format("{}: {}, ", key, *value);
+		if (currentLine.length() + currentField.length() > maxLineLength) {
+			// 'flush' the currentLine first as it would be over the max length
+			configAsString += currentLine + "\n";
+			currentLine = currentField;
+		}
+		else {
+			currentLine += currentField;
+		}
+	}
+
+	for (const auto& [key, value] : config.param_map_int) {
+		std::string currentField = std::format("{}: {}, ", key, *value);
+		if (currentLine.length() + currentField.length() > maxLineLength) {
+			// 'flush' the currentLine first as it would be over the max length
+			configAsString += currentLine + "\n";
+			currentLine = currentField;
+		}
+		else {
+			currentLine += currentField;
+		}
+	}
+
+	// add the final line
+	configAsString += currentLine;
+
+	// remove the final comma and space, then close parentheses
+	configAsString.resize(configAsString.length() - 2);
+	configAsString += ")";
+	return configAsString;
+
+}
 #endif
