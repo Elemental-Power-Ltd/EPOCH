@@ -1,12 +1,55 @@
 {
-    "version": 3,
-    "configurePresets": [
-        {
-            "name": "default",
-            "binaryDir": "${sourceDir}/out",
-            "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "C:/Users/Jon/dev/EP-Main/vcpkg/scripts/buildsystems/vcpkg.cmake"
-            }
-        }
-    ]
+    "version": 6,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "toolchainFile": "C:/Users/Jon/dev/EP-Main/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "generator": "Ninja Multi-Config"
+    },
+    {
+      "name": "headless",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/out/headless",
+      "cacheVariables": {
+        "BUILD_GUI": "OFF"
+      }
+    },
+    {
+      "name": "gui",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/out/gui",
+      "cacheVariables": {
+        "BUILD_GUI": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "gui-rel",
+      "displayName": "GUI Release",
+      "configurePreset": "gui",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "gui-debug",
+      "displayName": "GUI Debug",
+      "configurePreset": "gui",
+      "configuration": "Debug"
+
+    },
+    {
+      "name": "headless-rel",
+      "displayName": "Headless Release",
+      "configurePreset": "headless",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "headless-debug",
+      "displayName": "Headless Debug",
+      "configurePreset": "headless",
+      "configuration": "Debug"
+    }
+
+  ]
 }
