@@ -1,10 +1,10 @@
 {
-    "version": 6,
+  "version": 6,
   "configurePresets": [
     {
       "name": "base",
       "hidden": true,
-      "toolchainFile": "C:/Users/Jon/dev/EP-Main/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "generator": "Ninja Multi-Config"
     },
     {
@@ -36,7 +36,6 @@
       "displayName": "GUI Debug",
       "configurePreset": "gui",
       "configuration": "Debug"
-
     },
     {
       "name": "headless-rel",
