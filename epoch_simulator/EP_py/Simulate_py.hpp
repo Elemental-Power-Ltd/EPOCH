@@ -1,8 +1,6 @@
 #pragma once
 
-#ifdef PYTHON_BINDINGS
-
-#include "../Simulation/Simulate.hpp"
+#include "../EP/Simulation/Simulate.hpp"
 
 // This class is a thin wrapper around the Simulator class
 // to allow creation of a Simulator with less arguments
@@ -20,7 +18,5 @@ private:
 	Simulator mSimulator;
 	HistoricalData mHistoricalData;
 };
-
-#endif 
 
 

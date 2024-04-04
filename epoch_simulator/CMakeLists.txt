@@ -5,4 +5,9 @@ project(Delta LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory("EP")
-add_subdirectory("EP_main")
+
+if(PYBIND)
+	add_subdirectory("EP_py")
+else()
+	add_subdirectory("EP_main")
+endif()

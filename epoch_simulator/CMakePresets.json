@@ -22,6 +22,14 @@
       "cacheVariables": {
         "BUILD_GUI": "ON"
       }
+    },
+    {
+      "name": "python",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/out/python",
+      "cacheVariables": {
+        "PYBIND": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -48,6 +56,12 @@
       "displayName": "Headless Debug",
       "configurePreset": "headless",
       "configuration": "Debug"
+    },
+    {
+      "name": "python-rel",
+      "displayName": "Python Bindings",
+      "configurePreset": "python",
+      "configuration": "Release"
     }
 
   ]

@@ -1,10 +1,8 @@
-#ifdef PYTHON_BINDINGS
-
 #include "Simulate_py.hpp"
 
 #include <pybind11/pybind11.h>
 
-#include "../io/FileHandling.hpp"
+#include "../EP/io/FileHandling.hpp"
 
 Simulator_py::Simulator_py() :
 	// Construct a default FileConfig to provide the paths for the CSVs
@@ -19,4 +17,3 @@ SimulationResult Simulator_py::simulateScenario(const Config& config)
 	pybind11::gil_scoped_release release;
 	return mSimulator.simulateScenario(mHistoricalData, config);
 }
-#endif 

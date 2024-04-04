@@ -1,11 +1,9 @@
-#ifdef PYTHON_BINDINGS
-
 #include "Bindings.hpp"
 
 #include <format>
 
 #include "Simulate_py.hpp"
-#include "../Simulation/Config.h"
+#include "../EP/Simulation/Config.h"
 
 
 PYBIND11_MODULE(EPSimulator, m) {
@@ -113,4 +111,3 @@ std::string configToString(const Config& config)
 	return configAsString;
 
 }
-#endif

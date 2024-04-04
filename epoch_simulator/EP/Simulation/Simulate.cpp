@@ -35,8 +35,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	Hload MountHload{ historicalData, myConfig };
 	MountHload.performHeatCalculations(historicalData, myConfig, MountGrid);
 
-
-
 	Costs myCost(myConfig);
 	myCost.calculateCosts(MountEload, MountHload, MountGrid);
 
