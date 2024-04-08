@@ -1,22 +1,25 @@
 {
   "version": "0.2.1",
-  "defaults": {},
   "configurations": [
     {
       "type": "default",
       "project": "CMakeLists.txt",
       "projectTarget": "EP_APP.exe (EP_main\\Debug\\EP_APP.exe)",
-      "name": "EP_APP.exe (headless-debug)",
+      "name": "EP_APP.exe (EP_main\\Debug\\EP_APP.exe)",
       "currentDir": "${workspaceRoot}",
-      "args": [ "./" ]
+      "args": [
+        "./"
+      ]
     },
     {
       "type": "default",
       "project": "CMakeLists.txt",
       "projectTarget": "EP_APP.exe (EP_main\\RelWithDebInfo\\EP_APP.exe)",
-      "name": "EP_APP.exe (headless-release)",
+      "name": "EP_APP.exe (EP_main\\RelWithDebInfo\\EP_APP.exe)",
       "currentDir": "${workspaceRoot}",
-      "args": [ "./" ]
+      "args": [
+        "./"
+      ]
     }
   ]
 }
