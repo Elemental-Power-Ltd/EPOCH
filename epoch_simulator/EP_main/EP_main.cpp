@@ -53,11 +53,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 #include "../EP/Optimisation/Optimiser.hpp"
 #include "../EP/io/FileHandling.hpp"
 
+#include <filesystem>
 
 int main(int argc, char* argv[]) {
 
+	if (argc < 2) {
+		spdlog::error("Missing argument: InputData path");
+		spdlog::info("Usage: epoch.exe path_to_input_data");
+		return 1;
+	}
+
 	try {
-		FileConfig fileConfig{};
+		FileConfig fileConfig{argv[1]};
 
 		auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
 
