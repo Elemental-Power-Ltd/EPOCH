@@ -11,6 +11,7 @@
 #include <spdlog/spdlog.h>
 
 #include "../Definitions.h"
+#include "../Exceptions.hpp"
 
 // Define macros to simplify creating the mapping for each struct member
 #define MEMBER_MAPPING_FLOAT(member) {#member, [](const InputValues& s) -> float { return s.member; }, nullptr}
@@ -84,8 +85,7 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 	bool columnHasValues = false;
 
 	if (!file.is_open()) {
-		spdlog::warn("Could not open the file!");
-		return columnValues; // Return empty vector
+		throw FileReadException(filename.filename().string());
 	}
 
 	// Skip the header row
@@ -104,63 +104,48 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 
 		// Parse each cell in the row
 		while (std::getline(ss, cell, ',')) {
-			row.push_back(cell);
+			row.emplace_back(cell);
 		}
 
 		// If the row ends with a comma, add an empty string to the row (signifying an empty column)
 		if (line.back() == ',') {
-			row.push_back("");
+			row.emplace_back("");
 		}
 
 		// Convert the value from the specified column to float and store it in the vector
 		int column_1 = column - 1;
-		if (row.size() > column_1) {
-			if (!row[column_1].empty()) {
-				columnHasValues = true;
-			}
 
-			if (isValidFloat(row[column_1])) {
-				try {
-					columnValues.push_back(std::stof(row[column_1]));
-				}
-				catch (...) {
-					std::cerr << "Unknown exception at line: " << line << '\n';
-					columnValues.push_back(std::nanf(""));
-				}
-			}
-			else {
-				//std::cerr << "Warning: invalid data at line: " << line << '\n';
-				columnValues.push_back(std::nanf(""));
-			}
+		if (row.size() <= column_1) {
+			spdlog::error("Insufficient columns at line {}", line);
+			throw FileReadException(filename.filename().string());
+		}
+
+		if (row[column_1] == "") {
+			// treat missing values as 0
+			columnValues.emplace_back(0.0f);
 		}
 		else {
-			std::cerr << "Warning: insufficient columns at line: " << line << '\n';
-			columnValues.push_back(std::nanf(""));
+			try {
+				float val = std::stof(row[column_1]);
+				columnValues.emplace_back(val);
+			}
+			catch (const std::exception& e) {
+				spdlog::error("Failed to parse float in line {} ({})", line, e.what());
+				throw FileReadException(filename.filename().string());
+			}
 		}
-	}
-
-	if (!columnHasValues) {
-		std::fill(columnValues.begin(), columnValues.end(), 0.0f);
 	}
 
 	return columnValues;
 }
 
-bool isValidFloat(const std::string& str) {
-	std::stringstream sstr(str);
-	float f;
-	return !(sstr >> f).fail() && (sstr >> std::ws).eof();
-}
-
-
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results)
 {
 	std::ofstream outFile(filepath);
 
-	// TODO exception instead
 	if (!outFile.is_open()) {
-		std::cerr << "Failed to open the output file!" << std::endl;
-		return;
+		spdlog::error("Failed to open the output file!");
+		throw FileReadException(filepath.filename().string());
 	}
 
 	// write the column headers
@@ -216,10 +201,9 @@ void writeResultsToCSV(std::filesystem::path filepath, const std::vector<Objecti
 {
 	std::ofstream outFile(filepath);
 
-	// TODO exception instead
 	if (!outFile.is_open()) {
-		std::cerr << "Failed to open the output file!" << std::endl;
-		return;
+		spdlog::error("Failed to open the output file!");
+		throw FileReadException(filepath.filename().string());
 	}
 
 	// write the column headers
@@ -389,8 +373,13 @@ void writeJsonToFile(const nlohmann::json& jsonObj, std::filesystem::path filepa
 
 nlohmann::json readJsonFromFile(std::filesystem::path filepath)
 {
-	std::ifstream f(filepath);
-	return nlohmann::json::parse(f);
+	try {
+		std::ifstream f(filepath);
+		return nlohmann::json::parse(f);
+	}
+	catch (const std::exception& e) {
+		throw FileReadException(filepath.filename().string());
+	}
 }
 
 const HistoricalData readHistoricalData(const FileConfig& fileConfig)

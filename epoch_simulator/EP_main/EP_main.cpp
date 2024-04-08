@@ -56,17 +56,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 int main(int argc, char* argv[]) {
 
-	FileConfig fileConfig{};
+	try {
+		FileConfig fileConfig{};
 
-	auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
+		auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
 
-	auto optimiser = Optimiser(fileConfig);
-	OutputValues output = optimiser.runMainOptimisation(converted_json);
+		auto optimiser = Optimiser(fileConfig);
+		OutputValues output = optimiser.runMainOptimisation(converted_json);
 
+		nlohmann::json jsonObj = outputToJson(output);
+		writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
 
-	nlohmann::json jsonObj = outputToJson(output);
-	writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
-
+	}
+	catch (const std::exception& e) {
+		spdlog::error(e.what());
+		return 1;
+	}
 }
 
 #endif
