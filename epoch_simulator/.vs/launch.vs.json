@@ -20,6 +20,20 @@
       "args": [
         "./"
       ]
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "EP_TEST.exe (EP_Test\\Debug\\EP_TEST.exe)",
+      "name": "EP_TEST.exe (EP_Test\\Debug\\EP_TEST.exe)",
+      "currentDir": "${workspaceRoot}/EP_Test"
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "EP_TEST.exe (EP_Test\\RelWithDebInfo\\EP_TEST.exe)",
+      "name": "EP_TEST.exe (EP_Test\\RelWithDebInfo\\EP_TEST.exe)",
+      "currentDir": "${workspaceRoot}/EP_Test"
     }
   ]
 }

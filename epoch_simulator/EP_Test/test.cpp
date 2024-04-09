@@ -1,4 +1,4 @@
-#include "pch.h"
+#include <gtest/gtest.h>
 
 #include <filesystem>
 #include <fstream>
@@ -10,7 +10,6 @@
 namespace fs = std::filesystem;
 
 TEST(EPTestCase, MatchesKnownOutput) {
-
 	FileConfig fileConfig = FileConfig{
 		"", "KnownInput", "OutputData",
 		"CSVEload.csv", "CSVHload.csv", "CSVRGen.csv",

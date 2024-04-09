@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "eigen3",
+    "gtest",
     "mimalloc",
     "nlohmann-json",
     "pybind11",

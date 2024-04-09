@@ -11,3 +11,15 @@ if(PYBIND)
 else()
 	add_subdirectory("EP_main")
 endif()
+
+# Configure Testing
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+	include(CTest)
+
+	enable_testing()
+
+	if(BUILD_TESTING)
+		add_subdirectory(EP_Test)
+	endif()
+
+endif()
