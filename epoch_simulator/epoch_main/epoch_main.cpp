@@ -1,5 +1,5 @@
 #pragma once
-#include "EP_main.h"
+#include "epoch_main.h"
 
 #ifdef EP_GUI
 // run with the gui
@@ -7,7 +7,7 @@
 #define NOMINMAX  // necessary before including windows.h
 #include <windows.h>
 
-#include "../EP_main/GUI/gui.hpp"
+#include "../epoch_main/GUI/gui.hpp"
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,

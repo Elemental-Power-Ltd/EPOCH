@@ -4,8 +4,8 @@
     {
       "type": "default",
       "project": "CMakeLists.txt",
-      "projectTarget": "EP_APP.exe (EP_main\\Debug\\EP_APP.exe)",
-      "name": "EP_APP.exe (EP_main\\Debug\\EP_APP.exe)",
+      "projectTarget": "Epoch.exe (epoch_main\\Debug\\Epoch.exe)",
+      "name": "Epoch.exe (epoch_main\\Debug\\Epoch.exe)",
       "currentDir": "${workspaceRoot}",
       "args": [
         "./"
@@ -14,8 +14,8 @@
     {
       "type": "default",
       "project": "CMakeLists.txt",
-      "projectTarget": "EP_APP.exe (EP_main\\RelWithDebInfo\\EP_APP.exe)",
-      "name": "EP_APP.exe (EP_main\\RelWithDebInfo\\EP_APP.exe)",
+      "projectTarget": "Epoch.exe (epoch_main\\RelWithDebInfo\\Epoch.exe)",
+      "name": "Epoch.exe (epoch_main\\RelWithDebInfo\\Epoch.exe)",
       "currentDir": "${workspaceRoot}",
       "args": [
         "./"

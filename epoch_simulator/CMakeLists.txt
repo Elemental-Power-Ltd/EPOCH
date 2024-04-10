@@ -9,7 +9,7 @@ add_subdirectory("epoch_lib")
 if(PYBIND)
 	add_subdirectory("EP_py")
 else()
-	add_subdirectory("EP_main")
+	add_subdirectory("epoch_main")
 endif()
 
 # Configure Testing
