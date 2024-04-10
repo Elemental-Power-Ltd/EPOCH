@@ -24,16 +24,16 @@
     {
       "type": "default",
       "project": "CMakeLists.txt",
-      "projectTarget": "EP_TEST.exe (EP_Test\\Debug\\EP_TEST.exe)",
-      "name": "EP_TEST.exe (EP_Test\\Debug\\EP_TEST.exe)",
-      "currentDir": "${workspaceRoot}/EP_Test"
+      "projectTarget": "epoch_test.exe (epoch_test\\Debug\\epoch_test.exe)",
+      "name": "epoch_test.exe (epoch_test\\Debug\\epoch_test.exe)",
+      "currentDir": "${workspaceRoot}/epoch_test"
     },
     {
       "type": "default",
       "project": "CMakeLists.txt",
-      "projectTarget": "EP_TEST.exe (EP_Test\\RelWithDebInfo\\EP_TEST.exe)",
-      "name": "EP_TEST.exe (EP_Test\\RelWithDebInfo\\EP_TEST.exe)",
-      "currentDir": "${workspaceRoot}/EP_Test"
+      "projectTarget": "epoch_test.exe (epoch_test\\RelWithDebInfo\\epoch_test.exe)",
+      "name": "epoch_test.exe (epoch_test\\RelWithDebInfo\\epoch_test.exe)",
+      "currentDir": "${workspaceRoot}/epoch_test"
     }
   ]
 }

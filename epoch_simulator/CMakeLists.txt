@@ -19,7 +19,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 	enable_testing()
 
 	if(BUILD_TESTING)
-		add_subdirectory(EP_Test)
+		add_subdirectory(epoch_test)
 	endif()
 
 endif()
