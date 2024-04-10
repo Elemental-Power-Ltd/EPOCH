@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 20)
 add_subdirectory("epoch_lib")
 
 if(PYBIND)
-	add_subdirectory("EP_py")
+	add_subdirectory("epoch_py")
 else()
 	add_subdirectory("epoch_main")
 endif()

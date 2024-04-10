@@ -6,7 +6,7 @@
 #include "../epoch_lib/Simulation/Config.h"
 
 
-PYBIND11_MODULE(EPSimulator, m) {
+PYBIND11_MODULE(epoch_simulator, m) {
 	pybind11::class_<Simulator_py>(m, "Simulator")
 		.def(pybind11::init<>())
 		.def("simulate_scenario", &Simulator_py::simulateScenario);
