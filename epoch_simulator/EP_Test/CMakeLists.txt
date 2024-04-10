@@ -1,7 +1,7 @@
 
 add_executable(EP_TEST test.cpp)
 
-target_link_libraries(EP_TEST PRIVATE EP)
+target_link_libraries(EP_TEST PRIVATE Epoch_lib)
 
 find_package(GTest CONFIG REQUIRED)
 target_link_libraries(EP_TEST PRIVATE GTest::gtest_main)

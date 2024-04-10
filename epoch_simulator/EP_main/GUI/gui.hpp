@@ -3,9 +3,9 @@
 #define NOMINMAX  // necessary before including windows.h
 #include <Windows.h>
 
-#include "../../EP/Definitions.h"
-#include "../../EP/Optimisation/Optimiser.hpp"
-#include "../../EP/io/FileHandling.hpp"
+#include "../../epoch_lib/Definitions.h"
+#include "../../epoch_lib/Optimisation/Optimiser.hpp"
+#include "../../epoch_lib/io/FileHandling.hpp"
 
 #include <spdlog/spdlog.h>
 

@@ -21,7 +21,7 @@ else ()
 
 endif()
 
-target_link_libraries(EP_APP PRIVATE EP)
+target_link_libraries(EP_APP PRIVATE Epoch_lib)
 
 find_package(mimalloc CONFIG REQUIRED)
 target_link_libraries(EP_APP PRIVATE mimalloc)

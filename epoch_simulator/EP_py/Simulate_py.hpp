@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../EP/Simulation/Simulate.hpp"
+#include "../epoch_lib/Simulation/Simulate.hpp"
 
 // This class is a thin wrapper around the Simulator class
 // to allow creation of a Simulator with less arguments

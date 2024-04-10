@@ -4,7 +4,7 @@ project(Delta LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_subdirectory("EP")
+add_subdirectory("epoch_lib")
 
 if(PYBIND)
 	add_subdirectory("EP_py")

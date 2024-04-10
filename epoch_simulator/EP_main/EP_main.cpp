@@ -50,8 +50,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 // run the application headlessly
 
 #include <iostream>
-#include "../EP/Optimisation/Optimiser.hpp"
-#include "../EP/io/FileHandling.hpp"
+#include "../epoch_lib/Optimisation/Optimiser.hpp"
+#include "../epoch_lib/io/FileHandling.hpp"
 
 #include <filesystem>
 

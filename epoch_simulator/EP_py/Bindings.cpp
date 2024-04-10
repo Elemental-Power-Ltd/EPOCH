@@ -3,7 +3,7 @@
 #include <format>
 
 #include "Simulate_py.hpp"
-#include "../EP/Simulation/Config.h"
+#include "../epoch_lib/Simulation/Config.h"
 
 
 PYBIND11_MODULE(EPSimulator, m) {

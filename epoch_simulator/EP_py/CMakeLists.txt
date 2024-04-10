@@ -7,6 +7,6 @@ pybind11_add_module(EPSimulator
 "Simulate_py.cpp"
 "Simulate_py.hpp")
 
-target_link_libraries(EPSimulator PRIVATE EP)
+target_link_libraries(EPSimulator PRIVATE Epoch_lib)
 
 

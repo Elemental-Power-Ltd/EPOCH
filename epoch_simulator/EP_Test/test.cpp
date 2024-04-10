@@ -3,9 +3,9 @@
 #include <filesystem>
 #include <fstream>
 
-#include "../EP/io/FileConfig.h"
-#include "../EP/Optimisation/Optimiser.hpp"
-#include "../EP/io/FileHandling.hpp"
+#include "../epoch_lib/io/FileConfig.h"
+#include "../epoch_lib/Optimisation/Optimiser.hpp"
+#include "../epoch_lib/io/FileHandling.hpp"
 
 namespace fs = std::filesystem;
 

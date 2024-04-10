@@ -2,7 +2,7 @@
 
 #include <pybind11/pybind11.h>
 
-#include "../EP/io/FileHandling.hpp"
+#include "../epoch_lib/io/FileHandling.hpp"
 
 Simulator_py::Simulator_py() :
 	// Construct a default FileConfig to provide the paths for the CSVs

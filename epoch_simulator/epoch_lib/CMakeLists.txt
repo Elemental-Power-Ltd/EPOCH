@@ -1,4 +1,4 @@
-add_library(EP STATIC
+add_library(Epoch_lib STATIC
 	Definitions.h
 	io/FileConfig.h
 	io/FileHandling.cpp
@@ -20,12 +20,12 @@ add_library(EP STATIC
 )
 
 find_package(Eigen3 CONFIG REQUIRED)
-target_link_libraries(EP PRIVATE Eigen3::Eigen)
+target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)
 # disallow LGPL code in Eigen
 add_compile_definitions("EIGEN_MPL2_ONLY")
 
 find_package(nlohmann_json CONFIG REQUIRED)
-target_link_libraries(EP PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(Epoch_lib PRIVATE nlohmann_json::nlohmann_json)
 
 find_package(spdlog CONFIG REQUIRED)
-target_link_libraries(EP PRIVATE spdlog::spdlog)
+target_link_libraries(Epoch_lib PRIVATE spdlog::spdlog)
