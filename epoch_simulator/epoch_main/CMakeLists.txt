@@ -13,7 +13,7 @@ if (BUILD_GUI)
 		"targetver.h"
 	)
 
-	target_compile_definitions(Epoch PRIVATE EP_GUI)
+	target_compile_definitions(Epoch PRIVATE EPOCH_GUI)
 	add_definitions(-DUNICODE -D_UNICODE)
 
 else ()

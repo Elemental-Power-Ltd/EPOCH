@@ -9,7 +9,7 @@
 
 namespace fs = std::filesystem;
 
-TEST(EPTestCase, MatchesKnownOutput) {
+TEST(EpochTestCase, MatchesKnownOutput) {
 	FileConfig fileConfig = FileConfig{
 		"", "KnownInput", "OutputData",
 		"CSVEload.csv", "CSVHload.csv", "CSVRGen.csv",

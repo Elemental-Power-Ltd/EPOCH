@@ -1,7 +1,7 @@
 #pragma once
 #include "epoch_main.h"
 
-#ifdef EP_GUI
+#ifdef EPOCH_GUI
 // run with the gui
 
 #define NOMINMAX  // necessary before including windows.h
