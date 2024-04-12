@@ -4,7 +4,7 @@ SETLOCAL
 REM check that administrator permissions are avilable.
 net session >nul 2>&1
 if %errorLevel% NEQ 0 (
-	echo Administrator permissions are required to run this script - please re-run.
+	echo Administrator permissions are required to run this script - please re-run with permissions.
 	pause
 	exit /b 1
 )
@@ -14,11 +14,14 @@ REM Define the location where you want to clone vcpkg
 REM vcpkg can occasionally encounter issues with long files paths so we choose to use a short root directory here
 SET vcpkgDir=C:\dev\vcpkg
 
+REM pin vcpkg to a specific version
+SET targetRevision=a194ab0156b30469ce5034ceb8e83c1531f7deba
+
 
 REM Warn the user if VCPKG_ROOT has already been set
 if defined VCPKG_ROOT (
-	echo VCPKG_ROOT is already set to "%VCPKG_ROOT%"
-	echo Running this script will overwrite this value
+	echo WARNING: VCPKG_ROOT is already set to "%VCPKG_ROOT%"
+	echo vcpkg may already be installed
 	CHOICE /C YN /M "Do you wish to continue?"
 	
 	IF %ERRORLEVEL% EQU 2 (
@@ -48,6 +51,16 @@ IF NOT EXIST "%vcpkgDir%" (
 
 REM Navigate into the vcpkg directory
 cd /d "%vcpkgDir%"
+
+
+REM Checkout the target revision
+git checkout %targetRevision%
+
+IF %ERRORLEVEL% NEQ 0 (
+	echo Failed to checkout target revision
+	pause
+	exit /b 1
+)
 
 REM Bootstrap vcpkg
 echo Bootstrapping vcpkg...
