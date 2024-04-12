@@ -10,6 +10,7 @@ pybind11_add_module(epoch_simulator
 target_link_libraries(epoch_simulator PRIVATE Epoch_lib)
 
 # Installation Logic
+install(TARGETS epoch_simulator DESTINATION "bin")
 install(FILES $<TARGET_RUNTIME_DLLS:epoch_simulator> TYPE BIN)
 
 # copy the InputData directory into the install folder
