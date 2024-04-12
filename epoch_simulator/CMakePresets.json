@@ -10,7 +10,8 @@
     {
       "name": "headless",
       "inherits": "base",
-      "binaryDir": "${sourceDir}/out/headless",
+      "binaryDir": "${sourceDir}/build/headless",
+      "installDir": "${sourceDir}/install/headless",
       "cacheVariables": {
         "BUILD_GUI": "OFF"
       }
@@ -18,7 +19,8 @@
     {
       "name": "gui",
       "inherits": "base",
-      "binaryDir": "${sourceDir}/out/gui",
+      "binaryDir": "${sourceDir}/build/gui",
+      "installDir": "${sourceDir}/install/gui",
       "cacheVariables": {
         "BUILD_GUI": "ON"
       }
@@ -26,7 +28,8 @@
     {
       "name": "python",
       "inherits": "base",
-      "binaryDir": "${sourceDir}/out/python",
+      "binaryDir": "${sourceDir}/build/python",
+      "installDir": "${sourceDir}/install/python",
       "cacheVariables": {
         "PYBIND": "ON"
       }

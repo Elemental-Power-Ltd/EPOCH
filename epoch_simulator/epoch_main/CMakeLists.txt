@@ -33,3 +33,18 @@ find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(Epoch PRIVATE spdlog::spdlog)
 
 
+
+# Installation Logic
+install(TARGETS Epoch
+    COMPONENT Epoch
+    RUNTIME_DEPENDENCIES
+    PRE_EXCLUDE_REGEXES "api-ms-" "ext-ms-"
+    POST_EXCLUDE_REGEXES ".*system32/.*\\.dll"
+    DIRECTORIES $<TARGET_FILE_DIR:Epoch>)
+
+# using the TARGET_RUNTIME_DLLS generator expression fails to pick up mimalloc-redirect
+#  so we use the approach above (see https://stackoverflow.com/a/75065206)
+
+
+# copy the InputData directory into the install folder
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/InputData" DESTINATION "bin")
