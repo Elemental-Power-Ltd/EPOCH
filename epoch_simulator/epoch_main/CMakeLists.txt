@@ -1,5 +1,12 @@
 
 
+get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if (${isMultiConfig})
+	# for simplification, only support Debug and RelWithDebInfo for now
+	# these are the build types we have defined in CMakePresets.json
+	set(CMAKE_CONFIGURATION_TYPES "Debug;RelWithDebInfo;" CACHE STRING "" FORCE) 
+endif()
+
 if (BUILD_GUI)
 
 	add_executable(Epoch WIN32

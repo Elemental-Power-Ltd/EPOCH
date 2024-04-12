@@ -1,4 +1,10 @@
 
+get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if (${isMultiConfig})
+	# for simplification, only allow building the python bindings as Release
+	set(CMAKE_CONFIGURATION_TYPES "Release;" CACHE STRING "" FORCE) 
+endif()
+
 find_package(pybind11 CONFIG REQUIRED)
 
 pybind11_add_module(epoch_simulator 
