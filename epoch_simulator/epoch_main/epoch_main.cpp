@@ -57,14 +57,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 int main(int argc, char* argv[]) {
 
+	std::string inputDataPath;
 	if (argc < 2) {
-		spdlog::error("Missing argument: InputData path");
+		spdlog::warn("Missing argument: InputData path - implicitly using the current directory");
 		spdlog::info("Usage: epoch.exe path_to_input_data");
-		return 1;
+		inputDataPath = "./";
+	} else {
+		inputDataPath = argv[1];
 	}
 
 	try {
-		FileConfig fileConfig{argv[1]};
+		FileConfig fileConfig{inputDataPath};
 
 		auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
 
