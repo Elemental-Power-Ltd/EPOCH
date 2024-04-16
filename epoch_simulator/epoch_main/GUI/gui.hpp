@@ -1346,7 +1346,7 @@ void writeRecallValuesToForm(const OutputValues& output) {
 // These need to be defined outside of the callback
 // else they will be recreated every time the callback occurs
 // (and continually try to open/read the CSV input data)
-FileConfig fileConfig{};
+FileConfig fileConfig{"./InputData", "./OutputData", "./ConfigData"};
 auto optimiser = Optimiser(fileConfig);
 
 //

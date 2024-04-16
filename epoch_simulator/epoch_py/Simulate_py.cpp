@@ -3,10 +3,12 @@
 #include <pybind11/pybind11.h>
 
 #include "../epoch_lib/io/FileHandling.hpp"
+#include "../epoch_lib/io/FileConfig.h"
+
 
 Simulator_py::Simulator_py() :
 	// Construct a default FileConfig to provide the paths for the CSVs
-	mHistoricalData{ readHistoricalData(FileConfig{}) },
+	mHistoricalData{ readHistoricalData(FileConfig("./InputData", "./OutputData", "./ConfigData"))},
 	mSimulator{}
 {
 }

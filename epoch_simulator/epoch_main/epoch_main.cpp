@@ -50,24 +50,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 // run the application headlessly
 
 #include <iostream>
+#include <spdlog/spdlog.h>
+
 #include "../epoch_lib/Optimisation/Optimiser.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
-
-#include <filesystem>
+#include "ArgHandling.hpp"
 
 int main(int argc, char* argv[]) {
 
-	std::string inputDataPath;
-	if (argc < 2) {
-		spdlog::warn("Missing argument: InputData path - implicitly using the current directory");
-		spdlog::info("Usage: epoch.exe path_to_input_data");
-		inputDataPath = "./";
-	} else {
-		inputDataPath = argv[1];
-	}
-
 	try {
-		FileConfig fileConfig{inputDataPath};
+		CommandlineArgs args = handleArgs(argc, argv);
+
+		if (args.verbose) {
+			spdlog::set_level(spdlog::level::debug);
+			spdlog::debug("Verbose logging enabled");
+		}
+
+		FileConfig fileConfig{args.inputDir, args.outputDir, args.configDir};
 
 		auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
 

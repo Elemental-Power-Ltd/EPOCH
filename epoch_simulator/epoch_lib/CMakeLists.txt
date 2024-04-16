@@ -17,7 +17,7 @@ add_library(Epoch_lib STATIC
 	Simulation/Hload.h
 	Simulation/Simulate.cpp
 	Simulation/Simulate.hpp
-)
+ )
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)

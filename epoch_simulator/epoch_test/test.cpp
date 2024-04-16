@@ -11,7 +11,7 @@ namespace fs = std::filesystem;
 
 TEST(EpochTestCase, MatchesKnownOutput) {
 	FileConfig fileConfig = FileConfig{
-		"", "KnownInput", "OutputData",
+		"KnownInput", "OutputData", "ConfigData",
 		"CSVEload.csv", "CSVHload.csv", "CSVRGen.csv",
 		"knownInput.json", "TestResults.csv", "TestOutputParameters.json", "TestOuputParametersFromInit.json"
 	};

@@ -7,9 +7,7 @@
       "projectTarget": "Epoch.exe (epoch_main\\Debug\\Epoch.exe)",
       "name": "Epoch.exe (epoch_main\\Debug\\Epoch.exe)",
       "currentDir": "${workspaceRoot}",
-      "args": [
-        "./"
-      ]
+      "args": []
     },
     {
       "type": "default",
@@ -17,9 +15,7 @@
       "projectTarget": "Epoch.exe (epoch_main\\RelWithDebInfo\\Epoch.exe)",
       "name": "Epoch.exe (epoch_main\\RelWithDebInfo\\Epoch.exe)",
       "currentDir": "${workspaceRoot}",
-      "args": [
-        "./"
-      ]
+      "args": []
     },
     {
       "type": "default",

@@ -24,7 +24,7 @@ if (BUILD_GUI)
 	add_definitions(-DUNICODE -D_UNICODE)
 
 else ()
-	add_executable(Epoch "epoch_main.cpp" "epoch_main.h")
+	add_executable(Epoch "epoch_main.cpp" "epoch_main.h" "ArgHandling.hpp")
 
 endif()
 
@@ -38,6 +38,9 @@ target_link_libraries(Epoch PRIVATE nlohmann_json::nlohmann_json)
 
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(Epoch PRIVATE spdlog::spdlog)
+
+find_package(argparse CONFIG REQUIRED)
+target_link_libraries(Epoch PRIVATE argparse::argparse)
 
 
 
