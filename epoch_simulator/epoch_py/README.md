@@ -4,7 +4,7 @@ This directory contains the Python Bindings that expose the core Simulator as a 
 
 ## Building the Python Bindings
 
-See details in the top-level Installation document.
+See details in the top-level [Installation](../INSTALLATION.md#generating-python-bindings-visual-studio) document.
 
 ## Using the Python Bindings
 
