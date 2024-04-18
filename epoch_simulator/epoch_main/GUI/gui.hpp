@@ -1348,7 +1348,6 @@ void writeRecallValuesToForm(const OutputValues& output) {
 // (and continually try to open/read the CSV input data)
 FileConfig fileConfig{"./InputData", "./OutputData", "./Config"};
 ConfigHandler configHandler(fileConfig.getConfigDir());
-auto config = configHandler.getConfig();
 auto optimiser = Optimiser(fileConfig, configHandler.getConfig());
 
 //

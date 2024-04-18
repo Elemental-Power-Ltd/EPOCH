@@ -170,6 +170,4 @@ struct OutMemberMapping {
 	std::function<int(const OutputValues&)> getInt;
 };
 
-constexpr int CAPACITY_PER_LEAGUE_TABLE = 400;
-
 enum class Objective { CAPEX, AnnualisedCost, PaybackHorizon, CostBalance, CarbonBalance };
