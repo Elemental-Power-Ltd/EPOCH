@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include "../Definitions.h"
+#include "../io/EpochConfig.hpp"
 
 struct ResultIndices {
 	std::vector<uint64_t> bestIndices;
@@ -13,7 +14,7 @@ struct ResultIndices {
 
 class LeagueTable {
 public:
-	LeagueTable(int capacity);
+	LeagueTable(const OptimiserConfig& optimiserConfig);
 
 	void considerResult(const SimulationResult& r);
 

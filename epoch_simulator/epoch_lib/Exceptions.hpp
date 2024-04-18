@@ -3,14 +3,26 @@
 #include <stdexcept>
 #include <string>
 
-class FileReadException : public std::runtime_error {
+// Base class for custom exceptions
+class EpochBaseException : public std::runtime_error {
 public:
-    FileReadException(const std::string& filename)
-        : std::runtime_error("Failed to read from file: " + filename) {}
+    explicit EpochBaseException(const std::string& msg) : std::runtime_error(msg) {}
 };
 
-class FileWriteException : public std::runtime_error {
+class FileReadException : public EpochBaseException {
 public:
-    FileWriteException(const std::string& filename)
-        : std::runtime_error("Failed to write to file: " + filename) {}
+    explicit FileReadException(const std::string& filename)
+        : EpochBaseException("Failed to read from file: " + filename) {}
+};
+
+class FileWriteException : public EpochBaseException {
+public:
+    explicit FileWriteException(const std::string& filename)
+        : EpochBaseException("Failed to write to file: " + filename) {}
+};
+
+class ConfigException : public EpochBaseException {
+public:
+    explicit ConfigException(const std::string& msg)
+        : EpochBaseException(msg) {}
 };

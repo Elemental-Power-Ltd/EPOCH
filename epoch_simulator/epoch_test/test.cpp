@@ -6,17 +6,19 @@
 #include "../epoch_lib/io/FileConfig.h"
 #include "../epoch_lib/Optimisation/Optimiser.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
+#include "../epoch_lib/io/EpochConfig.hpp"
 
 namespace fs = std::filesystem;
 
 TEST(EpochTestCase, MatchesKnownOutput) {
 	FileConfig fileConfig = FileConfig{
-		"KnownInput", "OutputData", "ConfigData",
+		"KnownInput", "OutputData", "Config",
 		"CSVEload.csv", "CSVHload.csv", "CSVRGen.csv",
 		"knownInput.json", "TestResults.csv", "TestOutputParameters.json", "TestOuputParametersFromInit.json"
 	};
 
-	Optimiser opt = Optimiser(fileConfig);
+	ConfigHandler configHandler(fileConfig.getConfigDir());
+	Optimiser opt = Optimiser(fileConfig, configHandler.getConfig());
 
 	// Run the Optimiser on known input
 	auto inputJson = readJsonFromFile(fileConfig.getInputJsonFilepath());

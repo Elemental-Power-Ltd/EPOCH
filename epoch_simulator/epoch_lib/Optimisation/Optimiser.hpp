@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 
 #include "../io/FileConfig.h"
+#include "../io/EpochConfig.hpp"
 #include "Threadsafe.h"
 #include "../Definitions.h"
 #include "LeagueTable.hpp"
@@ -35,7 +36,7 @@ const uint64_t INITIALISATION_MAX_SCENARIOS = 100;
 
 class Optimiser {
 public:
-	Optimiser(FileConfig fileConfig);
+	Optimiser(FileConfig fileConfig, EpochConfig config);
 
 	OutputValues runMainOptimisation(nlohmann::json inputJson);
 	OutputValues initialiseOptimisation(nlohmann::json inputJson);
@@ -55,6 +56,7 @@ private:
 	ObjectiveResult reproduceResult(uint64_t paramIndex) const;
 
 	FileConfig mFileConfig;
+	const EpochConfig mConfig;
 	TimeProfile mTimeProfile;
 	std::unique_ptr<TaskGenerator> mTaskGenerator;
 	const HistoricalData mHistoricalData;

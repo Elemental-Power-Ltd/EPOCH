@@ -12,8 +12,9 @@
 #include "../Simulation/Simulate.hpp"
 
 
-Optimiser::Optimiser(FileConfig fileConfig) :
+Optimiser::Optimiser(FileConfig fileConfig, EpochConfig config) :
 	mFileConfig(fileConfig),
+	mConfig(config),
 	mHistoricalData(readHistoricalData(mFileConfig))
 {
 
@@ -164,7 +165,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 
 	int numWorkers = std::min(determineWorkerCount(), (int)inputJson["target_max_concurrency"]);
 
-	LeagueTable leagueTable = LeagueTable(CAPACITY_PER_LEAGUE_TABLE);
+	LeagueTable leagueTable = LeagueTable(mConfig.optimiserConfig);
 
 	spdlog::info("Total number of scenarios is: {}", mTaskGenerator->totalScenarios());
 

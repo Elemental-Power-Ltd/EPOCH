@@ -22,7 +22,7 @@ CommandlineArgs handleArgs(int argc, char* argv[]) {
 
 	argParser.add_argument("--config", "-c")
 		.help("The directory containing the config files")
-		.default_value(std::string("./ConfigData"));
+		.default_value(std::string("./Config"));
 
 	argParser.add_argument("--verbose")
 		.help("Set logging to verbose")

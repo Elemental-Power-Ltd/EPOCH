@@ -1,23 +1,25 @@
 add_library(Epoch_lib STATIC
 	Definitions.h
-	io/FileConfig.h
-	io/FileHandling.cpp
-	io/FileHandling.hpp
-	Optimisation/LeagueTable.cpp
-	Optimisation/LeagueTable.hpp
-	Optimisation/Optimiser.cpp
-	Optimisation/Optimiser.hpp
-	Optimisation/TaskGenerator.cpp
-	Optimisation/TaskGenerator.hpp
-	Simulation/Assets.h
-	Simulation/Config.h
-	Simulation/Costs.h
-	Simulation/Eload.h
-	Simulation/Grid.h
-	Simulation/Hload.h
-	Simulation/Simulate.cpp
-	Simulation/Simulate.hpp
- )
+	"io/FileConfig.h"
+	"io/FileHandling.cpp"
+	"io/FileHandling.hpp"
+	"Optimisation/LeagueTable.cpp"
+	"Optimisation/LeagueTable.hpp"
+	"Optimisation/Optimiser.cpp"
+	"Optimisation/Optimiser.hpp"
+	"Optimisation/TaskGenerator.cpp"
+	"Optimisation/TaskGenerator.hpp"
+	"Simulation/Assets.h"
+	"Simulation/Config.h"
+	"Simulation/Costs.h"
+	"Simulation/Eload.h"
+	"Simulation/Grid.h"
+	"Simulation/Hload.h"
+	"Simulation/Simulate.cpp"
+	"Simulation/Simulate.hpp"
+	"io/EpochConfig.cpp"
+	"io/EpochConfig.hpp"
+)
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)

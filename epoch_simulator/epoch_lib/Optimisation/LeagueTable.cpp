@@ -2,8 +2,8 @@
 
 #include <set>
 
-LeagueTable::LeagueTable(int capacity):
-	mCapacity(capacity),
+LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig):
+	mCapacity(optimiserConfig.leagueTableCapacity),
 	mWorstCapex{ -FLT_MAX, 0},
 	mWorstAnnualisedCost{ -FLT_MAX, 0 },
 	mWorstPaybackHorizon{ -FLT_MAX ,0},

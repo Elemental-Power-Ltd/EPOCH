@@ -54,6 +54,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 #include "../epoch_lib/Optimisation/Optimiser.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
+#include "../epoch_lib/io/EpochConfig.hpp"
 #include "ArgHandling.hpp"
 
 int main(int argc, char* argv[]) {
@@ -67,10 +68,12 @@ int main(int argc, char* argv[]) {
 		}
 
 		FileConfig fileConfig{args.inputDir, args.outputDir, args.configDir};
+		ConfigHandler configHandler(fileConfig.getConfigDir());
+		const EpochConfig config = configHandler.getConfig();
 
 		auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
 
-		auto optimiser = Optimiser(fileConfig);
+		auto optimiser = Optimiser(fileConfig, config);
 		OutputValues output = optimiser.runMainOptimisation(converted_json);
 
 		nlohmann::json jsonObj = outputToJson(output);

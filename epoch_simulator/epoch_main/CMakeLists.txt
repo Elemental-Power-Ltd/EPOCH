@@ -35,6 +35,7 @@ target_link_libraries(Epoch PRIVATE mimalloc)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 target_link_libraries(Epoch PRIVATE nlohmann_json::nlohmann_json)
+set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
 
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(Epoch PRIVATE spdlog::spdlog)
