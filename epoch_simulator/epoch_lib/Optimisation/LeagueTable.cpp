@@ -1,7 +1,5 @@
 #include "LeagueTable.hpp"
 
-#include <set>
-
 LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig):
 	mCapacity(optimiserConfig.leagueTableCapacity),
 	mWorstCapex{ -FLT_MAX, 0},
@@ -69,8 +67,6 @@ std::pair<uint64_t, float> LeagueTable::getBestCarbonBalance() const
 // return the parameter indices of the results held in the league table
 // each paramIndex can then be used to reproduce the full result
 std::vector<uint64_t> LeagueTable::getAllResults(bool includeWorst) const {
-	// It is possible to have the same paramIndex in multiple of the subTables
-	// For this reason, put the results into a set first to remove duplicates
 	std::vector<uint64_t> allResults{};
 
 	auto capexResults = getResultsForObjective(Objective::CAPEX);
