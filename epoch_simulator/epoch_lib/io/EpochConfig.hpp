@@ -8,6 +8,7 @@
 
 struct OptimiserConfig {
 	int leagueTableCapacity;
+	bool produceExhaustiveOutput;
 };
 
 struct EpochConfig {

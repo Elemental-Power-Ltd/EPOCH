@@ -1,5 +1,6 @@
 {
   "optimiser": {
-    "leagueTableCapacity": 400
+    "leagueTableCapacity": 400,
+    "produceExhaustiveOutput": false
   }
 }

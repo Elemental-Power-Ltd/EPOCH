@@ -2,6 +2,7 @@
 
 LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig):
 	mCapacity(optimiserConfig.leagueTableCapacity),
+	mProduceExhaustiveOutput(optimiserConfig.produceExhaustiveOutput),
 	mWorstCapex{ -FLT_MAX, 0},
 	mWorstAnnualisedCost{ -FLT_MAX, 0 },
 	mWorstPaybackHorizon{ -FLT_MAX ,0},

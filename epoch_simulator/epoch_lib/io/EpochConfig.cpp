@@ -29,6 +29,8 @@ OptimiserConfig ConfigHandler::parseOptimiserSection(nlohmann::json optimiserJso
 	OptimiserConfig optConfig{};
 
 	optConfig.leagueTableCapacity = getField<int>(optimiserJson, "leagueTableCapacity");
+	optConfig.produceExhaustiveOutput = getField<bool>(optimiserJson, "produceExhaustiveOutput");
+
 
 	return optConfig;
 }

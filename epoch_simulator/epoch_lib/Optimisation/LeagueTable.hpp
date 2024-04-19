@@ -30,6 +30,7 @@ public:
 
 private:
 	int mCapacity;
+	bool mProduceExhaustiveOutput;
 
 	void considerMinimum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
 	void considerMaximum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
