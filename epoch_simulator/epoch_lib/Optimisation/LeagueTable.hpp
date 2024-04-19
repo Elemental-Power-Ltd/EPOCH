@@ -18,7 +18,7 @@ class LeagueTable {
 public:
 	LeagueTable(const OptimiserConfig& optimiserConfig, const FileConfig& fileConfig);
 
-	void considerResult(const SimulationResult& r, const Config& config);
+	void considerResult(const SimulationResult& r, const TaskData& taskData);
 
 	std::pair<uint64_t, float> getBestCapex() const;
 	std::pair<uint64_t, float> getBestAnnualisedCost() const;

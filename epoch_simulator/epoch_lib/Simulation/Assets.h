@@ -4,23 +4,23 @@
 #include <Eigen/Core>
 #include <spdlog/spdlog.h>
 
-#include "Config.h"
+#include "TaskData.h"
 #include "../Definitions.h"
 
 
 class ESS {
 
 public:
-    ESS(const Config& config) :
-        mChargePower(config.ESS_charge_power),
-        mDischargePower(config.ESS_discharge_power),
-        mCapacity(config.ESS_capacity),
-        mRTE(config.ESS_RTE),
-        mAuxLoad(config.ESS_aux_load),
-        mStartSoC(config.ESS_start_SoC),
+    ESS(const TaskData& taskData) :
+        mChargePower(taskData.ESS_charge_power),
+        mDischargePower(taskData.ESS_discharge_power),
+        mCapacity(taskData.ESS_capacity),
+        mRTE(taskData.ESS_RTE),
+        mAuxLoad(taskData.ESS_aux_load),
+        mStartSoC(taskData.ESS_start_SoC),
 
-        mTimesteps(config.calculate_timesteps()),
-        mTimestep_hours(config.timestep_hours),
+        mTimesteps(taskData.calculate_timesteps()),
+        mTimestep_hours(taskData.timestep_hours),
 
         // TODO - this should likely be an enum
         mChargeMode(1),

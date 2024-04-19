@@ -2,7 +2,7 @@
 
 #include <Eigen/Core>
 
-#include "Config.h"
+#include "TaskData.h"
 #include "../Definitions.h"
 #include "Eload.h"
 #include "Hload.h"
@@ -12,8 +12,8 @@ class Costs
 {
 public:
 
-	Costs(const Config& config):
-		mConfig(config),
+	Costs(const TaskData& taskData):
+		mTaskData(taskData),
 		mBaseline_elec_cost(0.0f),
 		mBaseline_fuel_cost(0.0f),
 		mScenario_import_cost(0.0f),
@@ -33,8 +33,8 @@ public:
 
 	void calculateCosts(const Eload& eload, const Hload& hload, const Grid& grid) {
 
-		float ESS_kW = std::max(mConfig.ESS_charge_power, mConfig.ESS_discharge_power);
-		float PV_kWp_total = mConfig.ScalarRG1 + mConfig.ScalarRG2 + mConfig.ScalarRG3 + mConfig.ScalarRG4;
+		float ESS_kW = std::max(mTaskData.ESS_charge_power, mTaskData.ESS_discharge_power);
+		float PV_kWp_total = mTaskData.ScalarRG1 + mTaskData.ScalarRG2 + mTaskData.ScalarRG3 + mTaskData.ScalarRG4;
 
 		// need to add a new config parameter here
 		const float IMPORT_FUEL_PRICE = 12.2f;
@@ -47,18 +47,18 @@ public:
 		const float kw_grid_upgrade = 0; 
 		const float heatpump_electrical_capacity = 70.0;
 
-		calculate_total_annualised_cost(ESS_kW, mConfig.ESS_capacity, PV_kWp_total, s7_EV_CP_number,
+		calculate_total_annualised_cost(ESS_kW, mTaskData.ESS_capacity, PV_kWp_total, s7_EV_CP_number,
 			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
 
 		// for now, simply fix import/export price
-		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.Import_kWh_price) };
-		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), mConfig.Export_kWh_price) };
+		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Import_kWh_price) };
+		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Export_kWh_price) };
 		year_TS baseline_elec_load = eload.getTotalFixLoad() + grid.getActualHighPriorityLoad();
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
 
 		year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad();
-		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mConfig.calculate_timesteps(), IMPORT_FUEL_PRICE) };
+		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), IMPORT_FUEL_PRICE) };
 
 		calculate_baseline_fuel_cost(baseline_heat_load, import_fuel_prices, BOILER_EFFICIENCY);
 		calculate_scenario_elec_cost(grid.getGridImport(), import_elec_prices);
@@ -69,7 +69,7 @@ public:
 
 		//========================================
 
-		calculate_Project_CAPEX(ESS_kW, mConfig.ESS_capacity, PV_kWp_total, s7_EV_CP_number,
+		calculate_Project_CAPEX(ESS_kW, mTaskData.ESS_capacity, PV_kWp_total, s7_EV_CP_number,
 			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
 
 		//========================================
@@ -589,7 +589,7 @@ public:
 
 	// "hard wired" constants for the moment
 	private:
-		const Config& mConfig;
+		const TaskData& mTaskData;
 
 		// coefficient applied to local infrastructure CAPEX (decimal, not percentage)
 		const float mProject_plan_develop_EPC = 0.1f; 

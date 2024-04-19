@@ -6,10 +6,10 @@
 
 #include <spdlog/spdlog.h>
 
-class Config {
+class TaskData {
 
 public:
-    Config(float years_val = 1.0f, float days_val = 365.0f, float hours_val = 8760.0f, float timestep_minutes_val = 60.0f, float timestep_hours_val = 1.0f, float timewindow_val = 8760.0f,
+    TaskData(float years_val = 1.0f, float days_val = 365.0f, float hours_val = 8760.0f, float timestep_minutes_val = 60.0f, float timestep_hours_val = 1.0f, float timewindow_val = 8760.0f,
         float Fixed_load1_scalar_val = 1.0f, float Fixed_load2_scalar_val = 6.0f, float Flex_load_max_val = 100.0f, float Mop_load_max_val = 200.0f,
         float ScalarRG1_val = 599.2f, float ScalarRG2_val = 75.6f, float ScalarRG3_val = 60.48f, float ScalarRG4_val = 0.00f,
         float ScalarHL1_val = 1.0f, float ScalarHYield1_val = 0.0f, float ScalarHYield2_val = 0.0f, float ScalarHYield3_val = 0.75f, float ScalarHYield4_val = 0.0f,

@@ -11,27 +11,27 @@ See details in the top-level [Installation](../INSTALLATION.md#generating-python
 ```Python
 import epoch_simulator as eps
 
-conf = eps.Config()
+task = eps.TaskData()
 sim = eps.Simulator()
 
 for charge_power in range(300, 600, 100):
-  conf.ESS_charge_power = charge_power
+  task.ESS_charge_power = charge_power
 
   for discharge_power in range(300, 600, 100):
-    conf.ESS_discharge_power = discharge_power
+    task.ESS_discharge_power = discharge_power
 
-    result = sim.simulate_scenario(conf)
+    result = sim.simulate_scenario(task)
     print(result)
 
 ```
 
 The bindings expose 3 classes:
 
-#### Config
+#### TaskData
 
-The Config contains the input parameters necessary to run a simulation.
+The TaskData contains the input parameters necessary to run a simulation.
 
-`Config()`
+`TaskData()`
 
  Upon instantiation, all of the fields are set to default values - these can be changed as desired.
 
@@ -43,7 +43,7 @@ This class implements the `__repr__` method so the print method can be used to s
 
 Instantiating a Simulator will create a Simulator object that loads in the necessary historical data from a directory called InputData in the current working directory.
 
-`simulate_scenario(config)`
+`simulate_scenario(task)`
 
 Run a scenario, returning a `Result` object
 

@@ -4,7 +4,7 @@
 #include <functional>
 #include <string>
 
-#include "Simulation/Config.h"
+#include "Simulation/TaskData.h"
 
 // Elemental Power definitions
 
@@ -83,7 +83,7 @@ struct FullSimulationResult {
 };
 
 
-// Contains the five objectives and the Config that was used to produce the result
+// Contains the five objectives and the TaskData that was used to produce the result
 struct ObjectiveResult {
 	float total_annualised_cost;
 	float project_CAPEX;
@@ -91,17 +91,17 @@ struct ObjectiveResult {
 	float payback_horizon_years;
 	float scenario_carbon_balance;
 
-	Config config;
+	TaskData taskData;
 };
 
-inline ObjectiveResult toObjectiveResult(const SimulationResult& simResult, const Config& config) noexcept {
+inline ObjectiveResult toObjectiveResult(const SimulationResult& simResult, const TaskData& taskData) noexcept {
 	return ObjectiveResult {
 		simResult.total_annualised_cost,
 		simResult.project_CAPEX,
 		simResult.scenario_cost_balance,
 		simResult.payback_horizon_years,
 		simResult.scenario_carbon_balance,
-		config
+		taskData
 	};
 }
 

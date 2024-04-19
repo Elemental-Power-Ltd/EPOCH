@@ -17,7 +17,7 @@ LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig, const FileConfi
 	}
 }
 
-void LeagueTable::considerResult(const SimulationResult& r, const Config& config)
+void LeagueTable::considerResult(const SimulationResult& r, const TaskData& taskData)
 {
 	// CAPEX
 	considerMinimum(mCapex, r.project_CAPEX, r.paramIndex);
@@ -37,7 +37,7 @@ void LeagueTable::considerResult(const SimulationResult& r, const Config& config
 	considerAsWorst(r);
 
 	if (mConfig.produceExhaustiveOutput) {
-		mBufferedCSVWriter->writeResult(toObjectiveResult(r, config));
+		mBufferedCSVWriter->writeResult(toObjectiveResult(r, taskData));
 	}
 }
 

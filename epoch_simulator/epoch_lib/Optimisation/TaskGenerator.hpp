@@ -5,7 +5,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../Simulation/Config.h"
+#include "../Simulation/TaskData.h"
 
 
 struct ParamRange {
@@ -26,8 +26,8 @@ public:
 	TaskGenerator(const nlohmann::json& inputJson, bool initialisationOnly);
 
 	uint64_t totalScenarios() const;
-	bool nextTask(Config& config);
-	Config getTask(uint64_t index) const;
+	bool nextTask(TaskData& taskData);
+	TaskData getTask(uint64_t index) const;
 
 private:
 	std::vector<ParamRange> makeParamGrid(const nlohmann::json& inputJson);

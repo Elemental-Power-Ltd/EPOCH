@@ -2,23 +2,23 @@
 
 #include <Eigen/Core>
 
-#include "Config.h"
+#include "TaskData.h"
 #include "../Definitions.h"
 
 
 class Eload {
 
 public:
-	Eload(const HistoricalData& historicalData, const Config& config)
+	Eload(const HistoricalData& historicalData, const TaskData& TaskData)
 	{
-		int timesteps = config.calculate_timesteps();
+		int timesteps = TaskData.calculate_timesteps();
 
-		year_TS fixLoad1 = historicalData.hotel_eload_data * config.Fixed_load1_scalar;
-		year_TS fixLoad2 = historicalData.ev_eload_data * config.Fixed_load2_scalar;
+		year_TS fixLoad1 = historicalData.hotel_eload_data * TaskData.Fixed_load1_scalar;
+		year_TS fixLoad2 = historicalData.ev_eload_data * TaskData.Fixed_load2_scalar;
 		mTotalFixLoad = fixLoad1 + fixLoad2;
 
-		year_TS ESSAuxLoad = Eigen::VectorXf::Constant(timesteps, config.ESS_aux_load);
-		year_TS targetHighLoad = Eigen::VectorXf::Constant(timesteps, config.Flex_load_max);
+		year_TS ESSAuxLoad = Eigen::VectorXf::Constant(timesteps, TaskData.ESS_aux_load);
+		year_TS targetHighLoad = Eigen::VectorXf::Constant(timesteps, TaskData.Flex_load_max);
 		year_TS totalTargetLoad = mTotalFixLoad + targetHighLoad;
 
 		// Add timeseries for (small) parasitic load of ESS

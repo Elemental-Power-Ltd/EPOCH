@@ -23,7 +23,7 @@
     "ESS_charge_power": [
         300.0,
         600.0,
-        300.0
+        1.0
     ],
     "ESS_discharge_mode": [
         1,
@@ -33,7 +33,7 @@
     "ESS_discharge_power": [
         300.0,
         600.0,
-        300.0
+        1.0
     ],
     "ESS_start_SoC": [
         0.5,

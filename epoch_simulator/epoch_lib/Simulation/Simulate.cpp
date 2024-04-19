@@ -5,7 +5,7 @@
 #include <Eigen/Core>
 
 #include "Assets.h"
-#include "Config.h"
+#include "TaskData.h"
 #include "Eload.h"
 #include "Grid.h"
 #include "Hload.h"
@@ -16,26 +16,26 @@ Simulator::Simulator() {
 }
 
 
-FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& historicalData, const Config& myConfig, SimulationType simulationType) const {
+FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const {
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
-	Eload MountEload{historicalData, myConfig};
-	year_TS RGen_total = calculateRGenTotal(historicalData, myConfig);
+	Eload MountEload{historicalData, taskData};
+	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
 	// Final ESUM (electrical acitivity) is Total load minus Rgen
 	year_TS ESUM = MountEload.getTotalLoad() - RGen_total;
 
-	ESS MountBESS{ myConfig };
+	ESS MountBESS{ taskData };
 	MountBESS.initialise(ESUM[0]);
 	MountBESS.runTimesteps(ESUM);
 
-	Grid MountGrid{ myConfig };
+	Grid MountGrid{ taskData };
 	MountGrid.performGridCalculations(ESUM, MountBESS);
 
-	Hload MountHload{ historicalData, myConfig };
-	MountHload.performHeatCalculations(historicalData, myConfig, MountGrid);
+	Hload MountHload{ historicalData, taskData };
+	MountHload.performHeatCalculations(historicalData, taskData, MountGrid);
 
-	Costs myCost(myConfig);
+	Costs myCost(taskData);
 	myCost.calculateCosts(MountEload, MountHload, MountGrid);
 
 	//Data reporting
@@ -70,7 +70,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	}
 
 
-	fullSimulationResult.paramIndex = myConfig.paramIndex;
+	fullSimulationResult.paramIndex = taskData.paramIndex;
 	fullSimulationResult.total_annualised_cost = myCost.get_total_annualised_cost();
 	fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
 	fullSimulationResult.scenario_cost_balance = myCost.get_scenario_cost_balance();
@@ -96,9 +96,9 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 }
 
-SimulationResult Simulator::simulateScenario(const HistoricalData& historicalData, const Config& config, SimulationType simulationType) const {
+SimulationResult Simulator::simulateScenario(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const {
 
-	const FullSimulationResult& fullSimulationResult = simulateScenarioFull(historicalData, config, simulationType);
+	const FullSimulationResult& fullSimulationResult = simulateScenarioFull(historicalData, taskData, simulationType);
 	SimulationResult simResult{};
 
 	// By default we don't compute these sums during the main optimisation as we're only concerned with the output results
@@ -142,11 +142,11 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 }
 
 
-year_TS Simulator::calculateRGenTotal(const HistoricalData& historicalData, const Config& config) const {
-	year_TS RGen1 = historicalData.RGen_data_1 * config.ScalarRG1;
-	year_TS RGen2 = historicalData.RGen_data_2 * config.ScalarRG2;
-	year_TS RGen3 = historicalData.RGen_data_3 * config.ScalarRG3;
-	year_TS RGen4 = historicalData.RGen_data_4 * config.ScalarRG4;
+year_TS Simulator::calculateRGenTotal(const HistoricalData& historicalData, const TaskData& taskData) const {
+	year_TS RGen1 = historicalData.RGen_data_1 * taskData.ScalarRG1;
+	year_TS RGen2 = historicalData.RGen_data_2 * taskData.ScalarRG2;
+	year_TS RGen3 = historicalData.RGen_data_3 * taskData.ScalarRG3;
+	year_TS RGen4 = historicalData.RGen_data_4 * taskData.ScalarRG4;
 
 	return RGen1 + RGen2 + RGen3 + RGen4;
 }

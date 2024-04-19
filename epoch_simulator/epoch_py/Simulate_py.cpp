@@ -13,9 +13,9 @@ Simulator_py::Simulator_py() :
 {
 }
 
-SimulationResult Simulator_py::simulateScenario(const Config& config)
+SimulationResult Simulator_py::simulateScenario(const TaskData& taskData)
 {
 	// release the GIL for each call to simulateScenario
 	pybind11::gil_scoped_release release;
-	return mSimulator.simulateScenario(mHistoricalData, config);
+	return mSimulator.simulateScenario(mHistoricalData, taskData);
 }

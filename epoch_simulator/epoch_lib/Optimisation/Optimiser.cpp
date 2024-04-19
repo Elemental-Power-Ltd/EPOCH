@@ -47,35 +47,35 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallind
 		throw std::exception();
 	}
 
-	Config config = mTaskGenerator->getTask(recallindex);
+	TaskData taskData = mTaskGenerator->getTask(recallindex);
 
-	output.Fixed_load1_scalar = config.Fixed_load1_scalar;
-	output.Fixed_load2_scalar = config.Fixed_load2_scalar;
-	output.Flex_load_max = config.Flex_load_max;
-	output.Mop_load_max = config.Mop_load_max;
-	output.ScalarRG1 = config.ScalarRG1;
-	output.ScalarRG2 = config.ScalarRG2;
-	output.ScalarRG3 = config.ScalarRG3;
-	output.ScalarRG4 = config.ScalarRG4;
-	output.ScalarHL1 = config.ScalarHL1;
-	output.ScalarHYield1 = config.ScalarHYield1;
-	output.ScalarHYield2 = config.ScalarHYield2;
-	output.ScalarHYield3 = config.ScalarHYield3;
-	output.ScalarHYield4 = config.ScalarHYield4;
-	output.GridImport = config.GridImport;
-	output.GridExport = config.GridExport;
-	output.Import_headroom = config.Import_headroom;
-	output.Export_headroom = config.Export_headroom;
-	output.ESS_charge_power = config.ESS_charge_power;
-	output.ESS_discharge_power = config.ESS_discharge_power;
-	output.ESS_capacity = config.ESS_capacity;
-	output.ESS_RTE = config.ESS_RTE;
-	output.ESS_aux_load = config.ESS_aux_load;
-	output.ESS_start_SoC = config.ESS_start_SoC;
-	output.ESS_charge_mode = config.ESS_charge_mode;
-	output.ESS_discharge_mode = config.ESS_discharge_mode;
-	output.import_kWh_price = config.Import_kWh_price;
-	output.export_kWh_price = config.Export_kWh_price;
+	output.Fixed_load1_scalar = taskData.Fixed_load1_scalar;
+	output.Fixed_load2_scalar = taskData.Fixed_load2_scalar;
+	output.Flex_load_max = taskData.Flex_load_max;
+	output.Mop_load_max = taskData.Mop_load_max;
+	output.ScalarRG1 = taskData.ScalarRG1;
+	output.ScalarRG2 = taskData.ScalarRG2;
+	output.ScalarRG3 = taskData.ScalarRG3;
+	output.ScalarRG4 = taskData.ScalarRG4;
+	output.ScalarHL1 = taskData.ScalarHL1;
+	output.ScalarHYield1 = taskData.ScalarHYield1;
+	output.ScalarHYield2 = taskData.ScalarHYield2;
+	output.ScalarHYield3 = taskData.ScalarHYield3;
+	output.ScalarHYield4 = taskData.ScalarHYield4;
+	output.GridImport = taskData.GridImport;
+	output.GridExport = taskData.GridExport;
+	output.Import_headroom = taskData.Import_headroom;
+	output.Export_headroom = taskData.Export_headroom;
+	output.ESS_charge_power = taskData.ESS_charge_power;
+	output.ESS_discharge_power = taskData.ESS_discharge_power;
+	output.ESS_capacity = taskData.ESS_capacity;
+	output.ESS_RTE = taskData.ESS_RTE;
+	output.ESS_aux_load = taskData.ESS_aux_load;
+	output.ESS_start_SoC = taskData.ESS_start_SoC;
+	output.ESS_charge_mode = taskData.ESS_charge_mode;
+	output.ESS_discharge_mode = taskData.ESS_discharge_mode;
+	output.import_kWh_price = taskData.Import_kWh_price;
+	output.export_kWh_price = taskData.Export_kWh_price;
 
 	return output;
 }
@@ -135,13 +135,13 @@ ObjectiveResult Optimiser::reproduceResult(uint64_t paramIndex) const {
 		throw std::exception();
 	}
 
-	Config config = mTaskGenerator->getTask(paramIndex);
+	TaskData taskData = mTaskGenerator->getTask(paramIndex);
 
 	Simulator sim{};
 
-	SimulationResult simResult = sim.simulateScenario(mHistoricalData, config, SimulationType::FullReporting);
+	SimulationResult simResult = sim.simulateScenario(mHistoricalData, taskData, SimulationType::FullReporting);
 
-	return toObjectiveResult(simResult, config);
+	return toObjectiveResult(simResult, taskData);
 }
 
 OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
@@ -163,12 +163,12 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	for (int i = 0; i < numWorkers; ++i) {
 		workers.emplace_back([this, &leagueTable]() {
 
-			Config config;
+			TaskData taskData;
 			Simulator sim{};
 
-			while (mTaskGenerator->nextTask(config)) {
-				SimulationResult result = sim.simulateScenario(mHistoricalData, config);
-				leagueTable.considerResult(result, config);
+			while (mTaskGenerator->nextTask(taskData)) {
+				SimulationResult result = sim.simulateScenario(mHistoricalData, taskData);
+				leagueTable.considerResult(result, taskData);
 				addTimeToProfiler(result.runtime);
 			}
 		});

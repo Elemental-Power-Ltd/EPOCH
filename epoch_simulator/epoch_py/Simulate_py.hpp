@@ -12,7 +12,7 @@ class Simulator_py {
 public:
 	Simulator_py();
 
-	SimulationResult simulateScenario(const Config& config);
+	SimulationResult simulateScenario(const TaskData& taskData);
 
 private:
 	Simulator mSimulator;

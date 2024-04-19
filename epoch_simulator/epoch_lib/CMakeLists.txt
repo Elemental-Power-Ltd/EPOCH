@@ -10,7 +10,7 @@ add_library(Epoch_lib STATIC
 	"Optimisation/TaskGenerator.cpp"
 	"Optimisation/TaskGenerator.hpp"
 	"Simulation/Assets.h"
-	"Simulation/Config.h"
+	"Simulation/TaskData.h"
 	"Simulation/Costs.h"
 	"Simulation/Eload.h"
 	"Simulation/Grid.h"

@@ -2,15 +2,15 @@
 
 #include <Eigen/Core>
 
-#include "Config.h"
+#include "TaskData.h"
 #include "../Definitions.h"
 #include "Eload.h"
 
 class Hload
 {
 public:
-	Hload(const HistoricalData& historicalData, const Config& config) :
-		mTimesteps(config.calculate_timesteps()),
+	Hload(const HistoricalData& historicalData, const TaskData& taskData) :
+		mTimesteps(taskData.calculate_timesteps()),
 		mHeatload(Eigen::VectorXf::Zero(mTimesteps)),
 		mHeatShortfall(Eigen::VectorXf::Zero(mTimesteps)),
 		mHeatSurplus(Eigen::VectorXf::Zero(mTimesteps)),
@@ -22,17 +22,17 @@ public:
 	{}
 
 
-	void performHeatCalculations(const HistoricalData& historicalData, const Config& config, const Grid& grid) {
+	void performHeatCalculations(const HistoricalData& historicalData, const TaskData& taskData, const Grid& grid) {
 
-		mHeatload = historicalData.heatload_data * config.ScalarHL1;
+		mHeatload = historicalData.heatload_data * taskData.ScalarHL1;
 
 		// scale historical data by heat hield scalar
-		mScaledElectricalFixHeatLoad_1 = historicalData.hotel_eload_data * config.ScalarHYield1;
-		mScaledElectricalFixHeatLoad_2 = historicalData.ev_eload_data * config.ScalarHYield2;
+		mScaledElectricalFixHeatLoad_1 = historicalData.hotel_eload_data * taskData.ScalarHYield1;
+		mScaledElectricalFixHeatLoad_2 = historicalData.ev_eload_data * taskData.ScalarHYield2;
 
 		calculateElectricalLoadScaledHeatYield(
 			grid.getActualHighPriorityLoad(), grid.getActualLowPriorityLoad(), 
-			config.ScalarHYield3, config.ScalarHYield4
+			taskData.ScalarHYield3, taskData.ScalarHYield4
 		);
 
 		//Heat shortfall

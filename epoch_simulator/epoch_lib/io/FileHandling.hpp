@@ -66,8 +66,8 @@ constexpr std::array<std::string_view, 31> resultHeader = {
 	"Heat surplus",
 };
 
-// The subset of values in the Config class that we want to write to the output CSVs
-constexpr std::array<std::string_view, 30> configParamNames = {
+// The subset of values in the TaskData class that we want to write to the output CSVs
+constexpr std::array<std::string_view, 30> taskDataParamNames = {
 	"Fixed_load1_scalar",
 	"Fixed_load2_scalar",
 	"Flex_load_max",

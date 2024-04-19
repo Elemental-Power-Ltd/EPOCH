@@ -42,7 +42,7 @@ uint64_t TaskGenerator::totalScenarios() const
 	return mTotalScenarios;
 }
 
-bool TaskGenerator::nextTask(Config& config)
+bool TaskGenerator::nextTask(TaskData& taskData)
 {
 	if (mScenarioCounter > mScenarioLimit) {
 		return false;
@@ -50,11 +50,11 @@ bool TaskGenerator::nextTask(Config& config)
 
 	// mScenarioCounter is atomic
 	// Calling in this way should ensure that getTask is called incrementally with each index in the range
-	config = getTask(mScenarioCounter++);
+	taskData = getTask(mScenarioCounter++);
 	return true;
 }
 
-Config TaskGenerator::getTask(uint64_t index) const {
+TaskData TaskGenerator::getTask(uint64_t index) const {
 	// the user facing index starts at 1
 	// but the logic in here assumes a 0 index
 	index -= 1;
@@ -72,23 +72,23 @@ Config TaskGenerator::getTask(uint64_t index) const {
 		paramSlice.emplace_back(paramRange.name, paramRange.values[i]);
 	}
 
-	Config config;
+	TaskData taskData;
 
-	// Change the config parameters to the current set of values in the parameter grid
+	// Change the taskData parameters to the current set of values in the parameter grid
 	for (size_t i = 0; i < paramSlice.size(); ++i) {
-		if (config.param_map_float.find(paramSlice[i].first) != config.param_map_float.end()) {
-			config.set_param_float(paramSlice[i].first, paramSlice[i].second);
+		if (taskData.param_map_float.find(paramSlice[i].first) != taskData.param_map_float.end()) {
+			taskData.set_param_float(paramSlice[i].first, paramSlice[i].second);
 		}
 		else {
-			config.set_param_int(paramSlice[i].first, paramSlice[i].second);
+			taskData.set_param_int(paramSlice[i].first, paramSlice[i].second);
 		}
 	}
 
 	// set the 1-based index
-	config.paramIndex = index + 1;
+	taskData.paramIndex = index + 1;
 
 
-	return config;
+	return taskData;
 }
 
 std::vector<ParamRange> TaskGenerator::makeParamGrid(const nlohmann::json& inputJson)

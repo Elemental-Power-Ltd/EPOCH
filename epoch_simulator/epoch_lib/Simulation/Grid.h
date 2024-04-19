@@ -3,20 +3,20 @@
 #include <Eigen/Core>
 
 #include "Assets.h"
-#include "Config.h"
+#include "TaskData.h"
 #include "../Definitions.h"
 
 class Grid
 {
 public:
-	Grid(const Config& config): 
-		mMaxGridImport(config.GridImport),
-		mMaxGridExport(config.GridExport),
-		mImportHeadroom(config.Import_headroom),
-		mExportHeadroom(config.Export_headroom),
-		mTimesteps(config.calculate_timesteps()),
-		mFlexLoadMax(config.Flex_load_max),
-		mMopLoadMax(config.Mop_load_max),
+	Grid(const TaskData& taskData): 
+		mMaxGridImport(taskData.GridImport),
+		mMaxGridExport(taskData.GridExport),
+		mImportHeadroom(taskData.Import_headroom),
+		mExportHeadroom(taskData.Export_headroom),
+		mTimesteps(taskData.calculate_timesteps()),
+		mFlexLoadMax(taskData.Flex_load_max),
+		mMopLoadMax(taskData.Mop_load_max),
 
 		mGridImport(Eigen::VectorXf::Zero(mTimesteps)),
 		mGridExport(Eigen::VectorXf::Zero(mTimesteps)),

@@ -239,7 +239,7 @@ void writeObjectiveResultHeader(std::ofstream& outFile) {
 	// deliberately omit the comma for carbon balance
 	// to allow the loop to have a comma for each entry (before)
 
-	for (auto paramName: configParamNames) {
+	for (auto paramName: taskDataParamNames) {
 		outFile << ",";
 		outFile << paramName;
 	}
@@ -249,7 +249,7 @@ void writeObjectiveResultHeader(std::ofstream& outFile) {
 
 void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& result) {
 	// These must be written in exactly the same order as the header
-	outFile << result.config.paramIndex << ",";
+	outFile << result.taskData.paramIndex << ",";
 
 	outFile << result.total_annualised_cost << ",";
 	outFile << result.project_CAPEX << ",";
@@ -257,38 +257,38 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	outFile << result.payback_horizon_years << ",";
 	outFile << result.scenario_carbon_balance << ",";
 
-	const Config& config = result.config;
+	const TaskData& taskData = result.taskData;
 
-	outFile << config.Fixed_load1_scalar << ",";
-	outFile << config.Fixed_load2_scalar << ",";
-	outFile << config.Flex_load_max << ",";
-	outFile << config.Mop_load_max << ",";
-	outFile << config.ScalarRG1 << ",";
-	outFile << config.ScalarRG2 << ",";
-	outFile << config.ScalarRG3 << ",";
-	outFile << config.ScalarRG4 << ",";
-	outFile << config.ScalarHL1 << ",";
-	outFile << config.ScalarHYield1 << ",";
-	outFile << config.ScalarHYield2 << ",";
-	outFile << config.ScalarHYield3 << ",";
-	outFile << config.ScalarHYield4 << ",";
-	outFile << config.GridImport << ",";
-	outFile << config.GridExport << ",";
-	outFile << config.Import_headroom << ",";
-	outFile << config.Export_headroom << ",";
-	outFile << config.ESS_charge_power << ",";
-	outFile << config.ESS_discharge_power << ",";
-	outFile << config.ESS_capacity << ",";
-	outFile << config.ESS_RTE << ",";
-	outFile << config.ESS_aux_load << ",";
-	outFile << config.ESS_start_SoC << ",";
-	outFile << config.Import_kWh_price << ",";
-	outFile << config.Export_kWh_price << ",";
-	outFile << config.time_budget_min << ",";
-	outFile << config.CAPEX_limit << ",";
-	outFile << config.OPEX_limit << ",";
-	outFile << config.ESS_charge_mode << ",";
-	outFile << config.ESS_discharge_mode; // no trailing comma
+	outFile << taskData.Fixed_load1_scalar << ",";
+	outFile << taskData.Fixed_load2_scalar << ",";
+	outFile << taskData.Flex_load_max << ",";
+	outFile << taskData.Mop_load_max << ",";
+	outFile << taskData.ScalarRG1 << ",";
+	outFile << taskData.ScalarRG2 << ",";
+	outFile << taskData.ScalarRG3 << ",";
+	outFile << taskData.ScalarRG4 << ",";
+	outFile << taskData.ScalarHL1 << ",";
+	outFile << taskData.ScalarHYield1 << ",";
+	outFile << taskData.ScalarHYield2 << ",";
+	outFile << taskData.ScalarHYield3 << ",";
+	outFile << taskData.ScalarHYield4 << ",";
+	outFile << taskData.GridImport << ",";
+	outFile << taskData.GridExport << ",";
+	outFile << taskData.Import_headroom << ",";
+	outFile << taskData.Export_headroom << ",";
+	outFile << taskData.ESS_charge_power << ",";
+	outFile << taskData.ESS_discharge_power << ",";
+	outFile << taskData.ESS_capacity << ",";
+	outFile << taskData.ESS_RTE << ",";
+	outFile << taskData.ESS_aux_load << ",";
+	outFile << taskData.ESS_start_SoC << ",";
+	outFile << taskData.Import_kWh_price << ",";
+	outFile << taskData.Export_kWh_price << ",";
+	outFile << taskData.time_budget_min << ",";
+	outFile << taskData.CAPEX_limit << ",";
+	outFile << taskData.OPEX_limit << ",";
+	outFile << taskData.ESS_charge_mode << ",";
+	outFile << taskData.ESS_discharge_mode; // no trailing comma
 	outFile << "\n";
 }
 

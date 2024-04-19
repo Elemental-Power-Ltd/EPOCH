@@ -5,7 +5,7 @@
 #include <string>
 
 #include "../Definitions.h"
-#include "Config.h"
+#include "TaskData.h"
 
 
 enum class SimulationType {
@@ -18,9 +18,9 @@ class Simulator {
 public:
 	Simulator();
 
-	SimulationResult simulateScenario(const HistoricalData& historicalData, const Config& config, SimulationType simulationType = SimulationType::ResultOnly) const;
+	SimulationResult simulateScenario(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType = SimulationType::ResultOnly) const;
 
-	FullSimulationResult simulateScenarioFull(const HistoricalData& historicalData, const Config& config, SimulationType simulationType) const;
+	FullSimulationResult simulateScenarioFull(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const;
 
-	year_TS calculateRGenTotal(const HistoricalData& historicalData, const Config& config) const;
+	year_TS calculateRGenTotal(const HistoricalData& historicalData, const TaskData& taskData) const;
 };
