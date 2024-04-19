@@ -57,5 +57,6 @@ install(TARGETS Epoch
 #  so we use the approach above (see https://stackoverflow.com/a/75065206)
 
 
-# copy the InputData directory into the install folder
+# copy the InputData and Config directories into the install folder
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/InputData" DESTINATION "bin")
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/Config" DESTINATION "bin")
