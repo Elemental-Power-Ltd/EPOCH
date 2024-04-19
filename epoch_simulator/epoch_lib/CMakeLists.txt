@@ -19,6 +19,8 @@ add_library(Epoch_lib STATIC
 	"Simulation/Simulate.hpp"
 	"io/EpochConfig.cpp"
 	"io/EpochConfig.hpp"
+	"io/BufferedCSVWriter.cpp"
+	"io/BufferedCSVWriter.hpp"
 )
 
 find_package(Eigen3 CONFIG REQUIRED)

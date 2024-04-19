@@ -11,9 +11,12 @@
 
 
 std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column);
-bool isValidFloat(const std::string& str);
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results);
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<ObjectiveResult>& results);
+void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& result);
+
+void writeObjectiveResultHeader(std::ofstream& outFile);
+void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& result);
 
 nlohmann::json inputToJson(const InputValues& data);
 nlohmann::json outputToJson(const OutputValues& data);

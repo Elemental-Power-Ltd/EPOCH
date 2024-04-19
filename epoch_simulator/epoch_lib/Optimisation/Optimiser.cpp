@@ -17,7 +17,6 @@ Optimiser::Optimiser(FileConfig fileConfig, EpochConfig config) :
 	mConfig(config),
 	mHistoricalData(readHistoricalData(mFileConfig))
 {
-
 }
 
 OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
@@ -142,17 +141,7 @@ ObjectiveResult Optimiser::reproduceResult(uint64_t paramIndex) const {
 
 	SimulationResult simResult = sim.simulateScenario(mHistoricalData, config, SimulationType::FullReporting);
 
-	ObjectiveResult objectiveResult;
-
-	objectiveResult.config = config;
-
-	objectiveResult.project_CAPEX = simResult.project_CAPEX;
-	objectiveResult.payback_horizon_years = simResult.payback_horizon_years;
-	objectiveResult.total_annualised_cost = simResult.total_annualised_cost;
-	objectiveResult.scenario_cost_balance = simResult.scenario_cost_balance;
-	objectiveResult.scenario_carbon_balance = simResult.scenario_carbon_balance;
-
-	return objectiveResult;
+	return toObjectiveResult(simResult, config);
 }
 
 OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
@@ -165,7 +154,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 
 	int numWorkers = std::min(determineWorkerCount(), (int)inputJson["target_max_concurrency"]);
 
-	LeagueTable leagueTable = LeagueTable(mConfig.optimiserConfig);
+	LeagueTable leagueTable = LeagueTable(mConfig.optimiserConfig, mFileConfig);
 
 	spdlog::info("Total number of scenarios is: {}", mTaskGenerator->totalScenarios());
 
@@ -179,7 +168,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 
 			while (mTaskGenerator->nextTask(config)) {
 				SimulationResult result = sim.simulateScenario(mHistoricalData, config);
-				leagueTable.considerResult(result);
+				leagueTable.considerResult(result, config);
 				addTimeToProfiler(result.runtime);
 			}
 		});

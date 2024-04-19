@@ -5,6 +5,8 @@
 
 #include "../Definitions.h"
 #include "../io/EpochConfig.hpp"
+#include "../io/FileConfig.h"
+#include "../io/BufferedCSVWriter.hpp"
 
 struct ResultIndices {
 	std::vector<uint64_t> bestIndices;
@@ -14,9 +16,9 @@ struct ResultIndices {
 
 class LeagueTable {
 public:
-	LeagueTable(const OptimiserConfig& optimiserConfig);
+	LeagueTable(const OptimiserConfig& optimiserConfig, const FileConfig& fileConfig);
 
-	void considerResult(const SimulationResult& r);
+	void considerResult(const SimulationResult& r, const Config& config);
 
 	std::pair<uint64_t, float> getBestCapex() const;
 	std::pair<uint64_t, float> getBestAnnualisedCost() const;
@@ -30,7 +32,7 @@ public:
 
 private:
 	int mCapacity;
-	bool mProduceExhaustiveOutput;
+	OptimiserConfig mConfig;
 
 	void considerMinimum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
 	void considerMaximum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
@@ -59,6 +61,6 @@ private:
 	std::pair<float, uint64_t> mWorstCostBalance;
 	std::pair<float, uint64_t> mWorstCarbonBalance;
 
-
 	std::mutex mMutex;
+	std::unique_ptr<BufferedCSVWriter> mBufferedCSVWriter;
 };

@@ -1,16 +1,23 @@
 #include "LeagueTable.hpp"
 
-LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig):
+LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig, const FileConfig& fileConfig) :
 	mCapacity(optimiserConfig.leagueTableCapacity),
-	mProduceExhaustiveOutput(optimiserConfig.produceExhaustiveOutput),
+	mConfig(optimiserConfig),
 	mWorstCapex{ -FLT_MAX, 0},
 	mWorstAnnualisedCost{ -FLT_MAX, 0 },
 	mWorstPaybackHorizon{ -FLT_MAX ,0},
 	mWorstCostBalance{ FLT_MAX, 0 },
 	mWorstCarbonBalance{ FLT_MAX, 0 }
-{}
+{
+	if (mConfig.produceExhaustiveOutput) {
+		mBufferedCSVWriter = std::make_unique<BufferedCSVWriter>(fileConfig.getOutputDir() / "ExhaustiveResults.csv");
 
-void LeagueTable::considerResult(const SimulationResult& r)
+		spdlog::warn("Writing exhaustive output to CSV. Performance will be reduced");
+
+	}
+}
+
+void LeagueTable::considerResult(const SimulationResult& r, const Config& config)
 {
 	// CAPEX
 	considerMinimum(mCapex, r.project_CAPEX, r.paramIndex);
@@ -28,6 +35,10 @@ void LeagueTable::considerResult(const SimulationResult& r)
 	considerMaximum(mCarbonBalance, r.scenario_carbon_balance, r.paramIndex);
 
 	considerAsWorst(r);
+
+	if (mConfig.produceExhaustiveOutput) {
+		mBufferedCSVWriter->writeResult(toObjectiveResult(r, config));
+	}
 }
 
 std::pair<uint64_t, float> LeagueTable::getBestCapex() const

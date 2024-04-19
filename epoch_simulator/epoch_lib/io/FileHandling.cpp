@@ -207,7 +207,28 @@ void writeResultsToCSV(std::filesystem::path filepath, const std::vector<Objecti
 	}
 
 	// write the column headers
+	writeObjectiveResultHeader(outFile);
 
+	// write each result
+	for (const auto& result : results) {
+		writeObjectiveResultRow(outFile, result);
+	}
+}
+
+void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& result) {
+	// open the file in append mode
+	std::ofstream outFile(filepath, std::ios::app);
+
+	if (!outFile.is_open()) {
+		spdlog::error("Failed to open the output file!");
+		throw FileReadException(filepath.filename().string());
+	}
+
+	outFile << result.payback_horizon_years << "," << result.project_CAPEX << "\n";
+
+}
+
+void writeObjectiveResultHeader(std::ofstream& outFile) {
 	outFile << "Parameter index" << ",";
 	outFile << "Annualised cost" << ",";
 	outFile << "Project CAPEX" << ",";
@@ -224,54 +245,54 @@ void writeResultsToCSV(std::filesystem::path filepath, const std::vector<Objecti
 	}
 	// no trailing comma
 	outFile << "\n";
-
-
-	// write each result
-	for (const auto& result : results) {
-		// These must be written in exactly the same order as the header
-		outFile << result.config.paramIndex << ",";
-
-		outFile << result.total_annualised_cost << ",";
-		outFile << result.project_CAPEX << ",";
-		outFile << result.scenario_cost_balance << ",";
-		outFile << result.payback_horizon_years << ",";
-		outFile << result.scenario_carbon_balance << ",";
-
-		const Config& config = result.config;
-
-		outFile << config.Fixed_load1_scalar << ",";
-		outFile << config.Fixed_load2_scalar << ",";
-		outFile << config.Flex_load_max << ",";
-		outFile << config.Mop_load_max << ",";
-		outFile << config.ScalarRG1 << ",";
-		outFile << config.ScalarRG2 << ",";
-		outFile << config.ScalarRG3 << ",";
-		outFile << config.ScalarRG4 << ",";
-		outFile << config.ScalarHL1 << ",";
-		outFile << config.ScalarHYield1 << ",";
-		outFile << config.ScalarHYield2 << ",";
-		outFile << config.ScalarHYield3 << ",";
-		outFile << config.ScalarHYield4 << ",";
-		outFile << config.GridImport << ",";
-		outFile << config.GridExport << ",";
-		outFile << config.Import_headroom << ",";
-		outFile << config.Export_headroom << ",";
-		outFile << config.ESS_charge_power << ",";
-		outFile << config.ESS_discharge_power << ",";
-		outFile << config.ESS_capacity << ",";
-		outFile << config.ESS_RTE << ",";
-		outFile << config.ESS_aux_load << ",";
-		outFile << config.ESS_start_SoC << ",";
-		outFile << config.Import_kWh_price << ",";
-		outFile << config.Export_kWh_price << ",";
-		outFile << config.time_budget_min << ",";
-		outFile << config.CAPEX_limit << ",";
-		outFile << config.OPEX_limit << ",";
-		outFile << config.ESS_charge_mode << ",";
-		outFile << config.ESS_discharge_mode; // no trailing comma
-		outFile << "\n";
-	}
 }
+
+void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& result) {
+	// These must be written in exactly the same order as the header
+	outFile << result.config.paramIndex << ",";
+
+	outFile << result.total_annualised_cost << ",";
+	outFile << result.project_CAPEX << ",";
+	outFile << result.scenario_cost_balance << ",";
+	outFile << result.payback_horizon_years << ",";
+	outFile << result.scenario_carbon_balance << ",";
+
+	const Config& config = result.config;
+
+	outFile << config.Fixed_load1_scalar << ",";
+	outFile << config.Fixed_load2_scalar << ",";
+	outFile << config.Flex_load_max << ",";
+	outFile << config.Mop_load_max << ",";
+	outFile << config.ScalarRG1 << ",";
+	outFile << config.ScalarRG2 << ",";
+	outFile << config.ScalarRG3 << ",";
+	outFile << config.ScalarRG4 << ",";
+	outFile << config.ScalarHL1 << ",";
+	outFile << config.ScalarHYield1 << ",";
+	outFile << config.ScalarHYield2 << ",";
+	outFile << config.ScalarHYield3 << ",";
+	outFile << config.ScalarHYield4 << ",";
+	outFile << config.GridImport << ",";
+	outFile << config.GridExport << ",";
+	outFile << config.Import_headroom << ",";
+	outFile << config.Export_headroom << ",";
+	outFile << config.ESS_charge_power << ",";
+	outFile << config.ESS_discharge_power << ",";
+	outFile << config.ESS_capacity << ",";
+	outFile << config.ESS_RTE << ",";
+	outFile << config.ESS_aux_load << ",";
+	outFile << config.ESS_start_SoC << ",";
+	outFile << config.Import_kWh_price << ",";
+	outFile << config.Export_kWh_price << ",";
+	outFile << config.time_budget_min << ",";
+	outFile << config.CAPEX_limit << ",";
+	outFile << config.OPEX_limit << ",";
+	outFile << config.ESS_charge_mode << ",";
+	outFile << config.ESS_discharge_mode; // no trailing comma
+	outFile << "\n";
+}
+
+
 
 
 // Custom function to convert a struct to a JSON object

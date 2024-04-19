@@ -94,6 +94,17 @@ struct ObjectiveResult {
 	Config config;
 };
 
+inline ObjectiveResult toObjectiveResult(const SimulationResult& simResult, const Config& config) noexcept {
+	return ObjectiveResult {
+		simResult.total_annualised_cost,
+		simResult.project_CAPEX,
+		simResult.scenario_cost_balance,
+		simResult.payback_horizon_years,
+		simResult.scenario_carbon_balance,
+		config
+	};
+}
+
 
 struct OutputValues {
 	float maxVal;
