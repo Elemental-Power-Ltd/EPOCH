@@ -4,6 +4,8 @@
 #include <fstream>
 #include <mutex>
 
+#include <spdlog/spdlog.h>
+
 #include "FileHandling.hpp"
 
 constexpr int BUFFER_CAPACITY = 10000;
