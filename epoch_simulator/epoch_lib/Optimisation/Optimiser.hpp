@@ -8,9 +8,9 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../io/FileConfig.h"
+#include "../io/FileConfig.hpp"
 #include "../io/EpochConfig.hpp"
-#include "../Definitions.h"
+#include "../Definitions.hpp"
 #include "LeagueTable.hpp"
 #include "TaskGenerator.hpp"
 

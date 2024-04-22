@@ -11,7 +11,7 @@ if (BUILD_GUI)
 
 	add_executable(Epoch WIN32
 		"epoch_main.cpp"
-		"epoch_main.h"
+		"epoch_main.hpp"
 		"epoch_main.rc"
 		"Resource.h"
 		"GUI/gui.hpp"
@@ -24,7 +24,7 @@ if (BUILD_GUI)
 	add_definitions(-DUNICODE -D_UNICODE)
 
 else ()
-	add_executable(Epoch "epoch_main.cpp" "epoch_main.h" "ArgHandling.hpp")
+	add_executable(Epoch "epoch_main.cpp" "epoch_main.hpp" "ArgHandling.hpp")
 
 endif()
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Definitions.h"
-#include "FileConfig.h"
+#include "../Definitions.hpp"
+#include "FileConfig.hpp"
 
 #include <nlohmann/json.hpp>
 

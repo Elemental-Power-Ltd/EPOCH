@@ -1,5 +1,5 @@
 #pragma once
-#include "epoch_main.h"
+#include "epoch_main.hpp"
 
 #ifdef EPOCH_GUI
 // run with the gui

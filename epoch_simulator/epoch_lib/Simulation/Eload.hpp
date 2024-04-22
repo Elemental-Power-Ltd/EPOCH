@@ -2,8 +2,8 @@
 
 #include <Eigen/Core>
 
-#include "TaskData.h"
-#include "../Definitions.h"
+#include "TaskData.hpp"
+#include "../Definitions.hpp"
 
 
 class Eload {

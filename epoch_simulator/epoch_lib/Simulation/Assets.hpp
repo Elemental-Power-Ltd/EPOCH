@@ -4,8 +4,8 @@
 #include <Eigen/Core>
 #include <spdlog/spdlog.h>
 
-#include "TaskData.h"
-#include "../Definitions.h"
+#include "TaskData.hpp"
+#include "../Definitions.hpp"
 
 
 class ESS {

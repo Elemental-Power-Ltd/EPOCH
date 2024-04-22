@@ -10,7 +10,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "../Definitions.h"
+#include "../Definitions.hpp"
 #include "../Exceptions.hpp"
 
 // Define macros to simplify creating the mapping for each struct member

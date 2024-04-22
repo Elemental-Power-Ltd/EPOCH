@@ -5,7 +5,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../Simulation/TaskData.h"
+#include "../Simulation/TaskData.hpp"
 
 
 struct ParamRange {

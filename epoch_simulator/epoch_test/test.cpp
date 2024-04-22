@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include "../epoch_lib/io/FileConfig.h"
+#include "../epoch_lib/io/FileConfig.hpp"
 #include "../epoch_lib/Optimisation/Optimiser.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
 #include "../epoch_lib/io/EpochConfig.hpp"

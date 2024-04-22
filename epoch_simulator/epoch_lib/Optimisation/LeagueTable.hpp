@@ -3,9 +3,9 @@
 #include <map>
 #include <mutex>
 
-#include "../Definitions.h"
+#include "../Definitions.hpp"
 #include "../io/EpochConfig.hpp"
-#include "../io/FileConfig.h"
+#include "../io/FileConfig.hpp"
 #include "../io/BufferedCSVWriter.hpp"
 
 struct ResultIndices {

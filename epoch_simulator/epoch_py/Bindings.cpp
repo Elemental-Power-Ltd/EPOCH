@@ -3,7 +3,7 @@
 #include <format>
 
 #include "Simulate_py.hpp"
-#include "../epoch_lib/Simulation/TaskData.h"
+#include "../epoch_lib/Simulation/TaskData.hpp"
 
 
 PYBIND11_MODULE(epoch_simulator, m) {

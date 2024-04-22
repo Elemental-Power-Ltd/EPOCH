@@ -2,9 +2,9 @@
 
 #include <Eigen/Core>
 
-#include "Assets.h"
-#include "TaskData.h"
-#include "../Definitions.h"
+#include "Assets.hpp"
+#include "TaskData.hpp"
+#include "../Definitions.hpp"
 
 class Grid
 {

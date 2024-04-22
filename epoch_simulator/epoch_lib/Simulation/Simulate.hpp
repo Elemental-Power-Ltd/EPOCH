@@ -4,8 +4,8 @@
 #include <vector>
 #include <string>
 
-#include "../Definitions.h"
-#include "TaskData.h"
+#include "../Definitions.hpp"
+#include "TaskData.hpp"
 
 
 enum class SimulationType {

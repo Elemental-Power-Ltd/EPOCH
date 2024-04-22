@@ -3,7 +3,7 @@
 #define NOMINMAX  // necessary before including windows.h
 #include <Windows.h>
 
-#include "../../epoch_lib/Definitions.h"
+#include "../../epoch_lib/Definitions.hpp"
 #include "../../epoch_lib/Optimisation/Optimiser.hpp"
 #include "../../epoch_lib/io/FileHandling.hpp"
 

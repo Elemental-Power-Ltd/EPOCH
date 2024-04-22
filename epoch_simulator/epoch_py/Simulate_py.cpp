@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 
 #include "../epoch_lib/io/FileHandling.hpp"
-#include "../epoch_lib/io/FileConfig.h"
+#include "../epoch_lib/io/FileConfig.hpp"
 
 
 Simulator_py::Simulator_py() :

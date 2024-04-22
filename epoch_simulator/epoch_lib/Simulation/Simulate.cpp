@@ -4,12 +4,12 @@
 #include <iostream>
 #include <Eigen/Core>
 
-#include "Assets.h"
-#include "TaskData.h"
-#include "Eload.h"
-#include "Grid.h"
-#include "Hload.h"
-#include "Costs.h"
+#include "Assets.hpp"
+#include "TaskData.hpp"
+#include "Eload.hpp"
+#include "Grid.hpp"
+#include "Hload.hpp"
+#include "Costs.hpp"
 
 Simulator::Simulator() {
 

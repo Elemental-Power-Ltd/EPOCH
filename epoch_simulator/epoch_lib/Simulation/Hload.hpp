@@ -2,9 +2,9 @@
 
 #include <Eigen/Core>
 
-#include "TaskData.h"
-#include "../Definitions.h"
-#include "Eload.h"
+#include "TaskData.hpp"
+#include "../Definitions.hpp"
+#include "Eload.hpp"
 
 class Hload
 {

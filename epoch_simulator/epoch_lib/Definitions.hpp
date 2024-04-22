@@ -4,7 +4,7 @@
 #include <functional>
 #include <string>
 
-#include "Simulation/TaskData.h"
+#include "Simulation/TaskData.hpp"
 
 // Elemental Power definitions
 
