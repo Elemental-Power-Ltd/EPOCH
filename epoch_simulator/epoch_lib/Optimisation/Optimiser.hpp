@@ -10,7 +10,6 @@
 
 #include "../io/FileConfig.h"
 #include "../io/EpochConfig.hpp"
-#include "Threadsafe.h"
 #include "../Definitions.h"
 #include "LeagueTable.hpp"
 #include "TaskGenerator.hpp"
