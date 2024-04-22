@@ -1,0 +1,71 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "generator": "Ninja Multi-Config"
+    },
+    {
+      "name": "headless",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/headless",
+      "installDir": "${sourceDir}/install/headless",
+      "cacheVariables": {
+        "BUILD_GUI": "OFF"
+      }
+    },
+    {
+      "name": "gui",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/gui",
+      "installDir": "${sourceDir}/install/gui",
+      "cacheVariables": {
+        "BUILD_GUI": "ON"
+      }
+    },
+    {
+      "name": "python",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/python",
+      "installDir": "${sourceDir}/install/python",
+      "cacheVariables": {
+        "PYBIND": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "gui-rel",
+      "displayName": "GUI Release",
+      "configurePreset": "gui",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "gui-debug",
+      "displayName": "GUI Debug",
+      "configurePreset": "gui",
+      "configuration": "Debug"
+    },
+    {
+      "name": "headless-rel",
+      "displayName": "Headless Release",
+      "configurePreset": "headless",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "headless-debug",
+      "displayName": "Headless Debug",
+      "configurePreset": "headless",
+      "configuration": "Debug"
+    },
+    {
+      "name": "python-rel",
+      "displayName": "Python Bindings",
+      "configurePreset": "python",
+      "configuration": "Release"
+    }
+
+  ]
+}
