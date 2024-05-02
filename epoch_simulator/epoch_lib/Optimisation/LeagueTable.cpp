@@ -1,4 +1,5 @@
 #include "LeagueTable.hpp"
+#include <cfloat>
 
 LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig, const FileConfig& fileConfig) :
 	mCapacity(optimiserConfig.leagueTableCapacity),
@@ -131,6 +132,8 @@ ResultIndices LeagueTable::getResultsForObjective(Objective objective) const {
 	case Objective::CostBalance:
 		result.bestIndices = mapToParamIndices(mCostBalance, TableOrder::DESCENDING);
 		result.worstIndex = mWorstCostBalance.second;
+		return result;
+	default:
 		return result;
 	}
 }

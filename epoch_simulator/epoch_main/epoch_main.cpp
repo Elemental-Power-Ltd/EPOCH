@@ -6,6 +6,8 @@
 
 #define NOMINMAX  // necessary before including windows.h
 #include <windows.h>
+#include "resource.h"
+
 
 #include "../epoch_main/GUI/gui.hpp"
 

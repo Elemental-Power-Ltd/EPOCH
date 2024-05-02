@@ -13,7 +13,7 @@ if (BUILD_GUI)
 		"epoch_main.cpp"
 		"epoch_main.hpp"
 		"epoch_main.rc"
-		"Resource.h"
+		"resource.h"
 		"GUI/gui.hpp"
 		"GUI/gui.cpp"
 		"framework.h"
