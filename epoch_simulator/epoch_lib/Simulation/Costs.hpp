@@ -524,7 +524,12 @@ public:
 	};
 
 	void calculate_payback_horizon() {
-		mPayback_horizon_years = mProject_CAPEX / mScenario_cost_balance;
+		if (mScenario_cost_balance > 0) {
+			mPayback_horizon_years = mProject_CAPEX / mScenario_cost_balance;
+		} else {
+			// a non-positive scenario_cost_balance indicates that there is no payback horizon
+			mPayback_horizon_years = FLT_MAX;
+		}
 	};
 
 
