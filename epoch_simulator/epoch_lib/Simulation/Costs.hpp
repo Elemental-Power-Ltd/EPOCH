@@ -31,7 +31,7 @@ public:
 		mScenario_carbon_balance(0.0f)
 	{}
 
-	void calculateCosts(const Eload& eload, const Hload& hload, const Grid& grid) {
+	void calculateCosts(const Eload& eload, const Hload& hload, const Grid& grid, ESS& MountBESS, const year_TS& Actual_Data_Centre_load) {
 
 		float ESS_kW = std::max(mTaskData.ESS_charge_power, mTaskData.ESS_discharge_power);
 		float PV_kWp_total = mTaskData.ScalarRG1 + mTaskData.ScalarRG2 + mTaskData.ScalarRG3 + mTaskData.ScalarRG4;
@@ -40,27 +40,39 @@ public:
 		const float IMPORT_FUEL_PRICE = 12.2f;
 		const float BOILER_EFFICIENCY = 0.9f;
 
-		const int s7_EV_CP_number = 0;
-		const int f22_EV_CP_number = 3;
-		const int r50_EV_CP_number = 0;
-		const int u150_EV_CP_number = 0;
-		const float kw_grid_upgrade = 0; 
-		const float heatpump_electrical_capacity = 70.0;
+		const int s7_EV_CP_number = mTaskData.s7_EV_CP_number;
+		const int f22_EV_CP_number = mTaskData.f22_EV_CP_number;
+		const int r50_EV_CP_number = mTaskData.r50_EV_CP_number;
+		const int u150_EV_CP_number = mTaskData.u150_EV_CP_number;
+		const float kw_grid_upgrade = 0;
+		const float heatpump_power_capacity = mTaskData.ASHP_HPower;
 
 		calculate_total_annualised_cost(ESS_kW, mTaskData.ESS_capacity, PV_kWp_total, s7_EV_CP_number,
-			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
+			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_power_capacity);
 
 		// for now, simply fix import/export price
-		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Import_kWh_price) };
+		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), 0.3) };
 		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Export_kWh_price) };
-		year_TS baseline_elec_load = eload.getTotalFixLoad() + grid.getActualHighPriorityLoad();
+		year_TS baseline_elec_load = eload.getTotalBaselineFixLoad() + grid.getActualLowPriorityLoad() + MountBESS.getAuxLoad() + Actual_Data_Centre_load;
+		//float mBaseline_fix_load = baseline_elec_load.sum();
+	//	spdlog::info("Baseline_fix_load {})", mBaseline_fix_load);
+		
+		//float mBaseline_ActualHighPriorityLoad = grid.getActualHighPriorityLoad().sum();
+	//	spdlog::info("Baseline_ActualHighPriorityLoad {})", mBaseline_ActualHighPriorityLoad);
+
+		//float mBaseline_elec_load = baseline_elec_load.sum();
+	//	spdlog::info("calculate_baseline_elec_load {})", mBaseline_elec_load);
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
+
+	//	spdlog::info("calculate_baseline_elec_cost {})", mBaseline_elec_cost);
 
 		year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad();
 		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), IMPORT_FUEL_PRICE) };
 
 		calculate_baseline_fuel_cost(baseline_heat_load, import_fuel_prices, BOILER_EFFICIENCY);
+	//	spdlog::info("calculate_fuel_cost {})", mBaseline_fuel_cost); //used to debug baseline fuel costs
+		
 		calculate_scenario_elec_cost(grid.getGridImport(), import_elec_prices);
 		calculate_scenario_fuel_cost(hload.getHeatShortfall(), import_fuel_prices);
 		calculate_scenario_export_cost(grid.getGridExport(), export_elec_prices);
@@ -70,7 +82,7 @@ public:
 		//========================================
 
 		calculate_Project_CAPEX(ESS_kW, mTaskData.ESS_capacity, PV_kWp_total, s7_EV_CP_number,
-			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
+			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_power_capacity);
 
 		//========================================
 
@@ -82,7 +94,11 @@ public:
 
 		calculate_baseline_elec_CO2e(baseline_elec_load);
 
+	//	spdlog::info("calculate_baseline_elec_CO2e {})", mBaseline_elec_CO2e); //used to debug CO2 costs
+
 		calculate_baseline_fuel_CO2e(baseline_heat_load);
+
+	//	spdlog::info("calculate_baseline_fuel_CO2e {})", mBaseline_fuel_CO2e); //used to debug CO2 costs
 
 		calculate_scenario_elec_CO2e(grid.getGridImport());
 
@@ -381,7 +397,7 @@ public:
 
 	// ASHP CAPEX costs
 
-	float calculate_ASHP_CAPEX(float heatpump_electrical_capacity) const {
+	float calculate_ASHP_CAPEX(float heatpump_power_capacity) const {
 		float small_thresh = 10;
 		float mid_thresh = 100;
 
@@ -392,12 +408,12 @@ public:
 
 		float ASHP_CAPEX = 0;
 
-		if (heatpump_electrical_capacity < small_thresh) {
-			ASHP_CAPEX = small_cost * heatpump_electrical_capacity;
-		} else if (small_thresh < heatpump_electrical_capacity && heatpump_electrical_capacity < mid_thresh) {
-			ASHP_CAPEX = (small_cost * small_thresh) + ((heatpump_electrical_capacity - small_thresh) * mid_cost);
-		} else if (heatpump_electrical_capacity > mid_thresh) {
-			ASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((heatpump_electrical_capacity - small_thresh - mid_thresh) * large_cost);
+		if (heatpump_power_capacity < small_thresh) {
+			ASHP_CAPEX = small_cost * heatpump_power_capacity;
+		} else if (small_thresh < heatpump_power_capacity && heatpump_power_capacity < mid_thresh) {
+			ASHP_CAPEX = (small_cost * small_thresh) + ((heatpump_power_capacity - small_thresh) * mid_cost);
+		} else if (heatpump_power_capacity > mid_thresh) {
+			ASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((heatpump_power_capacity - small_thresh - mid_thresh) * large_cost);
 		}
 
 		return ASHP_CAPEX;
@@ -424,8 +440,8 @@ public:
 		return EV_CP_annualised_cost;
 	}
 
-	float calculate_ASHP_annualised_cost(float heatpump_electrical_capacity) const {
-		float ASHP_annualised_cost = calculate_ASHP_CAPEX(heatpump_electrical_capacity) / mASHP_lifetime;
+	float calculate_ASHP_annualised_cost(float heatpump_power_capacity) const {
+		float ASHP_annualised_cost = calculate_ASHP_CAPEX(heatpump_power_capacity) / mASHP_lifetime;
 		return ASHP_annualised_cost;
 	}
 
@@ -435,12 +451,12 @@ public:
 	}
 
 	float calculate_Project_annualised_cost(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_electrical_capacity) const {
+		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_power_capacity) const {
 
 		float ESS_CAPEX = calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh);
 		float PV_CAPEX = calculate_PVpanel_CAPEX(PV_kWp_total) + calculate_PVBoP_CAPEX(PV_kWp_total) + calculate_PVroof_CAPEX(0) + calculate_PVground_CAPEX(PV_kWp_total);
 		float EV_CP_CAPEX = calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number) + calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
-		float ASHP_CAPEX = calculate_ASHP_CAPEX(heatpump_electrical_capacity);
+		float ASHP_CAPEX = calculate_ASHP_CAPEX(heatpump_power_capacity);
 		float Grid_CAPEX = calculate_Grid_CAPEX(kw_grid_upgrade);
 
 		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
@@ -452,12 +468,12 @@ public:
 	}
 
 	void calculate_Project_CAPEX(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_electrical_capacity) {
+		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_power_capacity) {
 
 		float ESS_CAPEX = calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh);
 		float PV_CAPEX = calculate_PVpanel_CAPEX(PV_kWp_total) + calculate_PVBoP_CAPEX(PV_kWp_total) + calculate_PVroof_CAPEX(0) + calculate_PVground_CAPEX(PV_kWp_total);
 		float EV_CP_CAPEX = calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number) + calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
-		float ASHP_CAPEX = calculate_ASHP_CAPEX(heatpump_electrical_capacity);
+		float ASHP_CAPEX = calculate_ASHP_CAPEX(heatpump_power_capacity);
 		float Grid_CAPEX = calculate_Grid_CAPEX(kw_grid_upgrade);
 
 		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
@@ -469,7 +485,7 @@ public:
 	// Calculate annualised costs
 
 	void calculate_total_annualised_cost(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_electrical_capacity) {
+		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_power_capacity) {
 
 		float ESS_annualised_cost = ((calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh)) / mESS_lifetime) + calculate_ESS_PCS_OPEX(ESS_kW) + calculate_ESS_ENCLOSURE_OPEX(ESS_kWh);
 		
@@ -479,9 +495,9 @@ public:
 
 		float Grid_annualised_cost = calculate_Grid_annualised_cost(kw_grid_upgrade);
 
-		float ASHP_annualised_cost = calculate_ASHP_annualised_cost(heatpump_electrical_capacity);
+		float ASHP_annualised_cost = calculate_ASHP_annualised_cost(heatpump_power_capacity);
 
-		float Project_annualised_cost = calculate_Project_annualised_cost(ESS_kW, ESS_kWh, PV_kWp_total, s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_electrical_capacity);
+		float Project_annualised_cost = calculate_Project_annualised_cost(ESS_kW, ESS_kWh, PV_kWp_total, s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_power_capacity);
 
 		mTotal_annualised_cost = Project_annualised_cost + ESS_annualised_cost + PV_annualised_cost + EV_CP_annualised_cost + Grid_annualised_cost + ASHP_annualised_cost;
 	}
@@ -489,9 +505,9 @@ public:
 	// time-dependent scenario costs
 
 	void calculate_baseline_elec_cost(const year_TS& baseline_elec_load, const year_TS& import_elec_prices) {
-		float baseline_elec_load_sum = baseline_elec_load.sum();
 
-		mBaseline_elec_cost = (baseline_elec_load_sum * import_elec_prices[0]) / 100; // just use fixed value for now
+		year_TS mBaseline_elec_cost_TS = (baseline_elec_load.array() * import_elec_prices.array()); 
+		mBaseline_elec_cost = mBaseline_elec_cost_TS.sum();
 	};
 
 	void calculate_baseline_fuel_cost(const year_TS& baseline_heat_load, const year_TS& import_fuel_prices, float boiler_efficiency) {
@@ -501,9 +517,9 @@ public:
 	};
 
 	void calculate_scenario_elec_cost(const year_TS& grid_import, const year_TS& import_elec_prices) {
-		float grid_import_sum = grid_import.sum();
 
-		mScenario_import_cost = (grid_import_sum * import_elec_prices[0]) / 100; // just use fixed value for now
+		year_TS mScenario_import_cost_TS = (grid_import.array() * import_elec_prices.array());
+		mScenario_import_cost = mScenario_import_cost_TS.sum(); // just use fixed value for now
 	};
 
 	void calculate_scenario_fuel_cost(const year_TS& total_heat_shortfall, const year_TS& import_fuel_prices) {
@@ -513,10 +529,10 @@ public:
 	};
 
 	void calculate_scenario_export_cost(const year_TS& grid_export, const year_TS& export_elec_prices) {
-		float grid_export_sum = grid_export.sum();
-
+		
 		// just use fixed value for now
-		mScenario_export_cost = (-grid_export_sum * export_elec_prices[0]) / 100;
+		year_TS mScenario_export_cost_TS = (-grid_export.array() * (export_elec_prices.array()/100));
+		mScenario_export_cost = mScenario_export_cost_TS.sum();
 	};
 
 	void calculate_scenario_cost_balance(float Total_annualised_cost) {
@@ -540,8 +556,7 @@ public:
 	void calculate_baseline_fuel_CO2e(const year_TS& baseline_heat_load) {
 		float baseline_heat_load_sum = baseline_heat_load.sum();
 
-		// this should be changed to divided by boiler efficiency
-		mBaseline_fuel_CO2e = (baseline_heat_load_sum * mLPG_kg_C02e / mBoiler_efficiency); 
+		mBaseline_fuel_CO2e = (baseline_heat_load_sum * mLPG_kg_C02e);/// mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
 	};
 
 	void calculate_scenario_elec_CO2e(const year_TS& grid_import) {
@@ -554,7 +569,7 @@ public:
 	void calculate_scenario_fuel_CO2e(const year_TS& total_heat_shortfall) {
 		float total_heat_shortfall_sum = total_heat_shortfall.sum();
 
-		mScenario_fuel_CO2e = (total_heat_shortfall_sum * mLPG_kg_C02e / mBoiler_efficiency);
+		mScenario_fuel_CO2e = (total_heat_shortfall_sum * mLPG_kg_C02e);// / mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
 	};
 
 	void calculate_scenario_export_CO2e(const year_TS& grid_export) {
@@ -599,7 +614,7 @@ public:
 		const float mMains_gas_kg_C02e = 0.201f; // kg/kWh(w2h) 
 		const float mLPG_kg_C02e = 0.239f; // kg/kWh (well2heat)
 		// every kWh that goes into an EV saves this much on the counterfactual of an ICE petrol vehicle
-		const float mPetrol_displace_kg_CO2e = 0.9037f;
+		const float mPetrol_displace_kg_CO2e = 0.9027f;
 
 		// coefficient applied to convert gas kWh to heat kWh (decimal, not percentage)
 		const float mBoiler_efficiency = 0.9f; 

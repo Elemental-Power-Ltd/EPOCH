@@ -20,23 +20,67 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
-	Eload MountEload{historicalData, taskData};
 	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
-	// Final ESUM (electrical acitivity) is Total load minus Rgen
-	year_TS ESUM = MountEload.getTotalLoad() - RGen_total;
+	// Final ESUM (electrical activity) is Total load minus Rgen
 
-	ESS MountBESS{ taskData };
+	Hload MountHload{ historicalData, taskData }; // initialise Hload based on historical data and taskdata
+	Grid MountGrid{ taskData }; //initialise Grid based on taskdata
+
+	MountHload.performHeatCalculations(historicalData, taskData, MountGrid);
+	
+	MountHload.calculateTarget_Data_centre_ASHP_load(taskData, MountGrid.calculateFlexLoadMax_year());
+
+	Eload MountEload{ historicalData, taskData }; // initialise Eload based on historical data and taskdata
+
+	ESS MountBESS{ taskData }; //initialise ESS based on taskdata
+
+	MountEload.calculateSelf_consume_pre_EV_flex(MountHload.getTargetDatacentreASHPload(), MountBESS.getAuxLoad(), RGen_total);//MountHload.getASHPTargetLoading();//.cwiseProduct(MountHload.getMaxHeatpumpELoad())) + MountBESS.getAuxLoad() - RGen_total;
+	
+	MountEload.calculateActual_EV_load(taskData);
+	
+	MountEload.calculateTotal_target_load_fixed_flex(MountHload.getTargetDatacentreASHPload(), MountBESS.getAuxLoad());
+	
+	year_TS ESUM = MountEload.getTotal_target_load_fixed_flex() - RGen_total;
+
 	MountBESS.initialise(ESUM[0]);
 	MountBESS.runTimesteps(ESUM);
 
-	Grid MountGrid{ taskData };
-	MountGrid.performGridCalculations(ESUM, MountBESS);
+	MountGrid.performGridCalculations(ESUM, MountBESS, MountEload.getHeadroomL1(), MountHload.getASHPTargetLoading(taskData), MountHload.getMaxHeatpumpELoad());
+	
 
-	Hload MountHload{ historicalData, taskData };
-	MountHload.performHeatCalculations(historicalData, taskData, MountGrid);
+	MountEload.calculateActual_Data_Centre_ASHP_load(MountGrid.getPreFlexImportShortfall(), MountHload.getTargetDatacentreASHPload());
+
+
+	MountEload.calculateData_Centre_HP_load_scalar(MountHload.getTargetDatacentreASHPload());
+
+	MountEload.calculateActual_Data_Centre_load(MountGrid.getFlexLoadMax_year());
+
+	MountEload.calculateActual_ASHP_load(MountHload.getASHPTargetLoading(taskData), MountHload.getMaxHeatpumpELoad());
+	
+	//year_TS Actual_ASHP_load = MountEload.getData_Centre_HP_load_scalar().array() * MountHload.getASHPTargetLoading(taskData).array() * MountHload.getMaxHeatpumpELoad().array();
+
+	//float sum13 = MountEload.getActual_ASHP_load().sum();
+
+	//year_TS Actual_HP_output = MountHload.calculateActualHeatpumpOutput(taskData, MountEload.getData_Centre_HP_load_scalar());
+
+	MountHload.calculateActualHeatpumpOutput(taskData, MountEload.getData_Centre_HP_load_scalar());
+
+//	float sum14 = MountHload.getActualHeatpumpOutput().sum();
+
+	MountHload.calculateHeatShortfall();
+
+	//year_TS Heat_shortfall = MountHload.getHeatShortfall();
+
+	//float sum15 = Heat_shortfall.sum();
+
+	MountHload.calculateEHeatSurplus(MountGrid.getActualLowPriorityLoad());
+
+	//float sum16 = MountHload.getEHeatSurplus().sum();
+
+	MountEload.calculateTotalBaselineFixLoad();
 
 	Costs myCost(taskData);
-	myCost.calculateCosts(MountEload, MountHload, MountGrid);
+	myCost.calculateCosts(MountEload, MountHload, MountGrid, MountBESS, MountEload.getActual_Data_Centre_load());
 
 	//Data reporting
 
@@ -66,7 +110,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
 		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
 		fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
-		fullSimulationResult.Heat_surplus = MountHload.getHeatSurplus();
+		fullSimulationResult.Heat_surplus = MountHload.getEHeatSurplus();
 	}
 
 

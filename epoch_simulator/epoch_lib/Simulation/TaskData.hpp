@@ -11,33 +11,38 @@ class TaskData {
 public:
     TaskData(float years_val = 1.0f, float days_val = 365.0f, float hours_val = 8760.0f, float timestep_minutes_val = 60.0f, float timestep_hours_val = 1.0f, float timewindow_val = 8760.0f,
         float Fixed_load1_scalar_val = 1.0f, float Fixed_load2_scalar_val = 6.0f, float Flex_load_max_val = 100.0f, float Mop_load_max_val = 200.0f,
-        float ScalarRG1_val = 599.2f, float ScalarRG2_val = 75.6f, float ScalarRG3_val = 60.48f, float ScalarRG4_val = 0.00f,
-        float ScalarHL1_val = 1.0f, float ScalarHYield1_val = 0.0f, float ScalarHYield2_val = 0.0f, float ScalarHYield3_val = 0.75f, float ScalarHYield4_val = 0.0f,
-        float GridImport_val = 98.29f, float GridExport_val = 95.0f, float Import_headroom_val = 0.2f, float Export_headroom_val = 0.2f,
-        float ESS_charge_power_val = 300.0f, float ESS_discharge_power_val = 300.0f, float ESS_capacity_val = 900.0f, float ESS_RTE_val = 0.86f, float ESS_aux_load_val = 0.75f, float ESS_start_SoC_val = 0.5f,
+        float ScalarRG1_val = 599.2f, float ScalarRG2_val = 75.6f, float ScalarRG3_val = 60.48f, float ScalarRG4_val = 0.0f, float ScalarHYield_val = 0.0f,
+        int s7_EV_CP_number_val = 0, int f22_EV_CP_number_val = 0, int r50_EV_CP_number_val = 0, int u150_EV_CP_number_val = 0, float EV_flex_val = 0.0f,
+        float ScalarHL1_val = 0.0f, float ASHP_HPower_val = 0.0f, int ASHP_HSource_val = 1, float ASHP_RadTemp_val = 0.0f, float ASHP_HotTemp_val = 0.0f,
+        float GridImport_val = 140.0f, float GridExport_val = 100.0f, float Import_headroom_val = 0.4f, float Export_headroom_val = 0.0f, float Min_power_factor_val = 0.95f,
+        float ESS_charge_power_val = 300.0f, float ESS_discharge_power_val = 300.0f, float ESS_capacity_val = 900.0f, float ESS_start_SoC_val = 0.5f,
         int ESS_charge_mode_val = 1, int ESS_discharge_mode_val = 1,
-        float import_kWh_price_val = 5.0f, float export_kWh_price_val = 30.0f,
+        float Export_kWh_price_val = 5.0f,
         float time_budget_min_val = 1.0f, int target_max_concurrency_val = 44,
         float CAPEX_limit_val = 500.0f, float OPEX_limit_val = 20.0f, int paramIndex_val = 0)
         : years(years_val), days(days_val), hours(hours_val), timestep_minutes(timestep_minutes_val), timestep_hours(timestep_hours_val), timewindow(timewindow_val), 
         Fixed_load1_scalar(Fixed_load1_scalar_val), Fixed_load2_scalar(Fixed_load2_scalar_val), Flex_load_max(Flex_load_max_val), Mop_load_max(Mop_load_max_val),
-        ScalarRG1(ScalarRG1_val), ScalarRG2(ScalarRG2_val), ScalarRG3(ScalarRG3_val), ScalarRG4(ScalarRG4_val),
-        ScalarHL1(ScalarHL1_val), ScalarHYield1(ScalarHYield1_val), ScalarHYield2(ScalarHYield2_val), ScalarHYield3(ScalarHYield3_val), ScalarHYield4(ScalarHYield4_val),
-        GridImport(GridImport_val), GridExport(GridExport_val), Import_headroom(Import_headroom_val), Export_headroom(Export_headroom_val), 
-        ESS_charge_power(ESS_charge_power_val), ESS_discharge_power(ESS_discharge_power_val), ESS_capacity(ESS_capacity_val), ESS_RTE(ESS_RTE_val), ESS_aux_load(ESS_aux_load_val), ESS_start_SoC(ESS_start_SoC_val),
+        ScalarRG1(ScalarRG1_val), ScalarRG2(ScalarRG2_val), ScalarRG3(ScalarRG3_val), ScalarRG4(ScalarRG4_val), ScalarHYield(ScalarHYield_val),
+        s7_EV_CP_number(s7_EV_CP_number_val), f22_EV_CP_number(f22_EV_CP_number_val), r50_EV_CP_number(r50_EV_CP_number_val), u150_EV_CP_number(u150_EV_CP_number_val), EV_flex(EV_flex_val),
+        ScalarHL1(ScalarHL1_val), ASHP_HPower(ASHP_HPower_val), ASHP_HSource(ASHP_HSource_val), ASHP_RadTemp(ASHP_RadTemp_val), ASHP_HotTemp(ASHP_HotTemp_val),
+        GridImport(GridImport_val), GridExport(GridExport_val), Import_headroom(Import_headroom_val), Export_headroom(Export_headroom_val),Min_power_factor(Min_power_factor_val),
+        ESS_charge_power(ESS_charge_power_val), ESS_discharge_power(ESS_discharge_power_val), ESS_capacity(ESS_capacity_val), ESS_start_SoC(ESS_start_SoC_val),
         ESS_charge_mode(ESS_charge_mode_val), ESS_discharge_mode(ESS_discharge_mode_val),
-        Import_kWh_price(import_kWh_price_val), Export_kWh_price(export_kWh_price_val),
+        Export_kWh_price(Export_kWh_price_val),
         time_budget_min(time_budget_min_val), target_max_concurrency(target_max_concurrency_val),
         CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val),
         // initialize unordered maps to allow setting of member variables using (string) dictionary keys
         param_map_float({ {"years",&years}, { "days",&days }, { "hours",&hours }, { "timestep_minutes",&timestep_minutes }, { "timestep_hours",&timestep_hours }, { "timewindow",&timewindow },
             { "Fixed_load1_scalar",&Fixed_load1_scalar }, { "Fixed_load2_scalar",&Fixed_load2_scalar }, { "Flex_load_max",&Flex_load_max }, { "Mop_load_max",&Mop_load_max },
-            { "ScalarRG1",&ScalarRG1 }, { "ScalarRG2",&ScalarRG2 }, { "ScalarRG3",&ScalarRG3 }, { "ScalarRG4",&ScalarRG4 },
-            { "ScalarHL1",&ScalarHL1 }, { "ScalarHYield1",&ScalarHYield1 }, { "ScalarHYield2",&ScalarHYield2 }, { "ScalarHYield3",&ScalarHYield3 }, { "ScalarHYield4",&ScalarHYield4 },
-            { "GridImport",&GridImport }, { "GridExport",&GridExport }, { "Import_headroom",&Import_headroom }, { "Export_headroom",&Export_headroom },
-            { "ESS_charge_power",&ESS_charge_power }, { "ESS_discharge_power",&ESS_discharge_power }, {"ESS_capacity",&ESS_capacity}, {"ESS_RTE",&ESS_RTE}, {"ESS_aux_load",&ESS_aux_load}, {"ESS_start_SoC",&ESS_start_SoC},
-            { "import_kWh_price",&Import_kWh_price }, { "export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit }}),
-        param_map_int({ {"ESS_charge_mode",&ESS_charge_mode}, {"ESS_discharge_mode",&ESS_discharge_mode}, {"target_max_concurrency",&target_max_concurrency }})
+            { "ScalarRG1",&ScalarRG1 }, { "ScalarRG2",&ScalarRG2 }, { "ScalarRG3",&ScalarRG3 }, { "ScalarRG4",&ScalarRG4 } , { "ScalarHYield",&ScalarHYield },
+             { "EV_flex",&EV_flex },
+            { "ScalarHL1",&ScalarHL1 }, { "ASHP_HPower", &ASHP_HPower }, { "ASHP_RadTemp", &ASHP_RadTemp }, { "ASHP_HotTemp", &ASHP_HotTemp },
+            { "GridImport",&GridImport }, { "GridExport",&GridExport }, { "Import_headroom",&Import_headroom }, { "Export_headroom",&Export_headroom }, {"Min_power_factor",&Min_power_factor},
+            { "ESS_charge_power",&ESS_charge_power }, { "ESS_discharge_power",&ESS_discharge_power }, {"ESS_capacity",&ESS_capacity}, {"ESS_start_SoC",&ESS_start_SoC},
+            { "export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit }}),
+        param_map_int({{ "s7_EV_CP_number",&s7_EV_CP_number }, { "f22_EV_CP_number",&f22_EV_CP_number }, { "r50_EV_CP_number",&r50_EV_CP_number }, { "u150_EV_CP_number",&u150_EV_CP_number},
+            { "ASHP_HSource", &ASHP_HSource },
+            {"ESS_charge_mode",&ESS_charge_mode}, {"ESS_discharge_mode",&ESS_discharge_mode}, {"target_max_concurrency",&target_max_concurrency }})
         {}
     
     int calculate_timesteps() const {
@@ -98,24 +103,28 @@ public:
     float ScalarRG2;
     float ScalarRG3;
     float ScalarRG4;
+    float ScalarHYield;
+    int s7_EV_CP_number;
+    int f22_EV_CP_number;
+    int r50_EV_CP_number;
+    int u150_EV_CP_number;
+    float EV_flex;
     float ScalarHL1;
-    float ScalarHYield1;
-    float ScalarHYield2;
-    float ScalarHYield3;
-    float ScalarHYield4;
+    float ASHP_HPower;
+    int ASHP_HSource;
+    float ASHP_RadTemp;
+    float ASHP_HotTemp;
     float GridImport;
     float GridExport;
     float Import_headroom;
     float Export_headroom;
+    float Min_power_factor;
     float ESS_charge_power;
     float ESS_discharge_power;
     float ESS_capacity;
-    float ESS_RTE;
-    float ESS_aux_load;
     float ESS_start_SoC;
-    int   ESS_charge_mode;
-    int   ESS_discharge_mode;
-    float Import_kWh_price; 
+    int ESS_charge_mode;
+    int ESS_discharge_mode;
     float Export_kWh_price;
     float time_budget_min;
     int target_max_concurrency;
