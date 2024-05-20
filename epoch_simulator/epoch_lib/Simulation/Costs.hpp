@@ -170,7 +170,7 @@ public:
 		float small_thresh = 100;
 		float mid_thresh = 2000;
 
-		// costs in � / kWh
+		// costs in £ / kWh
 		float small_cost = 10.0;
 		float mid_cost = 4.0;
 		float large_cost = 2.0;
