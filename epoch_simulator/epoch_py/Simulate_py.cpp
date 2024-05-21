@@ -6,9 +6,9 @@
 #include "../epoch_lib/io/FileConfig.hpp"
 
 
-Simulator_py::Simulator_py() :
+Simulator_py::Simulator_py(const std::string& input_dir, const std::string& output_dir, const std::string& config_dir) :
 	// Construct a default FileConfig to provide the paths for the CSVs
-	mHistoricalData{ readHistoricalData(FileConfig("./InputData", "./OutputData", "./ConfigData"))},
+	mHistoricalData{ readHistoricalData(FileConfig(input_dir, output_dir, config_dir))},
 	mSimulator{}
 {
 }

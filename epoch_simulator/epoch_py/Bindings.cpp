@@ -2,13 +2,19 @@
 
 #include <format>
 
+#include <pybind11/pybind11.h>
+
 #include "Simulate_py.hpp"
 #include "../epoch_lib/Simulation/TaskData.hpp"
 
 
 PYBIND11_MODULE(epoch_simulator, m) {
 	pybind11::class_<Simulator_py>(m, "Simulator")
-		.def(pybind11::init<>())
+		.def(
+			pybind11::init<const std::string&, const std::string&, const std::string&>(),
+				pybind11::arg("inputDir") = std::string("./InputData"),
+				pybind11::arg("outputDir") = std::string("./OutputData"),
+			 	pybind11::arg("configDir") = std::string("./ConfigData"))
 		.def("simulate_scenario", &Simulator_py::simulateScenario);
 
 	pybind11::class_<TaskData>(m, "TaskData")

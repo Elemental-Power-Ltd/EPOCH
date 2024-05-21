@@ -10,7 +10,7 @@
 
 class Simulator_py {
 public:
-	Simulator_py();
+	Simulator_py(const std::string& input_dir, const std::string& output_dir, const std::string& config_dir);
 
 	SimulationResult simulateScenario(const TaskData& taskData);
 

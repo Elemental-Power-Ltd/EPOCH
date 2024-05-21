@@ -1,5 +1,5 @@
 #pragma once
-
+#include <limits> 
 #include <Eigen/Core>
 
 #include "TaskData.hpp"
@@ -101,7 +101,7 @@ public:
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
-		// costs in £ / kW
+		// costs in Â£ / kW
 		float small_cost = 250.0;
 		float mid_cost = 125.0;
 		float large_cost = 75.0;
@@ -124,7 +124,7 @@ public:
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
-		// costs in £ / kW
+		// costs in Â£ / kW
 		float small_cost = 8.0;
 		float mid_cost = 4.0;
 		float large_cost = 1.0;
@@ -147,7 +147,7 @@ public:
 		float small_thresh = 100;
 		float mid_thresh = 2000;
 
-		// costs in £ / kWh
+		// costs in Â£ / kWh
 		float small_cost = 480.0;
 		float mid_cost = 360.0;
 		float large_cost = 300.0;
@@ -170,7 +170,7 @@ public:
 		float small_thresh = 100;
 		float mid_thresh = 2000;
 
-		// costs in £ / kWh
+		// costs in Â£ / kWh
 		float small_cost = 10.0;
 		float mid_cost = 4.0;
 		float large_cost = 2.0;
@@ -193,7 +193,7 @@ public:
 		float small_thresh = 100;
 		float mid_thresh = 2000;
 
-		// costs in £ / kWh
+		// costs in Â£ / kWh
 		float small_cost = 30.0;
 		float mid_cost = 20.0;
 		float large_cost = 15.0;
@@ -217,7 +217,7 @@ public:
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
-		// costs in £ / kW DC
+		// costs in Â£ / kW DC
 		float small_cost = 150.0;
 		float mid_cost = 110.0;
 		float large_cost = 95.0;
@@ -239,7 +239,7 @@ public:
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
-		// costs in £ / kWp DC
+		// costs in Â£ / kWp DC
 		float small_cost = 120.0;
 		float mid_cost = 88.0;
 		float large_cost = 76.0;
@@ -261,7 +261,7 @@ public:
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
-		// costs in £ / kWp DC
+		// costs in Â£ / kWp DC
 		float small_cost = 250.0;
 		float mid_cost = 200.0;
 		float large_cost = 150.0;
@@ -283,7 +283,7 @@ public:
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
-		// costs in £ / kWp DC
+		// costs in Â£ / kWp DC
 		float small_cost = 150.0;
 		float mid_cost = 125.0;
 		float large_cost = 100.0;
@@ -305,7 +305,7 @@ public:
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
-		// costs in £ / kWp DC
+		// costs in Â£ / kWp DC
 		float small_cost = 2.0;
 		float mid_cost = 1.0;
 		float large_cost = 0.50;
@@ -329,7 +329,7 @@ public:
 
 	float calculate_EV_CP_cost(int s7_EV_CP_number, 
 		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) const {
-		// costs in £ / unit (1 hd unit 2 connectors)
+		// costs in Â£ / unit (1 hd unit 2 connectors)
 		float s7_EV_cost = 1200.00;
 		float f22_EV_cost = 2500.00;
 		float r50_EV_cost = 20000.00;
@@ -343,7 +343,7 @@ public:
 
 	float calculate_EV_CP_install(int s7_EV_CP_number,
 		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) const {
-		// costs in £ / unit (1 hd unit 2 connectors)
+		// costs in Â£ / unit (1 hd unit 2 connectors)
 		float s7_EV_install = 600.00;
 		float f22_EV_install = 1000.00;
 		float r50_EV_install = 3000.00;
@@ -361,7 +361,7 @@ public:
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
-		// costs in £ / kW DC
+		// costs in Â£ / kW DC
 		float small_cost = 240.0;
 		float mid_cost = 160.0;
 		float large_cost = 120.0;
@@ -385,7 +385,7 @@ public:
 		float small_thresh = 10;
 		float mid_thresh = 100;
 
-		// costs in £ / kW DC
+		// costs in Â£ / kW DC
 		float small_cost = 1000.0;
 		float mid_cost = 1000.0;
 		float large_cost = 1000.0;
@@ -528,7 +528,7 @@ public:
 			mPayback_horizon_years = mProject_CAPEX / mScenario_cost_balance;
 		} else {
 			// a non-positive scenario_cost_balance indicates that there is no payback horizon
-			mPayback_horizon_years = FLT_MAX;
+			mPayback_horizon_years = std::numeric_limits<float>::max();
 		}
 	};
 
@@ -608,8 +608,8 @@ public:
 
 		// coefficient applied to convert gas kWh to heat kWh (decimal, not percentage)
 		const float mBoiler_efficiency = 0.9f; 
-		const float mMains_gas_price = 0.068f; // £/kWh  
-		const float mLPG_cost_price = 0.122f; // £/kWh
+		const float mMains_gas_price = 0.068f; // Â£/kWh  
+		const float mLPG_cost_price = 0.122f; // Â£/kWh
 
 		const float mSupplier_electricity_kg_CO2e = 0.182f; //
 
