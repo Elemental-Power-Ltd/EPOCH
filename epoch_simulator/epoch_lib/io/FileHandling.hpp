@@ -10,7 +10,11 @@
 #include <vector>
 
 
-std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column);
+std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column, bool skipHeader);
+std::vector<float> readCSVColumnAndSkipHeader(const std::filesystem::path& filename, int column);
+std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filename, int column);
+
+
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results);
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<ObjectiveResult>& results);
 void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& result);

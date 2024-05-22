@@ -83,7 +83,7 @@ OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_UINT64(num_scenarios), OUT_MEMBER_MAPPING_FLOAT(est_hours), OUT_MEMBER_MAPPING_FLOAT(est_seconds)
 };
 
-std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column) {
+std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column, bool skipHeader) {
 	std::ifstream file(filename);
 	std::vector<float> columnValues;
 	std::string line;
@@ -93,8 +93,10 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 		throw FileReadException(filename.filename().string());
 	}
 
-	// Skip the header row
-	std::getline(file, line);
+	if (skipHeader) {
+		// Ignore the first line
+		std::getline(file, line);
+	}
 
 	while (std::getline(file, line)) {
 
@@ -144,68 +146,17 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 	return columnValues;
 }
 
-std::vector<float> readCSVColumn_noheader(const std::filesystem::path& filename, int column) {
-	std::ifstream file(filename);
-	std::vector<float> columnValues;
-	std::string line;
-	bool columnHasValues = false;
-
-	if (!file.is_open()) {
-		throw FileReadException(filename.filename().string());
-	}
-
-	// Skip the header row
-	//std::getline(file, line);
-
-	while (std::getline(file, line)) {
-
-		// Check if the line contains only commas (and possibly whitespaces), which indicates the end of the file
-		if (std::all_of(line.begin(), line.end(), [](char c) { return c == ',' || std::isspace(c); })) {
-			break;
-		}
-
-		std::stringstream ss(line);
-		std::string cell;
-		std::vector<std::string> row;
-
-		// Parse each cell in the row
-		while (std::getline(ss, cell, ',')) {
-			row.emplace_back(cell);
-		}
-
-		// If the row ends with a comma, add an empty string to the row (signifying an empty column)
-		if (line.back() == ',') {
-			row.emplace_back("");
-		}
-
-		// Convert the value from the specified column to float and store it in the vector
-		int column_1 = column - 1;
-
-		if (row.size() <= column_1) {
-			spdlog::error("Insufficient columns at line {}", line);
-			throw FileReadException(filename.filename().string());
-		}
-
-		if (row[column_1] == "") {
-			// treat missing values as 0
-			columnValues.emplace_back(0.0f);
-		}
-		else {
-			try {
-				float val = std::stof(row[column_1]);
-				columnValues.emplace_back(val);
-			}
-			catch (const std::exception& e) {
-				spdlog::error("Failed to parse float in line {} ({})", line, e.what());
-				throw FileReadException(filename.filename().string());
-			}
-		}
-	}
-
-	return columnValues;
+// Read a column from a CSV file, ignoring the first entry
+std::vector<float> readCSVColumnAndSkipHeader(const std::filesystem::path& filename, int column)
+{
+	return readCSVColumn(filename, column, true);
 }
 
-
+// Read a column from a CSV file, including the first entry
+std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filename, int column)
+{
+	return readCSVColumn(filename, column, false);
+}
 
 // Function to read a specific row from a CSV file
 std::vector<float> readCSVrow(const std::filesystem::path& filename, int row) {
@@ -520,31 +471,31 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	std::filesystem::path eloadFilepath = fileConfig.getEloadFilepath();
 
 	//read the electric load data
-	std::vector<float> hotel_eload_data = readCSVColumn(eloadFilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> ev_eload_data = readCSVColumn(eloadFilepath, 5); // read the column of the CSV data and store in vector data
+	std::vector<float> hotel_eload_data = readCSVColumnAndSkipHeader(eloadFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> ev_eload_data = readCSVColumnAndSkipHeader(eloadFilepath, 5); // read the column of the CSV data and store in vector data
 
 	//read the heat load data
 	std::filesystem::path hloadFilepath = fileConfig.getHloadFilepath();
-	std::vector<float> heatload_data = readCSVColumn(hloadFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> heatload_data = readCSVColumnAndSkipHeader(hloadFilepath, 4); // read the column of the CSV data and store in vector data
 
 	//read the renewable generation data
 	std::filesystem::path rgenFilepath = fileConfig.getRgenFilepath();
-	std::vector<float> RGen_data_1 = readCSVColumn(rgenFilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> RGen_data_2 = readCSVColumn(rgenFilepath, 5);
-	std::vector<float> RGen_data_3 = readCSVColumn(rgenFilepath, 6);
-	std::vector<float> RGen_data_4 = readCSVColumn(rgenFilepath, 7);
+	std::vector<float> RGen_data_1 = readCSVColumnAndSkipHeader(rgenFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> RGen_data_2 = readCSVColumnAndSkipHeader(rgenFilepath, 5);
+	std::vector<float> RGen_data_3 = readCSVColumnAndSkipHeader(rgenFilepath, 6);
+	std::vector<float> RGen_data_4 = readCSVColumnAndSkipHeader(rgenFilepath, 7);
 
 	//read in the air temperature data
 	std::filesystem::path airtempFilepath = fileConfig.getAirtempFilepath();
-	std::vector<float> airtemp_data = readCSVColumn(airtempFilepath, 4);
+	std::vector<float> airtemp_data = readCSVColumnAndSkipHeader(airtempFilepath, 4);
 
 	//read in the import tariff data
 	std::filesystem::path importtariffFilepath = fileConfig.getImporttariffFilepath();
-	std::vector<float> importtariff_data = readCSVColumn(importtariffFilepath, 4);
+	std::vector<float> importtariff_data = readCSVColumnAndSkipHeader(importtariffFilepath, 4);
 
 	//read in the GridCO2 data
 	std::filesystem::path gridCO2Filepath = fileConfig.getGridCO2Filepath();
-	std::vector<float> gridCO2_data = readCSVColumn(gridCO2Filepath, 4);
+	std::vector<float> gridCO2_data = readCSVColumnAndSkipHeader(gridCO2Filepath, 4);
 
 	//read in the ASHP data
 	std::filesystem::path ASHPinputFilepath = fileConfig.getASHPinputFilepath();
@@ -553,7 +504,7 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	
 	for (int column = 1; column <= 11; column++)
 	{
-		std::vector<float> vec = readCSVColumn_noheader(ASHPinputFilepath, column);
+		std::vector<float> vec = readCSVColumnWithoutSkip(ASHPinputFilepath, column);
 		ASHPinputtable.emplace_back(vec);
 	};
 		
@@ -563,7 +514,7 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 
 	for (int column = 1; column <= 11; column++)
 	{
-		std::vector<float> vec = readCSVColumn_noheader(ASHPoutputFilepath, column);
+		std::vector<float> vec = readCSVColumnWithoutSkip(ASHPoutputFilepath, column);
 		ASHPoutputtable.emplace_back(vec);
 	};
 
