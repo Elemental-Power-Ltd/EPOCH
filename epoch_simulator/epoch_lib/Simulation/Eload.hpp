@@ -31,7 +31,7 @@ public:
 			mTargetHighLoad = Eigen::VectorXf::Constant(mTimesteps, taskData.Flex_load_max);
 			mTotalBaselineELoad = mTotalBaselineFixLoad + mTargetHighLoad;
 
-			HeadroomL1 = taskData.Import_headroom * mFixLoad1.maxCoeff();
+			mHeadroomL1 = taskData.Import_headroom * mFixLoad1.maxCoeff();
 	}
 	
 	year_TS calculateActual_EV_load(const TaskData& taskData)
@@ -153,13 +153,13 @@ public:
 	}
 
 	float getHeadroomL1() const {
-		return HeadroomL1;
+		return mHeadroomL1;
 	}
 
 
 
 private:
-	float HeadroomL1;
+	float mHeadroomL1;
 	int mTimesteps;
 
 	year_TS mFixLoad1;
