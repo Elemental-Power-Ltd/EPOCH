@@ -42,10 +42,6 @@ public:
 
 		mHeatload = historicalData.heatload_data * taskData.ScalarHL1;
 
-		// scale historical data by heat yield scalar // not used in v0_7
-		//mScaledElectricalFixHeatLoad_1 = historicalData.hotel_eload_data * 0;
-		//mScaledElectricalFixHeatLoad_2 = historicalData.ev_eload_data * 0; // this to be re-written for v0-7 heat model
-
 		mAmbientAirTemperature = historicalData.airtemp_data;
 
 		calculateASHPcolumn_index(historicalData, taskData);
@@ -63,11 +59,7 @@ public:
 		
 		calculateMaxHeatpumpELoad(historicalData, taskData);
 
-		//float sum3 = mMaxHeatpumpELoad.sum();
-
 		calculateASHPTargetLoading(taskData);
-
-		//float sum4 = getASHPTargetLoading(taskData).sum();
 
 		calculateElectricalLoadScaledHeatYield(
 			grid.getActualHighPriorityLoad(), grid.getActualLowPriorityLoad(), 
@@ -77,12 +69,6 @@ public:
 		//Heat shortfall
 		//IF(B4>AB4,B4-AB4,0)
 		calculateHeatShortfall();
-
-		//float sum5 = getHeatShortfall().sum();
-
-		//Heat surplus
-		//IF(B4<AB4,AB3-B4,0)
-		//calculateEHeatSurplus(); don't do this until actual low priority load is known 
 	}
 
 	void calculateElectricalLoadScaledHeatYield(const year_TS& ActualHighPriorityLoad,

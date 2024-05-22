@@ -54,24 +54,13 @@ public:
 		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), 0.3) };
 		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Export_kWh_price) };
 		year_TS baseline_elec_load = eload.getTotalBaselineFixLoad() + grid.getActualLowPriorityLoad() + MountBESS.getAuxLoad() + Actual_Data_Centre_load;
-		//float mBaseline_fix_load = baseline_elec_load.sum();
-	//	spdlog::info("Baseline_fix_load {})", mBaseline_fix_load);
-		
-		//float mBaseline_ActualHighPriorityLoad = grid.getActualHighPriorityLoad().sum();
-	//	spdlog::info("Baseline_ActualHighPriorityLoad {})", mBaseline_ActualHighPriorityLoad);
-
-		//float mBaseline_elec_load = baseline_elec_load.sum();
-	//	spdlog::info("calculate_baseline_elec_load {})", mBaseline_elec_load);
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
-
-	//	spdlog::info("calculate_baseline_elec_cost {})", mBaseline_elec_cost);
 
 		year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad();
 		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), IMPORT_FUEL_PRICE) };
 
 		calculate_baseline_fuel_cost(baseline_heat_load, import_fuel_prices, BOILER_EFFICIENCY);
-	//	spdlog::info("calculate_fuel_cost {})", mBaseline_fuel_cost); //used to debug baseline fuel costs
 		
 		calculate_scenario_elec_cost(grid.getGridImport(), import_elec_prices);
 		calculate_scenario_fuel_cost(hload.getHeatShortfall(), import_fuel_prices);
@@ -94,11 +83,7 @@ public:
 
 		calculate_baseline_elec_CO2e(baseline_elec_load);
 
-	//	spdlog::info("calculate_baseline_elec_CO2e {})", mBaseline_elec_CO2e); //used to debug CO2 costs
-
 		calculate_baseline_fuel_CO2e(baseline_heat_load);
-
-	//	spdlog::info("calculate_baseline_fuel_CO2e {})", mBaseline_fuel_CO2e); //used to debug CO2 costs
 
 		calculate_scenario_elec_CO2e(grid.getGridImport());
 

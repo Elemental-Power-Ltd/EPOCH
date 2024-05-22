@@ -180,22 +180,6 @@ struct HistoricalData {
 };
 
 
-////read in the air temperature data
-//std::filesystem::path airtempFilepath = fileConfig.getAirtempFilepath();
-//std::vector<float> airtemp_data = readCSVColumn(airtempFilepath, 4);
-//
-////read in the import tariff data
-//std::filesystem::path importtariffFilepath = fileConfig.getImporttariffFilepath();
-//std::vector<float> importtariff_data = readCSVColumn(importtariffFilepath, 4);
-//
-////read in the GridCO2 data
-//std::filesystem::path gridCO2Filepath = fileConfig.getGridCO2Filepath();
-//std::vector<float> gridCO2_data = readCSVColumn(gridCO2Filepath, 4);
-//
-////read in the ASHP data
-//std::filesystem::path AHSPinputFilepath = fileConfig.getASHPinputFilepath();
-//std::filesystem::path AHSPoutputFilepath = fileConfig.getASHPoutputFilepath();
-
 // Define a struct that represents the mapping between member names and pointers
 struct MemberMapping {
 	const char* name;

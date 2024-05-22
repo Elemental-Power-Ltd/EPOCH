@@ -56,26 +56,12 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	MountEload.calculateActual_Data_Centre_load(MountGrid.getFlexLoadMax_year());
 
 	MountEload.calculateActual_ASHP_load(MountHload.getASHPTargetLoading(taskData), MountHload.getMaxHeatpumpELoad());
-	
-	//year_TS Actual_ASHP_load = MountEload.getData_Centre_HP_load_scalar().array() * MountHload.getASHPTargetLoading(taskData).array() * MountHload.getMaxHeatpumpELoad().array();
-
-	//float sum13 = MountEload.getActual_ASHP_load().sum();
-
-	//year_TS Actual_HP_output = MountHload.calculateActualHeatpumpOutput(taskData, MountEload.getData_Centre_HP_load_scalar());
 
 	MountHload.calculateActualHeatpumpOutput(taskData, MountEload.getData_Centre_HP_load_scalar());
 
-//	float sum14 = MountHload.getActualHeatpumpOutput().sum();
-
 	MountHload.calculateHeatShortfall();
 
-	//year_TS Heat_shortfall = MountHload.getHeatShortfall();
-
-	//float sum15 = Heat_shortfall.sum();
-
 	MountHload.calculateEHeatSurplus(MountGrid.getActualLowPriorityLoad());
-
-	//float sum16 = MountHload.getEHeatSurplus().sum();
 
 	MountEload.calculateTotalBaselineFixLoad();
 

@@ -22,21 +22,6 @@ public:
 		mTotalBaselineFixLoad(Eigen::VectorXf::Zero(mTimesteps)),
 		mTargetHighLoad(Eigen::VectorXf::Zero(mTimesteps)),
 		mTotalBaselineELoad(Eigen::VectorXf::Zero(mTimesteps))
-
-		/*mFixLoad1 = historicalData.hotel_eload_data * taskData.Fixed_load1_scalar;
-			mEVLoad = historicalData.ev_eload_data * taskData.Fixed_load2_scalar;
-
-			year_TS mTotalBaselineFixLoad = mFixLoad1 + mFixLoad1;
-
-			year_TS mTargetHighLoad = Eigen::VectorXf::Constant(mTimesteps, taskData.Flex_load_max);
-			year_TS mTotalBaselineELoad = mTotalBaselineFixLoad + mTargetHighLoad;
-			year_TS mSelf_consume_pre_EV_flex;*/
-
-
-			// Add timeseries for (small) parasitic load of ESS  now addesd in simulateScenarioFull now done in ESS class
-			//mTotalLoad = mtotalTargetLoad;// +ESSAuxLoad;
-
-			//HeadroomL1 = taskData.Import_headroom * mFixLoad1.maxCoeff();
 	{
 			mFixLoad1 = historicalData.hotel_eload_data * taskData.Fixed_load1_scalar;
 			mEVLoad = historicalData.ev_eload_data * taskData.Fixed_load2_scalar;
@@ -45,26 +30,9 @@ public:
 
 			mTargetHighLoad = Eigen::VectorXf::Constant(mTimesteps, taskData.Flex_load_max);
 			mTotalBaselineELoad = mTotalBaselineFixLoad + mTargetHighLoad;
-			
-
-
-			// Add timeseries for (small) parasitic load of ESS  now addesd in simulateScenarioFull now done in ESS class
-			//mTotalLoad = mtotalTargetLoad;// +ESSAuxLoad;
 
 			HeadroomL1 = taskData.Import_headroom * mFixLoad1.maxCoeff();
 	}
-
-	//year_TS calculateSelf_consume_pre_EV_flex(const HistoricalData& historicalData, const TaskData& taskData, const Hload& MountHload, const ESS& MountBESS, const year_TS& RGen_total)// const Hload& MountHload)//  const year_TS& RGen_total)
-	//{
-	//	mSelf_consume_pre_EV_flex = mFixLoad1 + mEVLoad + (mTargetHighload)+MountBESS.getAuxLoad() - RGen_total;//MountHload.getASHPTargetLoading();//.cwiseProduct(MountHload.getMaxHeatpumpELoad())) + MountBESS.getAuxLoad() - RGen_total;
-	//	return mSelf_consume_pre_EV_flex;
-	//}
-
-	/*float calculateHeadroomL1(const HistoricalData& historicalData, const TaskData& TaskData) {
-		year_TS fixLoad1 = historicalData.hotel_eload_data * TaskData.Fixed_load1_scalar;
-		float HeadroomL1 = TaskData.Import_headroom * fixLoad1.maxCoeff();
-		return HeadroomL1;
-	}*/
 	
 	year_TS calculateActual_EV_load(const TaskData& taskData)
 	{
