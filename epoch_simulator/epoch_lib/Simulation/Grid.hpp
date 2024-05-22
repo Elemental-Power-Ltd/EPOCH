@@ -137,7 +137,7 @@ public:
 	void calculateActualImportShortfall(const year_TS& ASHPTargetLoading, const year_TS& HeatpumpELoad) {
 		for (int index = 0; index < mTimesteps; index++) {
 			mActualImportShortfall[index] = std::max
-				(mPreFlexImportShortfall[index] - ((ASHPTargetLoading[index] * (HeatpumpELoad[index]) + calculateFlexLoadMax_year()[index])),
+				(mPreFlexImportShortfall[index] - ((ASHPTargetLoading[index] * (HeatpumpELoad[index]) + mFlexLoadMax)),
 				0.0f);
 				
 		}
