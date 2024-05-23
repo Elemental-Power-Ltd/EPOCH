@@ -86,9 +86,9 @@ public:
 		mSelf_consume_pre_EV_flex = mFixLoad1 + mEVLoad + TargetDatacentreASHPload + ESSAuxLoad - RGen_total;
 	}
 
-	void calculateActual_Data_Centre_load(const year_TS& FlexLoadMax_year)
+	void calculateActual_Data_Centre_load(float flex_load_max)
 	{
-		mActual_Data_Centre_load = mData_Centre_HP_load_scalar.array() * FlexLoadMax_year.array();
+		mActual_Data_Centre_load = mData_Centre_HP_load_scalar.array() * flex_load_max;
 	}
 
 	void calculateActual_ASHP_load(const year_TS& ASHPTargetLoading, const year_TS& MaxHeatpumpELoad)

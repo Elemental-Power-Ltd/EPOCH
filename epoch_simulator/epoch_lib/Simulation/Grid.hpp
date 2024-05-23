@@ -30,9 +30,7 @@ public:
 		mActualCurtailedExport(Eigen::VectorXf::Zero(mTimesteps)),
 
 		mActualHighPriorityLoad(Eigen::VectorXf::Zero(mTimesteps)),
-		mActualLowPriorityLoad(Eigen::VectorXf::Zero(mTimesteps)),
-
-		mFlexLoadMax_year(Eigen::VectorXf::Constant(mTimesteps, mFlexLoadMax))
+		mActualLowPriorityLoad(Eigen::VectorXf::Zero(mTimesteps))
 	{}
 
 	void performGridCalculations(const year_TS& ESUM, const ESS& ess, float HeadroomL1, const year_TS& ASHPTargetLoading, const year_TS& HeatpumpELoad) {
@@ -207,10 +205,6 @@ public:
 		return mActualLowPriorityLoad;
 	}
 
-	year_TS getFlexLoadMax_year() const {
-		return mFlexLoadMax_year;
-	}
-
 private:
 	const float mMaxGridImportkVA;
 	const float mMaxGridExportkVA;
@@ -231,6 +225,5 @@ private:
 	year_TS mActualCurtailedExport;
 	year_TS mActualHighPriorityLoad;
 	year_TS mActualLowPriorityLoad;
-	year_TS mFlexLoadMax_year;
 };
 
