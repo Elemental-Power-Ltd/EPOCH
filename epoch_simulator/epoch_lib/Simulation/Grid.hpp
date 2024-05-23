@@ -4,6 +4,8 @@
 #include <Eigen/Dense>
 
 #include "Assets.hpp"
+#include "Eload.hpp"
+#include "Hload.hpp"
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
@@ -33,7 +35,7 @@ public:
 		mActualLowPriorityLoad(Eigen::VectorXf::Zero(mTimesteps))
 	{}
 
-	void performGridCalculations(const year_TS& ESUM, const ESS& ess, float HeadroomL1, const year_TS& ASHPTargetLoading, const year_TS& HeatpumpELoad) {
+	void performGridCalculations(const year_TS& ESUM, const ESS& ess, float HeadroomL1, const Hload& hload) {
 
 		// calculate the pre-grid balance
 		mPreGridBalance = ESUM - ess.getESSDischarge() + ess.getESSCharge();
@@ -54,7 +56,7 @@ public:
 		calculatePreMopCurtailedExport();
 
 		//Actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
-		calculateActualImportShortfall(ASHPTargetLoading, HeatpumpELoad);
+		calculateActualImportShortfall(hload.getASHPTargetLoading(), hload.getMaxHeatpumpELoad());
 
 		//Actual Curtailed Export = IF(EB>ESum!EB4,EB4-ESum!EB4,0)
 		calculateActualCurtailedExport();

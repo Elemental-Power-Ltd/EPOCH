@@ -35,7 +35,8 @@ public:
 		mASHPreference_Hpower(14.0f),
 		mASHPHot_Hpower_max(0.0f),
 		mASHPHot_Epower_max(0.0f),
-		mASHPtable_col_index(0)
+		mASHPtable_col_index(0),
+		mASHP_HSource(taskData.ASHP_HSource)
 	{}
 
 	void performHeatCalculations(const HistoricalData& historicalData, const TaskData& taskData) {
@@ -59,7 +60,7 @@ public:
 		
 		calculateMaxHeatpumpELoad(historicalData, taskData);
 
-		calculateASHPTargetLoading(taskData);
+		calculateASHPTargetLoading();
 
 		//Heat shortfall
 		//IF(B4>AB4,B4-AB4,0)
@@ -79,7 +80,7 @@ public:
 
 	void calculateTarget_Data_centre_ASHP_load(const TaskData& taskData)
 	{
-		mTargetDatacentreASHPload = mMaxHeatpumpELoad.cwiseProduct(getASHPTargetLoading(taskData)).array() + taskData.Flex_load_max;
+		mTargetDatacentreASHPload = mMaxHeatpumpELoad.cwiseProduct(getASHPTargetLoading()).array() + taskData.Flex_load_max;
 	}
 
 	void calculateASHPcolumn_index(const HistoricalData& historicalData, const TaskData& taskData)
@@ -162,7 +163,7 @@ public:
 
 	void calculateMaxHeatpumpELoad(const HistoricalData& historicalData, const TaskData& taskData)
 	{
-		if (taskData.ASHP_HSource == 1) // if the ASHP source is ambient air
+		if (mASHP_HSource == 1) // if the ASHP source is ambient air
 		{
 			for (int index = 0; index < mTimesteps; index++) // main loop where index is timestep
 			{
@@ -181,7 +182,7 @@ public:
 				}
 			}
 		}
-		if (taskData.ASHP_HSource == 2) // if the ASHP source is hotroom air
+		if (mASHP_HSource == 2) // if the ASHP source is hotroom air
 		{
 			for (int inner_index = 1; inner_index < 14; inner_index++) // inner_index corresponds to row of HP lookup table with Hot room source temp
 			{
@@ -217,9 +218,9 @@ public:
 		
 	}
 
-	void calculateASHPTargetLoading(const TaskData& taskData)
+	void calculateASHPTargetLoading()
 	{
-		if (taskData.ASHP_HSource == 1) // if the ASHP source is ambient air
+		if (mASHP_HSource == 1) // if the ASHP source is ambient air
 		{
 			for (int index = 0; index < mTimesteps; index++)
 			{
@@ -229,7 +230,7 @@ public:
 			}
 		}
 
-		if (taskData.ASHP_HSource == 2) // if the ASHP source is ambient air
+		if (mASHP_HSource == 2) // if the ASHP source is ambient air
 		{
 			for (int index = 0; index < mTimesteps; index++)
 			{
@@ -241,9 +242,9 @@ public:
 
 	}
 
-	year_TS calculateActualHeatpumpOutput(const TaskData& taskData, const year_TS& Data_Centre_HP_load_scalar)
+	year_TS calculateActualHeatpumpOutput(const year_TS& Data_Centre_HP_load_scalar)
 	{
-		if (taskData.ASHP_HSource == 1) // if the ASHP source is ambient air
+		if (mASHP_HSource == 1) // if the ASHP source is ambient air
 		{
 			for (int index = 0; index < mTimesteps; index++)
 			{
@@ -252,7 +253,7 @@ public:
 			}
 		}
 
-		if (taskData.ASHP_HSource == 2) // if the ASHP source is ambient air
+		if (mASHP_HSource == 2) // if the ASHP source is ambient air
 		{
 			for (int index = 0; index < mTimesteps; index++)
 			{
@@ -326,12 +327,12 @@ public:
 		return mASHPTargetLoadingHotroomAir;
 	}
 
-	year_TS getASHPTargetLoading(const TaskData& taskData) const {
+	year_TS getASHPTargetLoading() const {
 		
-		if (taskData.ASHP_HSource == 1)
+		if (mASHP_HSource == 1)
 			return mASHPTargetLoadingAmbientAir;
 
-		if (taskData.ASHP_HSource ==2)
+		if (mASHP_HSource ==2)
 			return mASHPTargetLoadingHotroomAir;
 	}
 
@@ -374,5 +375,6 @@ private:
 	float mASHPHot_Epower_max;
 
 	int mASHPtable_col_index;
+	const int mASHP_HSource;
 };
 
