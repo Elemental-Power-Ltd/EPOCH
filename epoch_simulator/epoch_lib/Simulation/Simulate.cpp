@@ -31,11 +31,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	ESS MountBESS{ taskData }; //initialise ESS based on taskdata
 
-	MountEload.calculateSelf_consume_pre_EV_flex(MountHload.getTargetDatacentreASHPload(), MountBESS.getAuxLoad(), RGen_total);
-	
-	MountEload.calculateActual_EV_load(taskData);
-	
-	MountEload.calculateTotal_target_load_fixed_flex(MountHload.getTargetDatacentreASHPload(), MountBESS.getAuxLoad());
+	MountEload.calculateLoads(MountHload, MountBESS, RGen_total, taskData);
 	
 	year_TS ESUM = MountEload.getTotal_target_load_fixed_flex() - RGen_total;
 

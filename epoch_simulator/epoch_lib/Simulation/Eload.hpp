@@ -2,6 +2,8 @@
 
 #include <Eigen/Core>
 
+#include "Assets.hpp"
+#include "Hload.hpp"
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
@@ -34,7 +36,7 @@ public:
 			mHeadroomL1 = taskData.Import_headroom * mFixLoad1.maxCoeff();
 	}
 	
-	year_TS calculateActual_EV_load(const TaskData& taskData)
+	void calculateActual_EV_load(const TaskData& taskData)
 	{
 		
 		for (int index = 0; index < mTimesteps; index++)
@@ -56,11 +58,9 @@ public:
 			}
 			
 		}
-	
-		return mActual_EV_load;
 	}
 
-	year_TS calculateActual_Data_Centre_ASHP_load(const year_TS& Pre_flex_shortfall, const year_TS& Target_Data_Centre_ASHP_load)
+	void calculateActual_Data_Centre_ASHP_load(const year_TS& Pre_flex_shortfall, const year_TS& Target_Data_Centre_ASHP_load)
 	{
 		for (int index = 0; index < mTimesteps; index++) {
 			if (Pre_flex_shortfall[index] > Target_Data_Centre_ASHP_load[index])
@@ -73,7 +73,15 @@ public:
 			}
 
 		}
-		return mActual_Data_Centre_ASHP_load;
+	}
+
+	void calculateLoads(const Hload& hload, const ESS& ess, const year_TS& rgen_total, const TaskData& taskData) {
+
+		calculateSelf_consume_pre_EV_flex(hload.getTargetDatacentreASHPload(), ess.getAuxLoad(), rgen_total);
+
+		calculateActual_EV_load(taskData);
+
+		calculateTotal_target_load_fixed_flex(hload.getTargetDatacentreASHPload(), ess.getAuxLoad());
 	}
 
 	void calculateData_Centre_HP_load_scalar(const year_TS& Target_Data_Centre_ASHP_load)
@@ -110,7 +118,6 @@ public:
 	year_TS getTotalLoad() const {
 		return mTotalLoad;
 	}
-
 
 	year_TS gettargetHighLoad() const {
 		return mTargetHighLoad;
