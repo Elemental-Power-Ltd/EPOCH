@@ -32,7 +32,7 @@ public:
 		mActualHighPriorityLoad(Eigen::VectorXf::Zero(mTimesteps)),
 		mActualLowPriorityLoad(Eigen::VectorXf::Zero(mTimesteps)),
 
-		mFlexLoadMax_year(Eigen::VectorXf::Zero(mTimesteps))
+		mFlexLoadMax_year(Eigen::VectorXf::Constant(mTimesteps, mFlexLoadMax))
 	{}
 
 	void performGridCalculations(const year_TS& ESUM, const ESS& ess, float HeadroomL1, const year_TS& ASHPTargetLoading, const year_TS& HeatpumpELoad) {
@@ -165,13 +165,6 @@ public:
 		for (int index = 0; index < mTimesteps; index++) {
 			mActualLowPriorityLoad[index] = std::min(mPreMopCurtailedExport[index], mMopLoadMax);
 		}
-	}
-
-	year_TS calculateFlexLoadMax_year() {
-
-		mFlexLoadMax_year.setConstant(mFlexLoadMax);
-
-		return mFlexLoadMax_year;
 	}
 
 	year_TS getGridImport() const {

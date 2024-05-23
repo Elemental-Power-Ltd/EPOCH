@@ -38,7 +38,7 @@ public:
 		mASHPtable_col_index(0)
 	{}
 
-	void performHeatCalculations(const HistoricalData& historicalData, const TaskData& taskData, const Grid& grid) {
+	void performHeatCalculations(const HistoricalData& historicalData, const TaskData& taskData) {
 
 		mHeatload = historicalData.heatload_data * taskData.ScalarHL1;
 
@@ -61,14 +61,11 @@ public:
 
 		calculateASHPTargetLoading(taskData);
 
-		calculateElectricalLoadScaledHeatYield(
-			grid.getActualHighPriorityLoad(), grid.getActualLowPriorityLoad(), 
-			taskData.ScalarHYield, 0
-		);
-
 		//Heat shortfall
 		//IF(B4>AB4,B4-AB4,0)
 		calculateHeatShortfall();
+
+		calculateTarget_Data_centre_ASHP_load(taskData);
 	}
 
 	void calculateElectricalLoadScaledHeatYield(const year_TS& ActualHighPriorityLoad,
@@ -80,10 +77,9 @@ public:
 		mElectricalLoadScaledHeatYield += (ActualLowPriorityLoad * ScalarHYield4);
 	}
 
-	void calculateTarget_Data_centre_ASHP_load(const TaskData& taskData, const year_TS& FlexLoadMax_year)
+	void calculateTarget_Data_centre_ASHP_load(const TaskData& taskData)
 	{
-		mTargetDatacentreASHPload = (getASHPTargetLoading(taskData).array() * mMaxHeatpumpELoad.array()) + FlexLoadMax_year.array();
-		// might consider using a = a.cwiseProduct(b) instead here if faster 
+		mTargetDatacentreASHPload = mMaxHeatpumpELoad.cwiseProduct(getASHPTargetLoading(taskData)).array() + taskData.Flex_load_max;
 	}
 
 	void calculateASHPcolumn_index(const HistoricalData& historicalData, const TaskData& taskData)

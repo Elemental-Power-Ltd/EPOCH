@@ -21,20 +21,17 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
 	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
-	// Final ESUM (electrical activity) is Total load minus Rgen
 
 	Hload MountHload{ historicalData, taskData }; // initialise Hload based on historical data and taskdata
 	Grid MountGrid{ taskData }; //initialise Grid based on taskdata
 
-	MountHload.performHeatCalculations(historicalData, taskData, MountGrid);
+	MountHload.performHeatCalculations(historicalData, taskData);
 	
-	MountHload.calculateTarget_Data_centre_ASHP_load(taskData, MountGrid.calculateFlexLoadMax_year());
-
 	Eload MountEload{ historicalData, taskData }; // initialise Eload based on historical data and taskdata
 
 	ESS MountBESS{ taskData }; //initialise ESS based on taskdata
 
-	MountEload.calculateSelf_consume_pre_EV_flex(MountHload.getTargetDatacentreASHPload(), MountBESS.getAuxLoad(), RGen_total);//MountHload.getASHPTargetLoading();//.cwiseProduct(MountHload.getMaxHeatpumpELoad())) + MountBESS.getAuxLoad() - RGen_total;
+	MountEload.calculateSelf_consume_pre_EV_flex(MountHload.getTargetDatacentreASHPload(), MountBESS.getAuxLoad(), RGen_total);
 	
 	MountEload.calculateActual_EV_load(taskData);
 	
