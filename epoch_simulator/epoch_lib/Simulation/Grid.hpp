@@ -47,33 +47,21 @@ public:
 		//Calculate Post-grid balance = BB4-B4+AB4
 		mPostGridBalance = mPreGridBalance - mGridImport + mGridExport;
 
-		float mPostGridBalancesum = mPostGridBalance.sum();
-
 		//Calulate Pre-Flex Import shortfall = IF(CB>0, CB4, 0)
 		calculatePreFlexImportShortfall();
-
-		float mPreFlexImportShortfallsum = mPreFlexImportShortfall.sum();
 
 		//Calculate Pre-Mop Curtailed Export = IF(CB<0,-CB4,0)
 		calculatePreMopCurtailedExport();
 
-		float mPreMopCurtailedExportsum = mPreMopCurtailedExport.sum();
-
 		//Actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
 		calculateActualImportShortfall(ASHPTargetLoading, HeatpumpELoad);
-
-		float mActualImportShortfallsum = mActualImportShortfall.sum();
 
 		//Actual Curtailed Export = IF(EB>ESum!EB4,EB4-ESum!EB4,0)
 		calculateActualCurtailedExport();
 
-		float mActualCurtailedExportsum = mActualCurtailedExport.sum();
-
 		calculateActualHighPriorityLoad();
 
 		calculateActualLowPriorityLoad();
-
-		float ActualLowPriorityLoadsum = mActualLowPriorityLoad.sum();
 	}
 
 
