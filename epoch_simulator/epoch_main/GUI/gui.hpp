@@ -469,10 +469,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hTextbox42 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX42, 1080, 430, 100, 30, L"0");
 
 	HWND hLabel43 = makeLabel(hWnd, hInstance, L"u150 EV CP number lower", 1200, 380, 100, 50);
-	hTextbox43 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX43, 1200, 430, 100, 30, L"0.0");
+	hTextbox43 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX43, 1200, 430, 100, 30, L"0");
 
 	HWND hLabel44 = makeLabel(hWnd, hInstance, L"u150 EV CP number upper", 1320, 380, 100, 50);
-	hTextbox44 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX44, 1320, 430, 100, 30, L"0.0");
+	hTextbox44 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX44, 1320, 430, 100, 30, L"0");
 
 	HWND hLabel45 = makeLabel(hWnd, hInstance, L"u150 EV CP number step", 1440, 380, 100, 50);
 	hTextbox45 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX45, 1440, 430, 100, 30, L"0");
@@ -959,16 +959,16 @@ InputValues readInputFromForm() {
 	int s7_EV_CP_number_step = static_cast<int>(_wtoi(buffer36));
 
 	int f22_EV_CP_number_lower = static_cast<int>(_wtoi(buffer37));
-	int f22_EV_CP_number_upper = static_cast<float>(_wtoi(buffer38));
-	int f22_EV_CP_number_step = static_cast<float>(_wtoi(buffer39));
+	int f22_EV_CP_number_upper = static_cast<int>(_wtoi(buffer38));
+	int f22_EV_CP_number_step = static_cast<int>(_wtoi(buffer39));
 
-	int r50_EV_CP_number_lower = static_cast<float>(_wtoi(buffer40));
-	int r50_EV_CP_number_upper = static_cast<float>(_wtoi(buffer41));
-	int r50_EV_CP_number_step = static_cast<float>(_wtoi(buffer42));
+	int r50_EV_CP_number_lower = static_cast<int>(_wtoi(buffer40));
+	int r50_EV_CP_number_upper = static_cast<int>(_wtoi(buffer41));
+	int r50_EV_CP_number_step = static_cast<int>(_wtoi(buffer42));
 
-	int u150_EV_CP_number_lower = static_cast<float>(_wtoi(buffer43));
-	int u150_EV_CP_number_upper = static_cast<float>(_wtoi(buffer44));
-	int u150_EV_CP_number_step = static_cast<float>(_wtoi(buffer45));
+	int u150_EV_CP_number_lower = static_cast<int>(_wtoi(buffer43));
+	int u150_EV_CP_number_upper = static_cast<int>(_wtoi(buffer44));
+	int u150_EV_CP_number_step = static_cast<int>(_wtoi(buffer45));
 
 	float EV_flex_lower = static_cast<float>(_wtof(buffer46));
 	float EV_flex_upper = static_cast<float>(_wtof(buffer47));
