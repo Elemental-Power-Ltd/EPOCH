@@ -10,12 +10,12 @@ class TaskData {
 
 public:
     TaskData(float years_val = 1.0f, float days_val = 365.0f, float hours_val = 8760.0f, float timestep_minutes_val = 60.0f, float timestep_hours_val = 1.0f, float timewindow_val = 8760.0f,
-        float Fixed_load1_scalar_val = 1.0f, float Fixed_load2_scalar_val = 6.0f, float Flex_load_max_val = 100.0f, float Mop_load_max_val = 200.0f,
-        float ScalarRG1_val = 599.2f, float ScalarRG2_val = 75.6f, float ScalarRG3_val = 60.48f, float ScalarRG4_val = 0.0f, float ScalarHYield_val = 0.0f,
+        float Fixed_load1_scalar_val = 1.0f, float Fixed_load2_scalar_val = 3.0f, float Flex_load_max_val = 50.0f, float Mop_load_max_val = 300.0f,
+        float ScalarRG1_val = 599.2f, float ScalarRG2_val = 75.6f, float ScalarRG3_val = 60.48f, float ScalarRG4_val = 0.0f, float ScalarHYield_val = 0.75f,
         int s7_EV_CP_number_val = 0, int f22_EV_CP_number_val = 3, int r50_EV_CP_number_val = 0, int u150_EV_CP_number_val = 0, float EV_flex_val = 0.5f,
-        float ScalarHL1_val = 0.0f, float ASHP_HPower_val = 70.0f, int ASHP_HSource_val = 1, float ASHP_RadTemp_val = 70.0f, float ASHP_HotTemp_val = 43.0f,
+        float ScalarHL1_val = 1.0f, float ASHP_HPower_val = 70.0f, int ASHP_HSource_val = 1, float ASHP_RadTemp_val = 70.0f, float ASHP_HotTemp_val = 43.0f,
         float GridImport_val = 140.0f, float GridExport_val = 100.0f, float Import_headroom_val = 0.4f, float Export_headroom_val = 0.0f, float Min_power_factor_val = 0.95f,
-        float ESS_charge_power_val = 300.0f, float ESS_discharge_power_val = 300.0f, float ESS_capacity_val = 900.0f, float ESS_start_SoC_val = 0.5f,
+        float ESS_charge_power_val = 300.0f, float ESS_discharge_power_val = 300.0f, float ESS_capacity_val = 800.0f, float ESS_start_SoC_val = 0.5f,
         int ESS_charge_mode_val = 1, int ESS_discharge_mode_val = 1,
         float Export_kWh_price_val = 5.0f,
         float time_budget_min_val = 1.0f, int target_max_concurrency_val = 44,
