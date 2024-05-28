@@ -38,25 +38,11 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	MountBESS.initialise(ESUM[0]);
 	MountBESS.runTimesteps(ESUM);
 
-	MountGrid.performGridCalculations(ESUM, MountBESS, MountEload.getHeadroomL1(), MountHload);
-	
+	MountGrid.performGridCalculations(ESUM, MountBESS, MountHload, MountEload.getHeadroomL1());
 
-	MountEload.calculateActual_Data_Centre_ASHP_load(MountGrid.getPreFlexImportShortfall(), MountHload.getTargetDatacentreASHPload());
+	MountEload.calculateElectricHeat(MountGrid, MountHload, taskData);
 
-
-	MountEload.calculateData_Centre_HP_load_scalar(MountHload.getTargetDatacentreASHPload());
-
-	MountEload.calculateActual_Data_Centre_load(taskData.Flex_load_max);
-
-	MountEload.calculateActual_ASHP_load(MountHload.getASHPTargetLoading(), MountHload.getMaxHeatpumpELoad());
-
-	MountHload.calculateActualHeatpumpOutput(MountEload.getData_Centre_HP_load_scalar());
-
-	MountHload.calculateHeatShortfall();
-
-	MountHload.calculateEHeatSurplus(MountGrid.getActualLowPriorityLoad());
-
-	MountEload.calculateTotalBaselineFixLoad();
+	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
 
 	Costs myCost(taskData);
 	myCost.calculateCosts(MountEload, MountHload, MountGrid, MountBESS, MountEload.getActual_Data_Centre_load());

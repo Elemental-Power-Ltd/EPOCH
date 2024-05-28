@@ -4,7 +4,6 @@
 #include <Eigen/Dense>
 
 #include "Assets.hpp"
-#include "Eload.hpp"
 #include "Hload.hpp"
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
@@ -35,7 +34,7 @@ public:
 		mActualLowPriorityLoad(Eigen::VectorXf::Zero(mTimesteps))
 	{}
 
-	void performGridCalculations(const year_TS& ESUM, const ESS& ess, float HeadroomL1, const Hload& hload) {
+	void performGridCalculations(const year_TS& ESUM, const ESS& ess, const Hload& hload, float HeadroomL1) {
 
 		// calculate the pre-grid balance
 		mPreGridBalance = ESUM - ess.getESSDischarge() + ess.getESSCharge();

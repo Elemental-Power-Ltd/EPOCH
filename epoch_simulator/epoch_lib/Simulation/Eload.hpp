@@ -4,6 +4,7 @@
 
 #include "Assets.hpp"
 #include "Hload.hpp"
+#include "Grid.hpp"
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
@@ -113,6 +114,19 @@ public:
 	void calculateTotalBaselineFixLoad()
 	{
 		mTotalBaselineFixLoad = mFixLoad1 + mActual_EV_load;
+	}
+
+	void calculateElectricHeat(const Grid& grid, const Hload& hload, const TaskData& taskData) {
+
+		calculateActual_Data_Centre_ASHP_load(grid.getPreFlexImportShortfall(), hload.getTargetDatacentreASHPload());
+
+		calculateData_Centre_HP_load_scalar(hload.getTargetDatacentreASHPload());
+
+		calculateActual_Data_Centre_load(taskData.Flex_load_max);
+
+		calculateActual_ASHP_load(hload.getASHPTargetLoading(), hload.getMaxHeatpumpELoad());
+
+		calculateTotalBaselineFixLoad();
 	}
 	
 	year_TS getTotalLoad() const {

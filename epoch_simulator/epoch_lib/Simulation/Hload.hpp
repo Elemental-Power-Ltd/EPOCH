@@ -287,6 +287,15 @@ public:
 			
 	}
 
+	void calculateHeatSUM(const year_TS& data_Centre_HP_load_scalar, const year_TS& actualLowPriorityLoad) {
+
+		calculateActualHeatpumpOutput(data_Centre_HP_load_scalar);
+
+		calculateHeatShortfall();
+
+		calculateEHeatSurplus(actualLowPriorityLoad);
+	}
+
 		
 	year_TS getHeatload() const {
 		return mHeatload;
