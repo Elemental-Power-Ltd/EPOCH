@@ -1,19 +1,29 @@
 {
+    "ASHP_HPower": [
+        70.0,
+        70.0,
+        0.0
+    ],
+    "ASHP_HSource": [
+        1,
+        1,
+        0
+    ],
+    "ASHP_HotTemp": [
+        43.0,
+        43.0,
+        0.0
+    ],
+    "ASHP_RadTemp": [
+        70.0,
+        70.0,
+        0.0
+    ],
     "CAPEX_limit": 500.0,
-    "ESS_RTE": [
-        0.8600000143051147,
-        0.8600000143051147,
-        0.0
-    ],
-    "ESS_aux_load": [
-        0.75,
-        0.75,
-        0.0
-    ],
     "ESS_capacity": [
         800.0,
-        900.0,
-        20.0
+        800.0,
+        0.0
     ],
     "ESS_charge_mode": [
         1,
@@ -23,7 +33,7 @@
     "ESS_charge_power": [
         300.0,
         600.0,
-        300.0
+        20.0
     ],
     "ESS_discharge_mode": [
         1,
@@ -33,9 +43,14 @@
     "ESS_discharge_power": [
         300.0,
         600.0,
-        300.0
+        4.0
     ],
     "ESS_start_SoC": [
+        0.5,
+        0.5,
+        0.0
+    ],
+    "EV_flex": [
         0.5,
         0.5,
         0.0
@@ -61,18 +76,23 @@
         0.0
     ],
     "GridExport": [
-        95.0,
-        95.0,
+        100.0,
+        100.0,
         0.0
     ],
     "GridImport": [
-        98.29000091552734,
-        98.29000091552734,
+        140.0,
+        140.0,
         0.0
     ],
     "Import_headroom": [
-        0.0,
-        0.0,
+        0.4000000059604645,
+        0.4000000059604645,
+        0.0
+    ],
+    "Min_power_factor": [
+        0.949999988079071,
+        0.949999988079071,
         0.0
     ],
     "Mop_load_max": [
@@ -80,30 +100,15 @@
         300.0,
         0.0
     ],
-    "OPEX_limit": 20.0,
+    "OPEX_limit": 100.0,
     "ScalarHL1": [
         1.0,
         1.0,
         0.0
     ],
-    "ScalarHYield1": [
-        0.0,
-        0.0,
-        0.0
-    ],
-    "ScalarHYield2": [
-        0.0,
-        0.0,
-        0.0
-    ],
-    "ScalarHYield3": [
+    "ScalarHYield": [
         0.75,
         0.75,
-        0.0
-    ],
-    "ScalarHYield4": [
-        0.0,
-        0.0,
         0.0
     ],
     "ScalarRG1": [
@@ -127,10 +132,29 @@
         0.0
     ],
     "export_kWh_price": 5.0,
-    "import_kWh_price": 30.0,
+    "f22_EV_CP_number": [
+        3,
+        3,
+        0
+    ],
+    "r50_EV_CP_number": [
+        0,
+        0,
+        0
+    ],
+    "s7_EV_CP_number": [
+        0,
+        0,
+        0
+    ],
     "target_max_concurrency": 44,
-    "time_budget_min": 1.0,
+    "time_budget_min": 5.0,
     "timestep_hours": 1.0,
     "timestep_minutes": 60.0,
-    "timewindow": 8760.0
+    "timewindow": 8760.0,
+    "u150_EV_CP_number": [
+        0,
+        0,
+        0
+    ]
 }
