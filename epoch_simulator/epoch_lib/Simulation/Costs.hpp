@@ -31,7 +31,7 @@ public:
 		mScenario_carbon_balance(0.0f)
 	{}
 
-	void calculateCosts(const Eload& eload, const Hload& hload, const Grid& grid, ESS& MountBESS, const year_TS& Actual_Data_Centre_load) {
+	void calculateCosts(const Eload& eload, const Hload& hload, const Grid& grid, ESS& MountBESS) {
 
 		float ESS_kW = std::max(mTaskData.ESS_charge_power, mTaskData.ESS_discharge_power);
 		float PV_kWp_total = mTaskData.ScalarRG1 + mTaskData.ScalarRG2 + mTaskData.ScalarRG3 + mTaskData.ScalarRG4;
@@ -53,7 +53,7 @@ public:
 		// for now, simply fix import/export price
 		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), 0.3) };
 		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Export_kWh_price) };
-		year_TS baseline_elec_load = eload.getTotalBaselineFixLoad() + grid.getActualLowPriorityLoad() + MountBESS.getAuxLoad() + Actual_Data_Centre_load;
+		year_TS baseline_elec_load = eload.getTotalBaselineFixLoad() + grid.getActualLowPriorityLoad() + MountBESS.getAuxLoad() + eload.getActual_Data_Centre_load();
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
 

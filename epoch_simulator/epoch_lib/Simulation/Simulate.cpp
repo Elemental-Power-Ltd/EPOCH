@@ -45,7 +45,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
 
 	Costs myCost(taskData);
-	myCost.calculateCosts(MountEload, MountHload, MountGrid, MountBESS, MountEload.getActual_Data_Centre_load());
+	myCost.calculateCosts(MountEload, MountHload, MountGrid, MountBESS);
 
 	//Data reporting
 
