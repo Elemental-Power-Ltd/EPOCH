@@ -133,32 +133,12 @@ public:
 		return mTotalLoad;
 	}
 
-	year_TS gettargetHighLoad() const {
-		return mTargetHighLoad;
-	}
-
-	year_TS getSelf_consume_pre_EV_flex() const {
-		return mSelf_consume_pre_EV_flex;
-	}
-
 	year_TS getTotal_target_load_fixed_flex() const {
 		return mTotal_target_load_fixed_flex;
 	}
 
-	year_TS getFixLoad1() const {
-		return mFixLoad1;
-	}
-
-	year_TS getmEVLoad() const {
-		return mEVLoad;
-	}
-
 	year_TS getTotalBaselineFixLoad() const {
 		return mTotalBaselineFixLoad;
-	}
-
-	year_TS getActual_Data_Centre_ASHP_load() const {
-		return mActual_Data_Centre_ASHP_load;
 	}
 
 	year_TS getData_Centre_HP_load_scalar() const {
@@ -167,10 +147,6 @@ public:
 
 	year_TS getActual_Data_Centre_load() const {
 		return mActual_Data_Centre_load;
-	}
-
-	year_TS getActual_ASHP_load() const {
-		return mActual_ASHP_load;
 	}
 
 	float getHeadroomL1() const {
