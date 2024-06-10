@@ -63,17 +63,8 @@ public:
 
 	void calculateActual_Data_Centre_ASHP_load(const year_TS& Pre_flex_shortfall, const year_TS& Target_Data_Centre_ASHP_load)
 	{
-		for (int index = 0; index < mTimesteps; index++) {
-			if (Pre_flex_shortfall[index] > Target_Data_Centre_ASHP_load[index])
-			{
-				mActual_Data_Centre_ASHP_load[index] = 0;
-			}
-			else 
-			{
-				mActual_Data_Centre_ASHP_load[index] = Target_Data_Centre_ASHP_load[index] - Pre_flex_shortfall[index];
-			}
-
-		}
+		// (Target_Data_Centre_ASHP_load - Pre_flex_shortfall) when this is positive, else 0
+		mActual_Data_Centre_ASHP_load = (Target_Data_Centre_ASHP_load - Pre_flex_shortfall).cwiseMax(0);
 	}
 
 	void calculateLoads(const Hload& hload, const ESS& ess, const year_TS& rgen_total, const TaskData& taskData) {
