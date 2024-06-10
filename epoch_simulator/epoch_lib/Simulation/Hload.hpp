@@ -56,16 +56,14 @@ public:
 
 		calculateASHPcolumn_index(historicalData, taskData);
 
-		//if (taskData.ASHP_HSource == 1)
-	//	{
+		if (mHeatpumpHeatSource == HeatpumpHeatSource::AMBIENT_AIR)
+		{
 			calculateMaxHeatpumpOutputAmbientAir(historicalData, taskData);
-			//float sum = mMaxHeatpumpOutputAmbientAir.sum(); // check this calculated correctly
-	//	}
-	//	if (taskData.ASHP_HSource == 2)
-	//	{
+		}
+		else if (mHeatpumpHeatSource == HeatpumpHeatSource::HOTROOM)
+		{
 			calculateMaxHeatpumpOutputHotroomAir(historicalData, taskData);
-			//float sum2 = mMaxHeatpumpOutputHotroomAir.sum(); //check this calculated correctly
-	//	}
+		}
 		
 		calculateMaxHeatpumpELoad(historicalData, taskData);
 
@@ -89,7 +87,7 @@ public:
 
 	void calculateTarget_Data_centre_ASHP_load(const TaskData& taskData)
 	{
-		mTargetDatacentreASHPload = mMaxHeatpumpELoad.cwiseProduct(getASHPTargetLoading()).array() + taskData.Flex_load_max;
+		mTargetDatacentreASHPload = mMaxHeatpumpELoad.array() * getASHPTargetLoading().array() + taskData.Flex_load_max;
 	}
 
 	void calculateASHPcolumn_index(const HistoricalData& historicalData, const TaskData& taskData)
