@@ -289,11 +289,11 @@ void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& re
 
 void writeObjectiveResultHeader(std::ofstream& outFile) {
 	outFile << "Parameter index" << ",";
-	outFile << "Annualised cost" << ",";
-	outFile << "Project CAPEX" << ",";
-	outFile << "Scenario Balance (£)" << ",";
-	outFile << "Payback horizon (yrs)" << ",";
-	outFile << "Scenario Carbon Balance (kgC02e)";
+	outFile << "annualised_cost" << ",";
+	outFile << "capex" << ",";
+	outFile << "cost_balance" << ",";
+	outFile << "payback_horizon" << ",";
+	outFile << "carbon_balance";
 
 	// deliberately omit the comma for carbon balance
 	// to allow the loop to have a comma for each entry (before)
