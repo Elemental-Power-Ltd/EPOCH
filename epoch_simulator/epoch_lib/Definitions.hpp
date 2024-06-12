@@ -8,6 +8,8 @@
 
 // Elemental Power definitions
 
+constexpr std::string EPOCH_VERSION = "0.2.0";
+
 using year_TS = Eigen::VectorXf;
 
 struct SimulationResult {

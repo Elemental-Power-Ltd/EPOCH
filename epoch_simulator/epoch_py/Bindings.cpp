@@ -4,9 +4,12 @@
 
 #include "Simulate_py.hpp"
 #include "../epoch_lib/Simulation/TaskData.hpp"
+#include "../epoch_lib/Definitions.hpp"
 
 
 PYBIND11_MODULE(epoch_simulator, m) {
+	m.attr("__version__") = EPOCH_VERSION;
+
 	pybind11::class_<Simulator_py>(m, "Simulator")
 		.def(pybind11::init<>())
 		.def("simulate_scenario", &Simulator_py::simulateScenario);

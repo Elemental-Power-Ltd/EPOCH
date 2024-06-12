@@ -1,6 +1,8 @@
 #include <argparse/argparse.hpp>
 #include <spdlog/spdlog.h>
 
+#include "../epoch_lib/Definitions.hpp"
+
 struct CommandlineArgs {
 	std::string inputDir;
 	std::string outputDir;
@@ -10,7 +12,7 @@ struct CommandlineArgs {
 
 
 CommandlineArgs handleArgs(int argc, char* argv[]) {
-	argparse::ArgumentParser argParser("Epoch");
+	argparse::ArgumentParser argParser("Epoch", EPOCH_VERSION);
 
 	argParser.add_argument("--input", "-i")
 		.help("The directory containing all input files")
