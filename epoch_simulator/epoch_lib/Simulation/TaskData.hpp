@@ -39,7 +39,7 @@ public:
             { "ScalarHL1",&ScalarHL1 }, { "ASHP_HPower", &ASHP_HPower }, { "ASHP_RadTemp", &ASHP_RadTemp }, { "ASHP_HotTemp", &ASHP_HotTemp },
             { "GridImport",&GridImport }, { "GridExport",&GridExport }, { "Import_headroom",&Import_headroom }, { "Export_headroom",&Export_headroom }, {"Min_power_factor",&Min_power_factor},
             { "ESS_charge_power",&ESS_charge_power }, { "ESS_discharge_power",&ESS_discharge_power }, {"ESS_capacity",&ESS_capacity}, {"ESS_start_SoC",&ESS_start_SoC},
-            { "export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit }}),
+            { "Export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit }}),
         param_map_int({{ "s7_EV_CP_number",&s7_EV_CP_number }, { "f22_EV_CP_number",&f22_EV_CP_number }, { "r50_EV_CP_number",&r50_EV_CP_number }, { "u150_EV_CP_number",&u150_EV_CP_number},
             { "ASHP_HSource", &ASHP_HSource },
             {"ESS_charge_mode",&ESS_charge_mode}, {"ESS_discharge_mode",&ESS_discharge_mode}, {"target_max_concurrency",&target_max_concurrency }})

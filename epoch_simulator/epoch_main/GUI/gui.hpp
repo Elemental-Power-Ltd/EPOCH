@@ -1036,7 +1036,7 @@ InputValues readInputFromForm() {
 	int ESS_discharge_mode_lower = static_cast<int>(_wtoi(buffer93));
 	int ESS_discharge_mode_upper = static_cast<int>(_wtoi(buffer94));
 
-	float export_kWh_price = static_cast<float>(_wtof(buffer95));
+	float Export_kWh_price = static_cast<float>(_wtof(buffer95));
 
 	float time_budget_min = static_cast<float>(_wtof(buffer96));
 
@@ -1077,7 +1077,7 @@ InputValues readInputFromForm() {
 		ESS_start_SoC_lower, ESS_start_SoC_upper, ESS_start_SoC_step,
 		ESS_charge_mode_lower, ESS_charge_mode_upper,
 		ESS_discharge_mode_lower, ESS_discharge_mode_upper,
-		export_kWh_price,
+		Export_kWh_price,
 		time_budget_min, target_max_concurrency,
 		CAPEX_limit, OPEX_limit
 	};
@@ -1451,7 +1451,7 @@ void writeRecallValuesToForm(const OutputValues& output) {
 	swprintf_s(buffer, 300, L"%s", L"_");
 	SetWindowText(hTextbox94, buffer);
 
-	swprintf_s(buffer, 300, L"%f", output.export_kWh_price);
+	swprintf_s(buffer, 300, L"%f", output.Export_kWh_price);
 	SetWindowText(hTextbox95, buffer);
 
 	swprintf_s(buffer, 300, L"%s", L"_");

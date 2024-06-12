@@ -120,7 +120,7 @@ struct OutputValues {
 	float GridImport; float GridExport; float Import_headroom; float Export_headroom; float Min_power_factor;
 	float ESS_charge_power; float ESS_discharge_power; float ESS_capacity;  float ESS_start_SoC;
 	int ESS_charge_mode; int ESS_discharge_mode;
-	float export_kWh_price;
+	float Export_kWh_price;
 	float CAPEX; float annualised; float scenario_cost_balance; float payback_horizon; float scenario_carbon_balance;
 	uint64_t CAPEX_index; uint64_t annualised_index; uint64_t scenario_cost_balance_index; uint64_t payback_horizon_index; uint64_t scenario_carbon_balance_index;
 	uint64_t scenario_index;
@@ -160,7 +160,7 @@ struct InputValues {
 	float ESS_start_SoC_lower; float ESS_start_SoC_upper; float ESS_start_SoC_step;
 	int ESS_charge_mode_lower; int ESS_charge_mode_upper;
 	int ESS_discharge_mode_lower; int ESS_discharge_mode_upper;
-	float export_kWh_price;
+	float Export_kWh_price;
 	float time_budget_min; int target_max_concurrency;
 	float CAPEX_limit; float OPEX_limit;
 };
