@@ -6,9 +6,12 @@
 
 #include "Simulate_py.hpp"
 #include "../epoch_lib/Simulation/TaskData.hpp"
+#include "../epoch_lib/Definitions.hpp"
 
 
 PYBIND11_MODULE(epoch_simulator, m) {
+	m.attr("__version__") = EPOCH_VERSION;
+
 	pybind11::class_<Simulator_py>(m, "Simulator")
 		.def(
 			pybind11::init<const std::string&, const std::string&, const std::string&>(),
@@ -27,24 +30,28 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("ScalarRG2", &TaskData::ScalarRG2)
 		.def_readwrite("ScalarRG3", &TaskData::ScalarRG3)
 		.def_readwrite("ScalarRG4", &TaskData::ScalarRG4)
+		.def_readwrite("ScalarHYield", &TaskData::ScalarHYield)
+		.def_readwrite("s7_EV_CP_number", &TaskData::s7_EV_CP_number)
+		.def_readwrite("f22_EV_CP_number", &TaskData::f22_EV_CP_number)
+		.def_readwrite("r50_EV_CP_number", &TaskData::r50_EV_CP_number)
+		.def_readwrite("u150_EV_CP_number", &TaskData::u150_EV_CP_number)
+		.def_readwrite("EV_flex", &TaskData::EV_flex)
+		.def_readwrite("ASHP_HPower", &TaskData::ASHP_HPower)
+		.def_readwrite("ASHP_HSource", &TaskData::ASHP_HSource)
+		.def_readwrite("ASHP_RadTemp", &TaskData::ASHP_RadTemp)
+		.def_readwrite("ASHP_HotTemp", &TaskData::ASHP_HotTemp)
 		.def_readwrite("ScalarHL1", &TaskData::ScalarHL1)
-		.def_readwrite("ScalarHYield1", &TaskData::ScalarHYield1)
-		.def_readwrite("ScalarHYield2", &TaskData::ScalarHYield2)
-		.def_readwrite("ScalarHYield3", &TaskData::ScalarHYield3)
-		.def_readwrite("ScalarHYield4", &TaskData::ScalarHYield4)
 		.def_readwrite("GridImport", &TaskData::GridImport)
 		.def_readwrite("GridExport", &TaskData::GridExport)
 		.def_readwrite("Import_headroom", &TaskData::Import_headroom)
 		.def_readwrite("Export_headroom", &TaskData::Export_headroom)
+		.def_readwrite("Min_power_factor", &TaskData::Min_power_factor)
 		.def_readwrite("ESS_charge_power", &TaskData::ESS_charge_power)
 		.def_readwrite("ESS_discharge_power", &TaskData::ESS_discharge_power)
 		.def_readwrite("ESS_capacity", &TaskData::ESS_capacity)
-		.def_readwrite("ESS_RTE", &TaskData::ESS_RTE)
-		.def_readwrite("ESS_aux_load", &TaskData::ESS_aux_load)
 		.def_readwrite("ESS_start_SoC", &TaskData::ESS_start_SoC)
 		.def_readwrite("ESS_charge_mode", &TaskData::ESS_charge_mode)
 		.def_readwrite("ESS_discharge_mode", &TaskData::ESS_discharge_mode)
-		.def_readwrite("Import_kWh_price", &TaskData::Import_kWh_price)
 		.def_readwrite("Export_kWh_price", &TaskData::Export_kWh_price)
 		.def_readwrite("time_budget_min", &TaskData::time_budget_min)
 		.def_readwrite("target_max_concurrency", &TaskData::target_max_concurrency)

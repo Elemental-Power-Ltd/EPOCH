@@ -20,23 +20,32 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
-	Eload MountEload{historicalData, taskData};
 	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
-	// Final ESUM (electrical acitivity) is Total load minus Rgen
-	year_TS ESUM = MountEload.getTotalLoad() - RGen_total;
 
-	ESS MountBESS{ taskData };
+	Hload MountHload{ historicalData, taskData }; // initialise Hload based on historical data and taskdata
+	Grid MountGrid{ taskData }; //initialise Grid based on taskdata
+
+	MountHload.performHeatCalculations(historicalData, taskData);
+	
+	Eload MountEload{ historicalData, taskData }; // initialise Eload based on historical data and taskdata
+
+	ESS MountBESS{ taskData }; //initialise ESS based on taskdata
+
+	MountEload.calculateLoads(MountHload, MountBESS, RGen_total, taskData);
+	
+	year_TS ESUM = MountEload.getTotal_target_load_fixed_flex() - RGen_total;
+
 	MountBESS.initialise(ESUM[0]);
 	MountBESS.runTimesteps(ESUM);
 
-	Grid MountGrid{ taskData };
-	MountGrid.performGridCalculations(ESUM, MountBESS);
+	MountGrid.performGridCalculations(ESUM, MountBESS, MountHload, MountEload.getHeadroomL1());
 
-	Hload MountHload{ historicalData, taskData };
-	MountHload.performHeatCalculations(historicalData, taskData, MountGrid);
+	MountEload.calculateElectricHeat(MountGrid, MountHload, taskData);
+
+	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
 
 	Costs myCost(taskData);
-	myCost.calculateCosts(MountEload, MountHload, MountGrid);
+	myCost.calculateCosts(MountEload, MountHload, MountGrid, MountBESS);
 
 	//Data reporting
 
@@ -66,7 +75,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
 		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
 		fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
-		fullSimulationResult.Heat_surplus = MountHload.getHeatSurplus();
+		fullSimulationResult.Heat_surplus = MountHload.getEHeatSurplus();
 	}
 
 

@@ -8,6 +8,9 @@
 #include "../Definitions.hpp"
 
 
+constexpr float DEFAULT_ESS_RTE = 0.86f;
+
+
 class ESS {
 
 public:
@@ -15,8 +18,7 @@ public:
         mChargePower(taskData.ESS_charge_power),
         mDischargePower(taskData.ESS_discharge_power),
         mCapacity(taskData.ESS_capacity),
-        mRTE(taskData.ESS_RTE),
-        mAuxLoad(taskData.ESS_aux_load),
+        mRTE(DEFAULT_ESS_RTE),
         mStartSoC(taskData.ESS_start_SoC),
 
         mTimesteps(taskData.calculate_timesteps()),
@@ -34,6 +36,7 @@ public:
         mAvailableChargePower(Eigen::VectorXf::Zero(mTimesteps)),
         mAvailableDischargePower(Eigen::VectorXf::Zero(mTimesteps))
     {
+        calculateAuxLoad();
     }
 
     //These are steps on ESS tab for Opportunitic BESS alg # 1 (Charge mode from Rgen/ Discharge mode = Before grid) 
@@ -216,6 +219,11 @@ public:
         mResultingSoC[timestep] = ESS_end_SoC_energy;
     }
 
+    void calculateAuxLoad() {
+        float mAuxLoad_float = mCapacity/1200;
+        mAuxLoad = Eigen::VectorXf::Constant(mTimesteps, mAuxLoad_float);
+    }
+
     year_TS getESSAvailableDischargePower() const {
         return mAvailableDischargePower;
     }
@@ -240,13 +248,15 @@ public:
         return mResultingSoC;
     }
 
+    year_TS getAuxLoad() const {
+        return mAuxLoad;
+    }
 
 private:
     const float mChargePower;
     const float mDischargePower;
     const float mCapacity;
     const float mRTE;
-    const float mAuxLoad;
     const float mStartSoC;
 
     const int mTimesteps;
@@ -262,5 +272,5 @@ private:
     year_TS mAvailableChargePower;
     year_TS mAvailableDischargePower;
     year_TS mResultingSoC;
-
+    year_TS mAuxLoad;
 };

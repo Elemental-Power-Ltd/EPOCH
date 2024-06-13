@@ -28,25 +28,29 @@ MemberMapping memberMappings[] = {
 	MEMBER_MAPPING_FLOAT(ScalarRG2_lower), MEMBER_MAPPING_FLOAT(ScalarRG2_upper), MEMBER_MAPPING_FLOAT(ScalarRG2_step),
 	MEMBER_MAPPING_FLOAT(ScalarRG3_lower), MEMBER_MAPPING_FLOAT(ScalarRG3_upper), MEMBER_MAPPING_FLOAT(ScalarRG3_step),
 	MEMBER_MAPPING_FLOAT(ScalarRG4_lower), MEMBER_MAPPING_FLOAT(ScalarRG4_upper), MEMBER_MAPPING_FLOAT(ScalarRG4_step),
+	MEMBER_MAPPING_FLOAT(ScalarHYield_lower), MEMBER_MAPPING_FLOAT(ScalarHYield_upper), MEMBER_MAPPING_FLOAT(ScalarHYield_step),
+	MEMBER_MAPPING_INT(s7_EV_CP_number_lower), MEMBER_MAPPING_INT(s7_EV_CP_number_upper), MEMBER_MAPPING_INT(s7_EV_CP_number_step),
+	MEMBER_MAPPING_INT(f22_EV_CP_number_lower), MEMBER_MAPPING_INT(f22_EV_CP_number_upper), MEMBER_MAPPING_INT(f22_EV_CP_number_step),
+	MEMBER_MAPPING_INT(r50_EV_CP_number_lower), MEMBER_MAPPING_INT(r50_EV_CP_number_upper), MEMBER_MAPPING_INT(r50_EV_CP_number_step),
+	MEMBER_MAPPING_INT(u150_EV_CP_number_lower), MEMBER_MAPPING_INT(u150_EV_CP_number_upper),MEMBER_MAPPING_INT(u150_EV_CP_number_step),
+	MEMBER_MAPPING_FLOAT(EV_flex_lower), MEMBER_MAPPING_FLOAT(EV_flex_upper), MEMBER_MAPPING_FLOAT(EV_flex_step),
 	MEMBER_MAPPING_FLOAT(ScalarHL1_lower), MEMBER_MAPPING_FLOAT(ScalarHL1_upper), MEMBER_MAPPING_FLOAT(ScalarHL1_step),
-	MEMBER_MAPPING_FLOAT(ScalarHYield1_lower), MEMBER_MAPPING_FLOAT(ScalarHYield1_upper), MEMBER_MAPPING_FLOAT(ScalarHYield1_step),
-	MEMBER_MAPPING_FLOAT(ScalarHYield2_lower), MEMBER_MAPPING_FLOAT(ScalarHYield2_upper), MEMBER_MAPPING_FLOAT(ScalarHYield2_step),
-	MEMBER_MAPPING_FLOAT(ScalarHYield3_lower), MEMBER_MAPPING_FLOAT(ScalarHYield3_upper), MEMBER_MAPPING_FLOAT(ScalarHYield3_step),
-	MEMBER_MAPPING_FLOAT(ScalarHYield4_lower), MEMBER_MAPPING_FLOAT(ScalarHYield4_upper), MEMBER_MAPPING_FLOAT(ScalarHYield4_step),
+	MEMBER_MAPPING_FLOAT(ASHP_HPower_lower), MEMBER_MAPPING_FLOAT(ASHP_HPower_upper), MEMBER_MAPPING_FLOAT(ASHP_HPower_step),
+	MEMBER_MAPPING_INT(ASHP_HSource_lower), MEMBER_MAPPING_INT(ASHP_HSource_upper), MEMBER_MAPPING_INT(ASHP_HSource_step),
+	MEMBER_MAPPING_FLOAT(ASHP_RadTemp_lower), MEMBER_MAPPING_FLOAT(ASHP_RadTemp_upper), MEMBER_MAPPING_FLOAT(ASHP_RadTemp_step),
+	MEMBER_MAPPING_FLOAT(ASHP_HotTemp_lower), MEMBER_MAPPING_FLOAT(ASHP_HotTemp_upper), MEMBER_MAPPING_FLOAT(ASHP_HotTemp_step),
 	MEMBER_MAPPING_FLOAT(GridImport_lower), MEMBER_MAPPING_FLOAT(GridImport_upper), MEMBER_MAPPING_FLOAT(GridImport_step),
 	MEMBER_MAPPING_FLOAT(GridExport_lower), MEMBER_MAPPING_FLOAT(GridExport_upper), MEMBER_MAPPING_FLOAT(GridExport_step),
 	MEMBER_MAPPING_FLOAT(Import_headroom_lower), MEMBER_MAPPING_FLOAT(Import_headroom_upper), MEMBER_MAPPING_FLOAT(Import_headroom_step),
 	MEMBER_MAPPING_FLOAT(Export_headroom_lower), MEMBER_MAPPING_FLOAT(Export_headroom_upper), MEMBER_MAPPING_FLOAT(Export_headroom_step),
+	MEMBER_MAPPING_FLOAT(Min_power_factor_lower), MEMBER_MAPPING_FLOAT(Min_power_factor_upper), MEMBER_MAPPING_FLOAT(Min_power_factor_step),
 	MEMBER_MAPPING_FLOAT(ESS_charge_power_lower), MEMBER_MAPPING_FLOAT(ESS_charge_power_upper), MEMBER_MAPPING_FLOAT(ESS_charge_power_step),
 	MEMBER_MAPPING_FLOAT(ESS_discharge_power_lower), MEMBER_MAPPING_FLOAT(ESS_discharge_power_upper), MEMBER_MAPPING_FLOAT(ESS_discharge_power_step),
 	MEMBER_MAPPING_FLOAT(ESS_capacity_lower), MEMBER_MAPPING_FLOAT(ESS_capacity_upper), MEMBER_MAPPING_FLOAT(ESS_capacity_step),
-	MEMBER_MAPPING_FLOAT(ESS_RTE_lower), MEMBER_MAPPING_FLOAT(ESS_RTE_upper), MEMBER_MAPPING_FLOAT(ESS_RTE_step),
-	MEMBER_MAPPING_FLOAT(ESS_aux_load_lower), MEMBER_MAPPING_FLOAT(ESS_aux_load_upper), MEMBER_MAPPING_FLOAT(ESS_aux_load_step),
 	MEMBER_MAPPING_FLOAT(ESS_start_SoC_lower), MEMBER_MAPPING_FLOAT(ESS_start_SoC_upper), MEMBER_MAPPING_FLOAT(ESS_start_SoC_step),
 	MEMBER_MAPPING_INT(ESS_charge_mode_lower), MEMBER_MAPPING_INT(ESS_charge_mode_upper),
 	MEMBER_MAPPING_INT(ESS_discharge_mode_lower), MEMBER_MAPPING_INT(ESS_discharge_mode_upper),
-	MEMBER_MAPPING_FLOAT(import_kWh_price),
-	MEMBER_MAPPING_FLOAT(export_kWh_price),
+	MEMBER_MAPPING_FLOAT(Export_kWh_price),
 	MEMBER_MAPPING_FLOAT(time_budget_min), MEMBER_MAPPING_INT(target_max_concurrency),
 	MEMBER_MAPPING_FLOAT(CAPEX_limit), MEMBER_MAPPING_FLOAT(OPEX_limit)
 };
@@ -66,19 +70,20 @@ OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_UINT64(num_scenarios),
 	OUT_MEMBER_MAPPING_FLOAT(time_taken),
 	OUT_MEMBER_MAPPING_FLOAT(Fixed_load1_scalar), OUT_MEMBER_MAPPING_FLOAT(Fixed_load2_scalar), OUT_MEMBER_MAPPING_FLOAT(Flex_load_max), OUT_MEMBER_MAPPING_FLOAT(Mop_load_max),
-	OUT_MEMBER_MAPPING_FLOAT(ScalarRG1), OUT_MEMBER_MAPPING_FLOAT(ScalarRG2), OUT_MEMBER_MAPPING_FLOAT(ScalarRG3), OUT_MEMBER_MAPPING_FLOAT(ScalarRG4),
-	OUT_MEMBER_MAPPING_FLOAT(ScalarHL1), OUT_MEMBER_MAPPING_FLOAT(ScalarHYield1), OUT_MEMBER_MAPPING_FLOAT(ScalarHYield2), OUT_MEMBER_MAPPING_FLOAT(ScalarHYield3), OUT_MEMBER_MAPPING_FLOAT(ScalarHYield4),
-	OUT_MEMBER_MAPPING_FLOAT(GridImport), OUT_MEMBER_MAPPING_FLOAT(GridExport), OUT_MEMBER_MAPPING_FLOAT(Import_headroom), OUT_MEMBER_MAPPING_FLOAT(Export_headroom),
-	OUT_MEMBER_MAPPING_FLOAT(ESS_charge_power), OUT_MEMBER_MAPPING_FLOAT(ESS_discharge_power), OUT_MEMBER_MAPPING_FLOAT(ESS_capacity), OUT_MEMBER_MAPPING_FLOAT(ESS_RTE), OUT_MEMBER_MAPPING_FLOAT(ESS_aux_load), OUT_MEMBER_MAPPING_FLOAT(ESS_start_SoC),
+	OUT_MEMBER_MAPPING_FLOAT(ScalarRG1), OUT_MEMBER_MAPPING_FLOAT(ScalarRG2), OUT_MEMBER_MAPPING_FLOAT(ScalarRG3), OUT_MEMBER_MAPPING_FLOAT(ScalarRG4), OUT_MEMBER_MAPPING_FLOAT(ScalarHYield),
+	OUT_MEMBER_MAPPING_INT(s7_EV_CP_number), OUT_MEMBER_MAPPING_INT(f22_EV_CP_number), OUT_MEMBER_MAPPING_INT(r50_EV_CP_number), OUT_MEMBER_MAPPING_INT(u150_EV_CP_number), OUT_MEMBER_MAPPING_FLOAT(EV_flex),
+	OUT_MEMBER_MAPPING_FLOAT(GridImport), OUT_MEMBER_MAPPING_FLOAT(GridExport), OUT_MEMBER_MAPPING_FLOAT(Import_headroom), OUT_MEMBER_MAPPING_FLOAT(Export_headroom), OUT_MEMBER_MAPPING_FLOAT(Min_power_factor),
+	OUT_MEMBER_MAPPING_FLOAT(ScalarHL1), OUT_MEMBER_MAPPING_FLOAT(ASHP_HPower), OUT_MEMBER_MAPPING_FLOAT(ASHP_HSource), OUT_MEMBER_MAPPING_FLOAT(ASHP_RadTemp), OUT_MEMBER_MAPPING_FLOAT(ASHP_HotTemp),
+	OUT_MEMBER_MAPPING_FLOAT(ESS_charge_power), OUT_MEMBER_MAPPING_FLOAT(ESS_discharge_power), OUT_MEMBER_MAPPING_FLOAT(ESS_capacity), OUT_MEMBER_MAPPING_FLOAT(ESS_start_SoC),
 	OUT_MEMBER_MAPPING_INT(ESS_charge_mode), OUT_MEMBER_MAPPING_INT(ESS_discharge_mode),
-	OUT_MEMBER_MAPPING_FLOAT(import_kWh_price), OUT_MEMBER_MAPPING_FLOAT(export_kWh_price),
+	OUT_MEMBER_MAPPING_FLOAT(Export_kWh_price),
 	OUT_MEMBER_MAPPING_FLOAT(CAPEX), OUT_MEMBER_MAPPING_FLOAT(annualised), OUT_MEMBER_MAPPING_FLOAT(scenario_cost_balance), OUT_MEMBER_MAPPING_FLOAT(payback_horizon), OUT_MEMBER_MAPPING_FLOAT(scenario_carbon_balance),
 	OUT_MEMBER_MAPPING_UINT64(CAPEX_index), OUT_MEMBER_MAPPING_UINT64(annualised_index), OUT_MEMBER_MAPPING_UINT64(scenario_cost_balance_index), OUT_MEMBER_MAPPING_UINT64(payback_horizon_index), OUT_MEMBER_MAPPING_UINT64(scenario_carbon_balance_index),
 	OUT_MEMBER_MAPPING_UINT64(scenario_index),
 	OUT_MEMBER_MAPPING_UINT64(num_scenarios), OUT_MEMBER_MAPPING_FLOAT(est_hours), OUT_MEMBER_MAPPING_FLOAT(est_seconds)
 };
 
-std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column) {
+std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column, bool skipHeader) {
 	std::ifstream file(filename);
 	std::vector<float> columnValues;
 	std::string line;
@@ -88,8 +93,10 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 		throw FileReadException(filename.filename().string());
 	}
 
-	// Skip the header row
-	std::getline(file, line);
+	if (skipHeader) {
+		// Ignore the first line
+		std::getline(file, line);
+	}
 
 	while (std::getline(file, line)) {
 
@@ -138,6 +145,58 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 
 	return columnValues;
 }
+
+// Read a column from a CSV file, ignoring the first entry
+std::vector<float> readCSVColumnAndSkipHeader(const std::filesystem::path& filename, int column)
+{
+	return readCSVColumn(filename, column, true);
+}
+
+// Read a column from a CSV file, including the first entry
+std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filename, int column)
+{
+	return readCSVColumn(filename, column, false);
+}
+
+// Function to read a specific row from a CSV file
+std::vector<float> readCSVrow(const std::filesystem::path& filename, int row) {
+	std::ifstream file(filename);
+	std::vector<float> rowData;
+	std::string line;
+	int currentRow = 0;
+
+	// Check if the file is open
+	if (!file.is_open()) {
+		throw FileReadException(filename.filename().string());
+	}
+
+	// Read file line by line
+	while (std::getline(file, line)) {
+		if (currentRow == row) {
+			std::stringstream ss(line);
+			std::string cell;
+
+			// Parse the line into double values
+			while (std::getline(ss, cell, ',')) {
+				rowData.push_back(std::stod(cell));
+			}
+
+			break; // Stop reading after the desired row is found
+		}
+		currentRow++;
+	}
+
+	file.close();
+	return rowData;
+}
+
+void printVector(const std::vector<float>& vec) {
+	for (float value : vec) {
+		spdlog::info("vector value {}", value);
+	}
+	
+}
+
 
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results)
 {
@@ -230,11 +289,11 @@ void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& re
 
 void writeObjectiveResultHeader(std::ofstream& outFile) {
 	outFile << "Parameter index" << ",";
-	outFile << "Annualised cost" << ",";
-	outFile << "Project CAPEX" << ",";
-	outFile << "Scenario Balance (£)" << ",";
-	outFile << "Payback horizon (yrs)" << ",";
-	outFile << "Scenario Carbon Balance (kgC02e)";
+	outFile << "annualised_cost" << ",";
+	outFile << "capex" << ",";
+	outFile << "cost_balance" << ",";
+	outFile << "payback_horizon" << ",";
+	outFile << "carbon_balance";
 
 	// deliberately omit the comma for carbon balance
 	// to allow the loop to have a comma for each entry (before)
@@ -267,22 +326,26 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	outFile << taskData.ScalarRG2 << ",";
 	outFile << taskData.ScalarRG3 << ",";
 	outFile << taskData.ScalarRG4 << ",";
+	outFile << taskData.ScalarHYield << ",";
+	outFile << taskData.s7_EV_CP_number << ",";
+	outFile << taskData.f22_EV_CP_number << ",";
+	outFile << taskData.r50_EV_CP_number << ",";
+	outFile << taskData.u150_EV_CP_number << ",";
+	outFile << taskData.EV_flex << ",";
 	outFile << taskData.ScalarHL1 << ",";
-	outFile << taskData.ScalarHYield1 << ",";
-	outFile << taskData.ScalarHYield2 << ",";
-	outFile << taskData.ScalarHYield3 << ",";
-	outFile << taskData.ScalarHYield4 << ",";
+	outFile << taskData.ASHP_HPower << ",";
+	outFile << taskData.ASHP_HSource << ",";
+	outFile << taskData.ASHP_RadTemp << ",";
+	outFile << taskData.ASHP_HotTemp << ",";
 	outFile << taskData.GridImport << ",";
 	outFile << taskData.GridExport << ",";
 	outFile << taskData.Import_headroom << ",";
 	outFile << taskData.Export_headroom << ",";
+	outFile << taskData.Min_power_factor << ",";
 	outFile << taskData.ESS_charge_power << ",";
 	outFile << taskData.ESS_discharge_power << ",";
 	outFile << taskData.ESS_capacity << ",";
-	outFile << taskData.ESS_RTE << ",";
-	outFile << taskData.ESS_aux_load << ",";
 	outFile << taskData.ESS_start_SoC << ",";
-	outFile << taskData.Import_kWh_price << ",";
 	outFile << taskData.Export_kWh_price << ",";
 	outFile << taskData.time_budget_min << ",";
 	outFile << taskData.CAPEX_limit << ",";
@@ -408,19 +471,52 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	std::filesystem::path eloadFilepath = fileConfig.getEloadFilepath();
 
 	//read the electric load data
-	std::vector<float> hotel_eload_data = readCSVColumn(eloadFilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> ev_eload_data = readCSVColumn(eloadFilepath, 5); // read the column of the CSV data and store in vector data
+	std::vector<float> hotel_eload_data = readCSVColumnAndSkipHeader(eloadFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> ev_eload_data = readCSVColumnAndSkipHeader(eloadFilepath, 5); // read the column of the CSV data and store in vector data
 
 	//read the heat load data
 	std::filesystem::path hloadFilepath = fileConfig.getHloadFilepath();
-	std::vector<float> heatload_data = readCSVColumn(hloadFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> heatload_data = readCSVColumnAndSkipHeader(hloadFilepath, 4); // read the column of the CSV data and store in vector data
 
 	//read the renewable generation data
 	std::filesystem::path rgenFilepath = fileConfig.getRgenFilepath();
-	std::vector<float> RGen_data_1 = readCSVColumn(rgenFilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> RGen_data_2 = readCSVColumn(rgenFilepath, 5);
-	std::vector<float> RGen_data_3 = readCSVColumn(rgenFilepath, 6);
-	std::vector<float> RGen_data_4 = readCSVColumn(rgenFilepath, 7);
+	std::vector<float> RGen_data_1 = readCSVColumnAndSkipHeader(rgenFilepath, 4); // read the column of the CSV data and store in vector data
+	std::vector<float> RGen_data_2 = readCSVColumnAndSkipHeader(rgenFilepath, 5);
+	std::vector<float> RGen_data_3 = readCSVColumnAndSkipHeader(rgenFilepath, 6);
+	std::vector<float> RGen_data_4 = readCSVColumnAndSkipHeader(rgenFilepath, 7);
+
+	//read in the air temperature data
+	std::filesystem::path airtempFilepath = fileConfig.getAirtempFilepath();
+	std::vector<float> airtemp_data = readCSVColumnAndSkipHeader(airtempFilepath, 4);
+
+	//read in the import tariff data
+	std::filesystem::path importtariffFilepath = fileConfig.getImporttariffFilepath();
+	std::vector<float> importtariff_data = readCSVColumnAndSkipHeader(importtariffFilepath, 4);
+
+	//read in the GridCO2 data
+	std::filesystem::path gridCO2Filepath = fileConfig.getGridCO2Filepath();
+	std::vector<float> gridCO2_data = readCSVColumnAndSkipHeader(gridCO2Filepath, 4);
+
+	//read in the ASHP data
+	std::filesystem::path ASHPinputFilepath = fileConfig.getASHPinputFilepath();
+	
+	std::vector<std::vector<float>> ASHPinputtable;
+	
+	for (int column = 1; column <= 11; column++)
+	{
+		std::vector<float> vec = readCSVColumnWithoutSkip(ASHPinputFilepath, column);
+		ASHPinputtable.emplace_back(vec);
+	};
+		
+	std::filesystem::path ASHPoutputFilepath = fileConfig.getASHPoutputFilepath();
+
+	std::vector<std::vector<float>> ASHPoutputtable;
+
+	for (int column = 1; column <= 11; column++)
+	{
+		std::vector<float> vec = readCSVColumnWithoutSkip(ASHPoutputFilepath, column);
+		ASHPoutputtable.emplace_back(vec);
+	};
 
 	return {
 	   toEigen(hotel_eload_data),
@@ -429,7 +525,12 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	   toEigen(RGen_data_1),
 	   toEigen(RGen_data_2),
 	   toEigen(RGen_data_3),
-	   toEigen(RGen_data_4)
+	   toEigen(RGen_data_4),
+	   toEigen(airtemp_data),
+	   toEigen(importtariff_data),
+	   toEigen(gridCO2_data),
+	   ASHPinputtable,
+	   ASHPoutputtable
 	};
 }
 
@@ -443,4 +544,5 @@ Eigen::VectorXf toEigen(const std::vector<float>& vec)
 
 	return eig;
 }
-	
+
+

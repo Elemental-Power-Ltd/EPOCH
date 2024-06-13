@@ -8,6 +8,8 @@
 
 // Elemental Power definitions
 
+constexpr std::string EPOCH_VERSION = "0.2.0";
+
 using year_TS = Eigen::VectorXf;
 
 struct SimulationResult {
@@ -112,12 +114,13 @@ struct OutputValues {
 	float meanVal;
 	float time_taken;
 	float Fixed_load1_scalar; float Fixed_load2_scalar; float Flex_load_max; float Mop_load_max;
-	float ScalarRG1; float ScalarRG2; float ScalarRG3; float ScalarRG4;
-	float ScalarHL1; float ScalarHYield1; float ScalarHYield2; float ScalarHYield3; float ScalarHYield4;
-	float GridImport; float GridExport; float Import_headroom; float Export_headroom;
-	float ESS_charge_power; float ESS_discharge_power; float ESS_capacity; float ESS_RTE; float ESS_aux_load; float ESS_start_SoC;
+	float ScalarRG1; float ScalarRG2; float ScalarRG3; float ScalarRG4; float ScalarHYield;
+	int s7_EV_CP_number; int f22_EV_CP_number; int r50_EV_CP_number; int u150_EV_CP_number; float EV_flex;
+	float ScalarHL1; float ASHP_HPower; int ASHP_HSource; float ASHP_RadTemp; float ASHP_HotTemp;
+	float GridImport; float GridExport; float Import_headroom; float Export_headroom; float Min_power_factor;
+	float ESS_charge_power; float ESS_discharge_power; float ESS_capacity;  float ESS_start_SoC;
 	int ESS_charge_mode; int ESS_discharge_mode;
-	float import_kWh_price; float export_kWh_price;
+	float Export_kWh_price;
 	float CAPEX; float annualised; float scenario_cost_balance; float payback_horizon; float scenario_carbon_balance;
 	uint64_t CAPEX_index; uint64_t annualised_index; uint64_t scenario_cost_balance_index; uint64_t payback_horizon_index; uint64_t scenario_carbon_balance_index;
 	uint64_t scenario_index;
@@ -135,24 +138,29 @@ struct InputValues {
 	float ScalarRG2_lower; float ScalarRG2_upper; float ScalarRG2_step;
 	float ScalarRG3_lower; float ScalarRG3_upper; float ScalarRG3_step;
 	float ScalarRG4_lower; float ScalarRG4_upper; float ScalarRG4_step;
+	float ScalarHYield_lower; float ScalarHYield_upper; float ScalarHYield_step;
+	int s7_EV_CP_number_lower; int s7_EV_CP_number_upper; int s7_EV_CP_number_step;
+	int f22_EV_CP_number_lower; int f22_EV_CP_number_upper; int f22_EV_CP_number_step;
+	int r50_EV_CP_number_lower; int r50_EV_CP_number_upper; int r50_EV_CP_number_step;
+	int u150_EV_CP_number_lower; int u150_EV_CP_number_upper; int u150_EV_CP_number_step;
+	float EV_flex_lower; float EV_flex_upper; float EV_flex_step;
 	float ScalarHL1_lower; float ScalarHL1_upper; float ScalarHL1_step;
-	float ScalarHYield1_lower; float ScalarHYield1_upper; float ScalarHYield1_step;
-	float ScalarHYield2_lower; float ScalarHYield2_upper; float ScalarHYield2_step;
-	float ScalarHYield3_lower; float ScalarHYield3_upper; float ScalarHYield3_step;
-	float ScalarHYield4_lower; float ScalarHYield4_upper; float ScalarHYield4_step;
+	float ASHP_HPower_lower; float ASHP_HPower_upper; float ASHP_HPower_step;
+	int ASHP_HSource_lower; int ASHP_HSource_upper; int ASHP_HSource_step;
+	float ASHP_RadTemp_lower; float ASHP_RadTemp_upper; float ASHP_RadTemp_step;
+	float ASHP_HotTemp_lower; float ASHP_HotTemp_upper; float ASHP_HotTemp_step;
 	float GridImport_lower; float GridImport_upper; float GridImport_step;
 	float GridExport_lower; float GridExport_upper; float GridExport_step;
 	float Import_headroom_lower; float Import_headroom_upper; float Import_headroom_step;
 	float Export_headroom_lower; float Export_headroom_upper; float Export_headroom_step;
+	float Min_power_factor_lower; float Min_power_factor_upper; float Min_power_factor_step;
 	float ESS_charge_power_lower; float ESS_charge_power_upper; float ESS_charge_power_step;
 	float ESS_discharge_power_lower; float ESS_discharge_power_upper; float ESS_discharge_power_step;
 	float ESS_capacity_lower; float ESS_capacity_upper; float ESS_capacity_step;
-	float ESS_RTE_lower; float ESS_RTE_upper; float ESS_RTE_step;
-	float ESS_aux_load_lower; float ESS_aux_load_upper; float ESS_aux_load_step;
 	float ESS_start_SoC_lower; float ESS_start_SoC_upper; float ESS_start_SoC_step;
 	int ESS_charge_mode_lower; int ESS_charge_mode_upper;
 	int ESS_discharge_mode_lower; int ESS_discharge_mode_upper;
-	float import_kWh_price; float export_kWh_price;
+	float Export_kWh_price;
 	float time_budget_min; int target_max_concurrency;
 	float CAPEX_limit; float OPEX_limit;
 };
@@ -165,7 +173,14 @@ struct HistoricalData {
 	year_TS RGen_data_2;
 	year_TS RGen_data_3;
 	year_TS RGen_data_4;
+	year_TS airtemp_data;
+	year_TS importtariff_data;
+	year_TS gridCO2_data;
+	std::vector<std::vector<float>> ASHPinputtable;
+	std::vector<std::vector<float>> ASHPoutputtable;
+	
 };
+
 
 // Define a struct that represents the mapping between member names and pointers
 struct MemberMapping {

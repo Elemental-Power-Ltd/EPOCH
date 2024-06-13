@@ -14,6 +14,7 @@ TEST(EpochTestCase, MatchesKnownOutput) {
 	FileConfig fileConfig = FileConfig{
 		"KnownInput", "OutputData", "Config",
 		"CSVEload.csv", "CSVHload.csv", "CSVRGen.csv",
+		"CSVAirtemp.csv", "CSVImporttariff.csv", "CSVGridCO2.csv", "CSVASHPinput.csv", "CSVASHPoutput.csv",
 		"knownInput.json", "TestResults.csv", "TestOutputParameters.json", "TestOuputParametersFromInit.json"
 	};
 
@@ -31,18 +32,13 @@ TEST(EpochTestCase, MatchesKnownOutput) {
 	auto knownJson = readJsonFromFile(knownOutputFile);
 
 	EXPECT_EQ(testJson["CAPEX"], knownJson["CAPEX"]);
-	//EXPECT_EQ(testJson["CAPEX_index"], knownJson["CAPEX_index"]);
 
 	EXPECT_EQ(testJson["annualised"], knownJson["annualised"]);
-	//EXPECT_EQ(testJson["annualised_index"], knownJson["annualised_index"]);
 
 	EXPECT_EQ(testJson["scenario_cost_balance"], knownJson["scenario_cost_balance"]);
-	//EXPECT_EQ(testJson["scenario_cost_balance_index"], knownJson["scenario_cost_balance_index"]);
 
 	EXPECT_EQ(testJson["payback_horizon"], knownJson["payback_horizon"]);
-	//EXPECT_EQ(testJson["payback_horizon_index"], knownJson["payback_horizon_index"]);
 
 	EXPECT_EQ(testJson["scenario_carbon_balance"], knownJson["scenario_carbon_balance"]);
-	//EXPECT_EQ(testJson["scenario_carbon_balance_index"], knownJson["scenario_carbon_balance_index"]);
 
 }

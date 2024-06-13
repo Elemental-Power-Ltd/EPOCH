@@ -1,8 +1,10 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include "Assets.hpp"
+#include "Hload.hpp"
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
@@ -10,8 +12,9 @@ class Grid
 {
 public:
 	Grid(const TaskData& taskData): 
-		mMaxGridImport(taskData.GridImport),
-		mMaxGridExport(taskData.GridExport),
+		mMaxGridImportkVA(taskData.GridImport),
+		mMaxGridExportkVA(taskData.GridExport),
+		mMinPowerFactor(taskData.Min_power_factor),
 		mImportHeadroom(taskData.Import_headroom),
 		mExportHeadroom(taskData.Export_headroom),
 		mTimesteps(taskData.calculate_timesteps()),
@@ -31,13 +34,13 @@ public:
 		mActualLowPriorityLoad(Eigen::VectorXf::Zero(mTimesteps))
 	{}
 
-	void performGridCalculations(const year_TS& ESUM, const ESS& ess) {
+	void performGridCalculations(const year_TS& ESUM, const ESS& ess, const Hload& hload, float HeadroomL1) {
 
 		// calculate the pre-grid balance
 		mPreGridBalance = ESUM - ess.getESSDischarge() + ess.getESSCharge();
 
 		//Calculate Grid Import = IF(BB4>0,MIN(BB4,Grid_imp),0)
-		calculateGridImport();
+		calculateGridImport(HeadroomL1);
 
 		//Calculate Grid Export = IF(BB4<0,MIN(-BB4,Grid_exp),0)
 		calculateGridExport();
@@ -52,31 +55,32 @@ public:
 		calculatePreMopCurtailedExport();
 
 		//Actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
-		calculateActualImportShortfall();
+		calculateActualImportShortfall(hload.getASHPTargetLoading(), hload.getMaxHeatpumpELoad());
 
 		//Actual Curtailed Export = IF(EB>ESum!EB4,EB4-ESum!EB4,0)
 		calculateActualCurtailedExport();
 
 		calculateActualHighPriorityLoad();
+
 		calculateActualLowPriorityLoad();
 	}
 
 
 	// Functionality
-	// these functions account for headroom built in to Grid_connection to take import/export power peaks intratimestep
-	float calculate_Grid_imp() const {
-		float Grid_imp = mMaxGridImport * (1 - mImportHeadroom);
+	// these functions account for headroom built in to Grid_connection to take import/export power peaks intratimestep, and minimum power factor 
+	float calculate_Grid_imp(float HeadroomL1) const {
+		float Grid_imp = mMaxGridImportkVA * mMinPowerFactor - HeadroomL1;// *(1 - mImportHeadroom);
 		return Grid_imp;
 	}
 
 	float calculate_Grid_exp() const {
-		float Grid_exp = mMaxGridExport * (1 - mExportHeadroom);
+		float Grid_exp = mMaxGridExportkVA * mMinPowerFactor;// *(1 - mExportHeadroom);
 		return Grid_exp;
 	}
 
 	//Calculate Grid Import = IF(BB4>0,MIN(BB4,Grid_imp),0)
-	void calculateGridImport() {
-		float gridImp = calculate_Grid_imp();
+	void calculateGridImport(float HeadroomL1) {
+		float gridImp = calculate_Grid_imp(HeadroomL1);
 
 		for (int index = 0; index < mTimesteps; index++) {
 			if (mPreGridBalance[index] > 0) {
@@ -117,12 +121,12 @@ public:
 	}
 
 	//Calculate actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
-	void calculateActualImportShortfall() {
+	void calculateActualImportShortfall(const year_TS& ASHPTargetLoading, const year_TS& HeatpumpELoad) {
 		for (int index = 0; index < mTimesteps; index++) {
-			mActualImportShortfall[index] = std::max(
-				mPreFlexImportShortfall[index] - mFlexLoadMax,
-				0.0f
-			);
+			mActualImportShortfall[index] = std::max
+				(mPreFlexImportShortfall[index] - ((ASHPTargetLoading[index] * (HeatpumpELoad[index]) + mFlexLoadMax)),
+				0.0f);
+				
 		}
 	}
 
@@ -190,10 +194,10 @@ public:
 		return mActualLowPriorityLoad;
 	}
 
-
 private:
-	const float mMaxGridImport;
-	const float mMaxGridExport;
+	const float mMaxGridImportkVA;
+	const float mMaxGridExportkVA;
+	const float mMinPowerFactor;
 	const float mImportHeadroom;
 	const float mExportHeadroom;
 	const int mTimesteps;
