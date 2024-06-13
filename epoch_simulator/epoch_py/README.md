@@ -11,6 +11,8 @@ See details in the top-level [Installation](../INSTALLATION.md#generating-python
 ```Python
 import epoch_simulator as eps
 
+print(eps.__version__)
+
 task = eps.TaskData()
 sim = eps.Simulator()
 
