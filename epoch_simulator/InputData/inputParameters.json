@@ -60,7 +60,7 @@
         0.0,
         0.0
     ],
-    "Export_kWh_price": 50.0,
+    "Export_kWh_price": 5.0,
     "Fixed_load1_scalar": [
         1.0,
         1.0,
