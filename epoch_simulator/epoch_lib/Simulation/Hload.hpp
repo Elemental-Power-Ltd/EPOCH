@@ -56,11 +56,9 @@ public:
 
 		calculateASHPcolumn_index(historicalData, taskData);
 
-		if (mHeatpumpHeatSource == HeatpumpHeatSource::AMBIENT_AIR)
-		{
-			calculateMaxHeatpumpOutputAmbientAir(historicalData, taskData);
-		}
-		else if (mHeatpumpHeatSource == HeatpumpHeatSource::HOTROOM)
+		// we need to calculate the ambient air output irrespective of the heat source
+		calculateMaxHeatpumpOutputAmbientAir(historicalData, taskData);
+		if (mHeatpumpHeatSource == HeatpumpHeatSource::HOTROOM)
 		{
 			calculateMaxHeatpumpOutputHotroomAir(historicalData, taskData);
 		}
