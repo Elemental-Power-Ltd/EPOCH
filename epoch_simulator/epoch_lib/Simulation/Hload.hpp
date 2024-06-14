@@ -162,7 +162,14 @@ public:
 			
 		for (int index = 0; index < mTimesteps; index++)
 		{
-			mMaxHeatpumpOutputHotroomAir[index] = std::min((mMaxHeatpumpOutputAmbientAir[index] + (taskData.Flex_load_max * taskData.ScalarHYield)), (mASHPHot_Hpower_max * taskData.ASHP_HPower / mASHPreference_Hpower));
+			if (mMaxHeatpumpOutputAmbientAir[index] + (taskData.Flex_load_max * taskData.ScalarHYield) < (mASHPHot_Hpower_max * taskData.ASHP_HPower / mASHPreference_Hpower)) {
+				mMaxHeatpumpOutputHotroomAir[index] = mMaxHeatpumpOutputAmbientAir[index] + (taskData.Flex_load_max * taskData.ScalarHYield);
+			}
+			else {
+				mMaxHeatpumpOutputHotroomAir[index] = mASHPHot_Hpower_max * taskData.ASHP_HPower / mASHPreference_Hpower;
+
+			}
+			//mMaxHeatpumpOutputHotroomAir[index] = std::min((mMaxHeatpumpOutputAmbientAir[index] + (taskData.Flex_load_max * taskData.ScalarHYield)), (mASHPHot_Hpower_max * taskData.ASHP_HPower / mASHPreference_Hpower));
 		}
 	}
 
@@ -223,58 +230,31 @@ public:
 		
 	}
 
+	// TODO - rewrite this as coeffwise operation (no timestep loop)
 	void calculateASHPTargetLoading()
 	{
-		if (mHeatpumpHeatSource == HeatpumpHeatSource::AMBIENT_AIR)
+		if (mHeatpumpHeatSource == HeatpumpHeatSource::AMBIENT_AIR) {
+			// min to cap at 100%
+			mASHPTargetLoadingAmbientAir = (mHeatload.array() / mMaxHeatpumpOutputAmbientAir.array()).min(1.0f);
+		} else if (mHeatpumpHeatSource == HeatpumpHeatSource::HOTROOM)
 		{
-			for (int index = 0; index < mTimesteps; index++)
-			{
-				mASHPTargetLoadingAmbientAir[index] = mHeatload[index]/ mMaxHeatpumpOutputAmbientAir[index];
-				if (mASHPTargetLoadingAmbientAir[index] > 1.0) // cap at 100%
-					mASHPTargetLoadingAmbientAir[index] = 1.0;
-			}
-		}
-
-		if (mHeatpumpHeatSource == HeatpumpHeatSource::HOTROOM)
-		{
-			for (int index = 0; index < mTimesteps; index++)
-			{
-				mASHPTargetLoadingHotroomAir[index] = mHeatload[index] / mMaxHeatpumpOutputHotroomAir[index];
-				if (mASHPTargetLoadingHotroomAir[index] > 1.0)  // cap at 100%
-					mASHPTargetLoadingHotroomAir[index] = 1.0;
-			}
+			// min to cap at 100%
+			mASHPTargetLoadingHotroomAir = (mHeatload.array() / mMaxHeatpumpOutputHotroomAir.array()).min(1.0f);
 		}
 
 	}
 
-	year_TS calculateActualHeatpumpOutput(const year_TS& Data_Centre_HP_load_scalar)
+	void calculateActualHeatpumpOutput(const year_TS& Data_Centre_HP_load_scalar)
 	{
-		if (mHeatpumpHeatSource == HeatpumpHeatSource::AMBIENT_AIR)
-		{
-			for (int index = 0; index < mTimesteps; index++)
-			{
-				mActualHeatpumpOutput[index] = Data_Centre_HP_load_scalar[index] * mMaxHeatpumpOutputAmbientAir[index] * mASHPTargetLoadingAmbientAir[index];
-				
-			}
+		if (mHeatpumpHeatSource == HeatpumpHeatSource::AMBIENT_AIR) {
+			mActualHeatpumpOutput = Data_Centre_HP_load_scalar.array() * mMaxHeatpumpOutputAmbientAir.array() * mASHPTargetLoadingAmbientAir.array();
+		} else if (mHeatpumpHeatSource == HeatpumpHeatSource::HOTROOM)	{
+			mActualHeatpumpOutput = Data_Centre_HP_load_scalar.array() * mMaxHeatpumpOutputHotroomAir.array() * mASHPTargetLoadingHotroomAir.array();
 		}
-
-		if (mHeatpumpHeatSource == HeatpumpHeatSource::HOTROOM)
-		{
-			for (int index = 0; index < mTimesteps; index++)
-			{
-				mActualHeatpumpOutput[index] = Data_Centre_HP_load_scalar[index] * mMaxHeatpumpOutputHotroomAir[index] * mASHPTargetLoadingHotroomAir[index];
-				
-			}
-		}
-		return mActualHeatpumpOutput;
 	}
-
 
 	void calculateHeatShortfall() {
-		for (int index = 0; index < mTimesteps; index++)
-		{
-			mHeatShortfall[index] = mHeatload[index] - mActualHeatpumpOutput[index];
-		}
+		mHeatShortfall = mHeatload - mActualHeatpumpOutput;
 	}
 
 	void calculateEHeatSurplus(const year_TS& Actual_low_priority_load) 
