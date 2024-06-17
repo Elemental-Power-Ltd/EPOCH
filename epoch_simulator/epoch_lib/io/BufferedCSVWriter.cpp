@@ -1,4 +1,5 @@
 #include "BufferedCSVWriter.hpp"
+#include <limits>
 
 BufferedCSVWriter::BufferedCSVWriter(std::filesystem::path filepath)
 	: mFilepath(filepath),
@@ -39,6 +40,9 @@ void BufferedCSVWriter::flushBuffer()
 {
 	// open the file in append mode
 	std::ofstream outFile(mFilepath, std::ios::app);
+
+	outFile << std::fixed;
+	outFile << std::setprecision(std::numeric_limits<float>::digits10 + 1);
 
 	if (!outFile.is_open()) {
 		spdlog::error("Failed to open the output file!");
