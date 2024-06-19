@@ -510,10 +510,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hTextbox55 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX55, 840, 530, 100, 30, L"1");
 
 	HWND hLabel56 = makeLabel(hWnd, hInstance, L"ASHP HSource upper", 960, 480, 100, 50);
-	hTextbox56 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX56, 960, 530, 100, 30, L"1");
+	hTextbox56 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX56, 960, 530, 100, 30, L"2");
 
 	HWND hLabel57 = makeLabel(hWnd, hInstance, L"ASHP HSource step", 1080, 480, 100, 50);
-	hTextbox57 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX57, 1080, 530, 100, 30, L"0");
+	hTextbox57 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX57, 1080, 530, 100, 30, L"1");
 
 	HWND hLabel58 = makeLabel(hWnd, hInstance, L"ASHP RadTemp lower", 1200, 480, 100, 50);
 	hTextbox58 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX58, 1200, 530, 100, 30, L"70.0");
