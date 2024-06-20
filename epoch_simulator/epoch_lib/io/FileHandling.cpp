@@ -158,6 +158,34 @@ std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filenam
 	return readCSVColumn(filename, column, false);
 }
 
+std::vector<std::vector<float>> readCSVAsTable(const std::filesystem::path& filename) {
+	std::vector<std::vector<float>> table{};
+
+	std::ifstream file(filename);
+	std::string line;
+
+	// Check if the file is open
+	if (!file.is_open()) {
+		throw FileReadException(filename.filename().string());
+	}
+
+	// Read file line by line
+	while (std::getline(file, line)) {
+		std::vector<float> rowData;
+		std::stringstream ss(line);
+		std::string cell;
+
+		// Parse the line into double values
+		while (std::getline(ss, cell, ',')) {
+			rowData.push_back(std::stod(cell));
+		}
+
+		table.emplace_back(rowData);
+	}
+	file.close();
+	return table;
+}
+
 // Function to read a specific row from a CSV file
 std::vector<float> readCSVrow(const std::filesystem::path& filename, int row) {
 	std::ifstream file(filename);
@@ -499,24 +527,10 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 
 	//read in the ASHP data
 	std::filesystem::path ASHPinputFilepath = fileConfig.getASHPinputFilepath();
-	
-	std::vector<std::vector<float>> ASHPinputtable;
-	
-	for (int column = 1; column <= 11; column++)
-	{
-		std::vector<float> vec = readCSVColumnWithoutSkip(ASHPinputFilepath, column);
-		ASHPinputtable.emplace_back(vec);
-	};
-		
+	std::vector<std::vector<float>> ASHPinputtable = readCSVAsTable(ASHPinputFilepath);
+
 	std::filesystem::path ASHPoutputFilepath = fileConfig.getASHPoutputFilepath();
-
-	std::vector<std::vector<float>> ASHPoutputtable;
-
-	for (int column = 1; column <= 11; column++)
-	{
-		std::vector<float> vec = readCSVColumnWithoutSkip(ASHPoutputFilepath, column);
-		ASHPoutputtable.emplace_back(vec);
-	};
+	std::vector<std::vector<float>> ASHPoutputtable = readCSVAsTable(ASHPoutputFilepath);
 
 	return {
 	   toEigen(hotel_eload_data),
@@ -529,8 +543,8 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	   toEigen(airtemp_data),
 	   toEigen(importtariff_data),
 	   toEigen(gridCO2_data),
-	   ASHPinputtable,
-	   ASHPoutputtable
+	   toEigen(ASHPinputtable),
+	   toEigen(ASHPoutputtable)
 	};
 }
 
@@ -540,6 +554,18 @@ Eigen::VectorXf toEigen(const std::vector<float>& vec)
 
 	for (int i = 0; i < vec.size(); i++) {
 		eig[i] = vec[i];
+	}
+
+	return eig;
+}
+
+Eigen::MatrixXf toEigen(const std::vector<std::vector<float>>& mat) {
+	Eigen::MatrixXf eig = Eigen::MatrixXf(mat.size(), mat[0].size());
+
+	for (int i = 0; i < mat.size(); i++) {
+		for (int j = 0; j < mat[0].size(); j++) {
+			eig(i,j) = mat[i][j];
+		}
 	}
 
 	return eig;

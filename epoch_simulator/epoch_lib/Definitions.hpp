@@ -176,9 +176,8 @@ struct HistoricalData {
 	year_TS airtemp_data;
 	year_TS importtariff_data;
 	year_TS gridCO2_data;
-	std::vector<std::vector<float>> ASHPinputtable;
-	std::vector<std::vector<float>> ASHPoutputtable;
-	
+	Eigen::MatrixXf ASHPinputtable;
+	Eigen::MatrixXf ASHPoutputtable;
 };
 
 

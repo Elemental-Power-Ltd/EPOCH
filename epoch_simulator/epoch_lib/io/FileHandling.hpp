@@ -13,6 +13,7 @@
 std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column, bool skipHeader);
 std::vector<float> readCSVColumnAndSkipHeader(const std::filesystem::path& filename, int column);
 std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filename, int column);
+std::vector<std::vector<float>> readCSVAsTable(const std::filesystem::path& filename);
 
 
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results);
@@ -32,6 +33,8 @@ nlohmann::json readJsonFromFile(std::filesystem::path filepath);
 
 const HistoricalData readHistoricalData(const FileConfig& fileConfig);
 Eigen::VectorXf toEigen(const std::vector<float>& vec);
+Eigen::MatrixXf toEigen(const std::vector<std::vector<float>>& mat);
+
 
 
 constexpr std::array<std::string_view, 31> resultHeader = {

@@ -73,8 +73,8 @@ HeatSource HeatPump::getHeatSource() const
 
 void HeatPump::precomputeAmbientAirValues(const HistoricalData& historicalData, const TaskData& taskData)
 {
-	mMinAirTemp = std::floor(historicalData.ASHPinputtable[0][1]);
-	mMaxAirTemp = std::ceil(historicalData.ASHPinputtable[0][historicalData.ASHPinputtable[0].size() - 1]);
+	mMinAirTemp = std::floor(historicalData.ASHPinputtable(1,0));
+	mMaxAirTemp = std::ceil(historicalData.ASHPinputtable(historicalData.ASHPinputtable.rows() - 1, 0));
 
 	mOffset = -1 * mMinAirTemp;
 
@@ -104,7 +104,7 @@ float HeatPump::computeInput(const HistoricalData& historicalData, float radTemp
 	int col = radTempToColIndex(historicalData, radTemp);
 	int row = airTempToRowIndex(historicalData, airTemp);
 
-	float input = historicalData.ASHPinputtable[col][row];
+	float input = historicalData.ASHPinputtable(row, col);
 	return input;
 }
 
@@ -113,7 +113,7 @@ float HeatPump::computeOutput(const HistoricalData& historicalData, float radTem
 	int col = radTempToColIndex(historicalData, radTemp);
 	int row = airTempToRowIndex(historicalData, airTemp);
 
-	float output = historicalData.ASHPoutputtable[col][row];
+	float output = historicalData.ASHPoutputtable(row, col);
 	return output;
 }
 
@@ -122,16 +122,16 @@ float HeatPump::computeOutput(const HistoricalData& historicalData, float radTem
 // i.e. the last column that does not exceed the given rad temp
 int HeatPump::radTempToColIndex(const HistoricalData& historicalData, float radTemp) const
 {
-	int num_cols = historicalData.ASHPinputtable.size();
+	int num_cols = historicalData.ASHPinputtable.cols();
 
-	if (radTemp < historicalData.ASHPinputtable[1][0]) {
+	if (radTemp < historicalData.ASHPinputtable(0,1)) {
 		// default to the first column
 		return 1;
 	}
 
 	// start at 1, 0 is header
 	for (int col = 1; col < num_cols; col++) {
-		if (historicalData.ASHPinputtable[col][0] > radTemp) {
+		if (historicalData.ASHPinputtable(0,col) > radTemp) {
 			// this column exceeds the radTemp, return the previous column
 			return col - 1;
 		}
@@ -147,16 +147,16 @@ int HeatPump::radTempToColIndex(const HistoricalData& historicalData, float radT
 // i.e. the last row that does not exceed the given air temp
 int HeatPump::airTempToRowIndex(const HistoricalData& historicalData, float airTemp) const
 {
-	int num_rows = historicalData.ASHPinputtable[0].size();
+	int num_rows = historicalData.ASHPinputtable.rows();
 
-	if (airTemp < historicalData.ASHPinputtable[0][1]) {
+	if (airTemp < historicalData.ASHPinputtable(1,0)) {
 		// default to the lowest possible value
 		return 1;
 	}
 
 	// start at 1, 0 is header
 	for (int row = 1; row < num_rows; row++) {
-		if (historicalData.ASHPinputtable[0][row] > airTemp) {
+		if (historicalData.ASHPinputtable(row,0) > airTemp) {
 			// this column exceeds the air temp, return the previous column
 			return row - 1;
 		}
