@@ -60,6 +60,8 @@ float HeatPump::getOutput(float airTemp) const
 		return ambientOutput;
 	case HeatSource::HOTROOM :
 		return std::min(mHotroomOutput, ambientOutput + mFlexLoadMax * mHYield);
+	default:
+		throw std::exception();
 	}
 }
 
