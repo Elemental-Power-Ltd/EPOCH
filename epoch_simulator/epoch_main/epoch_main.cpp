@@ -60,6 +60,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 #include "ArgHandling.hpp"
 
 int main(int argc, char* argv[]) {
+	spdlog::info("Running Epoch version {}", EPOCH_VERSION);
 
 	try {
 		CommandlineArgs args = handleArgs(argc, argv);
