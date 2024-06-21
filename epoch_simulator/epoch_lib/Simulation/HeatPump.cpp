@@ -20,7 +20,8 @@ HeatPump::HeatPump(const HistoricalData& historicalData, const TaskData& taskDat
 
 float HeatPump::getAmbientInput(float airTemp) const
 {
-	int airTempDeg = std::round(airTemp);
+	// much faster than std::round
+	int airTempDeg = static_cast<int>(airTemp + (airTemp >= 0 ? 0.5f : -0.5f));;
 
 	if (airTempDeg < mMinAirTemp) {
 		return mInputByDegree[0];
@@ -39,7 +40,8 @@ float HeatPump::getHotroomInput() const
 
 float HeatPump::getAmbientOutput(float airTemp) const
 {
-	int airTempDeg = std::round(airTemp);
+	// much faster than std::round
+	int airTempDeg = static_cast<int>(airTemp + (airTemp >= 0 ? 0.5f : -0.5f));;
 
 	if (airTempDeg < mMinAirTemp) {
 		return mOutputByDegree[0];
