@@ -109,11 +109,8 @@ public:
 
 	//Calculate actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
 	void calculateActualImportShortfall(const year_TS& ASHPTargetLoading, const year_TS& HeatpumpELoad) {
-		for (int index = 0; index < mTimesteps; index++) {
-			mActualImportShortfall[index] = std::max
-				(mPreFlexImportShortfall[index] - ((ASHPTargetLoading[index] * (HeatpumpELoad[index]) + mFlexLoadMax)),
-				0.0f);
-		}
+		mActualImportShortfall = mActualImportShortfall.array() - mFlexLoadMax - (ASHPTargetLoading.array() * HeatpumpELoad.array());
+		mActualImportShortfall = mActualImportShortfall.cwiseMax(0);
 	}
 
 	void calculateActualCurtailedExport() {
@@ -122,12 +119,7 @@ public:
 	}
 
 	void calculateActualHighPriorityLoad() {
-		for (int index = 0; index < mTimesteps; index++) {
-			mActualHighPriorityLoad[index] = std::max(
-				mFlexLoadMax - mPreFlexImportShortfall[index],
-				0.0f
-			);
-		}
+		mActualHighPriorityLoad = (mFlexLoadMax - mPreFlexImportShortfall.array()).cwiseMax(0.0f);
 	}
 
 	void calculateActualLowPriorityLoad() {
