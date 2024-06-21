@@ -82,40 +82,27 @@ public:
 	void calculateGridImport(float HeadroomL1) {
 		float gridImp = calculate_Grid_imp(HeadroomL1);
 
-		for (int index = 0; index < mTimesteps; index++) {
-			if (mPreGridBalance[index] > 0) {
-				mGridImport[index] = std::min(mPreGridBalance[index], gridImp);;
-			} else {
-				mGridImport[index] = 0;
-			}
-		}
+		// clamp the grid import between 0 and gridImp at each timestep
+		mGridImport = mPreGridBalance.cwiseMax(0.0f).cwiseMin(gridImp);
 	}
 
 	//Calculate Grid Export = IF(BB4<0,MIN(-BB4,Grid_exp),0)
 	void calculateGridExport() {
 		float gridExp = calculate_Grid_exp();
 
-		for (int index = 0; index < mTimesteps; index++) {
-			if (mPreGridBalance[index] < 0) {
-				mGridExport[index] = std::min(-1.0f * mPreGridBalance[index], gridExp);
-			} else {
-				mGridExport[index] = 0;
-			}
-		}
+		// flip the preGridBalance then clamp between 0 and gridExp at each timestep
+		mGridExport = -1.0f * mPreGridBalance;
+		mGridExport = mGridExport.cwiseMax(0.0f).cwiseMin(gridExp);
 	}
 
 	//Calulate Pre-Flex Import shortfall = IF(CB>0, CB4, 0)
 	void calculatePreFlexImportShortfall() {
-		for (int index = 0; index < mTimesteps; index++) {
-			mPreFlexImportShortfall[index] = std::max(mPostGridBalance[index], 0.0f);
-		}
+		mPreFlexImportShortfall = mPostGridBalance.cwiseMax(0.0f);
 	}
 
 	//Calculate Pre-Mop Curtailed Export = IF(CB<0,-CB4,0)
 	void calculatePreMopCurtailedExport() {
-		for (int index = 0; index < mTimesteps; index++) {
-			mPreMopCurtailedExport[index] = std::min(mPostGridBalance[index], 0.0f);
-		}
+		mPreMopCurtailedExport = mPostGridBalance.cwiseMin(0.0f);
 		// we want the positive counterpart at each timestep, so multiply the vector by -1
 		mPreMopCurtailedExport *= -1.0f;
 	}
@@ -126,17 +113,12 @@ public:
 			mActualImportShortfall[index] = std::max
 				(mPreFlexImportShortfall[index] - ((ASHPTargetLoading[index] * (HeatpumpELoad[index]) + mFlexLoadMax)),
 				0.0f);
-				
 		}
 	}
 
 	void calculateActualCurtailedExport() {
-		for (int index = 0; index < mTimesteps; index++) {
-			mActualCurtailedExport[index] = std::max(
-				mPreMopCurtailedExport[index] - mMopLoadMax,
-				0.0f
-			);
-		}
+		// preMopCurtailedExport - MopLoadMax, floored at 0
+		mActualCurtailedExport = (mPreMopCurtailedExport.array() - mMopLoadMax).cwiseMin(0.0f);
 	}
 
 	void calculateActualHighPriorityLoad() {
@@ -149,9 +131,7 @@ public:
 	}
 
 	void calculateActualLowPriorityLoad() {
-		for (int index = 0; index < mTimesteps; index++) {
-			mActualLowPriorityLoad[index] = std::min(mPreMopCurtailedExport[index], mMopLoadMax);
-		}
+		mActualLowPriorityLoad = mPreMopCurtailedExport.cwiseMin(mMopLoadMax);
 	}
 
 	year_TS getGridImport() const {
