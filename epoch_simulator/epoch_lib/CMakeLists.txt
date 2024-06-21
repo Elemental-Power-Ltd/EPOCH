@@ -14,6 +14,8 @@ add_library(Epoch_lib STATIC
 	"Simulation/Costs.hpp"
 	"Simulation/Eload.hpp"
 	"Simulation/Grid.hpp"
+	"Simulation/HeatPump.cpp"
+	"Simulation/HeatPump.hpp"
 	"Simulation/Hload.hpp"
 	"Simulation/Simulate.cpp"
 	"Simulation/Simulate.hpp"
