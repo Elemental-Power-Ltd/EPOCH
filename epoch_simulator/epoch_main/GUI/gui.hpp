@@ -14,7 +14,6 @@
 #define BUTTON_OPTIMISE 1 
 #define BUTTON_RECALL 200
 
-#define ID_TEXTBOX_TIMESTEP_MINUTES 4
 #define ID_TEXTBOX_TIMESTEP_HOURS 5
 #define ID_TEXTBOX_TIME_WINDOW_HOURS 6
 #define ID_TEXTBOX7 7
@@ -341,10 +340,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hLabelSeconds = makeLabel(hWnd, hInstance, L"Seconds", 480, 10, 100, 20);
 
 	HWND hLabelInputs = makeLabel(hWnd, hInstance, L"INPUTS (overwrite default values)", 120, 80, 100, 80);
-
-	HWND hLabelTimestepMinutes = makeLabel(hWnd, hInstance, L"Timestep, Minutes", 240, 80, 100, 50);
-
-	hTextboxTimestepMinutes = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_TIMESTEP_MINUTES, 240, 130, 100, 30, L"60");
 
 	HWND hLabelTimestepHours = makeLabel(hWnd, hInstance, L"Timestep, Hours", 360, 80, 100, 50);
 
@@ -913,8 +908,6 @@ InputValues readInputFromForm() {
 	float BESS_Energy_upper = _wtof(buffer2);
 	float BESS_Energy_step = _wtof(buffer3); */
 
-	float timestep_minutes = static_cast<float>(_wtof(buffer4));
-
 	float timestep_hours = static_cast<float>(_wtof(buffer5));
 	float timewindow = static_cast<float>(_wtof(buffer6));
 
@@ -1046,7 +1039,7 @@ InputValues readInputFromForm() {
 	float OPEX_limit = static_cast<float>(_wtof(buffer99));
 
 	InputValues inputValues = {
-		timestep_minutes, timestep_hours, timewindow,
+		timestep_hours, timewindow,
 		Fixed_load1_scalar_lower, Fixed_load1_scalar_upper, Fixed_load1_scalar_step,
 		Fixed_load2_scalar_lower, Fixed_load2_scalar_upper, Fixed_load2_scalar_step,
 		Flex_load_max_lower, Flex_load_max_upper, Flex_load_max_step,

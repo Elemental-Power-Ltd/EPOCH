@@ -56,7 +56,6 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("time_budget_min", &TaskData::time_budget_min)
 		.def_readwrite("target_max_concurrency", &TaskData::target_max_concurrency)
 		.def_readwrite("timestep_hours", &TaskData::timestep_hours)
-		.def_readwrite("timestep_minutes", &TaskData::timestep_minutes)
 		.def_readwrite("CAPEX_limit", &TaskData::CAPEX_limit)
 		.def_readwrite("OPEX_limit", &TaskData::OPEX_limit)
 		.def("__repr__", &taskDataToString);

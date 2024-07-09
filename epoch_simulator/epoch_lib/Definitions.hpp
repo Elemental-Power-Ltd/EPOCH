@@ -129,7 +129,7 @@ struct OutputValues {
 
 
 struct InputValues {
-	float timestep_minutes; float timestep_hours; float timewindow;
+	float timestep_hours; float timewindow;
 	float Fixed_load1_scalar_lower; float Fixed_load1_scalar_upper; float Fixed_load1_scalar_step;
 	float Fixed_load2_scalar_lower; float Fixed_load2_scalar_upper; float Fixed_load2_scalar_step;
 	float Flex_load_max_lower; float Flex_load_max_upper; float Flex_load_max_step;
