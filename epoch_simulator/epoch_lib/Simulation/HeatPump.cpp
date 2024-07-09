@@ -21,7 +21,7 @@ HeatPump::HeatPump(const HistoricalData& historicalData, const TaskData& taskDat
 float HeatPump::getAmbientInput(float airTemp) const
 {
 	// much faster than std::round
-	int airTempDeg = static_cast<int>(airTemp + (airTemp >= 0 ? 0.5f : -0.5f));;
+	int airTempDeg = static_cast<int>(airTemp + (airTemp >= 0 ? 0.5f : -0.5f));
 
 	if (airTempDeg < mMinAirTemp) {
 		return mInputByDegree[0];
@@ -53,6 +53,7 @@ float HeatPump::getAmbientOutput(float airTemp) const
 	return mOutputByDegree[airTempDeg + mOffset];
 }
 
+// Calculate the heat output based on the heatpump source
 float HeatPump::getOutput(float airTemp) const
 {
 	float ambientOutput = getAmbientOutput(airTemp);
@@ -61,6 +62,7 @@ float HeatPump::getOutput(float airTemp) const
 	case HeatSource::AMBIENT_AIR :
 		return ambientOutput;
 	case HeatSource::HOTROOM :
+		// ambient output necessary for conservation of energy check
 		return std::min(mHotroomOutput, ambientOutput + mFlexLoadMax * mHYield);
 	default:
 		throw std::exception();

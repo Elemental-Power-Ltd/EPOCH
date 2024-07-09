@@ -52,6 +52,7 @@ public:
 		mElectricalLoadScaledHeatYield += (ActualLowPriorityLoad * ScalarHYield4);
 	}
 
+	// calculate the minimum data centre load to provide adequate heat source
 	void calculateTarget_Data_centre_ASHP_load(const TaskData& taskData)
 	{
 		mTargetDatacentreASHPload = mMaxHeatpumpELoad.array() * getASHPTargetLoading().array() + taskData.Flex_load_max;
@@ -80,8 +81,11 @@ public:
 		}
 	}
 
+	// Calculate the ideal ASHP electricity load for the entire heat demand
+	// (if subsequently electricity load cannot be fully met, data centre and ASHP eload will be reduced in lockstep)
 	void calculateASHPTargetLoading()
 	{
+		// heatload divided by heatpump output, capped at 1.0
 		mASHPTargetLoading = (mHeatload.array() / mMaxHeatpumpOutput.array()).min(1.0f);
 	}
 
