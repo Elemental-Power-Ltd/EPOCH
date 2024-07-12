@@ -1,0 +1,60 @@
+{
+  "title": "Epoch Input Parameters",
+  "type": "object",
+  "properties": {
+    "CAPEX_limit": {"type": "number", "title":  "CAPEX Limit"},
+    "ESS_RTE": {"$ref": "#/definitions/paramRangeFloat", "title": "Round Trip Efficiency"},
+    "ESS_aux_load": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Aux Load"},
+    "ESS_capacity": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Capacity"},
+    "ESS_charge_mode": {"$ref": "#/definitions/paramRangeInt", "title": "ESS Charge Mode"},
+    "ESS_charge_power": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Charge Power"},
+    "ESS_discharge_mode": {"$ref": "#/definitions/paramRangeInt", "title": "ESS Discharge Mode"},
+    "ESS_discharge_power": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Discharge Power"},
+    "ESS_start_SoC": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Initial Charge"},
+    "Export_headroom": {"$ref": "#/definitions/paramRangeFloat", "title": "Export Headroom"},
+    "Fixed_load1_scalar": {"$ref": "#/definitions/paramRangeFloat", "title": "Fixed Load 1 Scalar"},
+    "Fixed_load2_scalar": {"$ref": "#/definitions/paramRangeFloat", "title": "Fixed Load 2 Scalar"},
+    "Flex_load_max": {"$ref": "#/definitions/paramRangeFloat", "title": "Flex Load Max"},
+    "GridExport": {"$ref": "#/definitions/paramRangeFloat", "title": "Grid Export"},
+    "GridImport": {"$ref": "#/definitions/paramRangeFloat", "title": "Grid Import"},
+    "ImportHeadroom": {"$ref": "#/definitions/paramRangeFloat", "title": "Import Headroom"},
+    "Mop_load_max": {"$ref": "#/definitions/paramRangeFloat", "title": "Mop Load Max"},
+    "OPEX_limit": {"type": "number", "title": "OPEX Limit"},
+    "ScalarHL1": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Heat Load 1"},
+    "ScalarHYield1": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Heat Yield 1"},
+    "ScalarHYield2": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Heat Yield 2"},
+    "ScalarHYield3": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Heat Yield 3"},
+    "ScalarHYield4": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Heat Yield 4"},
+    "ScalarRG1": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Renewable Generation 1"},
+    "ScalarRG2": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Renewable Generation 2"},
+    "ScalarRG3": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Renewable Generation 3"},
+    "ScalarRG4": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Renewable Generation 4"},
+    "export_kWh_price": {"type": "number", "title": "Export Price (kWh)"},
+    "import_kWh_price": {"type": "number", "title": "Import Price (kWh)"},
+    "target_max_concurrency": {"type": "integer", "title": "Max Concurrency"},
+    "time_budget_min": {"type": "number", "title": "Time Budget (mins)"},
+    "timestep_hours": {"type": "number", "title": "Timestep (hours)"},
+    "timestep_minutes": {"type": "number", "title": "Timestep (minutes)"},
+    "timewindow": {"type": "number", "title": "Time Windows"}
+  },
+  "definitions": {
+    "paramRangeInt": {
+      "type": "object",
+      "properties": {
+        "min": {"type": "integer", "title": "Min"},
+        "max": {"type": "integer", "title": "Max"},
+        "step": {"type": "integer", "title": "Step"}
+      },
+      "required": ["min", "max", "step"]
+    },
+    "paramRangeFloat": {
+      "type": "object",
+      "properties": {
+        "min": {"type": "number", "title": "Min"},
+        "max": {"type": "number", "title": "Max"},
+        "step": {"type": "number", "title": "Step"}
+      },
+      "required": ["min", "max", "step"]
+    }
+  }
+}

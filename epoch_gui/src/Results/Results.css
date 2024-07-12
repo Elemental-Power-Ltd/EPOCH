@@ -1,0 +1,23 @@
+.status-container .indicator {
+    padding: 10px;
+    margin: 5px;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+}
+
+.ready {
+    background-color: green;
+}
+
+.running {
+    background-color: orange;
+}
+
+.finished {
+    background-color: blue;
+}
+
+.unknown {
+    background-color: grey;
+}
