@@ -9,7 +9,7 @@
 class TaskData {
 
 public:
-    TaskData(float years_val = 1.0f, float days_val = 365.0f, float hours_val = 8760.0f, float timestep_minutes_val = 60.0f, float timestep_hours_val = 1.0f, float timewindow_val = 8760.0f,
+    TaskData(float years_val = 1.0f, float days_val = 365.0f, float hours_val = 8760.0f, float timestep_hours_val = 1.0f, float timewindow_val = 8760.0f,
         float Fixed_load1_scalar_val = 1.0f, float Fixed_load2_scalar_val = 3.0f, float Flex_load_max_val = 50.0f, float Mop_load_max_val = 300.0f,
         float ScalarRG1_val = 599.2f, float ScalarRG2_val = 75.6f, float ScalarRG3_val = 60.48f, float ScalarRG4_val = 0.0f, float ScalarHYield_val = 0.75f,
         int s7_EV_CP_number_val = 0, int f22_EV_CP_number_val = 3, int r50_EV_CP_number_val = 0, int u150_EV_CP_number_val = 0, float EV_flex_val = 0.5f,
@@ -20,7 +20,7 @@ public:
         float Export_kWh_price_val = 5.0f,
         float time_budget_min_val = 1.0f, int target_max_concurrency_val = 44,
         float CAPEX_limit_val = 500.0f, float OPEX_limit_val = 20.0f, int paramIndex_val = 0)
-        : years(years_val), days(days_val), hours(hours_val), timestep_minutes(timestep_minutes_val), timestep_hours(timestep_hours_val), timewindow(timewindow_val), 
+        : years(years_val), days(days_val), hours(hours_val), timestep_hours(timestep_hours_val), timewindow(timewindow_val), 
         Fixed_load1_scalar(Fixed_load1_scalar_val), Fixed_load2_scalar(Fixed_load2_scalar_val), Flex_load_max(Flex_load_max_val), Mop_load_max(Mop_load_max_val),
         ScalarRG1(ScalarRG1_val), ScalarRG2(ScalarRG2_val), ScalarRG3(ScalarRG3_val), ScalarRG4(ScalarRG4_val), ScalarHYield(ScalarHYield_val),
         s7_EV_CP_number(s7_EV_CP_number_val), f22_EV_CP_number(f22_EV_CP_number_val), r50_EV_CP_number(r50_EV_CP_number_val), u150_EV_CP_number(u150_EV_CP_number_val), EV_flex(EV_flex_val),
@@ -32,7 +32,7 @@ public:
         time_budget_min(time_budget_min_val), target_max_concurrency(target_max_concurrency_val),
         CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val),
         // initialize unordered maps to allow setting of member variables using (string) dictionary keys
-        param_map_float({ {"years",&years}, { "days",&days }, { "hours",&hours }, { "timestep_minutes",&timestep_minutes }, { "timestep_hours",&timestep_hours }, { "timewindow",&timewindow },
+        param_map_float({ {"years",&years}, { "days",&days }, { "hours",&hours }, { "timestep_hours",&timestep_hours }, { "timewindow",&timewindow },
             { "Fixed_load1_scalar",&Fixed_load1_scalar }, { "Fixed_load2_scalar",&Fixed_load2_scalar }, { "Flex_load_max",&Flex_load_max }, { "Mop_load_max",&Mop_load_max },
             { "ScalarRG1",&ScalarRG1 }, { "ScalarRG2",&ScalarRG2 }, { "ScalarRG3",&ScalarRG3 }, { "ScalarRG4",&ScalarRG4 } , { "ScalarHYield",&ScalarHYield },
              { "EV_flex",&EV_flex },
@@ -92,7 +92,6 @@ public:
     float years;
     float days;
     float hours;
-    float timestep_minutes;
     float timestep_hours;
     float timewindow;
     float Fixed_load1_scalar;
