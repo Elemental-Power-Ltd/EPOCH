@@ -2,8 +2,8 @@ import Form from '@rjsf/mui'
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
-import InputSchema from '../json/schema/InputSchema.json';
-import DefaultInput from '../json/default/DefaultInput.json'
+import InputSchema from '../../util/json/schema/InputSchema.json';
+import DefaultInput from '../../util/json/default/DefaultInput.json'
 
 
 const submitForm = data => {

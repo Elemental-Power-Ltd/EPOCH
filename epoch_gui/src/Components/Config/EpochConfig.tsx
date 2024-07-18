@@ -2,10 +2,10 @@ import Form from '@rjsf/mui'
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
-import ConfigSchema from '../json/schema/ConfigSchema.json';
-import DefaultConfig from '../json/default/DefaultConfig.json'
+import ConfigSchema from '../../util/json/schema/ConfigSchema.json';
+import DefaultConfig from '../../util/json/default/DefaultConfig.json'
 
-import { submitConfig } from '../endpoints';
+import { submitConfig } from '../../endpoints';
 
 
 const submitForm = data => {
