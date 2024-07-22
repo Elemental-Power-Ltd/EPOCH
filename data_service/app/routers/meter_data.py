@@ -29,8 +29,8 @@ router = APIRouter()
 async def upload_meter_data(
     request: Request,
     file: UploadFile,
-    site_id: site_id_t = Form(...),
-    fuel_type: FuelEnum = Form(...),
+    site_id: site_id_t = Form(...), # noqa
+    fuel_type: FuelEnum = Form(...), # noqa
 ):
     """
     Upload a file of meter data to the database.
@@ -95,7 +95,7 @@ async def upload_meter_data(
     async with request.state.pgpool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
-                """INSERT INTO client_meters.metadata (dataset_id, created_at, site_id, fuel_type, reading_type, filename) 
+                """INSERT INTO client_meters.metadata (dataset_id, created_at, site_id, fuel_type, reading_type, filename)
                             VALUES ($1, $2, $3, $4, $5)""",
                 metadata["dataset_id"],
                 metadata["created_at"],
@@ -106,17 +106,16 @@ async def upload_meter_data(
             )
 
             await conn.executemany(
-                f"""INSERT INTO client_meters.{table_name} (dataset_id, start_ts, end_ts, consumption_kwh) 
+                f"""INSERT INTO client_meters.{table_name} (dataset_id, start_ts, end_ts, consumption_kwh)
                                 VALUES ($1, $2, $3, $4)""",
-                [
-                    (dataset_id, start_ts, end_ts, consumption_kwh)
-                    for dataset_id, start_ts, end_ts, consumption_kwh in zip(
+                list(zip(
                         [metadata["dataset_id"] for _ in df.index],
                         df.index,
                         df.end_ts,
-                        df.consumption, strict=False,
+                        df.consumption,
+                        strict=False,
                     )
-                ],
+                )
             )
 
     return 200
@@ -139,7 +138,7 @@ async def get_meter_data(request: Request, dataset_id: DatasetID) -> list[GasDat
     """
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetch(
-            """SELECT 
+            """SELECT
                                 start_ts,
                                end_ts,
                                consumption_kwh as consumption
@@ -172,7 +171,7 @@ async def get_heating_load(request: Request, params: DatasetIDWithTime):
             FROM
             client_meters.metadata AS m
             LEFT JOIN client_info.site_info AS s
-            ON s.site_id = m.site_id WHERE dataset_id = $1 
+            ON s.site_id = m.site_id WHERE dataset_id = $1
             LIMIT 1""",
             params.dataset_id,
         )

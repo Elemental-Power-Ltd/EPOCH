@@ -1,4 +1,3 @@
-
 import pydantic
 from fastapi import APIRouter, Request
 
@@ -11,6 +10,7 @@ class ClientIdNamePair(pydantic.BaseModel):
     """
     A client_id, name pair.
     """
+
     client_id: client_id_t
     name: str
 

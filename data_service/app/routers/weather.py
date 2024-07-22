@@ -104,13 +104,13 @@ async def get_weather(request: Request, weather_request: WeatherRequest):
         )
 
     expected_days = {
-            item.date()
-            for item in pd.date_range(
-                weather_request.start_ts,
-                weather_request.end_ts,
-                freq=pd.Timedelta(days=1),
-                inclusive="left",
-            )
+        item.date()
+        for item in pd.date_range(
+            weather_request.start_ts,
+            weather_request.end_ts,
+            freq=pd.Timedelta(days=1),
+            inclusive="left",
+        )
     }
     got_days = {item["timestamp"].date() for item in res}
 
@@ -151,7 +151,7 @@ async def get_weather(request: Request, weather_request: WeatherRequest):
                         pressure,
                         cloudcover,
                         solarradiation,
-                        solarenergy) 
+                        solarenergy)
                         VALUES (
                         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)""",
                     [
