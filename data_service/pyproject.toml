@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Elemental Python"
+version = "0.1"
+authors = [
+  { name="Matt Bailey", email="matthew@elementalpower.co.uk"},
+  { name="William Drouard", email="william@elementalpower.co.uk" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
+line-length = 128
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warning
+    "F", # pyflakes
+    "B", # flake8-bugbear
+    "I", # isort
+    "A", # flake8-builtins
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "DTZ", #datetime
+    "PT", # pytest
+    "PD", # pandas
+    "PERF", # performance,
+    "RUF", # ruff
+]
+ignore = [
+    "PD901", # pandas df variable name
+    "UP035", # prefer collections imstead of typing
+    "PT011", # pytest raises too broad
+]
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
+
+[tool.pytest.ini_options]
+markers = [
+    "requires_epoch: Mark tests as requiring Epoch, and disable if we can't find it (deselect with '-m \"not requires_epoch\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.mypy]
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unreachable = true

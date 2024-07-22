@@ -1,0 +1,23 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://python:elemental@db/elementaldb
+
+  db:
+    image: postgres:latest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=python
+      - POSTGRES_PASSWORD=elemental
+      - POSTGRES_DB=elementaldb
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
