@@ -1,0 +1,11 @@
+{
+    "title": "Genetic Algorithm",
+    "type": "object",
+    "properties": {
+      "population": {"type": "integer", "title": "Population Size", "minimum":  1},
+      "numGenerations": {"type": "integer", "title": "No. Generations", "minimum": 1},
+      "hyperParam": {"type": "number", "title": "Hyper Parameter", "minimum": 0.0, "maximum":  1.0}
+
+    },
+    "required": ["population", "numGenerations", "hyperParam"]
+}

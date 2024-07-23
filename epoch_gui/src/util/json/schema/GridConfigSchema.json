@@ -1,5 +1,5 @@
 {
-    "title": "Epoch Config",
+    "title": "Grid Search",
     "type": "object",
     "properties": {
       "produceExhaustiveOutput": {"type": "boolean", "title": "Produce Exhaustive Output"},

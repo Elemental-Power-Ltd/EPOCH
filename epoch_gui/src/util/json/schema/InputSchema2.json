@@ -1,0 +1,84 @@
+{
+  "title": "Epoch Input Parameters",
+  "type": "object",
+  "properties": {
+    "CAPEX_limit": {"type": "number", "title":  "CAPEX Limit"},
+
+    "ASHP_HPower": {"$ref": "#/definitions/paramRangeFloat", "title": "Heat Pump HPower"},
+    "ASHP_HSource": {
+      "title": "Heat Pump Source",
+      "type": "array", "items": {"type": "string", "enum": ["ambient_air", "hotroom"]},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "ASHP_HotTemp": {"$ref": "#/definitions/paramRangeFloat", "title": "Heat Pump Hot Temp"},
+    "ASHP_RadTemp": {"$ref": "#/definitions/paramRangeFloat", "title": "Heat Pump Rad Temp"},
+
+    "ESS_capacity": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Capacity"},
+    "ESS_charge_mode": {"$ref": "#/definitions/paramRangeInt", "title": "ESS Charge Mode"},
+    "ESS_charge_power": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Charge Power"},
+    "ESS_discharge_mode": {"$ref": "#/definitions/paramRangeInt", "title": "ESS Discharge Mode"},
+    "ESS_discharge_power": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Discharge Power"},
+    "ESS_start_SoC": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Initial Charge"},
+
+    "EV_flex": {"$ref": "#/definitions/paramRangeFloat", "title": "EV Flex"},
+
+    "Export_headroom": {"$ref": "#/definitions/paramRangeFloat", "title": "Export Headroom"},
+
+    "Export_kWh_price": {"type": "number", "title":  "Export price (kWh)"},
+
+    "Fixed_load1_scalar": {"$ref": "#/definitions/paramRangeFloat", "title": "Fixed Load 1 Scalar"},
+    "Fixed_load2_scalar": {"$ref": "#/definitions/paramRangeFloat", "title": "Fixed Load 2 Scalar"},
+
+    "Flex_load_max": {"$ref": "#/definitions/paramRangeFloat", "title": "Flex Load Max"},
+
+    "GridExport": {"$ref": "#/definitions/paramRangeFloat", "title": "Grid Export"},
+    "GridImport": {"$ref": "#/definitions/paramRangeFloat", "title": "Grid Import"},
+    "Import_headroom": {"$ref": "#/definitions/paramRangeFloat", "title": "Import Headroom"},
+
+    "Min_power_factor": {"$ref": "#/definitions/paramRangeFloat", "title": "Min Power Factor"},
+    "Mop_load_max": {"$ref": "#/definitions/paramRangeFloat", "title": "Mop Load Max"},
+
+    "OPEX_limit": {"type": "number", "title": "OPEX Limit"},
+    "ScalarHL1": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Heat Load 1"},
+    "ScalarHYield": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Heat Yield"},
+
+    "ScalarRG1": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Renewable Generation 1"},
+    "ScalarRG2": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Renewable Generation 2"},
+    "ScalarRG3": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Renewable Generation 3"},
+    "ScalarRG4": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Renewable Generation 4"},
+
+    "f22_EV_CP_number": {"$ref": "#/definitions/paramRangeInt", "title": "f22 Charge Points"},
+    "r50_EV_CP_number": {"$ref": "#/definitions/paramRangeInt", "title": "r50 Charge Points"},
+    "s7_EV_CP_number": {"$ref": "#/definitions/paramRangeInt", "title": "s7 Charge Points"},
+    "u150_EV_CP_number": {"$ref": "#/definitions/paramRangeInt", "title": "u150 Charge Points"},
+
+
+    "target_max_concurrency": {"type": "integer", "title": "Max Concurrency"},
+    "time_budget_min": {"type": "number", "title": "Time Budget (mins)"},
+    "timestep_hours": {"type": "number", "title": "Timestep (hours)"},
+    "timestep_minutes": {"type": "number", "title": "Timestep (minutes)"},
+    "timewindow": {"type": "number", "title": "Time Windows"}
+  },
+  "required": ["ASHP_HSource"],
+  "definitions": {
+    "paramRangeInt": {
+      "type": "object",
+      "properties": {
+        "min": {"type": "integer", "title": "Min"},
+        "max": {"type": "integer", "title": "Max"},
+        "step": {"type": "integer", "title": "Step"}
+      },
+      "required": ["min", "max", "step"]
+    },
+    "paramRangeFloat": {
+      "type": "object",
+      "properties": {
+        "min": {"type": "number", "title": "Min"},
+        "max": {"type": "number", "title": "Max"},
+        "step": {"type": "number", "title": "Step"}
+      },
+      "required": ["min", "max", "step"]
+    }
+  }
+}

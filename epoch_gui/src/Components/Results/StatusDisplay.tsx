@@ -1,4 +1,4 @@
-import "./Results.css"
+import "./StatusDisplay.css"
 
 interface Result {
     CAPEX: number;

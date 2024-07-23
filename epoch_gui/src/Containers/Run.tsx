@@ -1,6 +1,6 @@
 import StatusDisplay from "../Components/Results/StatusDisplay";
 import AccordionSection from "../util/Widgets/AccordionSection";
-import ConfigForm from "../Components/Config/EpochConfig";
+import ConfigForm from "../Components/Config/OptimiserConfig";
 import SearchForm from "../Components/SearchSpace/SearchForm";
 import {useEffect, useState} from "react";
 
