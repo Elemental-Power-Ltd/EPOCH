@@ -1,4 +1,5 @@
 import asyncio
+import time
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 
@@ -16,8 +17,10 @@ async def lifespan(app: FastAPI):
     """
     q = IQueue(maxsize=5)
     pool = ProcessPoolExecutor()
+    start_time = time.time()
     app.state.q = q
     app.state.pool = pool
+    app.state.start_time = start_time
     asyncio.create_task(process_requests(q, pool))
     yield
     pool.shutdown()

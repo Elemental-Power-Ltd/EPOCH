@@ -1,5 +1,8 @@
 import asyncio
+import datetime
+import time
 from collections import OrderedDict
+from dataclasses import dataclass
 from enum import Enum
 
 from fastapi import APIRouter, HTTPException, Request
@@ -12,6 +15,18 @@ class state(Enum):
     QUEUED = 0
     RUNNING = 1
     CANCELLED = 2
+
+
+@dataclass()
+class QueueElem:
+    STATE: state
+    added_at: datetime.datetime
+
+
+@dataclass()
+class QueueStatus:
+    queue: dict[UUID1, QueueElem]
+    service_uptime: float
 
 
 class IQueue(asyncio.Queue):
@@ -40,7 +55,7 @@ class IQueue(asyncio.Queue):
             Task to add in queue.
         """
         await super().put(task)
-        self.q[task.UUID] = state.QUEUED
+        self.q[task.UUID] = QueueElem(state.QUEUED, datetime.datetime.now(datetime.UTC))
 
     async def get(self):
         """
@@ -54,10 +69,10 @@ class IQueue(asyncio.Queue):
             Next task in queue.
         """
         task = await super().get()
-        if self.q[task.UUID] == state.QUEUED:
-            self.q[task.UUID] = state.RUNNING
+        if self.q[task.UUID].STATE == state.QUEUED:
+            self.q[task.UUID].STATE = state.RUNNING
             return task
-        elif self.q[task.UUID] == state.CANCELLED:
+        elif self.q[task.UUID].STATE == state.CANCELLED:
             del self.q[task.UUID]
             return await self.get()
 
@@ -82,13 +97,14 @@ class IQueue(asyncio.Queue):
         UUID
             UUID of task to cancel
         """
-        self.q[UUID] = state.CANCELLED
+        assert self.q[UUID].STATE != state.RUNNING, "Task already running."
+        self.q[UUID].STATE = state.CANCELLED
 
     def uncancelled(self):
         """
         Ordered dictionary of not cancelled tasks in queue.
         """
-        return OrderedDict((key, value) for key, value in self.q.items() if value != state.CANCELLED)
+        return OrderedDict((key, value) for key, value in self.q.items() if value.STATE != state.CANCELLED)
 
     def qsize(self):
         """
@@ -114,7 +130,7 @@ class IQueue(asyncio.Queue):
 router = APIRouter()
 
 
-@router.post("/queue-status/")
+@router.post("/queue-status/", response_model=QueueStatus)
 async def get_queue_status(request: Request):
     """
     View tasks in queue.
@@ -123,7 +139,7 @@ async def get_queue_status(request: Request):
     -------
     Queue
     """
-    return request.app.state.q.uncancelled()
+    return QueueStatus(request.app.state.q.uncancelled(), time.time() - request.app.state.start_time)
 
 
 @router.post("/cancel-task/")
@@ -137,12 +153,22 @@ async def cancel_task_in_queue(request: Request, UUID: UUID1):
     UUID
         UUID of task to cancel.
     """
-    if request.app.state.q.q[UUID] == state.QUEUED:
+    if request.app.state.q.q[UUID].STATE == state.QUEUED:
         request.app.state.q.cancel(UUID)
         return "Task cancelled."
     elif UUID not in list(request.app.state.q.q.keys()):
         return HTTPException(status_code=400, detail="Task not found in queue.")
-    elif request.app.state.q.q[UUID] == state.RUNNING:
+    elif request.app.state.q.q[UUID].STATE == state.RUNNING:
         return HTTPException(status_code=400, detail="Task already running.")
-    elif request.app.state.q.q[UUID] == state.CANCELLED:
+    elif request.app.state.q.q[UUID].STATE == state.CANCELLED:
         return HTTPException(status_code=400, detail="Task already cancelled.")
+
+
+@router.post("/clear-queue/")
+async def clear_queue(request: Request):
+    """
+    Cancels all tasks in queue.
+    """
+    for UUID in request.app.state.q.q.keys():
+        if request.app.state.q.q[UUID].STATE != state.RUNNING:
+            request.app.state.q.cancel(UUID)
