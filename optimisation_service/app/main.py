@@ -4,17 +4,21 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from .routers import optimise
+from .routers import optimise, queue
 from .routers.optimise import process_requests
+from .routers.queue import IQueue
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    queue = asyncio.Queue(maxsize=5)
+    """
+    Create queue that is served by process_requests from moment app is created until it is closed.
+    """
+    q = IQueue(maxsize=5)
     pool = ProcessPoolExecutor()
-    app.state.queue = queue
+    app.state.q = q
     app.state.pool = pool
-    asyncio.create_task(process_requests(queue, pool))
+    asyncio.create_task(process_requests(q, pool))
     yield
     pool.shutdown()
 
@@ -22,6 +26,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(optimise.router)
+app.include_router(queue.router)
 
 # @app.get("/records")
 # async def get_records():

@@ -6,7 +6,7 @@ from enum import Enum
 from os import PathLike
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import UUID1, BaseModel
 
 from ..internal.epl_typing import ConstraintDict, ParameterDict
 from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
@@ -50,6 +50,7 @@ class Optimiser(Enum):
 
 @dataclass()
 class Task:
+    UUID: UUID1
     problem: JSONProblem
     optimiser: JSONOptimiser
 
@@ -65,43 +66,115 @@ def convert_task(task: Task) -> tuple[Problem, Optimiser]:
 
     Returns
     -------
-    Problem instance.
-    Optimiser instance.
+    problem
+        Problem.
+    optimiser
+        Initialised optimiser.
     """
+    # input_data = fetch_inputdata(task.problem.input_path)
+    # input_path = save_inputdata(input_data)
     optimiser = Optimiser[task.optimiser.type].value(**task.optimiser.hyperparameters)
     problem = Problem(
         name=task.problem.id,
         objectives=task.problem.objectives,
         constraints=task.problem.constraints,
         parameters=task.problem.parameters,
-        input_dir=fetch_inputdata(task.problem.input_path),
+        input_dir="C:/Users/willi/Documents/GitHub/optimisation_elemental/tests/data/benchmarks/var-3/InputData",  # input_path
     )
     return problem, optimiser
 
 
-def fetch_inputdata(input_data):
-    return "C:/Users/willi/Documents/GitHub/optimisation_elemental/tests/data/benchmarks/var-3/InputData"
+def fetch_inputdata(input_data_details):
+    """
+    Fetch input data from database.
+
+    Parameters
+    ----------
+    input_data_details
+        details of input data to fetch
+
+    Returns
+    input_data
+        Input data
+    """
+    pass
 
 
-def optimise(problem: Problem, optimiser: Algorithm) -> tuple[Result, datetime.UTC]:
+def save_inputdata(input_data):
+    """
+    Save input data to data folder.
+
+    Parameters
+    ----------
+    input_data
+        Input data to save.
+
+    Returns
+    input_data_path
+        Path to input data.
+    """
+    pass
+    # return input_data_path
+
+
+def optimise(problem: Problem, optimiser: Algorithm) -> tuple[Result, datetime.datetime]:
+    """
+    Apply optimisation algorithm to problem.
+
+    Parameters
+    ----------
+    problem
+        Problem to optimise.
+    optimiser
+        Optimiser to solve problem.
+
+    Returns
+    -------
+    Result
+        Optimisation results.
+    completed_at
+        Completion time of optimiser.
+    """
     return optimiser.run(problem), datetime.datetime.now(datetime.UTC)
 
 
 async def process_requests(q: asyncio.Queue, pool: ProcessPoolExecutor):
+    """
+    Loop to process tasks in queue.
+
+    Parameters
+    ----------
+    q
+        Queue to process.
+    pool
+        Process Pool Executor to run tasks.
+    """
     while True:
         task = await q.get()
         loop = asyncio.get_running_loop()
         problem, optimiser = convert_task(task)
         results, completed_at = await loop.run_in_executor(pool, optimise, *(problem, optimiser))
         # transmit(problem, results, completed_at)
-        q.task_done()
+        q.task_done(task)
 
 
-@router.post("/add")
-async def add_task(request: Request, problem: JSONProblem, optimiser: JSONOptimiser):
-    queue = request.app.state.queue
-    if queue.full():
+@router.post("/add/")
+async def add_task(request: Request, UUID: UUID1, problem: JSONProblem, optimiser: JSONOptimiser):
+    """
+    Add tasks to queue.
+
+    Parameters
+    ----------
+    UUID
+        Task UUID.
+    problem
+        Task problem.
+    optimiser
+        Task optimiser.
+    """
+    q = request.app.state.q
+    if q.full():
         raise HTTPException(status_code=503, detail="Task queue is full.")
     else:
-        await queue.put(Task(problem, optimiser))
+        await q.put(Task(UUID, problem, optimiser))
         return "Added task to queue."
