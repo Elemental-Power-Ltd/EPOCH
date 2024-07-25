@@ -1,13 +1,13 @@
 import asyncio
 import datetime
+import os
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
 from typing import TypedDict
-import os
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import UUID1
 
 from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
 from ..internal.grid_search import GridSearch
@@ -36,7 +36,7 @@ class ParamRange(TypedDict):
 
 @dataclass
 class Task:
-    TaskID: UUID1
+    TaskID: UUID
     optimiser: str
     optimiserConfig: dict[str, str | int | float]
     searchParameters: dict[str, ParamRange | int | float]
