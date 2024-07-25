@@ -20,7 +20,7 @@ function RunContainer() {
             site: state.selectedSite,
             optimiser: state.selectedOptimiser,
             optimiserConfig: state.optimisers[state.selectedOptimiser],
-            searchSpace: state.searchSpace,
+            searchParameters: state.searchSpace,
         }
 
         // ignore the response for now
@@ -30,16 +30,16 @@ function RunContainer() {
 
 
 
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            const response = await getStatus();
-            setServerStatus(response);
-        }, 3000);
-
-        return () => {
-            clearInterval(interval);
-        };
-    }, []);
+    // useEffect(() => {
+    //     const interval = setInterval(async () => {
+    //         const response = await getStatus();
+    //         setServerStatus(response);
+    //     }, 3000);
+    //
+    //     return () => {
+    //         clearInterval(interval);
+    //     };
+    // }, []);
 
 
     return (
