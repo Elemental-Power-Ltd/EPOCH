@@ -10,7 +10,7 @@ app.config["CORS_HEADERS"] = "Content-Type"
 stateful_thing = StatefulThing()
 
 
-@app.route("/submit-config/", methods=["POST"])
+@app.route("/submit-optimisation-job/", methods=["POST"])
 def submit_config():
 
     print(request.json)

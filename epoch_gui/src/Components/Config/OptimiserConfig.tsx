@@ -4,29 +4,12 @@ import Form from '@rjsf/mui'
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
-import Select, { SelectChangeEvent } from '@mui/material/Select';
-import MenuItem from "@mui/material/MenuItem";
-import {InputLabel} from "@mui/material";
+import { Select, SelectChangeEvent, MenuItem, InputLabel } from '@mui/material';
 
 import GridSchema from '../../util/json/schema/GridConfigSchema.json';
 import GASchema from '../../util/json/schema/GAConfigSchema.json';
 
-
-
-import { submitConfig } from '../../endpoints';
 import {useEpochStore} from "../../State/state";
-
-
-const submitForm = data => {
-    submitConfig(data.formData).then(
-        result => console.log(result)
-    );
-}
-
-enum Optimiser {
-    GridSearch = "Grid Search",
-    GeneticAlgorithm = "Genetic Algorithm"
-}
 
 
 const ConfigForm = () => {
@@ -54,8 +37,8 @@ const ConfigForm = () => {
                 <InputLabel id="opt-select">Optimiser</InputLabel>
 
                 <Select id="optimiser" labelId="opt-select" value={state.selectedOptimiser} onChange={changeOptimiser}>
-                    <MenuItem value={Optimiser.GridSearch}>{Optimiser.GridSearch}</MenuItem>
-                    <MenuItem value={Optimiser.GeneticAlgorithm}>{Optimiser.GeneticAlgorithm}</MenuItem>
+                    <MenuItem value={"GridSearch"}>Grid Search</MenuItem>
+                    <MenuItem value={"GeneticAlgorithm"}>Genetic Algorithm</MenuItem>
                 </Select>
 
                 <InputLabel id="site-select">Site</InputLabel>
@@ -66,7 +49,7 @@ const ConfigForm = () => {
                 </Select>
             </div>
 
-            {state.selectedOptimiser === Optimiser.GridSearch &&
+            {state.selectedOptimiser === "GridSearch" &&
                 <Form
                     schema={GridSchema as RJSFSchema}
                     uiSchema={{"ui:submitButtonOptions": {"norender": true}}}
@@ -76,7 +59,7 @@ const ConfigForm = () => {
                 />
             }
 
-            {state.selectedOptimiser === Optimiser.GeneticAlgorithm &&
+            {state.selectedOptimiser === "GeneticAlgorithm" &&
                 <Form
                     schema={GASchema as RJSFSchema}
                     uiSchema={{"ui:submitButtonOptions": {"norender": true}}}

@@ -52,7 +52,7 @@ export const useEpochStore = create<AppState>()((set) => ({
             gridSearch: DefaultGrid,
             geneticAlgorithm: DefaultGA
         },
-        selectedOptimiser: "Grid Search",
+        selectedOptimiser: "GridSearch",
         availableSites: ["Mount Hotel", "Retford Town Hall", "10 Downing Street", "Sydney Opera House"],
         selectedSite: "Mount Hotel"
     },

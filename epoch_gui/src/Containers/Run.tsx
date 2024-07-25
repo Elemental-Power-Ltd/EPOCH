@@ -4,7 +4,7 @@ import ConfigForm from "../Components/Config/OptimiserConfig";
 import SearchForm from "../Components/SearchSpace/SearchForm";
 import {useEffect, useState} from "react";
 
-import { getStatus } from "../endpoints";
+import {getStatus, submitOptimisationJob} from "../endpoints";
 
 import {useEpochStore} from "../State/state";
 
@@ -14,21 +14,17 @@ function RunContainer() {
 
     const [serverStatus, setServerStatus] = useState<{ state: string }>({ state: "UNKNOWN" });
 
-    const onRun = (evt: any) => {
-
-        // FIXME
-        const hacky_lookup = state.selectedOptimiser === "Genetic Algorithm" ? "geneticAlgorithm" : "gridSearch";
+    const onRun = () => {
 
         const payload = {
             site: state.selectedSite,
             optimiser: state.selectedOptimiser,
-            optimiserConfig: state.optimisers[hacky_lookup],
+            optimiserConfig: state.optimisers[state.selectedOptimiser],
             searchSpace: state.searchSpace,
         }
 
-        console.log(payload);
-
-        console.log(state.selectedOptimiser);
+        // ignore the response for now
+        submitOptimisationJob(payload);
     }
 
 
