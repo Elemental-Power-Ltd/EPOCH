@@ -4,12 +4,62 @@ Functions for getting photovolatic data.
 
 import datetime
 import json
+import os
 
+import httpx
 import pandas as pd
-import requests
+
+from .utils import check_latitude_longitude, load_dotenv
 
 
-def get_pvgis_data(
+async def get_pvgis_optima(latitude: float, longitude: float) -> dict[str, float | str]:
+    """
+    Use PVGIS to calculate optimal tilts and azimuths for a solar setup at this location.
+
+    The PVGIS calculator itself is a bit poor, but they provide this nice utility optimiser.
+
+    Parameters
+    ----------
+    latitude
+
+    longitude
+
+    Returns
+    -------
+        Dictionary with optima and some useful parameters
+    """
+    base_url = "https://re.jrc.ec.europa.eu/api/PVcalc"
+
+    if not check_latitude_longitude(latitude=latitude, longitude=longitude):
+        raise ValueError("Latitude and longitude provided the wrong way round.")
+    params: dict[str, str | float | int] = {
+        "lat": latitude,
+        "lon": longitude,
+        "peakpower": 1.0,
+        "loss": 14,
+        "browser": int(False),
+        "optimalangles": int(True),
+        "mountingplace": "building",
+        "outputformat": "json",
+        "header": int(False),
+    }
+
+    async with httpx.AsyncClient() as client:
+        res = await client.get(base_url, params=params)
+        data = res.json()
+    solar_params = {
+        "azimuth": (180 + data["inputs"]["mounting_system"]["fixed"]["azimuth"]["value"]) % 360,
+        "tilt": data["inputs"]["mounting_system"]["fixed"]["slope"]["value"],
+        "altitude": data["inputs"]["location"]["elevation"],
+        "mounting_system": "fixed",
+        "type": data["inputs"]["mounting_system"]["fixed"]["type"],
+        "technology": data["inputs"]["pv_module"]["technology"],
+        "data_source": data["inputs"]["meteo_data"]["radiation_db"],
+    }
+    return solar_params
+
+
+async def get_pvgis_data(
     lat: float,
     lon: float,
     start_year: datetime.datetime | int,
@@ -67,11 +117,11 @@ def get_pvgis_data(
         "components": int(True),
         "pvtechchoice": "crystSi",
     }
-
-    req = requests.get(
-        base_url,
-        params=params,
-    )
+    async with httpx.AsyncClient() as client:
+        req = await client.get(
+            base_url,
+            params=params,
+        )
     try:
         df = pd.DataFrame.from_records(req.json()["outputs"]["hourly"])
     except KeyError as ex:
@@ -81,3 +131,36 @@ def get_pvgis_data(
     df["timestamp"] = pd.to_datetime(df["time"], format="%Y%m%d:%H%M", utc=True) - pd.Timedelta(minutes=10)
     df["reconstructed"] = df["Int"].astype(bool)
     return df.set_index("timestamp").drop(columns=["time", "Int"])
+
+
+async def get_renewables_ninja_data(
+    latitude: float, longitude: float, start_ts: datetime.datetime, end_ts: datetime.datetime
+) -> pd.DataFrame:
+    load_dotenv()
+    BASE_URL = "https://www.renewables.ninja/api/data/pv"
+
+    if not check_latitude_longitude(latitude=latitude, longitude=longitude):
+        raise ValueError("Latitude and longitude provided the wrong way round.")
+    optimal_params = await get_pvgis_optima(latitude, longitude)
+    params: dict[str, str | float | int] = {
+        "lat": latitude,
+        "lon": longitude,
+        "date_from": start_ts.strftime("%Y-%m-%d"),
+        "date_to": end_ts.strftime("%Y-%m-%d"),
+        "tracking": int(False),
+        "azim": optimal_params["azimuth"],
+        "tilt": optimal_params["tilt"],
+        "system_loss": 0.14,
+        "header": "false",
+        "capacity": 1.0,
+        "format": "json",
+    }
+    async with httpx.AsyncClient() as client:
+        req = await client.get(
+            BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
+        )
+
+    renewables_df = pd.read_json(req.text, orient="index").rename(columns={"electricity": "pv"})
+    assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
+    renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)
+    return renewables_df

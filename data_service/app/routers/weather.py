@@ -4,15 +4,18 @@ import os
 
 import httpx
 import pandas as pd
-from fastapi import APIRouter, Request
+import pydantic
+from fastapi import APIRouter, HTTPException, Request
 
 from ..internal.utils import load_dotenv
-from .models import WeatherRequest
+from .models import WeatherDatasetEntry, WeatherRequest
 
 router = APIRouter()
 
 
-async def visual_crossing_request(location: str, start_ts: datetime.datetime, end_ts: datetime.datetime):
+async def visual_crossing_request(
+    location: str, start_ts: datetime.datetime, end_ts: datetime.datetime
+) -> list[dict[str, pydantic.AwareDatetime | float]]:
     """
     Get a weather history as a raw response from VisualCrossing.
 
@@ -82,8 +85,22 @@ async def visual_crossing_request(location: str, start_ts: datetime.datetime, en
     return records
 
 
-@router.get("/get-weather")
-async def get_weather(request: Request, weather_request: WeatherRequest):
+@router.post("/get-weather")
+async def get_weather(request: Request, weather_request: WeatherRequest) -> list[WeatherDatasetEntry]:
+    """
+    Get the weather for a specific location between two timestamps.
+
+    This will first attempt to grab the data from our PostgreSQL database, and if that fails,
+    it will grab the data from VisualCrossing (and cache that). Be warned that this can result in
+    an external API call, which could be slow or expensive.
+
+    Parameters
+    ----------
+    request
+
+    weather_request
+
+    """
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetch(
             """SELECT
@@ -115,7 +132,10 @@ async def get_weather(request: Request, weather_request: WeatherRequest):
     got_days = {item["timestamp"].date() for item in res}
 
     missing_days = sorted(expected_days - got_days)
-
+    if missing_days and (max(missing_days) - min(missing_days) > datetime.timedelta(days=365)):
+        raise HTTPException(
+            400, f"Too many missing days from {min(missing_days)} to {max(missing_days)}." + "Try requesting a smaller dataset."
+        )
     if missing_days:
         logging.warning(f"Missing days between {min(missing_days)} and {max(missing_days)} for {weather_request.location}")
         vc_recs = await visual_crossing_request(
@@ -193,4 +213,15 @@ async def get_weather(request: Request, weather_request: WeatherRequest):
                 weather_request.start_ts,
                 weather_request.end_ts,
             )
-    return res
+
+    return [
+        WeatherDatasetEntry(
+            timestamp=item["timestamp"],
+            temp=item["temp"],
+            windspeed=item["windspeed"],
+            humidity=item["humidity"],
+            pressure=item["pressure"],
+            solarradiation=item["solarradiation"],
+        )
+        for item in res
+    ]

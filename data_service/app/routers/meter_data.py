@@ -2,24 +2,16 @@ import datetime
 import logging
 import uuid
 
+import numpy as np
 import pandas as pd
+import pydantic
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
-from ..internal.gas_meters import (
-    hh_gas_to_monthly,
-    monthly_to_hh_hload,
-    parse_be_st_format,
-    parse_octopus_half_hourly,
-)
-from .models import (
-    DatasetID,
-    DatasetIDWithTime,
-    FuelEnum,
-    GasDatasetEntry,
-    WeatherRequest,
-    site_id_t,
-)
+from ..internal.gas_meters import hh_gas_to_monthly, monthly_to_hh_hload, try_meter_parsing
+from ..internal.pvgis import get_renewables_ninja_data
+from ..internal.utils import hour_of_year
+from .models import DatasetID, DatasetIDWithTime, FuelEnum, GasDatasetEntry, WeatherRequest, site_id_t
 from .weather import get_weather
 
 router = APIRouter()
@@ -29,9 +21,9 @@ router = APIRouter()
 async def upload_meter_data(
     request: Request,
     file: UploadFile,
-    site_id: site_id_t = Form(...), # noqa
-    fuel_type: FuelEnum = Form(...), # noqa
-):
+    site_id: site_id_t = Form(...),  # noqa
+    fuel_type: FuelEnum = Form(...),  # noqa
+) -> dict[str, str | int]:
     """
     Upload a file of meter data to the database.
 
@@ -44,13 +36,16 @@ async def upload_meter_data(
 
     Parameters
     ----------
-    request
+    *request*
         FastAPI request object that is handled automatically. This contains a database connection pool object.
-    file
+
+    *file*
         Uploaded file, e.g. "consumption.csv" or "gas_meters.xlsx".
-    site_id
+
+    *site_id*
         Name of the site that this dataset should be associated with. This will complain if that site doesn't already exist.
-    fuel_type
+
+    *fuel_type*
         The type of fuel that the dataset is measuring. Currently accepts {"gas", "elec"}.
 
     Returns
@@ -62,16 +57,22 @@ async def upload_meter_data(
     400
         In case of parsing error
     """
-    if file.filename is None:
-        raise HTTPException(400, f"Received empty file: {file.filename}")
-    if file.filename.endswith(".csv"):
-        df = parse_octopus_half_hourly(file.file)
+    try:
+        df: HHDataFrame | MonthlyDataFrame = try_meter_parsing(file.file)
+    except NotImplementedError as ex:
+        raise HTTPException(400, f"Could not parse {file.filename} due to an unknown format.") from ex
+
+    def is_half_hourly(hh_or_monthly_df: HHDataFrame | MonthlyDataFrame) -> bool:
+        timedeltas = np.ediff1d(hh_or_monthly_df.index)
+        timedeltas_mask = np.logical_and(
+            timedeltas > datetime.timedelta(seconds=1), timedeltas <= datetime.timedelta(minutes=30)
+        )
+        return np.mean(timedeltas_mask.astype(float)) > 0.5
+
+    if is_half_hourly(df):
         reading_type = "halfhourly"
-    elif file.filename.endswith(".xlsx"):
-        df = parse_be_st_format(file.file)
-        reading_type = "manual"
     else:
-        raise HTTPException(400, f"Could not parse {file.filename} due to an unknown format.")
+        reading_type = "manual"
 
     metadata = {
         "dataset_id": uuid.uuid4(),
@@ -95,8 +96,22 @@ async def upload_meter_data(
     async with request.state.pgpool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
-                """INSERT INTO client_meters.metadata (dataset_id, created_at, site_id, fuel_type, reading_type, filename)
-                            VALUES ($1, $2, $3, $4, $5)""",
+                """
+                INSERT INTO
+                    client_meters.metadata (
+                        dataset_id,
+                        created_at,
+                        site_id,
+                        fuel_type,
+                        reading_type,
+                        filename)
+                VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6)""",
                 metadata["dataset_id"],
                 metadata["created_at"],
                 metadata["site_id"],
@@ -106,19 +121,30 @@ async def upload_meter_data(
             )
 
             await conn.executemany(
-                f"""INSERT INTO client_meters.{table_name} (dataset_id, start_ts, end_ts, consumption_kwh)
-                                VALUES ($1, $2, $3, $4)""",
-                list(zip(
+                f"""INSERT INTO
+                        client_meters.{table_name} (
+                            dataset_id,
+                            start_ts,
+                            end_ts,
+                            consumption_kwh
+                        )
+                    VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4)""",
+                list(
+                    zip(
                         [metadata["dataset_id"] for _ in df.index],
                         df.index,
                         df.end_ts,
                         df.consumption,
                         strict=False,
                     )
-                )
+                ),
             )
 
-    return 200
+    return {"rows_uploaded": len(df), "reading_type": reading_type}
 
 
 @router.post("/get-meter-data")
@@ -134,42 +160,32 @@ async def get_meter_data(request: Request, dataset_id: DatasetID) -> list[GasDat
 
     Returns
     -------
-    list of records in the form [{"start_ts": ..., "end_ts": ..., "consumption": ...}, ...]
+    list of records in the form `[{"start_ts": ..., "end_ts": ..., "consumption": ...}, ...]`
     """
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetch(
-            """SELECT
-                                start_ts,
-                               end_ts,
-                               consumption_kwh as consumption
-                               FROM client_meters.gas_meters
-                               WHERE dataset_id = $1
-                               ORDER BY start_ts ASC""",
+            """
+            SELECT
+                start_ts,
+                end_ts,
+                consumption_kwh as consumption
+            FROM client_meters.gas_meters
+            WHERE dataset_id = $1
+            ORDER BY start_ts ASC""",
             dataset_id.dataset_id,
         )
-    return [{"start_ts": item[0], "end_ts": item[1], "consumption": item[2]} for item in res]
+    return [GasDatasetEntry(**item) for item in res]
 
 
 @router.post("/get-heating-load")
-async def get_heating_load(request: Request, params: DatasetIDWithTime):
+async def get_heating_load(request: Request, params: DatasetIDWithTime) -> list:
     async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetch(
-            """
-                               SELECT
-                                start_ts,
-                                end_ts,
-                                consumption_kwh as consumption
-                               FROM client_meters.gas_meters
-                               WHERE dataset_id = $1
-                               ORDER BY start_ts ASC""",
-            params.dataset_id,
-        )
-        location, reading_type = await conn.fetchrow(
-            """SELECT
-            location,
-            m.reading_type
-            FROM
-            client_meters.metadata AS m
+        location, reading_type, fuel_type = await conn.fetchrow("""
+            SELECT
+                location,
+                m.reading_type,
+                m.fuel_type
+            FROM client_meters.metadata AS m
             LEFT JOIN client_info.site_info AS s
             ON s.site_id = m.site_id WHERE dataset_id = $1
             LIMIT 1""",
@@ -178,10 +194,19 @@ async def get_heating_load(request: Request, params: DatasetIDWithTime):
         if location is None:
             raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
 
-    weather = await get_weather(
-        request,
-        WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
-    )
+        if fuel_type != "gas":
+            raise HTTPException(400, f"Dataset ID {params.dataset_id} is for fuel type {fuel_type}, not gas.")
+        res = await conn.fetch(
+            """
+            SELECT
+                start_ts,
+                end_ts,
+                consumption_kwh as consumption
+            FROM client_meters.gas_meters
+            WHERE dataset_id = $1
+            ORDER BY start_ts ASC""",
+            params.dataset_id,
+        )
 
     gas_df = pd.DataFrame.from_records(res, columns=["start_ts", "end_ts", "consumption"], index="start_ts")
     gas_df["start_ts"] = gas_df.index
@@ -190,10 +215,19 @@ async def get_heating_load(request: Request, params: DatasetIDWithTime):
             400,
             f"Got an empty dataset for {location} between {params.start_ts} and {params.end_ts}",
         )
+    try:
+        start_ts = max(params.start_ts, gas_df["start_ts"].min())
+        end_ts = min(params.end_ts, gas_df["end_ts"].max())
+        weather = await get_weather(
+            request,
+            WeatherRequest(location=location, start_ts=start_ts, end_ts=end_ts),
+        )
+    except HTTPException as ex:
+        raise ex
 
     weather_df = WeatherDataFrame(
         pd.DataFrame.from_records(
-            weather,
+            [item.model_dump() for item in weather],
             columns=[
                 "timestamp",
                 "temp",
@@ -205,18 +239,100 @@ async def get_heating_load(request: Request, params: DatasetIDWithTime):
             index="timestamp",
         )
     )
-
     if reading_type == "halfhourly":
-        logging.info(f"Got reading type hh for {params.dataset_id} in {location}, so resampling.")
+        logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location} so resampling.")
         gas_df = hh_gas_to_monthly(HHDataFrame(gas_df))
     elif reading_type in {"automatic", "manual"}:
-        print(f"Got reading type {reading_type} for {params.dataset_id} in {location}.")
+        logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location}.")
         gas_df = MonthlyDataFrame(gas_df)
         gas_df["days"] = (gas_df["end_ts"] - gas_df["start_ts"]).dt.total_seconds() / pd.Timedelta(days=1).total_seconds()
     else:
         raise HTTPException(400, f"Unknown reading type {reading_type} for this dataset.")
 
-    processed_df = monthly_to_hh_hload(gas_df, weather_df)
-    processed_df["timestamp"] = processed_df.index
-    response = processed_df.to_json(orient="records")
-    return response
+    if gas_df.shape[0] < 3:
+        raise HTTPException(400, f"Dataset covered too little time: {gas_df.index.min()} to {gas_df.index.max()}")
+    heating_df = monthly_to_hh_hload(gas_df, weather_df).drop(columns=["timedelta"])
+    heating_df = heating_df.resample(pd.Timedelta(minutes=60)).sum()
+    assert isinstance(heating_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
+    heating_df["Date"] = heating_df.index.strftime("%d-%b")
+    heating_df["StartTime"] = heating_df.index.strftime("%H:%M")
+    heating_df["HourOfYear"] = heating_df.index.map(hour_of_year)
+    heating_df = heating_df.rename(columns={"heating": "HLoad1", "dhw": "DHWLoad1"}).drop(columns=["predicted", "hdd"])
+
+    heating_df = heating_df.join(weather_df["temp"]).rename(columns={"temp": "Air-temp"})
+    return heating_df.to_dict(orient="records")
+
+
+@router.post("/get-electricity-load")
+async def get_electricity_load(request: Request, params: DatasetIDWithTime) -> list:
+    async with request.state.pgpool.acquire() as conn:
+        reading_type = await conn.fetchval(
+            """
+            SELECT
+                m.reading_type
+            FROM client_meters.metadata AS m
+            LEFT JOIN client_info.site_info AS s
+            ON s.site_id = m.site_id WHERE dataset_id = $1
+            LIMIT 1""",
+            params.dataset_id,
+        )
+        if reading_type != "halfhourly":
+            raise HTTPException(500, "Electrical load resampling not yet supported, pick a half hourly dataset.")
+
+        res = await conn.fetch(
+            """
+            SELECT
+                start_ts,
+                consumption_kwh AS consumption
+            FROM client_meters.electricity_meters
+            WHERE dataset_id = $1
+            ORDER BY start_ts ASC""",
+            params.dataset_id,
+        )
+
+    # Now restructure for EPOCH
+    elec_df = pd.DataFrame.from_records(
+        res, columns=["start_ts", "consumption"], coerce_float=["consumption"], index="start_ts"
+    )
+    elec_df = elec_df.resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
+    assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
+    elec_df["Date"] = elec_df.index.strftime("%d-%b")
+    elec_df["StartTime"] = elec_df.index.strftime("%H:%M")
+    elec_df["HourOfYear"] = elec_df.index.map(hour_of_year)
+    elec_df = elec_df.rename(columns={"consumption": "FixLoad1"})
+    return elec_df.to_dict(orient="records")
+
+
+class RenewablesRequest(pydantic.BaseModel):
+    site_id: str
+    start_ts: pydantic.AwareDatetime
+    end_ts: pydantic.AwareDatetime
+
+
+@router.post("/get-renewables-generation")
+async def get_renewables_generation(request: Request, params: RenewablesRequest) -> list:
+    async with request.state.pgpool.acquire() as conn:
+        location, (latitude, longitude) = await conn.fetchrow(
+            """
+            SELECT
+                location,
+                coordinates
+            FROM client_info.site_info AS s
+            WHERE site_id = $1
+            LIMIT 1""",
+            params.site_id,
+        )
+        if location is None:
+            raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
+
+    renewables_df = await get_renewables_ninja_data(
+        latitude=latitude, longitude=longitude, start_ts=params.start_ts, end_ts=params.end_ts
+    )
+    if len(renewables_df) < 364 * 24:
+        raise HTTPException(500, f"Could not get renewables information for {location}.")
+    assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a DatetimeIndex"
+    renewables_df["Date"] = renewables_df.index.strftime("%d-%b")
+    renewables_df["StartTime"] = renewables_df.index.strftime("%H:%M")
+    renewables_df["HourOfYear"] = renewables_df.index.map(hour_of_year)
+    renewables_df = renewables_df.rename(columns={"pv": "RGen1"})
+    return renewables_df.to_dict(orient="records")

@@ -5,7 +5,7 @@ from .conversions import (
     relative_to_specific_humidity,
 )
 from .file_outputs import to_airtemp_csv, to_hload_csv, to_rgen_csv
-from .utils import hour_of_year, load_dotenv, typename
+from .utils import check_latitude_longitude, hour_of_year, load_dotenv, typename
 
 __all__ = [
     "m3_to_kwh",
@@ -18,4 +18,5 @@ __all__ = [
     "load_dotenv",
     "typename",
     "relative_to_specific_humidity",
+    "check_latitude_longitude",
 ]

@@ -4,16 +4,16 @@ Functions for handling weather data from VisualCrossing.
 
 import datetime
 import os
-import pathlib
 
-import numpy as np
-import pandas as pd
-import requests
+import httpx
+import pydantic
 
 from ..utils import load_dotenv
 
 
-def get_visual_crossing(location: str, start_ts: datetime.datetime, end_ts: datetime.datetime) -> requests.Response:
+async def visual_crossing_request(
+    location: str, start_ts: datetime.datetime, end_ts: datetime.datetime
+) -> list[dict[str, pydantic.AwareDatetime | float]]:
     """
     Get a weather history as a raw response from VisualCrossing.
 
@@ -33,6 +33,12 @@ def get_visual_crossing(location: str, start_ts: datetime.datetime, end_ts: date
     -------
         raw response from VisualCrossing, with no sanity checking.
     """
+    if not isinstance(start_ts, datetime.datetime):
+        raise TypeError(f"Received a date object instead of a datetime for {start_ts}")
+
+    if not isinstance(end_ts, datetime.datetime):
+        raise TypeError(f"Received a date object instead of a datetime for {end_ts}")
+
     BASE_URL = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline"
 
     load_dotenv()
@@ -56,105 +62,22 @@ def get_visual_crossing(location: str, start_ts: datetime.datetime, end_ts: date
         "solarenergy",
         "degreedays",
     ]
-    req = requests.get(
-        url,
-        params={
-            "key": os.environ["VISUAL_CROSSING_API_KEY"],
-            "include": "hours",
-            "unitGroup": "metric",
-            "timezone": "Z",  # We want UTC
-            "lang": "uk",
-            "elements": ",".join(desired_columns),
-        },
-    )
-    return req
-
-
-def visual_crossing_to_pandas(raw_vc: requests.Response) -> pd.DataFrame:
-    """
-    Convert a VisualCrossing weather history to a useful pandas dataframe.
-
-    Parameters
-    ----------
-    raw_vc
-        Response from VC, with ["days"] and ["hours"]
-
-    Returns
-    -------
-        pandas dataframe with datetime index set and weather data.
-    """
-    records = [hour for day in raw_vc.json()["days"] for hour in day["hours"]]
-
-    df = pd.DataFrame.from_records(records)
-    df["timestamp"] = pd.to_datetime(df["datetimeEpoch"] * 1e9, utc=True)
-    df = df.set_index("timestamp").drop(["datetimeEpoch"], axis=1)
-    return df
-
-
-def create_weather_dataframe(
-    year: int,
-    data_directory: os.PathLike = pathlib.Path("InputData"),
-) -> pd.DataFrame:
-    """
-    Generate a complete training dataset from VC and the existing Hload / Rgen data.
-
-    Will load a cached parquet file of VisualCrossing data if available.
-    Augments the VisualCrossing data with some time encoding and heating
-    degree days data.
-
-    Parameters
-    ----------
-    year
-        The year to get data for
-    data_directory
-        The directory to find parquet cached data and target CSVs
-
-    Returns
-    -------
-        augmented pandas dataframe, with target data joined
-    """
-    weather_path = pathlib.Path(data_directory) / f"taunton_weather_{year}.parquet"
-    if weather_path.exists():
-        df = pd.read_parquet(weather_path)
-    else:
-        req = get_visual_crossing(
-            "Taunton,UK",
-            datetime.datetime(year=year, month=1, day=1, tzinfo=datetime.UTC),
-            datetime.datetime(year=year, month=12, day=31, tzinfo=datetime.UTC),
+    async with httpx.AsyncClient() as client:
+        req = await client.get(
+            url,
+            params={
+                "key": os.environ["VISUAL_CROSSING_API_KEY"],
+                "include": "hours",
+                "unitGroup": "metric",
+                "timezone": "Z",  # We want UTC
+                "lang": "uk",
+                "elements": ",".join(desired_columns),
+            },
         )
-        df = visual_crossing_to_pandas(req)
-        df.to_parquet(weather_path)
 
-    rgen_df = pd.read_csv(pathlib.Path(data_directory) / "CSVRGen.csv")
-    rgen_df["datetime"] = pd.to_datetime(
-        rgen_df.Date + rgen_df["Start Time"], format="%d-%b%H:%M", utc=True
-    ) + pd.offsets.DateOffset(years=year - 1900)  # type: ignore
-    rgen_df = rgen_df.set_index("datetime").drop(["HoY", "Date", "Start Time", "Unnamed: 7", "RGen4"], axis=1).dropna()
+    records = [hour for day in req.json()["days"] for hour in day["hours"]]
+    for idx, rec in enumerate(records):
+        records[idx]["timestamp"] = datetime.datetime.fromtimestamp(rec["datetimeEpoch"], datetime.UTC)
+        del records[idx]["datetimeEpoch"]
 
-    hgen_df = pd.read_csv(pathlib.Path(data_directory) / "CSVHload.csv")
-    hgen_df["datetime"] = pd.to_datetime(
-        hgen_df.Date + hgen_df["Start Time"], format="%d-%b%H:%M", utc=True
-    ) + pd.offsets.DateOffset(years=year - 1900)  # type: ignore
-    hgen_df = (
-        hgen_df.set_index("datetime")
-        .drop(
-            ["HoY", "Date", "Start Time", "Unnamed: 7", "HLoad2", "HLoad3", "HLoad4"],
-            axis=1,
-        )
-        .dropna(axis=0)
-    )
-
-    # Add some extra feature columns: heating degree days and
-    # a simple time encoding.
-
-    total_df = rgen_df.join(df).fillna(0).join(hgen_df)
-    total_df["hdd"] = np.maximum(15.5 - total_df["temp"], 0)
-    total_df["last_hdd"] = np.roll(total_df["hdd"].to_numpy(), -1)
-
-    time_index = total_df.index
-    assert isinstance(time_index, pd.DatetimeIndex)
-    total_df["hour_sin"] = np.sin(2 * np.pi * time_index.hour / 24)
-    total_df["hour_cos"] = np.cos(2 * np.pi * time_index.hour / 24)
-    total_df["day_sin"] = np.sin(np.minimum(2 * np.pi * time_index.dayofyear / 365, 1.0))
-    total_df["day_cos"] = np.cos(np.minimum(2 * np.pi * time_index.dayofyear / 365, 1.0))
-    return total_df
+    return records

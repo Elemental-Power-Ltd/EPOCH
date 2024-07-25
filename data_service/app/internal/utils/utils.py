@@ -134,3 +134,32 @@ def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
             os.environ[key] = value
     # turn this into a dict to prevent any trouble with weird types
     return dict(os.environ.items())
+
+
+def check_latitude_longitude(latitude: float, longitude: float) -> bool:
+    """
+    Check if a pair of coordinates are appropriate latitude and longitude for the UK.
+
+    This function is here because I keep forgetting which way round latitude and longitude go.
+
+    Parameters
+    ----------
+    latitude
+        Number that is probably a latitude or maybe a longitude? This is +90 north of the Equator
+
+    longitude
+        Number that is probably a longitude, or maybe a latitude? This is 0 around the Greenwich meridian.
+    """
+    if longitude < -7.57216793459:
+        return False
+
+    if longitude > 1.68153079591:
+        return False
+
+    if latitude < 49.959999905:
+        return False
+
+    if latitude > 58.6350001085:
+        return False
+
+    return True
