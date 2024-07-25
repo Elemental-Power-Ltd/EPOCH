@@ -1,0 +1,6 @@
+.git
+.vs
+build
+OutputData
+*.tar
+docker
