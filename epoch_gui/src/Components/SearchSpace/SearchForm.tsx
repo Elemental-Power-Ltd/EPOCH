@@ -2,19 +2,19 @@ import Form from '@rjsf/mui'
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
-import InputSchema from '../../util/json/schema/InputSchema2.json';
-import DefaultInput from '../../util/json/default/DefaultInput.json'
-
-
-const submitForm = data => {
-    console.log(data.formData);
-    // submitConfig(data.formData).then(
-    //     result => console.log(result)
-    // );
-}
+import InputSchema from '../../util/json/schema/InputSchema.json';
+import {useEpochStore} from "../../State/state";
 
 
 const SearchForm = () => {
+
+    const state = useEpochStore((state) => state.run);
+    const setSearchSpace = useEpochStore((state) => state.setSearchSpace);
+
+    const changeSearchSpace = (evt: any) => {
+        setSearchSpace(evt.formData);
+    }
+
 
     return (
         <div>
@@ -22,16 +22,19 @@ const SearchForm = () => {
 
             <Form
                 schema={InputSchema as RJSFSchema}
-                uiSchema={{"ASHP_HSource": {"ui:widget": "checkboxes"}}}
+                uiSchema={{
+                    "ASHP_HSource": {"ui:widget": "checkboxes"},
+                    "ui:submitButtonOptions": {"norender": true}
+                }}
                 validator={validator}
-                formData={DefaultInput}
-                onSubmit={submitForm}
+                formData={state.searchSpace}
+                onChange={changeSearchSpace}
             />
 
-            <div>
-                <button>Submit</button>
-                <button>Save</button>
-            </div>
+            {/*<div>*/}
+            {/*    <button>Submit</button>*/}
+            {/*    <button>Save</button>*/}
+            {/*</div>*/}
         </div>
     )
 }

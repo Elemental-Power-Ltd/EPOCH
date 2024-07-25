@@ -6,9 +6,33 @@ import {useEffect, useState} from "react";
 
 import { getStatus } from "../endpoints";
 
+import {useEpochStore} from "../State/state";
+
 function RunContainer() {
 
+    const state = useEpochStore((state) => state.run);
+
     const [serverStatus, setServerStatus] = useState<{ state: string }>({ state: "UNKNOWN" });
+
+    const onRun = (evt: any) => {
+
+        // FIXME
+        const hacky_lookup = state.selectedOptimiser === "Genetic Algorithm" ? "geneticAlgorithm" : "gridSearch";
+
+        const payload = {
+            site: state.selectedSite,
+            optimiser: state.selectedOptimiser,
+            optimiserConfig: state.optimisers[hacky_lookup],
+            searchSpace: state.searchSpace,
+        }
+
+        console.log(payload);
+
+        console.log(state.selectedOptimiser);
+    }
+
+
+
 
     useEffect(() => {
         const interval = setInterval(async () => {
@@ -27,14 +51,14 @@ function RunContainer() {
             <StatusDisplay serverStatus={serverStatus} />
 
             <AccordionSection title="Config Form">
-                <ConfigForm />
+                <ConfigForm/>
             </AccordionSection>
 
             <AccordionSection title="Search Form">
                 <SearchForm />
             </AccordionSection>
 
-            <button onClick={()=>{alert("TODO")}}>RUN</button>
+            <button onClick={onRun}>RUN</button>
             <button onClick={()=>{alert("TODO")}}>SAVE CONFIGURATION</button>
 
         </div>
