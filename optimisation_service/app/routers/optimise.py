@@ -4,6 +4,7 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
 from typing import TypedDict
+import os
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import UUID1
@@ -35,10 +36,10 @@ class ParamRange(TypedDict):
 
 @dataclass
 class Task:
-    UUID: UUID1
+    TaskID: UUID1
     optimiser: str
     optimiserConfig: dict[str, str | int | float]
-    parameters: dict[str, ParamRange | int | float]
+    searchParameters: dict[str, ParamRange | int | float]
     objectives: list
     site: str
 
@@ -69,7 +70,7 @@ def convert_task(task: Task) -> tuple[Problem, Optimiser]:
     # input_path = save_inputdata(input_data)
     optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
     problem = Problem(
-        name=task.UUID,
+        name=task.TaskID,
         objectives=convert_objectives(task.objectives),
         constraints={
             "annualised_cost": [None, None],
@@ -78,8 +79,8 @@ def convert_task(task: Task) -> tuple[Problem, Optimiser]:
             "cost_balance": [None, None],
             "payback_horizon": [None, None],
         },
-        parameters=convert_parameters(task.parameters),
-        input_dir="C:/Users/willi/Documents/GitHub/optimisation_elemental/tests/data/benchmarks/var-3/InputData",  # input_path
+        parameters=convert_parameters(task.searchParameters),
+        input_dir=os.environ.get("EPOCH_INPUT_DATA", "./tests/data/benchmarks/var-3/InputData"),  # input_path
     )
     return problem, optimiser
 
@@ -158,7 +159,7 @@ async def process_requests(q: asyncio.Queue, pool: ProcessPoolExecutor):
         q.task_done(task)
 
 
-@router.post("/add/")
+@router.post("/submit-task/")
 async def add_task(request: Request, task: Task):
     """
     Add optimisation tasks to queue.
@@ -168,7 +169,7 @@ async def add_task(request: Request, task: Task):
     Task
         Optimisation task to be added to queue.
         Must contain task:
-        - UUID
+        - TaskID
         - Optimiser
         - Optimiser Configuration
         - Objectives

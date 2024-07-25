@@ -55,7 +55,7 @@ class IQueue(asyncio.Queue):
             Task to add in queue.
         """
         await super().put(task)
-        self.q[task.UUID] = QueueElem(state.QUEUED, datetime.datetime.now(datetime.UTC))
+        self.q[task.TaskID] = QueueElem(state.QUEUED, datetime.datetime.now(datetime.UTC))
 
     async def get(self):
         """
@@ -69,11 +69,11 @@ class IQueue(asyncio.Queue):
             Next task in queue.
         """
         task = await super().get()
-        if self.q[task.UUID].STATE == state.QUEUED:
-            self.q[task.UUID].STATE = state.RUNNING
+        if self.q[task.TaskID].STATE == state.QUEUED:
+            self.q[task.TaskID].STATE = state.RUNNING
             return task
-        elif self.q[task.UUID].STATE == state.CANCELLED:
-            del self.q[task.UUID]
+        elif self.q[task.TaskID].STATE == state.CANCELLED:
+            del self.q[task.TaskID]
             return await self.get()
 
     def task_done(self, task: Task) -> None:
@@ -85,20 +85,20 @@ class IQueue(asyncio.Queue):
         task
             Task to mark as done
         """
-        del self.q[task.UUID]
+        del self.q[task.TaskID]
         super().task_done()
 
-    def cancel(self, UUID: UUID1):
+    def cancel(self, TaskID: UUID1):
         """
         Cancel a task in queue.
 
         Parameters
         ----------
-        UUID
+        TaskID
             UUID of task to cancel
         """
-        assert self.q[UUID].STATE != state.RUNNING, "Task already running."
-        self.q[UUID].STATE = state.CANCELLED
+        assert self.q[TaskID].STATE != state.RUNNING, "Task already running."
+        self.q[TaskID].STATE = state.CANCELLED
 
     def uncancelled(self):
         """
@@ -143,24 +143,24 @@ async def get_queue_status(request: Request):
 
 
 @router.post("/cancel-task/")
-async def cancel_task_in_queue(request: Request, UUID: UUID1):
+async def cancel_task_in_queue(request: Request, TaskID: UUID1):
     """
     Cancels task in queue.
     Can not be used to cancel tasks already running.
 
     Parameters
     ----------
-    UUID
+    TaskID
         UUID of task to cancel.
     """
-    if request.app.state.q.q[UUID].STATE == state.QUEUED:
-        request.app.state.q.cancel(UUID)
+    if request.app.state.q.q[TaskID].STATE == state.QUEUED:
+        request.app.state.q.cancel(TaskID)
         return "Task cancelled."
-    elif UUID not in list(request.app.state.q.q.keys()):
+    elif TaskID not in list(request.app.state.q.q.keys()):
         return HTTPException(status_code=400, detail="Task not found in queue.")
-    elif request.app.state.q.q[UUID].STATE == state.RUNNING:
+    elif request.app.state.q.q[TaskID].STATE == state.RUNNING:
         return HTTPException(status_code=400, detail="Task already running.")
-    elif request.app.state.q.q[UUID].STATE == state.CANCELLED:
+    elif request.app.state.q.q[TaskID].STATE == state.CANCELLED:
         return HTTPException(status_code=400, detail="Task already cancelled.")
 
 
@@ -169,6 +169,6 @@ async def clear_queue(request: Request):
     """
     Cancels all tasks in queue.
     """
-    for UUID in request.app.state.q.q.keys():
-        if request.app.state.q.q[UUID].STATE != state.RUNNING:
-            request.app.state.q.cancel(UUID)
+    for TaskID in request.app.state.q.q.keys():
+        if request.app.state.q.q[TaskID].STATE != state.RUNNING:
+            request.app.state.q.cancel(TaskID)
