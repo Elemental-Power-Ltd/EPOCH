@@ -1,7 +1,7 @@
 from enum import Enum
 import threading
 
-from mock_server.call_executable import run_headless
+from gui.mock_server.call_executable import run_headless
 
 PATH_TO_EPOCH = "../Epoch"
 
