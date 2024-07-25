@@ -25,8 +25,8 @@ class GridSearch(Algorithm):
 
     def __init__(
         self,
+        project_path: str | PathLike = "../EPOCH",
         output_dir: str | PathLike | None = None,
-        project_path: str | PathLike = "../../EPOCH",
         config_dir: str | PathLike | None = None,
         keep_degenerate: bool = False,
     ) -> None:

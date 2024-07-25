@@ -3,16 +3,15 @@ import datetime
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
-from os import PathLike
+from typing import TypedDict
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import UUID1, BaseModel
+from pydantic import UUID1
 
-from ..internal.epl_typing import ConstraintDict, ParameterDict
 from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
 from ..internal.grid_search import GridSearch
 from ..internal.opt_algorithm import Algorithm
-from ..internal.problem import Problem
+from ..internal.problem import Problem, convert_objectives, convert_parameters
 from ..internal.result import Result
 
 router = APIRouter()
@@ -28,31 +27,26 @@ router = APIRouter()
 #     records[problem.name] = pd.concat([df_objective_values, df_solutions, df_constants], axis=1).to_json(orient="records")
 
 
-class JSONOptimiser(BaseModel):
-    type: str
-    hyperparameters: dict[str, str | int | float]
+class ParamRange(TypedDict):
+    min: int | float
+    max: int | float
+    step: int | float
 
 
-class JSONProblem(BaseModel):
-    id: str
-    objectives: dict[str, int]
-    constraints: ConstraintDict
-    parameters: ParameterDict
-    input_type: str
-    input_path: str | PathLike
+@dataclass
+class Task:
+    UUID: UUID1
+    optimiser: str
+    optimiserConfig: dict[str, str | int | float]
+    parameters: dict[str, ParamRange | int | float]
+    objectives: list
+    site: str
 
 
 class Optimiser(Enum):
     NSGA2 = NSGA2
     GeneticAlgorithm = GeneticAlgorithm
     GridSearch = GridSearch
-
-
-@dataclass()
-class Task:
-    UUID: UUID1
-    problem: JSONProblem
-    optimiser: JSONOptimiser
 
 
 def convert_task(task: Task) -> tuple[Problem, Optimiser]:
@@ -73,12 +67,18 @@ def convert_task(task: Task) -> tuple[Problem, Optimiser]:
     """
     # input_data = fetch_inputdata(task.problem.input_path)
     # input_path = save_inputdata(input_data)
-    optimiser = Optimiser[task.optimiser.type].value(**task.optimiser.hyperparameters)
+    optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
     problem = Problem(
-        name=task.problem.id,
-        objectives=task.problem.objectives,
-        constraints=task.problem.constraints,
-        parameters=task.problem.parameters,
+        name=task.UUID,
+        objectives=convert_objectives(task.objectives),
+        constraints={
+            "annualised_cost": [None, None],
+            "capex": [None, None],
+            "carbon_balance": [None, None],
+            "cost_balance": [None, None],
+            "payback_horizon": [None, None],
+        },
+        parameters=convert_parameters(task.parameters),
         input_dir="C:/Users/willi/Documents/GitHub/optimisation_elemental/tests/data/benchmarks/var-3/InputData",  # input_path
     )
     return problem, optimiser
@@ -159,22 +159,25 @@ async def process_requests(q: asyncio.Queue, pool: ProcessPoolExecutor):
 
 
 @router.post("/add/")
-async def add_task(request: Request, UUID: UUID1, problem: JSONProblem, optimiser: JSONOptimiser):
+async def add_task(request: Request, task: Task):
     """
-    Add tasks to queue.
+    Add optimisation tasks to queue.
 
     Parameters
     ----------
-    UUID
-        Task UUID.
-    problem
-        Task problem.
-    optimiser
-        Task optimiser.
+    Task
+        Optimisation task to be added to queue.
+        Must contain task:
+        - UUID
+        - Optimiser
+        - Optimiser Configuration
+        - Objectives
+        - Parameters
+        - Input Data UUID
     """
     q = request.app.state.q
     if q.full():
         raise HTTPException(status_code=503, detail="Task queue is full.")
     else:
-        await q.put(Task(UUID, problem, optimiser))
+        await q.put(task)
         return "Added task to queue."

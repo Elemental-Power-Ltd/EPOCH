@@ -7,7 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Generator, Self
 
-from .epl_typing import ConstraintDict, ParameterDict
+from .epl_typing import ConstraintDict, ObjectiveDict, ParameterDict
 from .task_data_wrapper import PyTaskData
 
 ACTUAL_OBJECTIVES = [
@@ -18,11 +18,13 @@ ACTUAL_OBJECTIVES = [
     "annualised_cost",
 ]
 
+_OPTIMISATION_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "payback_horizon": 1, "annualised_cost": 1}
+
 
 @dataclass(frozen=True)
 class Problem:
     name: str
-    objectives: dict[str, int]
+    objectives: ObjectiveDict
     constraints: ConstraintDict
     parameters: ParameterDict
     input_dir: str | PathLike
@@ -151,3 +153,45 @@ def save_problem(problem: Problem, save_dir: str | os.PathLike, overwrite: bool 
         json.dump(problem.constraints, f)
     with open(Path(save_path, "parameters.json"), "w") as f:
         json.dump(problem.parameters, f)
+
+
+def convert_objectives(objectives: list) -> ObjectiveDict:
+    """
+    Convert list of objectives to dictionary of objectives with corresponding optimisation direction.
+    1 for minimisation and -1 for maximisation.
+
+    Parameters
+    ----------
+    objectives
+        List of objectives to convert.
+
+    Returns
+    -------
+    ObjectiveDict
+        Dictionary of objectives with corresponding optimisation direction.
+    """
+    return {key: _OPTIMISATION_DIRECTION[key] for key in objectives}
+
+
+def convert_parameters(parameters: dict) -> ParameterDict:
+    """
+    Converts dictionary of parameters from dict of dicts to dict of lists.
+    ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
+
+    Parameters
+    ----------
+    parameters
+        Dictionary of parameters with values in the format {"min":min, "max":max, "step":step} or int or float.
+
+    Returns
+    -------
+    ParameterDict
+        Dictionary of parameters with values in the format [min, max, step] or int or float.
+    """
+    new_dict = {}
+    for key, value in parameters.items():
+        if isinstance(value, dict):
+            new_dict[key] = [value["min"], value["max"], value["step"]]
+        else:
+            new_dict[key] = value
+    return new_dict
