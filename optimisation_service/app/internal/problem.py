@@ -192,6 +192,6 @@ def convert_parameters(parameters: DetailedParameterDict) -> ParameterDict:
     for key, value in parameters.items():
         if isinstance(value, dict):
             new_dict[key] = [value["min"], value["max"], value["step"]]
-        else:
+        elif isinstance(value, int | float):
             new_dict[key] = value
     return new_dict

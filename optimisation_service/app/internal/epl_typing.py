@@ -13,7 +13,7 @@ class ParamRange(TypedDict):
     step: int | float
 
 
-ParameterDict = Mapping[str, list[float] | list[int] | float | int]
+ParameterDict = dict[str, list[float] | list[int] | float | int]
 DetailedParameterDict = Mapping[str, ParamRange | int | float]
 ConstraintDict = Mapping[str, tuple[None, None] | tuple[float, float] | list[float] | list[int] | list[None]]
-ObjectiveDict = Mapping[str, float | int]
+ObjectiveDict = dict[str, float | int]
