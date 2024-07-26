@@ -7,7 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Generator, Self
 
-from .epl_typing import ConstraintDict, ObjectiveDict, ParameterDict
+from .epl_typing import ConstraintDict, DetailedParameterDict, ObjectiveDict, ParameterDict
 from .task_data_wrapper import PyTaskData
 
 ACTUAL_OBJECTIVES = [
@@ -173,7 +173,7 @@ def convert_objectives(objectives: list) -> ObjectiveDict:
     return {key: _OPTIMISATION_DIRECTION[key] for key in objectives}
 
 
-def convert_parameters(parameters: dict) -> ParameterDict:
+def convert_parameters(parameters: DetailedParameterDict) -> ParameterDict:
     """
     Converts dictionary of parameters from dict of dicts to dict of lists.
     ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}

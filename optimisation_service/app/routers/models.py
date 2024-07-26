@@ -2,17 +2,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from os import PathLike
-from typing import TypedDict
 from uuid import UUID
 
+from ..internal.epl_typing import DetailedParameterDict
 from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
 from ..internal.grid_search import GridSearch
-
-
-class ParamRange(TypedDict):
-    min: int | float
-    max: int | float
-    step: int | float
 
 
 class FileLoc(Enum):
@@ -31,7 +25,7 @@ class Task:
     TaskID: UUID
     optimiser: str
     optimiserConfig: dict[str, str | int | float]
-    searchParameters: dict[str, ParamRange | int | float]
+    searchParameters: DetailedParameterDict
     objectives: list
     siteData: SiteData
 

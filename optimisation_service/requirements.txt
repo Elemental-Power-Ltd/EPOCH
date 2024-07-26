@@ -4,3 +4,6 @@ pandas==2.2.1
 paretoset==1.2.3
 pymoo==0.6.1.1
 pytest==8.3.1
+fastapi==0.103.0
+aiohtttp==3.9.5
+pydantic==2.5.3

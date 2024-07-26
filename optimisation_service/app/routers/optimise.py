@@ -28,7 +28,7 @@ router = APIRouter()
 #     records[problem.name] = pd.concat([df_objective_values, df_solutions, df_constants], axis=1).to_json(orient="records")
 
 
-async def convert_task(task: Task) -> tuple[Problem, Optimiser]:
+async def convert_task(task: Task) -> tuple[Problem, Optimiser, os.PathLike]:
     """
     Convert json optimisation tasks into corresponding python objects.
 
@@ -47,7 +47,7 @@ async def convert_task(task: Task) -> tuple[Problem, Optimiser]:
     input_dir = await get_inputdata_dir(task.siteData)
     optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
     problem = Problem(
-        name=task.TaskID,
+        name=str(task.TaskID),
         objectives=convert_objectives(task.objectives),
         constraints={
             "annualised_cost": [None, None],
@@ -83,7 +83,8 @@ def create_tempdir(sitedatakey: UUID) -> os.PathLike:
     temp_dir
         Path to temporary directory.
     """
-    temp_dir = os.makedirs(Path(".", "app", "data", "temp", sitedatakey))
+    temp_dir = Path(".", "app", "data", "temp", str(sitedatakey))
+    os.makedirs(temp_dir)
     for file in os.listdir(Path(".", "app", "data", "default")):
         shutil.copy(file, temp_dir)
     return temp_dir
@@ -137,7 +138,7 @@ async def get_inputdata_dir(site_data: SiteData) -> os.PathLike:
     """
     if site_data.loc == FileLoc.local:
         return site_data.key
-    if site_data.loc == FileLoc.database:
+    elif site_data.loc == FileLoc.database:
         return await fps_inputdata(site_data.key)
 
 

@@ -25,7 +25,7 @@ class GridSearch(Algorithm):
 
     def __init__(
         self,
-        project_path: str | PathLike = os.environ.get("EPOCH_DIR", "../EPOCH"),
+        project_path: str | PathLike | None = None,
         output_dir: str | PathLike | None = None,
         config_dir: str | PathLike | None = None,
         keep_degenerate: bool = False,
@@ -46,6 +46,8 @@ class GridSearch(Algorithm):
         keep_degenerate
             Whether or not to keep degenerate solutions in solutions
         """
+        if project_path is None:
+            project_path = os.environ.get("EPOCH_DIR", "../EPOCH")
         self.project_path = project_path
         self.config_dir = config_dir
         self.output_dir = output_dir
