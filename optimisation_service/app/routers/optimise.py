@@ -1,19 +1,19 @@
 import asyncio
 import datetime
 import os
+import shutil
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
-from enum import Enum
-from typing import TypedDict
+from pathlib import Path
 from uuid import UUID
 
+import aiohttp
+import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
-from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
-from ..internal.grid_search import GridSearch
 from ..internal.opt_algorithm import Algorithm
 from ..internal.problem import Problem, convert_objectives, convert_parameters
 from ..internal.result import Result
+from .models import FileLoc, Optimiser, SiteData, Task
 
 router = APIRouter()
 
@@ -28,29 +28,7 @@ router = APIRouter()
 #     records[problem.name] = pd.concat([df_objective_values, df_solutions, df_constants], axis=1).to_json(orient="records")
 
 
-class ParamRange(TypedDict):
-    min: int | float
-    max: int | float
-    step: int | float
-
-
-@dataclass
-class Task:
-    TaskID: UUID
-    optimiser: str
-    optimiserConfig: dict[str, str | int | float]
-    searchParameters: dict[str, ParamRange | int | float]
-    objectives: list
-    site: str
-
-
-class Optimiser(Enum):
-    NSGA2 = NSGA2
-    GeneticAlgorithm = GeneticAlgorithm
-    GridSearch = GridSearch
-
-
-def convert_task(task: Task) -> tuple[Problem, Optimiser]:
+async def convert_task(task: Task) -> tuple[Problem, Optimiser]:
     """
     Convert json optimisation tasks into corresponding python objects.
 
@@ -66,8 +44,7 @@ def convert_task(task: Task) -> tuple[Problem, Optimiser]:
     optimiser
         Initialised optimiser.
     """
-    # input_data = fetch_inputdata(task.problem.input_path)
-    # input_path = save_inputdata(input_data)
+    input_dir = await get_inputdata_dir(task.siteData)
     optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
     problem = Problem(
         name=task.TaskID,
@@ -80,42 +57,110 @@ def convert_task(task: Task) -> tuple[Problem, Optimiser]:
             "payback_horizon": [None, None],
         },
         parameters=convert_parameters(task.searchParameters),
-        input_dir=os.environ.get("EPOCH_INPUT_DATA", "./tests/data/benchmarks/var-3/InputData"),  # input_path
+        input_dir=input_dir,
     )
-    return problem, optimiser
+    return problem, optimiser, input_dir
 
 
-def fetch_inputdata(input_data_details):
+async def post_request(url, data):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            response_data = await response.json()
+            return response_data
+
+
+def create_tempdir(sitedatakey: UUID) -> os.PathLike:
     """
-    Fetch input data from database.
+    Create temporary folder for site data files.
 
     Parameters
     ----------
-    input_data_details
-        details of input data to fetch
+    sitedatakey
+        Name of folder.
 
     Returns
-    input_data
-        Input data
+    -------
+    temp_dir
+        Path to temporary directory.
     """
-    pass
+    temp_dir = os.makedirs(Path(".", "app", "data", "temp", sitedatakey))
+    for file in os.listdir(Path(".", "app", "data", "default")):
+        shutil.copy(file, temp_dir)
+    return temp_dir
 
 
-def save_inputdata(input_data):
+async def fps_elec(data_id: UUID, temp_dir: os.PathLike) -> None:
     """
-    Save input data to data folder.
+    Fetch, process and save electricity load files.
 
     Parameters
     ----------
-    input_data
-        Input data to save.
+    data_id
+        UUID of dataset to fetch
+    temp_dir
+        temp_dir to save files to
+    """
+    response = await post_request(url="/get-meter-data", data={"dataset_id": data_id})
+    df = pd.DataFrame.from_dict(response)
+    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1", "FixLoad2"]).fillna(0)
+    df.to_csv(Path(temp_dir, "CSVEload.csv"))
+
+
+async def fps_heat_n_air(data_id: UUID, temp_dir: os.PathLike) -> None:
+    """
+    Fetch, process and save heat load and airtemp files.
+
+    Parameters
+    ----------
+    data_id
+        UUID of dataset to fetch.
+    temp_dir
+        temp_dir to save files to.
+    """
+    response = await post_request(url="/get-heating-load", data={"dataset_id": data_id})
+    df = pd.DataFrame.from_dict(response)
+    df_heat = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"]).fillna(0)
+    df_air = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Air-temp"]).fillna(0)
+    df_heat.to_csv(Path(temp_dir, "CSVHload.csv"))
+    df_air.to_csv(Path(temp_dir, "CSVAirtemp.csv"))
+
+
+async def get_inputdata_dir(site_data: SiteData) -> os.PathLike:
+    """
+    Get path to inputdata.
+    Either get path to local files or fetch data from database, process it and save to temp dir.
 
     Returns
-    input_data_path
-        Path to input data.
+    -------
+    Path
+        Path to inputdata directory.
     """
-    pass
-    # return input_data_path
+    if site_data.loc == FileLoc.local:
+        return site_data.key
+    if site_data.loc == FileLoc.database:
+        return await fps_inputdata(site_data.key)
+
+
+async def fps_inputdata(site_data_id: UUID):
+    """
+    Fetch, process and save all necessary data from database.
+
+    Parameters
+    ----------
+    site_data_id
+        UUID to retreive data details from database
+
+    Returns
+    -------
+    input_dir
+        Path to temporary directory containing input data files.
+    """
+    data_ids = await post_request(url="/get-client-site-data", data={"input_data_ID": site_data_id})
+    input_dir = create_tempdir(site_data_id)
+    elec = fps_elec(data_ids["electricity_dataset"], input_dir)
+    heat = fps_heat_n_air(data_ids["gas_dataset"], input_dir)
+    await asyncio.gather(elec, heat)
+    return input_dir
 
 
 def optimise(problem: Problem, optimiser: Algorithm) -> tuple[Result, datetime.datetime]:
@@ -153,9 +198,11 @@ async def process_requests(q: asyncio.Queue, pool: ProcessPoolExecutor):
     while True:
         task = await q.get()
         loop = asyncio.get_running_loop()
-        problem, optimiser = convert_task(task)
+        problem, optimiser, input_dir = convert_task(task)
         results, completed_at = await loop.run_in_executor(pool, optimise, *(problem, optimiser))
         # transmit(problem, results, completed_at)
+        if task.site["type"] == FileLoc.database:
+            shutil.rmtree(input_dir)
         q.task_done(task)
 
 
@@ -173,8 +220,8 @@ async def add_task(request: Request, task: Task):
         - Optimiser
         - Optimiser Configuration
         - Objectives
-        - Parameters
-        - Input Data UUID
+        - Search Parameters
+        - Site Data
     """
     q = request.app.state.q
     if q.full():

@@ -2,31 +2,12 @@ import asyncio
 import datetime
 import time
 from collections import OrderedDict
-from dataclasses import dataclass
-from enum import Enum
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import UUID1
 
+from .models import QueueElem, QueueStatus, state
 from .optimise import Task
-
-
-class state(Enum):
-    QUEUED = 0
-    RUNNING = 1
-    CANCELLED = 2
-
-
-@dataclass()
-class QueueElem:
-    STATE: state
-    added_at: datetime.datetime
-
-
-@dataclass()
-class QueueStatus:
-    queue: dict[UUID1, QueueElem]
-    service_uptime: float
 
 
 class IQueue(asyncio.Queue):
