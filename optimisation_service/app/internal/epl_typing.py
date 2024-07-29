@@ -1,4 +1,4 @@
-from typing import Mapping, TypedDict, TypeVar, Union
+from typing import Dict, TypedDict, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -13,7 +13,7 @@ class ParamRange(TypedDict):
     step: Union[int, float]
 
 
-ParameterDict = Mapping[str, Union[list[Union[float, int]], float, int]]
-DetailedParameterDict = Mapping[str, Union[ParamRange, int, float]]
-ConstraintDict = Mapping[str, Union[tuple[None, None], tuple[float, float], list[Union[float, int, None]]]]
-ObjectiveDict = Mapping[str, Union[float, int]]
+ParameterDict = Dict[str, Union[list[Union[float, int]], float, int]]
+DetailedParameterDict = Dict[str, Union[ParamRange, int, float]]
+ConstraintDict = Dict[str, Union[tuple[None, None], tuple[float, float], list[Union[float, int, None]]]]
+ObjectiveDict = Dict[str, Union[float, int]]
