@@ -25,12 +25,11 @@ async def submit_optimisation_job(request: Request):
         # Generate a TaskID for the task
         payload["TaskID"] = str(uuid.uuid1())
 
-        # FIXME HACKS -
+        # FIXME - timewindow removed until it is added to the python bindings
         del payload["searchParameters"]["timewindow"]
-        del payload["searchParameters"]["timestep_minutes"]
         payload["optimiserConfig"] = {}
 
-
+        # Add the objectives as hardcoded values (until they are added to the gui)
         payload["objectives"] = [
             "carbon_balance",
             "cost_balance",

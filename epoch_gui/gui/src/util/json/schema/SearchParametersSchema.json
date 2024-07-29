@@ -52,7 +52,6 @@
     "target_max_concurrency": {"type": "integer", "title": "Max Concurrency"},
     "time_budget_min": {"type": "number", "title": "Time Budget (mins)"},
     "timestep_hours": {"type": "number", "title": "Timestep (hours)"},
-    "timestep_minutes": {"type": "number", "title": "Timestep (minutes)"},
     "timewindow": {"type": "number", "title": "Time Windows"}
   },
   "definitions": {

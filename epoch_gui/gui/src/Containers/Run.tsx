@@ -20,7 +20,7 @@ function RunContainer() {
             site: state.selectedSite,
             optimiser: state.selectedOptimiser,
             optimiserConfig: state.optimisers[state.selectedOptimiser],
-            searchParameters: state.searchSpace,
+            searchParameters: state.searchParameters,
         }
 
         // ignore the response for now
