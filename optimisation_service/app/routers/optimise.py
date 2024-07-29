@@ -259,7 +259,7 @@ async def get_inputdata_dir(site_data: SiteData) -> os.PathLike:
     """
     if site_data.loc == FileLoc.local:
         return site_data.key
-    elif site_data.loc == FileLoc.database:
+    else:
         return await fps_inputdata(site_data.key)
 
 
