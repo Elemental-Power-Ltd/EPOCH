@@ -58,6 +58,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("timestep_hours", &TaskData::timestep_hours)
 		.def_readwrite("CAPEX_limit", &TaskData::CAPEX_limit)
 		.def_readwrite("OPEX_limit", &TaskData::OPEX_limit)
+		.def_readwrite("timewindow", &TaskData::timewindow)
 		.def("__repr__", &taskDataToString);
 
 
