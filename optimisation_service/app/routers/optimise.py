@@ -29,7 +29,7 @@ router = APIRouter()
 #     records[problem.name] = pd.concat([df_objective_values, df_solutions, df_constants], axis=1).to_json(orient="records")
 
 
-async def convert_task(task: Task) -> tuple[Problem, Optimiser, os.PathLike]:
+async def convert_task(task: Task) -> tuple[Problem, Algorithm, os.PathLike]:
     """
     Convert json optimisation tasks into corresponding python objects.
 
@@ -162,7 +162,7 @@ async def fps_ASHP_input(data_id: UUID, temp_dir: os.PathLike) -> None:
     response = await post_request(url="/get-ashp-input", data={"dataset_id": data_id})
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-    df = df.sort_values(0)
+    df = df.sort_values("0")
     df.to_csv(Path(temp_dir, "CSVASHPinput.csv"))
 
 
@@ -180,7 +180,7 @@ async def fps_ASHP_output(data_id: UUID, temp_dir: os.PathLike) -> None:
     response = await post_request(url="/get-ashp-output", data={"dataset_id": data_id})
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-    df = df.sort_values(0)
+    df = df.sort_values("0")
     df.to_csv(Path(temp_dir, "CSVASHPoutput.csv"))
 
 
