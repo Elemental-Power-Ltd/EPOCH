@@ -16,8 +16,9 @@ class FileLoc(Enum):
 
 @dataclass
 class SiteData:
-    loc = FileLoc
-    key = UUID | PathLike
+    loc: FileLoc
+    path: PathLike
+    key: UUID
 
 
 @dataclass
