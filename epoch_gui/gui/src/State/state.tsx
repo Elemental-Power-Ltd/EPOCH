@@ -2,11 +2,11 @@ import {create} from 'zustand'
 
 import DefaultGrid from "../util/json/default/DefaultGridConfig.json";
 import DefaultGA from "../util/json/default/DefaultGAConfig.json";
-import DefaultSearchSpace from "../util/json/default/DefaultInput.json";
+import DefaultSearchParameters from "../util/json/default/DefaultSearchParameters.json";
 
 
 interface RunContainer {
-    searchSpace: any;
+    searchParameters: any;
     optimisers: any;
     selectedOptimiser: string
     availableSites: string[];
@@ -41,13 +41,13 @@ interface AppState {
     setGridConfig: (form: any) => void;
     setGAConfig: (form: any) => void;
 
-    setSearchSpace: (form: any) => void;
+    setSearchParameters: (form: any) => void;
 }
 
 
 export const useEpochStore = create<AppState>()((set) => ({
     run: {
-        searchSpace: DefaultSearchSpace,
+        searchParameters: DefaultSearchParameters,
         optimisers: {
             gridSearch: DefaultGrid,
             geneticAlgorithm: DefaultGA
@@ -66,7 +66,7 @@ export const useEpochStore = create<AppState>()((set) => ({
     setGridConfig: (form: any) => set((state) => ({run: {...state.run, optimisers: {...state.run.optimisers, gridSearch: form}}})),
     setGAConfig: (form: any) => set((state) => ({run: {...state.run, optimisers: {...state.run.optimisers, geneticAlgorithm: form}}})),
 
-    setSearchSpace: (form: any) => set((state) => ({run: {...state.run, searchSpace: form}}))
+    setSearchParameters: (form: any) => set((state) => ({run: {...state.run, searchParameters: form}}))
 
 }))
 

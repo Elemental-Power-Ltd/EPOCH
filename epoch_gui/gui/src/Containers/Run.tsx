@@ -1,7 +1,7 @@
 import StatusDisplay from "../Components/Results/StatusDisplay";
 import AccordionSection from "../util/Widgets/AccordionSection";
 import ConfigForm from "../Components/Config/OptimiserConfig";
-import SearchForm from "../Components/SearchSpace/SearchForm";
+import SearchForm from "../Components/SearchParameters/SearchForm";
 import {useEffect, useState} from "react";
 
 import {getStatus, submitOptimisationJob} from "../endpoints";

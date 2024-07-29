@@ -2,17 +2,17 @@ import Form from '@rjsf/mui'
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
-import InputSchema from '../../util/json/schema/InputSchema.json';
+import InputSchema from '../../util/json/schema/SearchParametersSchema.json';
 import {useEpochStore} from "../../State/state";
 
 
 const SearchForm = () => {
 
     const state = useEpochStore((state) => state.run);
-    const setSearchSpace = useEpochStore((state) => state.setSearchSpace);
+    const setSearchParameters = useEpochStore((state) => state.setSearchParameters);
 
-    const changeSearchSpace = (evt: any) => {
-        setSearchSpace(evt.formData);
+    const changeSearchParameters = (evt: any) => {
+        setSearchParameters(evt.formData);
     }
 
 
@@ -27,8 +27,8 @@ const SearchForm = () => {
                     "ui:submitButtonOptions": {"norender": true}
                 }}
                 validator={validator}
-                formData={state.searchSpace}
-                onChange={changeSearchSpace}
+                formData={state.searchParameters}
+                onChange={changeSearchParameters}
             />
 
             {/*<div>*/}
