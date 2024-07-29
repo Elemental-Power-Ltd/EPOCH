@@ -103,8 +103,27 @@ async def fps_elec(data_id: UUID, temp_dir: os.PathLike) -> None:
     """
     response = await post_request(url="/get-meter-data", data={"dataset_id": data_id})
     df = pd.DataFrame.from_dict(response)
-    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1", "FixLoad2"]).fillna(0)
+    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1", "FixLoad2"])
+    df = df.sort_values("HourOfYear")
     df.to_csv(Path(temp_dir, "CSVEload.csv"))
+
+
+async def fps_rgen(data_id: UUID, temp_dir: os.PathLike) -> None:
+    """
+    Fetch, process and save renewable generation.
+
+    Parameters
+    ----------
+    data_id
+        UUID of dataset to fetch
+    temp_dir
+        temp_dir to save files to
+    """
+    response = await post_request(url="/get-rgen", data={"dataset_id": data_id})
+    df = pd.DataFrame.from_dict(response)
+    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
+    df = df.sort_values("HourOfYear")
+    df.to_csv(Path(temp_dir, "CSVRGen.csv"))
 
 
 async def fps_heat_n_air(data_id: UUID, temp_dir: os.PathLike) -> None:
@@ -120,26 +139,84 @@ async def fps_heat_n_air(data_id: UUID, temp_dir: os.PathLike) -> None:
     """
     response = await post_request(url="/get-heating-load", data={"dataset_id": data_id})
     df = pd.DataFrame.from_dict(response)
-    df_heat = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"]).fillna(0)
-    df_air = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Air-temp"]).fillna(0)
+    df_heat = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
+    df_air = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Air-temp"])
+    df_heat = df_heat.sort_values("HourOfYear")
+    df_air = df_air.sort_values("HourOfYear")
     df_heat.to_csv(Path(temp_dir, "CSVHload.csv"))
     df_air.to_csv(Path(temp_dir, "CSVAirtemp.csv"))
 
 
-async def get_inputdata_dir(site_data: SiteData) -> os.PathLike:
+async def fps_ASHP_input(data_id: UUID, temp_dir: os.PathLike) -> None:
     """
-    Get path to inputdata.
-    Either get path to local files or fetch data from database, process it and save to temp dir.
+    Fetch, process and save ASHP input.
 
-    Returns
-    -------
-    Path
-        Path to inputdata directory.
+    Parameters
+    ----------
+    data_id
+        UUID of dataset to fetch.
+    temp_dir
+        temp_dir to save files to.
     """
-    if site_data.loc == FileLoc.local:
-        return site_data.key
-    elif site_data.loc == FileLoc.database:
-        return await fps_inputdata(site_data.key)
+    response = await post_request(url="/get-ashp-input", data={"dataset_id": data_id})
+    df = pd.DataFrame.from_dict(response)
+    df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
+    df = df.sort_values(0)
+    df.to_csv(Path(temp_dir, "CSVASHPinput.csv"))
+
+
+async def fps_ASHP_output(data_id: UUID, temp_dir: os.PathLike) -> None:
+    """
+    Fetch, process and save ASHP output.
+
+    Parameters
+    ----------
+    data_id
+        UUID of dataset to fetch.
+    temp_dir
+        temp_dir to save files to.
+    """
+    response = await post_request(url="/get-ashp-output", data={"dataset_id": data_id})
+    df = pd.DataFrame.from_dict(response)
+    df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
+    df = df.sort_values(0)
+    df.to_csv(Path(temp_dir, "CSVASHPoutput.csv"))
+
+
+async def fps_import_tariff(data_id: UUID, temp_dir: os.PathLike) -> None:
+    """
+    Fetch, process and save import tariff.
+
+    Parameters
+    ----------
+    data_id
+        UUID of dataset to fetch.
+    temp_dir
+        temp_dir to save files to.
+    """
+    response = await post_request(url="/get-import-tariff", data={"dataset_id": data_id})
+    df = pd.DataFrame.from_dict(response)
+    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
+    df = df.sort_values("HourOfYear")
+    df.to_csv(Path(temp_dir, "CSVImporttariff.csv"))
+
+
+async def fps_grid_CO2(data_id: UUID, temp_dir: os.PathLike) -> None:
+    """
+    Fetch, process and save grid CO2.
+
+    Parameters
+    ----------
+    data_id
+        UUID of dataset to fetch.
+    temp_dir
+        temp_dir to save files to.
+    """
+    response = await post_request(url="/get-grid-CO2", data={"dataset_id": data_id})
+    df = pd.DataFrame.from_dict(response)
+    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Grid CO2e (kg/kWh)"])
+    df = df.sort_values("HourOfYear")
+    df.to_csv(Path(temp_dir, "CSVGridCO2.csv"))
 
 
 async def fps_inputdata(site_data_id: UUID):
@@ -160,8 +237,29 @@ async def fps_inputdata(site_data_id: UUID):
     input_dir = create_tempdir(site_data_id)
     elec = fps_elec(data_ids["electricity_dataset"], input_dir)
     heat = fps_heat_n_air(data_ids["gas_dataset"], input_dir)
-    await asyncio.gather(elec, heat)
+    rgen = fps_rgen(data_ids["rgen_dataset"], input_dir)
+    ashp_input = fps_ASHP_input(data_ids["ashp_input_dataset"], input_dir)
+    ashp_output = fps_ASHP_output(data_ids["ashp_output_dataset"], input_dir)
+    import_tariff = fps_import_tariff(data_ids["tariff_dataset"], input_dir)
+    grid_CO2 = fps_grid_CO2(data_ids["grid_CO2_dataset"], input_dir)
+    await asyncio.gather(elec, heat, rgen, ashp_input, ashp_output, import_tariff, grid_CO2)
     return input_dir
+
+
+async def get_inputdata_dir(site_data: SiteData) -> os.PathLike:
+    """
+    Get path to inputdata.
+    Either get path to local files or fetch data from database, process it and save to temp dir.
+
+    Returns
+    -------
+    Path
+        Path to inputdata directory.
+    """
+    if site_data.loc == FileLoc.local:
+        return site_data.key
+    elif site_data.loc == FileLoc.database:
+        return await fps_inputdata(site_data.key)
 
 
 def optimise(problem: Problem, optimiser: Algorithm) -> tuple[Result, datetime.datetime]:
@@ -210,19 +308,12 @@ async def process_requests(q: asyncio.Queue, pool: ProcessPoolExecutor):
 @router.post("/submit-task/")
 async def add_task(request: Request, task: Task):
     """
-    Add optimisation tasks to queue.
+    Add optimisation task to queue.
 
     Parameters
     ----------
     Task
         Optimisation task to be added to queue.
-        Must contain task:
-        - TaskID
-        - Optimiser
-        - Optimiser Configuration
-        - Objectives
-        - Search Parameters
-        - Site Data
     """
     q = request.app.state.q
     if q.full():
