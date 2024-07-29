@@ -38,7 +38,7 @@ class IQueue(asyncio.Queue):
         await super().put(task)
         self.q[task.TaskID] = QueueElem(state.QUEUED, datetime.datetime.now(datetime.UTC))
 
-    async def get(self):
+    async def get(self) -> Task:
         """
         Get next task from queue.
         Skips cancelled tasks.
@@ -81,13 +81,13 @@ class IQueue(asyncio.Queue):
         assert self.q[TaskID].STATE != state.RUNNING, "Task already running."
         self.q[TaskID].STATE = state.CANCELLED
 
-    def uncancelled(self):
+    def uncancelled(self) -> OrderedDict:
         """
         Ordered dictionary of not cancelled tasks in queue.
         """
         return OrderedDict((key, value) for key, value in self.q.items() if value.STATE != state.CANCELLED)
 
-    def qsize(self):
+    def qsize(self) -> int:
         """
         Number of not cancelled tasks in queue.
         """

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from os import PathLike
+from typing import Optional
 from uuid import UUID
 
 from ..internal.epl_typing import DetailedParameterDict
@@ -17,8 +18,8 @@ class FileLoc(Enum):
 @dataclass
 class SiteData:
     loc: FileLoc
-    path: PathLike
-    key: UUID
+    path: Optional[PathLike] = None
+    key: Optional[UUID] = None
 
 
 @dataclass

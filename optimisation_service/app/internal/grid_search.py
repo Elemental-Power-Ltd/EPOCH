@@ -55,7 +55,7 @@ class GridSearch(Algorithm):
 
         self.paramstr = alg_param_to_string()
 
-    def run(self, problem: Problem, verbose: bool = False) -> Result:
+    async def run(self, problem: Problem, verbose: bool = False) -> Result:
         """
         Run grid search optimisation.
 
@@ -96,7 +96,7 @@ class GridSearch(Algorithm):
         if verbose:
             print("Executing grid search. This may take a while...")
         t0 = time.perf_counter()
-        run_headless(
+        await run_headless(
             project_path=str(self.project_path),
             config_dir=str(config_dir),
             input_dir=str(problem.input_dir),

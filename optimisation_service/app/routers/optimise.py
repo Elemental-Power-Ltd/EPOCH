@@ -10,6 +10,7 @@ import aiohttp
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
+from ..internal.grid_search import GridSearch
 from ..internal.opt_algorithm import Algorithm
 from ..internal.problem import Problem, convert_objectives, convert_parameters
 from ..internal.result import Result
@@ -297,11 +298,15 @@ async def process_requests(q: IQueue, pool: ProcessPoolExecutor):
     """
     while True:
         task = await q.get()
-        loop = asyncio.get_running_loop()
         problem, optimiser, input_dir = await convert_task(task)
-        results, completed_at = await loop.run_in_executor(pool, optimise, *(problem, optimiser))
+        if isinstance(optimiser, GridSearch):
+            results = await optimiser.run(problem)
+            completed_at = datetime.datetime.now(datetime.UTC)
+        else:
+            loop = asyncio.get_running_loop()
+            results, completed_at = await loop.run_in_executor(pool, optimise, *(problem, optimiser))
         # transmit(problem, results, completed_at)
-        if task.site["type"] == FileLoc.database:
+        if task.siteData.loc == FileLoc.database:
             shutil.rmtree(input_dir)
         q.mark_task_done(task)
 
