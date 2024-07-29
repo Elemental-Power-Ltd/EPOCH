@@ -14,6 +14,7 @@ from ..internal.opt_algorithm import Algorithm
 from ..internal.problem import Problem, convert_objectives, convert_parameters
 from ..internal.result import Result
 from .models import FileLoc, Optimiser, SiteData, Task
+from .queue import IQueue
 
 router = APIRouter()
 
@@ -283,7 +284,7 @@ def optimise(problem: Problem, optimiser: Algorithm) -> tuple[Result, datetime.d
     return optimiser.run(problem), datetime.datetime.now(datetime.UTC)
 
 
-async def process_requests(q: asyncio.Queue, pool: ProcessPoolExecutor):
+async def process_requests(q: IQueue, pool: ProcessPoolExecutor):
     """
     Loop to process tasks in queue.
 
@@ -297,12 +298,12 @@ async def process_requests(q: asyncio.Queue, pool: ProcessPoolExecutor):
     while True:
         task = await q.get()
         loop = asyncio.get_running_loop()
-        problem, optimiser, input_dir = convert_task(task)
+        problem, optimiser, input_dir = await convert_task(task)
         results, completed_at = await loop.run_in_executor(pool, optimise, *(problem, optimiser))
         # transmit(problem, results, completed_at)
         if task.site["type"] == FileLoc.database:
             shutil.rmtree(input_dir)
-        q.task_done(task)
+        q.mark_task_done(task)
 
 
 @router.post("/submit-task/")
@@ -315,7 +316,7 @@ async def add_task(request: Request, task: Task):
     Task
         Optimisation task to be added to queue.
     """
-    q = request.app.state.q
+    q: IQueue = request.app.state.q
     if q.full():
         raise HTTPException(status_code=503, detail="Task queue is full.")
     else:

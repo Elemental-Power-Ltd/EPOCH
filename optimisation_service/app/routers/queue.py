@@ -23,7 +23,7 @@ class IQueue(asyncio.Queue):
             Maximum number of tasks to hold in queue.
         """
         super().__init__(maxsize=0)
-        self.q = OrderedDict()
+        self.q: OrderedDict = OrderedDict()
         self.q_len = maxsize
 
     async def put(self, task: Task):
@@ -57,7 +57,7 @@ class IQueue(asyncio.Queue):
             del self.q[task.TaskID]
             return await self.get()
 
-    def task_done(self, task: Task) -> None:
+    def mark_task_done(self, task: Task) -> None:
         """
         Mark task as done.
 
