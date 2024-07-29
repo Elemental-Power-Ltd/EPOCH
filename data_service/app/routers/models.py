@@ -21,6 +21,16 @@ class ReadingTypeEnum(str, Enum):
     manual = "manual"
     automatic = "automatic"
     halfhourly = "halfhourly"
+    oil = "oil"
+    solar_pv = "solar_pv"
+    tariff = "tariff"
+
+
+class TariffRequest(BaseModel):
+    site_id: site_id_t
+    tariff_name: str
+    start_ts: pydantic.AwareDatetime
+    end_ts: pydantic.AwareDatetime
 
 
 class DatasetID(BaseModel):
@@ -110,6 +120,7 @@ class HeatingLoadEntry(pydantic.BaseModel):
     )
     hdd: float | None = Field(examples=[0.01], description="Heating degree days due to external weather in this period.")
 
+
 class ClientIdNamePair(pydantic.BaseModel):
     """
     A client_id, name pair.
@@ -158,3 +169,12 @@ class SiteData(pydantic.BaseModel):
     address: str = pydantic.Field(
         examples=["27 Mill Close, London, SW1A 0AA", "Queens Buildings, Potter Street, Worksop, S80 2AH"]
     )
+
+
+class RenewablesRequest(pydantic.BaseModel):
+    site_id: site_id_t
+    start_ts: pydantic.AwareDatetime
+    end_ts: pydantic.AwareDatetime
+    azimuth: float | None = None
+    tilt: float | None = None
+    tracking: bool = False

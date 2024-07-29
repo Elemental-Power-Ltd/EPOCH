@@ -12,7 +12,7 @@ import pandas as pd
 from .utils import check_latitude_longitude, load_dotenv
 
 
-async def get_pvgis_optima(latitude: float, longitude: float) -> dict[str, float | str]:
+async def get_pvgis_optima(latitude: float, longitude: float, tracking: bool = False) -> dict[str, float | str]:
     """
     Use PVGIS to calculate optimal tilts and azimuths for a solar setup at this location.
 
@@ -38,6 +38,7 @@ async def get_pvgis_optima(latitude: float, longitude: float) -> dict[str, float
         "peakpower": 1.0,
         "loss": 14,
         "browser": int(False),
+        "fixed": int(not tracking),  # PVGIS used "fixed" instead of "tracking"
         "optimalangles": int(True),
         "mountingplace": "building",
         "outputformat": "json",
@@ -47,12 +48,17 @@ async def get_pvgis_optima(latitude: float, longitude: float) -> dict[str, float
     async with httpx.AsyncClient() as client:
         res = await client.get(base_url, params=params)
         data = res.json()
+
+    if tracking:
+        mounting_system = "tracking"
+    else:
+        mounting_system = "fixed"
     solar_params = {
-        "azimuth": (180 + data["inputs"]["mounting_system"]["fixed"]["azimuth"]["value"]) % 360,
-        "tilt": data["inputs"]["mounting_system"]["fixed"]["slope"]["value"],
+        "azimuth": (180 + data["inputs"]["mounting_system"][mounting_system]["azimuth"]["value"]) % 360,
+        "tilt": data["inputs"]["mounting_system"][mounting_system]["slope"]["value"],
         "altitude": data["inputs"]["location"]["elevation"],
-        "mounting_system": "fixed",
-        "type": data["inputs"]["mounting_system"]["fixed"]["type"],
+        "mounting_system": mounting_system,
+        "type": data["inputs"]["mounting_system"][mounting_system]["type"],
         "technology": data["inputs"]["pv_module"]["technology"],
         "data_source": data["inputs"]["meteo_data"]["radiation_db"],
     }
@@ -134,22 +140,61 @@ async def get_pvgis_data(
 
 
 async def get_renewables_ninja_data(
-    latitude: float, longitude: float, start_ts: datetime.datetime, end_ts: datetime.datetime
+    latitude: float,
+    longitude: float,
+    start_ts: datetime.datetime,
+    end_ts: datetime.datetime,
+    azimuth: float | None = None,
+    tilt: float | None = None,
+    tracking: bool = False,
 ) -> pd.DataFrame:
+    """
+    Request solar PV information from renewables.ninja
+
+    This takes in a location, timestamps, and some information about the solar installation.
+    If the solar installation information isn't provided, we get optima from PVGIS.
+    This may take a few seconds, and is relatively heavily rate limited by renewables.ninja.
+
+    The returned dataframe is in (kw / kWp) so can be easily scaled up (it's calculated for
+    a nominal 1kWp array).
+
+    Parameters
+    ----------
+    latitude
+
+    longitude
+
+    start_ts
+        Earliest timestamp to get data for (usually Jan 1st)
+    end_ts
+        Earliest timestamp to get data for (usually Dec 31st)
+    azimuth
+        Angle of solar array from polar north, should be around 180 in the UK
+    tilt
+        Angle of the panels facing the sun (around 40?)
+    tracking
+        Whether the panels are single axis trackers (commonly False in the UK)
+    Returns
+    -------
+        pandas dataframe with timestamp index and column "pv"
+    """
     load_dotenv()
     BASE_URL = "https://www.renewables.ninja/api/data/pv"
 
     if not check_latitude_longitude(latitude=latitude, longitude=longitude):
         raise ValueError("Latitude and longitude provided the wrong way round.")
-    optimal_params = await get_pvgis_optima(latitude, longitude)
+    if azimuth is None or tilt is None:
+        optimal_params = await get_pvgis_optima(latitude, longitude, tracking)
+        azimuth = float(optimal_params["azimuth"])
+        tilt = float(optimal_params["tilt"])
     params: dict[str, str | float | int] = {
         "lat": latitude,
         "lon": longitude,
         "date_from": start_ts.strftime("%Y-%m-%d"),
         "date_to": end_ts.strftime("%Y-%m-%d"),
-        "tracking": int(False),
-        "azim": optimal_params["azimuth"],
-        "tilt": optimal_params["tilt"],
+        "tracking": int(tracking),
+        "azim": azimuth,
+        "tilt": tilt,
         "system_loss": 0.14,
         "header": "false",
         "capacity": 1.0,
@@ -160,7 +205,10 @@ async def get_renewables_ninja_data(
             BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
         )
 
-    renewables_df = pd.read_json(req.text, orient="index").rename(columns={"electricity": "pv"})
+    renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
+        columns={"electricity": "pv"}
+    )
+    renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
     renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)
     return renewables_df
