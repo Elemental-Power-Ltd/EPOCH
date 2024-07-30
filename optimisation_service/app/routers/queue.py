@@ -50,11 +50,12 @@ class IQueue(asyncio.Queue):
             Next task in queue.
         """
         task = await super().get()
+        assert self.q[task.TaskID].STATE == state.QUEUED or self.q[task.TaskID].STATE == state.CANCELLED
         if self.q[task.TaskID].STATE == state.QUEUED:
             self.q[task.TaskID].STATE = state.RUNNING
             return task
         elif self.q[task.TaskID].STATE == state.CANCELLED:
-            del self.q[task.TaskID]
+            self.mark_task_done(task)
             return await self.get()
 
     def mark_task_done(self, task: PyTask) -> None:

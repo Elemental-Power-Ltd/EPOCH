@@ -331,7 +331,7 @@ async def add_task(request: Request, task: JSONTask):
     else:
         try:
             task = await preproccess_task(task)
+            await q.put(task)
+            return "Added task to queue."
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-        await q.put(task)
-        return "Added task to queue."

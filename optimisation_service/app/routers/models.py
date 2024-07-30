@@ -23,6 +23,14 @@ class SiteData:
     path: Optional[PathLike] = None
     key: Optional[UUID] = None
 
+    def __post_init__(self):
+        if self.loc == FileLoc.database:
+            assert isinstance(self.key, UUID)
+            assert self.path is None
+        elif self.loc == FileLoc.local:
+            assert isinstance(self.path, PathLike)
+            assert self.key is None
+
 
 @dataclass
 class JSONTask:

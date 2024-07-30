@@ -9,7 +9,7 @@ class Algorithm(ABC):
     paramstr: str
 
     @abstractmethod
-    def run(self, problem: Problem) -> Result:
+    def run(self, problem: Problem, verbose: bool) -> Result:
         """
         Run optimisation.
 
@@ -18,6 +18,8 @@ class Algorithm(ABC):
 
         problem
             Problem instance to optimise.
+        verbose
+            Whether the algorithm should print output in this run or not.
 
         Returns
         -------

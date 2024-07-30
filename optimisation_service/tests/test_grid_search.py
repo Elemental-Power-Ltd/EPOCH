@@ -37,7 +37,7 @@ class TestGridSearch:
             config_dir=None,
         )
 
-    def test_run(self, example_problem: Problem) -> None:
+    async def test_run(self, example_problem: Problem) -> None:
         """
         Test algorithm run.
         """
@@ -47,11 +47,11 @@ class TestGridSearch:
             config_dir=None,
         )
         t0 = perf_counter()
-        alg.run(example_problem)
+        await alg.run(example_problem)
         exec_time = perf_counter() - t0
         assert exec_time < 60
 
-    def test_res(self, example_problem: Problem) -> None:
+    async def test_res(self, example_problem: Problem) -> None:
         """
         Test output of algorithm.
         """
@@ -60,5 +60,5 @@ class TestGridSearch:
             project_path=Path("..", "Epoch"),
             config_dir=None,
         )
-        res = alg.run(example_problem)
+        res = await alg.run(example_problem)
         assert isinstance(res, Result)
