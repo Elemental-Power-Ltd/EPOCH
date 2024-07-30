@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import UUID1
 
 from .models import QueueElem, QueueStatus, state
-from .optimise import Task
+from .optimise import PyTask
 
 
 class IQueue(asyncio.Queue):
@@ -26,7 +26,7 @@ class IQueue(asyncio.Queue):
         self.q: OrderedDict = OrderedDict()
         self.q_len = maxsize
 
-    async def put(self, task: Task):
+    async def put(self, task: PyTask):
         """
         Add task in queue.
 
@@ -38,7 +38,7 @@ class IQueue(asyncio.Queue):
         await super().put(task)
         self.q[task.TaskID] = QueueElem(state.QUEUED, datetime.datetime.now(datetime.UTC))
 
-    async def get(self) -> Task:
+    async def get(self) -> PyTask:
         """
         Get next task from queue.
         Skips cancelled tasks.
@@ -57,7 +57,7 @@ class IQueue(asyncio.Queue):
             del self.q[task.TaskID]
             return await self.get()
 
-    def mark_task_done(self, task: Task) -> None:
+    def mark_task_done(self, task: PyTask) -> None:
         """
         Mark task as done.
 

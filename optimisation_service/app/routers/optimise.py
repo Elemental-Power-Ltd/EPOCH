@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor
@@ -14,7 +15,7 @@ from ..internal.grid_search import GridSearch
 from ..internal.opt_algorithm import Algorithm
 from ..internal.problem import Problem, convert_objectives, convert_parameters
 from ..internal.result import Result
-from .models import FileLoc, Optimiser, SiteData, Task
+from .models import FileLoc, JSONTask, Optimiser, PyTask, SiteData
 from .queue import IQueue
 
 router = APIRouter()
@@ -28,40 +29,6 @@ router = APIRouter()
 #     df_constants = pd.DataFrame(data=constant_param_values, columns=constant_param.keys())
 
 #     records[problem.name] = pd.concat([df_objective_values, df_solutions, df_constants], axis=1).to_json(orient="records")
-
-
-async def convert_task(task: Task) -> tuple[Problem, Algorithm, os.PathLike]:
-    """
-    Convert json optimisation tasks into corresponding python objects.
-
-    Parameters
-    ----------
-    task
-        Optimisation task to convert
-
-    Returns
-    -------
-    problem
-        Problem.
-    optimiser
-        Initialised optimiser.
-    """
-    input_dir = await get_inputdata_dir(task.siteData)
-    optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
-    problem = Problem(
-        name=str(task.TaskID),
-        objectives=convert_objectives(task.objectives),
-        constraints={
-            "annualised_cost": [None, None],
-            "capex": [None, None],
-            "carbon_balance": [None, None],
-            "cost_balance": [None, None],
-            "payback_horizon": [None, None],
-        },
-        parameters=convert_parameters(task.searchParameters),
-        input_dir=input_dir,
-    )
-    return problem, optimiser, input_dir
 
 
 async def post_request(url, data):
@@ -259,9 +226,44 @@ async def get_inputdata_dir(site_data: SiteData) -> os.PathLike:
         Path to inputdata directory.
     """
     if site_data.loc == FileLoc.local:
+        assert Path(site_data.path).is_dir(), "Local directory does not exist."
         return site_data.path
     else:
         return await fps_inputdata(site_data.key)
+
+
+async def preproccess_task(task: JSONTask) -> PyTask:
+    """
+    Convert json optimisation tasks into corresponding python objects.
+
+    Parameters
+    ----------
+    task
+        Optimisation task to convert
+
+    Returns
+    -------
+    problem
+        Problem.
+    optimiser
+        Initialised optimiser.
+    """
+    input_dir = await get_inputdata_dir(task.siteData)
+    optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
+    problem = Problem(
+        name=str(task.TaskID),
+        objectives=convert_objectives(task.objectives),
+        constraints={
+            "annualised_cost": [None, None],
+            "capex": [None, None],
+            "carbon_balance": [None, None],
+            "cost_balance": [None, None],
+            "payback_horizon": [None, None],
+        },
+        parameters=convert_parameters(task.searchParameters),
+        input_dir=input_dir,
+    )
+    return PyTask(TaskID=task.TaskID, problem=problem, optimiser=optimiser, siteData=task.siteData)
 
 
 def optimise(problem: Problem, optimiser: Algorithm) -> tuple[Result, datetime.datetime]:
@@ -298,21 +300,23 @@ async def process_requests(q: IQueue, pool: ProcessPoolExecutor):
     """
     while True:
         task = await q.get()
-        problem, optimiser, input_dir = await convert_task(task)
-        if isinstance(optimiser, GridSearch):
-            results = await optimiser.run(problem)
-            completed_at = datetime.datetime.now(datetime.UTC)
-        else:
-            loop = asyncio.get_running_loop()
-            results, completed_at = await loop.run_in_executor(pool, optimise, *(problem, optimiser))
-        # transmit(problem, results, completed_at)
-        if task.siteData.loc == FileLoc.database:
-            shutil.rmtree(input_dir)
+        try:
+            if isinstance(task.optimiser, GridSearch):
+                results = await task.optimiser.run(task.problem)
+                completed_at = datetime.datetime.now(datetime.UTC)
+            else:
+                loop = asyncio.get_running_loop()
+                results, completed_at = await loop.run_in_executor(pool, optimise, *(task.problem, task.optimiser))
+            # transmit(problem, results, completed_at)
+            if task.siteData.loc == FileLoc.database:
+                shutil.rmtree(task.problem.input_dir)
+        except Exception:
+            logging.error("Exception occured", exc_info=True)
         q.mark_task_done(task)
 
 
 @router.post("/submit-task/")
-async def add_task(request: Request, task: Task):
+async def add_task(request: Request, task: JSONTask):
     """
     Add optimisation task to queue.
 
@@ -325,5 +329,9 @@ async def add_task(request: Request, task: Task):
     if q.full():
         raise HTTPException(status_code=503, detail="Task queue is full.")
     else:
+        try:
+            task = await preproccess_task(task)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
         await q.put(task)
         return "Added task to queue."

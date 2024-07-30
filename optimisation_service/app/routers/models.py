@@ -8,6 +8,8 @@ from uuid import UUID
 from ..internal.epl_typing import DetailedParameterDict
 from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
 from ..internal.grid_search import GridSearch
+from ..internal.opt_algorithm import Algorithm
+from ..internal.problem import Problem
 
 
 class FileLoc(Enum):
@@ -23,12 +25,20 @@ class SiteData:
 
 
 @dataclass
-class Task:
+class JSONTask:
     TaskID: UUID
     optimiser: str
     optimiserConfig: dict[str, str | int | float]
     searchParameters: DetailedParameterDict
     objectives: list
+    siteData: SiteData
+
+
+@dataclass
+class PyTask:
+    TaskID: UUID
+    optimiser: Algorithm
+    problem: Problem
     siteData: SiteData
 
 

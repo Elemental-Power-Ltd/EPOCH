@@ -1,7 +1,9 @@
 import asyncio
+import logging
 import time
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 
@@ -15,6 +17,11 @@ async def lifespan(app: FastAPI):
     """
     Create queue that is served by process_requests from moment app is created until it is closed.
     """
+    logging.basicConfig(
+        filename=f"./app/error_logs/error_log_{datetime.now(UTC).strftime("%Y_%m_%d_%H_%M_%S")}.log",
+        level=logging.ERROR,
+        format="%(asctime)s:%(levelname)s:%(message)s",
+    )
     q = IQueue(maxsize=5)
     pool = ProcessPoolExecutor()
     start_time = time.time()
