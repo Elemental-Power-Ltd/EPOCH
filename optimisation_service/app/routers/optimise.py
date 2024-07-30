@@ -274,7 +274,7 @@ async def process_requests(q: IQueue):
     while True:
         task = await q.get()
         try:
-            results = await task.optimiser.run(task.problem)
+            results = await task.optimiser.run(task.problem, verbose=False)
             completed_at = datetime.datetime.now(datetime.UTC)
             if task.siteData.loc == FileLoc.database:
                 shutil.rmtree(task.problem.input_dir)
@@ -301,8 +301,8 @@ async def add_task(request: Request, task: JSONTask):
         raise HTTPException(status_code=400, detail="Task already in queue.")
     else:
         try:
-            task = await preproccess_task(task)
-            await q.put(task)
+            pytask = await preproccess_task(task)
+            await q.put(pytask)
             return "Added task to queue."
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
