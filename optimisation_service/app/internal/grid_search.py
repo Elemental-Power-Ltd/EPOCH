@@ -2,7 +2,6 @@ import json
 import os
 import tempfile
 import time
-from collections.abc import Awaitable
 from os import PathLike
 from pathlib import Path
 
@@ -56,7 +55,7 @@ class GridSearch(Algorithm):
 
         self.paramstr = alg_param_to_string()
 
-    async def run(self, problem: Problem, verbose: bool = False) -> Awaitable[Result]:
+    async def run(self, problem: Problem, verbose: bool = False) -> Result:
         """
         Run grid search optimisation.
 

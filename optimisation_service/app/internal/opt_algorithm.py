@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable
 from enum import Enum
 
 from .problem import Problem
@@ -10,7 +9,7 @@ class Algorithm(ABC):
     paramstr: str
 
     @abstractmethod
-    async def run(self, problem: Problem, verbose: bool) -> Awaitable[Result]:
+    async def run(self, problem: Problem, verbose: bool) -> Result:
         """
         Run optimisation.
 
