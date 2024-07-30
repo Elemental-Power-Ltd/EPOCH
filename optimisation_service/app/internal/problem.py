@@ -51,9 +51,7 @@ class Problem:
             if isinstance(value, tuple | list):
                 if value[0] > value[1]:
                     raise ValueError("parameter lower bounds must be smaller or equal to upper bounds.")
-                if (value[2] == 0) & (value[0] != value[1]):
-                    raise ValueError("parameter bounds must be equal if stepsize is 0.")
-                if (value[2] != 0) & (value[0] == value[1]):
+                if ((value[2] == 0) & (value[0] != value[1])) or ((value[2] != 0) & (value[0] == value[1])):
                     raise ValueError("parameter bounds must be equal if stepsize is 0.")
 
     def variable_param(self) -> dict[str, list | tuple]:

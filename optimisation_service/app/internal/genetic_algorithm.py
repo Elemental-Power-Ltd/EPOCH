@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import Any
 
@@ -26,6 +28,13 @@ from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
 
 Config.warnings["not_compiled"] = False
+
+
+async def minimize_async(**kwargs):
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as executor:
+        res = await loop.run_in_executor(executor, lambda: minimize(**kwargs))
+    return res
 
 
 class SamplingMethod(Enum):
@@ -114,7 +123,7 @@ class NSGA2(Algorithm):
             n_max_evals,
         )
 
-    def run(self, problem: Problem, verbose: bool = False) -> Result:
+    async def run(self, problem: Problem, verbose: bool = False) -> Result:
         """
         Run NSGA optimisation.
 
@@ -132,7 +141,7 @@ class NSGA2(Algorithm):
         """
         pi = ProblemInstance(problem)
 
-        res = minimize(pi, self.algorithm, self.termination_criteria, verbose=verbose)
+        res = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, verbose=verbose)
 
         objective_values = res.F * np.fromiter(problem.objectives.values(), dtype=float)
         solutions = res.X * pi.step + pi.lb
@@ -224,7 +233,7 @@ class GeneticAlgorithm(Algorithm):
             n_max_evals,
         )
 
-    def run(self, problem: Problem, verbose: bool = False) -> Result:
+    async def run(self, problem: Problem, verbose: bool = False) -> Result:
         """
         Run GA optimisation.
 
@@ -245,7 +254,9 @@ class GeneticAlgorithm(Algorithm):
         objectives = problem.objectives.keys()
         for sub_problem in problem.split_objectives():
             pi = ProblemInstance(sub_problem)
-            res = minimize(pi, self.algorithm, self.termination_criteria, verbose=verbose)
+            res = await minimize_async(
+                problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, verbose=verbose
+            )
 
             sol = res.X * pi.step + pi.lb
             solutions.append(sol)

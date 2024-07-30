@@ -3,7 +3,6 @@ import datetime
 import logging
 import os
 import shutil
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from uuid import UUID
 
@@ -11,10 +10,7 @@ import aiohttp
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
-from ..internal.grid_search import GridSearch
-from ..internal.opt_algorithm import Algorithm
 from ..internal.problem import Problem, convert_objectives, convert_parameters
-from ..internal.result import Result
 from .models import FileLoc, JSONTask, Optimiser, PyTask, SiteData
 from .queue import IQueue
 
@@ -266,28 +262,7 @@ async def preproccess_task(task: JSONTask) -> PyTask:
     return PyTask(TaskID=task.TaskID, problem=problem, optimiser=optimiser, siteData=task.siteData)
 
 
-def optimise(problem: Problem, optimiser: Algorithm) -> tuple[Result, datetime.datetime]:
-    """
-    Apply optimisation algorithm to problem.
-
-    Parameters
-    ----------
-    problem
-        Problem to optimise.
-    optimiser
-        Optimiser to solve problem.
-
-    Returns
-    -------
-    Result
-        Optimisation results.
-    completed_at
-        Completion time of optimiser.
-    """
-    return optimiser.run(problem), datetime.datetime.now(datetime.UTC)
-
-
-async def process_requests(q: IQueue, pool: ProcessPoolExecutor):
+async def process_requests(q: IQueue):
     """
     Loop to process tasks in queue.
 
@@ -295,23 +270,17 @@ async def process_requests(q: IQueue, pool: ProcessPoolExecutor):
     ----------
     q
         Queue to process.
-    pool
-        Process Pool Executor to run tasks.
     """
     while True:
         task = await q.get()
         try:
-            if isinstance(task.optimiser, GridSearch):
-                results = await task.optimiser.run(task.problem)
-                completed_at = datetime.datetime.now(datetime.UTC)
-            else:
-                loop = asyncio.get_running_loop()
-                results, completed_at = await loop.run_in_executor(pool, optimise, *(task.problem, task.optimiser))
-            # transmit(problem, results, completed_at)
+            results = await task.optimiser.run(task.problem)
+            completed_at = datetime.datetime.now(datetime.UTC)
             if task.siteData.loc == FileLoc.database:
                 shutil.rmtree(task.problem.input_dir)
         except Exception:
             logging.error("Exception occured", exc_info=True)
+            pass
         q.mark_task_done(task)
 
 
@@ -328,6 +297,8 @@ async def add_task(request: Request, task: JSONTask):
     q: IQueue = request.app.state.q
     if q.full():
         raise HTTPException(status_code=503, detail="Task queue is full.")
+    if task.TaskID in q.q.keys():
+        raise HTTPException(status_code=400, detail="Task already in queue.")
     else:
         try:
             task = await preproccess_task(task)
