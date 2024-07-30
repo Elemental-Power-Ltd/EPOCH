@@ -8,7 +8,7 @@ import pydantic
 from fastapi import APIRouter, HTTPException, Request
 
 from ..internal.utils import load_dotenv
-from .models import WeatherDatasetEntry, WeatherRequest
+from ..models.weather import WeatherDatasetEntry, WeatherRequest
 
 router = APIRouter()
 

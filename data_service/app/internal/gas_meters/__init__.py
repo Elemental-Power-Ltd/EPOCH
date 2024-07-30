@@ -9,17 +9,18 @@ from .gas_data_parsers import parse_be_st_format, parse_octopus_half_hourly, try
 from .processing import fill_in_half_hourly, hh_gas_to_monthly
 
 __all__ = [
-    "parse_be_st_format",
-    "parse_octopus_half_hourly",
-    "hh_gas_to_monthly",
-    "fill_in_half_hourly",
-    "midday_sin_weights" "score_bait_coefficients",
-    "monthly_to_hh_hload",
-    "compute_monthly_hdd",
     "assign_hh_dhw_even",
     "assign_hh_dhw_greedy",
     "assign_hh_dhw_poisson",
+    "compute_monthly_hdd",
+    "fill_in_half_hourly",
+    "hh_gas_to_monthly",
     "midday_sin_weights",
+    "midday_sin_weights",
+    "monthly_to_hh_hload",
+    "parse_be_st_format",
+    "parse_octopus_half_hourly",
+    "score_bait_coefficients",
     "score_bait_coefficients",
     "try_meter_parsing",
 ]

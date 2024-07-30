@@ -1,25 +1,26 @@
 import datetime
-import json
-import logging
 import uuid
 
-import httpx
 import numpy as np
 import pandas as pd
 import pydantic
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 
-from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
-from ..internal.gas_meters import hh_gas_to_monthly, monthly_to_hh_hload, try_meter_parsing
-from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
+from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
+from ..internal.gas_meters import try_meter_parsing
 from ..internal.utils import hour_of_year
-from .models import DatasetID, DatasetIDWithTime, FuelEnum, GasDatasetEntry, RenewablesRequest, WeatherRequest, site_id_t
-from .weather import get_weather
+from ..models.core import (
+    DatasetID,
+    DatasetIDWithTime,
+    FuelEnum,
+    GasDatasetEntry,
+    site_id_t,
+)
 
 router = APIRouter()
 
 
-@router.post("/upload-meter-data/")
+@router.post("/upload-meter-data", tags=["db", "add", "meter"])
 async def upload_meter_data(
     request: Request,
     file: UploadFile,
@@ -91,8 +92,8 @@ async def upload_meter_data(
         table_name = "electricity_meters"
     else:
         raise HTTPException(
-            status_code=400,
-            detail=f"Fuel type {fuel_type} is not supported. Please select from ('gas', 'elec')",
+            400,
+            f"Fuel type {fuel_type} is not supported. Please select from ('gas', 'elec')",
         )
 
     async with request.state.pgpool.acquire() as conn:
@@ -135,21 +136,19 @@ async def upload_meter_data(
                         $2,
                         $3,
                         $4)""",
-                list(
-                    zip(
-                        [metadata["dataset_id"] for _ in df.index],
-                        df.index,
-                        df.end_ts,
-                        df.consumption,
-                        strict=False,
-                    )
+                zip(
+                    [metadata["dataset_id"] for _ in df.index],
+                    df.index,
+                    df.end_ts,
+                    df.consumption,
+                    strict=True,
                 ),
             )
 
     return {"rows_uploaded": len(df), "reading_type": reading_type}
 
 
-@router.post("/get-meter-data")
+@router.post("/get-meter-data", tags=["db", "meter"])
 async def get_meter_data(request: Request, dataset_id: DatasetID) -> list[GasDatasetEntry]:
     """
     Get a specific set of meter data associated with a single dataset ID.
@@ -179,95 +178,15 @@ async def get_meter_data(request: Request, dataset_id: DatasetID) -> list[GasDat
     return [GasDatasetEntry(**item) for item in res]
 
 
-@router.post("/get-heating-load")
-async def get_heating_load(request: Request, params: DatasetIDWithTime) -> list:
-    async with request.state.pgpool.acquire() as conn:
-        location, reading_type, fuel_type = await conn.fetchrow(
-            """
-            SELECT
-                location,
-                m.reading_type,
-                m.fuel_type
-            FROM client_meters.metadata AS m
-            LEFT JOIN client_info.site_info AS s
-            ON s.site_id = m.site_id WHERE dataset_id = $1
-            LIMIT 1""",
-            params.dataset_id,
-        )
-        if location is None:
-            raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
-
-        if fuel_type != "gas":
-            raise HTTPException(400, f"Dataset ID {params.dataset_id} is for fuel type {fuel_type}, not gas.")
-        res = await conn.fetch(
-            """
-            SELECT
-                start_ts,
-                end_ts,
-                consumption_kwh as consumption
-            FROM client_meters.gas_meters
-            WHERE dataset_id = $1
-            ORDER BY start_ts ASC""",
-            params.dataset_id,
-        )
-
-    gas_df = pd.DataFrame.from_records(res, columns=["start_ts", "end_ts", "consumption"], index="start_ts")
-    gas_df["start_ts"] = gas_df.index
-    if gas_df.empty:
-        raise HTTPException(
-            400,
-            f"Got an empty dataset for {location} between {params.start_ts} and {params.end_ts}",
-        )
-    try:
-        start_ts = max(params.start_ts, gas_df["start_ts"].min())
-        end_ts = min(params.end_ts, gas_df["end_ts"].max())
-        weather = await get_weather(
-            request,
-            WeatherRequest(location=location, start_ts=start_ts, end_ts=end_ts),
-        )
-    except HTTPException as ex:
-        raise ex
-
-    weather_df = WeatherDataFrame(
-        pd.DataFrame.from_records(
-            [item.model_dump() for item in weather],
-            columns=[
-                "timestamp",
-                "temp",
-                "humidity",
-                "solarradiation",
-                "windspeed",
-                "pressure",
-            ],
-            index="timestamp",
-        )
-    )
-    if reading_type == "halfhourly":
-        logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location} so resampling.")
-        gas_df = hh_gas_to_monthly(HHDataFrame(gas_df))
-    elif reading_type in {"automatic", "manual"}:
-        logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location}.")
-        gas_df = MonthlyDataFrame(gas_df)
-        gas_df["days"] = (gas_df["end_ts"] - gas_df["start_ts"]).dt.total_seconds() / pd.Timedelta(days=1).total_seconds()
-    else:
-        raise HTTPException(400, f"Unknown reading type {reading_type} for this dataset.")
-
-    if gas_df.shape[0] < 3:
-        raise HTTPException(400, f"Dataset covered too little time: {gas_df.index.min()} to {gas_df.index.max()}")
-    heating_df = monthly_to_hh_hload(gas_df, weather_df).drop(columns=["timedelta"])
-    heating_df = heating_df.resample(pd.Timedelta(minutes=60)).sum()
-    assert isinstance(heating_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
-    heating_df["Date"] = heating_df.index.strftime("%d-%b")
-    heating_df["StartTime"] = heating_df.index.strftime("%H:%M")
-    heating_df["HourOfYear"] = heating_df.index.map(hour_of_year)
-    heating_df = heating_df.rename(columns={"heating": "HLoad1", "dhw": "DHWLoad1"}).drop(columns=["predicted", "hdd"])
-
-    heating_df = heating_df.join(weather_df["temp"]).rename(columns={"temp": "Air-temp"})
-    return heating_df.to_dict(orient="records")
+class EpochElectricityEntry(pydantic.BaseModel):
+    Date: str = pydantic.Field(examples=["Jan-01", "Dec-31"], pattern=r"[0-9][0-9]-[A-Za-z]*")
+    StartTime: datetime.time = pydantic.Field(examples=["00:00", "13:30"])
+    HourOfYear: float = pydantic.Field(examples=[1, 24 * 365 - 1])
+    FixLoad1: float = pydantic.Field(examples=[0.123, 4.56])
 
 
-@router.post("/get-electricity-load")
-async def get_electricity_load(request: Request, params: DatasetIDWithTime) -> list:
+@router.post("/get-electricity-load", tags=["get", "electricity"])
+async def get_electricity_load(request: Request, params: DatasetIDWithTime) -> list[EpochElectricityEntry]:
     async with request.state.pgpool.acquire() as conn:
         reading_type = await conn.fetchval(
             """
@@ -297,124 +216,11 @@ async def get_electricity_load(request: Request, params: DatasetIDWithTime) -> l
     elec_df = pd.DataFrame.from_records(
         res, columns=["start_ts", "consumption"], coerce_float=["consumption"], index="start_ts"
     )
-    elec_df = elec_df.resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
+    elec_df = elec_df.resample(pd.Timedelta(minutes=30)).sum().interpolate(method="time")
+
     assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
     elec_df["Date"] = elec_df.index.strftime("%d-%b")
     elec_df["StartTime"] = elec_df.index.strftime("%H:%M")
     elec_df["HourOfYear"] = elec_df.index.map(hour_of_year)
     elec_df = elec_df.rename(columns={"consumption": "FixLoad1"})
     return elec_df.to_dict(orient="records")
-
-
-@router.post("/generate-renewables-generation")
-async def generate_renewables_generation(
-    request: Request, params: RenewablesRequest
-) -> dict[str, str | datetime.datetime | pydantic.UUID4 | dict[str, float | bool]]:
-    async with request.state.pgpool.acquire() as conn:
-        location, (latitude, longitude) = await conn.fetchrow(
-            """
-            SELECT
-                location,
-                coordinates
-            FROM client_info.site_info AS s
-            WHERE site_id = $1
-            LIMIT 1""",
-            params.site_id,
-        )
-        if location is None:
-            raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
-
-    if params.azimuth is None or params.tilt is None:
-        logging.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
-        optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude)
-        azimuth, tilt = float(optimal_params["azimuth"]), float(optimal_params["tilt"])
-    else:
-        azimuth, tilt = params.azimuth, params.tilt
-
-    try:
-        renewables_df = await get_renewables_ninja_data(
-            latitude=latitude, longitude=longitude, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=azimuth, tilt=tilt
-        )
-    except httpx.ReadTimeout as ex:
-        raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex
-    if len(renewables_df) < 364 * 24:
-        raise HTTPException(500, f"Could not get renewables information for {location}.")
-
-    metadata: dict[str, str | datetime.datetime | pydantic.UUID4 | dict[str, float | bool]] = {
-        "data_source": "renewables.ninja",
-        "created_at": datetime.datetime.now(datetime.UTC),
-        "dataset_id": uuid.uuid4(),
-        "site_id": params.site_id,
-        "parameters": json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
-    }
-    async with request.state.pgpool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                """
-                INSERT INTO
-                    renewables.metadata (
-                        dataset_id,
-                        site_id,
-                        created_at,
-                        data_source,
-                        parameters)
-                VALUES (
-                        $1,
-                        $2,
-                        $3,
-                        $4,
-                        $5)""",
-                metadata["dataset_id"],
-                metadata["site_id"],
-                metadata["created_at"],
-                metadata["data_source"],
-                metadata["parameters"],
-            )
-
-            await conn.executemany(
-                """INSERT INTO
-                        renewables.solar_pv (
-                            dataset_id,
-                            timestamp,
-                            solar_generation
-                        )
-                    VALUES (
-                        $1,
-                        $2,
-                        $3)""",
-                zip(
-                    [metadata["dataset_id"] for _ in renewables_df.index],
-                    renewables_df.index,
-                    renewables_df.pv,
-                    strict=True,
-                ),
-            )
-    return metadata
-
-
-@router.post("/get-renewables-generation")
-async def get_renewables_generation(request: Request, params: DatasetIDWithTime) -> list:
-    async with request.state.pgpool.acquire() as conn:
-        dataset = await conn.fetch(
-            """
-                SELECT
-                    timestamp,
-                    solar_generation
-                FROM renewables.solar_pv
-                WHERE
-                    dataset_id = $1
-                    AND $2 <= timestamp
-                    AND timestamp < $3
-                ORDER BY timestamp ASC""",
-            params.dataset_id,
-            params.start_ts,
-            params.end_ts,
-        )
-    renewables_df = pd.DataFrame.from_records(dataset, columns=["timestamp", "solar_generation"], index="timestamp")
-    renewables_df.index = pd.to_datetime(renewables_df.index)
-    assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a DatetimeIndex"
-    renewables_df["Date"] = renewables_df.index.strftime("%d-%b")
-    renewables_df["StartTime"] = renewables_df.index.strftime("%H:%M")
-    renewables_df["HourOfYear"] = renewables_df.index.map(hour_of_year)
-    renewables_df = renewables_df.rename(columns={"solar_generation": "RGen1"})
-    return renewables_df.to_dict(orient="records")

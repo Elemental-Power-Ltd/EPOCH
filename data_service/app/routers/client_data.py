@@ -5,14 +5,18 @@ import uuid
 import asyncpg
 import httpx
 import pandas as pd
+import pydantic
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 from ..internal.pvgis import get_pvgis_optima
-from .models import (
+from ..internal.utils import hour_of_year
+from ..models.core import (
     ClientData,
     ClientID,
     ClientIdNamePair,
     DatasetEntry,
+    DatasetIDWithTime,
     FuelEnum,
     ReadingTypeEnum,
     SiteData,
@@ -27,7 +31,7 @@ from .models import (
 router = APIRouter()
 
 
-@router.post("/add-client")
+@router.post("/add-client", tags=["db", "add"])
 async def add_client(request: Request, client_data: ClientData) -> tuple[ClientData, str]:
     async with request.state.pgpool.acquire() as conn:
         try:
@@ -46,7 +50,7 @@ async def add_client(request: Request, client_data: ClientData) -> tuple[ClientD
     return (client_data, status)
 
 
-@router.post("/add-site")
+@router.post("/add-site", tags=["db", "add"])
 async def add_site(request: Request, site_data: SiteData) -> tuple[SiteData, str]:
     async with request.state.pgpool.acquire() as conn:
         try:
@@ -84,7 +88,7 @@ async def add_site(request: Request, site_data: SiteData) -> tuple[SiteData, str
     return (site_data, status)
 
 
-@router.post("/get-clients", response_model=list[ClientIdNamePair])
+@router.post("/get-clients", tags=["db"], response_model=list[ClientIdNamePair])
 async def get_clients(request: Request) -> list[dict[str, str | client_id_t]]:
     """
     Get a list of all the clients we have, and their human readable names.
@@ -108,7 +112,7 @@ async def get_clients(request: Request) -> list[dict[str, str | client_id_t]]:
     return [{"client_id": client_id_t(item[0]), "name": str(item[1])} for item in res]
 
 
-@router.post("/get-sites", response_model=list[SiteIdNamePair])
+@router.post("/get-sites", tags=["db"], response_model=list[SiteIdNamePair])
 async def get_sites(request: Request, client_id: ClientID) -> list[dict[str, str | site_id_t]]:
     """
     Get all the sites associated with a particular client, including their human readable names.
@@ -138,7 +142,7 @@ async def get_sites(request: Request, client_id: ClientID) -> list[dict[str, str
     return [{"site_id": site_id_t(item[0]), "name": str(item[1])} for item in res]
 
 
-@router.post("/get-datasets")
+@router.post("/get-datasets", tags=["db"])
 async def get_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]:
     """
     Get all the datasets associated with a particular site, in the form of a list of UUID strings.
@@ -167,12 +171,10 @@ async def get_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]:
             ORDER BY created_at ASC""",
             site_id.site_id,
         )
-        datasets.extend(
-            [
-                DatasetEntry(dataset_id=item["dataset_id"], fuel_type=item["fuel_type"], reading_type=item["reading_type"])
-                for item in res
-            ]
-        )
+        datasets.extend([
+            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=item["fuel_type"], reading_type=item["reading_type"])
+            for item in res
+        ])
 
         res = await conn.fetch(
             """
@@ -184,12 +186,10 @@ async def get_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]:
             ORDER BY created_at ASC""",
             site_id.site_id,
         )
-        datasets.extend(
-            [
-                DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.tariff)
-                for item in res
-            ]
-        )
+        datasets.extend([
+            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.tariff)
+            for item in res
+        ])
 
         res = await conn.fetch(
             """
@@ -201,17 +201,30 @@ async def get_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]:
             ORDER BY created_at ASC""",
             site_id.site_id,
         )
-        datasets.extend(
-            [
-                DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.solar_pv)
-                for item in res
-            ]
+        datasets.extend([
+            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.solar_pv)
+            for item in res
+        ])
+
+        res = await conn.fetch(
+            """
+            SELECT
+                dataset_id
+            FROM
+                heating.metadata
+            WHERE site_id = $1
+            ORDER BY created_at ASC""",
+            site_id.site_id,
         )
+        datasets.extend([
+            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.gas, reading_type=ReadingTypeEnum.heating_load)
+            for item in res
+        ])
     logging.info(f"Returning {len(res)} datasets for {site_id}")
     return datasets
 
 
-@router.post("/get-location")
+@router.post("/get-location", tags=["db"])
 async def get_location(request: Request, site_id: SiteID) -> location_t:
     """
     Get the location name for this site.
@@ -237,7 +250,7 @@ async def get_location(request: Request, site_id: SiteID) -> location_t:
     return location
 
 
-@router.post("/get-pv-optima")
+@router.post("/get-pv-optima", tags=["solar_pv", "get"])
 async def get_pv_optima(request: Request, site_id: SiteID) -> dict[str, float | int | str]:
     """
     Get some optimal angles and azimuths for this specific site.
@@ -261,7 +274,7 @@ async def get_pv_optima(request: Request, site_id: SiteID) -> dict[str, float | 
     return optima
 
 
-@router.post("/generate-import-tariffs")
+@router.post("/generate-import-tariffs", tags=["generate", "tariff"])
 async def generate_import_tariffs(
     request: Request, params: TariffRequest
 ) -> dict[str, float | int | str | datetime.datetime | None]:
@@ -290,9 +303,9 @@ async def generate_import_tariffs(
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
         products = response.json()
-        tariff_codes = sorted(
-            [region["direct_debit_monthly"]["code"] for region in products["single_register_electricity_tariffs"].values()]
-        )
+        tariff_codes = sorted([
+            region["direct_debit_monthly"]["code"] for region in products["single_register_electricity_tariffs"].values()
+        ])
         tariff_code = tariff_codes[0]  # for the moment just take the first
 
         price_url = url + f"electricity-tariffs/{tariff_code}/standard-unit-rates/"
@@ -394,3 +407,38 @@ async def generate_import_tariffs(
                 ),
             )
     return metadata
+
+
+class EpochTariffEntry(BaseModel):
+    Date: str = pydantic.Field(examples=["Jan-01", "Dec-31"], pattern=r"[0-9][0-9]-[A-Za-z]*")
+    StartTime: datetime.time = pydantic.Field(examples=["00:00", "13:30"])
+    HourOfYear: float = pydantic.Field(examples=[1, 24 * 365 - 1])
+    Tariff: float = pydantic.Field(examples=[0.123, 4.56])
+
+
+@router.post("/get-import-tariffs", tags=["get", "tariff"])
+async def get_import_tariffs(request: Request, params: DatasetIDWithTime) -> list[EpochTariffEntry]:
+    """ """
+    async with request.state.pgpool.acquire() as conn:
+        res = await conn.fetch(
+            """
+            SELECT
+                timestamp,
+                unit_cost
+            FROM tariffs.electricity
+            WHERE dataset_id = $1
+            AND $2 <= timestamp
+            AND timestamp < $3
+            ORDER BY timestamp ASC""",
+            params.dataset_id,
+            params.start_ts,
+            params.end_ts,
+        )
+    print(res)
+    df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
+    df.index = pd.to_datetime(df.index)
+    df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
+    return [
+        EpochTariffEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:"), Tariff=val)
+        for ts, val in zip(df.index, df["unit_cost"], strict=False)
+    ]

@@ -36,6 +36,7 @@ select = [
     "PD", # pandas
     "PERF", # performance,
     "RUF", # ruff
+    "FAST", # fastAPI
 ]
 ignore = [
     "PD901", # pandas df variable name

@@ -6,7 +6,7 @@ import asyncpg
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import client_data, meter_data, weather
+from .routers import client_data, heating_load, meter_data, renewables, weather
 
 
 class Database:
@@ -55,8 +55,10 @@ async def db_session_middleware(request: Request, call_next: Callable[[Request],
 app.include_router(client_data.router)
 app.include_router(meter_data.router)
 app.include_router(weather.router)
+app.include_router(heating_load.router)
+app.include_router(renewables.router)
 
 
 @app.get("/")
-async def root() -> dict[str, str]:
+async def root() -> dict[str, str]:  # noqa: RUF029
     return {"message": "Welcome to the Data Elemental backend API!"}
