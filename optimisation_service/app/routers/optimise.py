@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import logging
 import os
 import shutil
@@ -7,24 +8,25 @@ from pathlib import Path
 from uuid import UUID
 
 import aiohttp
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
 from ..internal.problem import Problem, convert_objectives, convert_parameters
-from .models import FileLoc, JSONTask, Optimiser, PyTask, SiteData
+from ..internal.result import Result
+from .models import DatasetIDWithTime, FileLoc, JSONTask, Optimiser, PyTask, SiteData
 from .queue import IQueue
 
 router = APIRouter()
 
 
-# def transmit(problem: Problem, results: Result, completed_at: datetime.UTC):
-#     df_objective_values = pd.DataFrame(data=results.objective_values, columns=problem.objectives.keys())
-#     df_solutions = pd.DataFrame(data=results.solutions, columns=problem.variable_param().keys())
-#     constant_param = problem.constant_param()
-#     constant_param_values = np.repeat([list(problem.constant_param().values())], results.solutions.shape[0], axis=0)
-#     df_constants = pd.DataFrame(data=constant_param_values, columns=constant_param.keys())
-
-#     records[problem.name] = pd.concat([df_objective_values, df_solutions, df_constants], axis=1).to_json(orient="records")
+def postprocess_results(problem: Problem, results: Result):
+    df_objective_values = pd.DataFrame(data=results.objective_values, columns=problem.objectives.keys())
+    df_solutions = pd.DataFrame(data=results.solutions, columns=problem.variable_param().keys())
+    constant_param = problem.constant_param()
+    constant_param_values = np.repeat([list(problem.constant_param().values())], results.solutions.shape[0], axis=0)
+    df_constants = pd.DataFrame(data=constant_param_values, columns=constant_param.keys())
+    return pd.concat([df_objective_values, df_solutions, df_constants], axis=1).to_json(orient="records")
 
 
 async def post_request(url, data):
@@ -55,7 +57,7 @@ def create_tempdir(sitedatakey: UUID) -> os.PathLike:
     return temp_dir
 
 
-async def fps_elec(data_id: UUID, temp_dir: os.PathLike) -> None:
+async def fps_elec(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLike) -> None:
     """
     Fetch, process and save electricity load files.
 
@@ -66,14 +68,14 @@ async def fps_elec(data_id: UUID, temp_dir: os.PathLike) -> None:
     temp_dir
         temp_dir to save files to
     """
-    response = await post_request(url="/get-meter-data", data={"dataset_id": data_id})
+    response = await post_request(url="/get-electricity-load", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1", "FixLoad2"])
     df = df.sort_values("HourOfYear")
     df.to_csv(Path(temp_dir, "CSVEload.csv"))
 
 
-async def fps_rgen(data_id: UUID, temp_dir: os.PathLike) -> None:
+async def fps_rgen(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLike) -> None:
     """
     Fetch, process and save renewable generation.
 
@@ -84,14 +86,14 @@ async def fps_rgen(data_id: UUID, temp_dir: os.PathLike) -> None:
     temp_dir
         temp_dir to save files to
     """
-    response = await post_request(url="/get-rgen", data={"dataset_id": data_id})
+    response = await post_request(url="/get-renewables-generation", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
     df = df.sort_values("HourOfYear")
     df.to_csv(Path(temp_dir, "CSVRGen.csv"))
 
 
-async def fps_heat_n_air(data_id: UUID, temp_dir: os.PathLike) -> None:
+async def fps_heat_n_air(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLike) -> None:
     """
     Fetch, process and save heat load and airtemp files.
 
@@ -102,7 +104,7 @@ async def fps_heat_n_air(data_id: UUID, temp_dir: os.PathLike) -> None:
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(url="/get-heating-load", data={"dataset_id": data_id})
+    response = await post_request(url="/get-heating-load", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df_heat = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
     df_air = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Air-temp"])
@@ -112,7 +114,7 @@ async def fps_heat_n_air(data_id: UUID, temp_dir: os.PathLike) -> None:
     df_air.to_csv(Path(temp_dir, "CSVAirtemp.csv"))
 
 
-async def fps_ASHP_input(data_id: UUID, temp_dir: os.PathLike) -> None:
+async def fps_ASHP_input(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLike) -> None:
     """
     Fetch, process and save ASHP input.
 
@@ -123,14 +125,14 @@ async def fps_ASHP_input(data_id: UUID, temp_dir: os.PathLike) -> None:
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(url="/get-ashp-input", data={"dataset_id": data_id})
+    response = await post_request(url="/get-ashp-input", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
     df = df.sort_values("0")
     df.to_csv(Path(temp_dir, "CSVASHPinput.csv"))
 
 
-async def fps_ASHP_output(data_id: UUID, temp_dir: os.PathLike) -> None:
+async def fps_ASHP_output(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLike) -> None:
     """
     Fetch, process and save ASHP output.
 
@@ -141,14 +143,14 @@ async def fps_ASHP_output(data_id: UUID, temp_dir: os.PathLike) -> None:
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(url="/get-ashp-output", data={"dataset_id": data_id})
+    response = await post_request(url="/get-ashp-output", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
     df = df.sort_values("0")
     df.to_csv(Path(temp_dir, "CSVASHPoutput.csv"))
 
 
-async def fps_import_tariff(data_id: UUID, temp_dir: os.PathLike) -> None:
+async def fps_import_tariff(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLike) -> None:
     """
     Fetch, process and save import tariff.
 
@@ -159,14 +161,14 @@ async def fps_import_tariff(data_id: UUID, temp_dir: os.PathLike) -> None:
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(url="/get-import-tariff", data={"dataset_id": data_id})
+    response = await post_request(url="/get-import-tariff", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
     df = df.sort_values("HourOfYear")
     df.to_csv(Path(temp_dir, "CSVImporttariff.csv"))
 
 
-async def fps_grid_CO2(data_id: UUID, temp_dir: os.PathLike) -> None:
+async def fps_grid_CO2(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLike) -> None:
     """
     Fetch, process and save grid CO2.
 
@@ -177,7 +179,7 @@ async def fps_grid_CO2(data_id: UUID, temp_dir: os.PathLike) -> None:
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(url="/get-grid-CO2", data={"dataset_id": data_id})
+    response = await post_request(url="/get-grid-CO2", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Grid CO2e (kg/kWh)"])
     df = df.sort_values("HourOfYear")
@@ -262,6 +264,10 @@ async def preproccess_task(task: JSONTask) -> PyTask:
     return PyTask(TaskID=task.TaskID, problem=problem, optimiser=optimiser, siteData=task.siteData)
 
 
+async def transmit_results(results):
+    await post_request("/put-results", results)
+
+
 async def process_requests(q: IQueue):
     """
     Loop to process tasks in queue.
@@ -276,8 +282,19 @@ async def process_requests(q: IQueue):
         try:
             results = await task.optimiser.run(task.problem, verbose=False)
             completed_at = datetime.datetime.now(datetime.UTC)
+            json_results = postprocess_results(task.problem, results)
+            payload = {
+                "TaskID": str(task.TaskID),
+                "problem": {"objectives": list(task.problem.objectives.keys()), "parameters": task.problem.parameters},
+                "results": json_results,
+                "completed_at": str(completed_at),
+            }
             if task.siteData.loc == FileLoc.database:
+                await transmit_results(payload)
                 shutil.rmtree(task.problem.input_dir)
+            elif task.siteData.loc == FileLoc.local:
+                with open(Path(task.siteData.path, "results.json"), "w") as f:
+                    json.dump(payload, f)
         except Exception:
             logging.error("Exception occured", exc_info=True)
             pass

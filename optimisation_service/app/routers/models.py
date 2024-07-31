@@ -5,6 +5,8 @@ from os import PathLike
 from typing import Optional
 from uuid import UUID
 
+from pydantic import AwareDatetime, BaseModel
+
 from ..internal.epl_typing import DetailedParameterDict
 from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
 from ..internal.grid_search import GridSearch
@@ -17,23 +19,13 @@ class FileLoc(Enum):
     local = 1
 
 
-@dataclass
-class SiteData:
+class SiteData(BaseModel):
     loc: FileLoc
     path: Optional[PathLike] = None
     key: Optional[UUID] = None
 
-    def __post_init__(self):
-        if self.loc == FileLoc.database:
-            assert isinstance(self.key, UUID)
-            assert self.path is None
-        elif self.loc == FileLoc.local:
-            assert isinstance(self.path, PathLike)
-            assert self.key is None
 
-
-@dataclass
-class JSONTask:
+class JSONTask(BaseModel):
     TaskID: UUID
     optimiser: str
     optimiserConfig: dict[str, str | int | float]
@@ -62,13 +54,19 @@ class state(Enum):
     CANCELLED = 2
 
 
-@dataclass()
+@dataclass
 class QueueElem:
     STATE: state
     added_at: datetime
 
 
-@dataclass()
+@dataclass
 class QueueStatus:
     queue: dict[UUID, QueueElem]
     service_uptime: float
+
+
+class DatasetIDWithTime(BaseModel):
+    dataset_id: UUID
+    start_ts: AwareDatetime
+    end_ts: AwareDatetime
