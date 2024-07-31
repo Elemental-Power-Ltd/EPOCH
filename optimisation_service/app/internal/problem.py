@@ -23,7 +23,6 @@ _OBJECTIVES_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "
 
 @dataclass(frozen=True)
 class Problem:
-    name: str
     objectives: list[str]
     constraints: ConstraintDict
     parameters: ParameterDict
@@ -84,7 +83,7 @@ class Problem:
 
     def split_objectives(self) -> Generator[Self, None, None]:
         for objective in self.objectives:
-            yield Problem(self.name, [objective], self.constraints, self.parameters, self.input_dir)  # type: ignore
+            yield Problem([objective], self.constraints, self.parameters, self.input_dir)  # type: ignore
 
 
 def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
@@ -115,7 +114,6 @@ def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
         parameters = json.load(f)
 
     return Problem(
-        name=name,
         objectives=objectives,
         constraints=constraints,
         parameters=parameters,
@@ -123,16 +121,18 @@ def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
     )
 
 
-def save_problem(problem: Problem, save_dir: str | os.PathLike, overwrite: bool = False) -> None:
+def save_problem(problem: Problem, name: str, save_dir: str | os.PathLike, overwrite: bool = False) -> None:
     """
     Saves a problem's objectives, constraints and parameters to json files and copies input data files.
-    All are placed into the save directory under the problem name.
+    All are placed into the save directory under name.
     The parameters and input data files are placed in the subdirectory "InputData".
 
     Parameters
     ----------
     problem
         The problem instance to save
+    name
+        Name to save problem under
     save_dir
         The directory to place the files
     overwrite
@@ -140,9 +140,9 @@ def save_problem(problem: Problem, save_dir: str | os.PathLike, overwrite: bool 
     """
     assert Path(problem.input_dir).exists(), "Couldn't find problem input directory."
 
-    save_path = Path(save_dir, problem.name)
+    save_path = Path(save_dir, name)
     if not overwrite:
-        assert not os.path.isdir(save_path), "Problem savefiles already exist."
+        assert not os.path.isdir(save_path), "Savefiles already exist under this name."
 
     Path(save_path).mkdir(parents=False, exist_ok=True)
     Path(save_path, "InputData").mkdir(parents=False, exist_ok=True)

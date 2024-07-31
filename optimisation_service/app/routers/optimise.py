@@ -249,7 +249,6 @@ async def preproccess_task(task: JSONTask) -> PyTask:
     input_dir = await get_inputdata_dir(task.siteData)
     optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
     problem = Problem(
-        name=str(task.TaskID),
         objectives=task.objectives,
         constraints={},
         parameters=task.searchParameters,

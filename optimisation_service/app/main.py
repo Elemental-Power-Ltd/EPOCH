@@ -1,11 +1,14 @@
 import asyncio
 import logging
 import os
+import sys
 import time
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from .routers import optimise, queue
 from .routers.optimise import process_requests
@@ -23,6 +26,7 @@ async def lifespan(app: FastAPI):
         level=logging.ERROR,
         format="%(asctime)s:%(levelname)s:%(message)s",
     )
+    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     q = IQueue(maxsize=5)
     start_time = time.time()
     app.state.q = q
@@ -32,6 +36,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logging.error(f"Validation error: {exc.errors()} | Body: {exc.body}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": exc.body},
+    )
+
 
 app.include_router(optimise.router)
 app.include_router(queue.router)

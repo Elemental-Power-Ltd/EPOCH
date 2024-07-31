@@ -58,32 +58,29 @@ class TestProblem:
         """
         Test that the problem class works with valid input.
         """
-        name = "test"
         objectives = ["carbon_balance"]
         constraints = default_constraints
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
 
-        Problem(name, objectives, constraints, parameters, input_dir)
+        Problem(objectives, constraints, parameters, input_dir)
 
     def test_bad_objective(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
         """
         Test that we can't set bad objective names.
         """
-        name = "test"
         constraints = default_constraints
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
 
         objectives = ["amazingness"]
         with pytest.raises(ValueError):
-            Problem(name, objectives, constraints, parameters, input_dir)
+            Problem(objectives, constraints, parameters, input_dir)
 
     def test_bad_constraint_names(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
         """
         Test that we can't set constraints with bad objective names.
         """
-        name = "test"
         objectives = ["carbon_balance"]
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
@@ -91,13 +88,12 @@ class TestProblem:
         constraints["a"] = {"min": 10000}
 
         with pytest.raises(ValueError):
-            Problem(name, objectives, constraints, parameters, input_dir)
+            Problem(objectives, constraints, parameters, input_dir)
 
     def test_bad_constraint_bound_values(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
         """
         Test that we can't set bad constraint bounds, lower bound greater than upper bound.
         """
-        name = "test"
         objectives = ["carbon_balance"]
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
@@ -105,13 +101,12 @@ class TestProblem:
         constraints["carbon_balance"] = {"min": 10, "max": 0}  # type: ignore
 
         with pytest.raises(ValueError):
-            Problem(name, objectives, constraints, parameters, input_dir)
+            Problem(objectives, constraints, parameters, input_dir)
 
     def test_bad_parameter_bounds(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
         """
         Test that we can't set bad parameter bounds, lower bound greater than upper bound.
         """
-        name = "test"
         objectives = ["carbon_balance"]
         constraints = default_constraints
         input_dir = Path("data", "test_benchmark", "InputData")
@@ -119,13 +114,12 @@ class TestProblem:
         parameters["ASHP_HPower"] = {"min": 80.0, "max": 70.0, "step": 1.0}  # bad bounds
 
         with pytest.raises(ValueError):
-            Problem(name, objectives, constraints, parameters, input_dir)
+            Problem(objectives, constraints, parameters, input_dir)
 
     def test_bad_parameter_stepsize(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
         """
         Test that we can't set bad parameter stepsize.
         """
-        name = "test"
         objectives = ["carbon_balance"]
         constraints = default_constraints
         input_dir = Path("data", "test_benchmark", "InputData")
@@ -133,19 +127,18 @@ class TestProblem:
         parameters["ASHP_HPower"] = {"min": 60.0, "max": 70.0, "step": 0.0}
 
         with pytest.raises(ValueError):
-            Problem(name, objectives, constraints, parameters, input_dir)
+            Problem(objectives, constraints, parameters, input_dir)
 
     def test_variable_parameters(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
         """
         Test that the ss_variables method returns the correct search space variables.
         """
-        name = "test"
         objectives = ["carbon_balance"]
         constraints = default_constraints
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
 
-        problem = Problem(name, objectives, constraints, parameters, input_dir)
+        problem = Problem(objectives, constraints, parameters, input_dir)
         assert problem.variable_param() == {
             "ESS_capacity": {"min": 0, "max": 1000.0, "step": 100.0},
             "ESS_charge_power": {"min": 300, "max": 600.0, "step": 50.0},
@@ -156,13 +149,12 @@ class TestProblem:
         """
         Test that the ss_constants method returns the correct search space constants.
         """
-        name = "test"
         objectives = ["carbon_balance"]
         constraints = default_constraints
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
 
-        problem = Problem(name, objectives, constraints, parameters, input_dir)
+        problem = Problem(objectives, constraints, parameters, input_dir)
         assert problem.constant_param() == {
             "ASHP_HPower": 70.0,
             "ASHP_HSource": 1,
@@ -203,36 +195,35 @@ class TestProblem:
         """
         Test that the ss_size method returns the correct search space size.
         """
-        name = "test"
         objectives = ["carbon_balance"]
         constraints = default_constraints
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
 
-        problem = Problem(name, objectives, constraints, parameters, input_dir)
+        problem = Problem(objectives, constraints, parameters, input_dir)
         assert problem.size() == 11 * 7 * 9
 
     def test_split_objectives(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
-        name = "test"
+        """
+        Test that MOO problems are correctly split into SOO problems.
+        """
         objectives = ["carbon_balance", "capex"]
         constraints = default_constraints
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
 
-        problem = Problem(name, objectives, constraints, parameters, input_dir)
-        problem_a = Problem(name, ["carbon_balance"], constraints, parameters, input_dir)
-        problem_b = Problem(name, ["capex"], constraints, parameters, input_dir)
+        problem = Problem(objectives, constraints, parameters, input_dir)
+        problem_a = Problem(["carbon_balance"], constraints, parameters, input_dir)
+        problem_b = Problem(["capex"], constraints, parameters, input_dir)
 
         assert list(problem.split_objectives()) == [problem_a, problem_b]
 
 
 class TestProblemLoading:
     def test_load_problem(self, default_constraints: ConstraintDict) -> None:
-        name = "var-3"
         problem_dir = Path("tests", "data", "benchmarks")
-        problem = load_problem(name, problem_dir)
+        problem = load_problem("var-3", problem_dir)
 
-        assert problem.name == "var-3"
         assert problem.objectives == ["carbon_balance", "cost_balance", "capex", "payback_horizon", "annualised_cost"]
         assert problem.constraints == default_constraints
         assert problem.parameters == {
