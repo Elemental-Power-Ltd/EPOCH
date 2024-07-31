@@ -5,7 +5,7 @@ import uuid
 
 import numpy as np
 import pandas as pd
-import sklearn
+import sklearn  # type: ignore
 from fastapi import APIRouter, HTTPException, Request
 
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
@@ -153,7 +153,7 @@ async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> 
                     strict=True,
                 ),
             )
-    return metadata
+    return HeatingLoadMetadata(**metadata)
 
 
 @router.post("/get-heating-load", tags=["get", "heating"])
@@ -182,4 +182,13 @@ async def get_heating_load(request: Request, params: DatasetIDWithTime) -> list[
     heating_df["StartTime"] = heating_df.index.strftime("%H:%M")
     heating_df["HourOfYear"] = heating_df.index.map(hour_of_year)
     heating_df = heating_df.rename(columns={"heating": "HLoad1", "dhw": "DHWLoad1"})
-    return heating_df.to_dict(orient="records")
+    return [
+        EpochHeatingEntry(
+            Date=item["Date"],
+            StartTime=item["StartTime"],
+            HourOfYear=item["HourOFYear"],
+            HLoad1=item["HLoad1"],
+            DHWLoad1=item["DHWLoad1"],
+        )
+        for item in heating_df.to_dict(orient="records")
+    ]

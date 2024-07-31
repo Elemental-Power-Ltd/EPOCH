@@ -223,4 +223,10 @@ async def get_electricity_load(request: Request, params: DatasetIDWithTime) -> l
     elec_df["StartTime"] = elec_df.index.strftime("%H:%M")
     elec_df["HourOfYear"] = elec_df.index.map(hour_of_year)
     elec_df = elec_df.rename(columns={"consumption": "FixLoad1"})
-    return elec_df.to_dict(orient="records")
+
+    return [
+        EpochElectricityEntry(
+            Date=item["Date"], StartTime=item["StartTime"], HourOfYear=item["HourOfYear"], FixLoad1=item["FixLoad1"]
+        )
+        for item in elec_df.to_dict(orient="records")
+    ]

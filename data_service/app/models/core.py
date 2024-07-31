@@ -115,7 +115,7 @@ class DatasetEntry(pydantic.BaseModel):
 
 class SiteIdNamePair(pydantic.BaseModel):
     site_id: site_id_t = site_id_field
-    name: str = Field(example=["Demonstration - Matt's House"], description="Human-readable name of this site.")
+    name: str = Field(examples=["Demonstration - Matt's House"], description="Human-readable name of this site.")
 
 
 class ClientData(pydantic.BaseModel):
