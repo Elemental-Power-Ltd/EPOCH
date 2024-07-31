@@ -15,8 +15,8 @@ from ..internal.problem import Problem
 
 
 class FileLoc(Enum):
-    database = 0
-    local = 1
+    database = "database"
+    local = "local"
 
 
 class SiteData(BaseModel):

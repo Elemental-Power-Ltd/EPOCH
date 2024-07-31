@@ -251,13 +251,7 @@ async def preproccess_task(task: JSONTask) -> PyTask:
     problem = Problem(
         name=str(task.TaskID),
         objectives=task.objectives,
-        constraints={
-            "annualised_cost": [None, None],
-            "capex": [None, None],
-            "carbon_balance": [None, None],
-            "cost_balance": [None, None],
-            "payback_horizon": [None, None],
-        },
+        constraints={},
         parameters=task.searchParameters,
         input_dir=input_dir,
     )

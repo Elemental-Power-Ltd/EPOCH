@@ -151,11 +151,11 @@ class NSGA2(Algorithm):
 
             simresult = PySimulationResult(pi.sim.simulate_scenario(pi.TaskData))
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
-        objective_values = np.asarray(objective_values)
+        objective_values_arr = np.asarray(objective_values)
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = res.exec_time
 
-        return Result(solutions=solutions, objective_values=objective_values, exec_time=exec_time, n_evals=n_evals)
+        return Result(solutions=solutions, objective_values=objective_values_arr, exec_time=exec_time, n_evals=n_evals)
 
 
 class GeneticAlgorithm(Algorithm):
@@ -305,13 +305,14 @@ class ProblemInstance(ElementwiseProblem):
 
         self.constraints: dict[str, dict[str, float]] = {"lbs": {}, "ubs": {}}
         n_ieq_constr = 0
-        for constraint, (c_lb, c_ub) in problem.constraints.items():
-            if c_lb is not None:
-                self.constraints["lbs"][constraint] = c_lb
-                n_ieq_constr += 1
-            if c_ub is not None:
-                self.constraints["ubs"][constraint] = c_ub
-                n_ieq_constr += 1
+        if len(problem.constraints) > 0:
+            for constraint, bounds in problem.constraints.items():
+                if "min" in bounds.keys():
+                    self.constraints["lbs"][constraint] = bounds["min"]
+                    n_ieq_constr += 1
+                if "max" in bounds.keys():
+                    self.constraints["ubs"][constraint] = bounds["max"]
+                    n_ieq_constr += 1
 
         self.v_params, self.lb, ub, self.step = [], np.array([]), np.array([]), np.array([])
         n_var = 0

@@ -33,12 +33,12 @@ class Problem:
         if not len(self.objectives) >= 1:
             raise ValueError("objectives must have at least one objective")
         if not set(self.objectives).issubset(_OBJECTIVES):
-            raise ValueError(f"Invalid objective: {set(self.objectives) - set(_OBJECTIVES)}")
-        if set(self.constraints.keys()) != set(_OBJECTIVES):
-            raise ValueError(f"constraints must contain values for all of {_OBJECTIVES}.")
+            raise ValueError(f"Invalid objective(s): {set(self.objectives) - set(_OBJECTIVES)}")
+        if not set(self.constraints.keys()).issubset(_OBJECTIVES):
+            raise ValueError(f"Invalid constraint name(s): {set(self.constraints.keys()) - set(_OBJECTIVES)}")
         for bounds in self.constraints.values():
-            if bounds[0] is not None and bounds[1] is not None:
-                if bounds[0] > bounds[1]:
+            if ("min" in bounds) & ("max" in bounds):
+                if bounds["min"] > bounds["max"]:
                     raise ValueError("constraints lower bounds must be smaller or equal to upper bounds.")
         if set(self.parameters.keys()) != set(PyTaskData()._VALID_KEYS):
             param_set = set(self.parameters.keys())
