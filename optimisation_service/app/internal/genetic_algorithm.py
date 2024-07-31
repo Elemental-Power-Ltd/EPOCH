@@ -310,9 +310,9 @@ class ProblemInstance(ElementwiseProblem):
         n_var = 0
         for key, value in problem.variable_param().items():
             self.v_params.append(key)
-            self.lb = np.append(self.lb, value[0])
-            ub = np.append(ub, value[1])
-            self.step = np.append(self.step, value[-1])
+            self.lb = np.append(self.lb, value["min"])
+            ub = np.append(ub, value["max"])
+            self.step = np.append(self.step, value["step"])
             n_var += 1
 
         super().__init__(n_var=n_var, n_obj=n_obj, n_ieq_constr=n_ieq_constr, xl=[0] * n_var, xu=(ub - self.lb) / self.step)

@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
-from ..internal.problem import Problem, convert_objectives, convert_parameters
+from ..internal.problem import Problem, convert_objectives
 from ..internal.result import Result
 from .models import DatasetIDWithTime, FileLoc, JSONTask, Optimiser, PyTask, SiteData
 from .queue import IQueue
@@ -258,7 +258,7 @@ async def preproccess_task(task: JSONTask) -> PyTask:
             "cost_balance": [None, None],
             "payback_horizon": [None, None],
         },
-        parameters=convert_parameters(task.searchParameters),
+        parameters=task.searchParameters,
         input_dir=input_dir,
     )
     return PyTask(TaskID=task.TaskID, problem=problem, optimiser=optimiser, siteData=task.siteData)

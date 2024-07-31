@@ -10,7 +10,7 @@ import pandas as pd
 from paretoset import paretoset  # type: ignore
 
 from .opt_algorithm import Algorithm, alg_param_to_string
-from .problem import Problem
+from .problem import Problem, convert_param
 from .result import Result
 from .task_data_wrapper import run_headless
 from .utils import typename
@@ -91,7 +91,7 @@ class GridSearch(Algorithm):
                 json.dump(_EPOCH_CONFIG, f)
 
         with open(Path(problem.input_dir, "inputParameters.json"), "w") as f:
-            json.dump(problem.parameters, f)
+            json.dump(convert_param(problem.parameters), f)
 
         if verbose:
             print("Executing grid search. This may take a while...")

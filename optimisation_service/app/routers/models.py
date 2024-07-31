@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel
 
-from ..internal.epl_typing import DetailedParameterDict
+from ..internal.epl_typing import ParameterDict
 from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
 from ..internal.grid_search import GridSearch
 from ..internal.opt_algorithm import Algorithm
@@ -29,7 +29,7 @@ class JSONTask(BaseModel):
     TaskID: UUID
     optimiser: str
     optimiserConfig: dict[str, str | int | float]
-    searchParameters: DetailedParameterDict
+    searchParameters: ParameterDict
     objectives: list
     siteData: SiteData
 

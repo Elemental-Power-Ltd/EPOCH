@@ -1,4 +1,4 @@
-from typing import Mapping, TypedDict, TypeVar, Union
+from typing import Mapping, TypedDict, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -8,12 +8,12 @@ FloatOrArray = TypeVar("FloatOrArray", float, npt.NDArray[np.float64], pd.Series
 
 
 class ParamRange(TypedDict):
-    min: Union[int, float]
-    max: Union[int, float]
-    step: Union[int, float]
+    min: int | float
+    max: int | float
+    step: int | float
 
 
-ParameterDict = Mapping[str, Union[list[Union[float, int]], float, int]]
-DetailedParameterDict = Mapping[str, Union[ParamRange, int, float]]
-ConstraintDict = Mapping[str, Union[tuple[None, None], tuple[float, float], list[Union[float, int, None]]]]
-ObjectiveDict = Mapping[str, Union[float, int]]
+OldParameterDict = Mapping[str, list[int | float] | tuple[int | float] | int | float]
+ParameterDict = Mapping[str, ParamRange | int | float]
+ConstraintDict = Mapping[str, tuple[None, None] | tuple[float, float] | list[float | int | None]]
+ObjectiveDict = Mapping[str, float | int]

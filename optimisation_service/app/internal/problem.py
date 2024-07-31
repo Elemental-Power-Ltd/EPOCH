@@ -7,7 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Generator, Self
 
-from .epl_typing import ConstraintDict, DetailedParameterDict, ObjectiveDict, ParameterDict
+from .epl_typing import ConstraintDict, ObjectiveDict, OldParameterDict, ParameterDict, ParamRange
 from .task_data_wrapper import PyTaskData
 
 ACTUAL_OBJECTIVES = [
@@ -46,36 +46,41 @@ class Problem:
         if set(self.parameters.keys()) != set(PyTaskData()._VALID_KEYS):
             param_set = set(self.parameters.keys())
             valid_set = set(PyTaskData()._VALID_KEYS)
-            raise ValueError(f"Missing or invalid parameter keys. Extra in parameters: {param_set - valid_set}")
+            raise ValueError(
+                f"Missing or invalid parameter keys. Extra parameters: {param_set - valid_set}."
+                f"Missing parameters: {valid_set - param_set}"
+            )
         for value in self.parameters.values():
-            if isinstance(value, tuple | list):
-                if value[0] > value[1]:
+            if isinstance(value, dict):
+                if value["min"] > value["max"]:
                     raise ValueError("parameter lower bounds must be smaller or equal to upper bounds.")
-                if ((value[2] == 0) & (value[0] != value[1])) or ((value[2] != 0) & (value[0] == value[1])):
+                if ((value["step"] == 0) & (value["min"] != value["max"])) or (
+                    (value["step"] != 0) & (value["min"] == value["max"])
+                ):
                     raise ValueError("parameter bounds must be equal if stepsize is 0.")
 
-    def variable_param(self) -> dict[str, list | tuple]:
-        param_dict: dict[str, list | tuple] = {}
+    def variable_param(self) -> dict[str, ParamRange]:
+        param_dict = {}
         for key, value in self.parameters.items():
-            if isinstance(value, (list, tuple)):
-                if value[0] != value[1] and value[-1] != 0:
+            if isinstance(value, dict):
+                if (value["step"] != 0) & (value["min"] != value["max"]):
                     param_dict[key] = value
         return param_dict
 
     def constant_param(self) -> dict[str, float]:
         param_dict = {}
         for key, value in self.parameters.items():
-            if isinstance(value, (list, tuple)):
-                if value[-1] == 0:
-                    param_dict[key] = value[0]
+            if isinstance(value, dict):
+                if (value["step"] == 0) & (value["min"] == value["max"]):
+                    param_dict[key] = value["min"]
             else:
                 param_dict[key] = value
         return param_dict
 
     def size(self) -> int:
         size = 1
-        for values in self.variable_param().values():
-            n_pos_values = (values[1] - values[0]) / values[-1] + 1
+        for value in self.variable_param().values():
+            n_pos_values = (value["max"] - value["min"]) / value["step"] + 1
             size = int(size * n_pos_values)
 
         return size
@@ -173,7 +178,7 @@ def convert_objectives(objectives: list) -> ObjectiveDict:
     return {key: _OPTIMISATION_DIRECTION[key] for key in objectives}
 
 
-def convert_parameters(parameters: DetailedParameterDict) -> ParameterDict:
+def convert_param(parameters: ParameterDict) -> OldParameterDict:
     """
     Converts dictionary of parameters from dict of dicts to dict of lists.
     ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
