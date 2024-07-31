@@ -10,7 +10,7 @@ import pandas as pd
 from paretoset import paretoset  # type: ignore
 
 from .opt_algorithm import Algorithm, alg_param_to_string
-from .problem import Problem, convert_param
+from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem, convert_param
 from .result import Result
 from .task_data_wrapper import run_headless
 from .utils import typename
@@ -108,9 +108,8 @@ class GridSearch(Algorithm):
 
         os.remove(Path(problem.input_dir, "inputParameters.json"))
 
-        objectives = list(problem.objectives.keys())
         variable_param = list(problem.variable_param().keys())
-        usecols = objectives + variable_param
+        usecols = problem.objectives + variable_param
 
         df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32, usecols=usecols)
 
@@ -121,13 +120,10 @@ class GridSearch(Algorithm):
                 df_res = df_res[df_res[constraint] <= ub]
 
         solutions = df_res[variable_param].to_numpy()
-        objective_values = df_res[objectives].to_numpy()
-
-        senses = problem.objectives.values()
-        str_senses = ["max" if sense == -1 else "min" for sense in senses]
-        pareto_efficient = paretoset(objective_values, str_senses, distinct=not self.keep_degenerate)
+        obj_direct = ["max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in problem.objectives]
+        pareto_efficient = paretoset(df_res[problem.objectives].to_numpy(), obj_direct, distinct=not self.keep_degenerate)
         solutions = solutions[pareto_efficient]
-        objective_values = objective_values[pareto_efficient]
+        objective_values = df_res[_OBJECTIVES].to_numpy()[pareto_efficient]
 
         if has_temp_dir:
             temp_dir.cleanup()

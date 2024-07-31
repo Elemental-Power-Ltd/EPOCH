@@ -23,7 +23,7 @@ from pymoo.termination.max_gen import MaximumGenerationTermination  # type: igno
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
 from .opt_algorithm import Algorithm, alg_param_to_string
-from .problem import Problem
+from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
 
@@ -143,8 +143,15 @@ class NSGA2(Algorithm):
 
         res = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, verbose=verbose)
 
-        objective_values = res.F * np.fromiter(problem.objectives.values(), dtype=float)
         solutions = res.X * pi.step + pi.lb
+        objective_values = []
+        for sol in solutions:
+            for parameter, value in zip(pi.v_params, sol):
+                pi.TaskData[parameter] = value
+
+            simresult = PySimulationResult(pi.sim.simulate_scenario(pi.TaskData))
+            objective_values.append([simresult[objective] for objective in _OBJECTIVES])
+        objective_values = np.asarray(objective_values)
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = res.exec_time
 
@@ -251,7 +258,6 @@ class GeneticAlgorithm(Algorithm):
         """
         objective_values, solutions = [], []
         exec_time, n_evals = 0, 0
-        objectives = problem.objectives.keys()
         for sub_problem in problem.split_objectives():
             pi = ProblemInstance(sub_problem)
             res = await minimize_async(
@@ -263,8 +269,9 @@ class GeneticAlgorithm(Algorithm):
 
             for parameter, value in zip(pi.v_params, sol):
                 pi.TaskData[parameter] = value
+
             simresult = PySimulationResult(pi.sim.simulate_scenario(pi.TaskData))
-            objective_values.append([simresult[objective] for objective in objectives])
+            objective_values.append([simresult[objective] for objective in _OBJECTIVES])
 
             exec_time += res.exec_time
             n_evals += res.algorithm.evaluator.n_eval
@@ -291,7 +298,7 @@ class ProblemInstance(ElementwiseProblem):
         Problem
             Problem to optimise
         """
-        n_obj = len(problem.objectives.keys())
+        n_obj = len(problem.objectives)
         self.TaskData = PyTaskData(**problem.constant_param())
         self.sim = Simulator(inputDir=str(problem.input_dir))  # epoch_simulator doesn't accept windows paths
         self.objectives = problem.objectives
@@ -323,7 +330,7 @@ class ProblemInstance(ElementwiseProblem):
             self.TaskData[parameter] = value
         result = PySimulationResult(self.sim.simulate_scenario(self.TaskData))
 
-        out["F"] = [result[objective] * sense for objective, sense in self.objectives.items()]
+        out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]
         out["G"] = [lb - result[objective] for objective, lb in self.constraints["lbs"].items()]
         out["G"].extend([result[objective] - ub for objective, ub in self.constraints["ubs"].items()])
 

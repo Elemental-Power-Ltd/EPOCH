@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
-from ..internal.problem import Problem, convert_objectives
+from ..internal.problem import _OBJECTIVES, Problem
 from ..internal.result import Result
 from .models import DatasetIDWithTime, FileLoc, JSONTask, Optimiser, PyTask, SiteData
 from .queue import IQueue
@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 def postprocess_results(problem: Problem, results: Result):
-    df_objective_values = pd.DataFrame(data=results.objective_values, columns=problem.objectives.keys())
+    df_objective_values = pd.DataFrame(data=results.objective_values, columns=_OBJECTIVES)
     df_solutions = pd.DataFrame(data=results.solutions, columns=problem.variable_param().keys())
     constant_param = problem.constant_param()
     constant_param_values = np.repeat([list(problem.constant_param().values())], results.solutions.shape[0], axis=0)
@@ -250,7 +250,7 @@ async def preproccess_task(task: JSONTask) -> PyTask:
     optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
     problem = Problem(
         name=str(task.TaskID),
-        objectives=convert_objectives(task.objectives),
+        objectives=task.objectives,
         constraints={
             "annualised_cost": [None, None],
             "capex": [None, None],
@@ -285,7 +285,7 @@ async def process_requests(q: IQueue):
             json_results = postprocess_results(task.problem, results)
             payload = {
                 "TaskID": str(task.TaskID),
-                "problem": {"objectives": list(task.problem.objectives.keys()), "parameters": task.problem.parameters},
+                "problem": {"objectives": task.problem.objectives, "parameters": task.problem.parameters},
                 "results": json_results,
                 "completed_at": str(completed_at),
             }

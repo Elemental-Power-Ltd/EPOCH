@@ -16,4 +16,3 @@ class ParamRange(TypedDict):
 OldParameterDict = Mapping[str, list[int | float] | tuple[int | float] | int | float]
 ParameterDict = Mapping[str, ParamRange | int | float]
 ConstraintDict = Mapping[str, tuple[None, None] | tuple[float, float] | list[float | int | None]]
-ObjectiveDict = Mapping[str, float | int]

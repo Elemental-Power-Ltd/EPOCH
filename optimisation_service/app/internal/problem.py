@@ -7,10 +7,10 @@ from os import PathLike
 from pathlib import Path
 from typing import Generator, Self
 
-from .epl_typing import ConstraintDict, ObjectiveDict, OldParameterDict, ParameterDict, ParamRange
+from .epl_typing import ConstraintDict, OldParameterDict, ParameterDict, ParamRange
 from .task_data_wrapper import PyTaskData
 
-ACTUAL_OBJECTIVES = [
+_OBJECTIVES = [
     "carbon_balance",
     "cost_balance",
     "capex",
@@ -18,27 +18,24 @@ ACTUAL_OBJECTIVES = [
     "annualised_cost",
 ]
 
-_OPTIMISATION_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "payback_horizon": 1, "annualised_cost": 1}
+_OBJECTIVES_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "payback_horizon": 1, "annualised_cost": 1}
 
 
 @dataclass(frozen=True)
 class Problem:
     name: str
-    objectives: ObjectiveDict
+    objectives: list[str]
     constraints: ConstraintDict
     parameters: ParameterDict
     input_dir: str | PathLike
 
     def __post_init__(self) -> None:
-        if not len(self.objectives.keys()) >= 1:
+        if not len(self.objectives) >= 1:
             raise ValueError("objectives must have at least one objective")
-        for objective, direction in self.objectives.items():
-            if objective not in ACTUAL_OBJECTIVES:
-                raise ValueError(f"objectives keys must be one of {ACTUAL_OBJECTIVES}.")
-            if direction != 1 and direction != -1:
-                raise ValueError(f"Objectives values must be integers 1 or -1, but got {direction}")
-        if set(self.constraints.keys()) != set(ACTUAL_OBJECTIVES):
-            raise ValueError(f"constraints must contain values for all of {ACTUAL_OBJECTIVES}.")
+        if not set(self.objectives).issubset(_OBJECTIVES):
+            raise ValueError(f"Invalid objective: {set(self.objectives) - set(_OBJECTIVES)}")
+        if set(self.constraints.keys()) != set(_OBJECTIVES):
+            raise ValueError(f"constraints must contain values for all of {_OBJECTIVES}.")
         for bounds in self.constraints.values():
             if bounds[0] is not None and bounds[1] is not None:
                 if bounds[0] > bounds[1]:
@@ -86,8 +83,8 @@ class Problem:
         return size
 
     def split_objectives(self) -> Generator[Self, None, None]:
-        for objective, sense in self.objectives.items():
-            yield Problem(self.name, {objective: sense}, self.constraints, self.parameters, self.input_dir)  # type: ignore
+        for objective in self.objectives:
+            yield Problem(self.name, [objective], self.constraints, self.parameters, self.input_dir)  # type: ignore
 
 
 def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
@@ -110,8 +107,8 @@ def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
     input_dir = Path(problem_path, "InputData")
     assert os.path.isdir(input_dir), "Benchmark does not have an InputData folder."
 
-    with open(Path(problem_path, "objectives.json")) as f:
-        objectives = json.load(f)
+    with open(Path(problem_path, "objectives.txt"), "r") as f:
+        objectives = [line.rstrip("\n") for line in f]
     with open(Path(problem_path, "constraints.json")) as f:
         constraints = json.load(f)
     with open(Path(problem_path, "parameters.json")) as f:
@@ -152,30 +149,13 @@ def save_problem(problem: Problem, save_dir: str | os.PathLike, overwrite: bool 
     for file in glob.glob(f"{Path(problem.input_dir)}/*.csv"):
         shutil.copy(file, Path(save_path, "InputData/"))
 
-    with open(Path(save_path, "objectives.json"), "w") as f:
-        json.dump(problem.objectives, f)
+    with open(Path(save_path, "objectives.txt"), "w") as f:
+        for s in problem.objectives:
+            f.write(s + "\n")
     with open(Path(save_path, "constraints.json"), "w") as f:
         json.dump(problem.constraints, f)
     with open(Path(save_path, "parameters.json"), "w") as f:
         json.dump(problem.parameters, f)
-
-
-def convert_objectives(objectives: list) -> ObjectiveDict:
-    """
-    Convert list of objectives to dictionary of objectives with corresponding optimisation direction.
-    1 for minimisation and -1 for maximisation.
-
-    Parameters
-    ----------
-    objectives
-        List of objectives to convert.
-
-    Returns
-    -------
-    ObjectiveDict
-        Dictionary of objectives with corresponding optimisation direction.
-    """
-    return {key: _OPTIMISATION_DIRECTION[key] for key in objectives}
 
 
 def convert_param(parameters: ParameterDict) -> OldParameterDict:
