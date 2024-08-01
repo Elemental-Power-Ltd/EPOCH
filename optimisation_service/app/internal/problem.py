@@ -106,8 +106,8 @@ def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
     input_dir = Path(problem_path, "InputData")
     assert os.path.isdir(input_dir), "Benchmark does not have an InputData folder."
 
-    with open(Path(problem_path, "objectives.txt"), "r") as f:
-        objectives = [line.rstrip("\n") for line in f]
+    with open(Path(problem_path, "objectives.json"), "r") as f:
+        objectives = json.load(f)
     with open(Path(problem_path, "constraints.json")) as f:
         constraints = json.load(f)
     with open(Path(problem_path, "parameters.json")) as f:
@@ -149,9 +149,8 @@ def save_problem(problem: Problem, name: str, save_dir: str | os.PathLike, overw
     for file in glob.glob(f"{Path(problem.input_dir)}/*.csv"):
         shutil.copy(file, Path(save_path, "InputData/"))
 
-    with open(Path(save_path, "objectives.txt"), "w") as f:
-        for s in problem.objectives:
-            f.write(s + "\n")
+    with open(Path(save_path, "objectives.json"), "w") as f:
+        json.dump(problem.objectives, f)
     with open(Path(save_path, "constraints.json"), "w") as f:
         json.dump(problem.constraints, f)
     with open(Path(save_path, "parameters.json"), "w") as f:

@@ -8,25 +8,16 @@ from pathlib import Path
 from uuid import UUID
 
 import aiohttp
-import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 
 from ..internal.problem import _OBJECTIVES, Problem
 from ..internal.result import Result
-from .models import DatasetIDWithTime, FileLoc, JSONTask, Optimiser, PyTask, SiteData
+from .models import DatasetIDWithTime, FileLoc, JSONTask, OptimisationResult, Optimiser, PyTask, SiteData
 from .queue import IQueue
 
 router = APIRouter()
-
-
-def postprocess_results(problem: Problem, results: Result):
-    df_objective_values = pd.DataFrame(data=results.objective_values, columns=_OBJECTIVES)
-    df_solutions = pd.DataFrame(data=results.solutions, columns=problem.variable_param().keys())
-    constant_param = problem.constant_param()
-    constant_param_values = np.repeat([list(problem.constant_param().values())], results.solutions.shape[0], axis=0)
-    df_constants = pd.DataFrame(data=constant_param_values, columns=constant_param.keys())
-    return pd.concat([df_objective_values, df_solutions, df_constants], axis=1).to_json(orient="records")
 
 
 async def post_request(url, data):
@@ -261,6 +252,26 @@ async def transmit_results(results):
     await post_request("/put-results", results)
 
 
+def postprocess_results(task: PyTask, results: Result, completed_at: datetime.datetime) -> list[OptimisationResult]:
+    Optimisation_Results = []
+    for solutions, objective_values in zip(results.solutions, results.objective_values):
+        solutions_dict = task.problem.constant_param()
+        for param, value in zip(task.problem.variable_param().keys(), solutions):
+            solutions_dict[param] = value
+        objective_values_dict = dict(zip(_OBJECTIVES, objective_values))
+        OptRes = OptimisationResult(
+            TaskID=str(task.TaskID),
+            solutions=solutions_dict,
+            objective_values=objective_values_dict,
+            n_evals=results.n_evals,
+            exec_time=results.exec_time,
+            completed_at=str(completed_at),
+        )
+        Optimisation_Results.append(OptRes)
+
+    return Optimisation_Results
+
+
 async def process_requests(q: IQueue):
     """
     Loop to process tasks in queue.
@@ -275,13 +286,7 @@ async def process_requests(q: IQueue):
         try:
             results = await task.optimiser.run(task.problem, verbose=False)
             completed_at = datetime.datetime.now(datetime.UTC)
-            json_results = postprocess_results(task.problem, results)
-            payload = {
-                "TaskID": str(task.TaskID),
-                "problem": {"objectives": task.problem.objectives, "parameters": task.problem.parameters},
-                "results": json_results,
-                "completed_at": str(completed_at),
-            }
+            payload = jsonable_encoder(postprocess_results(task, results, completed_at))
             if task.siteData.loc == FileLoc.database:
                 await transmit_results(payload)
                 shutil.rmtree(task.problem.input_dir)

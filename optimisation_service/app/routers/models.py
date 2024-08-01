@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from os import PathLike
 from typing import Optional
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel
+from pydantic import AwareDatetime, BaseModel, PositiveInt
 
 from ..internal.epl_typing import ParameterDict
 from ..internal.genetic_algorithm import NSGA2, GeneticAlgorithm
@@ -70,3 +70,12 @@ class DatasetIDWithTime(BaseModel):
     dataset_id: UUID
     start_ts: AwareDatetime
     end_ts: AwareDatetime
+
+
+class OptimisationResult(BaseModel):
+    TaskID: str
+    solutions: dict[str, float | int]
+    objective_values: dict[str, float | int]
+    n_evals: PositiveInt
+    exec_time: timedelta
+    completed_at: str
