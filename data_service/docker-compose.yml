@@ -11,7 +11,8 @@ services:
   db:
     image: postgres:latest
     volumes:
-      - ./elementaldb_tables.sql:/docker-entrypoint-initdb.d/elementaldb_tables.sql
+      - ./elementaldb_tables.sql:/docker-entrypoint-initdb.d/01-elementaldb_tables.sql
+      - ./elementaldb_client_info.sql:/docker-entrypoint-initdb.d/02-elementaldb_client_info.sql
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=python

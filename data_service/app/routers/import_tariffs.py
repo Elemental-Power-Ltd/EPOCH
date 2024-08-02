@@ -7,15 +7,13 @@ from fastapi import APIRouter, Request
 
 from ..internal.utils import hour_of_year
 from ..models.core import DatasetIDWithTime
-from ..models.import_tariffs import EpochTariffEntry, TariffRequest
+from ..models.import_tariffs import EpochTariffEntry, TariffMetadata, TariffRequest
 
 router = APIRouter()
 
 
 @router.post("/generate-import-tariffs", tags=["generate", "tariff"])
-async def generate_import_tariffs(
-    request: Request, params: TariffRequest
-) -> dict[str, float | int | str | datetime.datetime | None]:
+async def generate_import_tariffs(request: Request, params: TariffRequest) -> TariffMetadata:
     """
     Generate a set of import tariffs, initially from Octopus.
 
@@ -25,13 +23,14 @@ async def generate_import_tariffs(
 
     Parameters
     ----------
-    request
-
-    params
+    *request*
+        FastAPI request object, not necessary for external callers.
+    *params*
         with attributes `tariff_name`, `start_ts`, and `end_ts`
 
     Returns
     -------
+    *tariff_metadata*
         Some useful metadata about the tariff entry in the database
     """
     BASE_URL = "https://api.octopus.energy/v1/products"
@@ -141,16 +140,37 @@ async def generate_import_tariffs(
                     price_df["start_ts"],
                     price_df["price"],
                     [None for _ in range(len(price_df.index))],
-                    strict=False,
+                    strict=True,
                 ),
             )
-    return metadata
+    return TariffMetadata(**metadata)
 
 
 @router.post("/get-import-tariffs", tags=["get", "tariff"])
 async def get_import_tariffs(request: Request, params: DatasetIDWithTime) -> list[EpochTariffEntry]:
-    """ """
+    """
+    Get the electricity import tariffs in p / kWh for this dataset.
+
+    You can create tariffs with the `generate-import-tariffs` endpoint.
+    These are currently just Octopus time-of-use tariffs.
+
+    It always returns 30 minute tariff intervals, regardless of the original source data.
+    Tariffs will be forward-filled if they were originally sparser.
+
+    Parameters
+    ----------
+    *request*
+        Internal FastAPI request object
+    *params*
+        The ID of the dataset you want, and the timestamps (usually the year) you want it for.
+
+    Returns
+    -------
+    *epoch_tariff_entries*
+        Tariff entries in an EPOCH friendly format, with HourOfYear and Date splits.
+    """
     async with request.state.pgpool.acquire() as conn:
+        # TODO (2024-08-02 MHJB): put start_ts/end_ts params here
         res = await conn.fetch(
             """
             SELECT
@@ -170,5 +190,5 @@ async def get_import_tariffs(request: Request, params: DatasetIDWithTime) -> lis
     df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
     return [
         EpochTariffEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:"), Tariff=val)
-        for ts, val in zip(df.index, df["unit_cost"], strict=False)
+        for ts, val in zip(df.index, df["unit_cost"], strict=True)
     ]

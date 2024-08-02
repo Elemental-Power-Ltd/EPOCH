@@ -43,13 +43,6 @@ class ReadingTypeEnum(str, Enum):
     heating_load = "heating_load"
 
 
-class TariffRequest(BaseModel):
-    site_id: site_id_t = site_id_field
-    tariff_name: str = Field(examples=[], description="Octopus tariff group code.")
-    start_ts: pydantic.AwareDatetime
-    end_ts: pydantic.AwareDatetime
-
-
 class DatasetID(BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
 
@@ -75,7 +68,7 @@ class SiteID(BaseModel):
 
 
 class SiteIDWithTime(BaseModel):
-    site_id: site_id_t = Field(examples=["demo_matts_house"])
+    site_id: site_id_t = Field(examples=["demo_london"])
     start_ts: pydantic.AwareDatetime = Field(
         examples=["2024-01-01T23:59:59Z"], description="The earliest time (inclusive) to retrieve data for."
     )

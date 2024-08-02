@@ -6,7 +6,7 @@ import asyncpg
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import carbon_intensity, client_data, heating_load, meter_data, renewables, weather
+from .routers import carbon_intensity, client_data, heating_load, meter_data, optimisation, renewables, weather
 
 
 class Database:
@@ -58,6 +58,7 @@ app.include_router(weather.router)
 app.include_router(heating_load.router)
 app.include_router(renewables.router)
 app.include_router(carbon_intensity.router)
+app.include_router(optimisation.router)
 
 
 @app.get("/")

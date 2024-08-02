@@ -5,15 +5,15 @@ import pydantic
 
 
 class Objective(pydantic.BaseModel):
-    carbon_balance: float
-    cost_balance: float
-    capex: float
-    payback_horizon: float
-    annualised_cost: float
+    carbon_balance: float = pydantic.Field(default=1.0)
+    cost_balance: float = pydantic.Field(default=1.0)
+    capex: float = pydantic.Field(default=1.0)
+    payback_horizon: float = pydantic.Field(default=1.0)
+    annualised_cost: float = pydantic.Field(default=1.0)
 
 
 class OptimisationResult(pydantic.BaseModel):
-    job_id: pydantic.UUID4
+    TaskID: pydantic.UUID4 | pydantic.UUID1
     solutions: dict[str, float | int]
     objective_values: Objective
     n_evals: pydantic.PositiveInt
@@ -26,14 +26,29 @@ class OptimiserEnum(Enum):
     NSGA2 = "NSGA2"
 
 
-class JobConfig(pydantic.BaseModel):
-    job_id: pydantic.UUID4
-    job_name: str
-    objective_directions: Objective
-    constraints_min: Objective
-    constraints_max: Objective
-    parameters: dict[str, float | int]
-    input_data: dict[str, pydantic.UUID4]
-    optimiser_type: OptimiserEnum
-    optimiser_hyperparameters: dict[str, float | int | str]
-    created_at: pydantic.AwareDatetime
+class FileLocationEnum(Enum):
+    local = "local"
+    remote = "remote"
+
+
+class SearchSpaceEntry(pydantic.BaseModel):
+    min: float | int
+    max: float | int
+    step: float | int
+
+
+class TaskConfig(pydantic.BaseModel):
+    task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
+    task_name: str | None = pydantic.Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
+    objective_directions: Objective = pydantic.Field(
+        default=Objective(carbon_balance=-1, cost_balance=1, capex=-1, payback_horizon=-1, annualised_cost=-1),
+        description="Whether we are maximising (+1) or minimising (-1) a given objective.",
+    )
+    constraints_min: Objective | None = None
+    constraints_max: Objective | None = None
+    searchParameters: dict[str, float | int | SearchSpaceEntry]
+    objectives: list[str] = pydantic.Field(default=list(Objective().model_dump().keys()))
+    siteData: dict[str, FileLocationEnum | pydantic.UUID4 | pydantic.UUID1 | pydantic.FilePath | str]
+    optimiser: OptimiserEnum
+    optimiser_hyperparameters: dict[str, float | int | str] | None = None
+    created_at: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))

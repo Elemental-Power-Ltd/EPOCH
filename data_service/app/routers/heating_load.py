@@ -21,6 +21,11 @@ router = APIRouter()
 
 @router.post("/generate-heating-load", tags=["generate", "heating"])
 async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> HeatingLoadMetadata:
+    """
+    Generate a heating load for this specific site, using regression analysis.
+
+
+    """
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetchrow(
             """

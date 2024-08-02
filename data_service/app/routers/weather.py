@@ -103,18 +103,19 @@ async def get_weather(request: Request, weather_request: WeatherRequest) -> list
     """
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetch(
-            """SELECT
-                               timestamp,
-                               temp,
-                               humidity,
-                               solarradiation,
-                               windspeed,
-                               pressure
-                               FROM weather.visual_crossing
-                               WHERE location = $1
-                               AND $2 <= timestamp
-                               AND timestamp < $3
-                               ORDER BY timestamp ASC""",
+            """
+            SELECT
+                timestamp,
+                temp,
+                humidity,
+                solarradiation,
+                windspeed,
+                pressure
+            FROM weather.visual_crossing
+            WHERE location = $1
+            AND $2 <= timestamp
+            AND timestamp < $3
+            ORDER BY timestamp ASC""",
             weather_request.location,
             weather_request.start_ts,
             weather_request.end_ts,
@@ -197,18 +198,19 @@ async def get_weather(request: Request, weather_request: WeatherRequest) -> list
                 )
             # Now re-query the data we just fetched for a consistent view
             res = await conn.fetch(
-                """SELECT
-                               timestamp,
-                               temp,
-                               humidity,
-                               solarradiation,
-                               windspeed,
-                               pressure
-                               FROM weather.visual_crossing
-                               WHERE location = $1
-                               AND $2 <= timestamp
-                               AND timestamp < $3
-                               ORDER BY timestamp ASC""",
+                """
+                SELECT
+                    timestamp,
+                    temp,
+                    humidity,
+                    solarradiation,
+                    windspeed,
+                    pressure
+                FROM weather.visual_crossing
+                WHERE location = $1
+                AND $2 <= timestamp
+                AND timestamp < $3
+                ORDER BY timestamp ASC""",
                 weather_request.location,
                 weather_request.start_ts,
                 weather_request.end_ts,
