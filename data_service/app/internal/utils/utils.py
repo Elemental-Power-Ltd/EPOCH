@@ -1,9 +1,14 @@
+"""
+General utility functions, which don't fit anywhere else.
+
+Please don't fill this section with junk, and try to make sure there's no other home
+for the functions that go in here.
+"""
+
 import os
 import pathlib
 from typing import Any
 
-import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 
@@ -21,63 +26,6 @@ def typename(x: Any) -> str:
         String of the name, e.g. typename(1) == "int"
     """
     return type(x).__name__
-
-
-class BoundedStepSize:
-    """
-    Basin Hopping utility class to only take steps that are within some bounds.
-    """
-
-    def __init__(
-        self,
-        lbs: npt.NDArray[np.floating],
-        ubs: npt.NDArray[np.floating],
-        stepsize: float = 0.1,
-        rng: np.random.Generator | None = None,
-    ):
-        """
-        Set up the step sizes and bounds for BasinHopping.
-
-        Parameters
-        ----------
-        lbs
-            Lower bounds for each potential parameter
-        ubs
-            Upper bounds for each potential parameter
-        stepsize
-            Fraction of (ub - lb) to take, will be scaled dynamically by scipy
-        """
-        self.stepsize = stepsize
-        if rng is None:
-            self.rng = np.random.default_rng()
-        else:
-            self.rng = rng
-        self.lbs = lbs
-        self.ubs = ubs
-
-    def __call__(self, x: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
-        """
-        Take a scaled step.
-
-        This will calculate a step for each variable randomly between
-        [-stepsize * (upper - lower), +stepsize * (upper-lower)] for each
-        variable.
-        They will also be clamped to the be no lower than the lower bound,
-        and no higher than the higher bound.
-
-        Parameters
-        ----------
-        x
-            Parameter vector to take a step from (same size as bounds)
-
-        Returns
-        -------
-            stepped parameter vector
-        """
-        s = self.stepsize * np.abs(self.ubs - self.lbs)
-        step = self.rng.uniform(-s, s)
-        x = np.clip(self.lbs, x + step, self.ubs)
-        return x
 
 
 def hour_of_year(ts: pd.Timestamp) -> int:

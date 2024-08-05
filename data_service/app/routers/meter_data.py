@@ -1,9 +1,14 @@
+"""Endpoints for uploading, manipulating and getting client meter data.
+
+When clients provide us with meter data, we store it raw in the database.
+These functions provider wrappers to get it in more sensible formats.
+"""
+
 import datetime
 import uuid
 
 import numpy as np
 import pandas as pd
-import pydantic
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
@@ -13,9 +18,9 @@ from ..models.core import (
     DatasetID,
     DatasetIDWithTime,
     FuelEnum,
-    GasDatasetEntry,
     site_id_t,
 )
+from ..models.meter_data import EpochElectricityEntry, GasDatasetEntry
 
 router = APIRouter()
 
@@ -49,7 +54,7 @@ async def upload_meter_data(
         Name of the site that this dataset should be associated with. This will complain if that site doesn't already exist.
 
     *fuel_type*
-        The type of fuel that the dataset is measuring. Currently accepts {"gas", "elec"}.
+        The type of fuel that the dataset is measuring. Currently accepts `{"gas", "elec"}`.
 
     Returns
     -------
@@ -153,16 +158,21 @@ async def get_meter_data(request: Request, dataset_id: DatasetID) -> list[GasDat
     """
     Get a specific set of meter data associated with a single dataset ID.
 
+    This exclusively retrieves gas meter data as we got them from the client, each one covering
+    a specific period of time.
+
     Parameters
     ----------
     request
-
+        FastAPI internal request object
     dataset_id
+        Database ID for a set of gas meter readings.
 
     Returns
     -------
     list of records in the form `[{"start_ts": ..., "end_ts": ..., "consumption": ...}, ...]`
     """
+    # TODO (2024-08-05 MHJB): make this return an EPOCH oriented object
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetch(
             """
@@ -178,15 +188,34 @@ async def get_meter_data(request: Request, dataset_id: DatasetID) -> list[GasDat
     return [GasDatasetEntry(**item) for item in res]
 
 
-class EpochElectricityEntry(pydantic.BaseModel):
-    Date: str = pydantic.Field(examples=["Jan-01", "Dec-31"], pattern=r"[0-9][0-9]-[A-Za-z]*")
-    StartTime: datetime.time = pydantic.Field(examples=["00:00", "13:30"])
-    HourOfYear: float = pydantic.Field(examples=[1, 24 * 365 - 1])
-    FixLoad1: float = pydantic.Field(examples=[0.123, 4.56])
-
-
 @router.post("/get-electricity-load", tags=["get", "electricity"])
 async def get_electricity_load(request: Request, params: DatasetIDWithTime) -> list[EpochElectricityEntry]:
+    """
+    Get a (possibly synthesised) half hourly electricity load dataset.
+
+    Specify a dataset ID corresponding to a set of half hourly or monthly meter readings,
+    and the timestamps you're interested in.
+    Currently, if the dataset ID you specify is monthly, this method will fail.
+    However, it will provide synthesised data in future (maybe via a `generate-` call?)
+
+    Parameters
+    ----------
+    *request*
+        FastAPI internal request object
+
+    *params*
+        An electricity meter dataset, and start / end timestamps corresponding to the time period of interest.
+
+    Returns
+    -------
+    epoch_electricity_entries
+        A list of EPOCH formatted JSON entries including consumption in kWh
+
+    Raises
+    ------
+    *HTTPException(500)*
+        If the requested meter dataset is half hourly.
+    """
     async with request.state.pgpool.acquire() as conn:
         reading_type = await conn.fetchval(
             """

@@ -1,3 +1,10 @@
+"""
+Domestic hot water allocation functions.
+
+Generally, these will take a half hourly or monthly dataframe and attempt to allocate DHW to each period in the dataframe.
+There are a few different methods, including a weighted or random assignment pattern.
+"""
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd

@@ -1,3 +1,10 @@
+"""
+Functions to resample or group up gas data.
+
+Often, we'll want to group half hourly gas data (very noisy) into longer periods, or to reasonably
+fill in missing periods.
+"""
+
 import numpy as np
 import pandas as pd
 
@@ -52,7 +59,6 @@ def hh_gas_to_monthly(hh_gas_df: HHDataFrame) -> MonthlyDataFrame:
     monthly_gas_df
         Monthly gas usage downsampled
     """
-
     if "start_ts" not in hh_gas_df.columns:
         hh_gas_df["start_ts"] = hh_gas_df.index
     monthly_gas_df = MonthlyDataFrame(hh_gas_df.resample(pd.tseries.offsets.MonthBegin()).sum(numeric_only=True))

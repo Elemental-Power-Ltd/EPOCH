@@ -1,3 +1,6 @@
+"""Test various unit conversion functions."""
+
+# ruff: noqa: D101, D102
 from collections.abc import Callable
 
 import numpy as np
@@ -15,26 +18,35 @@ FloatOrArray = float | np.ndarray
 
 
 class TestInputFixtures:
+    """Fixtures for arrays, floats, or either."""
+
     @pytest.fixture
     def float_input(self) -> float:
+        """Get an example float input."""
         return 20.0
 
     @pytest.fixture
     def array_input(self) -> np.ndarray:
+        """Get an example array input."""
         return np.array([10.0, 20.0, 30.0])
 
     @pytest.fixture(params=["float_input", "array_input"])
     def float_or_array_input(self, request: pytest.FixtureRequest) -> FloatOrArray:
+        """Get a fixture either as a float or as an array."""
         return request.getfixturevalue(request.param)
 
 
 class TestM3ToKWh(TestInputFixtures):
+    """Test that we can convert gas volumes to energy."""
+
     def test_m3_to_kwh(self, float_or_array_input: FloatOrArray) -> None:
+        """Test that we get the right answers for either floats or arrays."""
         result = m3_to_kwh(float_or_array_input)  # type: ignore
         expected = float_or_array_input * 38.0 * 1.02264 / 3.6
         assert_array_almost_equal(result, expected)
 
     def test_m3_to_kwh_custom_calorific_value(self, float_or_array_input: FloatOrArray) -> None:
+        """Test that changing the calorific value does what we'd expect."""
         calorific_value = 40.0
         result = m3_to_kwh(float_or_array_input, calorific_value)  # type: ignore
         expected = float_or_array_input * calorific_value * 1.02264 / 3.6
@@ -42,12 +54,16 @@ class TestM3ToKWh(TestInputFixtures):
 
 
 class TestCelsiusToKelvin(TestInputFixtures):
+    """Temperature conversion tests."""
+
     def test_celsius_to_kelvin(self, float_or_array_input: FloatOrArray) -> None:
+        """Test that converting C to K works like we'd expect."""
         result = celsius_to_kelvin(float_or_array_input)  # type: ignore
         expected = float_or_array_input + 273.15
         assert_array_almost_equal(result, expected)
 
     def test_celsius_to_kelvin_out_of_range(self) -> None:
+        """Test that we fail on suspicious inputs."""
         with pytest.raises(AssertionError):
             celsius_to_kelvin(-51)
         with pytest.raises(AssertionError):
@@ -57,13 +73,17 @@ class TestCelsiusToKelvin(TestInputFixtures):
 
 
 class TestMillibarToMegapascal(TestInputFixtures):
+    """Test pressure conversion functions."""
+
     def test_millibar_to_megapascal(self, float_or_array_input: FloatOrArray) -> None:
-        input_mbar = 1000 + 9 * (float_or_array_input - 20)  # Ensure input is in valid range
+        """Test that we get sensible results for some test pressures."""
+        input_mbar = 1000 + 9 * (float_or_array_input - 20)  # mangle the inputs into a reasonable range
         result = millibar_to_megapascal(input_mbar)  # type: ignore
         expected = input_mbar / 10000
         assert_array_almost_equal(result, expected)
 
     def test_millibar_to_megapascal_out_of_range(self) -> None:
+        """Test the suspicious range checks (should all be standard for Earth)."""
         with pytest.raises(AssertionError):
             millibar_to_megapascal(799)
         with pytest.raises(AssertionError):
@@ -73,8 +93,11 @@ class TestMillibarToMegapascal(TestInputFixtures):
 
 
 class TestRelativeToSpecificHumidity:
+    """Test humidity conversion functions."""
+
     @pytest.fixture
     def valid_humidity_inputs(self) -> tuple[FloatOrArray, FloatOrArray, FloatOrArray]:
+        """Get some reasonable physical inputs."""
         rel_hum = np.array([0, 50, 100])
         air_temp = np.array([0, 25, 30])
         air_pressure = np.array([1000, 1013, 1020])
@@ -83,6 +106,7 @@ class TestRelativeToSpecificHumidity:
     def test_relative_to_specific_humidity(
         self, valid_humidity_inputs: tuple[FloatOrArray, FloatOrArray, FloatOrArray]
     ) -> None:
+        """Test that those inputs give the right shape results."""
         rel_hum, air_temp, air_pressure = valid_humidity_inputs
         result = relative_to_specific_humidity(rel_hum, air_temp, air_pressure)  # type: ignore
         assert isinstance(result, np.ndarray)
@@ -91,6 +115,7 @@ class TestRelativeToSpecificHumidity:
         assert np.all(result >= 0)
 
     def test_relative_to_specific_humidity_out_of_range(self) -> None:
+        """Test that suspicious inputs fail."""
         with pytest.raises(AssertionError):
             relative_to_specific_humidity(-1, 25, 1013)
         with pytest.raises(AssertionError):
@@ -106,6 +131,8 @@ class TestRelativeToSpecificHumidity:
 
 
 class TestGeneralFunctionality(TestInputFixtures):
+    """Test thtat the functions work with floats or arrays."""
+
     @pytest.mark.parametrize(
         "func",
         [
@@ -116,6 +143,7 @@ class TestGeneralFunctionality(TestInputFixtures):
     def test_function_with_single_float_and_array(
         self, func: Callable[[FloatOrArray], FloatOrArray], float_input: float, array_input: np.ndarray
     ) -> None:
+        """Test each function with a float and an array, and make sure they're sane."""
         float_result = func(float_input)
         array_result = func(array_input)
 

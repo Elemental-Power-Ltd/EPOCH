@@ -1,3 +1,2 @@
-from .bait import building_adjusted_internal_temperature
-
-__all__ = ["building_adjusted_internal_temperature"]
+# ruff: noqa: D104
+from .bait import building_adjusted_internal_temperature as building_adjusted_internal_temperature

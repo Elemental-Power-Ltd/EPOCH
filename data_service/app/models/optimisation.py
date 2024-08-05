@@ -1,3 +1,6 @@
+"""Models for EPOCH/GA optimisation tasks, both queuing and completing."""
+
+# ruff: noqa: D101
 import datetime
 from enum import Enum
 
@@ -5,20 +8,50 @@ import pydantic
 
 
 class Objective(pydantic.BaseModel):
-    carbon_balance: float = pydantic.Field(default=1.0)
-    cost_balance: float = pydantic.Field(default=1.0)
-    capex: float = pydantic.Field(default=1.0)
-    payback_horizon: float = pydantic.Field(default=1.0)
-    annualised_cost: float = pydantic.Field(default=1.0)
+    carbon_balance: float | None = pydantic.Field(
+        default=1.0, description="Net kg CO2e over the lifetime of these interventions."
+    )
+    cost_balance: float | None = pydantic.Field(
+        default=1.0, description="Net monetary cost (opex - returns) over the lifetime of these interventions."
+    )
+    capex: float | None = pydantic.Field(default=1.0, description="Upfront CAPEX cost for these interventions.")
+    payback_horizon: float | None = pydantic.Field(
+        default=1.0, description="Years before this intervention pays for itself (if very large, represents no payback ever.)"
+    )
+    annualised_cost: float | None = pydantic.Field(default=1.0, description="Cost to run these interventions per year")
 
 
 class OptimisationResult(pydantic.BaseModel):
-    TaskID: pydantic.UUID4 | pydantic.UUID1
-    solutions: dict[str, float | int]
-    objective_values: Objective
-    n_evals: pydantic.PositiveInt
-    exec_time: datetime.timedelta
-    completed_at: pydantic.AwareDatetime
+    TaskID: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(
+        examples=["bb8ce01e-4a73-11ef-9454-0242ac120001"],
+        description="Unique ID for this task, often assigned by the optimiser.",
+    )
+    solutions: dict[str, float | int] = pydantic.Field(
+        examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
+        description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
+        + "May not cover all parameters, only the ones we searched over.",
+    )
+    objective_values: Objective = pydantic.Field(
+        examples=[
+            {
+                "carbon_balance": 280523.3125,
+                "cost_balance": 230754.328125,
+                "capex": 371959.96875,
+                "payback_horizon": 1.6119306087493896,
+                "annualised_cost": 22880.55078125,
+            }
+        ],
+        description="Values of the objectives at this specific point.",
+    )
+    n_evals: pydantic.PositiveInt = pydantic.Field(
+        examples=[8832], description="Number of EPOCH evaluations we ran to calculate this."
+    )
+    exec_time: datetime.timedelta = pydantic.Field(
+        examples=["PT4.297311S"], description="Time it took to calculate this set of results."
+    )
+    completed_at: pydantic.AwareDatetime = pydantic.Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC), description="Time this result was calculated at.."
+    )
 
 
 class OptimiserEnum(Enum):
@@ -32,9 +65,18 @@ class FileLocationEnum(Enum):
 
 
 class SearchSpaceEntry(pydantic.BaseModel):
-    min: float | int
-    max: float | int
-    step: float | int
+    min: float | int = pydantic.Field(examples=[10, 100], description="The smallest value, inclusive, to search over.")
+    max: float | int = pydantic.Field(examples=[200, 2000], description="The largest value, inclusive, to search over.")
+    step: float | int = pydantic.Field(examples=[10, 50], description="The steps to take when searching this variable.")
+
+
+class SiteDataEntry(pydantic.BaseModel):
+    loc: FileLocationEnum = pydantic.Field(
+        examples=["local", "remote"], description="Where we are getting the data from, either a local file or remote DB."
+    )
+    path: pydantic.UUID4 | pydantic.UUID1 | pydantic.FilePath | str = pydantic.Field(
+        examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it."
+    )
 
 
 class TaskConfig(pydantic.BaseModel):
@@ -44,11 +86,39 @@ class TaskConfig(pydantic.BaseModel):
         default=Objective(carbon_balance=-1, cost_balance=1, capex=-1, payback_horizon=-1, annualised_cost=-1),
         description="Whether we are maximising (+1) or minimising (-1) a given objective.",
     )
-    constraints_min: Objective | None = None
-    constraints_max: Objective | None = None
-    searchParameters: dict[str, float | int | SearchSpaceEntry]
-    objectives: list[str] = pydantic.Field(default=list(Objective().model_dump().keys()))
-    siteData: dict[str, FileLocationEnum | pydantic.UUID4 | pydantic.UUID1 | pydantic.FilePath | str]
-    optimiser: OptimiserEnum
-    optimiser_hyperparameters: dict[str, float | int | str] | None = None
-    created_at: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    constraints_min: Objective | None = pydantic.Field(
+        default=None,
+        examples=[Objective(carbon_balance=None, cost_balance=1e6, capex=None, payback_horizon=None, annualised_cost=None)],
+        description="Minimal values of the objectives to consider, e.g. reject all solutions with carbon balance < 1000.",
+    )
+    constraints_max: Objective | None = pydantic.Field(
+        default=None,
+        examples=[Objective(carbon_balance=None, cost_balance=None, capex=1e6, payback_horizon=None, annualised_cost=None)],
+        description="Maximal values of the objectives to consider, e.g. reject all solutions with capex > £1,000,000.",
+    )
+    searchParameters: dict[str, float | int | SearchSpaceEntry] = pydantic.Field(
+        examples=[
+            {
+                "Export_headroom": {"min": 0, "max": 0, "step": 0},
+                "Export_kWh_price": 5,
+                "Fixed_load1_scalar": {"min": 1, "max": 1, "step": 0},
+            }
+        ],
+        description="EPOCH search space parameters, either as single entries or as a min/max/step arrangement for searchables.",
+    )
+    objectives: list[str] = pydantic.Field(
+        default=list(Objective().model_dump().keys()),
+        description="The objectives that we're interested in, provided as a list."
+        + "Objective that aren't provided here aren't included in the opimisation.",
+    )
+    siteData: SiteDataEntry = pydantic.Field(description="Where the data for this calculation are coming from.")
+    optimiser: OptimiserEnum = pydantic.Field(
+        description="The optimisation algorithm for the backend to use in these calculations."
+    )
+    optimiser_hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
+        default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
+    )
+    created_at: pydantic.AwareDatetime = pydantic.Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
+        description="The time this Task was created and added to the queue.",
+    )

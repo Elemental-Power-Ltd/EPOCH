@@ -1,3 +1,11 @@
+"""
+Endpoints to store the requests and results of optimisation tasks.
+
+Each optimisation task should start by filing the job config in the database,
+and then later on add the results.
+Each result is uniquely identified, and belongs to a set of results.
+"""
+
 import json
 import uuid
 
@@ -11,7 +19,7 @@ from ..models.optimisation import OptimisationResult, TaskConfig
 router = APIRouter()
 
 
-@router.post("/get-optimisation-job-results")
+@router.post("/get-optimisation-results")
 async def get_optimisation_result(request: Request, result_id: pydantic.UUID4) -> OptimisationResult:
     """
     Get a single set of optimisation results.
@@ -133,8 +141,8 @@ async def add_optimisation_results(request: Request, results_in: list[Optimisati
         except asyncpg.exceptions.ForeignKeyViolationError as ex:
             raise HTTPException(
                 400,
-                f"task_id={results_in[0].TaskID} does not have an associated task config." + 
-                "You should have added it via /add-optimisation-task beforehand.",
+                f"task_id={results_in[0].TaskID} does not have an associated task config."
+                + "You should have added it via /add-optimisation-task beforehand.",
             ) from ex
     return results_uuids
 
@@ -162,10 +170,9 @@ async def add_optimisation_task(request: Request, task_config: TaskConfig) -> Ta
 
     Raises
     ------
-    HTTPException
+    *HTTPException*
         If the key already exists in the database.
     """
-
     # TODO (2024-08-02 MHJB): make this also take a site id
     async with request.state.pgpool.acquire() as conn:
         try:

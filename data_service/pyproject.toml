@@ -21,6 +21,9 @@ classifiers = [
 extend-include = ["*.ipynb"]
 line-length = 128
 
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [tool.ruff.lint]
 select = [
     "E", # pycodestyle errors
@@ -37,6 +40,7 @@ select = [
     "PERF", # performance,
     "RUF", # ruff
     "FAST", # fastAPI
+    "D", # pydocstyle
 ]
 ignore = [
     "PD901", # pandas df variable name

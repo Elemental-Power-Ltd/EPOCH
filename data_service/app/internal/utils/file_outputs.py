@@ -1,3 +1,9 @@
+"""Functions to output pandas dataframes into EPOCH friendly formats.
+
+Mostly you won't use these, as the endpoints will send these out to the optimiser, but
+they might sometimes be handy.
+"""
+
 import os
 
 import numpy as np

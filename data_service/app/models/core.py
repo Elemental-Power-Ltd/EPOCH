@@ -1,3 +1,11 @@
+"""
+Shared models and descriptive fields for multiple endpoints.
+
+If a pydantic model is used in multiple places or has similar descriptions,
+centralise it in here.
+"""
+
+# ruff: noqa: D101
 import datetime
 from enum import Enum
 from typing import Annotated
@@ -10,6 +18,8 @@ client_id_t = str
 site_id_t = str
 location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
 
+example_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+example_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
 site_id_field = Field(
     examples=["demo_matts_house"],
     pattern=r"^[0-9a-z_]+$",
@@ -24,6 +34,26 @@ client_id_field = Field(
 
 dataset_id_field = Field(
     examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of a dataset."
+)
+
+epoch_start_time_field = Field(
+    examples=["00:00", "11:30"],
+    description="Starting time for this data, often 30 mins or 1 hour long from now.",
+    pattern=r"[0-2][0-9]:[0-6][0-9]",
+)
+
+epoch_hour_of_year_field = Field(
+    examples=[1, 365 * 24 - 1],
+    description="Hour of the year, 1-indexed for EPOCH. Counts up even over timezone changes."
+    + "For example, Jan 1st 00:00 is 1.",
+)
+
+epoch_date_field = Field(
+    examples=["01-Jan", "31-Dec"],
+    description="Date string for EPOCH to consume, zero padded day first"
+    + "and 3 letter month abbreviation second."
+    + "No year information is provided (be careful!). This is originally Excel-like.",
+    pattern=r"[0-9][0-9]-[A-Za-z]*",
 )
 
 
@@ -47,18 +77,6 @@ class DatasetID(BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
 
 
-class GasDatasetEntry(BaseModel):
-    start_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-01-01T23:59:59Z"],
-        description="The start time this period of consumption covers (inclusive)," + "often when this reading was taken.",
-    )
-    end_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-05-31T00:00:00Z"],
-        description="The end time this period of consumption covers (exclusive)," + "often when the next reading was taken.",
-    )
-    consumption: float = Field(examples=[0.24567], description="Gas consumption measured in kWh. Can be null.")
-
-
 class ClientID(BaseModel):
     client_id: client_id_t = client_id_field
 
@@ -70,7 +88,7 @@ class SiteID(BaseModel):
 class SiteIDWithTime(BaseModel):
     site_id: site_id_t = Field(examples=["demo_london"])
     start_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-01-01T23:59:59Z"], description="The earliest time (inclusive) to retrieve data for."
+        examples=["2024-01-01T00:00:00Z"], description="The earliest time (inclusive) to retrieve data for."
     )
     end_ts: pydantic.AwareDatetime = Field(
         examples=["2024-05-31T00:00:00Z"], description="The latest time (exclusive) to retrieve data for."
@@ -80,7 +98,7 @@ class SiteIDWithTime(BaseModel):
 class DatasetIDWithTime(BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
     start_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-01-01T23:59:59Z"],
+        examples=["2024-01-01T00:00:00Z"],
         description="The earliest time (inclusive) to retrieve data for.",
         default=datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC),
     )
@@ -92,9 +110,7 @@ class DatasetIDWithTime(BaseModel):
 
 
 class ClientIdNamePair(pydantic.BaseModel):
-    """
-    A client_id, name pair.
-    """
+    """A client_id, name pair."""
 
     client_id: client_id_t = client_id_field
     name: str = Field(examples=["Demonstration", "Demonstration"], description="Human readable client name")

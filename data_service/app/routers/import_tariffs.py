@@ -1,3 +1,9 @@
+"""
+Endpoints for import tariffs, calculating electrical cost in p / kWh.
+
+Currently just uses Octopus data, but will likely use RE24 data in future.
+"""
+
 import datetime
 import uuid
 

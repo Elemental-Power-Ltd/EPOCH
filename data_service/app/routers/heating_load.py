@@ -1,3 +1,9 @@
+"""
+Endpoints for heating load calculations, including heating:dhw splits.
+
+These generally use a combination of gas meters and external weather to perform regression.
+"""
+
 import datetime
 import json
 import logging
@@ -21,10 +27,33 @@ router = APIRouter()
 
 @router.post("/generate-heating-load", tags=["generate", "heating"])
 async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> HeatingLoadMetadata:
-    """
-    Generate a heating load for this specific site, using regression analysis.
+    """Generate a heating load for this specific site, using regression analysis.
 
+    Given a specific dataset, this will look up the associated site and get some weather data.
+    Then, it will use the heating degree days over that time period and regress them against the
+    actual gas usage.
+    The regression will then provide a measure of domestic hot water and heating load for the building,
+    which we can reconstruct into a demand curve (which is different to the heating that was actually provided).
 
+    It might be helpful to have called `get-weather` for this location beforehand to make sure the relevant weather
+    is cached in the database (otherwise we can do it here, but it might be inconveniently slow).
+
+    Be aware that this will take a few seconds to complete.
+
+    Parameters
+    ----------
+    *request*
+        Internal FastAPI request object
+
+    *params*
+        Dataset (linked to a site), and timestamps you're interested in.
+        This dataset ID is the gas dataset you want to use for the calculation, and shouldn't be confused
+        with the returned dataset ID that you'll get at the end of this function.
+
+    Returns
+    -------
+    heating_load_metadata
+        Some useful information about the heating load we've inserted into the database.
     """
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetchrow(
@@ -163,6 +192,25 @@ async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> 
 
 @router.post("/get-heating-load", tags=["get", "heating"])
 async def get_heating_load(request: Request, params: DatasetIDWithTime) -> list[EpochHeatingEntry]:
+    """
+    Get a previously generated heating load in an EPOCH friendly format.
+
+    Provided with a given heating load dataset (not the dataset of gas data!) and timestamps,
+    this will return an EPOCH json.
+    Currently just supplies one heating load, but will be extended in future to provide many.
+
+    Parameters
+    ----------
+    request
+        Internal FastAPI request object
+    *params*
+        Heating Load dataset ID (not a gas dataset ID!) and timestamps you're interested in (probably a whole year)
+
+    Returns
+    -------
+    epoch_heating_entries
+        JSON with HLoad1 and DHWLoad1, oriented by records.
+    """
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetch(
             """

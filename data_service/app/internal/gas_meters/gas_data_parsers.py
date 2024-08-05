@@ -1,3 +1,11 @@
+"""
+Functions to parse various formats of gas data we find.
+
+Every time we have to write a new lot of meter data parsers, add them here.
+They should be unusually strict and fail if they find anything weird, as often
+we'll loop over all the parsers to find one that works.
+"""
+
 import datetime
 import os
 from typing import BinaryIO, Callable

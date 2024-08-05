@@ -1,6 +1,4 @@
-"""
-Building Adjusted Internal Temperature and feelslike calculations.
-"""
+"""Building Adjusted Internal Temperature and feelslike calculations."""
 
 import numpy as np
 import numpy.typing as npt
@@ -17,7 +15,7 @@ def building_adjusted_internal_temperature(
     humidity_discomfort: float = 0.05,
     smoothing: float = 0.5,
 ) -> npt.NDArray[np.floating]:
-    """
+    r"""
     Calculate a "building adjusted internal temperature" via Staffell et al's methodology.
 
     This is a "feelslike" temperature, weighted for sun, wind and humidity.
@@ -29,8 +27,9 @@ def building_adjusted_internal_temperature(
     and the starred values are all "setpoints".
 
     We could improve on this in future by revisiting the setpoint calculations.
-    See also:
 
+    See Also
+    --------
     A global model of hourly space heating and cooling demand at multiple spatial scales
     Iain Staffell, Stefan Pfenninger, Nathan Johnson
     https://doi.org/10.1038/s41560-023-01341-5

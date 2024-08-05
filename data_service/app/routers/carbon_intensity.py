@@ -1,3 +1,10 @@
+"""
+Carbon Itensity endpoints, including generation and getting.
+
+Carbon intensity is a measure of kg CO2 e / kWh for electrical power used, and
+varies over time as the grid changes.
+"""
+
 import datetime
 import functools
 import itertools
@@ -22,24 +29,27 @@ async def generate_grid_co2(request: Request, params: SiteIDWithTime) -> CarbonI
     Get a grid CO2 carbon intensity from the National Grid API.
 
     If this is for a site where we have a stored postcode, it'll look up
-    the regional generation mix for that specific region.
-    If not, we'll just use the annual mix.
+    the regional generation mix for that specific region. If not, we'll just use the national mix.
+
+    For the regional mix, we will get a `forecast` carbon itensity and maybe a regional breakdown into
+    fuel sources. For the national mix, we'll get a `forecast` and an `actual`.
 
     This can be slow -- the rate limiting for the API is aggressive, so it
     takes approximately 1 second per 2 weeks of data.
 
     Parameters
     ----------
-    request
+    *request*
         FastAPI internal request object, not necessary for outside users.
 
-    params
+    *params*
         A JSON body containing `{"site_id":..., "start_ts":..., "end_ts":...}
 
     Returns
     -------
-    metadata
-        Metadata about the grid CO2 information we've just put into the database."""
+    *metadata*
+        Metadata about the grid CO2 information we've just put into the database.
+    """
     use_regional = True
     async with request.state.pgpool.acquire() as conn:
         postcode = await conn.fetchval(
@@ -58,7 +68,27 @@ async def generate_grid_co2(request: Request, params: SiteIDWithTime) -> CarbonI
         client: httpx.AsyncClient, postcode: str, timestamps: tuple[pydantic.AwareDatetime, pydantic.AwareDatetime]
     ) -> list[dict[str, float | None | datetime.datetime]]:
         """
-        Fetch a single lot of data from
+        Fetch a single lot of data from the carbon itensity API.
+
+        This is in its own (rather ugly) function to allow the rate limiter to function.
+        Checks the function-level variable `use_regional`. Will return a `forecast` carbon itensity
+        and a breakdown if using regional, or an actual if not.
+
+        Parameters
+        ----------
+        client
+            HTTPX AsyncClient that we re-use between connections
+
+        postcode
+            The entire postcode for this site with inbound and outbound codes split by a space (e.g. `SW1 1AA`).
+
+        timestamps
+            A (start_ts, end_ts) pairing for the time period we want to check. Should be within 14 days of each other.
+
+        Returns
+        -------
+        results
+            A list of carbon intensity readings and their times.
         """
         start_ts, end_ts = timestamps
         start_ts_str = start_ts.isoformat()
@@ -178,6 +208,30 @@ async def generate_grid_co2(request: Request, params: SiteIDWithTime) -> CarbonI
 
 @router.post("/get-grid-co2")
 async def get_grid_co2(request: Request, params: DatasetIDWithTime) -> list[CarbonIntensityEntry]:
+    """
+    Get a specific grid carbon itensity dataset that we generated with `generate-grid-co2`.
+
+    The carbon itensity is measured in gCO2e / kWh. We get a forecast carbon intensity if
+    this dataset was originally regional, and an actual carbon itensity if it was national.
+
+    For regional carbon itensity readings, we also get a breakdown by generation source.
+    The columns `["gas", "coal", "biomass", "nuclear", "hydro", "imports", "wind", "solar", "other"]`
+    represent the fraction of total generation that came from that specific source (as calculated by
+    National Grid).
+
+    Parameters
+    ----------
+    *request*
+        Internal FastAPI request object
+
+    *params*
+        Database ID for a specific grid CO2 set, and the timestamps you're interested in.
+
+    Returns
+    -------
+    *carbon_itensity_entries*
+        A list of JSONed carbon intensity entries, maybe forecast or maybe actual.
+    """
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetch(
             """

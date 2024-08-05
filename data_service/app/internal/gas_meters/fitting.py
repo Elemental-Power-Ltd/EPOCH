@@ -1,3 +1,5 @@
+"""Functions to do regression analysis on heating / weather data."""
+
 import datetime
 
 import numpy as np
@@ -27,8 +29,8 @@ def compute_monthly_hdd(
      This method will compute the HDD at high resolution, using a specific set of BAIT parameters,
      and then group them into the gas time periods.
 
-     Parameters
-     ----------
+    Parameters
+    ----------
      gas_df
          Monthly (or similar) gas meter readings
      weather_df
@@ -48,8 +50,8 @@ def compute_monthly_hdd(
      thresh
          See BAIT docs
 
-     Returns
-     -------
+    Returns
+    -------
      heating_degree_days
          Heating degree day array of the same size as the
     """
@@ -152,7 +154,6 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
     hload_df
         Heating load dataframe at half hourly resolution with `dhw`, `heating` and `predicted` columns.
     """
-
     bait_initial = [
         0.012,  # solar gain
         -0.20,  # wind chill

@@ -1,6 +1,4 @@
-"""
-Functions for handling weather data from VisualCrossing.
-"""
+"""Functions for handling weather data from VisualCrossing."""
 
 import datetime
 import os

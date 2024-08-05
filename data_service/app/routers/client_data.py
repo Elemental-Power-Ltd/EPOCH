@@ -1,9 +1,16 @@
+"""
+Client data and database manipulation endpoints.
+
+Endpoints in here generally add or list clients, sites, or their datasets.
+The structure is that clients are the top level, each client has zero or more sites, and each
+site has zero or more datasets of different kinds.
+"""
+
 import logging
 
 import asyncpg
 from fastapi import APIRouter, HTTPException, Request
 
-from ..internal.pvgis import get_pvgis_optima
 from ..models.core import (
     ClientData,
     ClientID,
@@ -24,6 +31,28 @@ router = APIRouter()
 
 @router.post("/add-client", tags=["db", "add"])
 async def add_client(request: Request, client_data: ClientData) -> tuple[ClientData, str]:
+    """
+    Add a new client into the database.
+
+    Clients are the top level of organisation, and each client has a set of "sites" underneath it.
+    Each client has a human readable name and an internal database ID.
+    You get to choose the database ID, but please pick something easily memorable from the name, all in lowercase
+    and joined by underscores.
+
+    This will reject duplicate clients with an error.
+
+    Parameters
+    ----------
+    *request*
+        FastAPI internal request object
+    *client_data*
+        Metadata about the client, currently a client_id and name pair.
+
+    Returns
+    -------
+    client_data, status
+        Original client data and Postgres response.
+    """
     async with request.state.pgpool.acquire() as conn:
         try:
             status = await conn.execute(
@@ -43,6 +72,31 @@ async def add_client(request: Request, client_data: ClientData) -> tuple[ClientD
 
 @router.post("/add-site", tags=["db", "add"])
 async def add_site(request: Request, site_data: SiteData) -> tuple[SiteData, str]:
+    """
+    Add a new site into the database.
+
+    Sites are one level below clients, e.g. the `demo` client will have `demo_london` and `demo_cardiff`
+    as two sites.
+    Each site has a name, a location (roughly the nearest town), latitude and longitude coordinates, and a street address.
+    Please make sure the street address contains a postcode.
+
+    You get to pick a unique site_id for this site. Please pick one that is easily memorable from the name, and
+    is lowercase joined by underscores. If there's a clash with another site with a similar name, you could prefix
+    with the client ID. This function will return an error if the site id already exists.
+
+    You are responsible for ensuring that the relevant client is already in the database.
+
+    Parameters
+    ----------
+    request
+        Internal FastAPI request object
+    site_data
+        Metadata about the site, including client_id, site_id, name, location, coordinates and address.
+
+    Returns
+    -------
+        Data you inserted and postgres response string.
+    """
     async with request.state.pgpool.acquire() as conn:
         try:
             status = await conn.execute(
@@ -79,8 +133,8 @@ async def add_site(request: Request, site_data: SiteData) -> tuple[SiteData, str
     return (site_data, status)
 
 
-@router.post("/list-clients", tags=["db"], response_model=list[ClientIdNamePair])
-async def list_clients(request: Request) -> list[dict[str, str | client_id_t]]:
+@router.post("/list-clients", tags=["db", "list"])
+async def list_clients(request: Request) -> list[ClientIdNamePair]:
     """
     Get a list of all the clients we have, and their human readable names.
 
@@ -100,11 +154,11 @@ async def list_clients(request: Request) -> list[dict[str, str | client_id_t]]:
                 client_id,
                 name
             FROM client_info.clients""")
-    return [{"client_id": client_id_t(item[0]), "name": str(item[1])} for item in res]
+    return [ClientIdNamePair(client_id=client_id_t(item[0]), name=str(item[1])) for item in res]
 
 
-@router.post("/list-sites", tags=["db"], response_model=list[SiteIdNamePair])
-async def list_sites(request: Request, client_id: ClientID) -> list[dict[str, str | site_id_t]]:
+@router.post("/list-sites", tags=["db", "list"])
+async def list_sites(request: Request, client_id: ClientID) -> list[SiteIdNamePair]:
     """
     Get all the sites associated with a particular client, including their human readable names.
 
@@ -130,24 +184,29 @@ async def list_sites(request: Request, client_id: ClientID) -> list[dict[str, st
             ORDER BY site_id ASC""",
             client_id.client_id,
         )
-    return [{"site_id": site_id_t(item[0]), "name": str(item[1])} for item in res]
+    return [SiteIdNamePair(site_id=site_id_t(item[0]), name=str(item[1])) for item in res]
 
 
-@router.post("/list-datasets", tags=["db"])
+@router.post("/list-datasets", tags=["db", "list"])
 async def list_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]:
     """
     Get all the datasets associated with a particular site, in the form of a list of UUID strings.
 
+    This covers datasets across all types; it is your responsibility to then pass them to the correct endpoints
+    (for example, sending a dataset ID corresponding to a gas dataset will not work when requesting renewables.)
+
     Parameters
     ----------
     *request*
-
+        Internal FastAPI request object.
     *site_id*
+        Database ID for the site you are interested in.
 
     Returns
     -------
     A list of UUID dataset strings, with the earliest at the start and the latest at the end.
     """
+    # TODO (2024-08-05 MHJB): make this method make more sense
     datasets = []
     async with request.state.pgpool.acquire() as conn:
         res = await conn.fetch(
@@ -227,6 +286,7 @@ async def get_location(request: Request, site_id: SiteID) -> location_t:
     request
 
     site_id
+        Database ID of the site you are interested in.
 
     Returns
     -------
@@ -239,27 +299,3 @@ async def get_location(request: Request, site_id: SiteID) -> location_t:
             site_id.site_id,
         )
     return location
-
-
-@router.post("/get-pv-optima", tags=["solar_pv", "get"])
-async def get_pv_optima(request: Request, site_id: SiteID) -> dict[str, float | int | str]:
-    """
-    Get some optimal angles and azimuths for this specific site.
-
-    Parameters
-    ----------
-    request
-
-    site_id
-
-    Returns
-    -------
-    information about the optimal azimuth, tilt, and some metadata about the technologies used.
-    """
-    async with request.state.pgpool.acquire() as conn:
-        latitude, longitude = await conn.fetchval(
-            """SELECT coordinates FROM client_info.site_info WHERE site_id = $1""",
-            site_id.site_id,
-        )
-    optima = await get_pvgis_optima(latitude=latitude, longitude=longitude)
-    return optima

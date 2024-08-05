@@ -1,13 +1,20 @@
+"""Models for endpoints in heating_load.py, including DHW and heating load."""
+
+# ruff: noqa: D101
 import datetime
 
 import pydantic
 from pydantic import Field
 
-from .core import dataset_id_t, site_id_field, site_id_t
+from .core import dataset_id_t, epoch_date_field, epoch_hour_of_year_field, epoch_start_time_field, site_id_field, site_id_t
 
 
 class HeatingLoadEntry(pydantic.BaseModel):
-    timestamp: pydantic.AwareDatetime
+    timestamp: pydantic.AwareDatetime = pydantic.Field(
+        examples=["2024-07-30T14:00:00Z"],
+        description="Starting timestamp this reading covers."
+        + "You can construct the usual (start_ts, end_ts) pairs by using the timedelta field.",
+    )
     predicted: float | None = Field(examples=[0.512], description="Total predicted heating + DHW energy usage at this time.")
     dhw: float | None = Field(examples=[0.256], description="Predicted domestic hot water energy usage at this time.")
     heating: float | None = Field(examples=[0.256], description="Predicted heating usage at this time.")
@@ -34,8 +41,10 @@ class HeatingLoadMetadata(pydantic.BaseModel):
 
 
 class EpochHeatingEntry(pydantic.BaseModel):
-    Date: str = pydantic.Field(examples=["Jan-01", "Dec-31"], pattern=r"[0-9][0-9]-[A-Za-z]*")
-    StartTime: datetime.time = pydantic.Field(examples=["00:00", "13:30"])
-    HourOfYear: float = pydantic.Field(examples=[1, 24 * 365 - 1])
-    HLoad1: float = pydantic.Field(examples=[0.123, 4.56])
-    DHWLoad1: float = pydantic.Field(examples=[0.123, 4.56])
+    Date: str = epoch_date_field
+    StartTime: str = epoch_start_time_field
+    HourOfYear: float = epoch_hour_of_year_field
+    HLoad1: float = pydantic.Field(examples=[0.123, 4.56], description="Heating demand in kWh for this time period.")
+    DHWLoad1: float = pydantic.Field(
+        examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
+    )

@@ -1,3 +1,11 @@
+"""
+Endpoints for weather data.
+
+Weather data is slightly different to the other datasets, as it will more often be re-used between sites.
+As such, weather is stored by a `location`, which is often the nearest town.
+We use VisualCrossing as the source of all weather data currently.
+"""
+
 import datetime
 import logging
 import os

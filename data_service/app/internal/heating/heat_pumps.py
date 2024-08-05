@@ -1,6 +1,4 @@
-"""
-Heat pump related code, including coefficient of performance and efficiency calculations.
-"""
+"""Heat pump related code, including coefficient of performance and efficiency calculations."""
 
 import numpy as np
 

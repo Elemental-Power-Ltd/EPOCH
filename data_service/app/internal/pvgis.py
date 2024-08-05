@@ -1,11 +1,10 @@
-"""
-Functions for getting photovolatic data.
-"""
+"""Functions for getting photovolatic data."""
 
 import datetime
 import json
 import os
 
+import fastapi
 import httpx
 import pandas as pd
 
@@ -149,7 +148,7 @@ async def get_renewables_ninja_data(
     tracking: bool = False,
 ) -> pd.DataFrame:
     """
-    Request solar PV information from renewables.ninja
+    Request solar PV information from renewables.ninja.
 
     This takes in a location, timestamps, and some information about the solar installation.
     If the solar installation information isn't provided, we get optima from PVGIS.
@@ -174,6 +173,7 @@ async def get_renewables_ninja_data(
         Angle of the panels facing the sun (around 40?)
     tracking
         Whether the panels are single axis trackers (commonly False in the UK)
+
     Returns
     -------
         pandas dataframe with timestamp index and column "pv"
@@ -204,10 +204,12 @@ async def get_renewables_ninja_data(
         req = await client.get(
             BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
         )
-
-    renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
-        columns={"electricity": "pv"}
-    )
+    try:
+        renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
+            columns={"electricity": "pv"}
+        )
+    except json.JSONDecodeError as ex:
+        raise fastapi.HTTPException(400, "Decoding renewables.ninja data failed. Try again later.") from ex
     renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
     renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)

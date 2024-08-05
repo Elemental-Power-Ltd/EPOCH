@@ -1,3 +1,11 @@
+"""Custom types that we will use across all internal modules.
+
+This is not for external facing types: put those in the `../models/` folder if they're going to be used
+as part of an API endpoint.
+
+Use strong typing as much as possible to avoid errors, and add extra types here liberally.
+"""
+
 from typing import Mapping, NewType, TypeVar
 
 import numpy as np

@@ -1,15 +1,26 @@
+"""Models associated with import_tariffs.py, mostly Octopus Agile."""
+
+# ruff: noqa: D101
 import datetime
 import enum
 
 import pydantic
 
-from .core import dataset_id_field, dataset_id_t, site_id_field, site_id_t
+from .core import (
+    dataset_id_field,
+    dataset_id_t,
+    epoch_date_field,
+    epoch_hour_of_year_field,
+    epoch_start_time_field,
+    site_id_field,
+    site_id_t,
+)
 
 
 class EpochTariffEntry(pydantic.BaseModel):
-    Date: str = pydantic.Field(examples=["Jan-01", "Dec-31"], pattern=r"[0-9][0-9]-[A-Za-z]*")
-    StartTime: datetime.time = pydantic.Field(examples=["00:00", "13:30"])
-    HourOfYear: float = pydantic.Field(examples=[1, 24 * 365 - 1])
+    Date: str = epoch_date_field
+    StartTime: str = epoch_start_time_field
+    HourOfYear: float = epoch_hour_of_year_field
     Tariff: float = pydantic.Field(examples=[32.4, 14.6], description="Import costs for this time period in p / kWh")
 
 
@@ -19,8 +30,16 @@ class TariffRequest(pydantic.BaseModel):
         examples=["E-1R-AGILE-24-04-03-A", "E-1R-COOP-FIX-12M-24-07-25-B"],
         description="The specific region-containing tariff code for this tariff.",
     )
-    start_ts: pydantic.AwareDatetime
-    end_ts: pydantic.AwareDatetime
+    start_ts: pydantic.AwareDatetime = pydantic.Field(
+        examples=[datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)],
+        description="The earliest timestamp to get this tariff for"
+        + "(but note that it may not be provided too far in the past).",
+    )
+    end_ts: pydantic.AwareDatetime = pydantic.Field(
+        examples=[datetime.datetime(year=2024, month=12, day=1, tzinfo=datetime.UTC)],
+        description="The latest timestamp to get this tariff for"
+        + "(but note that it may not be provided too far in the future).",
+    )
 
 
 class TariffProviderEnum(enum.Enum):
@@ -30,8 +49,10 @@ class TariffProviderEnum(enum.Enum):
 class TariffMetadata(pydantic.BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
     site_id: site_id_t = site_id_field
-    created_at: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
-    provider: TariffProviderEnum = pydantic.Field(description="The source of this tariff data")
+    created_at: pydantic.AwareDatetime = pydantic.Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC), description="The time we retrieved this tariff data at."
+    )
+    provider: TariffProviderEnum = pydantic.Field(description="The source of this tariff data, currently just Octopus.")
     product_name: str = pydantic.Field(
         description="The overall product name (not necessarily human readable) for this group of tariffs.",
         examples=["AGILE-24-04-03", "COOP-FIX-12M-24-07-25"],
@@ -40,5 +61,13 @@ class TariffMetadata(pydantic.BaseModel):
         description="The specific region-containing tariff code for this tariff.",
         examples=["E-1R-AGILE-24-04-03-A", "E-1R-COOP-FIX-12M-24-07-25-B"],
     )
-    valid_from: pydantic.AwareDatetime | None
-    valid_to: pydantic.AwareDatetime | None
+    valid_from: pydantic.AwareDatetime | None = pydantic.Field(
+        default=None,
+        examples=[None, "2024-07-24T00:00:00Z"],
+        description="The first time this tariff is valid for. May be None if we don't know.",
+    )
+    valid_to: pydantic.AwareDatetime | None = pydantic.Field(
+        default=None,
+        examples=[None, "2024-09-01T00:00:00Z"],
+        description="The last time this tariff is valid for. May be None if we don't know.",
+    )

@@ -29,13 +29,14 @@ def m3_to_kwh(vol: FloatOrArray, calorific_value: float = 38.0) -> FloatOrArray:
 
     Returns
     -------
-        gas energy consumption in kWh"""
+    gas energy consumption in kWh
+    """
     return vol * calorific_value * 1.02264 / 3.6
 
 
 def celsius_to_kelvin(temperature: FloatOrArray) -> FloatOrArray:
     """
-    Convert a temperature in Celsius to one in Kelvin
+    Convert a temperature in Celsius to one in Kelvin.
 
     This checks that you haven't already converted it, and that it's a reasonable air temperature.
 
@@ -143,6 +144,7 @@ def relative_to_specific_humidity(rel_hum: FloatOrArray, air_temp: FloatOrArray,
         New Equations for Computing Vapor Pressure and Enhancement Factor
         Arden L. Buck
         https://doi.org/10.1175/1520-0450(1981)020<1527:NEFCVP>2.0.CO;2
+
         Parameters
         ----------
         temperature
