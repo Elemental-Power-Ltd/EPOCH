@@ -9,9 +9,9 @@ import httpx
 import pandas as pd
 
 from .utils import check_latitude_longitude, load_dotenv
+from ..models.renewables import PVOptimaResult, PvgisMountingSystemEnum
 
-
-async def get_pvgis_optima(latitude: float, longitude: float, tracking: bool = False) -> dict[str, float | str]:
+async def get_pvgis_optima(latitude: float, longitude: float, tracking: bool = False) -> PVOptimaResult:
     """
     Use PVGIS to calculate optimal tilts and azimuths for a solar setup at this location.
 
@@ -52,16 +52,16 @@ async def get_pvgis_optima(latitude: float, longitude: float, tracking: bool = F
         mounting_system = "tracking"
     else:
         mounting_system = "fixed"
-    solar_params = {
-        "azimuth": (180 + data["inputs"]["mounting_system"][mounting_system]["azimuth"]["value"]) % 360,
-        "tilt": data["inputs"]["mounting_system"][mounting_system]["slope"]["value"],
-        "altitude": data["inputs"]["location"]["elevation"],
-        "mounting_system": mounting_system,
-        "type": data["inputs"]["mounting_system"][mounting_system]["type"],
-        "technology": data["inputs"]["pv_module"]["technology"],
-        "data_source": data["inputs"]["meteo_data"]["radiation_db"],
-    }
-    return solar_params
+
+    return  PVOptimaResult(
+        azimuth= (180 + data["inputs"]["mounting_system"][mounting_system]["azimuth"]["value"]) % 360,
+        tilt=data["inputs"]["mounting_system"][mounting_system]["slope"]["value"],
+        altitude=data["inputs"]["location"]["elevation"],
+        mounting_system=PvgisMountingSystemEnum(mounting_system),
+        type=data["inputs"]["mounting_system"][mounting_system]["type"],
+        technology=data["inputs"]["pv_module"]["technology"],
+        data_source=data["inputs"]["meteo_data"]["radiation_db"],
+    )
 
 
 async def get_pvgis_data(
@@ -185,8 +185,8 @@ async def get_renewables_ninja_data(
         raise ValueError("Latitude and longitude provided the wrong way round.")
     if azimuth is None or tilt is None:
         optimal_params = await get_pvgis_optima(latitude, longitude, tracking)
-        azimuth = float(optimal_params["azimuth"])
-        tilt = float(optimal_params["tilt"])
+        azimuth = float(optimal_params.azimuth)
+        tilt = float(optimal_params.tilt)
     params: dict[str, str | float | int] = {
         "lat": latitude,
         "lon": longitude,

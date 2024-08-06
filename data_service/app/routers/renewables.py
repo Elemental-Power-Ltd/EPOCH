@@ -89,7 +89,7 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
     if params.azimuth is None or params.tilt is None:
         logging.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
         optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude)
-        azimuth, tilt = float(optimal_params["azimuth"]), float(optimal_params["tilt"])
+        azimuth, tilt = float(optimal_params.azimuth), float(optimal_params.tilt)
     else:
         azimuth, tilt = params.azimuth, params.tilt
 
@@ -102,13 +102,13 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
     if len(renewables_df) < 364 * 24:
         raise HTTPException(500, f"Could not get renewables information for {location}.")
 
-    metadata: dict[str, str | datetime.datetime | pydantic.UUID4 | dict[str, float | bool]] = {
-        "data_source": "renewables.ninja",
-        "created_at": datetime.datetime.now(datetime.UTC),
-        "dataset_id": uuid.uuid4(),
-        "site_id": params.site_id,
-        "parameters": json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
-    }
+    metadata = RenewablesMetadata(
+        data_source="renewables.ninja",
+        created_at=datetime.datetime.now(datetime.UTC),
+        dataset_id=uuid.uuid4(),
+        site_id=params.site_id,
+        parameters=json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
+    )
     async with request.state.pgpool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
@@ -126,11 +126,11 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
                         $3,
                         $4,
                         $5)""",
-                metadata["dataset_id"],
-                metadata["site_id"],
-                metadata["created_at"],
-                metadata["data_source"],
-                metadata["parameters"],
+                metadata.dataset_id,
+                metadata.site_id,
+                metadata.created_at,
+                metadata.data_source,
+                metadata.parameters,
             )
 
             await conn.executemany(
@@ -145,7 +145,7 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
                         $2,
                         $3)""",
                 zip(
-                    [metadata["dataset_id"] for _ in renewables_df.index],
+                    [metadata.dataset_id for _ in renewables_df.index],
                     renewables_df.index,
                     renewables_df.pv,
                     strict=True,
@@ -204,4 +204,8 @@ async def get_renewables_generation(request: Request, params: DatasetIDWithTime)
     renewables_df["StartTime"] = renewables_df.index.strftime("%H:%M")
     renewables_df["HourOfYear"] = renewables_df.index.map(hour_of_year)
     renewables_df = renewables_df.rename(columns={"solar_generation": "RGen1"})
-    return [EpochRenewablesEntry(**item) for item in renewables_df.to_dict(orient="records")]
+    return [EpochRenewablesEntry(
+        Date=item["date"],
+        StartTime=item["StartTime"],
+        HourOfYear=item["HourOfYear"],
+        RGen1=item["RGen1"]) for item in renewables_df.to_dict(orient="records")]

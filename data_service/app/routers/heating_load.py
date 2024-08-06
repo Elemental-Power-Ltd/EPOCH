@@ -133,9 +133,9 @@ async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> 
 
     if gas_df.shape[0] < 3:
         raise HTTPException(400, f"Dataset covered too little time: {gas_df.index.min()} to {gas_df.index.max()}")
-    heating_df = monthly_to_hh_hload(gas_df, weather_df).drop(columns=["timedelta"])
-    heating_df = heating_df.join(weather_df["temp"]).rename(columns={"temp": "air_temperature"})
-    heating_df = heating_df.resample(pd.Timedelta(minutes=30)).mean().interpolate(method="time")
+    heating_df = HHDataFrame(monthly_to_hh_hload(gas_df, weather_df).drop(columns=["timedelta"]))
+    heating_df = HHDataFrame(heating_df.join(weather_df["temp"]).rename(columns={"temp": "air_temperature"}))
+    heating_df = HHDataFrame(heating_df.resample(pd.Timedelta(minutes=30)).mean().interpolate(method="time"))
 
     monthly_predicteds = []
     for start_ts, end_ts in zip(gas_df.start_ts, gas_df.end_ts, strict=False):
