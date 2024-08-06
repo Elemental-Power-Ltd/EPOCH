@@ -12,7 +12,6 @@ import uuid
 
 import httpx
 import pandas as pd
-import pydantic
 from fastapi import APIRouter, HTTPException, Request
 
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
@@ -204,8 +203,7 @@ async def get_renewables_generation(request: Request, params: DatasetIDWithTime)
     renewables_df["StartTime"] = renewables_df.index.strftime("%H:%M")
     renewables_df["HourOfYear"] = renewables_df.index.map(hour_of_year)
     renewables_df = renewables_df.rename(columns={"solar_generation": "RGen1"})
-    return [EpochRenewablesEntry(
-        Date=item["date"],
-        StartTime=item["StartTime"],
-        HourOfYear=item["HourOfYear"],
-        RGen1=item["RGen1"]) for item in renewables_df.to_dict(orient="records")]
+    return [
+        EpochRenewablesEntry(Date=item["date"], StartTime=item["StartTime"], HourOfYear=item["HourOfYear"], RGen1=item["RGen1"])
+        for item in renewables_df.to_dict(orient="records")
+    ]

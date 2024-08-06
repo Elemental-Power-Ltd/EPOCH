@@ -8,8 +8,9 @@ import fastapi
 import httpx
 import pandas as pd
 
+from ..models.renewables import PvgisMountingSystemEnum, PVOptimaResult
 from .utils import check_latitude_longitude, load_dotenv
-from ..models.renewables import PVOptimaResult, PvgisMountingSystemEnum
+
 
 async def get_pvgis_optima(latitude: float, longitude: float, tracking: bool = False) -> PVOptimaResult:
     """
@@ -53,8 +54,8 @@ async def get_pvgis_optima(latitude: float, longitude: float, tracking: bool = F
     else:
         mounting_system = "fixed"
 
-    return  PVOptimaResult(
-        azimuth= (180 + data["inputs"]["mounting_system"][mounting_system]["azimuth"]["value"]) % 360,
+    return PVOptimaResult(
+        azimuth=(180 + data["inputs"]["mounting_system"][mounting_system]["azimuth"]["value"]) % 360,
         tilt=data["inputs"]["mounting_system"][mounting_system]["slope"]["value"],
         altitude=data["inputs"]["location"]["elevation"],
         mounting_system=PvgisMountingSystemEnum(mounting_system),
