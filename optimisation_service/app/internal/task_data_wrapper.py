@@ -11,11 +11,14 @@ from typing import Generator
 
 import numpy as np
 
+from .log import logger
+
 try:
     from epoch_simulator import SimulationResult, Simulator, TaskData
 
     HAS_EPOCH = True
 except ImportError:
+    logger.warning("Failed to import Epoch python bindings.")
     HAS_EPOCH = False
 
     # bodge ourselves some horrible stubs so that

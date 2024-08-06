@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import json
-import logging
 import os
 import shutil
 from pathlib import Path
@@ -12,6 +11,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 
+from ..internal.log import logger
 from ..internal.problem import _OBJECTIVES, Problem
 from ..internal.result import Result
 from .models import DatasetIDWithTime, FileLoc, JSONTask, OptimisationResult, Optimiser, PyTask, SiteData
@@ -191,6 +191,7 @@ async def fps_inputdata(site_data_id: UUID):
     input_dir
         Path to temporary directory containing input data files.
     """
+    logger.debug(f"Fetching site data {site_data_id} info.")
     data_ids = await post_request(url="/get-client-site-data", data={"input_data_ID": site_data_id})
     input_dir = create_tempdir(site_data_id)
     elec = fps_elec(data_ids["electricity_dataset"], input_dir)
@@ -200,6 +201,7 @@ async def fps_inputdata(site_data_id: UUID):
     ashp_output = fps_ASHP_output(data_ids["ashp_output_dataset"], input_dir)
     import_tariff = fps_import_tariff(data_ids["tariff_dataset"], input_dir)
     grid_CO2 = fps_grid_CO2(data_ids["grid_CO2_dataset"], input_dir)
+    logger.debug(f"Fetching site data {site_data_id}.")
     await asyncio.gather(elec, heat, rgen, ashp_input, ashp_output, import_tariff, grid_CO2)
     return input_dir
 
@@ -282,20 +284,27 @@ async def process_requests(q: IQueue):
         Queue to process.
     """
     while True:
+        logger.info("Awaiting next task from queue.")
         task = await q.get()
+        logger.info(f"Optimising {task.TaskID}.")
         try:
             results = await task.optimiser.run(task.problem, verbose=False)
+            logger.debug(f"Finished optimising {task.TaskID}.")
             completed_at = datetime.datetime.now(datetime.UTC)
+            logger.debug(f"Postprocessing and encoding results of {task.TaskID}.")
             payload = jsonable_encoder(postprocess_results(task, results, completed_at))
             if task.siteData.loc == FileLoc.database:
+                logger.debug(f"Transmiting results of {task.TaskID} to database.")
                 await transmit_results(payload)
                 shutil.rmtree(task.problem.input_dir)
             elif task.siteData.loc == FileLoc.local:
+                logger.debug(f"Saving results of {task.TaskID} to file.")
                 with open(Path(task.siteData.path, "results.json"), "w") as f:
                     json.dump(payload, f)
         except Exception:
-            logging.error("Exception occured", exc_info=True)
+            logger.error(f"Exception occured, skipping {task.TaskID}.", exc_info=True)
             pass
+        logger.info(f"Marking {task.TaskID} as complete.")
         q.mark_task_done(task)
 
 
@@ -309,15 +318,21 @@ async def add_task(request: Request, task: JSONTask):
     Task
         Optimisation task to be added to queue.
     """
+    logger.info(f"Received {task.TaskID}.")
     q: IQueue = request.app.state.q
     if q.full():
+        logger.debug("Queue full.")
         raise HTTPException(status_code=503, detail="Task queue is full.")
     if task.TaskID in q.q.keys():
+        logger.debug(f"{task.TaskID} already in queue.")
         raise HTTPException(status_code=400, detail="Task already in queue.")
     else:
         try:
+            logger.debug(f"Preprocessing {task.TaskID}.")
             pytask = await preproccess_task(task)
+            logger.info(f"Queued {task.TaskID}.")
             await q.put(pytask)
-            return "Added task to queue."
+            return f"Added {task.TaskID} to queue."
         except Exception as e:
+            logger.error(f"Exception occured whilst adding {task.TaskID} to queue.", exc_info=True)
             raise HTTPException(status_code=400, detail=str(e)) from e

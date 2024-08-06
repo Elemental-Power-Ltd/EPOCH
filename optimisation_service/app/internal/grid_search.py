@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import time
+from datetime import timedelta
 from os import PathLike
 from pathlib import Path
 
@@ -102,7 +103,7 @@ class GridSearch(Algorithm):
             input_dir=str(problem.input_dir),
             output_dir=str(output_dir),
         )
-        exec_time = time.perf_counter() - t0
+        exec_time = timedelta(seconds=(time.perf_counter() - t0))
         if verbose:
             print("Grid search finished.")
 

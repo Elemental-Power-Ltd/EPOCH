@@ -1,5 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from enum import Enum
 from typing import Any
 
@@ -153,7 +154,7 @@ class NSGA2(Algorithm):
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
         objective_values_arr = np.asarray(objective_values)
         n_evals = res.algorithm.evaluator.n_eval
-        exec_time = res.exec_time
+        exec_time = timedelta(seconds=res.exec_time)
 
         return Result(solutions=solutions, objective_values=objective_values_arr, exec_time=exec_time, n_evals=n_evals)
 
@@ -276,6 +277,7 @@ class GeneticAlgorithm(Algorithm):
             exec_time += res.exec_time
             n_evals += res.algorithm.evaluator.n_eval
 
+        exec_time = timedelta(seconds=exec_time)
         objective_values_arr, solutions_arr = np.asarray(objective_values), np.asarray(solutions)
 
         objective_values_arr, non_degen_idx = np.unique(objective_values_arr, axis=0, return_index=True)

@@ -2,10 +2,11 @@ import asyncio
 import datetime
 import time
 from collections import OrderedDict
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import UUID1
 
+from ..internal.log import logger
 from .models import QueueElem, QueueStatus, state
 from .optimise import PyTask
 
@@ -70,7 +71,7 @@ class IQueue(asyncio.Queue):
         del self.q[task.TaskID]
         super().task_done()
 
-    def cancel(self, TaskID: UUID1):
+    def cancel(self, TaskID: UUID):
         """
         Cancel a task in queue.
 
@@ -125,7 +126,7 @@ async def get_queue_status(request: Request):
 
 
 @router.post("/cancel-task/")
-async def cancel_task_in_queue(request: Request, TaskID: UUID1):
+async def cancel_task_in_queue(request: Request, TaskID: UUID):
     """
     Cancels task in queue.
     Can not be used to cancel tasks already running.
@@ -135,14 +136,19 @@ async def cancel_task_in_queue(request: Request, TaskID: UUID1):
     TaskID
         UUID of task to cancel.
     """
+    logger.debug(f"Cancelling task {TaskID}.")
     if request.app.state.q.q[TaskID].STATE == state.QUEUED:
         request.app.state.q.cancel(TaskID)
+        logger.info(f"Cancelled task {TaskID}.")
         return "Task cancelled."
     elif TaskID not in list(request.app.state.q.q.keys()):
+        logger.error(f"Task {TaskID} not found in queue.")
         return HTTPException(status_code=400, detail="Task not found in queue.")
     elif request.app.state.q.q[TaskID].STATE == state.RUNNING:
+        logger.error(f"Task {TaskID} already running.")
         return HTTPException(status_code=400, detail="Task already running.")
     elif request.app.state.q.q[TaskID].STATE == state.CANCELLED:
+        logger.error(f"Task {TaskID} already cancelled.")
         return HTTPException(status_code=400, detail="Task already cancelled.")
 
 
@@ -151,6 +157,7 @@ async def clear_queue(request: Request):
     """
     Cancels all tasks in queue.
     """
+    logger.info("Clearing queue.")
     for TaskID in request.app.state.q.q.keys():
         if request.app.state.q.q[TaskID].STATE != state.RUNNING:
             request.app.state.q.cancel(TaskID)
