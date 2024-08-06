@@ -23,8 +23,8 @@ tests/
 .vscode
 
 # Epoch
-Epoch/
-*/Epoch/
+#Epoch/
+#*/Epoch/
 OutputData/
 */OutputData/
 InputData/
