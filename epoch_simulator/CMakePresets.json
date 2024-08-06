@@ -4,8 +4,7 @@
     {
       "name": "base",
       "hidden": true,
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-      "generator": "Ninja Multi-Config"
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
     },
     {
       "name": "headless",
@@ -28,8 +27,8 @@
     {
       "name": "python",
       "inherits": "base",
-      "binaryDir": "${sourceDir}/build/python",
-      "installDir": "${sourceDir}/install/python",
+      "binaryDir": "${sourceDir}/build/epoch_py",
+      "installDir": "${sourceDir}/install/epoch_py",
       "cacheVariables": {
         "PYBIND": "ON"
       }
