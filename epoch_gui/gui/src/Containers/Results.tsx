@@ -1,8 +1,38 @@
+import {useEffect, useState} from "react";
+
 import ResultCard from "../Components/Results/ResultsCard";
 
+import {useEpochStore} from "../State/state";
+
+import {getStatus} from "../endpoints";
+
+
 function ResultsContainer() {
+
+    const state = useEpochStore((state) => state.results);
+
+    const setOptimiserServiceStatus = useEpochStore((state) => state.setOptimiserServiceStatus);
+
+
+
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            const response = await getStatus();
+            setOptimiserServiceStatus(response);
+        }, 1000);
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, []);
+
+
     return (
         <div>
+            <div>
+                {JSON.stringify(state.optimiserServiceStatus)}
+            </div>
+
             <ResultCard data={{
               "CAPEX": 751955,
               "annualised": 54265.05078125,

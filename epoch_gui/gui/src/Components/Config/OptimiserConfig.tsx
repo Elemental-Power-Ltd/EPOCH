@@ -23,7 +23,7 @@ const ConfigForm = () => {
         setGAConfig: state.setGAConfig
     }));
 
-    const changeOptimiser = (evt: SelectChangeEvent) => {setOptimiser(evt.target.value as Optimiser);}
+    const changeOptimiser = (evt: SelectChangeEvent) => {setOptimiser(evt.target.value);}
     const changeSite = (evt: SelectChangeEvent) => {setSite(evt.target.value);}
     const changeGridConfig = (evt: any) => {setGridConfig(evt.formData);}
     const changeGAConfig = (evt: any) => {setGAConfig(evt.formData);}

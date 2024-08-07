@@ -21,7 +21,7 @@ export const submitOptimisationJob = async(payload) => {
 
 export const getStatus = async() => {
     try {
-        const response = await fetch("/api/get-status");
+        const response = await fetch("/api/get-status/");
 
         if(!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);

@@ -26,7 +26,8 @@ interface Result {
 }
 
 interface ResultsContainer {
-    data: Result[];
+    optimiserServiceStatus: any;
+    results: [];
 }
 
 
@@ -42,6 +43,8 @@ interface AppState {
     setGAConfig: (form: any) => void;
 
     setSearchParameters: (form: any) => void;
+
+    setOptimiserServiceStatus: (status: any) => void;
 }
 
 
@@ -57,7 +60,8 @@ export const useEpochStore = create<AppState>()((set) => ({
         selectedSite: "Mount Hotel"
     },
     results: {
-        data: []
+        optimiserServiceStatus: {},
+        results: []
     },
 
     setSite: (site: string) => set((state) => ({run: {...state.run, selectedSite: site}})),
@@ -66,7 +70,9 @@ export const useEpochStore = create<AppState>()((set) => ({
     setGridConfig: (form: any) => set((state) => ({run: {...state.run, optimisers: {...state.run.optimisers, gridSearch: form}}})),
     setGAConfig: (form: any) => set((state) => ({run: {...state.run, optimisers: {...state.run.optimisers, geneticAlgorithm: form}}})),
 
-    setSearchParameters: (form: any) => set((state) => ({run: {...state.run, searchParameters: form}}))
+    setSearchParameters: (form: any) => set((state) => ({run: {...state.run, searchParameters: form}})),
+
+    setOptimiserServiceStatus: (status: any) => set((state) => ({results: {...state.results, optimiserServiceStatus: status}}))
 
 }))
 

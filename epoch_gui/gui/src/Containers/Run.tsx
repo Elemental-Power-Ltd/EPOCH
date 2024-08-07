@@ -1,3 +1,5 @@
+import "./Run.css"
+
 import StatusDisplay from "../Components/Results/StatusDisplay";
 import AccordionSection from "../util/Widgets/AccordionSection";
 import ConfigForm from "../Components/Config/OptimiserConfig";
@@ -28,20 +30,6 @@ function RunContainer() {
     }
 
 
-
-
-    // useEffect(() => {
-    //     const interval = setInterval(async () => {
-    //         const response = await getStatus();
-    //         setServerStatus(response);
-    //     }, 3000);
-    //
-    //     return () => {
-    //         clearInterval(interval);
-    //     };
-    // }, []);
-
-
     return (
         <div className="run-tab">
             <StatusDisplay serverStatus={serverStatus} />
@@ -54,8 +42,10 @@ function RunContainer() {
                 <SearchForm />
             </AccordionSection>
 
-            <button onClick={onRun}>RUN</button>
-            <button onClick={()=>{alert("TODO")}}>SAVE CONFIGURATION</button>
+            <div className="run-footer">
+                <button onClick={onRun}>RUN</button>
+                <button onClick={()=>{alert("TODO")}}>SAVE CONFIGURATION</button>
+            </div>
 
         </div>
     )
