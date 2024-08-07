@@ -12,7 +12,9 @@ from ..models.renewables import PvgisMountingSystemEnum, PVOptimaResult
 from .utils import check_latitude_longitude, load_dotenv
 
 
-async def get_pvgis_optima(latitude: float, longitude: float, tracking: bool = False) -> PVOptimaResult:
+async def get_pvgis_optima(
+    latitude: float, longitude: float, tracking: bool = False, client: httpx.AsyncClient | None = None
+) -> PVOptimaResult:
     """
     Use PVGIS to calculate optimal tilts and azimuths for a solar setup at this location.
 
@@ -45,9 +47,12 @@ async def get_pvgis_optima(latitude: float, longitude: float, tracking: bool = F
         "header": int(False),
     }
 
-    async with httpx.AsyncClient() as client:
-        res = await client.get(base_url, params=params)
-        data = res.json()
+    # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
+    # for connection pooling. However, if weren't given one we'll have to make one.
+    async with client if client is not None else httpx.AsyncClient() as aclient:
+        res = await aclient.get(base_url, params=params)
+
+    data = res.json()
 
     if tracking:
         mounting_system = "tracking"
@@ -70,6 +75,7 @@ async def get_pvgis_data(
     lon: float,
     start_year: datetime.datetime | int,
     end_year: datetime.datetime | int,
+    client: httpx.AsyncClient | None = None,
 ) -> pd.DataFrame:
     """
     Get solar data from the PVGIS service, and put it into a handy pandas dataframe.
@@ -107,6 +113,8 @@ async def get_pvgis_data(
 
     # Check here for documentation on each of these values:
     # https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/getting-started-pvgis/api-non-interactive-service_en # noqa
+    # the slightly odd `int(bool)` format is because the API accepts ints, but really they're logical values. It's
+    # to make it easier for you to read.
     params: dict[str, str | float | int] = {
         "outputformat": "json",
         "browser": int(False),
@@ -123,11 +131,15 @@ async def get_pvgis_data(
         "components": int(True),
         "pvtechchoice": "crystSi",
     }
-    async with httpx.AsyncClient() as client:
-        req = await client.get(
+
+    # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
+    # for connection pooling. However, if weren't given one we'll have to make one.
+    async with client if client is not None else httpx.AsyncClient() as aclient:
+        req = await aclient.get(
             base_url,
             params=params,
         )
+
     try:
         df = pd.DataFrame.from_records(req.json()["outputs"]["hourly"])
     except KeyError as ex:
@@ -147,6 +159,7 @@ async def get_renewables_ninja_data(
     azimuth: float | None = None,
     tilt: float | None = None,
     tracking: bool = False,
+    client: httpx.AsyncClient | None = None,
 ) -> pd.DataFrame:
     """
     Request solar PV information from renewables.ninja.
@@ -201,10 +214,13 @@ async def get_renewables_ninja_data(
         "capacity": 1.0,
         "format": "json",
     }
-    async with httpx.AsyncClient() as client:
-        req = await client.get(
+    # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
+    # for connection pooling. However, if weren't given one we'll have to make one.
+    async with client if client is not None else httpx.AsyncClient() as aclient:
+        req = await aclient.get(
             BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
         )
+
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
             columns={"electricity": "pv"}

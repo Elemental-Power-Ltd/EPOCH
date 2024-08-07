@@ -9,10 +9,20 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator, Awaitable, Callable, Never
 
 import asyncpg
+import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import carbon_intensity, client_data, heating_load, meter_data, optimisation, renewables, weather
+from .routers import (
+    air_source_heat_pump,
+    carbon_intensity,
+    client_data,
+    heating_load,
+    meter_data,
+    optimisation,
+    renewables,
+    weather,
+)
 
 
 class Database:
@@ -34,14 +44,18 @@ class Database:
 
 db = Database()
 
+http_client = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
-    """Set up a long running database pool ready for requests."""
+    """Set up a long clients: a database pool and an HTTP client."""
     # Startup events
     await db.create_pool()
+    global http_client
+    http_client = httpx.AsyncClient()
     yield  # type: ignore
-    # teardown events
+    await http_client.aclose()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -66,6 +80,7 @@ async def db_session_middleware(request: Request, call_next: Callable[[Request],
     Then the connection pool is available as the `request.state.pgpool` parameter.
     """
     request.state.pgpool = db.pool
+    request.state.http_client = http_client
     response = await call_next(request)
     return response
 
@@ -77,6 +92,7 @@ app.include_router(heating_load.router)
 app.include_router(renewables.router)
 app.include_router(carbon_intensity.router)
 app.include_router(optimisation.router)
+app.include_router(air_source_heat_pump.router)
 
 
 @app.get("/")

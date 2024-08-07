@@ -221,10 +221,12 @@ async def list_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]
             ORDER BY created_at ASC""",
             site_id.site_id,
         )
-        datasets.extend([
-            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=item["fuel_type"], reading_type=item["reading_type"])
-            for item in res
-        ])
+        datasets.extend(
+            [
+                DatasetEntry(dataset_id=item["dataset_id"], fuel_type=item["fuel_type"], reading_type=item["reading_type"])
+                for item in res
+            ]
+        )
 
         res = await conn.fetch(
             """
@@ -236,10 +238,12 @@ async def list_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]
             ORDER BY created_at ASC""",
             site_id.site_id,
         )
-        datasets.extend([
-            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.tariff)
-            for item in res
-        ])
+        datasets.extend(
+            [
+                DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.tariff)
+                for item in res
+            ]
+        )
 
         res = await conn.fetch(
             """
@@ -251,10 +255,12 @@ async def list_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]
             ORDER BY created_at ASC""",
             site_id.site_id,
         )
-        datasets.extend([
-            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.solar_pv)
-            for item in res
-        ])
+        datasets.extend(
+            [
+                DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.solar_pv)
+                for item in res
+            ]
+        )
 
         res = await conn.fetch(
             """
@@ -266,10 +272,12 @@ async def list_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]
             ORDER BY created_at ASC""",
             site_id.site_id,
         )
-        datasets.extend([
-            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.gas, reading_type=ReadingTypeEnum.heating_load)
-            for item in res
-        ])
+        datasets.extend(
+            [
+                DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.gas, reading_type=ReadingTypeEnum.heating_load)
+                for item in res
+            ]
+        )
     logging.info(f"Returning {len(res)} datasets for {site_id}")
     return datasets
 

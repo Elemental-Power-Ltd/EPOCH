@@ -87,14 +87,20 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
 
     if params.azimuth is None or params.tilt is None:
         logging.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
-        optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude)
+        optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=request.state.http_client)
         azimuth, tilt = float(optimal_params.azimuth), float(optimal_params.tilt)
     else:
         azimuth, tilt = params.azimuth, params.tilt
 
     try:
         renewables_df = await get_renewables_ninja_data(
-            latitude=latitude, longitude=longitude, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=azimuth, tilt=tilt
+            latitude=latitude,
+            longitude=longitude,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            azimuth=azimuth,
+            tilt=tilt,
+            client=request.state.http_client,
         )
     except httpx.ReadTimeout as ex:
         raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex

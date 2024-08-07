@@ -7,7 +7,6 @@ Currently just uses Octopus data, but will likely use RE24 data in future.
 import datetime
 import uuid
 
-import httpx
 import pandas as pd
 from fastapi import APIRouter, Request
 
@@ -43,34 +42,33 @@ async def generate_import_tariffs(request: Request, params: TariffRequest) -> Ta
     dataset_id = uuid.uuid4()
     url = f"{BASE_URL}/{params.tariff_name}/"
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        products = response.json()
-        tariff_codes = sorted([
-            region["direct_debit_monthly"]["code"] for region in products["single_register_electricity_tariffs"].values()
-        ])
-        tariff_code = tariff_codes[0]  # for the moment just take the first
+    response = await request.state.client.get(url)
+    products = response.json()
+    tariff_codes = sorted(
+        [region["direct_debit_monthly"]["code"] for region in products["single_register_electricity_tariffs"].values()]
+    )
+    tariff_code = tariff_codes[0]  # for the moment just take the first
 
-        price_url = url + f"electricity-tariffs/{tariff_code}/standard-unit-rates/"
+    price_url = url + f"electricity-tariffs/{tariff_code}/standard-unit-rates/"
 
-        start_ts = datetime.datetime(year=2024, month=5, day=1, tzinfo=datetime.UTC)
-        end_ts = datetime.datetime(year=2024, month=6, day=1, tzinfo=datetime.UTC)
-        price_response = await client.get(
-            price_url,
-            params={
-                "period_from": start_ts.isoformat(),
-                "period_to": end_ts.isoformat(),
-            },
-        )
+    start_ts = datetime.datetime(year=2024, month=5, day=1, tzinfo=datetime.UTC)
+    end_ts = datetime.datetime(year=2024, month=6, day=1, tzinfo=datetime.UTC)
+    price_response = await request.state.client.get(
+        price_url,
+        params={
+            "period_from": start_ts.isoformat(),
+            "period_to": end_ts.isoformat(),
+        },
+    )
 
+    price_data = price_response.json()
+    price_records = list(price_data["results"])
+    requests_made = 0
+    while price_data.get("next") is not None:
+        requests_made += 1
+        price_response = await request.state.http_client.get(price_data["next"])
         price_data = price_response.json()
-        price_records = list(price_data["results"])
-        requests_made = 0
-        while price_data.get("next") is not None:
-            requests_made += 1
-            price_response = await client.get(price_data["next"])
-            price_data = price_response.json()
-            price_records.extend(price_data["results"])
+        price_records.extend(price_data["results"])
 
     price_df = pd.DataFrame.from_records(price_records)
     if "payment_method" in price_df:
