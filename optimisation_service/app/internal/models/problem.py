@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Mapping, TypedDict
 
 OldParameterDict = Mapping[str, list[int | float] | tuple[int | float] | int | float]
@@ -49,8 +48,7 @@ class ParameterDict(TypedDict):
     timestep_hours: int | float
 
 
-@dataclass
-class Bounds:
+class Bounds(TypedDict):
     min: int | float
     max: int | float
 
