@@ -56,7 +56,7 @@ class GridSearch(Algorithm):
 
         self.paramstr = alg_param_to_string()
 
-    async def run(self, problem: Problem, verbose: bool = False) -> Result:
+    async def run(self, problem: Problem) -> Result:
         """
         Run grid search optimisation.
 
@@ -94,8 +94,6 @@ class GridSearch(Algorithm):
         with open(Path(problem.input_dir, "inputParameters.json"), "w") as f:
             json.dump(convert_param(problem.parameters), f)
 
-        if verbose:
-            print("Executing grid search. This may take a while...")
         t0 = time.perf_counter()
         await run_headless(
             project_path=str(self.project_path),
@@ -104,8 +102,6 @@ class GridSearch(Algorithm):
             output_dir=str(output_dir),
         )
         exec_time = timedelta(seconds=(time.perf_counter() - t0))
-        if verbose:
-            print("Grid search finished.")
 
         os.remove(Path(problem.input_dir, "inputParameters.json"))
 
@@ -114,12 +110,9 @@ class GridSearch(Algorithm):
 
         df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32, usecols=usecols)
 
-        if len(problem.constraints) > 0:
-            for constraint, bounds in problem.constraints.items():
-                if "min" in bounds.keys():
-                    df_res = df_res[df_res[constraint] >= bounds["min"]]
-                if "max" in bounds.keys():
-                    df_res = df_res[df_res[constraint] <= bounds["max"]]
+        for constraint, bounds in problem.constraints.items():
+            df_res = df_res[df_res[constraint] >= bounds.get("min", -np.inf)]
+            df_res = df_res[df_res[constraint] <= bounds.get("max", -np.inf)]
 
         solutions = df_res[variable_param].to_numpy()
         obj_direct = ["max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in problem.objectives]

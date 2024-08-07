@@ -1,5 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from datetime import timedelta
 from enum import Enum
 from typing import Any
@@ -124,7 +125,7 @@ class NSGA2(Algorithm):
             n_max_evals,
         )
 
-    async def run(self, problem: Problem, verbose: bool = False) -> Result:
+    async def run(self, problem: Problem) -> Result:
         """
         Run NSGA optimisation.
 
@@ -142,15 +143,12 @@ class NSGA2(Algorithm):
         """
         pi = ProblemInstance(problem)
 
-        res = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, verbose=verbose)
+        res = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+        solutions = pi.convert_solutions(res.X)
 
-        solutions = res.X * pi.step + pi.lb
         objective_values = []
         for sol in solutions:
-            for parameter, value in zip(pi.v_params, sol):
-                pi.TaskData[parameter] = value
-
-            simresult = PySimulationResult(pi.sim.simulate_scenario(pi.TaskData))
+            simresult = pi.simulate(sol)
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
         objective_values_arr = np.asarray(objective_values)
         n_evals = res.algorithm.evaluator.n_eval
@@ -241,7 +239,7 @@ class GeneticAlgorithm(Algorithm):
             n_max_evals,
         )
 
-    async def run(self, problem: Problem, verbose: bool = False) -> Result:
+    async def run(self, problem: Problem) -> Result:
         """
         Run GA optimisation.
 
@@ -261,17 +259,11 @@ class GeneticAlgorithm(Algorithm):
         exec_time, n_evals = 0, 0
         for sub_problem in problem.split_objectives():
             pi = ProblemInstance(sub_problem)
-            res = await minimize_async(
-                problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, verbose=verbose
-            )
+            res = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
 
-            sol = res.X * pi.step + pi.lb
-            solutions.append(sol)
-
-            for parameter, value in zip(pi.v_params, sol):
-                pi.TaskData[parameter] = value
-
-            simresult = PySimulationResult(pi.sim.simulate_scenario(pi.TaskData))
+            x = pi.convert_solutions(res.X)
+            solutions.append(x)
+            simresult = pi.simulate(x)
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
 
             exec_time += res.exec_time
@@ -301,20 +293,12 @@ class ProblemInstance(ElementwiseProblem):
             Problem to optimise
         """
         n_obj = len(problem.objectives)
-        self.TaskData = PyTaskData(**problem.constant_param())
+        self.constant_param = deepcopy(problem.constant_param())
         self.sim = Simulator(inputDir=str(problem.input_dir))  # epoch_simulator doesn't accept windows paths
         self.objectives = problem.objectives
+        self.constraints = problem.constraints
 
-        self.constraints: dict[str, dict[str, float]] = {"lbs": {}, "ubs": {}}
-        n_ieq_constr = 0
-        if len(problem.constraints) > 0:
-            for constraint, bounds in problem.constraints.items():
-                if "min" in bounds.keys():
-                    self.constraints["lbs"][constraint] = bounds["min"]
-                    n_ieq_constr += 1
-                if "max" in bounds.keys():
-                    self.constraints["ubs"][constraint] = bounds["max"]
-                    n_ieq_constr += 1
+        n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
 
         self.v_params, self.lb, ub, self.step = [], np.array([]), np.array([]), np.array([])
         n_var = 0
@@ -327,15 +311,25 @@ class ProblemInstance(ElementwiseProblem):
 
         super().__init__(n_var=n_var, n_obj=n_obj, n_ieq_constr=n_ieq_constr, xl=[0] * n_var, xu=(ub - self.lb) / self.step)
 
-    def _evaluate(self, x: float, out: dict[str, list[np.floating]]) -> None:
-        x_ = x * self.step + self.lb
-        for parameter, value in zip(self.v_params, x_):
-            self.TaskData[parameter] = value
-        result = PySimulationResult(self.sim.simulate_scenario(self.TaskData))
+    def convert_solutions(self, x: npt.NDArray) -> npt.NDArray:
+        return x * self.step + self.lb
+
+    def simulate(self, x: npt.NDArray) -> PySimulationResult:
+        variable_param = dict(zip(self.v_params, x))
+        all_param = variable_param | deepcopy(self.constant_param)
+        return PySimulationResult(self.sim.simulate_scenario(PyTaskData(**all_param)))
+
+    def _evaluate(self, x: npt.NDArray, out: dict[str, list[np.floating]]) -> None:
+        x = self.convert_solutions(x)
+        result = self.simulate(x)
 
         out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]
-        out["G"] = [lb - result[objective] for objective, lb in self.constraints["lbs"].items()]
-        out["G"].extend([result[objective] - ub for objective, ub in self.constraints["ubs"].items()])
+        out["G"] = []
+        for constraint, bounds in self.constraints:
+            if bounds.get("min", None) is not None:
+                out["G"].append(bounds["min"] - result[constraint])
+            elif bounds.get("max", None) is not None:
+                out["G"].append(result[constraint] - bounds["max"])
 
 
 class SingleTermination(Termination):
@@ -389,18 +383,14 @@ def comp_by_cv_and_fitness(pop: Any, P: npt.NDArray, **kwargs: Any) -> npt.NDArr
         candidates = P[i, :]
         feasible = [candidate for candidate in candidates if pop[candidate].CV <= 0.0]
         if len(feasible) > 0:
-            minimum = np.inf
-            best_candidates = []
-            for candidate in feasible:
-                if pop[candidate].F <= minimum:
-                    best_candidates.append(candidate)
+            candidates_fitnesses = [pop[candidate].F for candidate in feasible]
+            minimum = min(candidates_fitnesses)
+            best_candidates = [candidate for candidate in feasible if pop[candidate].F == minimum]
             S[i] = rng.choice(best_candidates)
         else:
-            minimum = np.inf
-            best_candidates = []
-            for candidate in candidates:
-                if pop[candidate].CV <= minimum:
-                    best_candidates.append(candidate)
+            candidates_fitnesses = [pop[candidate].CV for candidate in feasible]
+            minimum = min(candidates_fitnesses)
+            best_candidates = [candidate for candidate in feasible if pop[candidate].CV == minimum]
             S[i] = rng.choice(best_candidates)
 
-    return S[:, None].astype(int)
+    return S[:, np.newaxis].astype(int)

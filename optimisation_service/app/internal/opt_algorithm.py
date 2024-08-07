@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from hashlib import sha256
 
 from .problem import Problem
 from .result import Result
@@ -9,7 +10,7 @@ class Algorithm(ABC):
     paramstr: str
 
     @abstractmethod
-    async def run(self, problem: Problem, verbose: bool) -> Result:
+    async def run(self, problem: Problem) -> Result:
         """
         Run optimisation.
 
@@ -18,8 +19,6 @@ class Algorithm(ABC):
 
         problem
             Problem instance to optimise.
-        verbose
-            Whether the algorithm should print output in this run or not.
 
         Returns
         -------
@@ -28,34 +27,21 @@ class Algorithm(ABC):
         pass
 
 
-def alg_param_to_string(*args: float | int | Enum) -> str:
+def alg_param_to_hash(*args: float | int | Enum) -> str:
     """
     Converts algorithm arguments into a string.
 
     Parameters
     ----------
     args
-        list of arguments
+        list of arguments.
 
     Returns
     -------
-    string of arguments
+    str
+        sha256 hash of arguments.
     """
-    paramstr = ""
-    for param in args:
-        if isinstance(param, float):
-            add = str(param)
-            if len(add) > 5:
-                add = "{0:.17E}".format(param)
-                add = add.split("E")[0].rstrip("0").rstrip(".") + "E" + add.split("E")[1]
-            else:
-                if add.startswith("0."):
-                    add = add[1:]
-        elif isinstance(param, int):
-            add = str(param)
-            if len(add) > 5:
-                add = "{:.0e}".format(param)
-        elif isinstance(param, Enum):
-            add = param.name
-        paramstr += "_" + add
-    return paramstr
+    items = sorted(args.items())
+    param_str_list = [f"{key}={value}" for key, value in items]
+    param_str = "__".join(param_str_list)
+    return sha256(param_str.encode("utf-8")).hexdigest()

@@ -1,6 +1,6 @@
 import asyncio
+import datetime
 import logging
-import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -20,9 +20,8 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Initalisaing Queue.")
     q = IQueue(maxsize=5)
-    start_time = time.time()
     app.state.q = q
-    app.state.start_time = start_time
+    app.state.start_time = datetime.datetime.now(datetime.UTC)
     asyncio.create_task(process_requests(q))
     yield
 

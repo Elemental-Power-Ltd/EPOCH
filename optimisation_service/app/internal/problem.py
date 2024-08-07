@@ -7,7 +7,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Generator, Self
 
-from .epl_typing import ConstraintDict, OldParameterDict, ParameterDict, ParamRange
+from ..routers.models.problem import ParameterDict, ParamRange
+from .epl_typing import ConstraintDict, OldParameterDict
 from .task_data_wrapper import PyTaskData
 
 _OBJECTIVES = [
@@ -36,7 +37,7 @@ class Problem:
         if not set(self.constraints.keys()).issubset(_OBJECTIVES):
             raise ValueError(f"Invalid constraint name(s): {set(self.constraints.keys()) - set(_OBJECTIVES)}")
         for bounds in self.constraints.values():
-            if ("min" in bounds) & ("max" in bounds):
+            if ("min" in bounds) and ("max" in bounds):
                 if bounds["min"] > bounds["max"]:
                     raise ValueError("constraints lower bounds must be smaller or equal to upper bounds.")
         if set(self.parameters.keys()) != set(PyTaskData()._VALID_KEYS):
@@ -50,30 +51,55 @@ class Problem:
             if isinstance(value, dict):
                 if value["min"] > value["max"]:
                     raise ValueError("parameter lower bounds must be smaller or equal to upper bounds.")
-                if ((value["step"] == 0) & (value["min"] != value["max"])) or (
-                    (value["step"] != 0) & (value["min"] == value["max"])
-                ):
+                step_is_zero = value["step"] == 0
+                min_is_equal_max = value["min"] == value["max"]
+                if (step_is_zero and not min_is_equal_max) or (not step_is_zero and min_is_equal_max):
                     raise ValueError("parameter bounds must be equal if stepsize is 0.")
 
     def variable_param(self) -> dict[str, ParamRange]:
+        """
+        Get parameters which have more than 1 possible value.
+
+        Returns
+        -------
+        dict
+            Dictionary of parameter ranges.
+        """
         param_dict = {}
         for key, value in self.parameters.items():
             if isinstance(value, dict):
-                if (value["step"] != 0) & (value["min"] != value["max"]):
+                if (value["step"] != 0) and (value["min"] != value["max"]):
                     param_dict[key] = value
         return param_dict
 
     def constant_param(self) -> dict[str, float]:
+        """
+        Get parameters which have only 1 possible value.
+
+        Returns
+        -------
+        dict
+            Dictionary of parameter values.
+        """
         param_dict = {}
         for key, value in self.parameters.items():
             if isinstance(value, dict):
-                if (value["step"] == 0) & (value["min"] == value["max"]):
+                if (value["step"] == 0) and (value["min"] == value["max"]):
                     param_dict[key] = value["min"]
             else:
                 param_dict[key] = value
         return param_dict
 
     def size(self) -> int:
+        """
+        Get size of parameter search space.
+        Calculated by multiplying the number of possible values for each parameter together.
+
+        Returns
+        -------
+        int
+            Size of parameter search space.
+        """
         size = 1
         for value in self.variable_param().values():
             n_pos_values = (value["max"] - value["min"]) / value["step"] + 1
@@ -82,6 +108,14 @@ class Problem:
         return size
 
     def split_objectives(self) -> Generator[Self, None, None]:
+        """
+        Split a problem with multiple objectives (MOO) into multiple single objective (SOO) problems.
+
+        Yield
+        -------
+        Problem
+            Problem instance with single objectives
+        """
         for objective in self.objectives:
             yield Problem([objective], self.constraints, self.parameters, self.input_dir)  # type: ignore
 
