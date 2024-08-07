@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from paretoset import paretoset  # type: ignore
 
-from .opt_algorithm import Algorithm, alg_param_to_string
+from .opt_algorithm import Algorithm
 from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem, convert_param
 from .result import Result
 from .task_data_wrapper import run_headless
@@ -54,8 +54,6 @@ class GridSearch(Algorithm):
         self.output_dir = output_dir
         self.keep_degenerate = keep_degenerate
 
-        self.paramstr = alg_param_to_string()
-
     async def run(self, problem: Problem) -> Result:
         """
         Run grid search optimisation.
@@ -81,7 +79,7 @@ class GridSearch(Algorithm):
         if self.output_dir is None:
             output_dir = Path(temp_dir.name, "tmp_outputs")
         else:
-            output_dir = Path(self.output_dir, typename(self) + self.paramstr)
+            output_dir = Path(self.output_dir, typename(self))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 

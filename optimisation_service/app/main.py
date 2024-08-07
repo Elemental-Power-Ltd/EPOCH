@@ -7,10 +7,11 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from .internal.log import logger
 from .routers import optimise, queue
 from .routers.optimise import process_requests
 from .routers.queue import IQueue
+
+logger = logging.getLogger("default")
 
 
 @asynccontextmanager

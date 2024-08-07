@@ -24,7 +24,7 @@ from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: i
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from .opt_algorithm import Algorithm, alg_param_to_string
+from .opt_algorithm import Algorithm
 from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
@@ -111,20 +111,6 @@ class NSGA2(Algorithm):
 
         self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals)
 
-        self.paramstr = alg_param_to_string(
-            pop_size,
-            n_offsprings,
-            sampling_method,
-            prob_crossover,
-            n_crossover,
-            prob_mutation,
-            std_scaler,
-            tol,
-            period,
-            n_max_gen,
-            n_max_evals,
-        )
-
     async def run(self, problem: Problem) -> Result:
         """
         Run NSGA optimisation.
@@ -143,16 +129,19 @@ class NSGA2(Algorithm):
         """
         pi = ProblemInstance(problem)
 
-        res = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
-        solutions = pi.convert_solutions(res.X)
-
+        pareto_front = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+        # To facilitate the algorithm, the problem parameter values are scaled, with ranges from 0 to n and a stepsize of 1.
+        # Hence, resutls need to be scaled back to valid values.
+        solutions = pi.scale_solutions(pareto_front.X)
+        # Moreover, the optimiser only maintains track of optimised objectives.
+        # Hence, each solution in the pareto front is reevaluated to gather missing objective values.
         objective_values = []
         for sol in solutions:
             simresult = pi.simulate(sol)
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
         objective_values_arr = np.asarray(objective_values)
-        n_evals = res.algorithm.evaluator.n_eval
-        exec_time = timedelta(seconds=res.exec_time)
+        n_evals = pareto_front.algorithm.evaluator.n_eval
+        exec_time = timedelta(seconds=pareto_front.exec_time)
 
         return Result(solutions=solutions, objective_values=objective_values_arr, exec_time=exec_time, n_evals=n_evals)
 
@@ -224,21 +213,6 @@ class GeneticAlgorithm(Algorithm):
 
         self.termination_criteria = SingleTermination(tol, period, n_max_gen, n_max_evals)
 
-        self.paramstr = alg_param_to_string(
-            pop_size,
-            n_offsprings,
-            sampling_method,
-            k_tournament,
-            prob_crossover,
-            n_crossover,
-            prob_mutation,
-            std_scaler,
-            tol,
-            period,
-            n_max_gen,
-            n_max_evals,
-        )
-
     async def run(self, problem: Problem) -> Result:
         """
         Run GA optimisation.
@@ -259,15 +233,18 @@ class GeneticAlgorithm(Algorithm):
         exec_time, n_evals = 0, 0
         for sub_problem in problem.split_objectives():
             pi = ProblemInstance(sub_problem)
-            res = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
-
-            x = pi.convert_solutions(res.X)
+            single_solution = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+            # To facilitate the algorithm, the problem parameter values are scaled, with ranges from 0 to n and a stepsize of 1.
+            # Hence, resutls need to be scaled back to valid values.
+            x = pi.scale_solutions(single_solution.X)
+            # Moreover, the optimiser only maintains track of optimised objectives.
+            # Hence, each solution in the pareto front is reevaluated to gather missing objective values.
             solutions.append(x)
             simresult = pi.simulate(x)
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
 
-            exec_time += res.exec_time
-            n_evals += res.algorithm.evaluator.n_eval
+            exec_time += single_solution.exec_time
+            n_evals += single_solution.algorithm.evaluator.n_eval
 
         exec_time = timedelta(seconds=exec_time)
         objective_values_arr, solutions_arr = np.asarray(objective_values), np.asarray(solutions)
@@ -311,7 +288,7 @@ class ProblemInstance(ElementwiseProblem):
 
         super().__init__(n_var=n_var, n_obj=n_obj, n_ieq_constr=n_ieq_constr, xl=[0] * n_var, xu=(ub - self.lb) / self.step)
 
-    def convert_solutions(self, x: npt.NDArray) -> npt.NDArray:
+    def scale_solutions(self, x: npt.NDArray) -> npt.NDArray:
         return x * self.step + self.lb
 
     def simulate(self, x: npt.NDArray) -> PySimulationResult:
@@ -320,7 +297,7 @@ class ProblemInstance(ElementwiseProblem):
         return PySimulationResult(self.sim.simulate_scenario(PyTaskData(**all_param)))
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[np.floating]]) -> None:
-        x = self.convert_solutions(x)
+        x = self.scale_solutions(x)
         result = self.simulate(x)
 
         out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]

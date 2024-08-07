@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -11,15 +12,17 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 
-from ..internal.log import logger
+from ..internal.models.algorithms import Optimiser
+from ..internal.models.problem import ParameterDict
 from ..internal.problem import _OBJECTIVES, Problem
 from ..internal.result import Result
-from .models.core import JSONTask, OptimisationResult, Optimiser, PyTask, SiteData
+from .models.core import EndpointResult, EndpointTask, Task
 from .models.database import DatasetIDWithTime
-from .models.site_data import FileLoc
+from .models.site_data import FileLoc, SiteData
 from .queue import IQueue
 
 router = APIRouter()
+logger = logging.getLogger("default")
 
 
 async def post_request(client: httpx.AsyncClient, url: str, json: json):
@@ -232,7 +235,7 @@ async def get_inputdata_dir(site_data: SiteData) -> os.PathLike:
         return await fetch_input_data(site_data.key)
 
 
-async def preproccess_task(task: JSONTask) -> PyTask:
+async def preproccess_task(task: EndpointTask) -> Task:
     """
     Convert json optimisation tasks into corresponding python objects.
 
@@ -250,27 +253,28 @@ async def preproccess_task(task: JSONTask) -> PyTask:
     """
     input_dir = await get_inputdata_dir(task.siteData)
     optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
+    search_parameters = ParameterDict(task.searchParameters.model_dump(mode="python"))
     problem = Problem(
         objectives=task.objectives,
         constraints={},
-        parameters=task.searchParameters,
+        parameters=search_parameters,
         input_dir=input_dir,
     )
-    return PyTask(task_id=task.task_id, problem=problem, optimiser=optimiser, siteData=task.siteData)
+    return Task(task_id=task.task_id, problem=problem, optimiser=optimiser, siteData=task.siteData)
 
 
 async def transmit_results(results):
     await post_request("/put-results", results)
 
 
-def postprocess_results(task: PyTask, results: Result, completed_at: datetime.datetime) -> list[OptimisationResult]:
+def postprocess_results(task: Task, results: Result, completed_at: datetime.datetime) -> list[EndpointResult]:
     Optimisation_Results = []
     for solutions, objective_values in zip(results.solutions, results.objective_values):
         solutions_dict = task.problem.constant_param()
         for param, value in zip(task.problem.variable_param().keys(), solutions):
             solutions_dict[param] = value
         objective_values_dict = dict(zip(_OBJECTIVES, objective_values))
-        OptRes = OptimisationResult(
+        OptRes = EndpointResult(
             task_id=str(task.task_id),
             solution=solutions_dict,
             objective_values=objective_values_dict,
@@ -297,7 +301,7 @@ async def process_requests(q: IQueue):
         task = await q.get()
         logger.info(f"Optimising {task.task_id}.")
         try:
-            results = await task.optimiser.run(task.problem, verbose=False)
+            results = await task.optimiser.run(task.problem)
             logger.debug(f"Finished optimising {task.task_id}.")
             completed_at = datetime.datetime.now(datetime.UTC)
             logger.debug(f"Postprocessing and encoding results of {task.task_id}.")
@@ -318,7 +322,7 @@ async def process_requests(q: IQueue):
 
 
 @router.post("/submit-task/")
-async def add_task(request: Request, task: JSONTask):
+async def add_task(request: Request, task: EndpointTask):
     """
     Add optimisation task to queue.
 

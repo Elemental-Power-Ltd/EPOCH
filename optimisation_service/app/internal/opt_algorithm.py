@@ -7,8 +7,6 @@ from .result import Result
 
 
 class Algorithm(ABC):
-    paramstr: str
-
     @abstractmethod
     async def run(self, problem: Problem) -> Result:
         """

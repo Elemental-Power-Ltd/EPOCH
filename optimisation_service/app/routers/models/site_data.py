@@ -4,7 +4,7 @@ from os import PathLike
 from pydantic import UUID4, BaseModel, Field
 
 
-class FileLoc(Enum | str):
+class FileLoc(str, Enum):
     database = "database"
     local = "local"
 

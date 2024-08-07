@@ -1,19 +1,16 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from enum import Enum
 from typing import Annotated
 
 from pydantic import UUID4, BaseModel, Field, PositiveInt
 
-from ...internal.genetic_algorithm import NSGA2, GeneticAlgorithm
-from ...internal.grid_search import GridSearch
 from ...internal.opt_algorithm import Algorithm
 from ...internal.problem import Problem
-from .problem import ParameterDict
+from .problem import EndpointParameterDict
 from .site_data import SiteData
 
 
-class JSONTask(BaseModel):
+class EndpointTask(BaseModel):
     task_id: Annotated[UUID4, "String serialised UUID"] = Field(
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
     )
@@ -23,7 +20,7 @@ class JSONTask(BaseModel):
     optimiserConfig: dict[str, str | int | float] = Field(
         examples=[{"pop_size": 512}], description="Optimiser hyperparameter config."
     )
-    searchParameters: ParameterDict = Field(
+    searchParameters: EndpointParameterDict = Field(
         description="Search space parameter ranges to optimise over and parameter default values."
     )
     objectives: list = Field(examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for.")
@@ -36,26 +33,12 @@ class JSONTask(BaseModel):
     )
 
 
-class Optimiser(Enum):
-    NSGA2 = NSGA2
-    GeneticAlgorithm = GeneticAlgorithm
-    GridSearch = GridSearch
-
-
 @dataclass
-class PyTask:
-    task_id: UUID4 = Field(
-        examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
-    )
-    optimiser: Algorithm = Field(description="Optimiser initialised with hyperparameters ready to run optimisation.")
-    problem: Problem = Field(description="Problem instance ready to be ingested by optimiser.")
-    siteData: SiteData = Field(
-        examples=[
-            {"loc": "database", "key": "805fb659-1cac-44f3-a1f9-85dc82178f53"},
-            {"loc": "local", "path": "./data/InputData"},
-        ],
-        description="Location to fetch input data from for EPOCH to ingest.",
-    )
+class Task:
+    task_id: UUID4
+    optimiser: Algorithm
+    problem: Problem
+    siteData: SiteData
 
 
 class OptimisationSolution(BaseModel):
@@ -105,7 +88,7 @@ class ObjectiveValues(BaseModel):
     annualised_cost: float | int
 
 
-class OptimisationResult(BaseModel):
+class EndpointResult(BaseModel):
     task_id: str = Field(
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
     )

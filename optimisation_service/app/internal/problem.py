@@ -7,8 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Generator, Self
 
-from ..routers.models.problem import ParameterDict, ParamRange
-from .epl_typing import ConstraintDict, OldParameterDict
+from .models.problem import ConstraintDict, OldParameterDict, ParameterDict, ParamRange
 from .task_data_wrapper import PyTaskData
 
 _OBJECTIVES = [

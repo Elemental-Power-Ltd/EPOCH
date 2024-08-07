@@ -1,6 +1,4 @@
-from typing import TypedDict
-
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 param_range = Field(
     examples=[{"min": 0, "max": 10, "step": 1}, {"min": 10, "max": 10, "step": 0}],
@@ -10,13 +8,13 @@ param_range = Field(
 )
 
 
-class ParamRange(TypedDict):  # TODO convert to BaseModel
+class ParamRange(BaseModel):
     min: int | float
     max: int | float
     step: int | float
 
 
-class ParameterDict(TypedDict):  # TODO convert to BaseModel
+class EndpointParameterDict(BaseModel):
     ASHP_HPower: ParamRange = param_range
     ASHP_HSource: ParamRange = param_range
     ASHP_HotTemp: ParamRange = param_range

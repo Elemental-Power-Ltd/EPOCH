@@ -1,13 +1,15 @@
 import asyncio
 import datetime
+import logging
 from collections import OrderedDict
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
 
-from ..internal.log import logger
-from .models.core import PyTask
+from .models.core import Task
 from .models.queue import QueueElem, QueueStatus, task_state
+
+logger = logging.getLogger("default")
 
 
 class IQueue(asyncio.Queue):
@@ -26,7 +28,7 @@ class IQueue(asyncio.Queue):
         self.q: OrderedDict = OrderedDict()
         self.q_len = maxsize
 
-    async def put(self, task: PyTask):
+    async def put(self, task: Task):
         """
         Add task in queue.
 
@@ -38,7 +40,7 @@ class IQueue(asyncio.Queue):
         await super().put(task)
         self.q[task.task_id] = QueueElem(state=task_state.QUEUED, added_at=datetime.datetime.now(datetime.UTC))
 
-    async def get(self) -> PyTask:
+    async def get(self) -> Task:
         """
         Get next task from queue.
         Skips cancelled tasks.
@@ -58,7 +60,7 @@ class IQueue(asyncio.Queue):
             self.mark_task_done(task)
             return await self.get()
 
-    def mark_task_done(self, task: PyTask) -> None:
+    def mark_task_done(self, task: Task) -> None:
         """
         Mark task as done.
 
