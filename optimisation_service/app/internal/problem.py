@@ -7,6 +7,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Generator, Self
 
+import numpy as np
+
 from .models.problem import ConstraintDict, OldParameterDict, ParameterDict, ParamRange
 from .task_data_wrapper import PyTaskData
 
@@ -36,9 +38,8 @@ class Problem:
         if not set(self.constraints.keys()).issubset(_OBJECTIVES):
             raise ValueError(f"Invalid constraint name(s): {set(self.constraints.keys()) - set(_OBJECTIVES)}")
         for bounds in self.constraints.values():
-            if ("min" in bounds) and ("max" in bounds):
-                if bounds["min"] > bounds["max"]:
-                    raise ValueError("constraints lower bounds must be smaller or equal to upper bounds.")
+            if bounds.get("min", -np.inf) > bounds.get("max", np.inf):
+                raise ValueError("constraints lower bounds must be smaller or equal to upper bounds.")
         if set(self.parameters.keys()) != set(PyTaskData()._VALID_KEYS):
             param_set = set(self.parameters.keys())
             valid_set = set(PyTaskData()._VALID_KEYS)

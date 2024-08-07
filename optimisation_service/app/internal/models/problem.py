@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Mapping, TypedDict
 
 OldParameterDict = Mapping[str, list[int | float] | tuple[int | float] | int | float]
@@ -7,9 +8,6 @@ class ParamRange(TypedDict):
     min: int | float
     max: int | float
     step: int | float
-
-
-ParamConst = int | float
 
 
 class ParameterDict(TypedDict):
@@ -43,17 +41,18 @@ class ParameterDict(TypedDict):
     r50_EV_CP_number: ParamRange
     s7_EV_CP_number: ParamRange
     u150_EV_CP_number: ParamRange
-    CAPEX_limit: ParamConst
-    Export_kWh_price: ParamConst
-    OPEX_limit: ParamConst
-    target_max_concurrency: ParamConst
-    time_budget_min: ParamConst
-    timestep_hours: ParamConst
+    CAPEX_limit: int | float
+    Export_kWh_price: int | float
+    OPEX_limit: int | float
+    target_max_concurrency: int | float
+    time_budget_min: int | float
+    timestep_hours: int | float
 
 
-class Bounds(TypedDict):
-    min: int | float | None = None
-    max: int | float | None = None
+@dataclass
+class Bounds:
+    min: int | float
+    max: int | float
 
 
 ConstraintDict = Mapping[str, Bounds]

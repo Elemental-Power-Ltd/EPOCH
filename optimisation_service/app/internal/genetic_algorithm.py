@@ -7,10 +7,11 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-from pymoo.algorithms.moo.nsga2 import NSGA2 as _NSGA2  # type: ignore
-from pymoo.algorithms.soo.nonconvex.ga import GA as _GA  # type: ignore
+from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
+from pymoo.algorithms.soo.nonconvex.ga import GA as Pymoo_GA  # type: ignore
 from pymoo.config import Config  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
+from pymoo.core.result import Result as Pymoo_Result
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
@@ -32,7 +33,7 @@ from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
 Config.warnings["not_compiled"] = False
 
 
-async def minimize_async(**kwargs):
+async def minimize_async(**kwargs) -> Pymoo_Result:
     loop = asyncio.get_event_loop()
     with ThreadPoolExecutor() as executor:
         res = await loop.run_in_executor(executor, lambda: minimize(**kwargs))
@@ -97,7 +98,7 @@ class NSGA2(Algorithm):
         if n_offsprings is None:
             n_offsprings = pop_size
 
-        self.algorithm = _NSGA2(
+        self.algorithm = Pymoo_NSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
             sampling=sampling_method.value,
@@ -201,7 +202,7 @@ class GeneticAlgorithm(Algorithm):
         if n_offsprings is None:
             n_offsprings = pop_size
 
-        self.algorithm = _GA(
+        self.algorithm = Pymoo_GA(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
             sampling=sampling_method.value,
@@ -246,7 +247,7 @@ class GeneticAlgorithm(Algorithm):
             exec_time += single_solution.exec_time
             n_evals += single_solution.algorithm.evaluator.n_eval
 
-        exec_time = timedelta(seconds=exec_time)
+        exec_time = timedelta(seconds=float(exec_time))
         objective_values_arr, solutions_arr = np.asarray(objective_values), np.asarray(solutions)
 
         objective_values_arr, non_degen_idx = np.unique(objective_values_arr, axis=0, return_index=True)
@@ -303,10 +304,13 @@ class ProblemInstance(ElementwiseProblem):
         out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]
         out["G"] = []
         for constraint, bounds in self.constraints.items():
-            if bounds.get("min", None) is not None:
-                out["G"].append(bounds["min"] - result[constraint])
-            if bounds.get("max", None) is not None:
-                out["G"].append(result[constraint] - bounds["max"])
+            min_value = bounds.get("min", None)
+            max_value = bounds.get("max", None)
+
+            if min_value is not None:
+                out["G"].append(min_value - result[constraint])
+            if max_value is not None:
+                out["G"].append(result[constraint] - max_value)
 
 
 class SingleTermination(Termination):

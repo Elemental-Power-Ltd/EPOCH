@@ -85,7 +85,7 @@ class TestProblem:
         parameters = default_parameters
         input_dir = Path("data", "test_benchmark", "InputData")
         constraints = default_constraints
-        constraints["a"] = {"min": 10000}
+        constraints["a"] = {"min": 10000}  # type: ignore
 
         with pytest.raises(ValueError):
             Problem(objectives, constraints, parameters, input_dir)

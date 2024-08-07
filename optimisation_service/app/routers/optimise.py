@@ -16,7 +16,7 @@ from ..internal.models.algorithms import Optimiser
 from ..internal.models.problem import ParameterDict
 from ..internal.problem import _OBJECTIVES, Problem
 from ..internal.result import Result
-from .models.core import EndpointResult, EndpointTask, Task
+from .models.core import EndpointResult, EndpointTask, ObjectiveValues, OptimisationSolution, Task
 from .models.database import DatasetIDWithTime
 from .models.site_data import FileLoc, SiteData
 from .queue import IQueue
@@ -25,9 +25,9 @@ router = APIRouter()
 logger = logging.getLogger("default")
 
 
-async def post_request(client: httpx.AsyncClient, url: str, json: json):
+async def post_request(client: httpx.AsyncClient, url: str, data: dict):
     try:
-        response = await client.post(url=url, json=json)
+        response = await client.post(url=url, json=data)
         return response.json()
     except httpx.HTTPStatusError as e:
         logger.error(f"Error response {e.response.status_code} while requesting {e.request.url!r}.")
@@ -67,7 +67,7 @@ async def fetch_electricity_data(data_id_w_time: DatasetIDWithTime, temp_dir: os
     temp_dir
         temp_dir to save files to
     """
-    response = await post_request(client=client, url="/get-electricity-load", json=data_id_w_time)
+    response = await post_request(client=client, url="/get-electricity-load", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1", "FixLoad2"])
     df = df.sort_values("HourOfYear")
@@ -85,7 +85,7 @@ async def fetch_rgen_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLi
     temp_dir
         temp_dir to save files to
     """
-    response = await post_request(client=client, url="/get-renewables-generation", json=data_id_w_time)
+    response = await post_request(client=client, url="/get-renewables-generation", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
     df = df.sort_values("HourOfYear")
@@ -103,7 +103,7 @@ async def fetch_heat_n_air_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-heating-load", json=data_id_w_time)
+    response = await post_request(client=client, url="/get-heating-load", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df_heat = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
     df_air = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Air-temp"])
@@ -124,7 +124,7 @@ async def fetch_ASHP_input_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-ashp-input", json=data_id_w_time)
+    response = await post_request(client=client, url="/get-ashp-input", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
     df = df.sort_values("0")
@@ -142,7 +142,7 @@ async def fetch_ASHP_output_data(data_id_w_time: DatasetIDWithTime, temp_dir: os
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-ashp-output", json=data_id_w_time)
+    response = await post_request(client=client, url="/get-ashp-output", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
     df = df.sort_values("0")
@@ -160,7 +160,7 @@ async def fetch_import_tariff_data(data_id_w_time: DatasetIDWithTime, temp_dir: 
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-import-tariff", json=data_id_w_time)
+    response = await post_request(client=client, url="/get-import-tariff", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
     df = df.sort_values("HourOfYear")
@@ -178,7 +178,7 @@ async def fetch_grid_CO2_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.Pa
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-grid-CO2", json=data_id_w_time)
+    response = await post_request(client=client, url="/get-grid-CO2", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Grid CO2e (kg/kWh)"])
     df = df.sort_values("HourOfYear")
@@ -201,7 +201,7 @@ async def fetch_input_data(site_data_id: UUID):
     """
     logger.debug(f"Fetching site data {site_data_id} info.")
     async with httpx.AsyncClient() as client:
-        data_ids = await post_request(client=client, url="/get-client-site-data", json={"input_data_ID": site_data_id})
+        data_ids = await post_request(client=client, url="/get-client-site-data", data={"input_data_ID": site_data_id})
     input_dir = create_tempdir(site_data_id)
     logger.debug(f"Fetching site data {site_data_id}.")
     async with httpx.AsyncClient() as client:
@@ -253,7 +253,7 @@ async def preproccess_task(task: EndpointTask) -> Task:
     """
     input_dir = await get_inputdata_dir(task.siteData)
     optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
-    search_parameters = ParameterDict(task.searchParameters.model_dump(mode="python"))
+    search_parameters: ParameterDict = task.searchParameters.model_dump(mode="python")
     problem = Problem(
         objectives=task.objectives,
         constraints={},
@@ -270,14 +270,13 @@ async def transmit_results(results):
 def postprocess_results(task: Task, results: Result, completed_at: datetime.datetime) -> list[EndpointResult]:
     Optimisation_Results = []
     for solutions, objective_values in zip(results.solutions, results.objective_values):
-        solutions_dict = task.problem.constant_param()
-        for param, value in zip(task.problem.variable_param().keys(), solutions):
-            solutions_dict[param] = value
-        objective_values_dict = dict(zip(_OBJECTIVES, objective_values))
+        solution_dict = task.problem.constant_param() | dict(zip(task.problem.variable_param().keys(), solutions))
+        solution: OptimisationSolution = solution_dict
+        objective_values: ObjectiveValues = dict(zip(_OBJECTIVES, objective_values))
         OptRes = EndpointResult(
             task_id=str(task.task_id),
-            solution=solutions_dict,
-            objective_values=objective_values_dict,
+            solution=solution,
+            objective_values=objective_values,
             n_evals=results.n_evals,
             exec_time=results.exec_time,
             completed_at=str(completed_at),
