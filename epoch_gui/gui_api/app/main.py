@@ -16,6 +16,22 @@ app.add_middleware(
 )
 
 
+@app.get("/get-status/")
+async def get_status(request: Request):
+    try:
+        with httpx.Client() as client:
+            response = client.post(url="http://127.0.0.1:8001/queue-status/")
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="Unable to get status")
+
+        return response.json()
+
+    except Exception as e:
+        print(f"Failed to get status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/submit-optimisation-job/")
 async def submit_optimisation_job(request: Request):
     try:
@@ -23,11 +39,9 @@ async def submit_optimisation_job(request: Request):
         print(f"Received optimiser: {payload['optimiser']}")
 
         # Generate a TaskID for the task
-        payload["TaskID"] = str(uuid.uuid1())
+        payload["TaskID"] = str(uuid.uuid4())
 
-        # FIXME - timewindow removed until it is added to the python bindings
-        del payload["searchParameters"]["timewindow"]
-        payload["optimiserConfig"] = {}
+
 
         # Add the objectives as hardcoded values (until they are added to the gui)
         payload["objectives"] = [
@@ -38,11 +52,14 @@ async def submit_optimisation_job(request: Request):
             "annualised_cost"
         ]
 
+        # hardcode SiteData for now
+        payload["siteData"] = {
+            "loc": "local",
+            "path": "../Epoch/InputData"
+        }
+
         with httpx.Client() as client:
             response = client.post(url="http://127.0.0.1:8001/submit-task/", json=payload)
-
-        # async with httpx.AsyncClient as client:
-        #     response = await client.post(url="http://127.0.0.1:8001/submit-task/", json=payload)
 
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code,
