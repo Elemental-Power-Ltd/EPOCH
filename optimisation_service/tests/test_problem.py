@@ -2,9 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from app.internal.epl_typing import ConstraintDict
+from app.internal.models.problem import ConstraintDict, ParameterDict
 from app.internal.problem import Problem, load_problem
-from app.routers.models.core import ParameterDict
 
 
 @pytest.fixture

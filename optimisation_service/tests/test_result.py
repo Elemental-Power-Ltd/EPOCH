@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import numpy as np
 import pytest
 
@@ -12,7 +14,7 @@ class TestResult:
         solutions = np.array([[0, 1], [2, 0]])
         fitnesses = np.array([[12, 5.0, 3], [16, 4.0, 2]])
         n_evals = 200
-        exec_time = 100
+        exec_time = timedelta(minutes=1)
         Result(solutions, fitnesses, n_evals, exec_time)
 
     def test_bad_sol_fit_dims(self) -> None:
@@ -22,7 +24,7 @@ class TestResult:
         solutions = np.array([2, 0])
         fitnesses = np.array([12, 5.0, 3])
         n_evals = 200
-        exec_time = 100
+        exec_time = timedelta(minutes=1)
         with pytest.raises(ValueError):
             Result(solutions, fitnesses, n_evals, exec_time)
 
@@ -33,7 +35,7 @@ class TestResult:
         solutions = np.array([[2, 0], [1, 0]])
         fitnesses = np.array([[12, 5.0, 3]])
         n_evals = 200
-        exec_time = 100
+        exec_time = timedelta(minutes=1)
         with pytest.raises(ValueError):
             Result(solutions, fitnesses, n_evals, exec_time)
 
@@ -44,7 +46,7 @@ class TestResult:
         solutions = np.array([[2, 0], [1, 0]])
         fitnesses = np.array([[12, 5.0, 3]])
         n_evals = -200
-        exec_time = 100
+        exec_time = timedelta(minutes=1)
         with pytest.raises(ValueError):
             Result(solutions, fitnesses, n_evals, exec_time)
 
@@ -55,6 +57,6 @@ class TestResult:
         solutions = np.array([[2, 0], [1, 0]])
         fitnesses = np.array([[12, 5.0, 3]])
         n_evals = 200
-        exec_time = -100
+        exec_time = -timedelta(minutes=1)
         with pytest.raises(ValueError):
             Result(solutions, fitnesses, n_evals, exec_time)

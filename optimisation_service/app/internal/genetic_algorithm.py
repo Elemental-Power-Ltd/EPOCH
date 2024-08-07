@@ -302,10 +302,10 @@ class ProblemInstance(ElementwiseProblem):
 
         out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]
         out["G"] = []
-        for constraint, bounds in self.constraints:
+        for constraint, bounds in self.constraints.items():
             if bounds.get("min", None) is not None:
                 out["G"].append(bounds["min"] - result[constraint])
-            elif bounds.get("max", None) is not None:
+            if bounds.get("max", None) is not None:
                 out["G"].append(result[constraint] - bounds["max"])
 
 
