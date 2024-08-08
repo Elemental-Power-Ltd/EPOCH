@@ -1,8 +1,8 @@
+import datetime
 from dataclasses import dataclass
-from datetime import timedelta
 from typing import Annotated
 
-from pydantic import UUID4, BaseModel, Field, PositiveInt
+from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt
 
 from ...internal.opt_algorithm import Algorithm
 from ...internal.problem import Problem
@@ -14,22 +14,27 @@ class EndpointTask(BaseModel):
     task_id: Annotated[UUID4, "String serialised UUID"] = Field(
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
     )
+    task_name: str | None = Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
     optimiser: str = Field(
         examples=["NSGA2", "GeneticAlgorithm", "GridSearch"], description="Name of algorithm to use in optimisation."
     )
-    optimiserConfig: dict[str, str | int | float] = Field(
+    optimiser_hyperparameters: dict[str, str | int | float] = Field(
         examples=[{"pop_size": 512}], description="Optimiser hyperparameter config."
     )
-    searchParameters: EndpointParameterDict = Field(
+    search_parameters: EndpointParameterDict = Field(
         description="Search space parameter ranges to optimise over and parameter default values."
     )
     objectives: list = Field(examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for.")
-    siteData: SiteData = Field(
+    site_data: SiteData = Field(
         examples=[
             {"loc": "database", "key": "805fb659-1cac-44f3-a1f9-85dc82178f53"},
             {"loc": "local", "path": "./data/InputData"},
         ],
         description="Location to fetch input data from for EPOCH to ingest.",
+    )
+    created_at: AwareDatetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
+        description="The time this Task was created and added to the queue.",
     )
 
 
@@ -98,5 +103,5 @@ class EndpointResult(BaseModel):
         description="Objective values of the solution.",
     )
     n_evals: PositiveInt = Field(examples=["99"], description="Number of unique simulations performed by the optimiser.")
-    exec_time: timedelta = Field(description="Time spent by the optimiser to complete the task.")
+    exec_time: datetime.timedelta = Field(description="Time spent by the optimiser to complete the task.")
     completed_at: str = Field(description="Time at which the optimisation task was completed.")

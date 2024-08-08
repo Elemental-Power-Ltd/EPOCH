@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import json
 import logging
 import os
 import shutil
@@ -23,16 +22,18 @@ from .queue import IQueue
 
 router = APIRouter()
 logger = logging.getLogger("default")
+database_url = os.environ.get("DB_API_URL", "http://localhost:8000")
 
 
 async def post_request(client: httpx.AsyncClient, url: str, data: dict):
     try:
         response = await client.post(url=url, json=data)
+        response.raise_for_status()
         return response.json()
     except httpx.HTTPStatusError as e:
-        logger.error(f"Error response {e.response.status_code} while requesting {e.request.url!r}.")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error(f"Error response {e.response.status_code} while requesting {e.request.url!r}: {e.response.text}.")
+    except httpx.RequestError as e:
+        logger.error(f"Request error while requesting {e.request.url!r}: {str(e)}", exc_info=True)
 
 
 def create_tempdir(sitedatakey: UUID) -> os.PathLike:
@@ -67,7 +68,7 @@ async def fetch_electricity_data(data_id_w_time: DatasetIDWithTime, temp_dir: os
     temp_dir
         temp_dir to save files to
     """
-    response = await post_request(client=client, url="/get-electricity-load", data=data_id_w_time)
+    response = await post_request(client=client, url=f"{database_url}/get-electricity-load", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1", "FixLoad2"])
     df = df.sort_values("HourOfYear")
@@ -85,7 +86,7 @@ async def fetch_rgen_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.PathLi
     temp_dir
         temp_dir to save files to
     """
-    response = await post_request(client=client, url="/get-renewables-generation", data=data_id_w_time)
+    response = await post_request(client=client, url=f"{database_url}/get-renewables-generation", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
     df = df.sort_values("HourOfYear")
@@ -103,7 +104,7 @@ async def fetch_heat_n_air_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-heating-load", data=data_id_w_time)
+    response = await post_request(client=client, url=f"{database_url}/get-heating-load", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df_heat = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
     df_air = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Air-temp"])
@@ -124,7 +125,7 @@ async def fetch_ASHP_input_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-ashp-input", data=data_id_w_time)
+    response = await post_request(client=client, url=f"{database_url}/get-ashp-input", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
     df = df.sort_values("0")
@@ -142,7 +143,7 @@ async def fetch_ASHP_output_data(data_id_w_time: DatasetIDWithTime, temp_dir: os
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-ashp-output", data=data_id_w_time)
+    response = await post_request(client=client, url=f"{database_url}/get-ashp-output", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
     df = df.sort_values("0")
@@ -160,7 +161,7 @@ async def fetch_import_tariff_data(data_id_w_time: DatasetIDWithTime, temp_dir: 
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-import-tariff", data=data_id_w_time)
+    response = await post_request(client=client, url=f"{database_url}/get-import-tariff", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
     df = df.sort_values("HourOfYear")
@@ -178,7 +179,7 @@ async def fetch_grid_CO2_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.Pa
     temp_dir
         temp_dir to save files to.
     """
-    response = await post_request(client=client, url="/get-grid-CO2", data=data_id_w_time)
+    response = await post_request(client=client, url=f"{database_url}/get-grid-CO2", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Grid CO2e (kg/kWh)"])
     df = df.sort_values("HourOfYear")
@@ -201,7 +202,9 @@ async def fetch_input_data(site_data_id: UUID):
     """
     logger.debug(f"Fetching site data {site_data_id} info.")
     async with httpx.AsyncClient() as client:
-        data_ids = await post_request(client=client, url="/get-client-site-data", data={"input_data_ID": site_data_id})
+        data_ids = await post_request(
+            client=client, url=f"{database_url}/get-client-site-data", data={"input_data_ID": site_data_id}
+        )
     input_dir = create_tempdir(site_data_id)
     logger.debug(f"Fetching site data {site_data_id}.")
     async with httpx.AsyncClient() as client:
@@ -251,20 +254,26 @@ async def preproccess_task(task: EndpointTask) -> Task:
     optimiser
         Initialised optimiser.
     """
-    input_dir = await get_inputdata_dir(task.siteData)
-    optimiser = Optimiser[task.optimiser].value(**task.optimiserConfig)
-    search_parameters: ParameterDict = task.searchParameters.model_dump(mode="python")
+    input_dir = await get_inputdata_dir(task.site_data)
+    optimiser = Optimiser[task.optimiser].value(**task.optimiser_hyperparameters)
+    search_parameters: ParameterDict = task.search_parameters.model_dump(mode="python")
     problem = Problem(
         objectives=task.objectives,
         constraints={},
         parameters=search_parameters,
         input_dir=input_dir,
     )
-    return Task(task_id=task.task_id, problem=problem, optimiser=optimiser, siteData=task.siteData)
+    return Task(task_id=task.task_id, problem=problem, optimiser=optimiser, siteData=task.site_data)
 
 
-async def transmit_results(results):
-    await post_request("/put-results", results)
+async def transmit_results(results: list[EndpointResult]):
+    async with httpx.AsyncClient() as client:
+        await post_request(client=client, url=f"{database_url}/add-optimisation-results", data=results)
+
+
+async def transmit_task(task: EndpointTask):
+    async with httpx.AsyncClient() as client:
+        await post_request(client=client, url=f"{database_url}/add-optimisation-task", data=task)
 
 
 def postprocess_results(task: Task, results: Result, completed_at: datetime.datetime) -> list[EndpointResult]:
@@ -310,9 +319,11 @@ async def process_requests(q: IQueue):
                 await transmit_results(payload)
                 shutil.rmtree(task.problem.input_dir)
             elif task.siteData.loc == FileLoc.local:
-                logger.debug(f"Saving results of {task.task_id} to file.")
-                with open(Path(task.siteData.path, "results.json"), "w") as f:
-                    json.dump(payload, f)
+                # logger.debug(f"Saving results of {task.task_id} to file.")
+                # with open(Path(task.siteData.path, "results.json"), "w") as f:
+                #     json.dump(payload, f)
+                logger.debug(f"Transmiting results of {task.task_id} to database.")
+                await transmit_results(payload)
         except Exception:
             logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)
             pass
@@ -344,7 +355,9 @@ async def add_task(request: Request, task: EndpointTask):
             pytask = await preproccess_task(task)
             logger.info(f"Queued {task.task_id}.")
             await q.put(pytask)
-            return f"Added {task.task_id} to queue."
+            logger.debug(f"Adding {task.task_id} to database.")
+            await transmit_task(jsonable_encoder(task))
+            return f"Added {task.task_id} to queue and database."
         except Exception as e:
             logger.error(f"Exception occured whilst adding {task.task_id} to queue.", exc_info=True)
             raise HTTPException(status_code=400, detail=str(e)) from e
