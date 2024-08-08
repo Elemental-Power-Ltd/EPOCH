@@ -10,11 +10,11 @@ import datetime
 import logging
 import os
 
-import httpx
 import pandas as pd
 import pydantic
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 
+from ..database import DatabaseDep, HTTPClient, HttpClientDep
 from ..internal.utils import load_dotenv
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
 
@@ -22,7 +22,7 @@ router = APIRouter()
 
 
 async def visual_crossing_request(
-    location: str, start_ts: datetime.datetime, end_ts: datetime.datetime
+    location: str, start_ts: datetime.datetime, end_ts: datetime.datetime, http_client: HTTPClient
 ) -> list[dict[str, pydantic.AwareDatetime | float]]:
     """
     Get a weather history as a raw response from VisualCrossing.
@@ -72,18 +72,18 @@ async def visual_crossing_request(
         "solarenergy",
         "degreedays",
     ]
-    async with httpx.AsyncClient() as client:
-        req = await client.get(
-            url,
-            params={
-                "key": os.environ["VISUAL_CROSSING_API_KEY"],
-                "include": "hours",
-                "unitGroup": "metric",
-                "timezone": "Z",  # We want UTC
-                "lang": "uk",
-                "elements": ",".join(desired_columns),
-            },
-        )
+
+    req = await http_client.get(
+        url,
+        params={
+            "key": os.environ["VISUAL_CROSSING_API_KEY"],
+            "include": "hours",
+            "unitGroup": "metric",
+            "timezone": "Z",  # We want UTC
+            "lang": "uk",
+            "elements": ",".join(desired_columns),
+        },
+    )
 
     records = [hour for day in req.json()["days"] for hour in day["hours"]]
     for idx, rec in enumerate(records):
@@ -94,7 +94,9 @@ async def visual_crossing_request(
 
 
 @router.post("/get-weather")
-async def get_weather(request: Request, weather_request: WeatherRequest) -> list[WeatherDatasetEntry]:
+async def get_weather(
+    weather_request: WeatherRequest, conn: DatabaseDep, http_client: HttpClientDep
+) -> list[WeatherDatasetEntry]:
     """
     Get the weather for a specific location between two timestamps.
 
@@ -109,25 +111,24 @@ async def get_weather(request: Request, weather_request: WeatherRequest) -> list
     weather_request
 
     """
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                timestamp,
-                temp,
-                humidity,
-                solarradiation,
-                windspeed,
-                pressure
-            FROM weather.visual_crossing
-            WHERE location = $1
-            AND $2 <= timestamp
-            AND timestamp < $3
-            ORDER BY timestamp ASC""",
-            weather_request.location,
-            weather_request.start_ts,
-            weather_request.end_ts,
-        )
+    res = await conn.fetch(
+        """
+        SELECT
+            timestamp,
+            temp,
+            humidity,
+            solarradiation,
+            windspeed,
+            pressure
+        FROM weather.visual_crossing
+        WHERE location = $1
+        AND $2 <= timestamp
+        AND timestamp < $3
+        ORDER BY timestamp ASC""",
+        weather_request.location,
+        weather_request.start_ts,
+        weather_request.end_ts,
+    )
 
     expected_days = {
         item.date()
@@ -151,59 +152,60 @@ async def get_weather(request: Request, weather_request: WeatherRequest) -> list
             weather_request.location,
             datetime.datetime.combine(min(missing_days), datetime.time.min, datetime.UTC),
             datetime.datetime.combine(max(missing_days), datetime.time.max, datetime.UTC),
+            http_client=http_client,
         )
-        async with request.state.pgpool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """DELETE FROM
-                                    weather.visual_crossing
-                                WHERE location = $1
-                                AND $2 <= timestamp AND timestamp < $3""",
-                    weather_request.location,
-                    min(missing_days),
-                    max(missing_days),
-                )
 
-                await conn.executemany(
-                    """INSERT INTO weather.visual_crossing
-                        (timestamp,
-                        location,
-                        temp,
-                        humidity,
-                        precip,
-                        precipprob,
-                        snow,
-                        snowdepth,
-                        windgust,
-                        windspeed,
-                        winddir,
-                        pressure,
-                        cloudcover,
-                        solarradiation,
-                        solarenergy)
-                        VALUES (
-                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)""",
-                    [
-                        (
-                            item["timestamp"],
-                            weather_request.location,
-                            item["temp"],
-                            item["humidity"],
-                            item["precip"],
-                            item["precipprob"],
-                            item["snow"],
-                            item["snowdepth"],
-                            item["windgust"],
-                            item["windspeed"],
-                            item["winddir"],
-                            item["pressure"],
-                            item["cloudcover"],
-                            item["solarradiation"],
-                            item["solarenergy"],
-                        )
-                        for item in vc_recs
-                    ],
-                )
+        async with conn.transaction():
+            await conn.execute(
+                """DELETE FROM
+                                weather.visual_crossing
+                            WHERE location = $1
+                            AND $2 <= timestamp AND timestamp < $3""",
+                weather_request.location,
+                min(missing_days),
+                max(missing_days),
+            )
+
+            await conn.executemany(
+                """INSERT INTO weather.visual_crossing
+                    (timestamp,
+                    location,
+                    temp,
+                    humidity,
+                    precip,
+                    precipprob,
+                    snow,
+                    snowdepth,
+                    windgust,
+                    windspeed,
+                    winddir,
+                    pressure,
+                    cloudcover,
+                    solarradiation,
+                    solarenergy)
+                    VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)""",
+                [
+                    (
+                        item["timestamp"],
+                        weather_request.location,
+                        item["temp"],
+                        item["humidity"],
+                        item["precip"],
+                        item["precipprob"],
+                        item["snow"],
+                        item["snowdepth"],
+                        item["windgust"],
+                        item["windspeed"],
+                        item["winddir"],
+                        item["pressure"],
+                        item["cloudcover"],
+                        item["solarradiation"],
+                        item["solarenergy"],
+                    )
+                    for item in vc_recs
+                ],
+            )
             # Now re-query the data we just fetched for a consistent view
             res = await conn.fetch(
                 """

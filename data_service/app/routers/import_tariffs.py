@@ -8,8 +8,9 @@ import datetime
 import uuid
 
 import pandas as pd
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 
+from ..database import DatabaseDep, HttpClientDep
 from ..internal.utils import hour_of_year
 from ..models.core import DatasetIDWithTime
 from ..models.import_tariffs import EpochTariffEntry, TariffMetadata, TariffRequest
@@ -18,7 +19,7 @@ router = APIRouter()
 
 
 @router.post("/generate-import-tariffs", tags=["generate", "tariff"])
-async def generate_import_tariffs(request: Request, params: TariffRequest) -> TariffMetadata:
+async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http_client: HttpClientDep) -> TariffMetadata:
     """
     Generate a set of import tariffs, initially from Octopus.
 
@@ -42,7 +43,7 @@ async def generate_import_tariffs(request: Request, params: TariffRequest) -> Ta
     dataset_id = uuid.uuid4()
     url = f"{BASE_URL}/{params.tariff_name}/"
 
-    response = await request.state.client.get(url)
+    response = await http_client.get(url)
     products = response.json()
     tariff_codes = sorted([
         region["direct_debit_monthly"]["code"] for region in products["single_register_electricity_tariffs"].values()
@@ -53,7 +54,7 @@ async def generate_import_tariffs(request: Request, params: TariffRequest) -> Ta
 
     start_ts = datetime.datetime(year=2024, month=5, day=1, tzinfo=datetime.UTC)
     end_ts = datetime.datetime(year=2024, month=6, day=1, tzinfo=datetime.UTC)
-    price_response = await request.state.client.get(
+    price_response = await http_client.get(
         price_url,
         params={
             "period_from": start_ts.isoformat(),
@@ -66,7 +67,7 @@ async def generate_import_tariffs(request: Request, params: TariffRequest) -> Ta
     requests_made = 0
     while price_data.get("next") is not None:
         requests_made += 1
-        price_response = await request.state.http_client.get(price_data["next"])
+        price_response = await http_client.get(price_data["next"])
         price_data = price_response.json()
         price_records.extend(price_data["results"])
 
@@ -80,78 +81,78 @@ async def generate_import_tariffs(request: Request, params: TariffRequest) -> Ta
     price_df = price_df[["value_exc_vat"]].rename(columns={"value_exc_vat": "price", "valid_from": "start_ts"})
     price_df["start_ts"] = price_df.index
     price_df["dataset_id"] = dataset_id
-    async with request.state.pgpool.acquire() as conn:
-        async with conn.transaction():
-            metadata = {
-                "dataset_id": dataset_id,
-                "site_id": params.site_id,
-                "created_at": datetime.datetime.now(datetime.UTC),
-                "provider": "octopus",
-                "product_name": params.tariff_name,
-                "tariff_name": tariff_code,
-                "valid_from": products.get("available_from"),
-                "valid_to": products.get("available_to") if products.get("available_to") != "null" else None,
-            }
-            # We insert the dataset ID into metadata, but we must wait to validate the
-            # actual data insert until the end
-            await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
-            await conn.execute(
-                """
-                INSERT INTO
-                    tariffs.metadata (
-                        dataset_id,
-                        site_id,
-                        created_at,
-                        provider,
-                        product_name,
-                        tariff_name,
-                        valid_from,
-                        valid_to)
-                VALUES (
-                        $1,
-                        $2,
-                        $3,
-                        $4,
-                        $5,
-                        $6,
-                        $7,
-                        $8)""",
-                metadata["dataset_id"],
-                metadata["site_id"],
-                metadata["created_at"],
-                metadata["provider"],
-                metadata["product_name"],
-                metadata["tariff_name"],
-                pd.to_datetime(metadata["valid_from"], utc=True, format="ISO8601"),
-                metadata["valid_to"],
-            )
 
-            await conn.executemany(
-                """INSERT INTO
-                tariffs.electricity (
+    async with conn.transaction():
+        metadata = {
+            "dataset_id": dataset_id,
+            "site_id": params.site_id,
+            "created_at": datetime.datetime.now(datetime.UTC),
+            "provider": "octopus",
+            "product_name": params.tariff_name,
+            "tariff_name": tariff_code,
+            "valid_from": products.get("available_from"),
+            "valid_to": products.get("available_to") if products.get("available_to") != "null" else None,
+        }
+        # We insert the dataset ID into metadata, but we must wait to validate the
+        # actual data insert until the end
+        await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
+        await conn.execute(
+            """
+            INSERT INTO
+                tariffs.metadata (
                     dataset_id,
-                    timestamp,
-                    unit_cost,
-                    flat_cost
-                )
-                VALUES (
-                        $1,
-                        $2,
-                        $3,
-                        $4)""",
-                zip(
-                    price_df["dataset_id"],
-                    price_df["start_ts"],
-                    price_df["price"],
-                    [None for _ in range(len(price_df.index))],
-                    strict=True,
-                ),
+                    site_id,
+                    created_at,
+                    provider,
+                    product_name,
+                    tariff_name,
+                    valid_from,
+                    valid_to)
+            VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8)""",
+            metadata["dataset_id"],
+            metadata["site_id"],
+            metadata["created_at"],
+            metadata["provider"],
+            metadata["product_name"],
+            metadata["tariff_name"],
+            pd.to_datetime(metadata["valid_from"], utc=True, format="ISO8601"),
+            metadata["valid_to"],
+        )
+
+        await conn.executemany(
+            """INSERT INTO
+            tariffs.electricity (
+                dataset_id,
+                timestamp,
+                unit_cost,
+                flat_cost
             )
+            VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4)""",
+            zip(
+                price_df["dataset_id"],
+                price_df["start_ts"],
+                price_df["price"],
+                [None for _ in range(len(price_df.index))],
+                strict=True,
+            ),
+        )
     return TariffMetadata(**metadata)
 
 
 @router.post("/get-import-tariffs", tags=["get", "tariff"])
-async def get_import_tariffs(request: Request, params: DatasetIDWithTime) -> list[EpochTariffEntry]:
+async def get_import_tariffs(params: DatasetIDWithTime, conn: DatabaseDep) -> list[EpochTariffEntry]:
     """
     Get the electricity import tariffs in p / kWh for this dataset.
 
@@ -173,21 +174,20 @@ async def get_import_tariffs(request: Request, params: DatasetIDWithTime) -> lis
     *epoch_tariff_entries*
         Tariff entries in an EPOCH friendly format, with HourOfYear and Date splits.
     """
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                timestamp,
-                unit_cost
-            FROM tariffs.electricity
-            WHERE dataset_id = $1
-            AND $2 <= timestamp
-            AND timestamp < $3
-            ORDER BY timestamp ASC""",
-            params.dataset_id,
-            params.start_ts,
-            params.end_ts,
-        )
+    res = await conn.fetch(
+        """
+        SELECT
+            timestamp,
+            unit_cost
+        FROM tariffs.electricity
+        WHERE dataset_id = $1
+        AND $2 <= timestamp
+        AND timestamp < $3
+        ORDER BY timestamp ASC""",
+        params.dataset_id,
+        params.start_ts,
+        params.end_ts,
+    )
     df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
     df.index = pd.to_datetime(df.index)
     df = df.resample(pd.Timedelta(minutes=30)).max().ffill()

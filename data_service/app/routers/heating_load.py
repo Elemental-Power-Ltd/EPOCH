@@ -12,8 +12,9 @@ import uuid
 import numpy as np
 import pandas as pd
 import sklearn  # type: ignore
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 
+from ..database import DatabaseDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..internal.gas_meters import hh_gas_to_monthly, monthly_to_hh_hload
 from ..internal.utils import hour_of_year
@@ -26,7 +27,9 @@ router = APIRouter()
 
 
 @router.post("/generate-heating-load", tags=["generate", "heating"])
-async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> HeatingLoadMetadata:
+async def generate_heating_load(
+    params: DatasetIDWithTime, conn: DatabaseDep, http_client: HttpClientDep
+) -> HeatingLoadMetadata:
     """Generate a heating load for this specific site, using regression analysis.
 
     Given a specific dataset, this will look up the associated site and get some weather data.
@@ -55,40 +58,39 @@ async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> 
     heating_load_metadata
         Some useful information about the heating load we've inserted into the database.
     """
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetchrow(
-            """
-            SELECT
-                location,
-                s.site_id,
-                m.reading_type,
-                m.fuel_type
-            FROM client_meters.metadata AS m
-            LEFT JOIN client_info.site_info AS s
-            ON s.site_id = m.site_id WHERE dataset_id = $1
-            LIMIT 1""",
-            params.dataset_id,
-        )
+    res = await conn.fetchrow(
+        """
+        SELECT
+            location,
+            s.site_id,
+            m.reading_type,
+            m.fuel_type
+        FROM client_meters.metadata AS m
+        LEFT JOIN client_info.site_info AS s
+        ON s.site_id = m.site_id WHERE dataset_id = $1
+        LIMIT 1""",
+        params.dataset_id,
+    )
 
-        if res is None:
-            raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
-        location, site_id, reading_type, fuel_type = res
-        if location is None:
-            raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
+    if res is None:
+        raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
+    location, site_id, reading_type, fuel_type = res
+    if location is None:
+        raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
 
-        if fuel_type != "gas":
-            raise HTTPException(400, f"Dataset ID {params.dataset_id} is for fuel type {fuel_type}, not gas.")
-        res = await conn.fetch(
-            """
-            SELECT
-                start_ts,
-                end_ts,
-                consumption_kwh as consumption
-            FROM client_meters.gas_meters
-            WHERE dataset_id = $1
-            ORDER BY start_ts ASC""",
-            params.dataset_id,
-        )
+    if fuel_type != "gas":
+        raise HTTPException(400, f"Dataset ID {params.dataset_id} is for fuel type {fuel_type}, not gas.")
+    res = await conn.fetch(
+        """
+        SELECT
+            start_ts,
+            end_ts,
+            consumption_kwh as consumption
+        FROM client_meters.gas_meters
+        WHERE dataset_id = $1
+        ORDER BY start_ts ASC""",
+        params.dataset_id,
+    )
 
     gas_df = pd.DataFrame.from_records(res, columns=["start_ts", "end_ts", "consumption"], index="start_ts")
     gas_df["start_ts"] = gas_df.index
@@ -101,8 +103,7 @@ async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> 
         start_ts = max(params.start_ts, gas_df["start_ts"].min())
         end_ts = min(params.end_ts, gas_df["end_ts"].max())
         weather = await get_weather(
-            request,
-            WeatherRequest(location=location, start_ts=start_ts, end_ts=end_ts),
+            WeatherRequest(location=location, start_ts=start_ts, end_ts=end_ts), conn=conn, http_client=http_client
         )
     except HTTPException as ex:
         raise ex
@@ -149,49 +150,49 @@ async def generate_heating_load(request: Request, params: DatasetIDWithTime) -> 
         "created_at": datetime.datetime.now(datetime.UTC),
         "params": json.dumps({"source_dataset_id": str(params.dataset_id), "r2_score": score}),
     }
-    async with request.state.pgpool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                """
-                INSERT INTO
-                    heating.metadata (
-                        dataset_id,
-                        site_id,
-                        created_at,
-                        params)
-                VALUES ($1, $2, $3, $4)""",
-                metadata["dataset_id"],
-                metadata["site_id"],
-                metadata["created_at"],
-                metadata["params"],
-            )
 
-            await conn.executemany(
-                """
-                INSERT INTO
-                    heating.synthesised (
-                        dataset_id,
-                        start_ts,
-                        end_ts,
-                        heating,
-                        dhw,
-                        air_temperature)
-                VALUES ($1, $2, $3, $4, $5, $6)""",
-                zip(
-                    [metadata["dataset_id"] for _ in heating_df.index],
-                    heating_df.index,
-                    heating_df.index + pd.Timedelta(minutes=30),
-                    heating_df["heating"],
-                    heating_df["dhw"],
-                    heating_df["air_temperature"],
-                    strict=True,
-                ),
-            )
+    async with conn.transaction():
+        await conn.execute(
+            """
+            INSERT INTO
+                heating.metadata (
+                    dataset_id,
+                    site_id,
+                    created_at,
+                    params)
+            VALUES ($1, $2, $3, $4)""",
+            metadata["dataset_id"],
+            metadata["site_id"],
+            metadata["created_at"],
+            metadata["params"],
+        )
+
+        await conn.executemany(
+            """
+            INSERT INTO
+                heating.synthesised (
+                    dataset_id,
+                    start_ts,
+                    end_ts,
+                    heating,
+                    dhw,
+                    air_temperature)
+            VALUES ($1, $2, $3, $4, $5, $6)""",
+            zip(
+                [metadata["dataset_id"] for _ in heating_df.index],
+                heating_df.index,
+                heating_df.index + pd.Timedelta(minutes=30),
+                heating_df["heating"],
+                heating_df["dhw"],
+                heating_df["air_temperature"],
+                strict=True,
+            ),
+        )
     return HeatingLoadMetadata(**metadata)
 
 
 @router.post("/get-heating-load", tags=["get", "heating"])
-async def get_heating_load(request: Request, params: DatasetIDWithTime) -> list[EpochHeatingEntry]:
+async def get_heating_load(params: DatasetIDWithTime, conn: DatabaseDep) -> list[EpochHeatingEntry]:
     """
     Get a previously generated heating load in an EPOCH friendly format.
 
@@ -211,23 +212,22 @@ async def get_heating_load(request: Request, params: DatasetIDWithTime) -> list[
     epoch_heating_entries
         JSON with HLoad1 and DHWLoad1, oriented by records.
     """
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                start_ts AS timestamp,
-                heating,
-                dhw,
-                air_temperature
-            FROM heating.synthesised
-            WHERE
-                dataset_id = $1
-                AND $2 <= start_ts
-                AND end_ts <= $3""",
-            params.dataset_id,
-            params.start_ts,
-            params.end_ts,
-        )
+    res = await conn.fetch(
+        """
+        SELECT
+            start_ts AS timestamp,
+            heating,
+            dhw,
+            air_temperature
+        FROM heating.synthesised
+        WHERE
+            dataset_id = $1
+            AND $2 <= start_ts
+            AND end_ts <= $3""",
+        params.dataset_id,
+        params.start_ts,
+        params.end_ts,
+    )
     heating_df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "heating", "dhw", "air_temperature"])
     heating_df.index = pd.to_datetime(heating_df.index)
     assert isinstance(heating_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"

@@ -9,8 +9,9 @@ site has zero or more datasets of different kinds.
 import logging
 
 import asyncpg
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 
+from ..database import DatabaseDep
 from ..models.core import (
     ClientData,
     ClientID,
@@ -30,7 +31,7 @@ router = APIRouter()
 
 
 @router.post("/add-client", tags=["db", "add"])
-async def add_client(request: Request, client_data: ClientData) -> tuple[ClientData, str]:
+async def add_client(client_data: ClientData, conn: DatabaseDep) -> tuple[ClientData, str]:
     """
     Add a new client into the database.
 
@@ -43,8 +44,6 @@ async def add_client(request: Request, client_data: ClientData) -> tuple[ClientD
 
     Parameters
     ----------
-    *request*
-        FastAPI internal request object
     *client_data*
         Metadata about the client, currently a client_id and name pair.
 
@@ -53,25 +52,24 @@ async def add_client(request: Request, client_data: ClientData) -> tuple[ClientD
     client_data, status
         Original client data and Postgres response.
     """
-    async with request.state.pgpool.acquire() as conn:
-        try:
-            status = await conn.execute(
-                """
-                INSERT INTO client_info.clients (
-                    client_id,
-                    name)
-                VALUES ($1, $2)""",
-                client_data.client_id,
-                client_data.name,
-            )
-        except asyncpg.exceptions.UniqueViolationError as ex:
-            raise HTTPException(400, f"Client ID {client_data.client_id} already exists in the database.") from ex
-        logging.info(f"Inserted client {client_data.client_id} with return status {status}")
+    try:
+        status = await conn.execute(
+            """
+            INSERT INTO client_info.clients (
+                client_id,
+                name)
+            VALUES ($1, $2)""",
+            client_data.client_id,
+            client_data.name,
+        )
+    except asyncpg.exceptions.UniqueViolationError as ex:
+        raise HTTPException(400, f"Client ID {client_data.client_id} already exists in the database.") from ex
+    logging.info(f"Inserted client {client_data.client_id} with return status {status}")
     return (client_data, status)
 
 
 @router.post("/add-site", tags=["db", "add"])
-async def add_site(request: Request, site_data: SiteData) -> tuple[SiteData, str]:
+async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, str]:
     """
     Add a new site into the database.
 
@@ -97,44 +95,41 @@ async def add_site(request: Request, site_data: SiteData) -> tuple[SiteData, str
     -------
         Data you inserted and postgres response string.
     """
-    async with request.state.pgpool.acquire() as conn:
-        try:
-            status = await conn.execute(
-                """
-                INSERT INTO
-                    client_info.site_info (
-                    client_id,
-                    site_id,
-                    name,
-                    location,
-                    coordinates,
-                    address)
-                VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6)""",
-                site_data.client_id,
-                site_data.site_id,
-                site_data.name,
-                site_data.location,
-                site_data.coordinates,
-                site_data.address,
-            )
-            logging.info(f"Inserted client {site_data.client_id} with return status {status}")
-        except asyncpg.exceptions.UniqueViolationError as ex:
-            raise HTTPException(400, f"Site ID `{site_data.site_id}` already exists in the database.") from ex
-        except asyncpg.exceptions.ForeignKeyViolationError as ex:
-            raise HTTPException(
-                400, f"No such client `{site_data.client_id}` exists in the database. Please create one."
-            ) from ex
+    try:
+        status = await conn.execute(
+            """
+            INSERT INTO
+                client_info.site_info (
+                client_id,
+                site_id,
+                name,
+                location,
+                coordinates,
+                address)
+            VALUES (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6)""",
+            site_data.client_id,
+            site_data.site_id,
+            site_data.name,
+            site_data.location,
+            site_data.coordinates,
+            site_data.address,
+        )
+        logging.info(f"Inserted client {site_data.client_id} with return status {status}")
+    except asyncpg.exceptions.UniqueViolationError as ex:
+        raise HTTPException(400, f"Site ID `{site_data.site_id}` already exists in the database.") from ex
+    except asyncpg.exceptions.ForeignKeyViolationError as ex:
+        raise HTTPException(400, f"No such client `{site_data.client_id}` exists in the database. Please create one.") from ex
     return (site_data, status)
 
 
 @router.post("/list-clients", tags=["db", "list"])
-async def list_clients(request: Request) -> list[ClientIdNamePair]:
+async def list_clients(conn: DatabaseDep) -> list[ClientIdNamePair]:
     """
     Get a list of all the clients we have, and their human readable names.
 
@@ -142,23 +137,22 @@ async def list_clients(request: Request) -> list[ClientIdNamePair]:
 
     Parameters
     ----------
-    *request*
+    *conn*
 
     Returns
     -------
     list of (client_id, name) pairs, where `client_id` is the DB foreign key and `name` is human readable.
     """
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetch("""
-            SELECT DISTINCT
-                client_id,
-                name
-            FROM client_info.clients""")
+    res = await conn.fetch("""
+        SELECT DISTINCT
+            client_id,
+            name
+        FROM client_info.clients""")
     return [ClientIdNamePair(client_id=client_id_t(item[0]), name=str(item[1])) for item in res]
 
 
 @router.post("/list-sites", tags=["db", "list"])
-async def list_sites(request: Request, client_id: ClientID) -> list[SiteIdNamePair]:
+async def list_sites(client_id: ClientID, conn: DatabaseDep) -> list[SiteIdNamePair]:
     """
     Get all the sites associated with a particular client, including their human readable names.
 
@@ -173,22 +167,21 @@ async def list_sites(request: Request, client_id: ClientID) -> list[SiteIdNamePa
     -------
     list of (site_id, name) pairs where `site_id` is the database foreign key and `name` is human readable.
     """
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT DISTINCT
-                site_id,
-                name
-            FROM client_info.site_info
-            WHERE client_id = $1
-            ORDER BY site_id ASC""",
-            client_id.client_id,
-        )
+    res = await conn.fetch(
+        """
+        SELECT DISTINCT
+            site_id,
+            name
+        FROM client_info.site_info
+        WHERE client_id = $1
+        ORDER BY site_id ASC""",
+        client_id.client_id,
+    )
     return [SiteIdNamePair(site_id=site_id_t(item[0]), name=str(item[1])) for item in res]
 
 
 @router.post("/list-datasets", tags=["db", "list"])
-async def list_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]:
+async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry]:
     """
     Get all the datasets associated with a particular site, in the form of a list of UUID strings.
 
@@ -208,74 +201,80 @@ async def list_datasets(request: Request, site_id: SiteID) -> list[DatasetEntry]
     """
     # TODO (2024-08-05 MHJB): make this method make more sense
     datasets = []
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                dataset_id,
-                fuel_type,
-                reading_type
-            FROM
-                client_meters.metadata
-            WHERE site_id = $1
-            ORDER BY created_at ASC""",
-            site_id.site_id,
-        )
-        datasets.extend([
-            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=item["fuel_type"], reading_type=item["reading_type"])
-            for item in res
-        ])
 
-        res = await conn.fetch(
-            """
-            SELECT
-                dataset_id
-            FROM
-                tariffs.metadata
-            WHERE site_id = $1
-            ORDER BY created_at ASC""",
-            site_id.site_id,
-        )
-        datasets.extend([
-            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.tariff)
-            for item in res
-        ])
+    res = await conn.fetch(
+        """
+        SELECT
+            dataset_id,
+            fuel_type,
+            reading_type
+        FROM
+            client_meters.metadata
+        WHERE site_id = $1
+        ORDER BY created_at ASC""",
+        site_id.site_id,
+    )
+    datasets.extend([
+        DatasetEntry(dataset_id=item["dataset_id"], fuel_type=item["fuel_type"], reading_type=item["reading_type"])
+        for item in res
+    ])
 
-        res = await conn.fetch(
-            """
-            SELECT
-                dataset_id
-            FROM
-                renewables.metadata
-            WHERE site_id = $1
-            ORDER BY created_at ASC""",
-            site_id.site_id,
-        )
-        datasets.extend([
-            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.solar_pv)
-            for item in res
-        ])
+    res = await conn.fetch(
+        """
+        SELECT
+            dataset_id
+        FROM
+            tariffs.metadata
+        WHERE site_id = $1
+        ORDER BY created_at ASC""",
+        site_id.site_id,
+    )
+    datasets.extend([
+        DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.tariff)
+        for item in res
+    ])
 
-        res = await conn.fetch(
-            """
-            SELECT
-                dataset_id
-            FROM
-                heating.metadata
-            WHERE site_id = $1
-            ORDER BY created_at ASC""",
-            site_id.site_id,
-        )
-        datasets.extend([
-            DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.gas, reading_type=ReadingTypeEnum.heating_load)
-            for item in res
-        ])
+    res = await conn.fetch(
+        """
+        SELECT
+            dataset_id
+        FROM
+            renewables.metadata
+        WHERE site_id = $1
+        ORDER BY created_at ASC""",
+        site_id.site_id,
+    )
+    datasets.extend([
+        DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.solar_pv)
+        for item in res
+    ])
+
+    res = await conn.fetch(
+        """
+        SELECT
+            dataset_id
+        FROM
+            heating.metadata
+        WHERE site_id = $1
+        ORDER BY created_at ASC""",
+        site_id.site_id,
+    )
+    datasets.extend([
+        DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.gas, reading_type=ReadingTypeEnum.heating_load)
+        for item in res
+    ])
     logging.info(f"Returning {len(res)} datasets for {site_id}")
     return datasets
 
 
+@router.post("/list-latest-datasets", tags=["db", "list"])
+async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry]:
+    """Get the most recent datasets of each type for this site."""
+    return [DatasetEntry(reading_type=ReadingTypeEnum("manual"), fuel_type=FuelEnum("gas"))]
+
+
 @router.post("/get-location", tags=["db"])
-async def get_location(request: Request, site_id: SiteID) -> location_t:
+async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
     """
     Get the location name for this site.
 
@@ -293,9 +292,10 @@ async def get_location(request: Request, site_id: SiteID) -> location_t:
     location
         Name of the location e.g. "Worksop", "Retford", "Cardiff"
     """
-    async with request.state.pgpool.acquire() as conn:
-        location = await conn.fetchval(
-            """SELECT location FROM client_info.site_info WHERE site_id = $1""",
-            site_id.site_id,
-        )
+    location = await conn.fetchval(
+        """SELECT location FROM client_info.site_info WHERE site_id = $1""",
+        site_id.site_id,
+    )
+    if location is None:
+        raise HTTPException(400, f"Site ID `{site_id.site_id}` has no location in the database.")
     return location

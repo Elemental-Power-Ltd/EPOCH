@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.post("/get-ashp-input")
-async def get_ashp_input(params: DatasetIDWithTime) -> ASHPCOPResponse:  # noqa: RUF029
+async def get_ashp_input(params: DatasetIDWithTime) -> ASHPCOPResponse:
     """
     Get the ASHP input temperature coefficients of performance.
 
@@ -49,7 +49,7 @@ async def get_ashp_input(params: DatasetIDWithTime) -> ASHPCOPResponse:  # noqa:
 
 
 @router.post("/get-ashp-input")
-async def get_ashp_output(params: DatasetIDWithTime) -> ASHPCOPResponse:  # noqa: RUF029
+async def get_ashp_output(params: DatasetIDWithTime) -> ASHPCOPResponse:
     """
     Get the ASHP output temperature coefficients of performance.
 

@@ -11,16 +11,17 @@ import uuid
 
 import asyncpg
 import pydantic
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
+from ..database import DatabaseDep
 from ..models.optimisation import OptimisationResult, TaskConfig
 
 router = APIRouter()
 
 
 @router.post("/get-optimisation-results")
-async def get_optimisation_result(request: Request, result_id: pydantic.UUID4) -> OptimisationResult:
+async def get_optimisation_result(result_id: pydantic.UUID4, conn: DatabaseDep) -> OptimisationResult:
     """
     Get a single set of optimisation results.
 
@@ -36,25 +37,24 @@ async def get_optimisation_result(request: Request, result_id: pydantic.UUID4) -
     results
         A single optimisation result, including the EPOCH parameters under 'solutions'
     """
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetchval(
-            """
-                SELECT
-                    task_id,
-                    solutions,
-                    objective_values,
-                    n_evals,
-                    exec_time,
-                    completed_at
-                FROM optimisation.results
-                WHERE result_id = $1""",
-            result_id,
-        )
+    res = await conn.fetchval(
+        """
+            SELECT
+                task_id,
+                solutions,
+                objective_values,
+                n_evals,
+                exec_time,
+                completed_at
+            FROM optimisation.results
+            WHERE result_id = $1""",
+        result_id,
+    )
     return OptimisationResult(**res)
 
 
 @router.post("/get-optimisation-job-results")
-async def get_optimisation_job_results(request: Request, task_id: pydantic.UUID4) -> list[OptimisationResult]:
+async def get_optimisation_job_results(task_id: pydantic.UUID4, conn: DatabaseDep) -> list[OptimisationResult]:
     """
     Get all the optimisation results for a single job.
 
@@ -72,25 +72,24 @@ async def get_optimisation_job_results(request: Request, task_id: pydantic.UUID4
     results
         List of optimisation results, including the EPOCH parameters under 'solutions'
     """
-    async with request.state.pgpool.acquire() as conn:
-        res = await conn.fetch(
-            """
-                SELECT
-                    task_id,
-                    solutions,
-                    objective_values,
-                    n_evals,
-                    exec_time,
-                    completed_at
-                FROM optimisation.results
-                WHERE job_id = $1""",
-            task_id,
-        )
+    res = await conn.fetch(
+        """
+            SELECT
+                task_id,
+                solutions,
+                objective_values,
+                n_evals,
+                exec_time,
+                completed_at
+            FROM optimisation.results
+            WHERE job_id = $1""",
+        task_id,
+    )
     return [OptimisationResult(**item) for item in res]
 
 
 @router.post("/add-optimisation-results")
-async def add_optimisation_results(request: Request, results_in: list[OptimisationResult]) -> list[pydantic.UUID4]:
+async def add_optimisation_results(results_in: list[OptimisationResult], conn: DatabaseDep) -> list[pydantic.UUID4]:
     """
     Add a set of optimisation results into the database.
 
@@ -112,43 +111,42 @@ async def add_optimisation_results(request: Request, results_in: list[Optimisati
     results_uuids
         Unique database IDs of each set of results in case you want to refer back to them later.
     """
-    async with request.state.pgpool.acquire() as conn:
-        results_uuids = [uuid.uuid4() for _ in results_in]
-        try:
-            await conn.executemany(
-                """
-                INSERT INTO
-                    optimisation.results (
-                    results_id,
-                    task_id,
-                    solutions,
-                    objective_values,
-                    n_evals,
-                    exec_time,
-                    completed_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)""",
-                zip(
-                    results_uuids,
-                    [item.TaskID for item in results_in],
-                    [json.dumps(item.solutions) for item in results_in],
-                    [item.objective_values.model_dump() for item in results_in],
-                    [item.n_evals for item in results_in],
-                    [item.exec_time for item in results_in],
-                    [item.completed_at for item in results_in],
-                    strict=True,
-                ),
-            )
-        except asyncpg.exceptions.ForeignKeyViolationError as ex:
-            raise HTTPException(
-                400,
-                f"task_id={results_in[0].TaskID} does not have an associated task config."
-                + "You should have added it via /add-optimisation-task beforehand.",
-            ) from ex
+    results_uuids = [uuid.uuid4() for _ in results_in]
+    try:
+        await conn.executemany(
+            """
+            INSERT INTO
+                optimisation.results (
+                results_id,
+                task_id,
+                solutions,
+                objective_values,
+                n_evals,
+                exec_time,
+                completed_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+            zip(
+                results_uuids,
+                [item.TaskID for item in results_in],
+                [json.dumps(item.solutions) for item in results_in],
+                [item.objective_values.model_dump() for item in results_in],
+                [item.n_evals for item in results_in],
+                [item.exec_time for item in results_in],
+                [item.completed_at for item in results_in],
+                strict=True,
+            ),
+        )
+    except asyncpg.exceptions.ForeignKeyViolationError as ex:
+        raise HTTPException(
+            400,
+            f"task_id={results_in[0].TaskID} does not have an associated task config."
+            + "You should have added it via /add-optimisation-task beforehand.",
+        ) from ex
     return results_uuids
 
 
 @router.post("/add-optimisation-task")
-async def add_optimisation_task(request: Request, task_config: TaskConfig) -> TaskConfig:
+async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> TaskConfig:
     """
     Add the details of an optimisation task into the database.
 
@@ -174,44 +172,44 @@ async def add_optimisation_task(request: Request, task_config: TaskConfig) -> Ta
         If the key already exists in the database.
     """
     # TODO (2024-08-02 MHJB): make this also take a site id
-    async with request.state.pgpool.acquire() as conn:
-        try:
-            await conn.execute(
-                """
-                INSERT INTO
-                    optimisation.task_config (
-                        task_id,
-                        task_name,
-                        objective_directions,
-                        constraints_min,
-                        constraints_max,
-                        parameters,
-                        input_data,
-                        optimiser_type,
-                        optimiser_hyperparameters,
-                        created_at)
-                    VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6,
-                    $7,
-                    $8,
-                    $9,
-                    $10)""",
-                task_config.task_id,
-                task_config.task_name,
-                task_config.objective_directions.model_dump(),
-                task_config.constraints_min,
-                task_config.constraints_max,
-                json.dumps(jsonable_encoder(task_config.search_parameters)),  # we have nested pydantic objects in here...
-                json.dumps(jsonable_encoder(task_config.site_data)),
-                task_config.optimiser.value,
-                json.dumps(jsonable_encoder(task_config.optimiser_hyperparameters)),
-                task_config.created_at,
-            )
-        except asyncpg.exceptions.UniqueViolationError as ex:
-            raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
+
+    try:
+        await conn.execute(
+            """
+            INSERT INTO
+                optimisation.task_config (
+                    task_id,
+                    task_name,
+                    objective_directions,
+                    constraints_min,
+                    constraints_max,
+                    parameters,
+                    input_data,
+                    optimiser_type,
+                    optimiser_hyperparameters,
+                    created_at)
+                VALUES (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                $10)""",
+            task_config.task_id,
+            task_config.task_name,
+            task_config.objective_directions.model_dump(),
+            task_config.constraints_min,
+            task_config.constraints_max,
+            json.dumps(jsonable_encoder(task_config.search_parameters)),  # we have nested pydantic objects in here...
+            json.dumps(jsonable_encoder(task_config.site_data)),
+            task_config.optimiser.value,
+            json.dumps(jsonable_encoder(task_config.optimiser_hyperparameters)),
+            task_config.created_at,
+        )
+    except asyncpg.exceptions.UniqueViolationError as ex:
+        raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
     return task_config
