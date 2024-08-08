@@ -1,7 +1,7 @@
 numpy==2.0.1
 pandas==2.2.2
 pytest==8.2.2
-pytest-asyncio==0.23.0
+pytest-asyncio==0.23.8
 scipy==1.14.0
 scikit-learn==1.5.1
 matplotlib==3.9.1
