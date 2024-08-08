@@ -22,11 +22,11 @@ class Objective(pydantic.BaseModel):
 
 
 class OptimisationResult(pydantic.BaseModel):
-    TaskID: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(
+    task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(
         examples=["bb8ce01e-4a73-11ef-9454-0242ac120001"],
         description="Unique ID for this task, often assigned by the optimiser.",
     )
-    solutions: dict[str, float | int] = pydantic.Field(
+    solution: dict[str, float | int] = pydantic.Field(
         examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
         description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
         + "May not cover all parameters, only the ones we searched over.",
