@@ -206,10 +206,10 @@ async def add_optimisation_task(request: Request, task_config: TaskConfig) -> Ta
                 task_config.objective_directions.model_dump(),
                 task_config.constraints_min,
                 task_config.constraints_max,
-                json.dumps(jsonable_encoder(task_config.searchParameters)),  # we have nested pydantic objects in here...
-                json.dumps(task_config.siteData),
+                json.dumps(jsonable_encoder(task_config.search_parameters)),  # we have nested pydantic objects in here...
+                json.dumps(jsonable_encoder(task_config.site_data)),
                 task_config.optimiser.value,
-                task_config.optimiser_hyperparameters,
+                json.dumps(jsonable_encoder(task_config.optimiser_hyperparameters)),
                 task_config.created_at,
             )
         except asyncpg.exceptions.UniqueViolationError as ex:

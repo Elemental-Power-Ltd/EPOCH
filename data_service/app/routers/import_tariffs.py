@@ -44,9 +44,9 @@ async def generate_import_tariffs(request: Request, params: TariffRequest) -> Ta
 
     response = await request.state.client.get(url)
     products = response.json()
-    tariff_codes = sorted(
-        [region["direct_debit_monthly"]["code"] for region in products["single_register_electricity_tariffs"].values()]
-    )
+    tariff_codes = sorted([
+        region["direct_debit_monthly"]["code"] for region in products["single_register_electricity_tariffs"].values()
+    ])
     tariff_code = tariff_codes[0]  # for the moment just take the first
 
     price_url = url + f"electricity-tariffs/{tariff_code}/standard-unit-rates/"
@@ -174,7 +174,6 @@ async def get_import_tariffs(request: Request, params: DatasetIDWithTime) -> lis
         Tariff entries in an EPOCH friendly format, with HourOfYear and Date splits.
     """
     async with request.state.pgpool.acquire() as conn:
-        # TODO (2024-08-02 MHJB): put start_ts/end_ts params here
         res = await conn.fetch(
             """
             SELECT

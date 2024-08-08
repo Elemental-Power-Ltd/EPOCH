@@ -96,7 +96,7 @@ class TaskConfig(pydantic.BaseModel):
         examples=[Objective(carbon_balance=None, cost_balance=None, capex=1e6, payback_horizon=None, annualised_cost=None)],
         description="Maximal values of the objectives to consider, e.g. reject all solutions with capex > £1,000,000.",
     )
-    searchParameters: dict[str, float | int | SearchSpaceEntry] = pydantic.Field(
+    search_parameters: dict[str, float | int | SearchSpaceEntry] = pydantic.Field(
         examples=[
             {
                 "Export_headroom": {"min": 0, "max": 0, "step": 0},
@@ -111,7 +111,7 @@ class TaskConfig(pydantic.BaseModel):
         description="The objectives that we're interested in, provided as a list."
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
-    siteData: SiteDataEntry = pydantic.Field(description="Where the data for this calculation are coming from.")
+    site_data: SiteDataEntry = pydantic.Field(description="Where the data for this calculation are coming from.")
     optimiser: OptimiserEnum = pydantic.Field(
         description="The optimisation algorithm for the backend to use in these calculations."
     )
