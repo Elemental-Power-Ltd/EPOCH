@@ -13,6 +13,7 @@ from .domestic_hot_water import (
     midday_sin_weights as midday_sin_weights,
 )
 from .fitting import compute_monthly_hdd as compute_monthly_hdd
+from .fitting import fit_bait_and_model as fit_bait_and_model
 from .fitting import monthly_to_hh_hload as monthly_to_hh_hload
 from .fitting import score_bait_coefficients as score_bait_coefficients
 from .gas_data_parsers import parse_be_st_format as parse_be_st_format

@@ -3,6 +3,7 @@
 # ruff: noqa: D101
 import datetime
 import enum
+from typing import Self
 
 import pydantic
 
@@ -31,6 +32,14 @@ class RenewablesRequest(pydantic.BaseModel):
     tracking: bool = pydantic.Field(
         default=False, examples=[False, True], description="Whether these panels use single axis tracking."
     )
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self
 
 
 class RenewablesMetadata(pydantic.BaseModel):

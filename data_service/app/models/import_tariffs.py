@@ -3,6 +3,7 @@
 # ruff: noqa: D101
 import datetime
 import enum
+from typing import Self
 
 import pydantic
 
@@ -40,6 +41,14 @@ class TariffRequest(pydantic.BaseModel):
         description="The latest timestamp to get this tariff for"
         + "(but note that it may not be provided too far in the future).",
     )
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self
 
 
 class TariffProviderEnum(enum.Enum):

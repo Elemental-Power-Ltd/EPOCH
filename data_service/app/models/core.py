@@ -8,7 +8,7 @@ centralise it in here.
 # ruff: noqa: D101
 import datetime
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Self
 
 import pydantic
 from pydantic import BaseModel, Field
@@ -94,6 +94,14 @@ class SiteIDWithTime(BaseModel):
         examples=["2024-05-31T00:00:00Z"], description="The latest time (exclusive) to retrieve data for."
     )
 
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self
+
 
 class DatasetIDWithTime(BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
@@ -107,6 +115,14 @@ class DatasetIDWithTime(BaseModel):
         description="The latest time (exclusive) to retrieve data for.",
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
     )
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self
 
 
 class ClientIdNamePair(pydantic.BaseModel):

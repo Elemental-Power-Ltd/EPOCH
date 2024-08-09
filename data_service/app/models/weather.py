@@ -1,9 +1,23 @@
 """Models for endpoints in weather.py, mostly for VisualCrossing data."""
 
 # ruff: noqa: D101
+import datetime
+from typing import Self
+
 import pydantic
 
 from .core import location_t
+
+
+class BaitAndModelCoeffs(pydantic.BaseModel):
+    solar_gain: float
+    wind_chill: float
+    humidity_discomfort: float
+    smoothing: float
+    threshold: float
+    heating_kwh: float
+    dhw_kwh: float
+    r2_score: float
 
 
 class WeatherDatasetEntry(pydantic.BaseModel):
@@ -15,6 +29,8 @@ class WeatherDatasetEntry(pydantic.BaseModel):
     )
     windspeed: float = pydantic.Field(examples=[5.0], description="Windspeed at 2m in ms^-1")
     pressure: float | None = pydantic.Field(examples=[998.0], description="Air pressure in mbar")
+    dniradiation: float | None = None
+    difradiation: float | None = None
 
 
 class WeatherRequest(pydantic.BaseModel):
@@ -27,3 +43,11 @@ class WeatherRequest(pydantic.BaseModel):
     end_ts: pydantic.AwareDatetime = pydantic.Field(
         examples=["2024-05-31T00:00:00Z"], description="The latest time (exclusive) to retrieve weather data for."
     )
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self

@@ -7,22 +7,29 @@ We use VisualCrossing as the source of all weather data currently.
 """
 
 import datetime
+import functools
+import itertools
 import logging
 import os
 
+import aiometer
+import httpx
 import pandas as pd
 import pydantic
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from ..database import DatabaseDep, HTTPClient, HttpClientDep
-from ..internal.utils import load_dotenv
+from ..internal.utils import load_dotenv, split_into_sessions
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
 
 router = APIRouter()
 
 
 async def visual_crossing_request(
-    location: str, start_ts: datetime.datetime, end_ts: datetime.datetime, http_client: HTTPClient
+    location: str,
+    start_ts: datetime.datetime | datetime.date,
+    end_ts: datetime.datetime | datetime.date,
+    http_client: HTTPClient,
 ) -> list[dict[str, pydantic.AwareDatetime | float]]:
     """
     Get a weather history as a raw response from VisualCrossing.
@@ -36,24 +43,20 @@ async def visual_crossing_request(
         String describing where to get weather for, e.g. 'Taunton,UK'
     start_ts
         Earliest timestamp (preferably UTC) to get weather for. Rounds to previous hour.
+        Clips to UTC midnight if a date if provided.
     end_ts
         Latest timestamp (preferably UTC) to get weather for. Rounds to next hour.
+        Clips to UTC midnight if a date if provided.
 
     Returns
     -------
         raw response from VisualCrossing, with no sanity checking.
     """
-    if not isinstance(start_ts, datetime.datetime):
-        raise TypeError(f"Received a date object instead of a datetime for {start_ts}")
-
-    if not isinstance(end_ts, datetime.datetime):
-        raise TypeError(f"Received a date object instead of a datetime for {end_ts}")
-
-    BASE_URL = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline"
-
+    if isinstance(start_ts, datetime.date):
+        start_ts = datetime.datetime.combine(start_ts, datetime.time.min, datetime.UTC)
+    if isinstance(end_ts, datetime.date):
+        end_ts = datetime.datetime.combine(end_ts, datetime.time.min, datetime.UTC)
     load_dotenv()
-    url = f"{BASE_URL}/{location}/"
-    url += f"{int(start_ts.timestamp())}/{int(end_ts.timestamp())}"
 
     desired_columns = [
         "datetimeEpoch",
@@ -71,26 +74,99 @@ async def visual_crossing_request(
         "solarradiation",
         "solarenergy",
         "degreedays",
+        "dniradiation",
+        "difradiation",
     ]
 
-    req = await http_client.get(
-        url,
-        params={
-            "key": os.environ["VISUAL_CROSSING_API_KEY"],
-            "include": "hours",
-            "unitGroup": "metric",
-            "timezone": "Z",  # We want UTC
-            "lang": "uk",
-            "elements": ",".join(desired_columns),
-        },
+    async def get_single_result(
+        in_location: str, in_client: httpx.AsyncClient, ts_pair: tuple[pd.Timestamp, pd.Timestamp]
+    ) -> httpx.Response:
+        """
+        Get a single batch of data from VisualCrossing.
+
+        Your ts_pair should be chosen so as not to request more than about 10000 records (approx 1 year)
+        It is your responsibility to parse the response and make sure that it's legit.
+
+        Returns
+        -------
+        raw httpx response
+        """
+        return await in_client.get(
+            (
+                "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline"
+                + f"/{in_location}/{int(ts_pair[0].timestamp())}/{int(ts_pair[1].timestamp())}"
+            ),
+            params={
+                "key": os.environ["VISUAL_CROSSING_API_KEY"],
+                "include": "hours",
+                "unitGroup": "metric",
+                "timezone": "Z",  # We want UTC
+                "lang": "uk",
+                "elements": ",".join(desired_columns),
+            },
+        )
+
+    records = []
+    # Segment the query to not overload VisualCrossing.
+    # They recommend requesting no more than 10,000 rows at a time, and splitting the query up.
+    # so iterate over (ts, ts + 9999h) pairs until we reach the end (thankfully Pandas makes that easy)
+
+    # There is however a risk that we'll have to re-sort the list at the end and remove duplicates.
+    segment_timestamps = [
+        item.to_pydatetime()
+        for item in pd.date_range(start_ts, end_ts, freq=pd.Timedelta(hours=9999), inclusive="left").tolist()
+    ]
+    if segment_timestamps[-1] != end_ts:
+        segment_timestamps += [end_ts]
+
+    ts_pairs = list(itertools.pairwise(segment_timestamps))
+    logger = logging.getLogger("default")
+    logger.info(f"Requesting {len(ts_pairs)} batches between {start_ts} and {end_ts} for {location}.")
+    async with aiometer.amap(
+        functools.partial(get_single_result, location, http_client),
+        ts_pairs,
+        max_at_once=1,
+        max_per_second=1,
+    ) as results:
+        async for req in results:
+            data = [hour for day in req.json()["days"] for hour in day["hours"]]
+            for idx, rec in enumerate(data):
+                data[idx]["timestamp"] = datetime.datetime.fromtimestamp(rec["datetimeEpoch"], datetime.UTC)
+                del data[idx]["datetimeEpoch"]
+            records.extend(data)
+
+    # This is our cheeky trick to only select unique timestamps (we can't use the usual sorted(set(...)) idiom as
+    # the dict results are unhashable), and avoids having to construct a Pandas dataframe to do all this work.
+    record_dict = {x["timestamp"]: x for x in records}
+    return [record_dict[ts] for ts in sorted(record_dict.keys())]
+
+
+@router.post("/get-visual-crossing")
+async def get_visual_crossing(
+    weather_request: WeatherRequest, http_client: HttpClientDep
+) -> list[dict[str, pydantic.AwareDatetime | float]]:
+    """
+    Get the raw data from VisualCrossing for a specific location between two timestamps.
+
+    This will not do any database caching; use `/get-weather` for that.
+    This will segment your query into multiple requests to avoid overloading VC.
+
+    Parameters
+    ----------
+    WeatherRequest
+        location, start_ts and end_ts pairs.
+
+    Returns
+    -------
+    weather_dataset_entries
+        List of weather dataset entries, sorted and with duplicates removed
+    """
+    return await visual_crossing_request(
+        location=weather_request.location,
+        start_ts=weather_request.start_ts,
+        end_ts=weather_request.end_ts,
+        http_client=http_client,
     )
-
-    records = [hour for day in req.json()["days"] for hour in day["hours"]]
-    for idx, rec in enumerate(records):
-        records[idx]["timestamp"] = datetime.datetime.fromtimestamp(rec["datetimeEpoch"], datetime.UTC)
-        del records[idx]["datetimeEpoch"]
-
-    return records
 
 
 @router.post("/get-weather")
@@ -111,20 +187,16 @@ async def get_weather(
     weather_request
 
     """
+    # request only the days first so we can check if any data are missing
     res = await conn.fetch(
         """
-        SELECT
-            timestamp,
-            temp,
-            humidity,
-            solarradiation,
-            windspeed,
-            pressure
+        SELECT DISTINCT
+            DATE(timestamp) as date
         FROM weather.visual_crossing
         WHERE location = $1
         AND $2 <= timestamp
         AND timestamp < $3
-        ORDER BY timestamp ASC""",
+        ORDER BY date ASC""",
         weather_request.location,
         weather_request.start_ts,
         weather_request.end_ts,
@@ -139,31 +211,33 @@ async def get_weather(
             inclusive="left",
         )
     }
-    got_days = {item["timestamp"].date() for item in res}
+    got_days = {item["date"] for item in res}
 
     missing_days = sorted(expected_days - got_days)
-    if missing_days and (max(missing_days) - min(missing_days) > datetime.timedelta(days=365)):
-        raise HTTPException(
-            400, f"Too many missing days from {min(missing_days)} to {max(missing_days)}." + "Try requesting a smaller dataset."
+
+    # TODO (2024-08-09 MHJB): make this async-ier
+    for missing_session in split_into_sessions(missing_days, datetime.timedelta(days=1)):
+        logging.warning(
+            f"Missing days between {min(missing_session)} and {max(missing_session)} for {weather_request.location}"
         )
-    if missing_days:
-        logging.warning(f"Missing days between {min(missing_days)} and {max(missing_days)} for {weather_request.location}")
+
         vc_recs = await visual_crossing_request(
             weather_request.location,
-            datetime.datetime.combine(min(missing_days), datetime.time.min, datetime.UTC),
-            datetime.datetime.combine(max(missing_days), datetime.time.max, datetime.UTC),
+            datetime.datetime.combine(min(missing_session), datetime.time.min, datetime.UTC),
+            datetime.datetime.combine(max(missing_session), datetime.time.max, datetime.UTC),
             http_client=http_client,
         )
 
         async with conn.transaction():
             await conn.execute(
                 """DELETE FROM
-                                weather.visual_crossing
-                            WHERE location = $1
-                            AND $2 <= timestamp AND timestamp < $3""",
+                        weather.visual_crossing
+                    WHERE location = $1
+                    AND $2 <= timestamp
+                    AND timestamp < $3""",
                 weather_request.location,
-                min(missing_days),
-                max(missing_days),
+                min(missing_session),
+                max(missing_session),
             )
 
             await conn.executemany(
@@ -206,25 +280,25 @@ async def get_weather(
                     for item in vc_recs
                 ],
             )
-            # Now re-query the data we just fetched for a consistent view
-            res = await conn.fetch(
-                """
-                SELECT
-                    timestamp,
-                    temp,
-                    humidity,
-                    solarradiation,
-                    windspeed,
-                    pressure
-                FROM weather.visual_crossing
-                WHERE location = $1
-                AND $2 <= timestamp
-                AND timestamp < $3
-                ORDER BY timestamp ASC""",
-                weather_request.location,
-                weather_request.start_ts,
-                weather_request.end_ts,
-            )
+    # Now re-query the data we just fetched for a consistent view
+    res = await conn.fetch(
+        """
+        SELECT
+            timestamp,
+            temp,
+            humidity,
+            solarradiation,
+            windspeed,
+            pressure
+        FROM weather.visual_crossing
+        WHERE location = $1
+        AND $2 <= timestamp
+        AND timestamp < $3
+        ORDER BY timestamp ASC""",
+        weather_request.location,
+        weather_request.start_ts,
+        weather_request.end_ts,
+    )
 
     return [
         WeatherDatasetEntry(
