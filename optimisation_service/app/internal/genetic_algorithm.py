@@ -210,7 +210,7 @@ class GeneticAlgorithm(Algorithm):
         self.algorithm = Pymoo_GA(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=sampling_method.value,
+            sampling=SamplingMethod[sampling_method].value,
             selection=TournamentSelection(pressure=k_tournament, func_comp=comp_by_cv_and_fitness),
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),

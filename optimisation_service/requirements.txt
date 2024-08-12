@@ -8,3 +8,5 @@ aiohttp==3.9.5
 pydantic==2.5.3
 uvicorn==0.20.0
 httpx==0.26.0
+anyio==4.3.0
+pytest-tornasync
