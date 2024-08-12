@@ -1,13 +1,26 @@
 import datetime
+import logging
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt
 
 from ...internal.opt_algorithm import Algorithm
 from ...internal.problem import Problem
+from .optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
 from .problem import EndpointParameterDict
 from .site_data import SiteData
+
+logger = logging.getLogger("default")
+
+
+class Objectives(StrEnum):
+    carbon_balance = "carbon_balance"
+    cost_balance = "cost_balance"
+    capex = "capex"
+    payback_horizon = "payback_horizon"
+    annualised_cost = "annualised_cost"
 
 
 class EndpointTask(BaseModel):
@@ -15,16 +28,13 @@ class EndpointTask(BaseModel):
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
     )
     task_name: str | None = Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
-    optimiser: str = Field(
-        examples=["NSGA2", "GeneticAlgorithm", "GridSearch"], description="Name of algorithm to use in optimisation."
-    )
-    optimiser_hyperparameters: dict[str, str | int | float] = Field(
-        examples=[{"pop_size": 512}], description="Optimiser hyperparameter config."
-    )
+    optimiser: NSGA2Optmiser | GAOptimiser | GridSearchOptimiser = Field(description="Optimiser name and hyperparameters.")
     search_parameters: EndpointParameterDict = Field(
         description="Search space parameter ranges to optimise over and parameter default values."
     )
-    objectives: list = Field(examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for.")
+    objectives: list[Objectives] = Field(
+        examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for."
+    )
     site_data: SiteData = Field(
         examples=[
             {"loc": "database", "key": "805fb659-1cac-44f3-a1f9-85dc82178f53"},

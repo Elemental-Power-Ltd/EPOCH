@@ -19,7 +19,6 @@ async def lifespan(app: FastAPI):
     """
     Create queue that is served by process_requests from moment app is created until it is closed.
     """
-    logger.info("Initalisaing Queue.")
     q = IQueue(maxsize=5)
     app.state.q = q
     app.state.start_time = datetime.datetime.now(datetime.UTC)

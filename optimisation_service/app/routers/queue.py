@@ -24,6 +24,7 @@ class IQueue(asyncio.Queue):
         maxsize
             Maximum number of tasks to hold in queue.
         """
+        logger.info("Initalisaing Queue.")
         super().__init__(maxsize=0)
         self.q: OrderedDict = OrderedDict()
         self.q_len = maxsize
@@ -37,6 +38,7 @@ class IQueue(asyncio.Queue):
         task
             Task to add in queue.
         """
+        logger.info(f"Queued {task.task_id}.")
         await super().put(task)
         self.q[task.task_id] = QueueElem(state=task_state.QUEUED, added_at=datetime.datetime.now(datetime.UTC))
 
@@ -69,6 +71,7 @@ class IQueue(asyncio.Queue):
         task
             Task to mark as done
         """
+        logger.info(f"Marking as done {task.task_id}.")
         del self.q[task.task_id]
         super().task_done()
 
@@ -81,6 +84,7 @@ class IQueue(asyncio.Queue):
         task_id
             UUID of task to cancel
         """
+        logger.info(f"Cancelling {task_id}.")
         assert self.q[task_id].state != task_state.RUNNING, "Task already running."
         self.q[task_id].state = task_state.CANCELLED
 

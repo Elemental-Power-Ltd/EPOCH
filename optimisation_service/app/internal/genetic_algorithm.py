@@ -2,7 +2,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import timedelta
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 import numpy as np
@@ -40,6 +40,11 @@ async def minimize_async(**kwargs) -> Pymoo_Result:
     return res
 
 
+class SamplingMethodStr(StrEnum):
+    LHS = "LHS"
+    RS = "RS"
+
+
 class SamplingMethod(Enum):
     LHS = LatinHypercubeSampling()
     RS = FloatRandomSampling()
@@ -54,7 +59,7 @@ class NSGA2(Algorithm):
         self,
         pop_size: int = 128,
         n_offsprings: int | None = None,
-        sampling_method: SamplingMethod = SamplingMethod.LHS,
+        sampling_method: SamplingMethodStr = SamplingMethodStr.LHS,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
         prob_mutation: float = 0.9,
@@ -101,7 +106,7 @@ class NSGA2(Algorithm):
         self.algorithm = Pymoo_NSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=sampling_method.value,
+            sampling=SamplingMethod[sampling_method].value,
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
             eliminate_duplicates=True,
