@@ -11,13 +11,12 @@ import logging
 import asyncpg
 from fastapi import APIRouter, HTTPException
 
-from ..database import DatabaseDep
+from ..dependencies import DatabaseDep
 from ..models.core import (
     ClientData,
     ClientID,
     ClientIdNamePair,
     DatasetEntry,
-    FuelEnum,
     ReadingTypeEnum,
     SiteData,
     SiteID,
@@ -207,7 +206,8 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
         SELECT
             dataset_id,
             fuel_type,
-            reading_type
+            reading_type,
+            created_at
         FROM
             client_meters.metadata
         WHERE site_id = $1
@@ -215,14 +215,19 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
         site_id.site_id,
     )
     datasets.extend([
-        DatasetEntry(dataset_id=item["dataset_id"], fuel_type=item["fuel_type"], reading_type=item["reading_type"])
+        DatasetEntry(
+            dataset_id=item["dataset_id"],
+            reading_type=ReadingTypeEnum.ElectricityMeterData if item["fuel_type"] == "elec" else ReadingTypeEnum.GasMeterData,
+            created_at=item["created_at"],
+        )
         for item in res
     ])
 
     res = await conn.fetch(
         """
         SELECT
-            dataset_id
+            dataset_id,
+            created_at
         FROM
             tariffs.metadata
         WHERE site_id = $1
@@ -230,14 +235,15 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
         site_id.site_id,
     )
     datasets.extend([
-        DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.tariff)
+        DatasetEntry(dataset_id=item["dataset_id"], reading_type=ReadingTypeEnum.ImportTariff, created_at=item["created_at"])
         for item in res
     ])
 
     res = await conn.fetch(
         """
         SELECT
-            dataset_id
+            dataset_id,
+            created_at
         FROM
             renewables.metadata
         WHERE site_id = $1
@@ -245,14 +251,17 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
         site_id.site_id,
     )
     datasets.extend([
-        DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.elec, reading_type=ReadingTypeEnum.solar_pv)
+        DatasetEntry(
+            dataset_id=item["dataset_id"], reading_type=ReadingTypeEnum.RenewablesGeneration, created_at=item["created_at"]
+        )
         for item in res
     ])
 
     res = await conn.fetch(
         """
         SELECT
-            dataset_id
+            dataset_id,
+            created_at
         FROM
             heating.metadata
         WHERE site_id = $1
@@ -260,7 +269,7 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
         site_id.site_id,
     )
     datasets.extend([
-        DatasetEntry(dataset_id=item["dataset_id"], fuel_type=FuelEnum.gas, reading_type=ReadingTypeEnum.heating_load)
+        DatasetEntry(dataset_id=item["dataset_id"], reading_type=ReadingTypeEnum.HeatingLoad, created_at=item["created_at"])
         for item in res
     ])
     logging.info(f"Returning {len(res)} datasets for {site_id}")
@@ -268,9 +277,20 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
 
 
 @router.post("/list-latest-datasets", tags=["db", "list"])
-async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry]:
-    """Get the most recent datasets of each type for this site."""
-    return [DatasetEntry(reading_type=ReadingTypeEnum("manual"), fuel_type=FuelEnum("gas"))]
+async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[str, DatasetEntry]:
+    """
+    Get the most recent datasets of each type for this site.
+
+    This endpoint is the main one you'd want to call if you are interested in running EPOCH.
+    Note that you may still need to call `generate-*` if the datasets in here are too old, or
+    not listed at all.
+    """
+    all_datasets = await list_datasets(site_id, conn)
+    latest_datasets: dict[str, DatasetEntry] = {}
+    for ds in all_datasets:
+        if ds.reading_type.value not in latest_datasets or latest_datasets[ds.reading_type.value].created_at < ds.created_at:
+            latest_datasets[ds.reading_type.value] = ds
+    return latest_datasets
 
 
 @router.post("/get-location", tags=["db"])

@@ -18,7 +18,7 @@ import pandas as pd
 import pydantic
 from fastapi import APIRouter
 
-from ..database import DatabaseDep, HTTPClient, HttpClientDep
+from ..dependencies import DatabaseDep, HTTPClient, HttpClientDep
 from ..internal.utils import load_dotenv, split_into_sessions
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
 
@@ -137,7 +137,8 @@ async def visual_crossing_request(
 
     # This is our cheeky trick to only select unique timestamps (we can't use the usual sorted(set(...)) idiom as
     # the dict results are unhashable), and avoids having to construct a Pandas dataframe to do all this work.
-    record_dict = {x["timestamp"]: x for x in records}
+    # We also filter out any that don't meet our requirements.
+    record_dict = {x["timestamp"]: x for x in records if start_ts <= x["timestamp"] < end_ts}
     return [record_dict[ts] for ts in sorted(record_dict.keys())]
 
 
@@ -221,10 +222,15 @@ async def get_weather(
             f"Missing days between {min(missing_session)} and {max(missing_session)} for {weather_request.location}"
         )
 
+        session_min_ts = datetime.datetime.combine(min(missing_session), datetime.time.min, datetime.UTC)
+        session_max_ts = datetime.datetime.combine(max(missing_session), datetime.time.max, datetime.UTC) + datetime.timedelta(
+            days=1
+        )
         vc_recs = await visual_crossing_request(
             weather_request.location,
-            datetime.datetime.combine(min(missing_session), datetime.time.min, datetime.UTC),
-            datetime.datetime.combine(max(missing_session), datetime.time.max, datetime.UTC),
+            session_min_ts,
+            # This timedelta is here because the other end will interpret this as a date
+            session_max_ts,
             http_client=http_client,
         )
 
@@ -236,8 +242,8 @@ async def get_weather(
                     AND $2 <= timestamp
                     AND timestamp < $3""",
                 weather_request.location,
-                min(missing_session),
-                max(missing_session),
+                session_min_ts,
+                session_max_ts,
             )
 
             await conn.executemany(

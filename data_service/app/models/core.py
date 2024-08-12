@@ -21,7 +21,7 @@ location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
 example_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
 example_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
 site_id_field = Field(
-    examples=["demo_matts_house"],
+    examples=["demo_london"],
     pattern=r"^[0-9a-z_]+$",
     description="The database ID for a site, all lower case, joined by underscores.",
 )
@@ -61,16 +61,6 @@ class FuelEnum(str, Enum):
     gas = "gas"
     elec = "elec"
     oil = "oil"
-
-
-class ReadingTypeEnum(str, Enum):
-    manual = "manual"
-    automatic = "automatic"
-    halfhourly = "halfhourly"
-    oil = "oil"
-    solar_pv = "solar_pv"
-    tariff = "tariff"
-    heating_load = "heating_load"
 
 
 class DatasetID(BaseModel):
@@ -132,10 +122,21 @@ class ClientIdNamePair(pydantic.BaseModel):
     name: str = Field(examples=["Demonstration", "Demonstration"], description="Human readable client name")
 
 
+class ReadingTypeEnum(str, Enum):
+    GasMeterData = "GasMeterData"
+    ElectricityMeterData = "ElectricityMeterData"
+    RenewablesGeneration = "RenewablesGeneration"
+    Weather = "Weather"
+    CarbonIntensity = "CarbonIntensity"
+    HeatingLoad = "HeatingLoad"
+    ASHPData = "ASHPData"
+    ImportTariff = "ImportTariff"
+
+
 class DatasetEntry(pydantic.BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
     reading_type: ReadingTypeEnum
-    fuel_type: FuelEnum
+    created_at: pydantic.AwareDatetime
 
 
 class SiteIdNamePair(pydantic.BaseModel):

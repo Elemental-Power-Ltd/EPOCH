@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from ..database import DatabaseDep, HttpClientDep
+from ..dependencies import DatabaseDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..internal.gas_meters import assign_hh_dhw_even, fit_bait_and_model, hh_gas_to_monthly
 from ..internal.heating import building_adjusted_internal_temperature

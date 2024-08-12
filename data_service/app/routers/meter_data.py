@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from ..database import DatabaseDep
+from ..dependencies import DatabaseDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
 from ..internal.utils import hour_of_year

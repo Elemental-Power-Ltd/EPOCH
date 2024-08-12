@@ -14,7 +14,7 @@ import httpx
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
-from ..database import DatabaseDep
+from ..dependencies import DatabaseDep, HttpClientDep
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
 from ..internal.utils import hour_of_year
 from ..models.core import DatasetIDWithTime, SiteID
@@ -52,7 +52,9 @@ async def get_pv_optima(request: Request, site_id: SiteID, conn: DatabaseDep) ->
 
 
 @router.post("/generate-renewables-generation", tags=["generate", "solar_pv"])
-async def generate_renewables_generation(request: Request, params: RenewablesRequest, conn: DatabaseDep) -> RenewablesMetadata:
+async def generate_renewables_generation(
+    params: RenewablesRequest, conn: DatabaseDep, http_client: HttpClientDep
+) -> RenewablesMetadata:
     """
     Calculate renewables generation in kW / kWp for this site.
 
@@ -71,7 +73,7 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
     renewables_metadata
         Metadata about the renewables calculation we've put into the database.
     """
-    location, (latitude, longitude) = await conn.fetchrow(  # type: ignore
+    location, coords = await conn.fetchrow(  # type: ignore
         """
         SELECT
             location,
@@ -81,12 +83,13 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
         LIMIT 1""",
         params.site_id,
     )
-    if location is None:
+    if location is None or coords is None:
         raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
 
+    latitude, longitude = coords
     if params.azimuth is None or params.tilt is None:
         logging.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
-        optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=request.state.http_client)
+        optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=http_client)
         azimuth, tilt = float(optimal_params.azimuth), float(optimal_params.tilt)
     else:
         azimuth, tilt = params.azimuth, params.tilt
@@ -99,7 +102,7 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
             end_ts=params.end_ts,
             azimuth=azimuth,
             tilt=tilt,
-            client=request.state.http_client,
+            client=http_client,
         )
     except httpx.ReadTimeout as ex:
         raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex
@@ -134,7 +137,7 @@ async def generate_renewables_generation(request: Request, params: RenewablesReq
             metadata.site_id,
             metadata.created_at,
             metadata.data_source,
-            metadata.parameters,
+            json.dumps(metadata.parameters),
         )
 
         await conn.executemany(
@@ -208,6 +211,6 @@ async def get_renewables_generation(params: DatasetIDWithTime, conn: DatabaseDep
     renewables_df["HourOfYear"] = renewables_df.index.map(hour_of_year)
     renewables_df = renewables_df.rename(columns={"solar_generation": "RGen1"})
     return [
-        EpochRenewablesEntry(Date=item["date"], StartTime=item["StartTime"], HourOfYear=item["HourOfYear"], RGen1=item["RGen1"])
+        EpochRenewablesEntry(Date=item["Date"], StartTime=item["StartTime"], HourOfYear=item["HourOfYear"], RGen1=item["RGen1"])
         for item in renewables_df.to_dict(orient="records")
     ]

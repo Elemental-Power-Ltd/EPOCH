@@ -8,11 +8,12 @@ function and FastAPI will figure it out through magic.
 
 import os
 import typing
-from typing import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator, AsyncIterator, Never
 
 import asyncpg
 import httpx
-from fastapi import Depends
+from fastapi import Depends, FastAPI
 
 
 class Database:
@@ -67,3 +68,13 @@ async def get_db_conn() -> AsyncGenerator[DBConnection, None]:
 
 DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
+    """Set up a long clients: a database pool and an HTTP client."""
+    # Startup events
+    await db.create_pool()
+    yield  # type: ignore
+    # Shutdown events
+    await http_client.aclose()
