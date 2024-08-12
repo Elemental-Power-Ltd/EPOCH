@@ -127,8 +127,8 @@ async def add_optimisation_results(results_in: list[OptimisationResult], conn: D
             VALUES ($1, $2, $3, $4, $5, $6, $7)""",
             zip(
                 results_uuids,
-                [item.TaskID for item in results_in],
-                [json.dumps(item.solutions) for item in results_in],
+                [item.task_id for item in results_in],
+                [json.dumps(item.solution) for item in results_in],
                 [item.objective_values.model_dump() for item in results_in],
                 [item.n_evals for item in results_in],
                 [item.exec_time for item in results_in],
@@ -139,7 +139,7 @@ async def add_optimisation_results(results_in: list[OptimisationResult], conn: D
     except asyncpg.exceptions.ForeignKeyViolationError as ex:
         raise HTTPException(
             400,
-            f"task_id={results_in[0].TaskID} does not have an associated task config."
+            f"task_id={results_in[0].task_id} does not have an associated task config."
             + "You should have added it via /add-optimisation-task beforehand.",
         ) from ex
     return results_uuids
@@ -206,8 +206,8 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
             task_config.constraints_max,
             json.dumps(jsonable_encoder(task_config.search_parameters)),  # we have nested pydantic objects in here...
             json.dumps(jsonable_encoder(task_config.site_data)),
-            task_config.optimiser.value,
-            json.dumps(jsonable_encoder(task_config.optimiser_hyperparameters)),
+            task_config.optimiser.name.value,
+            json.dumps(jsonable_encoder(task_config.optimiser.hyperparameters)),
             task_config.created_at,
         )
     except asyncpg.exceptions.UniqueViolationError as ex:

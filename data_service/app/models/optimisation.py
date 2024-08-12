@@ -22,11 +22,11 @@ class Objective(pydantic.BaseModel):
 
 
 class OptimisationResult(pydantic.BaseModel):
-    TaskID: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(
+    task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(
         examples=["bb8ce01e-4a73-11ef-9454-0242ac120001"],
         description="Unique ID for this task, often assigned by the optimiser.",
     )
-    solutions: dict[str, float | int] = pydantic.Field(
+    solution: dict[str, float | int] = pydantic.Field(
         examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
         description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
         + "May not cover all parameters, only the ones we searched over.",
@@ -78,6 +78,14 @@ class SiteDataEntry(pydantic.BaseModel):
         examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it."
     )
 
+class Optimiser(pydantic.BaseModel):
+    name: OptimiserEnum = pydantic.Field(
+        default=None, description="Name of optimiser."
+    )
+    hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
+        default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
+    )
+
 
 class TaskConfig(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
@@ -112,7 +120,7 @@ class TaskConfig(pydantic.BaseModel):
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
     site_data: SiteDataEntry = pydantic.Field(description="Where the data for this calculation are coming from.")
-    optimiser: OptimiserEnum = pydantic.Field(
+    optimiser: Optimiser = pydantic.Field(
         description="The optimisation algorithm for the backend to use in these calculations."
     )
     optimiser_hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
