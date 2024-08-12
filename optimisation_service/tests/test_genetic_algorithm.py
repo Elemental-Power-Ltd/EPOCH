@@ -78,8 +78,8 @@ class TestGeneticAlgorithm:
         """
         Test sampling_method initialisation parameter with bad values.
         """
-        with pytest.raises(AttributeError):
-            GeneticAlgorithm(sampling_method="RS")  # type: ignore
+        with pytest.raises(KeyError):
+            GeneticAlgorithm(sampling_method=1)  # type: ignore
 
     @pytest.mark.slow
     async def test_run(self, example_problem: Problem) -> None:

@@ -161,7 +161,7 @@ class GeneticAlgorithm(Algorithm):
         self,
         pop_size: int = 128,
         n_offsprings: int | None = None,
-        sampling_method: SamplingMethod = SamplingMethod.LHS,
+        sampling_method: SamplingMethodStr = SamplingMethodStr.LHS,
         k_tournament: int = 2,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
