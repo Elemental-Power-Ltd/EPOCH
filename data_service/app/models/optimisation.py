@@ -82,9 +82,7 @@ class SiteDataEntry(pydantic.BaseModel):
 
 
 class Optimiser(pydantic.BaseModel):
-    name: OptimiserEnum = pydantic.Field(
-        default=None, description="Name of optimiser."
-    )
+    name: OptimiserEnum = pydantic.Field(default=None, description="Name of optimiser.")
     hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
         default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
     )

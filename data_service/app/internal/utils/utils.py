@@ -4,7 +4,7 @@ General utility functions, which don't fit anywhere else.
 Please don't fill this section with junk, and try to make sure there's no other home
 for the functions that go in here.
 """
-
+import logging
 import datetime
 import itertools
 import os
@@ -15,6 +15,7 @@ from typing import Any
 import numpy.typing as npt
 import pandas as pd
 
+logger = logging.getLogger("default")
 
 def typename(x: Any) -> str:
     """
@@ -78,7 +79,9 @@ def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
                 fpath = parent_path
                 break
         else:
-            raise FileNotFoundError(f"Could not find {fname} in the specified location {fpath} or its parents.")
+            logger.warning(f"Could not find {fname} in the specified location {fpath} or its parents.")
+            return {}
+            
 
     with open(fpath) as fi:
         for line in fi:
