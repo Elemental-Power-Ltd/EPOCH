@@ -48,3 +48,4 @@ class EpochHeatingEntry(pydantic.BaseModel):
     DHWLoad1: float = pydantic.Field(
         examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
     )
+    AirTemp: float = pydantic.Field(examples=[16.7], description="Air temperature at this time in °C.")
