@@ -234,7 +234,7 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
     res = await conn.fetch(
         """
         SELECT
-            start_ts, end_ts, forecast, actual, gas, coal, biomass, nuclear, hydro, imports, other, wind, solar
+            start_ts, end_ts, forecast, actual
         FROM carbon_intensity.grid_co2
         WHERE dataset_id = $1
         AND $2 <= start_ts
@@ -246,21 +246,7 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
     carbon_df = pd.DataFrame.from_records(
         res,
         index="start_ts",
-        columns=[
-            "start_ts",
-            "end_ts",
-            "forecast",
-            "actual",
-            "gas",
-            "coal",
-            "biomass",
-            "nuclear",
-            "hydro",
-            "imports",
-            "other",
-            "wind",
-            "solar",
-        ],
+        columns=["start_ts", "end_ts", "forecast", "actual"],
     )
     carbon_df.index = pd.to_datetime(carbon_df.index)
     carbon_df = carbon_df.resample(pd.Timedelta(hours=1)).mean()
