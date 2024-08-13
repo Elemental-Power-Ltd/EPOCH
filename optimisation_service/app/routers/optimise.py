@@ -54,8 +54,6 @@ def create_tempdir(sitedatakey: UUID) -> os.PathLike:
     """
     temp_dir = Path(".", "app", "data", "temp", str(sitedatakey))
     os.makedirs(temp_dir)
-    for file in os.listdir(Path(".", "app", "data", "default")):
-        shutil.copy(file, temp_dir)
     return temp_dir
 
 
@@ -72,7 +70,7 @@ async def fetch_electricity_data(data_id_w_time: DatasetIDWithTime, temp_dir: os
     """
     response = await post_request(client=client, url=f"{database_url}/get-electricity-load", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
-    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1", "FixLoad2"])
+    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1"])
     df = df.sort_values("HourOfYear")
     df.to_csv(Path(temp_dir, "CSVEload.csv"))
 
@@ -109,7 +107,7 @@ async def fetch_heat_n_air_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.
     response = await post_request(client=client, url=f"{database_url}/get-heating-load", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
     df_heat = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
-    df_air = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Air-temp"])
+    df_air = df.reindex(columns=["HourOfYear", "Date", "StartTime", "AirTemp"])
     df_heat = df_heat.sort_values("HourOfYear")
     df_air = df_air.sort_values("HourOfYear")
     df_heat.to_csv(Path(temp_dir, "CSVHload.csv"))
@@ -128,9 +126,9 @@ async def fetch_ASHP_input_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.
         temp_dir to save files to.
     """
     response = await post_request(client=client, url=f"{database_url}/get-ashp-input", data=data_id_w_time)
-    df = pd.DataFrame.from_dict(response)
+    df = pd.DataFrame.from_dict(response, orient="tight")
     df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-    df = df.sort_values("0")
+    df = df.sort_values("temperature")
     df.to_csv(Path(temp_dir, "CSVASHPinput.csv"))
 
 
@@ -146,9 +144,9 @@ async def fetch_ASHP_output_data(data_id_w_time: DatasetIDWithTime, temp_dir: os
         temp_dir to save files to.
     """
     response = await post_request(client=client, url=f"{database_url}/get-ashp-output", data=data_id_w_time)
-    df = pd.DataFrame.from_dict(response)
-    df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-    df = df.sort_values("0")
+    df = pd.DataFrame.from_dict(response, orient="tight")
+    df = df.reindex(columns=[25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
+    df = df.sort_values("temperature")
     df.to_csv(Path(temp_dir, "CSVASHPoutput.csv"))
 
 
@@ -183,7 +181,7 @@ async def fetch_grid_CO2_data(data_id_w_time: DatasetIDWithTime, temp_dir: os.Pa
     """
     response = await post_request(client=client, url=f"{database_url}/get-grid-CO2", data=data_id_w_time)
     df = pd.DataFrame.from_dict(response)
-    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Grid CO2e (kg/kWh)"])
+    df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "GridCO2"])
     df = df.sort_values("HourOfYear")
     df.to_csv(Path(temp_dir, "CSVGridCO2.csv"))
 

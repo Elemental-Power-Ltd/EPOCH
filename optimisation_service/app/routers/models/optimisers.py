@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
 
-from ...internal.genetic_algorithm import SamplingMethodStr
+from ...internal.genetic_algorithm import SamplingMethod
 
 
 class Optimiser(StrEnum):
@@ -20,7 +20,7 @@ class GABaseHyperParam(BaseModel):
         + "Can be greater or smaller than initial pop_size",
         default=128,
     )
-    sampling_method: SamplingMethodStr = Field(
+    sampling_method: SamplingMethod = Field(
         description="Sampling method used to generate initial population.",
         default="LHS",
     )

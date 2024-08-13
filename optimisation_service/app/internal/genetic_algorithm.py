@@ -2,7 +2,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import timedelta
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import Any
 
 import numpy as np
@@ -40,14 +40,12 @@ async def minimize_async(**kwargs) -> Pymoo_Result:
     return res
 
 
-class SamplingMethodStr(StrEnum):
+class SamplingMethod(StrEnum):
     LHS = "LHS"
     RS = "RS"
 
 
-class SamplingMethod(Enum):
-    LHS = LatinHypercubeSampling()
-    RS = FloatRandomSampling()
+SamplingMethods = {SamplingMethod.LHS: LatinHypercubeSampling(), SamplingMethod.RS: FloatRandomSampling()}
 
 
 class NSGA2(Algorithm):
@@ -59,7 +57,7 @@ class NSGA2(Algorithm):
         self,
         pop_size: int = 128,
         n_offsprings: int | None = None,
-        sampling_method: SamplingMethodStr = SamplingMethodStr.LHS,
+        sampling_method: SamplingMethod = SamplingMethod.LHS,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
         prob_mutation: float = 0.9,
@@ -106,7 +104,7 @@ class NSGA2(Algorithm):
         self.algorithm = Pymoo_NSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=SamplingMethod[sampling_method].value,
+            sampling=SamplingMethods[sampling_method],
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
             eliminate_duplicates=True,
@@ -161,7 +159,7 @@ class GeneticAlgorithm(Algorithm):
         self,
         pop_size: int = 128,
         n_offsprings: int | None = None,
-        sampling_method: SamplingMethodStr = SamplingMethodStr.LHS,
+        sampling_method: SamplingMethod = SamplingMethod.LHS,
         k_tournament: int = 2,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
@@ -210,7 +208,7 @@ class GeneticAlgorithm(Algorithm):
         self.algorithm = Pymoo_GA(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=SamplingMethod[sampling_method].value,
+            sampling=SamplingMethods[sampling_method],
             selection=TournamentSelection(pressure=k_tournament, func_comp=comp_by_cv_and_fitness),
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
