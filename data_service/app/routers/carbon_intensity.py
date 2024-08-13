@@ -18,7 +18,7 @@ from fastapi import APIRouter
 
 from ..database import DatabaseDep, HTTPClient, HttpClientDep
 from ..internal.utils import hour_of_year
-from ..models.carbon_intensity import EpochCarbonEntry, CarbonIntensityMetadata
+from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
 
 router = APIRouter()
@@ -244,8 +244,8 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
         params.end_ts,
     )
     carbon_df = pd.DataFrame.from_records(
-        res, 
-        index="start_ts", 
+        res,
+        index="start_ts",
         columns=[
             "start_ts",
             "end_ts",
@@ -259,12 +259,12 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
             "imports",
             "other",
             "wind",
-            "solar"
-            ]
-            )
+            "solar",
+        ],
+    )
     carbon_df.index = pd.to_datetime(carbon_df.index)
     carbon_df = carbon_df.resample(pd.Timedelta(hours=1)).mean()
-    carbon_df["GridCO2"] = carbon_df['actual'].fillna(carbon_df['forecast'])
+    carbon_df["GridCO2"] = carbon_df["actual"].fillna(carbon_df["forecast"])
     return [
         EpochCarbonEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), GridCO2=val)
         for ts, val in zip(carbon_df.index, carbon_df["GridCO2"], strict=True)

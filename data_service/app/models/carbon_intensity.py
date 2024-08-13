@@ -59,4 +59,4 @@ class EpochCarbonEntry(pydantic.BaseModel):
     HourOfYear: float = epoch_hour_of_year_field
     GridCO2: float = pydantic.Field(
         examples=[32.4, 14.6], description="Carbon intensity during this time period in g CO2 / kWh."
-        )
+    )
