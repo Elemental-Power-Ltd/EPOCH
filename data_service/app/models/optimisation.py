@@ -78,6 +78,7 @@ class SiteDataEntry(pydantic.BaseModel):
         examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it."
     )
 
+
 class Optimiser(pydantic.BaseModel):
     name: OptimiserEnum = pydantic.Field(
         default=None, description="Name of optimiser."

@@ -234,7 +234,7 @@ async def get_heating_load(params: DatasetIDWithTime, conn: DatabaseDep) -> list
     heating_df["Date"] = heating_df.index.strftime("%d-%b")
     heating_df["StartTime"] = heating_df.index.strftime("%H:%M")
     heating_df["HourOfYear"] = heating_df.index.map(hour_of_year)
-    heating_df = heating_df.rename(columns={"heating": "HLoad1", "dhw": "DHWLoad1", "air_temperature":"AirTemp"})
+    heating_df = heating_df.rename(columns={"heating": "HLoad1", "dhw": "DHWLoad1", "air_temperature": "AirTemp"})
     return [
         EpochHeatingEntry(
             Date=item["Date"],

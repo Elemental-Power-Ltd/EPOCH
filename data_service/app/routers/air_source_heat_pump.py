@@ -44,10 +44,10 @@ async def get_ashp_input(params: DatasetIDWithTime) -> ASHPCOPResponse:
 
     results = dataframe.to_dict(orient="tight")
     return ASHPCOPResponse(
-        index=results["index"], 
-        columns=results["columns"], 
-        data=results["data"], 
-        index_names=results["index_names"], 
+        index=results["index"],
+        columns=results["columns"],
+        data=results["data"],
+        index_names=results["index_names"],
         column_names=results["column_names"]
     )
 
@@ -81,9 +81,9 @@ async def get_ashp_output(params: DatasetIDWithTime) -> ASHPCOPResponse:
 
     results = dataframe.to_dict(orient="tight")
     return ASHPCOPResponse(
-        index=results["index"], 
-        columns=results["columns"], 
-        data=results["data"], 
-        index_names=results["index_names"], 
+        index=results["index"],
+        columns=results["columns"],
+        data=results["data"],
+        index_names=results["index_names"],
         column_names=results["column_names"]
     )

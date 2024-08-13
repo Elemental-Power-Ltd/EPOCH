@@ -16,8 +16,8 @@ import pandas as pd
 import pydantic
 from fastapi import APIRouter
 
-from ..internal.utils import hour_of_year
 from ..database import DatabaseDep, HTTPClient, HttpClientDep
+from ..internal.utils import hour_of_year
 from ..models.carbon_intensity import EpochCarbonEntry, CarbonIntensityMetadata
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
 
@@ -243,7 +243,25 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
         params.start_ts,
         params.end_ts,
     )
-    carbon_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "forecast", "actual", "gas", "coal", "biomass", "nuclear", "hydro", "imports", "other", "wind", "solar"])
+    carbon_df = pd.DataFrame.from_records(
+        res, 
+        index="start_ts", 
+        columns=[
+            "start_ts",
+            "end_ts",
+            "forecast",
+            "actual",
+            "gas",
+            "coal",
+            "biomass",
+            "nuclear",
+            "hydro",
+            "imports",
+            "other",
+            "wind",
+            "solar"
+            ]
+            )
     carbon_df.index = pd.to_datetime(carbon_df.index)
     carbon_df = carbon_df.resample(pd.Timedelta(hours=1)).mean()
     carbon_df["GridCO2"] = carbon_df['actual'].fillna(carbon_df['forecast'])
