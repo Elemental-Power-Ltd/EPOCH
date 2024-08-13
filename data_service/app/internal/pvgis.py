@@ -5,6 +5,8 @@ import json
 import os
 
 import fastapi
+
+from fastapi import HTTPException
 import httpx
 import numpy as np
 import pandas as pd
@@ -50,12 +52,14 @@ async def get_pvgis_optima(
 
     # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
     # for connection pooling. However, if weren't given one we'll have to make one.
-    if client is not None:
-        res = await client.get(base_url, params=params)
-    else:
-        async with httpx.AsyncClient() as client:
+    try:
+        if client is not None:
             res = await client.get(base_url, params=params)
-
+        else:
+            async with httpx.AsyncClient() as client:
+                res = await client.get(base_url, params=params)
+    except httpx.TimeoutException as ex:
+        raise HTTPException(f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
     data = res.json()
 
     if tracking:

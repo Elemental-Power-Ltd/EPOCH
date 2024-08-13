@@ -157,8 +157,6 @@ async def list_sites(client_id: ClientID, conn: DatabaseDep) -> list[SiteIdNameP
 
     Parameters
     ----------
-    *request*
-
     *client_id*
         Database ID of this specific client.
 
@@ -189,8 +187,6 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
 
     Parameters
     ----------
-    *request*
-        Internal FastAPI request object.
     *site_id*
         Database ID for the site you are interested in.
 

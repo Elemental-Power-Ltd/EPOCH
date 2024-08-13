@@ -91,6 +91,25 @@ def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
     return dict(os.environ.items())
 
 
+def last_day_of_month(date: datetime.datetime) -> datetime.datetime:
+    """
+    Get the last day of a month.
+
+    This is useful for date parsing.
+
+    Parameters
+    ----------
+    date
+        Some day within a month (might be useful for it to be the first)
+
+    Returns
+    -------
+        last day of the corresponding month.
+    """
+    if date.month == 12:
+        return date.replace(day=31)
+    return date.replace(month=date.month+1, day=1) - datetime.timedelta(days=1)
+
 def check_latitude_longitude(latitude: float, longitude: float) -> bool:
     """
     Check if a pair of coordinates are appropriate latitude and longitude for the UK.

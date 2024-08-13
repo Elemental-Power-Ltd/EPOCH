@@ -68,7 +68,8 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         """
         # Use the 'Connection Close' headers to suppress httpx's connection pooling, as
         # it'll helpfully try to reuse a connection between event loops and then fall over.
-        async with AsyncClient(headers=[("Connection", "close")]) as http_client:
+        async with AsyncClient(headers=[("Connection", "close")],
+                               timeout=10.0) as http_client:
             yield http_client
 
     app.dependency_overrides[get_db_conn] = override_get_db_conn

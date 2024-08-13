@@ -20,3 +20,4 @@ from .utils import hour_of_year as hour_of_year
 from .utils import load_dotenv as load_dotenv
 from .utils import split_into_sessions as split_into_sessions
 from .utils import typename as typename
+from .utils import last_day_of_month as last_day_of_month
