@@ -17,7 +17,8 @@ import pydantic
 from fastapi import APIRouter
 
 from ..database import DatabaseDep, HTTPClient, HttpClientDep
-from ..models.carbon_intensity import CarbonIntensityEntry, CarbonIntensityMetadata
+from ..internal.utils import hour_of_year
+from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
 
 router = APIRouter()
@@ -205,7 +206,7 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
 
 
 @router.post("/get-grid-co2")
-async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[CarbonIntensityEntry]:
+async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[EpochCarbonEntry]:
     """
     Get a specific grid carbon itensity dataset that we generated with `generate-grid-co2`.
 
@@ -233,7 +234,7 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Car
     res = await conn.fetch(
         """
         SELECT
-            start_ts, end_ts, forecast, actual, gas, coal, biomass, nuclear, hydro, imports, other, wind, solar
+            start_ts, end_ts, forecast, actual
         FROM carbon_intensity.grid_co2
         WHERE dataset_id = $1
         AND $2 <= start_ts
@@ -242,4 +243,15 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Car
         params.start_ts,
         params.end_ts,
     )
-    return [CarbonIntensityEntry(**item) for item in res]
+    carbon_df = pd.DataFrame.from_records(
+        res,
+        index="start_ts",
+        columns=["start_ts", "end_ts", "forecast", "actual"],
+    )
+    carbon_df.index = pd.to_datetime(carbon_df.index)
+    carbon_df = carbon_df.resample(pd.Timedelta(hours=1)).mean()
+    carbon_df["GridCO2"] = carbon_df["actual"].fillna(carbon_df["forecast"])
+    return [
+        EpochCarbonEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), GridCO2=val)
+        for ts, val in zip(carbon_df.index, carbon_df["GridCO2"], strict=True)
+    ]
