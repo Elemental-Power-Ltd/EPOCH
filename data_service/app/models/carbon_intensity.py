@@ -5,7 +5,13 @@ import datetime
 
 import pydantic
 
-from .core import site_id_field, site_id_t
+from .core import (
+    epoch_date_field,
+    epoch_hour_of_year_field,
+    epoch_start_time_field,
+    site_id_field,
+    site_id_t,
+)
 
 
 class CarbonIntensityMetadata(pydantic.BaseModel):
@@ -45,3 +51,10 @@ class CarbonIntensityEntry(pydantic.BaseModel):
     other: float | None = pydantic.Field(description="Fraction of grid power from unknown sources.")
     wind: float | None = pydantic.Field(description="Fraction of grid power provided by wind turbines (good!)")
     solar: float | None = pydantic.Field(description="Fraction of grid power provided by solar PV (good!)")
+
+
+class EpochCarbonEntry(pydantic.BaseModel):
+    Date: str = epoch_date_field
+    StartTime: str = epoch_start_time_field
+    HourOfYear: float = epoch_hour_of_year_field
+    GridCO2: float = pydantic.Field(examples=[32.4, 14.6], description="Carbon intensity during this time period in g CO2 / kWh.")
