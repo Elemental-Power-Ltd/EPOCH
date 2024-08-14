@@ -19,6 +19,7 @@ def demo_end_ts() -> datetime.datetime:
 
 class TestRenewables:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_renewables_metadata(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -46,6 +47,7 @@ class TestRenewables:
         assert result["site_id"] == "demo_london"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_renewables_without_optima(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -73,6 +75,7 @@ class TestRenewables:
         assert result["site_id"] == "demo_london"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_and_get_renewables(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -104,6 +107,7 @@ class TestRenewables:
         assert all(item["RGen1"] >= 0 for item in results)
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_and_get_renewables_not_full_year(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:

@@ -24,6 +24,7 @@ async def uploaded_meter_data(client: httpx.AsyncClient) -> pydantic.Json:
 
 class TestHeatingLoad:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_and_get_heating_load(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         dataset_id = uploaded_meter_data["dataset_id"]
 

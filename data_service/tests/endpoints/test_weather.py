@@ -20,6 +20,7 @@ async def demo_end_ts() -> datetime.datetime:
 
 class TestGetVisualCrossing:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_cardiff(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -39,6 +40,7 @@ class TestGetVisualCrossing:
 
 class TestGetWeather:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_all_from_vc(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -67,6 +69,7 @@ class TestGetWeather:
             assert key in result.json()[0]
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_idempotent(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -84,6 +87,7 @@ class TestGetWeather:
         assert result.json() == again_result.json()
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_can_get_missing(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:

@@ -77,6 +77,16 @@ def month_to_idx(month_name: str) -> int:
     Convert a month name to a 1 indexed number suitable for datetime constructors.
 
     This will check the lowercase abbreviation, so no need to handle case or size beforehand.
+
+    Parameters
+    ----------
+    month_name
+        English string name of the month
+    
+    Returns
+    -------
+    month_idx
+        One indexed month, with January = 1 and December = 12
     """
     return MONTH_ABBR_TO_IDX[month_name[:3].lower()]
 
