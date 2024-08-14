@@ -5,11 +5,10 @@ import json
 import os
 
 import fastapi
-
-from fastapi import HTTPException
 import httpx
 import numpy as np
 import pandas as pd
+from fastapi import HTTPException
 
 from ..models.renewables import PvgisMountingSystemEnum, PVOptimaResult
 from .utils import check_latitude_longitude, load_dotenv
@@ -59,7 +58,7 @@ async def get_pvgis_optima(
             async with httpx.AsyncClient() as client:
                 res = await client.get(base_url, params=params)
     except httpx.TimeoutException as ex:
-        raise HTTPException(f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
+        raise HTTPException(400, f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
     data = res.json()
 
     if tracking:

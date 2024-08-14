@@ -122,7 +122,7 @@ class ClientIdNamePair(pydantic.BaseModel):
     name: str = Field(examples=["Demonstration", "Demonstration"], description="Human readable client name")
 
 
-class ReadingTypeEnum(str, Enum):
+class DatasetTypeEnum(str, Enum):
     GasMeterData = "GasMeterData"
     ElectricityMeterData = "ElectricityMeterData"
     RenewablesGeneration = "RenewablesGeneration"
@@ -135,7 +135,7 @@ class ReadingTypeEnum(str, Enum):
 
 class DatasetEntry(pydantic.BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
-    reading_type: ReadingTypeEnum
+    dataset_type: DatasetTypeEnum
     created_at: pydantic.AwareDatetime
 
 

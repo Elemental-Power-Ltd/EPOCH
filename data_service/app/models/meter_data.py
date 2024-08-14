@@ -1,9 +1,41 @@
 """Models associated with meter data endpoints, including gas and electricity."""
 # ruff: noqa: D101
 
+import datetime
+import enum
+import uuid
+
 import pydantic
 
-from .core import epoch_date_field, epoch_hour_of_year_field, epoch_start_time_field
+from .core import FuelEnum, epoch_date_field, epoch_hour_of_year_field, epoch_start_time_field, site_id_field, site_id_t
+
+
+class ReadingTypeEnum(str, enum.Enum):
+    Customer = "manual"
+    Automatic = "automatic"
+    HalfHourly = "halfhourly"
+
+
+class MeterMetadata(pydantic.BaseModel):
+    dataset_id: pydantic.UUID4 = pydantic.Field(default_factory=uuid.uuid4)
+    created_at: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    site_id: site_id_t = site_id_field
+    fuel_type: FuelEnum
+    reading_type: ReadingTypeEnum
+    filename: str | None = pydantic.Field(default=None)
+
+
+class MeterEntry(pydantic.BaseModel):
+    start_ts: pydantic.AwareDatetime
+    end_ts: pydantic.AwareDatetime
+    consumption: float
+    unit_cost: float | None = None
+    total_cost: float | None = None
+
+
+class MeterEntries(pydantic.BaseModel):
+    metadata: MeterMetadata
+    data: list[MeterEntry]
 
 
 class EpochElectricityEntry(pydantic.BaseModel):

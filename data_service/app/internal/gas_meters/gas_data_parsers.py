@@ -14,7 +14,8 @@ import numpy as np
 import pandas as pd
 
 from ..epl_typing import HHDataFrame, MonthlyDataFrame
-from ..utils import m3_to_kwh, last_day_of_month
+from ..utils import last_day_of_month, m3_to_kwh
+
 
 def check_if_readings_not_consumption(df: pd.DataFrame) -> bool:
     """
@@ -31,16 +32,16 @@ def check_if_readings_not_consumption(df: pd.DataFrame) -> bool:
     bool
         If this dataframe is likely to be readings, not a consumption
     """
-
     always_increasing = np.all(np.ediff1d(df["consumption"]) > 0)
-    return always_increasing
+    return bool(always_increasing)
+
 
 def parse_comma_float(in_str: float | int | str) -> float:
-    """"
+    """
     Parse a float that Excel helpfully put a comma into.
 
     Watch out for other locales!
-    
+
     Parameters
     ----------
     in_str
@@ -53,6 +54,8 @@ def parse_comma_float(in_str: float | int | str) -> float:
     if isinstance(in_str, str):
         return float(in_str.replace(",", ""))
     return float(in_str)
+
+
 MONTH_ABBR_TO_IDX = {
     "jan": 1,
     "feb": 2,
@@ -68,7 +71,13 @@ MONTH_ABBR_TO_IDX = {
     "dec": 12,
 }
 
+
 def month_to_idx(month_name: str) -> int:
+    """
+    Convert a month name to a 1 indexed number suitable for datetime constructors.
+
+    This will check the lowercase abbreviation, so no need to handle case or size beforehand.
+    """
     return MONTH_ABBR_TO_IDX[month_name[:3].lower()]
 
 
@@ -99,23 +108,25 @@ def parse_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame:
             "dateTime": "start_ts",
             "Start": "start_ts",
             "End": "end_ts",
-
         }
     )
     if "Consumption (m³)" in consumption_df.columns:
         consumption_df["consumption"] = m3_to_kwh(consumption_df["Consumption (m³)"].map(parse_comma_float))
         consumption_df = consumption_df.drop(columns=["Consumption (m³)"])
-    
+
     assert "consumption" in consumption_df.columns, f"Didn't get a consumption column in {consumption_df.columns}."
     consumption_df["consumption"] = consumption_df["consumption"].map(parse_comma_float)
     DATE_FORMATS = ["ISO8601", "%Y-%m-%d %H:%M:%S", "%d %b %Y %H:%M"]
-    for format in DATE_FORMATS:
+    for fmt in DATE_FORMATS:
         try:
-            consumption_df["start_ts"] = pd.to_datetime(consumption_df["start_ts"], utc=True, format=format)
+            consumption_df["start_ts"] = pd.to_datetime(consumption_df["start_ts"], utc=True, format=fmt)
             if "end_ts" in consumption_df.columns:
-                consumption_df["end_ts"] = pd.to_datetime(consumption_df["end_ts"], utc=True, format=format)
+                consumption_df["end_ts"] = pd.to_datetime(consumption_df["end_ts"], utc=True, format=fmt)
             else:
-                consumption_df["end_ts"] = [*consumption_df.start_ts[1:], consumption_df.start_ts.iat[-1] + pd.Timedelta(minutes=30)]
+                consumption_df["end_ts"] = [
+                    *consumption_df.start_ts[1:],
+                    consumption_df.start_ts.to_numpy()[-1] + pd.Timedelta(minutes=30),
+                ]
             break
         except ValueError:
             continue
@@ -292,7 +303,8 @@ def parse_horizontal_monthly_both_years(fname: os.PathLike | str | BinaryIO) -> 
     gas_df = pd.DataFrame.from_records(readings).set_index("start_ts")
     return MonthlyDataFrame(gas_df[["end_ts", "consumption"]])
 
-def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) :
+
+def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame:
     """
     Parse a reading file with columns being a single month.
 
@@ -313,11 +325,11 @@ def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) :
     parsed_rows = []
     for date, consumption in zip(dates, df.iloc[0], strict=False):
         try:
-            month, year = date.split("-")
+            month_str, year_str = date.split("-")
         except ValueError:
             continue
-        month = month_to_idx(month)
-        year = int(year)
+        month = month_to_idx(month_str)
+        year = int(year_str)
         if year < 2000:
             year += 2000
         start_ts = datetime.datetime(year=year, month=month, day=1, tzinfo=datetime.UTC)
@@ -326,12 +338,12 @@ def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) :
 
         parsed_rows.append({"start_ts": start_ts, "end_ts": end_ts, "consumption": consumption})
 
-    return pd.DataFrame.from_records(parsed_rows).set_index("start_ts")
+    return MonthlyDataFrame(pd.DataFrame.from_records(parsed_rows).set_index("start_ts"))
 
 
 def parse_horizontal_monthly_only_end_year(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame:
     """
-    Parse a reading file with columns being specified periods e.g. 01 Jan - 31 Jan 2024
+    Parse a reading file with columns being specified periods e.g. 01 Jan - 31 Jan 2024.
 
     Watch out, as the date parsing is relatively delicate.
 
@@ -350,25 +362,25 @@ def parse_horizontal_monthly_only_end_year(fname: os.PathLike | str | BinaryIO) 
     parsed_rows = []
     for date, consumption in zip(dates, df.iloc[0], strict=False):
         try:
-            start_date, end_date = [item.strip() for item in date.split("-")]
+            start_date, end_date = (item.strip() for item in date.split("-"))
         except ValueError:
             continue
         consumption = parse_comma_float(consumption)
-        start_d, start_m = start_date.split(" ")
-        start_d = int(start_d)
-        start_m = month_to_idx(start_m)
-        end_d, end_m, end_y = end_date.split(" ")
-        end_d = int(end_d)
-        end_m = month_to_idx(end_m)
-        end_y = int(end_y)
+        start_d_str, start_m_str = start_date.split(" ")
+        start_d = int(start_d_str)
+        start_m = month_to_idx(start_m_str)
+        end_d_str, end_m_str, end_y_str = end_date.split(" ")
+        end_d = int(end_d_str)
+        end_m = month_to_idx(end_m_str)
+        end_y = int(end_y_str)
         if end_y < 2000:
             end_y += 2000
-        
+
         if start_m < end_m:
             start_y = end_y
         else:
             start_y = end_y - 1
-        
+
         start_ts = datetime.datetime(year=start_y, month=start_m, day=start_d, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=end_y, month=end_m, day=end_d, tzinfo=datetime.UTC)
         parsed_rows.append({"start_ts": start_ts, "end_ts": end_ts, "consumption": consumption})
@@ -460,7 +472,7 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame |
         parse_square_half_hourly,
         parse_horizontal_monthly_both_years,
         parse_horizontal_monthly_only_end_year,
-        parse_horizontal_monthly_only_month
+        parse_horizontal_monthly_only_month,
     ]
     for parser in possible_parsers:
         try:

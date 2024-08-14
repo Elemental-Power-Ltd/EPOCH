@@ -17,7 +17,7 @@ from ..models.core import (
     ClientID,
     ClientIdNamePair,
     DatasetEntry,
-    ReadingTypeEnum,
+    DatasetTypeEnum,
     SiteData,
     SiteID,
     SiteIdNamePair,
@@ -213,7 +213,7 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
     datasets.extend([
         DatasetEntry(
             dataset_id=item["dataset_id"],
-            reading_type=ReadingTypeEnum.ElectricityMeterData if item["fuel_type"] == "elec" else ReadingTypeEnum.GasMeterData,
+            dataset_type=DatasetTypeEnum.ElectricityMeterData if item["fuel_type"] == "elec" else DatasetTypeEnum.GasMeterData,
             created_at=item["created_at"],
         )
         for item in res
@@ -231,7 +231,7 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
         site_id.site_id,
     )
     datasets.extend([
-        DatasetEntry(dataset_id=item["dataset_id"], reading_type=ReadingTypeEnum.ImportTariff, created_at=item["created_at"])
+        DatasetEntry(dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.ImportTariff, created_at=item["created_at"])
         for item in res
     ])
 
@@ -248,7 +248,7 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
     )
     datasets.extend([
         DatasetEntry(
-            dataset_id=item["dataset_id"], reading_type=ReadingTypeEnum.RenewablesGeneration, created_at=item["created_at"]
+            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.RenewablesGeneration, created_at=item["created_at"]
         )
         for item in res
     ])
@@ -265,7 +265,7 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
         site_id.site_id,
     )
     datasets.extend([
-        DatasetEntry(dataset_id=item["dataset_id"], reading_type=ReadingTypeEnum.HeatingLoad, created_at=item["created_at"])
+        DatasetEntry(dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.HeatingLoad, created_at=item["created_at"])
         for item in res
     ])
     logging.info(f"Returning {len(res)} datasets for {site_id}")
@@ -284,8 +284,8 @@ async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[str, 
     all_datasets = await list_datasets(site_id, conn)
     latest_datasets: dict[str, DatasetEntry] = {}
     for ds in all_datasets:
-        if ds.reading_type.value not in latest_datasets or latest_datasets[ds.reading_type.value].created_at < ds.created_at:
-            latest_datasets[ds.reading_type.value] = ds
+        if ds.dataset_type.value not in latest_datasets or latest_datasets[ds.dataset_type.value].created_at < ds.created_at:
+            latest_datasets[ds.dataset_type.value] = ds
     return latest_datasets
 
 

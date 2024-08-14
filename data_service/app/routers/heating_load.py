@@ -278,7 +278,7 @@ async def get_heating_load(params: DatasetIDWithTime, conn: DatabaseDep) -> list
             HourOfYear=item["HourOfYear"],
             HLoad1=item["HLoad1"],
             DHWLoad1=item["DHWLoad1"],
-            AirTemp=item["AirTemp"]
+            AirTemp=item["AirTemp"],
         )
         for item in heating_df.to_dict(orient="records")
     ]

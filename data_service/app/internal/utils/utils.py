@@ -4,9 +4,10 @@ General utility functions, which don't fit anywhere else.
 Please don't fill this section with junk, and try to make sure there's no other home
 for the functions that go in here.
 """
-import logging
+
 import datetime
 import itertools
+import logging
 import os
 import pathlib
 from collections.abc import Sequence
@@ -16,6 +17,7 @@ import numpy.typing as npt
 import pandas as pd
 
 logger = logging.getLogger("default")
+
 
 def typename(x: Any) -> str:
     """
@@ -81,7 +83,6 @@ def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
         else:
             logger.warning(f"Could not find {fname} in the specified location {fpath} or its parents.")
             return {}
-            
 
     with open(fpath) as fi:
         for line in fi:
@@ -108,7 +109,8 @@ def last_day_of_month(date: datetime.datetime) -> datetime.datetime:
     """
     if date.month == 12:
         return date.replace(day=31)
-    return date.replace(month=date.month+1, day=1) - datetime.timedelta(days=1)
+    return date.replace(month=date.month + 1, day=1) - datetime.timedelta(days=1)
+
 
 def check_latitude_longitude(latitude: float, longitude: float) -> bool:
     """

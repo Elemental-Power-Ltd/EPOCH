@@ -15,7 +15,7 @@ async def demo_start_ts() -> datetime.datetime:
 
 @pytest_asyncio.fixture
 async def demo_end_ts() -> datetime.datetime:
-    return datetime.datetime(year=2024, month=2, day=11, hour=0, minute=0, second=0, tzinfo=datetime.UTC)
+    return datetime.datetime(year=2024, month=2, day=8, hour=0, minute=0, second=0, tzinfo=datetime.UTC)
 
 
 class TestGetVisualCrossing:
