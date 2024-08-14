@@ -4,32 +4,21 @@ This function should import all the APIRouters you want to use, and handle all o
 lifespan and request objects.
 """
 
-from contextlib import asynccontextmanager
-from typing import AsyncIterator, Never
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .database import db
+from .dependencies import lifespan
 from .routers import (
     air_source_heat_pump,
     carbon_intensity,
     client_data,
     heating_load,
+    import_tariffs,
     meter_data,
     optimisation,
     renewables,
     weather,
 )
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
-    """Set up a long clients: a database pool and an HTTP client."""
-    # Startup events
-    await db.create_pool()
-    yield  # type: ignore
-
 
 app = FastAPI(lifespan=lifespan)
 origins = ["*"]
@@ -50,6 +39,7 @@ app.include_router(renewables.router)
 app.include_router(carbon_intensity.router)
 app.include_router(optimisation.router)
 app.include_router(air_source_heat_pump.router)
+app.include_router(import_tariffs.router)
 
 
 @app.get("/")

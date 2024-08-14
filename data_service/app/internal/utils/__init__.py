@@ -17,5 +17,7 @@ from .file_outputs import to_hload_csv as to_hload_csv
 from .file_outputs import to_rgen_csv as to_rgen_csv
 from .utils import check_latitude_longitude as check_latitude_longitude
 from .utils import hour_of_year as hour_of_year
+from .utils import last_day_of_month as last_day_of_month
 from .utils import load_dotenv as load_dotenv
+from .utils import split_into_sessions as split_into_sessions
 from .utils import typename as typename

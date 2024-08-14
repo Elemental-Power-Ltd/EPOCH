@@ -8,6 +8,7 @@ import pandas as pd
 import scipy.optimize  # type: ignore
 from sklearn.linear_model import LinearRegression  # type: ignore
 
+from ...models.weather import BaitAndModelCoeffs
 from ..epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..heating import building_adjusted_internal_temperature
 from .domestic_hot_water import assign_hh_dhw_even
@@ -214,3 +215,68 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
 
     # TODO (2024-06-28 MHJB): add a "normalise to monthly readings" feature
     return hload_df
+
+
+def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -> BaitAndModelCoeffs:
+    """
+    Fit BAIT coefficients and a heating load models for these dataframes.
+
+    This will first fit the BAIT model using the weather : gas regression,
+    and then will fit a new heating and DHW model from those best coefficients.
+
+    Parameters
+    ----------
+    gas_df
+        Coarse gas dataframe with consumption information
+    weather_df
+        Weather dataframe with enough info for BAIT
+
+    Returns
+    -------
+    BaitAndModelCoeffs
+        fitted BAIT coefficients, model information and a score
+    """
+    # These are the "default" values from the original BAIT paper
+    bait_initial = [
+        0.012,  # solar gain
+        -0.20,  # wind chill
+        -0.05,  # humidity discomfort
+        0.5,  # smoothing
+        15.5,  # threshold
+    ]
+
+    result = scipy.optimize.minimize(
+        score_bait_coefficients,
+        bait_initial,
+        args=(gas_df, weather_df),
+        method="Nelder-Mead",
+        bounds=[(0, None), (None, 0), (None, None), (0, 1), (13, 20)],
+    )
+    assert result.success, "Optimisation did not succeed"
+    bait_fitted = result.x
+    bait_hdd = compute_monthly_hdd(
+        gas_df=gas_df,
+        weather_df=weather_df,
+        solar_gain=bait_fitted[0],
+        wind_chill=bait_fitted[1],
+        humidity_discomfort=bait_fitted[2],
+        smoothing=bait_fitted[3],
+        thresh=bait_fitted[4],
+    )
+
+    mdl = LinearRegression(positive=True, fit_intercept=False)
+    xs = np.vstack([gas_df["days"].to_numpy(), bait_hdd]).T
+    ys = gas_df["consumption"].to_numpy().reshape(-1, 1)
+    mdl.fit(xs, ys)
+
+    score = mdl.score(xs, ys)
+    return BaitAndModelCoeffs(
+        solar_gain=bait_fitted[0],
+        wind_chill=bait_fitted[1],
+        humidity_discomfort=bait_fitted[2],
+        smoothing=bait_fitted[3],
+        threshold=bait_fitted[4],
+        heating_kwh=mdl.coef_[0, 1],
+        dhw_kwh=mdl.coef_[0, 0],
+        r2_score=score,
+    )

@@ -14,9 +14,9 @@ import uuid
 import aiometer
 import pandas as pd
 import pydantic
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from ..database import DatabaseDep, HTTPClient, HttpClientDep
+from ..dependencies import DatabaseDep, HTTPClient, HttpClientDep
 from ..internal.utils import hour_of_year
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
@@ -125,7 +125,12 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
 
     time_pairs: list[tuple[pydantic.AwareDatetime, pydantic.AwareDatetime]]
     if params.end_ts - params.start_ts >= pd.Timedelta(days=14):
-        time_pairs = list(itertools.pairwise(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(days=13))))
+        time_pairs = list(
+            itertools.pairwise([
+                *list(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(days=13))),
+                params.end_ts,
+            ])
+        )
     else:
         time_pairs = [(params.start_ts, params.end_ts)]
 
@@ -135,6 +140,8 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
         async for result in results:
             all_data.extend(result)
 
+    if not all_data:
+        raise HTTPException(400, "Failed to get grid CO2 data.")
     metadata: dict[str, uuid.UUID | datetime.datetime | str | bool] = {
         "dataset_id": uuid.uuid4(),
         "created_at": datetime.datetime.now(datetime.UTC),
@@ -238,11 +245,13 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
         FROM carbon_intensity.grid_co2
         WHERE dataset_id = $1
         AND $2 <= start_ts
-        AND end_ts <= $3""",
+        AND end_ts <= $3
+        ORDER BY start_ts ASC""",
         params.dataset_id,
         params.start_ts,
         params.end_ts,
     )
+
     carbon_df = pd.DataFrame.from_records(
         res,
         index="start_ts",
@@ -250,7 +259,7 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
     )
     carbon_df.index = pd.to_datetime(carbon_df.index)
     carbon_df = carbon_df.resample(pd.Timedelta(hours=1)).mean()
-    carbon_df["GridCO2"] = carbon_df["actual"].fillna(carbon_df["forecast"])
+    carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))
     return [
         EpochCarbonEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), GridCO2=val)
         for ts, val in zip(carbon_df.index, carbon_df["GridCO2"], strict=True)

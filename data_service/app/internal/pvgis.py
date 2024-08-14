@@ -6,7 +6,9 @@ import os
 
 import fastapi
 import httpx
+import numpy as np
 import pandas as pd
+from fastapi import HTTPException
 
 from ..models.renewables import PvgisMountingSystemEnum, PVOptimaResult
 from .utils import check_latitude_longitude, load_dotenv
@@ -49,9 +51,14 @@ async def get_pvgis_optima(
 
     # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
     # for connection pooling. However, if weren't given one we'll have to make one.
-    async with client if client is not None else httpx.AsyncClient() as aclient:
-        res = await aclient.get(base_url, params=params)
-
+    try:
+        if client is not None:
+            res = await client.get(base_url, params=params)
+        else:
+            async with httpx.AsyncClient() as client:
+                res = await client.get(base_url, params=params)
+    except httpx.TimeoutException as ex:
+        raise HTTPException(400, f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
     data = res.json()
 
     if tracking:
@@ -134,11 +141,11 @@ async def get_pvgis_data(
 
     # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
     # for connection pooling. However, if weren't given one we'll have to make one.
-    async with client if client is not None else httpx.AsyncClient() as aclient:
-        req = await aclient.get(
-            base_url,
-            params=params,
-        )
+    if client is not None:
+        req = await client.get(base_url, params=params)
+    else:
+        async with httpx.AsyncClient() as client:
+            req = await client.get(base_url, params=params)
 
     try:
         df = pd.DataFrame.from_records(req.json()["outputs"]["hourly"])
@@ -216,10 +223,15 @@ async def get_renewables_ninja_data(
     }
     # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
     # for connection pooling. However, if weren't given one we'll have to make one.
-    async with client if client is not None else httpx.AsyncClient() as aclient:
-        req = await aclient.get(
+    if client is not None:
+        req = await client.get(
             BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
         )
+    else:
+        async with httpx.AsyncClient() as aclient:
+            req = await aclient.get(
+                BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
+            )
 
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
@@ -230,4 +242,5 @@ async def get_renewables_ninja_data(
     renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
     renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)
-    return renewables_df
+    within_timestamps_mask = np.logical_and(renewables_df.index >= start_ts, renewables_df.index < end_ts)  # type: ignore
+    return renewables_df[within_timestamps_mask]

@@ -5,11 +5,18 @@ Please don't fill this section with junk, and try to make sure there's no other 
 for the functions that go in here.
 """
 
+import datetime
+import itertools
+import logging
 import os
 import pathlib
+from collections.abc import Sequence
 from typing import Any
 
+import numpy.typing as npt
 import pandas as pd
+
+logger = logging.getLogger("default")
 
 
 def typename(x: Any) -> str:
@@ -74,7 +81,8 @@ def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
                 fpath = parent_path
                 break
         else:
-            raise FileNotFoundError(f"Could not find {fname} in the specified location {fpath} or its parents.")
+            logger.warning(f"Could not find {fname} in the specified location {fpath} or its parents.")
+            return {}
 
     with open(fpath) as fi:
         for line in fi:
@@ -82,6 +90,26 @@ def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
             os.environ[key] = value
     # turn this into a dict to prevent any trouble with weird types
     return dict(os.environ.items())
+
+
+def last_day_of_month(date: datetime.datetime) -> datetime.datetime:
+    """
+    Get the last day of a month.
+
+    This is useful for date parsing.
+
+    Parameters
+    ----------
+    date
+        Some day within a month (might be useful for it to be the first)
+
+    Returns
+    -------
+        last day of the corresponding month.
+    """
+    if date.month == 12:
+        return date.replace(day=31)
+    return date.replace(month=date.month + 1, day=1) - datetime.timedelta(days=1)
 
 
 def check_latitude_longitude(latitude: float, longitude: float) -> bool:
@@ -111,3 +139,45 @@ def check_latitude_longitude(latitude: float, longitude: float) -> bool:
         return False
 
     return True
+
+
+def split_into_sessions[T: (float, int, datetime.datetime, datetime.date, pd.Timestamp)](
+    arr: Sequence[T] | npt.NDArray | pd.Series, max_diff: float | int | datetime.timedelta | pd.Timedelta
+) -> list[list[T]]:
+    """
+    Split this sorted iterable into runs with adjacent gaps no more than max_diff.
+
+    Parameters
+    ----------
+    arr
+        A pre sorted array of numbers, timestamps etc
+    max_diff
+        The maximum difference between adjacent elements to count as a 'session'
+
+    Returns
+    -------
+    sessions
+        List of lists, where each sublist is sorted in the original order
+    """
+    if len(arr) == 0:
+        return []
+
+    if isinstance(arr[0], datetime.datetime | datetime.date | pd.Timestamp):
+        assert isinstance(
+            max_diff, datetime.timedelta | pd.Timedelta
+        ), "Must provide a timedelta difference if working with times"
+    else:
+        assert isinstance(max_diff, float | int)
+
+    sessions: list[list[T]] = []
+    curr_session: list[T] = [arr[0]]  # type: ignore
+
+    for first, second in itertools.pairwise(arr):
+        if (second - first) <= max_diff:
+            curr_session.append(second)
+        else:
+            sessions.append(curr_session)
+            curr_session = [second]
+    # Make sure we get the last one as well!
+    sessions.append(curr_session)
+    return sessions

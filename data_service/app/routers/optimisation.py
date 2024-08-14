@@ -14,7 +14,7 @@ import pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
-from ..database import DatabaseDep
+from ..dependencies import DatabaseDep
 from ..models.optimisation import OptimisationResult, TaskConfig
 
 router = APIRouter()

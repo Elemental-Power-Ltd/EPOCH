@@ -11,19 +11,52 @@ import uuid
 
 import numpy as np
 import pandas as pd
-import sklearn  # type: ignore
 from fastapi import APIRouter, HTTPException
 
-from ..database import DatabaseDep, HttpClientDep
+from ..dependencies import DatabaseDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
-from ..internal.gas_meters import hh_gas_to_monthly, monthly_to_hh_hload
+from ..internal.gas_meters import assign_hh_dhw_even, fit_bait_and_model, hh_gas_to_monthly
+from ..internal.heating import building_adjusted_internal_temperature
 from ..internal.utils import hour_of_year
 from ..models.core import DatasetIDWithTime
 from ..models.heating_load import EpochHeatingEntry, HeatingLoadMetadata
-from ..models.weather import WeatherRequest
+from ..models.weather import WeatherDatasetEntry, WeatherRequest
 from .weather import get_weather
 
 router = APIRouter()
+
+
+def weather_dataset_to_dataframe(records: list[WeatherDatasetEntry]) -> WeatherDataFrame:
+    """
+    Convert a set of Weather Dataset Entries to a nice pandas dataframe.
+
+    We re-use the endpoint for getting weather in some of these functions, so
+    it's useful to convert out of the network JSON format into something friendly.
+
+    Parameters
+    ----------
+    records
+        The data you get from the `get-weather` endpoint
+
+    Returns
+    -------
+    WeatherDataFrame
+        Nice friendly pandas dataframe with datetime index
+    """
+    return WeatherDataFrame(
+        pd.DataFrame.from_records(
+            [item.model_dump() for item in records],
+            columns=[
+                "timestamp",
+                "temp",
+                "humidity",
+                "solarradiation",
+                "windspeed",
+                "pressure",
+            ],
+            index="timestamp",
+        )
+    )
 
 
 @router.post("/generate-heating-load", tags=["generate", "heating"])
@@ -45,13 +78,13 @@ async def generate_heating_load(
 
     Parameters
     ----------
-    *request*
-        Internal FastAPI request object
-
     *params*
         Dataset (linked to a site), and timestamps you're interested in.
         This dataset ID is the gas dataset you want to use for the calculation, and shouldn't be confused
         with the returned dataset ID that you'll get at the end of this function.
+        The timestamps do not select the timestamps of data that you want, but instead the period of time
+        that you want to resample to (e.g. you may request a dataset from 2020 and provide timestamps for 2024, and
+        you'll get 2024 data out).
 
     Returns
     -------
@@ -74,6 +107,7 @@ async def generate_heating_load(
 
     if res is None:
         raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
+
     location, site_id, reading_type, fuel_type = res
     if location is None:
         raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
@@ -99,29 +133,6 @@ async def generate_heating_load(
             400,
             f"Got an empty dataset for {location} between {params.start_ts} and {params.end_ts}",
         )
-    try:
-        start_ts = max(params.start_ts, gas_df["start_ts"].min())
-        end_ts = min(params.end_ts, gas_df["end_ts"].max())
-        weather = await get_weather(
-            WeatherRequest(location=location, start_ts=start_ts, end_ts=end_ts), conn=conn, http_client=http_client
-        )
-    except HTTPException as ex:
-        raise ex
-
-    weather_df = WeatherDataFrame(
-        pd.DataFrame.from_records(
-            [item.model_dump() for item in weather],
-            columns=[
-                "timestamp",
-                "temp",
-                "humidity",
-                "solarradiation",
-                "windspeed",
-                "pressure",
-            ],
-            index="timestamp",
-        )
-    )
     if reading_type == "halfhourly":
         logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location} so resampling.")
         gas_df = hh_gas_to_monthly(HHDataFrame(gas_df))
@@ -134,21 +145,46 @@ async def generate_heating_load(
 
     if gas_df.shape[0] < 3:
         raise HTTPException(400, f"Dataset covered too little time: {gas_df.index.min()} to {gas_df.index.max()}")
-    heating_df = HHDataFrame(monthly_to_hh_hload(gas_df, weather_df).drop(columns=["timedelta"]))
-    heating_df = HHDataFrame(heating_df.join(weather_df["temp"]).rename(columns={"temp": "air_temperature"}))
-    heating_df = HHDataFrame(heating_df.resample(pd.Timedelta(minutes=30)).mean().interpolate(method="time"))
 
-    monthly_predicteds = []
-    for start_ts, end_ts in zip(gas_df.start_ts, gas_df.end_ts, strict=False):
-        mask = np.logical_and(start_ts <= heating_df.index, heating_df.index < end_ts)
-        monthly_predicteds.append(heating_df.loc[mask, "predicted"].sum())
-    score = sklearn.metrics.r2_score(monthly_predicteds, gas_df["consumption"])
+    fit_weather_df = weather_dataset_to_dataframe(
+        await get_weather(
+            WeatherRequest(location=location, start_ts=gas_df["start_ts"].min(), end_ts=gas_df["end_ts"].max()),
+            conn=conn,
+            http_client=http_client,
+        )
+    )
+    fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df)
+
+    forecast_weather_df = weather_dataset_to_dataframe(
+        await get_weather(
+            WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+            conn=conn,
+            http_client=http_client,
+        )
+    )
+    forecast_weather_df = WeatherDataFrame(
+        forecast_weather_df.resample(rule=pd.Timedelta(minutes=30)).mean().interpolate(method="time")
+    )
+    forecast_weather_df["bait"] = building_adjusted_internal_temperature(
+        forecast_weather_df,
+        fitted_coefs.solar_gain,
+        fitted_coefs.wind_chill,
+        humidity_discomfort=fitted_coefs.humidity_discomfort,
+        smoothing=fitted_coefs.smoothing,
+    )
+
+    heating_df = HHDataFrame(pd.DataFrame(index=forecast_weather_df.index))
+    heating_df["air_temperature"] = forecast_weather_df["temp"]
+    heating_df["hdd"] = (
+        np.maximum(fitted_coefs.threshold - forecast_weather_df["bait"], 0) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=1)
+    )
+    assign_hh_dhw_even(heating_df, fitted_coefs.dhw_kwh, fitted_coefs.heating_kwh)
 
     metadata = {
         "dataset_id": uuid.uuid4(),
         "site_id": site_id,
         "created_at": datetime.datetime.now(datetime.UTC),
-        "params": json.dumps({"source_dataset_id": str(params.dataset_id), "r2_score": score}),
+        "params": json.dumps({"source_dataset_id": str(params.dataset_id), **fitted_coefs.model_dump()}),
     }
 
     async with conn.transaction():
@@ -239,10 +275,10 @@ async def get_heating_load(params: DatasetIDWithTime, conn: DatabaseDep) -> list
         EpochHeatingEntry(
             Date=item["Date"],
             StartTime=item["StartTime"],
-            HourOfYear=item["HourOFYear"],
+            HourOfYear=item["HourOfYear"],
             HLoad1=item["HLoad1"],
             DHWLoad1=item["DHWLoad1"],
-            AirTemp=item["AirTemp"]
+            AirTemp=item["AirTemp"],
         )
         for item in heating_df.to_dict(orient="records")
     ]

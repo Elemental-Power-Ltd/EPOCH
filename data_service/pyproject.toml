@@ -57,6 +57,7 @@ mark-parentheses = false
 markers = [
     "requires_epoch: Mark tests as requiring Epoch, and disable if we can't find it (deselect with '-m \"not requires_epoch\"')",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "external: marks tests as requiring an external API key (deselect with '-m \"not external\"')",
 ]
 
 [tool.mypy]

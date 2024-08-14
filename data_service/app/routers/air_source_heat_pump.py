@@ -48,7 +48,7 @@ async def get_ashp_input(params: DatasetIDWithTime) -> ASHPCOPResponse:
         columns=results["columns"],
         data=results["data"],
         index_names=results["index_names"],
-        column_names=results["column_names"]
+        column_names=results["column_names"],
     )
 
 
@@ -85,5 +85,5 @@ async def get_ashp_output(params: DatasetIDWithTime) -> ASHPCOPResponse:
         columns=results["columns"],
         data=results["data"],
         index_names=results["index_names"],
-        column_names=results["column_names"]
+        column_names=results["column_names"],
     )

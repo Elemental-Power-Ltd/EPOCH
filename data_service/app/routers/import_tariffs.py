@@ -8,9 +8,9 @@ import datetime
 import uuid
 
 import pandas as pd
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from ..database import DatabaseDep, HttpClientDep
+from ..dependencies import DatabaseDep, HttpClientDep
 from ..internal.utils import hour_of_year
 from ..models.core import DatasetIDWithTime
 from ..models.import_tariffs import EpochTariffEntry, TariffMetadata, TariffRequest
@@ -45,6 +45,8 @@ async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http
 
     response = await http_client.get(url)
     products = response.json()
+    if response.status_code != 200:
+        raise HTTPException(response.json()["detail"])
     tariff_codes = sorted([
         region["direct_debit_monthly"]["code"] for region in products["single_register_electricity_tariffs"].values()
     ])
@@ -52,13 +54,11 @@ async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http
 
     price_url = url + f"electricity-tariffs/{tariff_code}/standard-unit-rates/"
 
-    start_ts = datetime.datetime(year=2024, month=5, day=1, tzinfo=datetime.UTC)
-    end_ts = datetime.datetime(year=2024, month=6, day=1, tzinfo=datetime.UTC)
     price_response = await http_client.get(
         price_url,
         params={
-            "period_from": start_ts.isoformat(),
-            "period_to": end_ts.isoformat(),
+            "period_from": params.start_ts.isoformat(),
+            "period_to": params.end_ts.isoformat(),
         },
     )
 
@@ -190,8 +190,17 @@ async def get_import_tariffs(params: DatasetIDWithTime, conn: DatabaseDep) -> li
     )
     df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
     df.index = pd.to_datetime(df.index)
-    df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
+    df = df.resample(pd.Timedelta(minutes=60)).max().ffill()
+    # If we get 1970-01-01, that means someone didn't specify the timestamps.
+    # In that case, we don't resample. But if they did, then pad out to the period of interest.
+    if params.start_ts > datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC):
+        print("Reindexing to", params.start_ts, params.end_ts)
+        df = df.reindex(
+            index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=60), inclusive="left"),
+            method="nearest",
+        )
+    print(df.index.min(), df.index.max())
     return [
-        EpochTariffEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:"), Tariff=val)
+        EpochTariffEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), Tariff=val)
         for ts, val in zip(df.index, df["unit_cost"], strict=True)
     ]

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from ..database import DatabaseDep
+from ..dependencies import DatabaseDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
 from ..internal.utils import hour_of_year
@@ -21,13 +21,87 @@ from ..models.core import (
     FuelEnum,
     site_id_t,
 )
-from ..models.meter_data import EpochElectricityEntry, GasDatasetEntry
+from ..models.meter_data import EpochElectricityEntry, GasDatasetEntry, MeterEntries, MeterMetadata
 
 router = APIRouter()
 
 
-@router.post("/upload-meter-data", tags=["db", "add", "meter"])
-async def upload_meter_data(
+@router.post("/upload-meter-entries", tags=["db", "add", "meter"])
+async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> MeterMetadata:
+    """
+    Upload some pre-parsed meter data to the database.
+
+    Parameters
+    ----------
+    *entries*
+        Pre-parsed meter entries and associated metadata
+
+    Returns
+    -------
+    HTTP Status Code
+
+    Raises
+    ------
+    400
+        In case of parsing error
+    """
+    if entries.metadata.fuel_type == FuelEnum.gas:
+        table_name = "gas_meters"
+    elif entries.metadata.fuel_type == FuelEnum.elec:
+        table_name = "electricity_meters"
+    else:
+        raise HTTPException(
+            400,
+            f"Fuel type {entries.metadata.fuel_type} is not supported. Please select from ('gas', 'elec')",
+        )
+
+    async with conn.transaction():
+        await conn.execute(
+            """
+            INSERT INTO
+                client_meters.metadata (
+                    dataset_id,
+                    created_at,
+                    site_id,
+                    fuel_type,
+                    reading_type,
+                    filename)
+            VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6)""",
+            entries.metadata.dataset_id,
+            entries.metadata.created_at,
+            entries.metadata.site_id,
+            entries.metadata.fuel_type,
+            entries.metadata.reading_type,
+            entries.metadata.filename,
+        )
+
+        await conn.executemany(
+            f"""INSERT INTO
+                    client_meters.{table_name} (
+                        dataset_id,
+                        start_ts,
+                        end_ts,
+                        consumption_kwh
+                    )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4)""",
+            [(entries.metadata.dataset_id, item.start_ts, item.end_ts, item.consumption) for item in entries.data],
+        )
+
+    return entries.metadata
+
+
+@router.post("/upload-meter-file", tags=["db", "add", "meter"])
+async def upload_meter_file(
     conn: DatabaseDep,
     file: UploadFile,
     site_id: site_id_t = Form(...),  # noqa
@@ -173,18 +247,25 @@ async def get_meter_data(dataset_id: DatasetID, conn: DatabaseDep) -> list[GasDa
     list of records in the form `[{"start_ts": ..., "end_ts": ..., "consumption": ...}, ...]`
     """
     # TODO (2024-08-05 MHJB): make this return an EPOCH oriented object
-
+    fuel_type = await conn.fetchval(
+        """SELECT fuel_type FROM client_meters.metadata WHERE dataset_id = $1""", dataset_id.dataset_id
+    )
+    if not fuel_type:
+        raise HTTPException(400, f"Dataset {dataset_id} not found in meter datasets. Could it be an ID for another type?")
+    table_name = "gas_meters" if fuel_type == "gas" else "electricity_meters"
     res = await conn.fetch(
-        """
+        f"""
         SELECT
             start_ts,
             end_ts,
             consumption_kwh as consumption
-        FROM client_meters.gas_meters
+        FROM client_meters.{table_name}
         WHERE dataset_id = $1
         ORDER BY start_ts ASC""",
         dataset_id.dataset_id,
     )
+    if not res:
+        raise HTTPException(400, f"Got an empty meter dataset for {dataset_id}.")
     return [GasDatasetEntry(**item) for item in res]
 
 
@@ -213,22 +294,26 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
 
     Raises
     ------
-    *HTTPException(500)*
+    *HTTPException(400)*
         If the requested meter dataset is half hourly.
     """
-    reading_type = await conn.fetchval(
+    readings_and_fuel = await conn.fetchrow(
         """
         SELECT
-            m.reading_type
+            reading_type,
+            fuel_type
         FROM client_meters.metadata AS m
-        LEFT JOIN client_info.site_info AS s
-        ON s.site_id = m.site_id WHERE dataset_id = $1
+        WHERE dataset_id = $1
         LIMIT 1""",
         params.dataset_id,
     )
+    if readings_and_fuel is None:
+        raise HTTPException(400, f"Could not find a reading or fuel type for {params.dataset_id}")
+    reading_type, fuel_type = readings_and_fuel
     if reading_type != "halfhourly":
-        raise HTTPException(500, "Electrical load resampling not yet supported, pick a half hourly dataset.")
-
+        raise HTTPException(400, "Electrical load resampling not yet supported, pick a half hourly dataset.")
+    if fuel_type != "elec":
+        raise HTTPException(400, f"Requested dataset {params.dataset_id} was for {fuel_type}, not 'elec' ")
     res = await conn.fetch(
         """
         SELECT
@@ -244,6 +329,8 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     elec_df = pd.DataFrame.from_records(
         res, columns=["start_ts", "consumption"], coerce_float=["consumption"], index="start_ts"
     )
+    if elec_df.empty:
+        raise HTTPException(400, f"Got an empty dataset for {params.dataset_id}.")
     elec_df = elec_df.resample(pd.Timedelta(minutes=30)).sum().interpolate(method="time")
 
     assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"

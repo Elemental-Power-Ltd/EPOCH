@@ -6,6 +6,8 @@ from enum import Enum
 
 import pydantic
 
+from .core import site_id_field, site_id_t
+
 
 class Objective(pydantic.BaseModel):
     carbon_balance: float | None = pydantic.Field(
@@ -80,9 +82,7 @@ class SiteDataEntry(pydantic.BaseModel):
 
 
 class Optimiser(pydantic.BaseModel):
-    name: OptimiserEnum = pydantic.Field(
-        default=None, description="Name of optimiser."
-    )
+    name: OptimiserEnum = pydantic.Field(default=None, description="Name of optimiser.")
     hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
         default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
     )
@@ -90,6 +90,7 @@ class Optimiser(pydantic.BaseModel):
 
 class TaskConfig(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
+    site_id: site_id_t = site_id_field
     task_name: str | None = pydantic.Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
     objective_directions: Objective = pydantic.Field(
         default=Objective(carbon_balance=-1, cost_balance=1, capex=-1, payback_horizon=-1, annualised_cost=-1),

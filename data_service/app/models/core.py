@@ -8,7 +8,7 @@ centralise it in here.
 # ruff: noqa: D101
 import datetime
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Self
 
 import pydantic
 from pydantic import BaseModel, Field
@@ -21,7 +21,7 @@ location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
 example_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
 example_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
 site_id_field = Field(
-    examples=["demo_matts_house"],
+    examples=["demo_london"],
     pattern=r"^[0-9a-z_]+$",
     description="The database ID for a site, all lower case, joined by underscores.",
 )
@@ -63,16 +63,6 @@ class FuelEnum(str, Enum):
     oil = "oil"
 
 
-class ReadingTypeEnum(str, Enum):
-    manual = "manual"
-    automatic = "automatic"
-    halfhourly = "halfhourly"
-    oil = "oil"
-    solar_pv = "solar_pv"
-    tariff = "tariff"
-    heating_load = "heating_load"
-
-
 class DatasetID(BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
 
@@ -94,6 +84,14 @@ class SiteIDWithTime(BaseModel):
         examples=["2024-05-31T00:00:00Z"], description="The latest time (exclusive) to retrieve data for."
     )
 
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self
+
 
 class DatasetIDWithTime(BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
@@ -108,6 +106,14 @@ class DatasetIDWithTime(BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
     )
 
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self
+
 
 class ClientIdNamePair(pydantic.BaseModel):
     """A client_id, name pair."""
@@ -116,10 +122,21 @@ class ClientIdNamePair(pydantic.BaseModel):
     name: str = Field(examples=["Demonstration", "Demonstration"], description="Human readable client name")
 
 
+class DatasetTypeEnum(str, Enum):
+    GasMeterData = "GasMeterData"
+    ElectricityMeterData = "ElectricityMeterData"
+    RenewablesGeneration = "RenewablesGeneration"
+    Weather = "Weather"
+    CarbonIntensity = "CarbonIntensity"
+    HeatingLoad = "HeatingLoad"
+    ASHPData = "ASHPData"
+    ImportTariff = "ImportTariff"
+
+
 class DatasetEntry(pydantic.BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
-    reading_type: ReadingTypeEnum
-    fuel_type: FuelEnum
+    dataset_type: DatasetTypeEnum
+    created_at: pydantic.AwareDatetime
 
 
 class SiteIdNamePair(pydantic.BaseModel):

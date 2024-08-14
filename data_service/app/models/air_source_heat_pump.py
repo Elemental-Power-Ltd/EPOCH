@@ -19,6 +19,4 @@ class ASHPCOPResponse(pydantic.BaseModel):
     index_names: list[str] = pydantic.Field(
         examples=[["temperature"]], description="Name of the index to use in reconstructing a dataframe."
     )
-    column_names: list[None] = pydantic.Field(
-        description="Empty field."
-    )
+    column_names: list[None] = pydantic.Field(description="Empty field.")
