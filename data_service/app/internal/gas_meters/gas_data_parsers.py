@@ -11,6 +11,7 @@ import os
 from typing import BinaryIO, Callable
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from ..epl_typing import HHDataFrame, MonthlyDataFrame
@@ -82,7 +83,7 @@ def month_to_idx(month_name: str) -> int:
     ----------
     month_name
         English string name of the month
-    
+
     Returns
     -------
     month_idx
@@ -178,7 +179,10 @@ def parse_daily_readings(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFram
     gas_df = pd.DataFrame()
     gas_df["start_ts"] = readings_df.index[:-1].to_numpy()
     gas_df["end_ts"] = readings_df.index[1:].to_numpy()
-    gas_df["consumption"] = m3_to_kwh(np.ediff1d(readings_df["reading"].map(parse_comma_float)))
+    m3_consumptions: npt.NDArray[np.float64] = np.ediff1d(
+        readings_df["reading"].map(parse_comma_float).to_numpy().astype(np.float64)
+    ).astype(np.float64)
+    gas_df["consumption"] = m3_to_kwh(m3_consumptions)
     gas_df = gas_df.set_index("start_ts")
     return MonthlyDataFrame(gas_df[["end_ts", "consumption"]])
 
@@ -235,7 +239,7 @@ def parse_be_st_format(fname: os.PathLike | BinaryIO | str) -> MonthlyDataFrame:
             continue
         # Try parsing the split year information in the form 20XX/YY
         try:
-            year_choice = int(year[0:4]), int(year[0:2] + year[5:8])
+            year_choice = int(year[0:4]), int(year[0:2] + year[5:8])  # pyright: ignore
         except ValueError:
             start_timestamps.append(pd.NaT)
             continue
@@ -302,11 +306,11 @@ def parse_horizontal_monthly_both_years(fname: os.PathLike | str | BinaryIO) -> 
         consumption = parse_comma_float(consumption)
 
         year, month_name, day = start_date.strip().split()
-        month_name = month_name[:3]
+        month_name = month_name[:3]  # pyright: ignore
         start_ts = pd.to_datetime(f"{year} {month_name} {day}", utc=True, format="%d %b %y")
 
         end_year, end_month_name, end_day = end_date.strip().split()
-        end_month_name = end_month_name[:3]
+        end_month_name = end_month_name[:3]  # pyright: ignore
         end_ts = pd.to_datetime(f"{end_year} {end_month_name} {end_day}", utc=True, format="%d %b %y")
         readings.append({"start_ts": start_ts, "end_ts": end_ts, "consumption": consumption})
 
