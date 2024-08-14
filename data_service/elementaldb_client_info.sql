@@ -31,9 +31,9 @@ INSERT INTO client_info.clients (client_id, name) VALUES ('demo', 'Demonstration
 --
 
 INSERT INTO client_info.site_info (site_id, name, address, location, coordinates, client_id) VALUES ('demo_london','Demo - London','Palace of Westminster, London SW1A 0AA', 'London', '(51.49966947133101, -0.12484770372778578)','demo');
-INSERT INTO client_info.site_info (site_id, name, address, location, coordinates, client_id) VALUES ('bassetlaw_museum', 'Bassetlaw Museum (Amcott House)', 'Amcott House, 40 Grove St, Retford DN22 6LD', 'Retford', '(53.32227090607319,-0.9394358064784168)', 'demo');
 INSERT INTO client_info.site_info (site_id, name, address, location, coordinates, client_id) VALUES ('demo_cardiff', 'Demo - Cardiff','Senedd, Pierhead St, Cardiff CF99 1SN', 'Cardiff', '(51.463479232299676, -3.1627137819539533)','demo');
 INSERT INTO client_info.site_info (site_id, name, address, location, coordinates, client_id) VALUES ('demo_edinburgh', 'Demo - Edinburgh','Scottish Parliament Building, Horse Wynd, Edinburgh EH99 1SP', 'Edinburgh', '(55.95230499320703, -3.174847396715577)','demo');
+
 
 
 

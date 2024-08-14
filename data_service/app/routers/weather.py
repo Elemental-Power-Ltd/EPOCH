@@ -138,7 +138,7 @@ async def visual_crossing_request(
     # This is our cheeky trick to only select unique timestamps (we can't use the usual sorted(set(...)) idiom as
     # the dict results are unhashable), and avoids having to construct a Pandas dataframe to do all this work.
     # We also filter out any that don't meet our requirements.
-    record_dict = {x["timestamp"]: x for x in records if start_ts <= x["timestamp"] < end_ts}
+    record_dict = {x["timestamp"]: x for x in records if start_ts <= x["timestamp"] < end_ts} # pyright: ignore
     return [record_dict[ts] for ts in sorted(record_dict.keys())]
 
 
@@ -212,7 +212,7 @@ async def get_weather(
             inclusive="left",
         )
     }
-    got_days = {item["date"] for item in res}
+    got_days = {item["date"] for item in res} # pyright: ignore
 
     missing_days = sorted(expected_days - got_days)
 
@@ -308,12 +308,12 @@ async def get_weather(
 
     return [
         WeatherDatasetEntry(
-            timestamp=item["timestamp"],
-            temp=item["temp"],
-            windspeed=item["windspeed"],
-            humidity=item["humidity"],
-            pressure=item["pressure"],
-            solarradiation=item["solarradiation"],
+            timestamp=item["timestamp"],# pyright: ignore
+            temp=item["temp"],# pyright: ignore
+            windspeed=item["windspeed"],# pyright: ignore
+            humidity=item["humidity"],# pyright: ignore
+            pressure=item["pressure"],# pyright: ignore
+            solarradiation=item["solarradiation"],# pyright: ignore
         )
         for item in res
     ]

@@ -1,26 +1,40 @@
 services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    environment:
-      - DATABASE_URL=postgresql://python:elemental@db/elementaldb
-
   db:
     image: postgres:latest
     volumes:
       - ./elementaldb_tables.sql:/docker-entrypoint-initdb.d/01-elementaldb_tables.sql
       - ./elementaldb_client_info.sql:/docker-entrypoint-initdb.d/02-elementaldb_client_info.sql
+      - ./elementaldb_client_meters.sql:/docker-entrypoint-initdb.d/03-elementaldb_client_meters.sql
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=python
+      - PG_USER=python
       - POSTGRES_PASSWORD=elemental
       - POSTGRES_DB=elementaldb
     ports:
       - "5432:5432"
-
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d elementaldb -U python"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s  
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+        db:
+            condition: service_healthy
+      
+    environment:
+      - DATABASE_URL=postgresql://python:elemental@db/elementaldb
+    healthcheck:
+      test: ["CMD-SHELL", "curl", "-X", "GET", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s  
 volumes:
   postgres_data:
   

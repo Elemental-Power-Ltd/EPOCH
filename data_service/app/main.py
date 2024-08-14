@@ -6,6 +6,8 @@ lifespan and request objects.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import datetime
+
 
 from .dependencies import lifespan
 from .routers import (
@@ -20,6 +22,7 @@ from .routers import (
     weather,
 )
 
+start_time = datetime.datetime.now(tz=datetime.UTC)
 app = FastAPI(lifespan=lifespan)
 origins = ["*"]
 
@@ -43,6 +46,7 @@ app.include_router(import_tariffs.router)
 
 
 @app.get("/")
-async def root() -> dict[str, str]:
+async def root() -> dict[str, str | float]:
     """Endpoint for basic access to the API, to test that it's working."""
-    return {"message": "Welcome to the Data Elemental backend API!"}
+    return {"message": "Welcome to the Data Elemental backend API!",
+            "system_uptime": (datetime.datetime.now(datetime.UTC) - start_time).total_seconds()}
