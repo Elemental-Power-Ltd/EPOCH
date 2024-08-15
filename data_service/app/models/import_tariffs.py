@@ -18,6 +18,38 @@ from .core import (
 )
 
 
+class GSPEnum(str, enum.Enum):
+    A = "_A"
+    B = "_B"
+    C = "_C"
+    D = "_D"
+    E = "_E"
+    F = "_F"
+    G = "_G"
+    H = "_H"
+    J = "_J"
+    K = "_K"
+    L = "_L"
+    M = "_M"
+    N = "_N"
+    P = "_P"
+
+
+class GSPCodeResponse(pydantic.BaseModel):
+    ci_region_id: int | None = pydantic.Field(
+        description="Region ID used by the National Grid ESO Carbon Intensity API", examples=[13]
+    )
+    dno_region_id: int | None = pydantic.Field(
+        description="Distribution Network Operator ID used by tariff providers. Not the same as CI Region ID.", examples=[12]
+    )
+    region_code: GSPEnum = pydantic.Field(
+        description="Letter code used by Octopus and other providers for a given region", examples=["_C"]
+    )
+    dno_region: str = pydantic.Field(
+        description="Human readable name of the Distribution Network Operator region.", examples=["London"]
+    )
+
+
 class EpochTariffEntry(pydantic.BaseModel):
     Date: str = epoch_date_field
     StartTime: str = epoch_start_time_field
@@ -51,8 +83,20 @@ class TariffRequest(pydantic.BaseModel):
         return self
 
 
-class TariffProviderEnum(enum.Enum):
+class TariffProviderEnum(str, enum.Enum):
     octopus = "octopus"
+
+
+class TariffListEntry(pydantic.BaseModel):
+    tariff_name: str = pydantic.Field(
+        description="The Octopus name (code-like) for this tariff, without region added.",
+        examples=["BUS-36M-FIXED-ELX-BAND4-21-12-14"],
+    )
+    valid_from: pydantic.AwareDatetime | None
+    valid_to: pydantic.AwareDatetime | None
+    provider: TariffProviderEnum
+    is_tracker: bool = pydantic.Field(description="Whether this is a tracker / agile tariff or not")
+    is_prepay: bool = pydantic.Field(description="Whether this is a pre-paid tariff or not")
 
 
 class TariffMetadata(pydantic.BaseModel):

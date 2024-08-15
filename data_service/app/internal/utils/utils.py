@@ -92,6 +92,37 @@ def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
     return dict(os.environ.items())
 
 
+def get_with_fallback[T](dictionary: dict[T, Any], keys: list[T]) -> Any:
+    """
+    Get a value from a dictionary from the first of these keys that is there.
+
+    For example, if you have a dictionary {"spam": "eggs"} and you provide keys ["spim", "spom", "spam"]
+    this will try the keys in order and return "eggs".
+    Especially helpful if you have dictionary keys that are similar but slightly misspelt (and no risk of retrieving
+    the wrong value!)
+
+    Parameters
+    ----------
+    dictionary
+        Dictionary that may have one of the keys in keys
+    keys
+        Dictionary keys to try in order
+
+    Returns
+    -------
+        Dictionary key matching the first one we find from keys
+
+    Raises
+    ------
+    KeyError
+        If we can't find any of them in keys
+    """
+    for key in keys:
+        if key in dictionary:
+            return dictionary[key]
+    raise KeyError(str(keys))
+
+
 def last_day_of_month(date: datetime.datetime) -> datetime.datetime:
     """
     Get the last day of a month.
