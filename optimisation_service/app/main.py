@@ -38,5 +38,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+@app.get("/")
+async def read_main():
+    return {"message": "Welcome to the Optimisation API!"}
+
+
 app.include_router(optimise.router)
 app.include_router(queue.router)

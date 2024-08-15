@@ -1,13 +1,10 @@
 import datetime
 import logging
-from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt
 
-from ...internal.opt_algorithm import Algorithm
-from ...internal.problem import Problem
 from .optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
 from .problem import EndpointParameterDict
 from .site_data import SiteData
@@ -46,14 +43,6 @@ class EndpointTask(BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
-
-
-@dataclass
-class Task:
-    task_id: UUID4
-    optimiser: Algorithm
-    problem: Problem
-    siteData: SiteData
 
 
 class OptimisationSolution(BaseModel):

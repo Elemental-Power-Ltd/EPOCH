@@ -7,7 +7,7 @@ from app.internal.genetic_algorithm import (
     NSGA2,
     GeneticAlgorithm,
     ProblemInstance,
-    SamplingMethodStr,
+    SamplingMethod,
 )
 from app.internal.problem import Problem, load_problem
 from app.internal.result import Result
@@ -29,8 +29,8 @@ class TestNSGA2:
         """
         Test sampling_method initialisation parameter with good values.
         """
-        NSGA2(sampling_method=SamplingMethodStr.LHS)
-        NSGA2(sampling_method=SamplingMethodStr.RS)
+        NSGA2(sampling_method=SamplingMethod.LHS)
+        NSGA2(sampling_method=SamplingMethod.RS)
 
     def test_bad_sampling_method(self) -> None:
         """
@@ -71,8 +71,8 @@ class TestGeneticAlgorithm:
         """
         Test sampling_method initialisation parameter with good values.
         """
-        GeneticAlgorithm(sampling_method=SamplingMethodStr.LHS)
-        GeneticAlgorithm(sampling_method=SamplingMethodStr.RS)
+        GeneticAlgorithm(sampling_method=SamplingMethod.LHS)
+        GeneticAlgorithm(sampling_method=SamplingMethod.RS)
 
     def test_bad_sampling_method(self) -> None:
         """

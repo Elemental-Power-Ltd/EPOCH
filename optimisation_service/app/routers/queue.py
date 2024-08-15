@@ -1,13 +1,14 @@
 import asyncio
 import datetime
 import logging
+import shutil
 from collections import OrderedDict
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
 
-from .models.core import Task
 from .models.queue import QueueElem, QueueStatus, task_state
+from .models.tasks import Task
 
 logger = logging.getLogger("default")
 
@@ -73,6 +74,8 @@ class IQueue(asyncio.Queue):
         """
         logger.info(f"Marking as done {task.task_id}.")
         del self.q[task.task_id]
+        logger.debug(f"Removing temporary folder {task.data_manager.temp_data_dir}.")
+        shutil.rmtree(task.data_manager.temp_data_dir)
         super().task_done()
 
     def cancel(self, task_id: UUID):
@@ -118,7 +121,7 @@ class IQueue(asyncio.Queue):
 router = APIRouter()
 
 
-@router.post("/queue-status/", response_model=QueueStatus)
+@router.post("/queue-status", response_model=QueueStatus)
 async def get_queue_status(request: Request):
     """
     View tasks in queue.
@@ -131,7 +134,7 @@ async def get_queue_status(request: Request):
     return QueueStatus(queue=request.app.state.q.uncancelled(), service_uptime=request.app.state.start_time - time_now)
 
 
-@router.post("/cancel-task/")
+@router.post("/cancel-task")
 async def cancel_task_in_queue(request: Request, task_id: UUID):
     """
     Cancels task in queue.
@@ -158,7 +161,7 @@ async def cancel_task_in_queue(request: Request, task_id: UUID):
         return HTTPException(status_code=400, detail="Task already cancelled.")
 
 
-@router.post("/clear-queue/")
+@router.post("/clear-queue")
 async def clear_queue(request: Request):
     """
     Cancels all tasks in queue.
