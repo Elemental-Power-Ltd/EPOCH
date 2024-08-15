@@ -187,7 +187,7 @@ class DataManager:
         df
             Pandas dataframe of electricity load data.
         """
-        response = await self.db_post(self, client=client, subdirectory="/get-electricity-load", data=data_id_w_time)
+        response = await self.db_post(client=client, subdirectory="/get-electricity-load", data=data_id_w_time)
         df = pd.DataFrame.from_dict(response)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1"])
         df = df.sort_values("HourOfYear")
