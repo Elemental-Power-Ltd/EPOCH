@@ -118,7 +118,7 @@ class DataManager:
         site_data["GridCO2"] = GridCO2_task.result()
         return site_data
 
-    async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data: dict):
+    async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data: dict | DatasetIDWithTime):
         """
         Send a post request to the database api server.
 
@@ -147,7 +147,7 @@ class DataManager:
             logger.error(f"Request error while requesting {e.request.url!r}: {str(e)}", exc_info=True)
             raise
 
-    async def transmit_results(self, results: list[EndpointResult]):
+    async def transmit_results(self, results: list[EndpointResult]) -> None:
         """
         Transmit optimisation results to database.
 
@@ -160,7 +160,7 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-results", data=jsonable_encoder(results))
 
-    async def transmit_task(self, task: EndpointTask):
+    async def transmit_task(self, task: EndpointTask) -> None:
         """
         Transmit optimisation task to database.
 
@@ -193,7 +193,7 @@ class DataManager:
         df = df.sort_values("HourOfYear")
         return df
 
-    async def fetch_rgen_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> None:
+    async def fetch_rgen_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
         """
         Fetch and process renewable generation data.
 
@@ -213,7 +213,7 @@ class DataManager:
         df = df.sort_values("HourOfYear")
         return df
 
-    async def fetch_heat_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> None:
+    async def fetch_heat_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
         """
         Fetch and process heat load data.
 
@@ -233,7 +233,7 @@ class DataManager:
         df = df.sort_values("HourOfYear")
         return df
 
-    async def fetch_airtemp_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> None:
+    async def fetch_airtemp_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
         """
         Fetch and process air temp data.
 
@@ -253,7 +253,7 @@ class DataManager:
         df = df.sort_values("HourOfYear")
         return df
 
-    async def fetch_ASHP_input_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> None:
+    async def fetch_ASHP_input_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
         """
         Fetch and process ASHP input data.
 
@@ -273,7 +273,7 @@ class DataManager:
         df = df.sort_values("temperature")
         return df
 
-    async def fetch_ASHP_output_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> None:
+    async def fetch_ASHP_output_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
         """
         Fetch and process ASHP output data.
 
@@ -293,7 +293,7 @@ class DataManager:
         df = df.sort_values("temperature")
         return df
 
-    async def fetch_import_tariff_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> None:
+    async def fetch_import_tariff_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
         """
         Fetch and process import tariff data.
 
@@ -313,7 +313,7 @@ class DataManager:
         df = df.sort_values("HourOfYear")
         return df
 
-    async def fetch_grid_CO2_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> None:
+    async def fetch_grid_CO2_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
         """
         Fetch and process grid CO2 data.
 
