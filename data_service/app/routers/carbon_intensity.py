@@ -91,9 +91,16 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
         results
             A list of carbon intensity readings and their times.
         """
-        start_ts, end_ts = timestamps
-        start_ts_str = start_ts.isoformat()
-        end_ts_str = end_ts.isoformat()
+        fetch_start_ts, fetch_end_ts = timestamps
+        if isinstance(fetch_start_ts, pd.Timestamp):
+            fetch_start_ts = fetch_start_ts.to_pydatetime()
+        if isinstance(fetch_end_ts, pd.Timestamp):
+            fetch_end_ts = fetch_end_ts.to_pydatetime()
+
+        if fetch_start_ts == fetch_end_ts:
+            return []
+        start_ts_str = fetch_start_ts.isoformat()
+        end_ts_str = fetch_end_ts.isoformat()
 
         if use_regional:
             postcode_out = postcode.strip().split(" ")[0]
@@ -105,11 +112,12 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
         data = (await client.get(ci_url)).json()
         results = []
 
-        if use_regional:
-            data = data["data"]["data"]
-        else:
-            data = data["data"]
-        for item in data:
+        subdata = data["data"]
+        if "data" in subdata:
+            # Sometimes we get a nested object one deep, especially for regional data
+            subdata = subdata["data"]
+
+        for item in subdata:
             entry = {
                 "start_ts": pd.to_datetime(item["from"]),
                 "end_ts": pd.to_datetime(item["to"]),

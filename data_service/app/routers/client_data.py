@@ -273,7 +273,7 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
 
 
 @router.post("/list-latest-datasets", tags=["db", "list"])
-async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[str, DatasetEntry]:
+async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[DatasetTypeEnum, DatasetEntry]:
     """
     Get the most recent datasets of each type for this site.
 
@@ -282,10 +282,10 @@ async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[str, 
     not listed at all.
     """
     all_datasets = await list_datasets(site_id, conn)
-    latest_datasets: dict[str, DatasetEntry] = {}
+    latest_datasets: dict[DatasetTypeEnum, DatasetEntry] = {}
     for ds in all_datasets:
-        if ds.dataset_type.value not in latest_datasets or latest_datasets[ds.dataset_type.value].created_at < ds.created_at:
-            latest_datasets[ds.dataset_type.value] = ds
+        if ds.dataset_type.value not in latest_datasets or latest_datasets[ds.dataset_type].created_at < ds.created_at:
+            latest_datasets[ds.dataset_type] = ds
     return latest_datasets
 
 
