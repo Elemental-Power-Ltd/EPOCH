@@ -100,18 +100,22 @@ class DataManager:
         site_data = {}
         async with httpx.AsyncClient() as client:
             async with asyncio.TaskGroup() as tg:
-                site_data["Eload"] = tg.create_task(self.fetch_electricity_data(site_data_ids["electricity_dataset"], client))
-                site_data["Hload"] = tg.create_task(self.fetch_heat_data(site_data_ids["gas_dataset"], client))
-                site_data["Airtemp"] = tg.create_task(self.fetch_airtemp_data(site_data_ids["gas_dataset"], client))
-                site_data["RGen"] = tg.create_task(self.fetch_rgen_data(site_data_ids["rgen_dataset"], client))
-                site_data["ASHPinput"] = tg.create_task(self.fetch_ASHP_input_data(site_data_ids["ashp_input_dataset"], client))
-                site_data["ASHPoutput"] = tg.create_task(
-                    self.fetch_ASHP_output_data(site_data_ids["ashp_output_dataset"], client)
-                )
-                site_data["Importtariff"] = tg.create_task(
-                    self.fetch_import_tariff_data(site_data_ids["tariff_dataset"], client)
-                )
-                site_data["GridCO2"] = tg.create_task(self.fetch_grid_CO2_data(site_data_ids["grid_CO2_dataset"], client))
+                Eload_task = tg.create_task(self.fetch_electricity_data(site_data_ids["electricity_dataset"], client))
+                Hload_task = tg.create_task(self.fetch_heat_data(site_data_ids["gas_dataset"], client))
+                Airtemp_task = tg.create_task(self.fetch_airtemp_data(site_data_ids["gas_dataset"], client))
+                RGen_task = tg.create_task(self.fetch_rgen_data(site_data_ids["rgen_dataset"], client))
+                ASHPinput_task = tg.create_task(self.fetch_ASHP_input_data(site_data_ids["ashp_input_dataset"], client))
+                ASHPoutput_task = tg.create_task(self.fetch_ASHP_output_data(site_data_ids["ashp_output_dataset"], client))
+                Importtariff_task = tg.create_task(self.fetch_import_tariff_data(site_data_ids["tariff_dataset"], client))
+                GridCO2_task = tg.create_task(self.fetch_grid_CO2_data(site_data_ids["grid_CO2_dataset"], client))
+        site_data["Eload"] = Eload_task.result()
+        site_data["Hload"] = Hload_task.result()
+        site_data["Airtemp"] = Airtemp_task.result()
+        site_data["RGen"] = RGen_task.result()
+        site_data["ASHPinput"] = ASHPinput_task.result()
+        site_data["ASHPoutput"] = ASHPoutput_task.result()
+        site_data["Importtariff"] = Importtariff_task.result()
+        site_data["GridCO2"] = GridCO2_task.result()
         return site_data
 
     async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data: dict):
