@@ -199,12 +199,12 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
 
         ranking.append((overlap, tariff.is_tracker, not tariff.is_prepay, tariff.tariff_name))
     ranking = sorted(ranking, reverse=True)
-    if ranking[0][1] < 1.0:
+    if ranking[0][0] < 1.0:
         logger = logging.getLogger("default")
         logger.warning(
-            f"Could not find a 100% overlapping tariff for {params.site_id} between {params.start_ts} and {params.end_ts}"
+            f"Could not find a 100% overlapping tariff for {params.site_id} between {params.start_ts} and {params.end_ts}" +
+            f"Instead got {ranking[0][0]:.1%}."
         )
-        print(ranking)
     return ranking[0][3]
 
 
