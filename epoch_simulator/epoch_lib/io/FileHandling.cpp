@@ -393,16 +393,58 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult f
 	}
 
 	// Write the column headers
+
+	outFile << "Rgen_total" << ",";
 	outFile << "ESUM" << ",";
+	outFile << "ESS_available_discharge_power" << ",";
+	outFile << "ESS_available_charge_power" << ",";
+	outFile << "ESS_Rgen_only_charge" << ",";
+	outFile << "ESS_discharge" << ",";
+	outFile << "ESS_charge" << ",";
+	outFile << "ESS_resulting_SoC" << ",";
+	outFile << "Pre_grid_balance" << ",";
+	outFile << "Grid_Import" << ",";
+	outFile << "Grid_Export" << ",";
+	outFile << "Post_grid_balance" << ",";
+	outFile << "Pre_flex_import_shortfall" << ",";
+	outFile << "Pre_Mop_curtailed_export" << ",";
+	outFile << "Actual_import_shortfall" << ",";
+	outFile << "Actual_curtailed_export" << ",";
+	outFile << "Actual_high_priority_load" << ",";
+	outFile << "Actual_low_priority_load" << ",";
 	outFile << "Heatload" << ",";
-	outFile << "ESS_charge"; // no trailing comma
+	outFile << "Scaled_heatload" << ",";
+	outFile << "Electrical_load_scaled_heat_yield" << ",";
+	outFile << "Heat_shortfall" << ",";
+	outFile << "Heat_surplus";
+	// no trailing comma
 	outFile << "\n"; // newline
 
 	// write the values
 	for (int i = 0; i < fullResult.ESUM.size(); i++) {
+		outFile << fullResult.Rgen_total[i] << ",";
 		outFile << fullResult.ESUM[i] << ",";
+		outFile << fullResult.ESS_available_discharge_power[i] << ",";
+		outFile << fullResult.ESS_available_charge_power[i] << ",";
+		outFile << fullResult.ESS_Rgen_only_charge[i] << ",";
+		outFile << fullResult.ESS_discharge[i] << ",";
+		outFile << fullResult.ESS_charge[i] << ",";
+		outFile << fullResult.ESS_resulting_SoC[i] << ",";
+		outFile << fullResult.Pre_grid_balance[i] << ",";
+		outFile << fullResult.Grid_Import[i] << ",";
+		outFile << fullResult.Grid_Export[i] << ",";
+		outFile << fullResult.Post_grid_balance[i] << ",";
+		outFile << fullResult.Pre_flex_import_shortfall[i] << ",";
+		outFile << fullResult.Pre_Mop_curtailed_export[i] << ",";
+		outFile << fullResult.Actual_import_shortfall[i] << ",";
+		outFile << fullResult.Actual_curtailed_export[i] << ",";
+		outFile << fullResult.Actual_high_priority_load[i] << ",";
+		outFile << fullResult.Actual_low_priority_load[i] << ",";
 		outFile << fullResult.Heatload[i] << ",";
-		outFile << fullResult.ESS_charge[i]; // no trailing comma
+		outFile << fullResult.Scaled_heatload[i] << ",";
+		outFile << fullResult.Electrical_load_scaled_heat_yield[i] << ",";
+		outFile << fullResult.Heat_shortfall[i] << ",";
+		outFile << fullResult.Heat_surplus[i]; // no trailing comma
 		outFile << "\n";
 	}
 
