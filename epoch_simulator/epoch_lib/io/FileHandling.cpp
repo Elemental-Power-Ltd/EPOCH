@@ -383,6 +383,31 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	outFile << "\n";
 }
 
+void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult fullResult)
+{
+	std::ofstream outFile(filepath);
+
+	if (!outFile.is_open()) {
+		spdlog::error("Failed to open the output file!");
+		throw FileReadException(filepath.filename().string());
+	}
+
+	// Write the column headers
+	outFile << "ESUM" << ",";
+	outFile << "Heatload" << ",";
+	outFile << "ESS_charge"; // no trailing comma
+	outFile << "\n"; // newline
+
+	// write the values
+	for (int i = 0; i < fullResult.ESUM.size(); i++) {
+		outFile << fullResult.ESUM[i] << ",";
+		outFile << fullResult.Heatload[i] << ",";
+		outFile << fullResult.ESS_charge[i]; // no trailing comma
+		outFile << "\n";
+	}
+
+}
+
 
 
 
