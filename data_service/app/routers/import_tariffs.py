@@ -186,7 +186,10 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
     """
     listed_tariffs = await list_import_tariffs(params=params, http_client=http_client)
     ranking = []
+    BROKEN_TARIFFS = {"QWPP_PP", "QWLOCAL_PP"}
     for tariff in listed_tariffs:
+        if tariff.tariff_name in BROKEN_TARIFFS:
+            continue
         valid_to = tariff.valid_to if tariff.valid_to is not None else datetime.datetime.now(datetime.UTC)
         valid_from = tariff.valid_from if tariff.valid_from is not None else params.start_ts
         overlap = min(
@@ -244,7 +247,12 @@ async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http
             + f"This is after your end timestamp of {params.end_ts}.",
         )
     region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, conn=conn)).region_code.value
-    regional_data = products["single_register_electricity_tariffs"][region_code]
+    region_key = (
+        region_code
+        if region_code in products["single_register_electricity_tariffs"]
+        else next(iter(products["single_register_electricity_tariffs"].keys()))
+    )
+    regional_data = products["single_register_electricity_tariffs"][region_key]
 
     tariff_code = get_with_fallback(regional_data, ["direct_debit_monthly", "prepayment"])["code"]
 

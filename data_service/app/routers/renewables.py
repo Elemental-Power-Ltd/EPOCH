@@ -108,7 +108,7 @@ async def generate_renewables_generation(
     except httpx.ReadTimeout as ex:
         raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex
 
-    if len(renewables_df) < 364 * 24:
+    if len(renewables_df) < (params.end_ts - params.start_ts).total_seconds() / (60 * 60):
         raise HTTPException(500, f"Got too small a renewables dataset for {location}. Try requesting an older dataset?")
 
     metadata = RenewablesMetadata(
