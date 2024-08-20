@@ -88,7 +88,8 @@ async def generate_renewables_generation(
 
     latitude, longitude = coords
     if params.azimuth is None or params.tilt is None:
-        logging.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
+        logger = logging.getLogger("default")
+        logger.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
         optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=http_client)
         azimuth, tilt = float(optimal_params.azimuth), float(optimal_params.tilt)
     else:
@@ -106,8 +107,9 @@ async def generate_renewables_generation(
         )
     except httpx.ReadTimeout as ex:
         raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex
+
     if len(renewables_df) < 364 * 24:
-        raise HTTPException(500, f"Could not get renewables information for {location}.")
+        raise HTTPException(500, f"Got too small a renewables dataset for {location}. Try requesting an older dataset?")
 
     metadata = RenewablesMetadata(
         data_source="renewables.ninja",

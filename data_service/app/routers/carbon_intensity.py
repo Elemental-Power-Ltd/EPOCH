@@ -6,12 +6,12 @@ varies over time as the grid changes.
 """
 
 import datetime
-import functools
 import itertools
 import logging
 import uuid
 
 import aiometer
+import numpy as np
 import pandas as pd
 import pydantic
 from fastapi import APIRouter, HTTPException
@@ -22,6 +22,77 @@ from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
 
 router = APIRouter()
+
+
+async def fetch_carbon_intensity(
+    client: HTTPClient,
+    postcode: str,
+    timestamps: tuple[pydantic.AwareDatetime, pydantic.AwareDatetime],
+    use_regional: bool = True,
+) -> list[dict[str, float | None | datetime.datetime]]:
+    """
+    Fetch a single lot of data from the carbon itensity API.
+
+    This is in its own (rather ugly) function to allow the rate limiter to function.
+    Will return a `forecast` carbon itensity and a breakdown if using regional, or an actual if not.
+
+    Parameters
+    ----------
+    client
+        HTTPX AsyncClient that we re-use between connections
+
+    postcode
+        The entire postcode for this site with inbound and outbound codes split by a space (e.g. `SW1 1AA`).
+
+    timestamps
+        A (start_ts, end_ts) pairing for the time period we want to check. Should be within 14 days of each other.
+
+    Returns
+    -------
+    results
+        A list of carbon intensity readings and their times.
+    """
+    fetch_start_ts, fetch_end_ts = timestamps
+    if isinstance(fetch_start_ts, pd.Timestamp):
+        fetch_start_ts = fetch_start_ts.to_pydatetime()
+    if isinstance(fetch_end_ts, pd.Timestamp):
+        fetch_end_ts = fetch_end_ts.to_pydatetime()
+
+    if fetch_start_ts == fetch_end_ts:
+        return []
+    start_ts_str = fetch_start_ts.isoformat()
+    end_ts_str = fetch_end_ts.isoformat()
+
+    if use_regional:
+        postcode_out = postcode.strip().split(" ")[0]
+        ci_url = f"https://api.carbonintensity.org.uk/regional/intensity/{start_ts_str}/{end_ts_str}/postcode/{postcode_out}"
+    else:
+        ci_url = f"https://api.carbonintensity.org.uk/intensity/{start_ts_str}/{end_ts_str}"
+    response = await client.get(ci_url)
+    print(ci_url)
+    if not response.status_code == 200:
+        raise HTTPException(400, response.text)
+    data = response.json()
+    results = []
+    subdata = data["data"]
+    if "data" in subdata:
+        # Sometimes we get a nested object one deep, especially for regional data
+        subdata = subdata["data"]
+
+    for item in subdata:
+        entry = {
+            "start_ts": pd.to_datetime(item["from"]),
+            "forecast": item["intensity"].get("forecast"),
+            "actual": item["intensity"].get("actual"),
+        }
+        for fuel_data in item.get("generationmix", []):
+            entry[fuel_data["fuel"]] = fuel_data["perc"] / 100.0
+        results.append(entry)
+    df = pd.DataFrame.from_records(results, index="start_ts").astype(float).resample(pd.Timedelta(minutes=30)).mean().ffill()
+    df["start_ts"] = df.index
+    df["end_ts"] = df["start_ts"] + pd.Timedelta(minutes=30)
+    within_timestamps_mask = np.logical_and(df.index >= timestamps[0], df.index < timestamps[1])
+    return df[within_timestamps_mask].to_dict(orient="records")  # type: ignore
 
 
 @router.post("/generate-grid-co2")
@@ -65,70 +136,6 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
         logging.warning(f"No postcode found for {params.site_id}, using National data.")
         use_regional = False
 
-    async def fetch(
-        client: HTTPClient, postcode: str, timestamps: tuple[pydantic.AwareDatetime, pydantic.AwareDatetime]
-    ) -> list[dict[str, float | None | datetime.datetime]]:
-        """
-        Fetch a single lot of data from the carbon itensity API.
-
-        This is in its own (rather ugly) function to allow the rate limiter to function.
-        Checks the function-level variable `use_regional`. Will return a `forecast` carbon itensity
-        and a breakdown if using regional, or an actual if not.
-
-        Parameters
-        ----------
-        client
-            HTTPX AsyncClient that we re-use between connections
-
-        postcode
-            The entire postcode for this site with inbound and outbound codes split by a space (e.g. `SW1 1AA`).
-
-        timestamps
-            A (start_ts, end_ts) pairing for the time period we want to check. Should be within 14 days of each other.
-
-        Returns
-        -------
-        results
-            A list of carbon intensity readings and their times.
-        """
-        fetch_start_ts, fetch_end_ts = timestamps
-        if isinstance(fetch_start_ts, pd.Timestamp):
-            fetch_start_ts = fetch_start_ts.to_pydatetime()
-        if isinstance(fetch_end_ts, pd.Timestamp):
-            fetch_end_ts = fetch_end_ts.to_pydatetime()
-
-        if fetch_start_ts == fetch_end_ts:
-            return []
-        start_ts_str = fetch_start_ts.isoformat()
-        end_ts_str = fetch_end_ts.isoformat()
-
-        if use_regional:
-            postcode_out = postcode.strip().split(" ")[0]
-            ci_url = (
-                f"https://api.carbonintensity.org.uk/regional/intensity/{start_ts_str}/{end_ts_str}/postcode/{postcode_out}"
-            )
-        else:
-            ci_url = f"https://api.carbonintensity.org.uk/intensity/{start_ts_str}/{end_ts_str}"
-        data = (await client.get(ci_url)).json()
-        results = []
-
-        subdata = data["data"]
-        if "data" in subdata:
-            # Sometimes we get a nested object one deep, especially for regional data
-            subdata = subdata["data"]
-
-        for item in subdata:
-            entry = {
-                "start_ts": pd.to_datetime(item["from"]),
-                "end_ts": pd.to_datetime(item["to"]),
-                "forecast": item["intensity"].get("forecast"),
-                "actual": item["intensity"].get("actual"),
-            }
-            for fuel_data in item.get("generationmix", []):
-                entry[fuel_data["fuel"]] = fuel_data["perc"] / 100.0
-            results.append(entry)
-        return results
-
     all_data: list[dict[str, float | None | datetime.datetime]] = []
 
     time_pairs: list[tuple[pydantic.AwareDatetime, pydantic.AwareDatetime]]
@@ -143,7 +150,10 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
         time_pairs = [(params.start_ts, params.end_ts)]
 
     async with aiometer.amap(
-        functools.partial(fetch, http_client, postcode), time_pairs, max_at_once=1, max_per_second=1
+        lambda ts_pair: fetch_carbon_intensity(client=http_client, postcode=postcode, timestamps=ts_pair, use_regional=True),
+        time_pairs,
+        max_at_once=1,
+        max_per_second=1,
     ) as results:
         async for result in results:
             all_data.extend(result)
