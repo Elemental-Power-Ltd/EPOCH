@@ -2,11 +2,14 @@
 
 # ruff: noqa: D101, D102, D103
 import datetime
+import itertools
 
 import pydantic
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+
+from app.routers.carbon_intensity import fetch_carbon_intensity
 
 
 @pytest_asyncio.fixture
@@ -69,3 +72,22 @@ class TestCarbonItensity:
             len(grid_co2_result)
             == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=60).total_seconds()
         ), "Not enough entries in set"
+
+
+class TestFetchCarbonIntensity:
+    """Tests for the specific fetching function."""
+
+    @pytest.mark.asyncio
+    async def test_bad_dates(
+        self,
+    ) -> None:
+        """Test that we fill in missing data between 2023-10-20T21:30:00Z and 2023-10-22T15:00:00Z."""
+        bad_start_ts = datetime.datetime(year=2023, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
+        bad_end_ts = datetime.datetime(year=2023, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
+        async with AsyncClient() as client:
+            res = await fetch_carbon_intensity(
+                client=client, postcode="SW1A", timestamps=(bad_start_ts, bad_end_ts), use_regional=True
+            )
+        for first, second in itertools.pairwise(res):
+            assert first["end_ts"] == second["start_ts"]
+        assert len(res) == 3 * 48, "Not enough results in response"

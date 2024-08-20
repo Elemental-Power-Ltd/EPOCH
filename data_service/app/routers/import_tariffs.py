@@ -202,8 +202,8 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
     if ranking[0][0] < 1.0:
         logger = logging.getLogger("default")
         logger.warning(
-            f"Could not find a 100% overlapping tariff for {params.site_id} between {params.start_ts} and {params.end_ts}" +
-            f"Instead got {ranking[0][0]:.1%}."
+            f"Could not find a 100% overlapping tariff for {params.site_id} between {params.start_ts} and {params.end_ts}"
+            + f"Instead got {ranking[0][0]:.1%}."
         )
     return ranking[0][3]
 

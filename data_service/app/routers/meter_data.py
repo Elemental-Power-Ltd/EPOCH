@@ -312,8 +312,16 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     reading_type, fuel_type = readings_and_fuel
     if reading_type != "halfhourly":
         raise HTTPException(400, "Electrical load resampling not yet supported, pick a half hourly dataset.")
+
     if fuel_type != "elec":
         raise HTTPException(400, f"Requested dataset {params.dataset_id} was for {fuel_type}, not 'elec' ")
+
+    if (params.end_ts - params.start_ts) > datetime.timedelta(days=366):
+        raise HTTPException(
+            400,
+            f"Timestamps {params.start_ts.isoformat()} and {params.end_ts.isoformat()}"
+            + "are more than 1 year apart. This would result in duplicate readings.",
+        )
     res = await conn.fetch(
         """
         SELECT
@@ -321,8 +329,12 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
             consumption_kwh AS consumption
         FROM client_meters.electricity_meters
         WHERE dataset_id = $1
+        AND $2 <= start_ts
+        AND end_ts < $3
         ORDER BY start_ts ASC""",
         params.dataset_id,
+        params.start_ts,
+        params.end_ts,
     )
 
     # Now restructure for EPOCH
@@ -331,7 +343,7 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     )
     if elec_df.empty:
         raise HTTPException(400, f"Got an empty dataset for {params.dataset_id}.")
-    elec_df = elec_df.resample(pd.Timedelta(minutes=30)).sum().interpolate(method="time")
+    elec_df = elec_df.resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
 
     assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
     elec_df["Date"] = elec_df.index.strftime("%d-%b")
