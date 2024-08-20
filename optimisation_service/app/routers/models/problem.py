@@ -8,43 +8,43 @@ param_range = Field(
 )
 
 
-class ParamRange(BaseModel):
+class EndpointParamRange(BaseModel):
     min: int | float
     max: int | float
     step: int | float
 
 
 class EndpointParameterDict(BaseModel):
-    ASHP_HPower: ParamRange = param_range
-    ASHP_HSource: ParamRange = param_range
-    ASHP_HotTemp: ParamRange = param_range
-    ASHP_RadTemp: ParamRange = param_range
-    ESS_capacity: ParamRange = param_range
-    ESS_charge_mode: ParamRange = param_range
-    ESS_charge_power: ParamRange = param_range
-    ESS_discharge_mode: ParamRange = param_range
-    ESS_discharge_power: ParamRange = param_range
-    ESS_start_SoC: ParamRange = param_range
-    EV_flex: ParamRange = param_range
-    Export_headroom: ParamRange = param_range
-    Fixed_load1_scalar: ParamRange = param_range
-    Fixed_load2_scalar: ParamRange = param_range
-    Flex_load_max: ParamRange = param_range
-    GridExport: ParamRange = param_range
-    GridImport: ParamRange = param_range
-    Import_headroom: ParamRange = param_range
-    Min_power_factor: ParamRange = param_range
-    Mop_load_max: ParamRange = param_range
-    ScalarHL1: ParamRange = param_range
-    ScalarHYield: ParamRange = param_range
-    ScalarRG1: ParamRange = param_range
-    ScalarRG2: ParamRange = param_range
-    ScalarRG3: ParamRange = param_range
-    ScalarRG4: ParamRange = param_range
-    f22_EV_CP_number: ParamRange = param_range
-    r50_EV_CP_number: ParamRange = param_range
-    s7_EV_CP_number: ParamRange = param_range
-    u150_EV_CP_number: ParamRange = param_range
+    ASHP_HPower: EndpointParamRange = param_range
+    ASHP_HSource: EndpointParamRange = param_range
+    ASHP_HotTemp: EndpointParamRange = param_range
+    ASHP_RadTemp: EndpointParamRange = param_range
+    ESS_capacity: EndpointParamRange = param_range
+    ESS_charge_mode: EndpointParamRange = param_range
+    ESS_charge_power: EndpointParamRange = param_range
+    ESS_discharge_mode: EndpointParamRange = param_range
+    ESS_discharge_power: EndpointParamRange = param_range
+    ESS_start_SoC: EndpointParamRange = param_range
+    EV_flex: EndpointParamRange = param_range
+    Export_headroom: EndpointParamRange = param_range
+    Fixed_load1_scalar: EndpointParamRange = param_range
+    Fixed_load2_scalar: EndpointParamRange = param_range
+    Flex_load_max: EndpointParamRange = param_range
+    GridExport: EndpointParamRange = param_range
+    GridImport: EndpointParamRange = param_range
+    Import_headroom: EndpointParamRange = param_range
+    Min_power_factor: EndpointParamRange = param_range
+    Mop_load_max: EndpointParamRange = param_range
+    ScalarHL1: EndpointParamRange = param_range
+    ScalarHYield: EndpointParamRange = param_range
+    ScalarRG1: EndpointParamRange = param_range
+    ScalarRG2: EndpointParamRange = param_range
+    ScalarRG3: EndpointParamRange = param_range
+    ScalarRG4: EndpointParamRange = param_range
+    f22_EV_CP_number: EndpointParamRange = param_range
+    r50_EV_CP_number: EndpointParamRange = param_range
+    s7_EV_CP_number: EndpointParamRange = param_range
+    u150_EV_CP_number: EndpointParamRange = param_range
     CAPEX_limit: int | float = Field(description="CAPEX limit to set in EPOCH. Not Implemented !")
     Export_kWh_price: int | float = Field(description="Export kWh price to set in EPOCH.")
     OPEX_limit: int | float = Field(description="OPEX limit to set in EPOCH. Not Implemented !")

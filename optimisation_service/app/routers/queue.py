@@ -6,6 +6,7 @@ from collections import OrderedDict
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import PositiveInt
 
 from .models.queue import QueueElem, QueueStatus, task_state
 from .models.tasks import Task
@@ -18,7 +19,7 @@ class IQueue(asyncio.Queue):
     Inspectable Queue with cancelling of tasks.
     """
 
-    def __init__(self, maxsize: int = 0) -> None:
+    def __init__(self, maxsize: PositiveInt = 1) -> None:
         """
         Parameters
         ----------
@@ -26,11 +27,13 @@ class IQueue(asyncio.Queue):
             Maximum number of tasks to hold in queue.
         """
         logger.info("Initalisaing Queue.")
+        if maxsize <= 0:
+            raise ValueError("Queue maxsize must be positive integer.")
         super().__init__(maxsize=0)
         self.q: OrderedDict = OrderedDict()
         self.q_len = maxsize
 
-    async def put(self, task: Task):
+    async def put(self, task: Task) -> None:
         """
         Add task in queue.
 
@@ -74,7 +77,6 @@ class IQueue(asyncio.Queue):
         """
         logger.info(f"Marking as done {task.task_id}.")
         del self.q[task.task_id]
-        logger.debug(f"Removing temporary folder {task.data_manager.temp_data_dir}.")
         shutil.rmtree(task.data_manager.temp_data_dir)
         super().task_done()
 
@@ -145,10 +147,8 @@ async def cancel_task_in_queue(request: Request, task_id: UUID):
     task_id
         UUID of task to cancel.
     """
-    logger.debug(f"Cancelling task {task_id}.")
     if request.app.state.q.q[task_id].state == task_state.QUEUED:
         request.app.state.q.cancel(task_id)
-        logger.info(f"Cancelled task {task_id}.")
         return "Task cancelled."
     elif task_id not in list(request.app.state.q.q.keys()):
         logger.error(f"Task {task_id} not found in queue.")
@@ -170,3 +170,4 @@ async def clear_queue(request: Request):
     for task_id in request.app.state.q.q.keys():
         if request.app.state.q.q[task_id].STATE != task_state.RUNNING:
             request.app.state.q.cancel(task_id)
+    return "Queue cleared."

@@ -1,7 +1,7 @@
 import asyncio
+import logging
 import os
 import shutil
-from asyncio.log import logger
 from pathlib import Path
 
 import httpx
@@ -12,6 +12,8 @@ from pydantic import UUID4
 from ..models.core import EndpointResult, EndpointTask
 from ..models.database import DatasetIDWithTime
 from ..models.site_data import FileLoc, SiteData
+
+logger = logging.getLogger("default")
 
 _DB_URL = os.environ.get("DB_API_URL", "http://localhost:8000")
 _TEMP_DIR = Path("app", "data", "temp")
@@ -137,7 +139,7 @@ class DataManager:
             Post request response message.
         """
         try:
-            response = await client.post(url=self.db_url + subdirectory, json=data)
+            response = await client.post(url=self.db_url + subdirectory, json=jsonable_encoder(data))
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -269,7 +271,7 @@ class DataManager:
         """
         response = await self.db_post(client=client, subdirectory="/get-ashp-input", data=data_id_w_time)
         df = pd.DataFrame.from_dict(response, orient="tight")
-        df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
+        df = df.reindex(columns=[25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
         df = df.sort_values("temperature")
         return df
 
@@ -307,10 +309,11 @@ class DataManager:
         df
             Pandas dataframe of import tariff data.
         """
-        response = await self.db_post(client=client, subdirectory="/get-import-tariff", data=data_id_w_time)
+        response = await self.db_post(client=client, subdirectory="/get-import-tariffs", data=data_id_w_time)
         df = pd.DataFrame.from_dict(response)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
         df = df.sort_values("HourOfYear")
+        df = df.set_index("HourOfYear")
         return df
 
     async def fetch_grid_CO2_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
@@ -327,7 +330,7 @@ class DataManager:
         df
             Pandas dataframe of grid CO2 data.
         """
-        response = await self.db_post(client=client, subdirectory="/get-grid-CO2", data=data_id_w_time)
+        response = await self.db_post(client=client, subdirectory="/get-grid-co2", data=data_id_w_time)
         df = pd.DataFrame.from_dict(response)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "GridCO2"])
         df = df.sort_values("HourOfYear")
