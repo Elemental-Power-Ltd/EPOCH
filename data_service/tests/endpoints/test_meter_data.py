@@ -25,7 +25,7 @@ class TestUploadMeterData:
         }
         records = json.loads(data.to_json(orient="records"))
         result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
-        print(result)
+
         assert result["dataset_id"] == "1db34dd6-0e3a-4ed1-8a2a-a84e74550ae4"
         assert result["created_at"] == "2024-08-14T10:31:00Z"
         assert result["fuel_type"] == "elec"
@@ -67,9 +67,28 @@ class TestUploadMeterData:
         records = json.loads(data.to_json(orient="records"))
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
-        result = (await client.post("/get-electricity-load", json={"dataset_id": upload_result["dataset_id"]})).json()
+        result = (await client.post("/get-electricity-load", json={"dataset_id": upload_result["dataset_id"],
+                                                                   "start_ts": "2023-09-01T00:00:00Z",
+                                                                   "end_ts": "2024-06-30T00:00:00Z"})).json()
         assert len(result) > 100
         assert any(item["FixLoad1"] > 0 for item in result)
+
+
+    @pytest.mark.asyncio
+    async def test_timestamps_too_far(self, client: httpx.AsyncClient) -> None:
+        data = parse_half_hourly("./tests/data/test_elec.csv")
+        data["start_ts"] = data.index
+        metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
+        records = json.loads(data.to_json(orient="records"))
+        upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
+
+        result = await client.post("/get-electricity-load", json={"dataset_id": upload_result["dataset_id"],
+                                                                   "start_ts": "2021-09-01T00:00:00Z",
+                                                                   "end_ts": "2023-09-01T00:00:00Z"})
+        assert result.status_code == 400
+        assert "more than 1 year apart" in result.json()["detail"] 
+
+
 
     @pytest.mark.asyncio
     async def test_upload_and_get_electricity_load_non_hh(self, client: httpx.AsyncClient) -> None:
