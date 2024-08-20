@@ -79,7 +79,9 @@ async def visual_crossing_request(
     ]
 
     async def get_single_result(
-        in_location: str, in_client: httpx.AsyncClient, ts_pair: tuple[pd.Timestamp, pd.Timestamp]
+        in_location: str,
+        in_client: httpx.AsyncClient,
+        ts_pair: tuple[pd.Timestamp, pd.Timestamp] | tuple[datetime.datetime, datetime.datetime],
     ) -> httpx.Response:
         """
         Get a single batch of data from VisualCrossing.

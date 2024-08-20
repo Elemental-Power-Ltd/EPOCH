@@ -159,7 +159,7 @@ async def list_import_tariffs(params: SiteIDWithTime, http_client: HttpClientDep
 
     all_tariffs = [extract_tariff(item) for item in tariff_list["results"] if item.get("direction") == "IMPORT"]
     while tariff_list.get("next") is not None:
-        tariff_list = (await http_client.get("https://api.octopus.energy/v1/products/")).json()
+        tariff_list = (await http_client.get(tariff_list["next"])).json()
 
         all_tariffs.extend([extract_tariff(item) for item in tariff_list["results"]])
 
@@ -185,24 +185,22 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
     string name of the chosen tariff that you can use elsehwere.
     """
     listed_tariffs = await list_import_tariffs(params=params, http_client=http_client)
-    _broken_tariffs = {"BUS-HH-VAR-BASE"}
     ranking = []
     for tariff in listed_tariffs:
         valid_to = tariff.valid_to if tariff.valid_to is not None else datetime.datetime.now(datetime.UTC)
-        valid_from = tariff.valid_to if tariff.valid_to is not None else params.start_ts
+        valid_from = tariff.valid_from if tariff.valid_from is not None else params.start_ts
         overlap = min(
             (valid_to - max(valid_from, params.start_ts)).total_seconds() / (params.end_ts - params.start_ts).total_seconds(),
             1,
         )
-        if tariff.tariff_name in _broken_tariffs:
-            continue
 
         ranking.append((overlap, tariff.is_tracker, not tariff.is_prepay, tariff.tariff_name))
     ranking = sorted(ranking, reverse=True)
+
     if ranking[0][0] < 1.0:
         logger = logging.getLogger("default")
         logger.warning(
-            f"Could not find a 100% overlapping tariff for {params.site_id} between {params.start_ts} and {params.end_ts}"
+            f"Could not find a 100% overlapping tariff for {params.site_id} between {params.start_ts} and {params.end_ts}. "
             + f"Instead got {ranking[0][0]:.1%}."
         )
     return ranking[0][3]
