@@ -195,81 +195,24 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
     A list of UUID dataset strings, with the earliest at the start and the latest at the end.
     """
     # TODO (2024-08-05 MHJB): make this method make more sense
-    datasets = []
 
     res = await conn.fetch(
         """
         SELECT
             dataset_id,
-            fuel_type,
-            reading_type,
-            created_at
-        FROM
-            client_meters.metadata
-        WHERE site_id = $1
-        ORDER BY created_at ASC""",
-        site_id.site_id,
+            created_at,
+            dataset_type
+        FROM public.combined_dataset_metadata
+        ORDER BY created_at ASC"""
     )
-    datasets.extend([
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.ElectricityMeterData if item["fuel_type"] == "elec" else DatasetTypeEnum.GasMeterData,
-            created_at=item["created_at"],
-        )
-        for item in res
-    ])
 
-    res = await conn.fetch(
-        """
-        SELECT
-            dataset_id,
-            created_at
-        FROM
-            tariffs.metadata
-        WHERE site_id = $1
-        ORDER BY created_at ASC""",
-        site_id.site_id,
-    )
-    datasets.extend([
-        DatasetEntry(dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.ImportTariff, created_at=item["created_at"])
-        for item in res
-    ])
-
-    res = await conn.fetch(
-        """
-        SELECT
-            dataset_id,
-            created_at
-        FROM
-            renewables.metadata
-        WHERE site_id = $1
-        ORDER BY created_at ASC""",
-        site_id.site_id,
-    )
-    datasets.extend([
-        DatasetEntry(
-            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.RenewablesGeneration, created_at=item["created_at"]
-        )
-        for item in res
-    ])
-
-    res = await conn.fetch(
-        """
-        SELECT
-            dataset_id,
-            created_at
-        FROM
-            heating.metadata
-        WHERE site_id = $1
-        ORDER BY created_at ASC""",
-        site_id.site_id,
-    )
-    datasets.extend([
-        DatasetEntry(dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.HeatingLoad, created_at=item["created_at"])
-        for item in res
-    ])
     logging.info(f"Returning {len(res)} datasets for {site_id}")
-    return datasets
+    return [
+        DatasetEntry(
+            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum(item["dataset_id"]), created_at=item["created_at"]
+        )
+        for item in res
+    ]
 
 
 @router.post("/list-latest-datasets", tags=["db", "list"])
@@ -280,13 +223,47 @@ async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[Datas
     This endpoint is the main one you'd want to call if you are interested in running EPOCH.
     Note that you may still need to call `generate-*` if the datasets in here are too old, or
     not listed at all.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site you are interested in
+
+    Returns
+    -------
+        A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
     """
-    all_datasets = await list_datasets(site_id, conn)
-    latest_datasets: dict[DatasetTypeEnum, DatasetEntry] = {}
-    for ds in all_datasets:
-        if ds.dataset_type.value not in latest_datasets or latest_datasets[ds.dataset_type].created_at < ds.created_at:
-            latest_datasets[ds.dataset_type] = ds
-    return latest_datasets
+    res = await conn.fetch(
+        """
+    SELECT
+        cdm.dataset_id,
+        cdm.dataset_type,
+        cdm.site_id,
+        cdm.created_at
+    FROM public.combined_dataset_metadata AS cdm
+    INNER JOIN (
+        SELECT
+            MAX(created_at) AS max_created_at,
+            dataset_type,
+            site_id
+        FROM
+            public.combined_dataset_metadata
+        WHERE site_id = $1
+        GROUP BY dataset_type, site_id
+    ) AS mc ON
+        cdm.site_id = mc.site_id
+        AND mc.max_created_at = cdm.created_at
+        AND cdm.dataset_type = mc.dataset_type
+    """,
+        site_id.site_id,
+    )
+
+    return {
+        DatasetTypeEnum(item["dataset_type"]): DatasetEntry(
+            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum(item["dataset_type"]), created_at=item["created_at"]
+        )
+        for item in res
+    }
 
 
 @router.post("/get-location", tags=["db"])

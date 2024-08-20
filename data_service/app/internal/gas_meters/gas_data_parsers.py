@@ -449,7 +449,7 @@ def parse_square_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame
             time = datetime.time(hour=hours, minute=minutes, second=0, tzinfo=datetime.UTC)
             timestamp = datetime.datetime.combine(date, time)
 
-            consumption = parse_comma_float(square_df.loc[date, col_name])
+            consumption = parse_comma_float(square_df.loc[date, col_name])  # pyright: ignore
             readings.append({
                 "start_ts": timestamp,
                 "end_ts": timestamp + datetime.timedelta(minutes=30),

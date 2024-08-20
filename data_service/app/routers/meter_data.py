@@ -146,11 +146,12 @@ async def upload_meter_file(
         raise HTTPException(400, f"Could not parse {file.filename} due to an unknown format.") from ex
 
     def is_half_hourly(hh_or_monthly_df: HHDataFrame | MonthlyDataFrame) -> bool:
-        timedeltas = np.ediff1d(hh_or_monthly_df.index)
+        timedeltas = np.ediff1d(hh_or_monthly_df.index).astype(np.timedelta64)
         timedeltas_mask = np.logical_and(
-            timedeltas > datetime.timedelta(seconds=1), timedeltas <= datetime.timedelta(minutes=30)
+            timedeltas > np.timedelta64(datetime.timedelta(seconds=1)),
+            timedeltas <= np.timedelta64(datetime.timedelta(minutes=30)),
         )
-        return np.mean(timedeltas_mask.astype(float)) > 0.5
+        return bool(np.mean(timedeltas_mask.astype(float)) > 0.5)
 
     if is_half_hourly(df):
         reading_type = "halfhourly"

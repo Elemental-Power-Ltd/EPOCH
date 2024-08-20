@@ -204,7 +204,7 @@ def split_into_sessions[T: (float, int, datetime.datetime, datetime.date, pd.Tim
     curr_session: list[T] = [arr[0]]  # type: ignore
 
     for first, second in itertools.pairwise(arr):
-        if (second - first) <= max_diff:
+        if (second - first) <= max_diff:  # pyright: ignore
             curr_session.append(second)
         else:
             sessions.append(curr_session)

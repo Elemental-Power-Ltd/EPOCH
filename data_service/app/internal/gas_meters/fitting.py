@@ -269,7 +269,7 @@ def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -
     ys = gas_df["consumption"].to_numpy().reshape(-1, 1)
     mdl.fit(xs, ys)
 
-    score = mdl.score(xs, ys)
+    score = float(mdl.score(xs, ys))
     return BaitAndModelCoeffs(
         solar_gain=bait_fitted[0],
         wind_chill=bait_fitted[1],
