@@ -381,7 +381,20 @@ CREATE VIEW public.combined_dataset_metadata AS
             metadata.created_at,
             'HeatingLoad'::text AS dataset_type,
             metadata.site_id
-           FROM heating.metadata) u
+           FROM heating.metadata
+        UNION ALL
+         SELECT metadata.dataset_id,
+            metadata.created_at,
+            'CarbonIntensity'::text AS dataset_type,
+            metadata.site_id
+           FROM carbon_intensity.metadata
+        UNION ALL
+         SELECT gen_random_uuid() AS dataset_id,
+            now() AS created_at,
+            'ASHPData'::text AS dataset_type,
+            si.site_id
+           FROM ( SELECT DISTINCT site_info.site_id
+                   FROM client_info.site_info) si) u
   ORDER BY u.created_at;
 
 
@@ -427,7 +440,9 @@ CREATE TABLE weather.visual_crossing (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 )
 PARTITION BY HASH (location);
 
@@ -451,7 +466,9 @@ CREATE TABLE weather.visual_crossing_part_0 (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 );
 
 
@@ -474,7 +491,9 @@ CREATE TABLE weather.visual_crossing_part_1 (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 );
 
 
@@ -497,7 +516,9 @@ CREATE TABLE weather.visual_crossing_part_2 (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 );
 
 
@@ -520,7 +541,9 @@ CREATE TABLE weather.visual_crossing_part_3 (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 );
 
 
@@ -543,7 +566,9 @@ CREATE TABLE weather.visual_crossing_part_4 (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 );
 
 
@@ -566,7 +591,9 @@ CREATE TABLE weather.visual_crossing_part_5 (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 );
 
 
@@ -589,7 +616,9 @@ CREATE TABLE weather.visual_crossing_part_6 (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 );
 
 
@@ -612,7 +641,9 @@ CREATE TABLE weather.visual_crossing_part_7 (
     pressure double precision,
     cloudcover double precision,
     solarradiation double precision,
-    solarenergy double precision
+    solarenergy double precision,
+    dniradiation double precision,
+    difradiation double precision
 );
 
 

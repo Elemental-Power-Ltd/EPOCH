@@ -116,7 +116,7 @@ async def visual_crossing_request(
     # There is however a risk that we'll have to re-sort the list at the end and remove duplicates.
     segment_timestamps = [
         item.to_pydatetime()
-        for item in pd.date_range(start_ts, end_ts, freq=pd.Timedelta(hours=9999), inclusive="left").tolist()
+        for item in pd.date_range(start_ts, end_ts, freq=pd.Timedelta(hours=4999), inclusive="left").tolist()
     ]
     if segment_timestamps[-1] != end_ts:
         segment_timestamps += [end_ts]
@@ -264,9 +264,11 @@ async def get_weather(
                     pressure,
                     cloudcover,
                     solarradiation,
-                    solarenergy)
+                    solarenergy,
+                    dniradiation,
+                    difradiation)
                     VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)""",
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)""",
                 [
                     (
                         item["timestamp"],
@@ -284,6 +286,8 @@ async def get_weather(
                         item["cloudcover"],
                         item["solarradiation"],
                         item["solarenergy"],
+                        item["dniradiation"],
+                        item["difradiation"],
                     )
                     for item in vc_recs
                 ],
@@ -297,7 +301,9 @@ async def get_weather(
             humidity,
             solarradiation,
             windspeed,
-            pressure
+            pressure,
+            dniradiation,
+            difradiation
         FROM weather.visual_crossing
         WHERE location = $1
         AND $2 <= timestamp
@@ -316,6 +322,8 @@ async def get_weather(
             humidity=item["humidity"],  # pyright: ignore
             pressure=item["pressure"],  # pyright: ignore
             solarradiation=item["solarradiation"],  # pyright: ignore
+            dniradiation=item["dniradiation"],
+            difradiation=item["difradiation"],
         )
         for item in res
     ]
