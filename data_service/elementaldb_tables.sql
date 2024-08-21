@@ -358,8 +358,8 @@ CREATE VIEW public.combined_dataset_metadata AS
    FROM ( SELECT metadata.dataset_id,
             metadata.created_at,
                 CASE
-                    WHEN (metadata.fuel_type = 'elec'::text) THEN 'ElectricityMeter'::text
-                    WHEN (metadata.fuel_type = 'gas'::text) THEN 'GasMeter'::text
+                    WHEN (metadata.fuel_type = 'elec'::text) THEN 'ElectricityMeterData'::text
+                    WHEN (metadata.fuel_type = 'gas'::text) THEN 'GasMeterData'::text
                     ELSE NULL::text
                 END AS dataset_type,
             metadata.site_id
