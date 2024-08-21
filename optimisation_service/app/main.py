@@ -22,7 +22,8 @@ async def lifespan(app: FastAPI):
     q = IQueue(maxsize=5)
     app.state.q = q
     app.state.start_time = datetime.datetime.now(datetime.UTC)
-    asyncio.create_task(process_requests(q))
+    # https://textual.textualize.io/blog/2023/02/11/the-heisenbug-lurking-in-your-async-code/
+    app.state._queue_task = asyncio.create_task(process_requests(q))
     yield
 
 

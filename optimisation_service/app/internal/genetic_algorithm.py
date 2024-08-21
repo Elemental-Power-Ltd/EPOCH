@@ -298,7 +298,8 @@ class ProblemInstance(ElementwiseProblem):
     def simulate(self, x: npt.NDArray) -> PySimulationResult:
         variable_param = dict(zip(self.v_params, x))
         all_param = variable_param | deepcopy(self.constant_param)
-        return PySimulationResult(self.sim.simulate_scenario(PyTaskData(**all_param)))
+        pytd = PyTaskData(**all_param)
+        return PySimulationResult(self.sim.simulate_scenario(pytd))
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[np.floating]]) -> None:
         x = self.scale_solutions(x)
