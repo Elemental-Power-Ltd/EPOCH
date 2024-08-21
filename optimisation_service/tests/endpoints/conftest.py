@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import json
 import logging
@@ -77,6 +76,7 @@ def client() -> Generator[TestClient, None, None]:
             """
             logger.debug(f"Processing site data for {task_id}.")
             self.temp_data_dir = Path(self.temp_dir, str(task_id))
+            # self.temp_data_dir = Path("tests") / "temp"/ "keepme"
             logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
             os.makedirs(self.temp_data_dir)
             if site_data.loc == FileLoc.local:
@@ -85,7 +85,7 @@ def client() -> Generator[TestClient, None, None]:
                 site_data_info = await self.fetch_site_data_info(site_data.key)
                 dfs = await self.fetch_all_input_data(site_data_info)
                 for name, df in dfs.items():
-                    df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"))
+                    df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
 
         async def transmit_results(self, results: list[EndpointResult]) -> None:
             with open(Path(self.temp_dir, f"R_{results[0].task_id}.json"), "w") as f:
@@ -129,42 +129,42 @@ def endpointtask_factory():
     def __create_endpointtask() -> EndpointTask:
         optimiser = NSGA2Optmiser(name="NSGA2", hyperparameters=GABaseHyperParam())
         search_parameters = EndpointParameterDict(
-            ASHP_HPower=EndpointParamRange(min=0, max=1, step=1),
-            ASHP_HSource=EndpointParamRange(min=0, max=1, step=1),
-            ASHP_HotTemp=EndpointParamRange(min=0, max=1, step=1),
-            ASHP_RadTemp=EndpointParamRange(min=0, max=1, step=1),
-            ESS_capacity=EndpointParamRange(min=0, max=1, step=1),
-            ESS_charge_mode=EndpointParamRange(min=0, max=1, step=1),
-            ESS_charge_power=EndpointParamRange(min=0, max=1, step=1),
-            ESS_discharge_mode=EndpointParamRange(min=0, max=1, step=1),
-            ESS_discharge_power=EndpointParamRange(min=0, max=1, step=1),
-            ESS_start_SoC=EndpointParamRange(min=0, max=1, step=1),
-            EV_flex=EndpointParamRange(min=0, max=1, step=1),
-            Export_headroom=EndpointParamRange(min=0, max=1, step=1),
-            Fixed_load1_scalar=EndpointParamRange(min=0, max=1, step=1),
-            Fixed_load2_scalar=EndpointParamRange(min=0, max=1, step=1),
-            Flex_load_max=EndpointParamRange(min=0, max=1, step=1),
-            GridExport=EndpointParamRange(min=0, max=1, step=1),
-            GridImport=EndpointParamRange(min=0, max=1, step=1),
-            Import_headroom=EndpointParamRange(min=0, max=1, step=1),
-            Min_power_factor=EndpointParamRange(min=0, max=1, step=1),
-            Mop_load_max=EndpointParamRange(min=0, max=1, step=1),
-            ScalarHL1=EndpointParamRange(min=0, max=1, step=1),
-            ScalarHYield=EndpointParamRange(min=0, max=1, step=1),
-            ScalarRG1=EndpointParamRange(min=0, max=1, step=1),
-            ScalarRG2=EndpointParamRange(min=0, max=1, step=1),
-            ScalarRG3=EndpointParamRange(min=0, max=1, step=1),
-            ScalarRG4=EndpointParamRange(min=0, max=1, step=1),
-            f22_EV_CP_number=EndpointParamRange(min=0, max=1, step=1),
-            r50_EV_CP_number=EndpointParamRange(min=0, max=1, step=1),
-            s7_EV_CP_number=EndpointParamRange(min=0, max=1, step=1),
-            u150_EV_CP_number=EndpointParamRange(min=0, max=1, step=1),
+            ASHP_HPower=EndpointParamRange(min=70, max=70, step=0),
+            ASHP_HSource=EndpointParamRange(min=1, max=1, step=0),
+            ASHP_HotTemp=EndpointParamRange(min=43, max=43, step=0),
+            ASHP_RadTemp=EndpointParamRange(min=70, max=70, step=0),
+            ESS_capacity=EndpointParamRange(min=0, max=1000, step=100),
+            ESS_charge_mode=EndpointParamRange(min=1, max=1, step=0),
+            ESS_charge_power=EndpointParamRange(min=0, max=1000, step=100),
+            ESS_discharge_mode=EndpointParamRange(min=1, max=1, step=0),
+            ESS_discharge_power=EndpointParamRange(min=0, max=1000, step=100),
+            ESS_start_SoC=EndpointParamRange(min=0.5, max=0.5, step=0),
+            EV_flex=EndpointParamRange(min=0.5, max=0.5, step=0),
+            Export_headroom=EndpointParamRange(min=0, max=0, step=0),
+            Fixed_load1_scalar=EndpointParamRange(min=1, max=1, step=0),
+            Fixed_load2_scalar=EndpointParamRange(min=3, max=3, step=0),
+            Flex_load_max=EndpointParamRange(min=50, max=50, step=0),
+            GridExport=EndpointParamRange(min=100, max=100, step=0),
+            GridImport=EndpointParamRange(min=140, max=140, step=0),
+            Import_headroom=EndpointParamRange(min=0.4, max=0.4, step=0),
+            Min_power_factor=EndpointParamRange(min=0.95, max=0.95, step=0),
+            Mop_load_max=EndpointParamRange(min=300, max=300, step=0),
+            ScalarHL1=EndpointParamRange(min=1, max=1, step=0),
+            ScalarHYield=EndpointParamRange(min=0.75, max=0.75, step=0),
+            ScalarRG1=EndpointParamRange(min=600, max=600, step=0),
+            ScalarRG2=EndpointParamRange(min=75, max=75, step=0),
+            ScalarRG3=EndpointParamRange(min=60, max=60, step=0),
+            ScalarRG4=EndpointParamRange(min=0, max=0, step=0),
+            f22_EV_CP_number=EndpointParamRange(min=3, max=3, step=0),
+            r50_EV_CP_number=EndpointParamRange(min=0, max=0, step=0),
+            s7_EV_CP_number=EndpointParamRange(min=0, max=0, step=0),
+            u150_EV_CP_number=EndpointParamRange(min=0, max=0, step=0),
             CAPEX_limit=0,
-            Export_kWh_price=0,
+            Export_kWh_price=5,
             OPEX_limit=0,
-            target_max_concurrency=0,
-            time_budget_min=0,
-            timestep_hours=0,
+            target_max_concurrency=44,
+            time_budget_min=5,
+            timestep_hours=1,
         )
 
         objectives = [
@@ -254,13 +254,3 @@ def task_factory(tmpdir_factory: pytest.TempdirFactory):
         return Task(task_id=task_id, optimiser=GridSearch(), problem=problem, data_manager=data_manager)
 
     return __create_task
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()

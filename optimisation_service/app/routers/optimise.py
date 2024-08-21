@@ -20,7 +20,7 @@ logger = logging.getLogger("default")
 database_url = os.environ.get("DB_API_URL", "http://localhost:8000")
 
 
-async def convert_task(task: EndpointTask, data_manager: DataManager) -> Task:
+def convert_task(task: EndpointTask, data_manager: DataManager) -> Task:
     """
     Convert json optimisation tasks into corresponding python objects.
 
@@ -36,16 +36,16 @@ async def convert_task(task: EndpointTask, data_manager: DataManager) -> Task:
     optimiser
         Initialised optimiser.
     """
-    logger.info(f"Converting {task.task_id}.")
-    optimiser = Optimiser[task.optimiser.name].value(**task.optimiser.hyperparameters.model_dump(mode="python"))
-    search_parameters: ParameterDict = task.search_parameters.model_dump(mode="python")
+    logger.info(f"Converting {task["task_id"]}.")
+    optimiser = Optimiser[task["optimiser"]["name"]].value(**task["optimiser"]["hyperparameters"].model_dump(mode="python"))
+    search_parameters: ParameterDict = task["search_parameters"].model_dump(mode="python")
     problem = Problem(
-        objectives=task.objectives,
+        objectives=task["objectives"],
         constraints={},
         parameters=search_parameters,
         input_dir=data_manager.temp_data_dir,
     )
-    return Task(task_id=task.task_id, problem=problem, optimiser=optimiser, data_manager=data_manager)
+    return Task(task_id=task["task_id"], problem=problem, optimiser=optimiser, data_manager=data_manager)
 
 
 def postprocess_results(task: Task, results: Result, completed_at: datetime.datetime) -> list[EndpointResult]:
@@ -117,7 +117,7 @@ async def submit_task(request: Request, task: EndpointTask, data_manager: DataMa
     else:
         try:
             await data_manager.process_site_data(task.site_data, task.task_id)
-            pytask = await convert_task(task, data_manager)
+            pytask = convert_task(task, data_manager)
             await data_manager.transmit_task(task)
             await q.put(pytask)
             return f"Added {task.task_id} to queue and database."

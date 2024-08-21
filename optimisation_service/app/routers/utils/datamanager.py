@@ -86,7 +86,7 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             return await self.db_post(client=client, subdirectory="/list-latest-datasets", data={"input_data_ID": site_data_id})
 
-    async def fetch_all_input_data(self, site_data_ids: dict[str, DatasetIDWithTime]) -> dict[str, pd.DataFrame]:
+    async def fetch_all_input_data(self, site_data_ids: dict[str, dict]) -> dict[str, pd.DataFrame]:
         """
         Fetch and process all necessary input data from database.
 
@@ -103,6 +103,7 @@ class DataManager:
         site_data = {}
         async with httpx.AsyncClient() as client:
             async with asyncio.TaskGroup() as tg:
+<<<<<<< HEAD
                 Eload_task = tg.create_task(self.fetch_electricity_data(site_data_ids["ElectricityMeterData"], client))
                 Hload_task = tg.create_task(self.fetch_heat_data(site_data_ids["HeatingLoad"], client))
                 Airtemp_task = tg.create_task(self.fetch_airtemp_data(site_data_ids["HeatingLoad"], client))
@@ -111,6 +112,32 @@ class DataManager:
                 ASHPoutput_task = tg.create_task(self.fetch_ASHP_output_data(ASHP_mock, client))
                 Importtariff_task = tg.create_task(self.fetch_import_tariff_data(site_data_ids["ImportTariff"], client))
                 GridCO2_task = tg.create_task(self.fetch_grid_CO2_data(site_data_ids["grid_CO2_dataset"], client))
+=======
+                Eload_task = tg.create_task(
+                    self.fetch_electricity_data({"dataset_id": site_data_ids["ElectricityMeterData"]["dataset_id"]}, client)
+                )
+                Hload_task = tg.create_task(
+                    self.fetch_heat_data({"dataset_id": site_data_ids["HeatingLoad"]["dataset_id"]}, client)
+                )
+                Airtemp_task = tg.create_task(
+                    self.fetch_airtemp_data({"dataset_id": site_data_ids["HeatingLoad"]["dataset_id"]}, client)
+                )
+                RGen_task = tg.create_task(
+                    self.fetch_rgen_data({"dataset_id": site_data_ids["RenewablesGeneration"]["dataset_id"]}, client)
+                )
+                ASHPinput_task = tg.create_task(
+                    self.fetch_ASHP_input_data({"dataset_id": site_data_ids["ASHPData"]["dataset_id"]}, client)
+                )
+                ASHPoutput_task = tg.create_task(
+                    self.fetch_ASHP_output_data({"dataset_id": site_data_ids["ASHPData"]["dataset_id"]}, client)
+                )
+                Importtariff_task = tg.create_task(
+                    self.fetch_import_tariff_data({"dataset_id": site_data_ids["ImportTariff"]["dataset_id"]}, client)
+                )
+                GridCO2_task = tg.create_task(
+                    self.fetch_grid_CO2_data({"dataset_id": site_data_ids["CarbonIntensity"]["dataset_id"]}, client)
+                )
+>>>>>>> bugfix/pytest
         site_data["Eload"] = Eload_task.result()
         site_data["Hload"] = Hload_task.result()
         site_data["Airtemp"] = Airtemp_task.result()

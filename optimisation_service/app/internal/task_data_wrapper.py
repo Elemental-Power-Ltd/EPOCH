@@ -17,8 +17,8 @@ try:
     from epoch_simulator import SimulationResult, Simulator, TaskData
 
     HAS_EPOCH = True
-except ImportError:
-    logger.warning("Failed to import Epoch python bindings.")
+except ImportError as ex:
+    logger.warning(f"Failed to import Epoch python bindings due to {ex}")
     HAS_EPOCH = False
 
     # bodge ourselves some horrible stubs so that
@@ -188,6 +188,7 @@ class PyTaskData(TaskData):
         for key, value in kwargs.items():
             assert isinstance(value, (float, int, np.floating)), f"Can only set numeric values, got {value}"
             self[key] = value
+        self["timestep_hours"] = 1
 
     def __setitem__(self, key: str, value: float | int | np.float32) -> None:
         if key not in PyTaskData._VALID_KEYS:
