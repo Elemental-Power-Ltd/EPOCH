@@ -77,6 +77,7 @@ def client() -> Generator[TestClient, None, None]:
             """
             logger.debug(f"Processing site data for {task_id}.")
             self.temp_data_dir = Path(self.temp_dir, str(task_id))
+            # self.temp_data_dir = Path("tests") / "temp"/ "keepme"
             logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
             os.makedirs(self.temp_data_dir)
             if site_data.loc == FileLoc.local:
@@ -85,7 +86,7 @@ def client() -> Generator[TestClient, None, None]:
                 site_data_info = await self.fetch_site_data_info(site_data.key)
                 dfs = await self.fetch_all_input_data(site_data_info)
                 for name, df in dfs.items():
-                    df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"))
+                    df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
 
         async def transmit_results(self, results: list[EndpointResult]) -> None:
             with open(Path(self.temp_dir, f"R_{results[0].task_id}.json"), "w") as f:
@@ -254,13 +255,3 @@ def task_factory(tmpdir_factory: pytest.TempdirFactory):
         return Task(task_id=task_id, optimiser=GridSearch(), problem=problem, data_manager=data_manager)
 
     return __create_task
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
