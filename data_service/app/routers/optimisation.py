@@ -15,8 +15,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from ..dependencies import DatabaseDep
-from ..models.core import SiteID, TaskID, ResultID
-from ..models.optimisation import OptimisationResult, TaskConfig, OptimisationResultListEntry, Objective
+from ..models.core import ResultID, SiteID, TaskID
+from ..models.optimisation import Objective, OptimisationResult, OptimisationResultListEntry, TaskConfig
 
 router = APIRouter()
 
@@ -50,20 +50,24 @@ async def get_optimisation_result(result_id: ResultID, conn: DatabaseDep) -> Opt
             WHERE results_id = $1""",
         result_id.result_id,
     )
-    print(res)
-    return  OptimisationResult(
-            task_id=res["task_id"],
-            result_id=res["result_id"],
-            solution=json.loads(res["solutions"]),
-            objective_values=Objective(
-                carbon_balance=res["objective_values"]["carbon_balance"],
-                cost_balance=res["objective_values"]["cost_balance"],
-                capex=res["objective_values"]["capex"],
-                payback_horizon=res["objective_values"]["payback_horizon"],
-                annualised_cost=res["objective_values"]["annualised_cost"],
-            ),
-            completed_at=res["completed_at"],
+    if res is None:
+        raise HTTPException(
+            400, f"Got no optimisation results stored for {result_id.result_id}. Is this ID of the correct type?"
         )
+    objective = Objective(
+        carbon_balance=res["objective_values"]["carbon_balance"],
+        cost_balance=res["objective_values"]["cost_balance"],
+        capex=res["objective_values"]["capex"],
+        payback_horizon=res["objective_values"]["payback_horizon"],
+        annualised_cost=res["objective_values"]["annualised_cost"],
+    )
+    return OptimisationResult(
+        task_id=res["task_id"],
+        result_id=res["result_id"],
+        solution=json.loads(res["solutions"]),
+        objective_values=objective,
+        completed_at=res["completed_at"],
+    )
 
 
 @router.post("/get-optimisation-task-results")
@@ -175,13 +179,13 @@ async def list_optimisation_results(conn: DatabaseDep, site_id: SiteID | None = 
             site_id.site_id,
         )
     return [
-        {
-            "task_id": item["task_id"],
-            "site_id": item["site_id"],
-            "n_evals": item["n_evals"],
-            "exec_time": item["exec_time"],
-            "result_ids": [subitem for subitem in item["result_id"]],
-        }
+        OptimisationResultListEntry(
+            task_id=item["task_id"],
+            site_id=item["site_id"],
+            n_evals=item["n_evals"],
+            exec_time=item["exec_time"],
+            result_ids=list(item["result_id"]),
+        )
         for item in res
         if item["result_id"] != [None]
     ]
@@ -272,7 +276,6 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
     *HTTPException*
         If the key already exists in the database.
     """
-
     try:
         await conn.execute(
             """

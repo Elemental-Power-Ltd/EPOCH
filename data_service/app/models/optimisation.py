@@ -34,6 +34,8 @@ class OptimisationResult(pydantic.BaseModel):
         description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
         + "May not cover all parameters, only the ones we searched over.",
     )
+    n_evals: pydantic.PositiveInt | None = None
+    exec_time: datetime.timedelta | None = None
     objective_values: Objective = pydantic.Field(
         examples=[
             {
@@ -55,6 +57,7 @@ class OptimiserEnum(Enum):
     GridSearch = "GridSearch"
     NSGA2 = "NSGA2"
     GeneticAlgorithm = "GeneticAlgorithm"
+
 
 class FileLocationEnum(Enum):
     local = "local"

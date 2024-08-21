@@ -239,7 +239,7 @@ def parse_be_st_format(fname: os.PathLike | BinaryIO | str) -> MonthlyDataFrame:
             continue
         # Try parsing the split year information in the form 20XX/YY
         try:
-            year_choice = int(year[0:4]), int(year[0:2] + year[5:8])  # pyright: ignore
+            year_choice = int(year[0:4]), int(year[0:2] + year[5:8])
         except ValueError:
             start_timestamps.append(pd.NaT)
             continue
@@ -306,11 +306,11 @@ def parse_horizontal_monthly_both_years(fname: os.PathLike | str | BinaryIO) -> 
         consumption = parse_comma_float(consumption)
 
         year, month_name, day = start_date.strip().split()
-        month_name = month_name[:3]  # pyright: ignore
+        month_name = month_name[:3]
         start_ts = pd.to_datetime(f"{year} {month_name} {day}", utc=True, format="%d %b %y")
 
         end_year, end_month_name, end_day = end_date.strip().split()
-        end_month_name = end_month_name[:3]  # pyright: ignore
+        end_month_name = end_month_name[:3]
         end_ts = pd.to_datetime(f"{end_year} {end_month_name} {end_day}", utc=True, format="%d %b %y")
         readings.append({"start_ts": start_ts, "end_ts": end_ts, "consumption": consumption})
 
