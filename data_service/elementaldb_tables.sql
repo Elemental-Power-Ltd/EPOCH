@@ -242,6 +242,15 @@ CREATE TABLE heating.synthesised (
 
 
 --
+-- Name: optimisers; Type: TABLE; Schema: optimisation; Owner: -
+--
+
+CREATE TABLE optimisation.optimisers (
+    name text NOT NULL
+);
+
+
+--
 -- Name: results; Type: TABLE; Schema: optimisation; Owner: -
 --
 
@@ -272,7 +281,7 @@ CREATE TABLE optimisation.task_config (
     optimiser_type text NOT NULL,
     optimiser_hyperparameters jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT job_config_optimiser_type_check CHECK ((optimiser_type = ANY (ARRAY['GridSearch'::text, 'NSGA2'::text])))
+    site_id text
 );
 
 
@@ -752,6 +761,14 @@ ALTER TABLE ONLY optimisation.task_config
 
 
 --
+-- Name: optimisers optimisers_pkey; Type: CONSTRAINT; Schema: optimisation; Owner: -
+--
+
+ALTER TABLE ONLY optimisation.optimisers
+    ADD CONSTRAINT optimisers_pkey PRIMARY KEY (name);
+
+
+--
 -- Name: results results_pkey; Type: CONSTRAINT; Schema: optimisation; Owner: -
 --
 
@@ -970,6 +987,22 @@ ALTER TABLE ONLY heating.metadata
 
 ALTER TABLE ONLY heating.synthesised
     ADD CONSTRAINT synthesised_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES heating.metadata(dataset_id) DEFERRABLE;
+
+
+--
+-- Name: task_config fk_job_config_optimiser_type_optimiser_name; Type: FK CONSTRAINT; Schema: optimisation; Owner: -
+--
+
+ALTER TABLE ONLY optimisation.task_config
+    ADD CONSTRAINT fk_job_config_optimiser_type_optimiser_name FOREIGN KEY (optimiser_type) REFERENCES optimisation.optimisers(name);
+
+
+--
+-- Name: task_config fk_task_config_site_info_site_id; Type: FK CONSTRAINT; Schema: optimisation; Owner: -
+--
+
+ALTER TABLE ONLY optimisation.task_config
+    ADD CONSTRAINT fk_task_config_site_info_site_id FOREIGN KEY (site_id) REFERENCES client_info.site_info(site_id);
 
 
 --

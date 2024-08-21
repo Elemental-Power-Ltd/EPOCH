@@ -63,6 +63,14 @@ class FuelEnum(str, Enum):
     oil = "oil"
 
 
+class ResultID(BaseModel):
+    result_id: pydantic.UUID4
+
+
+class TaskID(BaseModel):
+    task_id: pydantic.UUID1 | pydantic.UUID4
+
+
 class DatasetID(BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
 

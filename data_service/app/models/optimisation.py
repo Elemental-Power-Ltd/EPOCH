@@ -28,6 +28,7 @@ class OptimisationResult(pydantic.BaseModel):
         examples=["bb8ce01e-4a73-11ef-9454-0242ac120001"],
         description="Unique ID for this task, often assigned by the optimiser.",
     )
+    result_id: pydantic.UUID4
     solution: dict[str, float | int] = pydantic.Field(
         examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
         description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
@@ -45,12 +46,6 @@ class OptimisationResult(pydantic.BaseModel):
         ],
         description="Values of the objectives at this specific point.",
     )
-    n_evals: pydantic.PositiveInt = pydantic.Field(
-        examples=[8832], description="Number of EPOCH evaluations we ran to calculate this."
-    )
-    exec_time: datetime.timedelta = pydantic.Field(
-        examples=["PT4.297311S"], description="Time it took to calculate this set of results."
-    )
     completed_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC), description="Time this result was calculated at.."
     )
@@ -59,7 +54,7 @@ class OptimisationResult(pydantic.BaseModel):
 class OptimiserEnum(Enum):
     GridSearch = "GridSearch"
     NSGA2 = "NSGA2"
-
+    GeneticAlgorithm = "GeneticAlgorithm"
 
 class FileLocationEnum(Enum):
     local = "local"
@@ -131,4 +126,16 @@ class TaskConfig(pydantic.BaseModel):
     created_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
+    )
+
+
+class OptimisationResultListEntry(pydantic.BaseModel):
+    task_id: pydantic.UUID4 | pydantic.UUID1
+    site_id: site_id_t = site_id_field
+    result_ids: list[pydantic.UUID4]
+    n_evals: pydantic.PositiveInt = pydantic.Field(
+        examples=[8832], description="Number of EPOCH evaluations we ran to calculate this."
+    )
+    exec_time: datetime.timedelta = pydantic.Field(
+        examples=["PT4.297311S"], description="Time it took to calculate this set of results."
     )
