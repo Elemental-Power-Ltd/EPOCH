@@ -84,7 +84,7 @@ class DataManager:
         """
         logger.debug(f"Fetching site data info {site_data_id}.")
         async with httpx.AsyncClient() as client:
-            return await self.db_post(client=client, subdirectory="/get-client-site-data", data={"input_data_ID": site_data_id})
+            return await self.db_post(client=client, subdirectory="/list-latest-datasets", data={"input_data_ID": site_data_id})
 
     async def fetch_all_input_data(self, site_data_ids: dict[str, DatasetIDWithTime]) -> dict[str, pd.DataFrame]:
         """
@@ -98,17 +98,18 @@ class DataManager:
         Returns
         -------
         """
+        ASHP_mock = site_data_ids["electricity_dataset"]  # TODO (21-08-24) : Replace with real dataset data.
         logger.debug("Fetching site data input data.")
         site_data = {}
         async with httpx.AsyncClient() as client:
             async with asyncio.TaskGroup() as tg:
-                Eload_task = tg.create_task(self.fetch_electricity_data(site_data_ids["electricity_dataset"], client))
-                Hload_task = tg.create_task(self.fetch_heat_data(site_data_ids["gas_dataset"], client))
-                Airtemp_task = tg.create_task(self.fetch_airtemp_data(site_data_ids["gas_dataset"], client))
-                RGen_task = tg.create_task(self.fetch_rgen_data(site_data_ids["rgen_dataset"], client))
-                ASHPinput_task = tg.create_task(self.fetch_ASHP_input_data(site_data_ids["ashp_input_dataset"], client))
-                ASHPoutput_task = tg.create_task(self.fetch_ASHP_output_data(site_data_ids["ashp_output_dataset"], client))
-                Importtariff_task = tg.create_task(self.fetch_import_tariff_data(site_data_ids["tariff_dataset"], client))
+                Eload_task = tg.create_task(self.fetch_electricity_data(site_data_ids["ElectricityMeterData"], client))
+                Hload_task = tg.create_task(self.fetch_heat_data(site_data_ids["HeatingLoad"], client))
+                Airtemp_task = tg.create_task(self.fetch_airtemp_data(site_data_ids["HeatingLoad"], client))
+                RGen_task = tg.create_task(self.fetch_rgen_data(site_data_ids["RenewablesGeneration"], client))
+                ASHPinput_task = tg.create_task(self.fetch_ASHP_input_data(ASHP_mock, client))
+                ASHPoutput_task = tg.create_task(self.fetch_ASHP_output_data(ASHP_mock, client))
+                Importtariff_task = tg.create_task(self.fetch_import_tariff_data(site_data_ids["ImportTariff"], client))
                 GridCO2_task = tg.create_task(self.fetch_grid_CO2_data(site_data_ids["grid_CO2_dataset"], client))
         site_data["Eload"] = Eload_task.result()
         site_data["Hload"] = Hload_task.result()
