@@ -1,66 +1,83 @@
 import {useEffect, useState} from "react";
 
-import ResultCard from "../Components/Results/ResultsCard";
+import {OptimiserStatusDisplay} from "../Components/OptimiserQueue/OptimiserQueue"
+import TaskTable from "../Components/Results/TaskTable"
 
 import {useEpochStore} from "../State/state";
 
-import {getStatus} from "../endpoints";
+import {getOptimisationResults, getStatus, listOptimisationTasks} from "../endpoints";
+import ResultTable from "../Components/Results/ResultTable";
 
 
 function ResultsContainer() {
 
-    const state = useEpochStore((state) => state.results);
+    const {
+        results: state,
+        global: globalState,
 
-    const setOptimiserServiceStatus = useEpochStore((state) => state.setOptimiserServiceStatus);
+        setOptimiserServiceStatus,
+        setTasks,
+        setCurrentTask,
+        setCurrentTaskResults,
+    } = useEpochStore((state) => ({
+        results: state.results,
+        global: state.global,
 
+        setOptimiserServiceStatus: state.setOptimiserServiceStatus,
+        setTasks: state.setTasks,
+        setCurrentTask: state.setCurrentTask,
+        setCurrentTaskResults: state.setCurrentTaskResults,
+    }));
 
 
     useEffect(() => {
         const interval = setInterval(async () => {
             const response = await getStatus();
             setOptimiserServiceStatus(response);
-        }, 1000);
+        }, 10000);
 
         return () => {
             clearInterval(interval);
         };
     }, []);
 
+    useEffect(() => {
+        if (globalState.client) {
+
+            const fetchTasks = async () => {
+                const tasks = await listOptimisationTasks(globalState.client.client_id);
+                setTasks(tasks);
+            }
+
+            fetchTasks();
+        }
+
+    }, [globalState.client.client_id])
+
+    useEffect(() => {
+        if (state.currentTask !== null) {
+            const fetchResults = async () => {
+                const results = await getOptimisationResults(state.currentTask.task_id);
+                setCurrentTaskResults(results);
+            }
+
+            fetchResults();
+        }
+    }, [state.currentTask])
+
+    const showResults = state.currentTask !== null;
 
     return (
         <div>
-            <div>
-                {JSON.stringify(state.optimiserServiceStatus)}
-            </div>
-
-            <ResultCard data={{
-              "CAPEX": 751955,
-              "annualised": 54265.05078125,
-              "payback_horizon": 8.984713554382324,
-              "scenario_carbon_balance": 133667.28125,
-              "scenario_cost_balance": 83692.703125,
-              "time_taken": 9.769560813903809
-            }}/>
-
-            <ResultCard data={{
-              "CAPEX": 751955,
-              "annualised": 54265.05078125,
-              "payback_horizon": 8.984713554382324,
-              "scenario_carbon_balance": 133667.28125,
-              "scenario_cost_balance": 83692.703125,
-              "time_taken": 9.769560813903809
-            }}/>
-
-
-            <ResultCard data={{
-              "CAPEX": 751955,
-              "annualised": 54265.05078125,
-              "payback_horizon": 8.984713554382324,
-              "scenario_carbon_balance": 133667.28125,
-              "scenario_cost_balance": 83692.703125,
-              "time_taken": 9.769560813903809
-            }}/>
-
+            <OptimiserStatusDisplay status={state.optimiserServiceStatus}/>
+            <TaskTable tasks={state.tasks} setCurrentTask={setCurrentTask}/>
+            {
+                showResults &&
+                <div>
+                    RESULTS
+                    <ResultTable task={state.currentTask} results={state.currentTaskResults}/>
+                </div>
+            }
         </div>
     )
 }

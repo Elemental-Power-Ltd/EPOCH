@@ -1,6 +1,5 @@
 import "./Run.css"
 
-import StatusDisplay from "../Components/Results/StatusDisplay";
 import AccordionSection from "../util/Widgets/AccordionSection";
 import ConfigForm from "../Components/Config/OptimiserConfig";
 import SearchForm from "../Components/SearchParameters/SearchForm";
@@ -20,9 +19,11 @@ function RunContainer() {
 
         const payload = {
             site: state.selectedSite,
-            optimiser: state.selectedOptimiser,
-            optimiserConfig: state.optimisers[state.selectedOptimiser],
-            searchParameters: state.searchParameters,
+            optimiser: {
+                name: state.selectedOptimiser,
+                hyperparameters: {}  // TODO
+            },
+            search_parameters: state.searchParameters,
         }
 
         // ignore the response for now
@@ -32,8 +33,6 @@ function RunContainer() {
 
     return (
         <div className="run-tab">
-            <StatusDisplay serverStatus={serverStatus} />
-
             <AccordionSection title="Config Form">
                 <ConfigForm/>
             </AccordionSection>
@@ -49,8 +48,6 @@ function RunContainer() {
 
         </div>
     )
-
-
 }
 
 export default RunContainer
