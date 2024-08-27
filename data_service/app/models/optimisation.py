@@ -132,9 +132,10 @@ class TaskConfig(pydantic.BaseModel):
     )
 
 
-class OptimisationResultListEntry(pydantic.BaseModel):
+class OptimisationTaskListEntry(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1
     site_id: site_id_t = site_id_field
+    task_name: str | None
     result_ids: list[pydantic.UUID4]
     n_evals: pydantic.PositiveInt = pydantic.Field(
         examples=[8832], description="Number of EPOCH evaluations we ran to calculate this."

@@ -15,69 +15,19 @@ from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from ..dependencies import DatabaseDep
-from ..models.core import ResultID, SiteID, TaskID
-from ..models.optimisation import Objective, OptimisationResult, OptimisationResultListEntry, TaskConfig
+from ..models.core import ResultID, ClientID, SiteID, TaskID
+from ..models.optimisation import Objective, OptimisationResult, OptimisationTaskListEntry, TaskConfig
 
 router = APIRouter()
 
 
-@router.post("/get-optimisation-result")
-async def get_optimisation_result(result_id: ResultID, conn: DatabaseDep) -> OptimisationResult:
-    """
-    Get a single set of optimisation results.
-
-    This looks up for a single specific result, which is one row from the database.
-
-    Parameters
-    ----------
-    result_id
-        ID of a single result row
-
-    Returns
-    -------
-    results
-        A single optimisation result, including the EPOCH parameters under 'solutions'
-    """
-    res = await conn.fetchrow(
-        """
-            SELECT
-                task_id,
-                results_id AS result_id,
-                solutions,
-                objective_values,
-                completed_at
-            FROM optimisation.results
-            WHERE results_id = $1""",
-        result_id.result_id,
-    )
-    if res is None:
-        raise HTTPException(
-            400, f"Got no optimisation results stored for {result_id.result_id}. Is this ID of the correct type?"
-        )
-    objective = Objective(
-        carbon_balance=res["objective_values"]["carbon_balance"],
-        cost_balance=res["objective_values"]["cost_balance"],
-        capex=res["objective_values"]["capex"],
-        payback_horizon=res["objective_values"]["payback_horizon"],
-        annualised_cost=res["objective_values"]["annualised_cost"],
-    )
-    return OptimisationResult(
-        task_id=res["task_id"],
-        result_id=res["result_id"],
-        solution=json.loads(res["solutions"]),
-        objective_values=objective,
-        completed_at=res["completed_at"],
-    )
-
-
-@router.post("/get-optimisation-task-results")
-async def get_optimisation_task_results(task_id: TaskID, conn: DatabaseDep) -> list[OptimisationResult]:
+@router.post("/get-optimisation-results")
+async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[OptimisationResult]:
     """
     Get all the optimisation results for a single task.
 
     This looks up for a specific task ID, which you filed in `/add-optimisation-job`.
-    If you want to refer to use a single result, try `/get-optimisation-result` with the result UUID
-    (which you were given as a result of `add-optimisation-results`, or can look up here).
+    The set of task IDs for a given client can also be queried with /list-optimisation-tasks
 
     Parameters
     ----------
@@ -119,69 +69,50 @@ async def get_optimisation_task_results(task_id: TaskID, conn: DatabaseDep) -> l
     ]
 
 
-@router.post("/list-optimisation-results")
-async def list_optimisation_results(conn: DatabaseDep, site_id: SiteID | None = None) -> list[OptimisationResultListEntry]:
+@router.post("/list-optimisation-tasks")
+async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> list[OptimisationTaskListEntry]:
     """
-    Get all the optimisation results for a single task.
-
-    This looks up for a specific task ID, which you filed in `/add-optimisation-job`.
-    If you want to refer to use a single result, try `/get-optimisation-result` with the result UUID
-    (which you were given as a result of `add-optimisation-results`, or can look up here).
+    Get all the optimisation tasks for a given client.
 
     Parameters
     ----------
-    task_id
-        ID of a specific optimisation task that was run
+    client_id
 
     Returns
     -------
     results
 
     """
-    if site_id is None:
-        res = await conn.fetch(
-            """
-            SELECT
-                tc.task_id,
-                tc.site_id,
-                MAX(r.n_evals) AS n_evals,
-                MAX(r.exec_time) AS exec_time,
-                tc.created_at,
-                ARRAY_AGG(r.results_id) AS result_id
-            FROM optimisation.task_config AS tc
-            LEFT JOIN
-                (SELECT task_id, results_id, n_evals, exec_time FROM optimisation.results) as r
-            ON r.task_id = tc.task_id
-            GROUP BY
-                tc.task_id
-            ORDER BY tc.created_at ASC
-            """
-        )
-    else:
-        res = await conn.fetch(
-            """
-            SELECT
-                tc.task_id,
-                tc.site_id,
-                MAX(r.n_evals) AS n_evals,
-                MAX(exec_time) AS exec_time,
-                tc.created_at,
-                ARRAY_AGG(r.results_id) AS result_id
-            FROM optimisation.task_config AS tc
-            LEFT JOIN
-                (SELECT task_id, results_id, n_evals, exec_time FROM optimisation.results) as r
-            ON r.task_id = tc.task_id
-            WHERE tc.site_id = $1
-            GROUP BY
-                tc.task_id
-            ORDER BY tc.created_at ASC
-            """,
-            site_id.site_id,
-        )
+
+    res = await conn.fetch(
+        """
+        SELECT
+            tc.task_id,
+            tc.site_id,
+            tc.task_name,
+            MAX(r.n_evals) AS n_evals,
+            MAX(r.exec_time) AS exec_time,
+            tc.created_at,
+            ARRAY_AGG(r.results_id) AS result_id
+        FROM optimisation.task_config AS tc
+        INNER JOIN client_info.site_info as sites
+        ON tc.site_id = sites.site_id
+        LEFT JOIN
+            (SELECT task_id, results_id, n_evals, exec_time FROM optimisation.results) as r
+        ON r.task_id = tc.task_id
+        WHERE sites.client_id = $1
+        GROUP BY
+            tc.task_id
+        ORDER BY tc.created_at ASC
+        """,
+        client_id.client_id
+    )
+
     return [
-        OptimisationResultListEntry(
+        OptimisationTaskListEntry(
             task_id=item["task_id"],
             site_id=item["site_id"],
+            task_name=item["task_name"],
             n_evals=item["n_evals"],
             exec_time=item["exec_time"],
             result_ids=list(item["result_id"]),
