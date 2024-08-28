@@ -102,7 +102,7 @@ def predict_heating_load(gas_df: MonthlyDataFrame) -> npt.NDArray[np.float32]:
     mdl = LinearRegression(positive=True, fit_intercept=False)
     xs = np.vstack([gas_df["days"], gas_df["hdd"].to_numpy()]).T
     ys = gas_df["consumption"].to_numpy()
-    mdl.fit(xs, ys)
+    mdl.fit(xs, ys, sample_weight=gas_df["days"].to_numpy())
     predicted = mdl.predict(xs)
     return predicted
 

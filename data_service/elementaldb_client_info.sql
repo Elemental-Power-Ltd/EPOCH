@@ -49,6 +49,15 @@ INSERT INTO client_info.site_info (site_id, name, address, location, coordinates
 
 
 --
+-- Data for Name: optimisers; Type: TABLE DATA; Schema: optimisation; Owner: postgres
+--
+
+INSERT INTO optimisation.optimisers (name) VALUES ('GridSearch');
+INSERT INTO optimisation.optimisers (name) VALUES ('NSGA2');
+INSERT INTO optimisation.optimisers (name) VALUES ('GeneticAlgorithm');
+
+
+--
 -- PostgreSQL database dump complete
 --
 

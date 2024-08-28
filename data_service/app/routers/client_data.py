@@ -209,7 +209,7 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
     logging.info(f"Returning {len(res)} datasets for {site_id}")
     return [
         DatasetEntry(
-            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum(item["dataset_id"]), created_at=item["created_at"]
+            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum(item["dataset_type"]), created_at=item["created_at"]
         )
         for item in res
     ]
