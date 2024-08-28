@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import typing
+import uuid
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -57,6 +58,7 @@ def postprocess_results(task: Task, results: Result, completed_at: datetime.date
         objective_values: ObjectiveValues = dict(zip(_OBJECTIVES, objective_values))
         OptRes = EndpointResult(
             task_id=str(task.task_id),
+            result_id=str(uuid.uuid4()),  # generate a uuid to refer back to later
             solution=solution,
             objective_values=objective_values,
             n_evals=results.n_evals,
@@ -64,7 +66,7 @@ def postprocess_results(task: Task, results: Result, completed_at: datetime.date
             completed_at=str(completed_at),
         )
         Optimisation_Results.append(OptRes)
-        return Optimisation_Results
+    return Optimisation_Results
 
 
 async def process_requests(q: IQueue):

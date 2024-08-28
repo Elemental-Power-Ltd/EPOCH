@@ -39,6 +39,7 @@ class EndpointTask(BaseModel):
         ],
         description="Location to fetch input data from for EPOCH to ingest.",
     )
+    site_id: str
     created_at: AwareDatetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
@@ -96,6 +97,7 @@ class EndpointResult(BaseModel):
     task_id: str = Field(
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
     )
+    result_id: str
     solution: OptimisationSolution = Field(description="Parameter values which defines a solution to the optimisation task.")
     objective_values: ObjectiveValues = Field(
         examples=[{"carbon_balance": 9999, "capex": 99999, "cost_balance": 999, "payback_horizon": 9, "annualised_cost": 99}],

@@ -133,7 +133,7 @@ async def get_queue_status(request: Request):
     Queue
     """
     time_now = datetime.datetime.now(datetime.UTC)
-    return QueueStatus(queue=request.app.state.q.uncancelled(), service_uptime=request.app.state.start_time - time_now)
+    return QueueStatus(queue=request.app.state.q.uncancelled(), service_uptime=time_now - request.app.state.start_time)
 
 
 @router.post("/cancel-task")
