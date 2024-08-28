@@ -37,16 +37,16 @@ def convert_task(task: EndpointTask, data_manager: DataManager) -> Task:
     optimiser
         Initialised optimiser.
     """
-    logger.info(f"Converting {task["task_id"]}.")
-    optimiser = Optimiser[task["optimiser"]["name"]].value(**task["optimiser"]["hyperparameters"].model_dump(mode="python"))
-    search_parameters: ParameterDict = task["search_parameters"].model_dump(mode="python")
+    logger.info(f"Converting {task.task_id}.")
+    optimiser = Optimiser[task.optimiser.name].value(**task.optimiser.hyperparameters.model_dump(mode="python"))
+    search_parameters: ParameterDict = task.search_parameters.model_dump(mode="python")
     problem = Problem(
-        objectives=task["objectives"],
+        objectives=task.objectives,
         constraints={},
         parameters=search_parameters,
         input_dir=data_manager.temp_data_dir,
     )
-    return Task(task_id=task["task_id"], problem=problem, optimiser=optimiser, data_manager=data_manager)
+    return Task(task_id=task.task_id, problem=problem, optimiser=optimiser, data_manager=data_manager)
 
 
 def postprocess_results(task: Task, results: Result, completed_at: datetime.datetime) -> list[EndpointResult]:
