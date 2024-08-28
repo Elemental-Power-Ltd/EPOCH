@@ -119,6 +119,7 @@ def parse_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame:
             "dateTime": "start_ts",
             "Start": "start_ts",
             "End": "end_ts",
+            "Date (UTC)": "start_ts",
         }
     )
     if "Consumption (m³)" in consumption_df.columns:
@@ -166,7 +167,9 @@ def parse_daily_readings(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFram
     readings_df = (
         pd.read_csv(fname, skipinitialspace=True)
         .rename(columns=lambda x: x.strip())
-        .rename(columns={"Read Type": "reading_type", "Read": "reading", "Date": "timestamp"})
+        .rename(
+            columns={"Read Type": "reading_type", "Read": "reading", "Date": "timestamp", "Consumption (m^3)": "consumption_m3"}
+        )
     )
 
     if "reading_type" in readings_df.columns:
@@ -177,12 +180,19 @@ def parse_daily_readings(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFram
     readings_df = readings_df.set_index("timestamp", drop=True).sort_index()
 
     gas_df = pd.DataFrame()
-    gas_df["start_ts"] = readings_df.index[:-1].to_numpy()
-    gas_df["end_ts"] = readings_df.index[1:].to_numpy()
-    m3_consumptions: npt.NDArray[np.float64] = np.ediff1d(
-        readings_df["reading"].map(parse_comma_float).to_numpy().astype(np.float64)
-    ).astype(np.float64)
-    gas_df["consumption"] = m3_to_kwh(m3_consumptions)
+    gas_df["start_ts"] = readings_df.index.to_numpy()
+    gas_df["end_ts"] = [*readings_df.index[1:], readings_df.index[-1] + readings_df.index.diff().mean()]  # type: ignore
+
+    if "consumption" not in readings_df.columns and "consumption_m3" not in readings_df.columns:
+        m3_consumptions: npt.NDArray[np.float64] = np.ediff1d(
+            readings_df["reading"].map(parse_comma_float).to_numpy().astype(np.float64)
+        ).astype(np.float64)
+        gas_df["consumption"] = m3_to_kwh(m3_consumptions)
+    elif "consumption_m3" in readings_df.columns:
+        print(readings_df)
+        gas_df["consumption"] = m3_to_kwh(readings_df["consumption_m3"].to_numpy())
+    else:
+        gas_df["consumption"] = readings_df["consumption"]
     gas_df = gas_df.set_index("start_ts")
     return MonthlyDataFrame(gas_df[["end_ts", "consumption"]])
 
