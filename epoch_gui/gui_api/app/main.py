@@ -21,63 +21,17 @@ app.add_middleware(
 
 @app.get("/get-status/")
 async def get_status(request: Request):
-    try:
-        with httpx.Client() as client:
-            response = client.post(url="http://127.0.0.1:8001/queue-status")
-
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="Unable to get status")
-
+    with httpx.Client() as client:
+        response = client.post(url="http://127.0.0.1:8001/queue-status")
         return response.json()
-
-    except Exception as e:
-        print(f"Failed to get status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/submit-optimisation-job/")
 async def submit_optimisation_job(request: Request):
-    try:
-        payload = await request.json()
-        print(f"Received optimiser: {payload['optimiser']}")
-
-        # Generate a TaskID for the task
-        payload["task_id"] = str(uuid.uuid4())
-
-        # Add the objectives as hardcoded values (until they are added to the gui)
-        payload["objectives"] = [
-            "carbon_balance",
-            "cost_balance",
-            "capex",
-            "payback_horizon",
-            "annualised_cost"
-        ]
-
-        # hardcode SiteData for now
-        payload["site_data"] = {
-            "loc": "local",
-            "path": "../repro_inputs/GoodData"
-        }
-
-        # changes for latest version
-        del payload["search_parameters"]["timewindow"]
-        payload["task_name"] = "Name Hardcoded in GUI API"
-
-        payload["optimiser"] = {"name": "GeneticAlgorithm", "hyperparameters": {}}
-        payload["site_id"] = "demo_edinburgh"
-
-        with httpx.Client() as client:
-            response = client.post(url="http://127.0.0.1:8001/submit-task", json=payload)
-
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code,
-                                detail="Unable to submit task")
-
-        return {"status": "success", "message": "Job submitted successfully to both services"}
-
-    except Exception as e:
-        print(f"Failed to submit task: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    json_data = await request.json()
+    with httpx.Client() as client:
+        response = client.post(url="http://127.0.0.1:8001/submit-task", json=json_data)
+        return response.json()
 
 
 @app.post("/list-sites/")

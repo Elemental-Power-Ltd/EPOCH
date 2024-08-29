@@ -4,8 +4,28 @@ import DefaultGrid from "../util/json/default/DefaultGridConfig.json";
 import DefaultGA from "../util/json/default/DefaultGAConfig.json";
 import DefaultSearchParameters from "../util/json/default/DefaultSearchParameters.json";
 
-import {AppState, ResultsContainer, RunContainer, Client, Site, Task, OptimisationResult} from "./types"
+import {
+    AppState,
+    ResultsContainer,
+    RunContainer,
+    Client,
+    Site,
+    Task,
+    OptimisationResult,
+    TaskConfig,
+    TaskObjectives
+} from "./types"
 
+
+const defaultTaskConfig: TaskConfig = {
+    task_name: "",
+    optimiser: "GridSearch",
+    objectives: {capex: true, carbon_balance: true, cost_balance: true, payback_horizon: true, annualised_cost: true},
+    site_id: "",
+    start_date: "2022-01-01 00:00:00+00",
+    duration: "year",
+    timestep_minutes: 30
+}
 
 const defaultRunContainer: RunContainer = {
     searchParameters: DefaultSearchParameters,
@@ -13,9 +33,7 @@ const defaultRunContainer: RunContainer = {
         gridSearch: DefaultGrid,
         geneticAlgorithm: DefaultGA
     },
-    selectedOptimiser: "GridSearch",
-    availableSites: ["Mount Hotel", "Retford Town Hall", "10 Downing Street", "Sydney Opera House"],
-    selectedSite: "Mount Hotel"
+    taskConfig: defaultTaskConfig
 }
 
 const defaultResultsContainer: ResultsContainer = {
@@ -32,8 +50,10 @@ const defaultResultsContainer: ResultsContainer = {
 export const useEpochStore = create<AppState>()((set) => ({
     global: {
         client: {
+            // client_id: "demo",
+            // name: "Jewelery Quarter Businesses",
             client_id: "demo",
-            name: "Jewelery Quarter Businesses",
+            name: "Bassetlaw Coucil"
         },
         client_sites: []
     },
@@ -63,6 +83,8 @@ export const useEpochStore = create<AppState>()((set) => ({
     setTasks: (tasks: Task[]) => set((state) => ({results: {...state.results, tasks: tasks}})),
 
     setCurrentTask: (task: Task) => set((state) => ({results: {...state.results, currentTask: task, currentTaskResults: []}})),
-    setCurrentTaskResults: (results: OptimisationResult[]) => set((state) => ({results: {...state.results, currentTaskResults: results}}))
+    setCurrentTaskResults: (results: OptimisationResult[]) => set((state) => ({results: {...state.results, currentTaskResults: results}})),
+
+    setTaskConfig: (config: Partial<TaskConfig>) => set((state) => ({run: {...state.run, taskConfig: {...state.run.taskConfig, ...config}}})),
 
 }))

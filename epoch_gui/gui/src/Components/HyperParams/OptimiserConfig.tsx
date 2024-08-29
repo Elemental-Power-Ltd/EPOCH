@@ -12,7 +12,7 @@ import GASchema from '../../util/json/schema/GAConfigSchema.json';
 import {useEpochStore} from "../../State/state";
 
 
-const ConfigForm = () => {
+const HyperParamForm = () => {
 
     const state = useEpochStore((state) => state.run);
 
@@ -31,25 +31,7 @@ const ConfigForm = () => {
 
     return (
         <div>
-            <h2>CONFIG</h2>
-            <h3>{state.selectedSite}</h3>
-            <div className="optimiser-key-details">
-                <InputLabel id="opt-select">Optimiser</InputLabel>
-
-                <Select id="optimiser" labelId="opt-select" value={state.selectedOptimiser} onChange={changeOptimiser}>
-                    <MenuItem value={"GridSearch"}>Grid Search</MenuItem>
-                    <MenuItem value={"GeneticAlgorithm"}>Genetic Algorithm</MenuItem>
-                </Select>
-
-                <InputLabel id="site-select">Site</InputLabel>
-                <Select id="site" labelId="site-select" value={state.selectedSite} onChange={changeSite}>
-                    {state.availableSites.map(site =>
-                        <MenuItem value={site} key={site}>{site}</MenuItem>)
-                    }
-                </Select>
-            </div>
-
-            {state.selectedOptimiser === "GridSearch" &&
+            {state.taskConfig.optimiser === "GridSearch" &&
                 <Form
                     schema={GridSchema as RJSFSchema}
                     uiSchema={{"ui:submitButtonOptions": {"norender": true}}}
@@ -59,7 +41,7 @@ const ConfigForm = () => {
                 />
             }
 
-            {state.selectedOptimiser === "GeneticAlgorithm" &&
+            {state.taskConfig.optimiser === "GeneticAlgorithm" &&
                 <Form
                     schema={GASchema as RJSFSchema}
                     uiSchema={{"ui:submitButtonOptions": {"norender": true}}}
@@ -73,4 +55,4 @@ const ConfigForm = () => {
     )
 }
 
-export default ConfigForm;
+export default HyperParamForm;

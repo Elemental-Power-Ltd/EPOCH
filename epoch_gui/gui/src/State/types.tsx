@@ -1,9 +1,28 @@
+
+export interface TaskObjectives {
+    capex: boolean;
+    carbon_balance: boolean;
+    cost_balance: boolean;
+    payback_horizon: boolean;
+    annualised_cost: boolean;
+}
+
+
+export interface TaskConfig {
+    task_name: string;
+    optimiser: "GridSearch" | "GeneticAlgorithm";
+    objectives: TaskObjectives;
+    site_id: string;
+    start_date: string;
+    duration: "year"
+    timestep_minutes: 30 | 60
+}
+
+
 export interface RunContainer {
     searchParameters: any;
     optimisers: any;
-    selectedOptimiser: string
-    availableSites: string[];
-    selectedSite: string;
+    taskConfig: TaskConfig;
 }
 
 
@@ -80,4 +99,6 @@ export interface AppState {
     setTasks: (tasks: Task[]) => void;
     setCurrentTask: (task: Task) => void;
     setCurrentTaskResults: (results: OptimisationResult[]) => void;
+
+    setTaskConfig: (config: Partial<TaskConfig>) => void;
 }

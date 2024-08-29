@@ -34,7 +34,7 @@ function ResultsContainer() {
         const interval = setInterval(async () => {
             const response = await getStatus();
             setOptimiserServiceStatus(response);
-        }, 10000);
+        }, 2000);
 
         return () => {
             clearInterval(interval);
