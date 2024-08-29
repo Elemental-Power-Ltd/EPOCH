@@ -10,7 +10,7 @@ import pandas as pd
 from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
-from ..models.core import EndpointResult, EndpointTask
+from ..models.core import EndpointResult, TaskWithUUID
 from ..models.database import DatasetIDWithTime
 from ..models.site_data import FileLoc, SiteMetaData
 
@@ -172,7 +172,7 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-results", data=jsonable_encoder(results))
 
-    async def transmit_task(self, task: EndpointTask) -> None:
+    async def transmit_task(self, task: TaskWithUUID) -> None:
         """
         Transmit optimisation task to database.
 

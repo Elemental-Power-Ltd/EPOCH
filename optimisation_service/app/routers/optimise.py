@@ -6,12 +6,13 @@ import uuid
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import UUID4
 
 from ..internal.models.algorithms import Optimiser
 from ..internal.models.problem import ParameterDict
 from ..internal.problem import _OBJECTIVES, Problem
 from ..internal.result import Result
-from .models.core import EndpointResult, EndpointTask, ObjectiveValues, OptimisationSolution
+from .models.core import EndpointResult, EndpointTask, TaskWithUUID, TaskResponse, ObjectiveValues, OptimisationSolution
 from .models.tasks import Task
 from .queue import IQueue
 from .utils.datamanager import DataManager
@@ -21,7 +22,7 @@ logger = logging.getLogger("default")
 database_url = os.environ.get("DB_API_URL", "http://localhost:8000")
 
 
-def convert_task(task: EndpointTask, data_manager: DataManager) -> Task:
+def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
     """
     Convert json optimisation tasks into corresponding python objects.
 
@@ -100,7 +101,7 @@ DataManagerDep = typing.Annotated[DataManager, Depends(DataManager)]
 
 
 @router.post("/submit-task")
-async def submit_task(request: Request, task: EndpointTask, data_manager: DataManagerDep):
+async def submit_task(request: Request, endpoint_task: EndpointTask, data_manager: DataManagerDep) -> TaskResponse:
     """
     Add optimisation task to queue.
 
@@ -109,7 +110,10 @@ async def submit_task(request: Request, task: EndpointTask, data_manager: DataMa
     Task
         Optimisation task to be added to queue.
     """
-    logger.info(f"Received {task.task_id}.")
+    task_id: UUID4 = uuid.uuid4()
+    logger.info(f"Received task - assigning id: {task_id}.")
+    task = TaskWithUUID(**endpoint_task.model_dump(), task_id=task_id)
+
     q: IQueue = request.app.state.q
     if q.full():
         logger.warning("Queue full.")
@@ -123,7 +127,7 @@ async def submit_task(request: Request, task: EndpointTask, data_manager: DataMa
             pytask = convert_task(task, data_manager)
             await data_manager.transmit_task(task)
             await q.put(pytask)
-            return f"Added {task.task_id} to queue and database."
+            return TaskResponse(task_id=task.task_id)
         except httpx.HTTPStatusError as e:
             logger.warning(f"Failed to add task to database: {str(e.response.text)}")
             raise HTTPException(status_code=500, detail=f"Failed to add task to database: {str(e.response.text)}") from e

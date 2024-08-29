@@ -21,9 +21,6 @@ class Objectives(StrEnum):
 
 
 class EndpointTask(BaseModel):
-    task_id: Annotated[UUID4, "String serialised UUID"] = Field(
-        examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
-    )
     task_name: str | None = Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
     optimiser: NSGA2Optmiser | GAOptimiser | GridSearchOptimiser = Field(description="Optimiser name and hyperparameters.")
     search_parameters: EndpointParameterDict = Field(
@@ -40,6 +37,16 @@ class EndpointTask(BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
+
+
+class TaskWithUUID(EndpointTask):
+    task_id: Annotated[UUID4, "String serialised UUID"] = Field(
+        examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
+    )
+
+
+class TaskResponse(BaseModel):
+    task_id: UUID4
 
 
 class OptimisationSolution(BaseModel):
