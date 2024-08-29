@@ -2,7 +2,7 @@ import {OptimisationResult, Site, Task} from "./State/types";
 
 export const submitOptimisationJob = async(payload) => {
     try {
-        const response = await fetch("/api/submit-optimisation-job/", {
+        const response = await fetch("/api/optimisation/submit-task", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -22,7 +22,9 @@ export const submitOptimisationJob = async(payload) => {
 
 export const getStatus = async() => {
     try {
-        const response = await fetch("/api/get-status/");
+        const response = await fetch("/api/optimisation/queue-status", {
+            method: "POST"
+        });
 
         if(!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
@@ -41,7 +43,7 @@ export const listSites = async(client_id: string): Promise<Site[]> => {
     const payload = {client_id: client_id};
 
     try {
-        const response = await fetch("/api/list-sites/", {
+        const response = await fetch("/api/data/list-sites", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload)
@@ -64,7 +66,7 @@ export const listOptimisationTasks = async(client_id: string): Promise<Task[]> =
     const payload = {client_id: client_id};
 
     try {
-        const response = await fetch("/api/list-optimisation-tasks/", {
+        const response = await fetch("/api/data/list-optimisation-tasks", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload)
@@ -87,7 +89,7 @@ export const getOptimisationResults = async(task_id: string): Promise<Optimisati
     const payload = {task_id: task_id};
 
     try {
-        const response = await fetch("/api/get-optimisation-results/", {
+        const response = await fetch("/api/data/get-optimisation-results", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload)
