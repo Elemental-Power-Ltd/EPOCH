@@ -38,7 +38,8 @@ def convert_task(task: EndpointTask, data_manager: DataManager) -> Task:
         Initialised optimiser.
     """
     logger.info(f"Converting {task.task_id}.")
-    optimiser = Optimiser[task.optimiser.name].value(**task.optimiser.hyperparameters.model_dump(mode="python"))
+    optimiser_func = Optimiser[task.optimiser.name].value
+    optimiser = optimiser_func(**task.optimiser.hyperparameters.model_dump(mode="python"))
     search_parameters: ParameterDict = task.search_parameters.model_dump(mode="python")
     problem = Problem(
         objectives=task.objectives,
@@ -111,10 +112,10 @@ async def submit_task(request: Request, task: EndpointTask, data_manager: DataMa
     logger.info(f"Received {task.task_id}.")
     q: IQueue = request.app.state.q
     if q.full():
-        logger.info("Queue full.")
+        logger.warning("Queue full.")
         raise HTTPException(status_code=503, detail="Task queue is full.")
     if task.task_id in q.q.keys():
-        logger.info(f"{task.task_id} already in queue.")
+        logger.warning(f"{task.task_id} already in queue.")
         raise HTTPException(status_code=400, detail="Task already in queue.")
     else:
         try:
@@ -124,6 +125,8 @@ async def submit_task(request: Request, task: EndpointTask, data_manager: DataMa
             await q.put(pytask)
             return f"Added {task.task_id} to queue and database."
         except httpx.HTTPStatusError as e:
+            logger.warning(f"Failed to add task to database: {str(e.response.text)}")
             raise HTTPException(status_code=500, detail=f"Failed to add task to database: {str(e.response.text)}") from e
         except Exception as e:
+            logger.warning(f"Failed to add task to queue: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to add task to queue: {str(e)}") from e
