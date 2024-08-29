@@ -103,7 +103,6 @@ const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ tas
                                 <IconButton
                                     onClick={() => console.log(result.solution)}
                                     color="primary"
-                                    variant="contained"
                                 >
                                     Show Solution
                                 </IconButton>

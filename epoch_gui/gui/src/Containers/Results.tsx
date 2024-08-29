@@ -57,7 +57,7 @@ function ResultsContainer() {
     useEffect(() => {
         if (state.currentTask !== null) {
             const fetchResults = async () => {
-                const results = await getOptimisationResults(state.currentTask.task_id);
+                const results = await getOptimisationResults(state.currentTask!.task_id);
                 setCurrentTaskResults(results);
             }
 
@@ -75,7 +75,7 @@ function ResultsContainer() {
                 showResults &&
                 <div>
                     RESULTS
-                    <ResultTable task={state.currentTask} results={state.currentTaskResults}/>
+                    <ResultTable task={state.currentTask!} results={state.currentTaskResults}/>
                 </div>
             }
         </div>
