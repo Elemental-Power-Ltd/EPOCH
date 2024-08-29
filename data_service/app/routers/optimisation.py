@@ -245,7 +245,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
             task_config.optimiser.name.value,
             json.dumps(jsonable_encoder(task_config.optimiser.hyperparameters)),
             task_config.created_at,
-            task_config.site_id,
+            task_config.site_data.site_id,
         )
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
