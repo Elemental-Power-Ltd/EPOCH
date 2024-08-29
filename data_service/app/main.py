@@ -24,7 +24,7 @@ from .routers import (
 )
 
 start_time = datetime.datetime.now(tz=datetime.UTC)
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, title="Data Service")
 origins = ["*"]
 
 app.add_middleware(
