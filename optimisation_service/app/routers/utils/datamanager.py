@@ -16,7 +16,7 @@ from ..models.site_data import FileLoc, SiteMetaData
 
 logger = logging.getLogger("default")
 
-_DB_URL = os.environ.get("DB_API_URL", "http://localhost:8000")
+_DB_URL = os.environ.get("DB_API_URL", "http://localhost:8762")
 _TEMP_DIR = Path("app", "data", "temp")
 _INPUT_DATA_FILES = [
     "CSVEload.csv",

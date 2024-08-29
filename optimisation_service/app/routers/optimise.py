@@ -19,7 +19,7 @@ from .utils.datamanager import DataManager
 
 router = APIRouter()
 logger = logging.getLogger("default")
-database_url = os.environ.get("DB_API_URL", "http://localhost:8000")
+database_url = os.environ.get("DB_API_URL", "http://localhost:8762")
 
 
 def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
