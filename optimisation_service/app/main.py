@@ -25,6 +25,7 @@ async def lifespan(app: FastAPI):
     # https://textual.textualize.io/blog/2023/02/11/the-heisenbug-lurking-in-your-async-code/
     app.state._queue_task = asyncio.create_task(process_requests(q))
     yield
+    app.state._queue_task.cancel()
 
 
 app = FastAPI(lifespan=lifespan, title="Optimisation")
