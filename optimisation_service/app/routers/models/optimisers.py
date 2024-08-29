@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
 from ...internal.genetic_algorithm import SamplingMethod
 
 
-class Optimiser(StrEnum):
+class Optimiser(str, Enum):
     NSGA2 = "NSGA2"
     GeneticAlgorithm = "GeneticAlgorithm"
     GridSearch = "GridSearch"
