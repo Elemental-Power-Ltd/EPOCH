@@ -26,7 +26,7 @@ from app.routers.models.optimisers import (
     NSGA2Optmiser,
 )
 from app.routers.models.problem import EndpointParameterDict, EndpointParamRange
-from app.routers.models.site_data import FileLoc, SiteData
+from app.routers.models.site_data import FileLoc, SiteMetaData
 from app.routers.models.tasks import Task
 from app.routers.utils.datamanager import DataManager
 
@@ -64,7 +64,7 @@ def client() -> Generator[TestClient, None, None]:
             for file in self.input_data_files:
                 shutil.copy(Path(source, file), Path(destination, file))
 
-        async def process_site_data(self, site_data: SiteData, task_id: UUID4) -> os.PathLike:
+        async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4) -> os.PathLike:
             """
             Process task site data.
             Either copy local files to temp dir or fetch and process data from database and save to temp dir.
@@ -174,7 +174,7 @@ def endpointtask_factory():
             Objectives.cost_balance,
             Objectives.payback_horizon,
         ]
-        site_data = SiteData(loc=FileLoc.remote, key=uuid4())
+        site_data = SiteMetaData(loc=FileLoc.remote, key=uuid4())
 
         return jsonable_encoder(
             EndpointTask(

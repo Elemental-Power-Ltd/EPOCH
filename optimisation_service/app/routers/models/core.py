@@ -7,7 +7,7 @@ from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt
 
 from .optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
 from .problem import EndpointParameterDict
-from .site_data import SiteData
+from .site_data import SiteMetaData
 
 logger = logging.getLogger("default")
 
@@ -32,14 +32,10 @@ class EndpointTask(BaseModel):
     objectives: list[Objectives] = Field(
         examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for."
     )
-    site_data: SiteData = Field(
-        examples=[
-            {"loc": "database", "key": "805fb659-1cac-44f3-a1f9-85dc82178f53"},
-            {"loc": "local", "path": "./data/InputData"},
-        ],
+    site_data: SiteMetaData = Field(
+        examples=[{"loc": "local", "site_id": "amcott_house", "path": "./data/InputData"}],
         description="Location to fetch input data from for EPOCH to ingest.",
     )
-    site_id: str
     created_at: AwareDatetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
@@ -97,7 +93,6 @@ class EndpointResult(BaseModel):
     task_id: str = Field(
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
     )
-    result_id: str
     solution: OptimisationSolution = Field(description="Parameter values which defines a solution to the optimisation task.")
     objective_values: ObjectiveValues = Field(
         examples=[{"carbon_balance": 9999, "capex": 99999, "cost_balance": 999, "payback_horizon": 9, "annualised_cost": 99}],

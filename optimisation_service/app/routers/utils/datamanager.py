@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import os
 import shutil
@@ -11,7 +12,7 @@ from pydantic import UUID4
 
 from ..models.core import EndpointResult, EndpointTask
 from ..models.database import DatasetIDWithTime
-from ..models.site_data import FileLoc, SiteData
+from ..models.site_data import FileLoc, SiteMetaData
 
 logger = logging.getLogger("default")
 
@@ -35,7 +36,7 @@ class DataManager:
         self.temp_dir = _TEMP_DIR
         self.input_data_files = _INPUT_DATA_FILES
 
-    async def process_site_data(self, site_data: SiteData, task_id: UUID4) -> os.PathLike:
+    async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4) -> os.PathLike:
         """
         Process task site data.
         Either copy local files to temp dir or fetch and process data from database and save to temp dir.
@@ -49,19 +50,20 @@ class DataManager:
         logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
         os.makedirs(self.temp_data_dir)
         if site_data.loc == FileLoc.local:
-            logger.info(f"Copying site data from {site_data.path}.")
             self.copy_input_data(site_data.path, self.temp_data_dir)
         else:
-            logger.info(f"Fetching site data from database {site_data.key}.")
-            site_data_info = await self.fetch_site_data_info(site_data.key)
-            # 27-08-24 TODO: Remove this ugliness.
-            # site_data_info contains unecessary info.
-            # site_data_ids is missing start and end ts.
-            site_data_ids = {(k, {"dataset_id": v["dataset_id"]}) for k, v in site_data_info.items()}
+            site_data_info = await self.fetch_site_data_info(site_data.site_id)
+            site_data_ids = {}
+            for dataset_name, dataset_metadata in site_data_info.items():
+                site_data_ids[dataset_name] = {
+                    "dataset_id": dataset_metadata["dataset_id"],
+                    "start_ts": site_data.start_ts,
+                    "end_ts": site_data.start_ts + datetime.timedelta(hours=8760),
+                }
             dfs = await self.fetch_all_input_data(site_data_ids)
             logger.info(f"Saving site data to {self.temp_data_dir}.")
             for name, df in dfs.items():
-                df.to_csv(Path(self.temp_data_dir, f"{name}.csv"))
+                df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
 
     def copy_input_data(self, source: str | os.PathLike, destination: str | os.PathLike) -> None:
         """
@@ -74,21 +76,22 @@ class DataManager:
         destination
             Folder to copy files to.
         """
+        logger.debug(f"Copying data from {source} to {destination}.")
         for file in self.input_data_files:
             shutil.copy(Path(source, file), Path(destination, file))
 
-    async def fetch_site_data_info(self, site_data_id: UUID4) -> dict[str, DatasetIDWithTime]:
+    async def fetch_site_data_info(self, site_data_id: str) -> dict[str, DatasetIDWithTime]:
         """
         Fetch site data info.
 
         Parameters
         ----------
         site_data_id
-            UUID to retreive data details from database.
+            ID to retreive data details from database.
         """
         logger.debug(f"Fetching site data info {site_data_id}.")
         async with httpx.AsyncClient() as client:
-            return await self.db_post(client=client, subdirectory="/list-latest-datasets", data={"input_data_ID": site_data_id})
+            return await self.db_post(client=client, subdirectory="/list-latest-datasets", data={"site_id": site_data_id})
 
     async def fetch_all_input_data(self, site_data_ids: dict[str, DatasetIDWithTime]) -> dict[str, pd.DataFrame]:
         """
@@ -107,6 +110,7 @@ class DataManager:
         logger.debug("Fetching site data input data.")
         site_data = {}
         async with httpx.AsyncClient() as client:
+            await self.fetch_ASHP_input_data(site_data_ids["ASHPData"], client)
             async with asyncio.TaskGroup() as tg:
                 Eload_task = tg.create_task(self.fetch_electricity_data(site_data_ids["ElectricityMeterData"], client))
                 Hload_task = tg.create_task(self.fetch_heat_data(site_data_ids["HeatingLoad"], client))
@@ -198,6 +202,7 @@ class DataManager:
         response = await self.db_post(client=client, subdirectory="/get-electricity-load", data=data_id_w_time)
         df = pd.DataFrame.from_dict(response)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1"])
+        df["FixLoad2"] = 0
         df = df.sort_values("HourOfYear")
         return df
 
@@ -219,6 +224,9 @@ class DataManager:
         df = pd.DataFrame.from_dict(response)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
         df = df.sort_values("HourOfYear")
+        df["RGen2"] = 0
+        df["RGen3"] = 0
+        df["RGen4"] = 0
         return df
 
     async def fetch_heat_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
@@ -277,8 +285,10 @@ class DataManager:
         """
         response = await self.db_post(client=client, subdirectory="/get-ashp-input", data=data_id_w_time)
         df = pd.DataFrame.from_dict(response, orient="tight")
-        df = df.reindex(columns=[25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-        df = df.sort_values("temperature")
+        df = df.reset_index()
+        df = df.rename(columns={"temperature": 0})
+        df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
+        df = df.sort_values(0)
         return df
 
     async def fetch_ASHP_output_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
@@ -297,8 +307,10 @@ class DataManager:
         """
         response = await self.db_post(client=client, subdirectory="/get-ashp-output", data=data_id_w_time)
         df = pd.DataFrame.from_dict(response, orient="tight")
-        df = df.reindex(columns=[25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-        df = df.sort_values("temperature")
+        df = df.reset_index()
+        df = df.rename(columns={"temperature": 0})
+        df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
+        df = df.sort_values(0)
         return df
 
     async def fetch_import_tariff_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
@@ -319,7 +331,6 @@ class DataManager:
         df = pd.DataFrame.from_dict(response)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
         df = df.sort_values("HourOfYear")
-        df = df.set_index("HourOfYear")
         return df
 
     async def fetch_grid_CO2_data(self, data_id_w_time: DatasetIDWithTime, client: httpx.AsyncClient) -> pd.DataFrame:
