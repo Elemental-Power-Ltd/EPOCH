@@ -141,10 +141,12 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
     time_pairs: list[tuple[pydantic.AwareDatetime, pydantic.AwareDatetime]]
     if params.end_ts - params.start_ts >= pd.Timedelta(days=14):
         time_pairs = list(
-            itertools.pairwise([
-                *list(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(days=13))),
-                params.end_ts,
-            ])
+            itertools.pairwise(
+                [
+                    *list(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(days=13))),
+                    params.end_ts,
+                ]
+            )
         )
     else:
         time_pairs = [(params.start_ts, params.end_ts)]
@@ -269,7 +271,6 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
         params.start_ts,
         params.end_ts,
     )
-
     carbon_df = pd.DataFrame.from_records(
         res,
         index="start_ts",
@@ -278,6 +279,7 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
     carbon_df.index = pd.to_datetime(carbon_df.index)
     carbon_df = carbon_df.resample(pd.Timedelta(hours=1)).mean()
     carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))
+    carbon_df["GridCO2"] = carbon_df["GridCO2"].interpolate(method="time")
     return [
         EpochCarbonEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), GridCO2=val)
         for ts, val in zip(carbon_df.index, carbon_df["GridCO2"], strict=True)
