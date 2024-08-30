@@ -9,11 +9,15 @@ function and FastAPI will figure it out through magic.
 import os
 import typing
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator, AsyncIterator, Never
 
 import asyncpg
 import httpx
+import torch
 from fastapi import Depends, FastAPI
+
+from .internal.elec_meters import VAE
 
 
 class Database:
@@ -36,6 +40,8 @@ class Database:
 
 db = Database(os.environ.get("DATABASE_URL", "postgresql://python:elemental@localhost/elementaldb"))
 http_client = httpx.AsyncClient()
+
+elec_vae_mdl = VAE(input_dim=1, aggregate_dim=1, date_dim=1, latent_dim=5, hidden_dim=64, num_layers=1)
 
 DBConnection = asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
 HTTPClient = httpx.AsyncClient
@@ -66,8 +72,18 @@ async def get_db_conn() -> AsyncGenerator[DBConnection, None]:
         await db.pool.release(conn)
 
 
+async def get_vae_model() -> VAE:
+    """
+    Get a loaded VAE model.
+
+    This should have been loaded in when we did the lifespan events to start up.
+    """
+    return elec_vae_mdl
+
+
 DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
+VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
 
 
 @asynccontextmanager
@@ -75,6 +91,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
     """Set up a long clients: a database pool and an HTTP client."""
     # Startup events
     await db.create_pool()
+    elec_vae_mdl.load_state_dict(torch.load(Path(".", "models", "final", "elecVAE_weights.pth")))
     yield  # type: ignore
     # Shutdown events
     await http_client.aclose()
