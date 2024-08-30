@@ -29,14 +29,25 @@ public:
 		mScenario_fuel_CO2e(0.0f),
 		mScenario_export_CO2e(0.0f),
 		mScenario_carbon_balance(0.0f)
-	{}
+	{
+		mESS_kW = std::max(mTaskData.ESS_charge_power, mTaskData.ESS_discharge_power);
+		mESS_kWmin = std::min(mTaskData.ESS_charge_power, mTaskData.ESS_discharge_power);
+		mESS_kWh = mTaskData.ESS_capacity;
+		mPV_kWp_total = mTaskData.ScalarRG1 + mTaskData.ScalarRG2 + mTaskData.ScalarRG3 + mTaskData.ScalarRG4;
+		
+		// the following will need connecting to new task data input
 
-	void calculateCosts(const Eload& eload, const Hload& hload, const Grid& grid, ESS& MountBESS) {
+		mPV_kWp_ground = mPV_kWp_total; // need to add types of PV to taskdata to allocated costs.
+		mPV_kWp_roof = 0;
+		mkW_Grid = 0; // set Grid upgrade to zero for the moment
+	
+	}
+	
+	void calculateCosts_no_CAPEX(const Eload& eload, const Hload& hload, const Grid& grid, ESS& MountBESS) {
 
-		float ESS_kW = std::max(mTaskData.ESS_charge_power, mTaskData.ESS_discharge_power);
-		float PV_kWp_total = mTaskData.ScalarRG1 + mTaskData.ScalarRG2 + mTaskData.ScalarRG3 + mTaskData.ScalarRG4;
-
-		// need to add a new config parameter here
+		//	This function is an alterntive to calculateCosts() without CAPEX if CAPEX is already calculated earlier in Simulate.cpp
+		// 
+				// need to add a new config parameter here
 		const float IMPORT_FUEL_PRICE = 12.2f;
 		const float BOILER_EFFICIENCY = 0.9f;
 
@@ -44,34 +55,64 @@ public:
 		const int f22_EV_CP_number = mTaskData.f22_EV_CP_number;
 		const int r50_EV_CP_number = mTaskData.r50_EV_CP_number;
 		const int u150_EV_CP_number = mTaskData.u150_EV_CP_number;
-		const float kw_grid_upgrade = 0;
+		const float kw_grid_upgrade = mkW_Grid;
 		const float heatpump_power_capacity = mTaskData.ASHP_HPower;
 
-		calculate_total_annualised_cost(ESS_kW, mTaskData.ESS_capacity, PV_kWp_total, s7_EV_CP_number,
+		//calculate_ESS_PCS_CAPEX(mESS_kW);
+		calculate_ESS_PCS_OPEX();
+		//calculate_ESS_ENCLOSURE_CAPEX(mESS_kWh);
+		calculate_ESS_ENCLOSURE_OPEX();
+		//calculate_ESS_ENCLOSURE_DISPOSAL(mESS_kWh);
+
+		//calculate_PVpanel_CAPEX(mPV_kWp_total);
+		//calculate_PVBoP_CAPEX(mPV_kWp_total);
+		//calculate_PVroof_CAPEX(mPV_kWp_total);
+		//calculate_PVground_CAPEX(mPV_kWp_total);
+		calculate_PV_OPEX();
+
+		//calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
+		//calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
+
+		//calculate_Grid_CAPEX(kw_grid_upgrade);
+
+		//calculate_ASHP_CAPEX(heatpump_power_capacity);
+
+
+		calculate_total_annualised_cost(mESS_kW, mTaskData.ESS_capacity, mPV_kWp_total, s7_EV_CP_number,
 			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_power_capacity);
+
 
 		// for now, simply fix import/export price
 		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), 0.3) };
 		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Export_kWh_price) };
-		year_TS baseline_elec_load = eload.getTotalBaselineFixLoad() + grid.getActualLowPriorityLoad() + MountBESS.getAuxLoad() + eload.getActual_Data_Centre_load();
+		// year_TS baseline_elec_load = eload.getTotalBaselineFixLoad() + grid.getActualLowPriorityLoad() + MountBESS.getAuxLoad() + eload.getActual_Data_Centre_load(); // depreciated in V 08 due to simplified baselining
+		year_TS baseline_elec_load = eload.getFixLoad1();
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
 
-		year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad();
+		//year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad(); // depreciated in V 08 due to simplified baselining
+
+		year_TS baseline_heat_load = hload.getHeatload();
+
 		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), IMPORT_FUEL_PRICE) };
 
 		calculate_baseline_fuel_cost(baseline_heat_load, import_fuel_prices, BOILER_EFFICIENCY);
-		
+
 		calculate_scenario_elec_cost(grid.getGridImport(), import_elec_prices);
 		calculate_scenario_fuel_cost(hload.getHeatShortfall(), import_fuel_prices);
 		calculate_scenario_export_cost(grid.getGridExport(), export_elec_prices);
+
+		calculate_scenario_EV_revenue(eload);
+		calculate_scenario_HP_revenue(eload);
+		calculate_scenario_LP_revenue(grid);
+
 
 		calculate_scenario_cost_balance(mTotal_annualised_cost);
 
 		//========================================
 
-		calculate_Project_CAPEX(ESS_kW, mTaskData.ESS_capacity, PV_kWp_total, s7_EV_CP_number,
-			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_power_capacity);
+		//calculate_Project_CAPEX(mESS_kW, mTaskData.ESS_capacity, mPV_kWp_total, s7_EV_CP_number,
+		//	f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_power_capacity);
 
 		//========================================
 
@@ -91,106 +132,156 @@ public:
 
 		calculate_scenario_export_CO2e(grid.getGridExport());
 
+		calculate_scenario_LP_CO2e(grid);
+
 		calculate_scenario_carbon_balance();
 	}
-	
+
+
+
 	//ESS COSTS
 
 	// these functions account for headroom built in to Grid_connection to take import/export power peaks intratimestep
-	float calculate_ESS_PCS_CAPEX(float ESS_kW) const {
-		// thresholds in kW units
-		float small_thresh = 50;
-		float mid_thresh = 1000;
-
-		// costs in £ / kW
-		float small_cost = 250.0;
-		float mid_cost = 125.0;
-		float large_cost = 75.0;
-
-		float ESS_PCS_CAPEX = 0;
-
-		if (ESS_kW < small_thresh) {
-			ESS_PCS_CAPEX = small_cost * ESS_kW;
-		} else if (small_thresh < ESS_kW && ESS_kW < mid_thresh) {
-			ESS_PCS_CAPEX = (small_cost * small_thresh) + ((ESS_kW - small_thresh) * mid_cost);
-		} else if (ESS_kW > mid_thresh) {
-			ESS_PCS_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((ESS_kW - small_thresh - mid_thresh) * large_cost);
+	void calculate_ESS_PCS_CAPEX() {
+		
+		if (mESS_kWmin == 0 || mTaskData.ESS_capacity == 0) // either of these is zero - not an ESS so no cost!
+		{
+			mESS_PCS_CAPEX = 0;
+			return;
 		}
+		else
+		{
+			// thresholds in kW units
+			float small_thresh = 50;
+			float mid_thresh = 1000;
 
-		return ESS_PCS_CAPEX;
+			// costs in £ / kW
+			float small_cost = 250.0;
+			float mid_cost = 125.0;
+			float large_cost = 75.0;
+
+			if (mESS_kW < small_thresh) {
+				mESS_PCS_CAPEX = small_cost * mESS_kW;
+			}
+			else if (small_thresh < mESS_kW && mESS_kW < mid_thresh) {
+				mESS_PCS_CAPEX = (small_cost * small_thresh) + ((mESS_kW - small_thresh) * mid_cost);
+			}
+			else if (mESS_kW > mid_thresh) {
+				mESS_PCS_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kW - small_thresh - mid_thresh) * large_cost);
+			}
+
+			return;
+		}
 	}
 
-	float calculate_ESS_PCS_OPEX(float ESS_kW) const {
-		// threholds in kW units
-		float small_thresh = 50;
-		float mid_thresh = 1000;
+	void calculate_ESS_PCS_OPEX() {
 
-		// costs in £ / kW
-		float small_cost = 8.0;
-		float mid_cost = 4.0;
-		float large_cost = 1.0;
-
-		float ESS_PCS_OPEX = 0;
-
-		if (ESS_kW < small_thresh) {
-			ESS_PCS_OPEX = small_cost * ESS_kW;
-		} else if (small_thresh < ESS_kW && ESS_kW < mid_thresh) {
-			ESS_PCS_OPEX = (small_cost * small_thresh) + ((ESS_kW - small_thresh) * mid_cost);
-		} else if (ESS_kW > mid_thresh) {
-			ESS_PCS_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((ESS_kW - small_thresh - mid_thresh) * large_cost);
+		if (mESS_kWmin == 0 || mTaskData.ESS_capacity == 0) // either of these is zero - not an ESS so no cost!
+		{
+			mESS_PCS_OPEX = 0;
+			return;
 		}
+		else
+		{
 
-		return ESS_PCS_OPEX;
+			// threholds in kW units
+			float small_thresh = 50;
+			float mid_thresh = 1000;
+
+			// costs in £ / kW
+			float small_cost = 8.0;
+			float mid_cost = 4.0;
+			float large_cost = 1.0;
+
+			
+
+			if (mESS_kW < small_thresh) {
+				mESS_PCS_OPEX = small_cost * mESS_kW;
+			}
+			else if (small_thresh < mESS_kW && mESS_kW < mid_thresh) {
+				mESS_PCS_OPEX = (small_cost * small_thresh) + ((mESS_kW - small_thresh) * mid_cost);
+			}
+			else if (mESS_kW > mid_thresh) {
+				mESS_PCS_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kW - small_thresh - mid_thresh) * large_cost);
+			}
+
+			return;
+		}
 	}
 
-	float calculate_ESS_ENCLOSURE_CAPEX(float ESS_kWh) const {
-		// threholds in kW units
-		float small_thresh = 100;
-		float mid_thresh = 2000;
+	void calculate_ESS_ENCLOSURE_CAPEX() {
 
-		// costs in £ / kWh
-		float small_cost = 480.0;
-		float mid_cost = 360.0;
-		float large_cost = 300.0;
-
-		float ESS_ENCLOSURE_CAPEX = 0;
-
-		if (ESS_kWh < small_thresh) {
-			ESS_ENCLOSURE_CAPEX = small_cost * ESS_kWh;
-		} else if (small_thresh < ESS_kWh && ESS_kWh < mid_thresh) {
-			ESS_ENCLOSURE_CAPEX = (small_cost * small_thresh) + ((ESS_kWh - small_thresh) * mid_cost);
-		} else if (ESS_kWh > mid_thresh) {
-			ESS_ENCLOSURE_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((ESS_kWh - small_thresh - mid_thresh) * large_cost);
+		if (mESS_kWmin == 0 || mTaskData.ESS_capacity == 0) // either of these is zero - not an ESS so no cost!
+		{
+			mESS_ENCLOSURE_CAPEX = 0;
+			return;
 		}
+		else
+		{
+			// threholds in kW units
+			float small_thresh = 100;
+			float mid_thresh = 2000;
 
-		return ESS_ENCLOSURE_CAPEX;
+			// costs in £ / kWh
+			float small_cost = 480.0;
+			float mid_cost = 360.0;
+			float large_cost = 300.0;
+
+			
+
+			if (mESS_kWh < small_thresh) {
+				mESS_ENCLOSURE_CAPEX = small_cost * mESS_kWh;
+			}
+			else if (small_thresh < mESS_kWh && mESS_kWh < mid_thresh) {
+				mESS_ENCLOSURE_CAPEX = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
+			}
+			else if (mESS_kWh > mid_thresh) {
+				mESS_ENCLOSURE_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kWh - small_thresh - mid_thresh) * large_cost);
+			}
+			
+		}
+		return;
 	}
 
-	float calculate_ESS_ENCLOSURE_OPEX(float ESS_kWh) const {
-		// threholds in kWh units
-		float small_thresh = 100;
-		float mid_thresh = 2000;
+	void calculate_ESS_ENCLOSURE_OPEX() {
 
-		// costs in £ / kWh
-		float small_cost = 10.0;
-		float mid_cost = 4.0;
-		float large_cost = 2.0;
-
-		float ESS_ENCLOSURE_OPEX = 0;
-
-		if (ESS_kWh < small_thresh) {
-			ESS_ENCLOSURE_OPEX = small_cost * ESS_kWh;
-		} else if (small_thresh < ESS_kWh && ESS_kWh < mid_thresh) {
-			ESS_ENCLOSURE_OPEX = (small_cost * small_thresh) + ((ESS_kWh - small_thresh) * mid_cost);
-		} else if (ESS_kWh > mid_thresh) {
-			ESS_ENCLOSURE_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((ESS_kWh - small_thresh - mid_thresh) * large_cost);
+		if (mESS_kWmin == 0 || mTaskData.ESS_capacity == 0) // either of these is zero - not an ESS so no cost!
+		{
+			 mESS_ENCLOSURE_OPEX = 0;
+			return;
 		}
+		else
+		{
+			// threholds in kWh units
+			float small_thresh = 100;
+			float mid_thresh = 2000;
 
-		return ESS_ENCLOSURE_OPEX;
+			// costs in £ / kWh
+			float small_cost = 10.0;
+			float mid_cost = 4.0;
+			float large_cost = 2.0;
+
+			if (mESS_kWh < small_thresh) {
+				mESS_ENCLOSURE_OPEX = small_cost * mESS_kWh;
+			}
+			else if (small_thresh < mESS_kWh && mESS_kWh < mid_thresh) {
+				mESS_ENCLOSURE_OPEX = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
+			}
+			else if (mESS_kWh > mid_thresh) {
+				mESS_ENCLOSURE_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kWh - small_thresh - mid_thresh) * large_cost);
+			}
+			return;
+		}
 	}
 
 	// thresholds in kWh units
-	float calculate_ESS_ENCLOSURE_DISPOSAL(float ESS_kWh) const {
+	void calculate_ESS_ENCLOSURE_DISPOSAL() {
+		if (mESS_kWmin == 0 || mTaskData.ESS_capacity == 0) // either of these is zero - not an ESS so no cost!
+		{
+			mESS_ENCLOSURE_DISPOSAL = 0;
+			return;
+		}
+
 		float small_thresh = 100;
 		float mid_thresh = 2000;
 
@@ -199,22 +290,22 @@ public:
 		float mid_cost = 20.0;
 		float large_cost = 15.0;
 
-		float ESS_ENCLOSURE_DISPOSAL = 0;
+		
 
-		if (ESS_kWh < small_thresh) {
-			ESS_ENCLOSURE_DISPOSAL = small_cost * ESS_kWh;
-		} else if (small_thresh < ESS_kWh && ESS_kWh < mid_thresh) {
-			ESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + ((ESS_kWh - small_thresh) * mid_cost);
-		} else if (ESS_kWh > mid_thresh) {
-			ESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((ESS_kWh - small_thresh - mid_thresh) * large_cost);
+		if (mESS_kWh < small_thresh) {
+			mESS_ENCLOSURE_DISPOSAL = small_cost * mESS_kWh;
+		} else if (small_thresh < mESS_kWh && mESS_kWh < mid_thresh) {
+			mESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
+		} else if (mESS_kWh > mid_thresh) {
+			mESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kWh - small_thresh - mid_thresh) * large_cost);
 		}
 
-		return ESS_ENCLOSURE_DISPOSAL;
+		return;
 	}
 
 	//PHOTOVOLTAIC COSTS (All units of kWp are DC)
 
-	float calculate_PVpanel_CAPEX(float PV_kWp_total) const {
+	void calculate_PVpanel_CAPEX() {
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
@@ -223,20 +314,19 @@ public:
 		float mid_cost = 110.0;
 		float large_cost = 95.0;
 
-		float PVpanel_CAPEX = 0;
 
-		if (PV_kWp_total < small_thresh) {
-			PVpanel_CAPEX = small_cost * PV_kWp_total;
-		} else if (small_thresh < PV_kWp_total && PV_kWp_total < mid_thresh) {
-			PVpanel_CAPEX = (small_cost * small_thresh) + ((PV_kWp_total - small_thresh) * mid_cost);
-		} else if (PV_kWp_total > mid_thresh) {
-			PVpanel_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((PV_kWp_total - small_thresh - mid_thresh) * large_cost);
+		if (mPV_kWp_total < small_thresh) {
+			mPVpanel_CAPEX = small_cost * mPV_kWp_total;
+		} else if (small_thresh < mPV_kWp_total && mPV_kWp_total < mid_thresh) {
+			mPVpanel_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
+		} else if (mPV_kWp_total > mid_thresh) {
+			mPVpanel_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
 		}
 
-		return PVpanel_CAPEX;
+		return;
 	}
 
-	float calculate_PVBoP_CAPEX(float PV_kWp_total) const {
+	void calculate_PVBoP_CAPEX() {
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
@@ -245,20 +335,18 @@ public:
 		float mid_cost = 88.0;
 		float large_cost = 76.0;
 
-		float PVBoP_CAPEX = 0;
-
-		if (PV_kWp_total < small_thresh) {
-			PVBoP_CAPEX = small_cost * PV_kWp_total;
-		} else if (small_thresh < PV_kWp_total && PV_kWp_total < mid_thresh) {
-			PVBoP_CAPEX = (small_cost * small_thresh) + ((PV_kWp_total - small_thresh) * mid_cost);
-		} else if (PV_kWp_total > mid_thresh) {
-			PVBoP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((PV_kWp_total - small_thresh - mid_thresh) * large_cost);
+		if (mPV_kWp_total < small_thresh) {
+			mPVBoP_CAPEX = small_cost * mPV_kWp_total;
+		} else if (small_thresh < mPV_kWp_total && mPV_kWp_total < mid_thresh) {
+			mPVBoP_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
+		} else if (mPV_kWp_total > mid_thresh) {
+			mPVBoP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
 		}
 
-		return PVBoP_CAPEX;
+		return;
 	}
 
-	float calculate_PVroof_CAPEX(float PV_kWp_total) const {
+	void calculate_PVroof_CAPEX() {
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
@@ -267,42 +355,38 @@ public:
 		float mid_cost = 200.0;
 		float large_cost = 150.0;
 
-		float PVroof_CAPEX = 0;
-
-		if (PV_kWp_total < small_thresh) {
-			PVroof_CAPEX = small_cost * PV_kWp_total;
-		} else if (small_thresh < PV_kWp_total && PV_kWp_total < mid_thresh) {
-			PVroof_CAPEX = (small_cost * small_thresh) + ((PV_kWp_total - small_thresh) * mid_cost);
-		} else if (PV_kWp_total > mid_thresh) {
-			PVroof_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((PV_kWp_total - small_thresh - mid_thresh) * large_cost);
+		if (mPV_kWp_roof < small_thresh) {
+			mPVroof_CAPEX = small_cost * mPV_kWp_roof;
+		} else if (small_thresh < mPV_kWp_roof && mPV_kWp_roof < mid_thresh) {
+			mPVroof_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_roof - small_thresh) * mid_cost);
+		} else if (mPV_kWp_roof > mid_thresh) {
+			mPVroof_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_roof - small_thresh - mid_thresh) * large_cost);
 		}
 
-		return PVroof_CAPEX;
+		return;
 	}
 
-	float calculate_PVground_CAPEX(float PV_kWp_total) const {
+	void calculate_PVground_CAPEX() {
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
 		// costs in £ / kWp DC
-		float small_cost = 150.0;
+		float small_cost = 150.0; 
 		float mid_cost = 125.0;
 		float large_cost = 100.0;
 
-		float PVground_CAPEX = 0;
-
-		if (PV_kWp_total < small_thresh) {
-			PVground_CAPEX = small_cost * PV_kWp_total;
-		} else if (small_thresh < PV_kWp_total && PV_kWp_total < mid_thresh) {
-			PVground_CAPEX = (small_cost * small_thresh) + ((PV_kWp_total - small_thresh) * mid_cost);
-		} else if (PV_kWp_total > mid_thresh) {
-			PVground_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((PV_kWp_total - small_thresh - mid_thresh) * large_cost);
+		if (mPV_kWp_ground < small_thresh) {
+			mPVground_CAPEX = small_cost * mPV_kWp_ground;
+		} else if (small_thresh < mPV_kWp_ground && mPV_kWp_ground < mid_thresh) {
+			mPVground_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_ground - small_thresh) * mid_cost);
+		} else if (mPV_kWp_ground > mid_thresh) {
+			mPVground_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_ground - small_thresh - mid_thresh) * large_cost);
 		}
 
-		return PVground_CAPEX;
+		return;
 	}
 
-	float calculate_PV_OPEX(float PV_kWp_total) const {
+	void calculate_PV_OPEX() {
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
@@ -311,54 +395,52 @@ public:
 		float mid_cost = 1.0;
 		float large_cost = 0.50;
 
-		float PV_OPEX = 0;
-
-		if (PV_kWp_total < small_thresh) {
-			PV_OPEX = small_cost * PV_kWp_total;
-		} else if (small_thresh < PV_kWp_total && PV_kWp_total < mid_thresh) {
-			PV_OPEX = (small_cost * small_thresh) + ((PV_kWp_total - small_thresh) * mid_cost);
-		} else if (PV_kWp_total > mid_thresh) {
-			PV_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((PV_kWp_total - small_thresh - mid_thresh) * large_cost);
+		if (mPV_kWp_total < small_thresh) {
+			mPV_OPEX = small_cost * mPV_kWp_total;
+		} else if (small_thresh < mPV_kWp_total && mPV_kWp_total < mid_thresh) {
+			mPV_OPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
+		} else if (mPV_kWp_total > mid_thresh) {
+			mPV_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
 		}
 
-		return PV_OPEX;
+		return;
 	}
 
 	// EV charge point costs 
 
 	// Cost model for EV charge points is based on per unit of each charger type, 7 kW, 22 kW, 50 kW and 150 kW
 
-	float calculate_EV_CP_cost(int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) const {
+	void calculate_EV_CP_cost(int s7_EV_CP_number, 
+		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) {
 		// costs in £ / unit (1 hd unit 2 connectors)
 		float s7_EV_cost = 1200.00;
 		float f22_EV_cost = 2500.00;
 		float r50_EV_cost = 20000.00;
 		float u150_EV_cost = 60000.00;
 
-		float EV_CP_COST = (float(s7_EV_CP_number) * s7_EV_cost) + (float(f22_EV_CP_number) * f22_EV_cost) 
+		 mEV_CP_cost = (float(s7_EV_CP_number) * s7_EV_cost) + (float(f22_EV_CP_number) * f22_EV_cost) 
 			+ (float(r50_EV_CP_number) * r50_EV_cost) + (float(u150_EV_CP_number) * u150_EV_cost);
 
-		return EV_CP_COST;
+		return;
 	}
 
-	float calculate_EV_CP_install(int s7_EV_CP_number,
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) const {
+	void calculate_EV_CP_install(int s7_EV_CP_number,
+		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) {
 		// costs in £ / unit (1 hd unit 2 connectors)
 		float s7_EV_install = 600.00;
 		float f22_EV_install = 1000.00;
 		float r50_EV_install = 3000.00;
 		float u150_EV_install = 10000.00;
 
-		float EV_CP_INSTALL = (float(s7_EV_CP_number) * s7_EV_install) + (float(f22_EV_CP_number) * f22_EV_install)
+		mEV_CP_install = (float(s7_EV_CP_number) * s7_EV_install) + (float(f22_EV_CP_number) * f22_EV_install)
 			+ (float(r50_EV_CP_number) * r50_EV_install) + (float(u150_EV_CP_number) * u150_EV_install);
 
-		return EV_CP_INSTALL;
+		return;
 	}
 
 	// Grid upgrade costs
 
-	float calculate_Grid_CAPEX(float kW_max) const {
+	void calculate_Grid_CAPEX() {
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
@@ -367,22 +449,20 @@ public:
 		float mid_cost = 160.0;
 		float large_cost = 120.0;
 
-		float Grid_CAPEX = 0;
-
-		if (kW_max < small_thresh) {
-			Grid_CAPEX = small_cost * kW_max;
-		} else if (small_thresh < kW_max && kW_max < mid_thresh) {
-			Grid_CAPEX = (small_cost * small_thresh) + ((kW_max - small_thresh) * mid_cost);
-		} else if (kW_max > mid_thresh) {
-			Grid_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((kW_max - small_thresh - mid_thresh) * large_cost);
+		if (mkW_Grid < small_thresh) {
+			mGrid_CAPEX = small_cost * mkW_Grid;
+		} else if (small_thresh < mkW_Grid && mkW_Grid < mid_thresh) {
+			mGrid_CAPEX = (small_cost * small_thresh) + ((mkW_Grid - small_thresh) * mid_cost);
+		} else if (mkW_Grid > mid_thresh) {
+			mGrid_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mkW_Grid - small_thresh - mid_thresh) * large_cost);
 		}
 
-		return Grid_CAPEX;
+		return;
 	}
 
 	// ASHP CAPEX costs
 
-	float calculate_ASHP_CAPEX(float heatpump_power_capacity) const {
+	void calculate_ASHP_CAPEX(float heatpump_power_capacity) {
 		float small_thresh = 10;
 		float mid_thresh = 100;
 
@@ -391,26 +471,24 @@ public:
 		float mid_cost = 1000.0;
 		float large_cost = 1000.0;
 
-		float ASHP_CAPEX = 0;
-
 		if (heatpump_power_capacity < small_thresh) {
-			ASHP_CAPEX = small_cost * heatpump_power_capacity;
+			mASHP_CAPEX = small_cost * heatpump_power_capacity;
 		} else if (small_thresh < heatpump_power_capacity && heatpump_power_capacity < mid_thresh) {
-			ASHP_CAPEX = (small_cost * small_thresh) + ((heatpump_power_capacity - small_thresh) * mid_cost);
+			mASHP_CAPEX = (small_cost * small_thresh) + ((heatpump_power_capacity - small_thresh) * mid_cost);
 		} else if (heatpump_power_capacity > mid_thresh) {
-			ASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((heatpump_power_capacity - small_thresh - mid_thresh) * large_cost);
+			mASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((heatpump_power_capacity - small_thresh - mid_thresh) * large_cost);
 		}
 
-		return ASHP_CAPEX;
+		return;
 	}
 
-	float calculate_ESS_annualised_cost(float ESS_kW, float ESS_kWh, float PV_kWp_total) const {
-		float ESS_annualised_cost = ((calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh)) / mESS_lifetime) + calculate_ESS_PCS_OPEX(ESS_kW) + calculate_ESS_ENCLOSURE_OPEX(ESS_kWh);
+	float calculate_ESS_annualised_cost() const {
+		float ESS_annualised_cost = (mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL) / mESS_lifetime + mESS_PCS_OPEX + mESS_ENCLOSURE_OPEX;
 		return ESS_annualised_cost;
 	}
 
-	float calculate_PV_annualised_cost(float PV_kWp_total) const {
-		float PV_annualised_cost = ((calculate_PVpanel_CAPEX(PV_kWp_total) + calculate_PVBoP_CAPEX(PV_kWp_total) + calculate_PVroof_CAPEX(0) + calculate_PVground_CAPEX(PV_kWp_total)) / mPV_panel_lifetime) + calculate_PV_OPEX(PV_kWp_total);
+	float calculate_PV_annualised_cost() const {
+		float PV_annualised_cost = ((mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX + mPVground_CAPEX) / mPV_panel_lifetime) + mPV_OPEX;
 		return PV_annualised_cost;
 	}
 
@@ -418,31 +496,30 @@ public:
 		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) const {
 		float EV_CP_annualised_cost = 
 			(
-			calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number) + 
-			calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number)
+			mEV_CP_cost + mEV_CP_install
 			) / mEV_CP_lifetime;
 
 		return EV_CP_annualised_cost;
 	}
 
 	float calculate_ASHP_annualised_cost(float heatpump_power_capacity) const {
-		float ASHP_annualised_cost = calculate_ASHP_CAPEX(heatpump_power_capacity) / mASHP_lifetime;
+		float ASHP_annualised_cost = mASHP_CAPEX/ mASHP_lifetime;
 		return ASHP_annualised_cost;
 	}
 
 	float calculate_Grid_annualised_cost(float kw_grid_upgrade) const {
-		float Grid_annualised_cost = calculate_Grid_CAPEX(kw_grid_upgrade) / mGrid_lifetime;
+		float Grid_annualised_cost = mGrid_CAPEX/ mGrid_lifetime;
 		return Grid_annualised_cost;
 	}
 
 	float calculate_Project_annualised_cost(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
 		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_power_capacity) const {
 
-		float ESS_CAPEX = calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh);
-		float PV_CAPEX = calculate_PVpanel_CAPEX(PV_kWp_total) + calculate_PVBoP_CAPEX(PV_kWp_total) + calculate_PVroof_CAPEX(0) + calculate_PVground_CAPEX(PV_kWp_total);
-		float EV_CP_CAPEX = calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number) + calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
-		float ASHP_CAPEX = calculate_ASHP_CAPEX(heatpump_power_capacity);
-		float Grid_CAPEX = calculate_Grid_CAPEX(kw_grid_upgrade);
+		float ESS_CAPEX = mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL;
+		float PV_CAPEX = mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX + mPVground_CAPEX;
+		float EV_CP_CAPEX = mEV_CP_cost + mEV_CP_install;
+		float ASHP_CAPEX = mASHP_CAPEX;
+		float Grid_CAPEX = mGrid_CAPEX;
 
 		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
 		float Project_cost_grid = Grid_CAPEX * mProject_plan_develop_Grid;
@@ -455,11 +532,27 @@ public:
 	void calculate_Project_CAPEX(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
 		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_power_capacity) {
 
-		float ESS_CAPEX = calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh);
-		float PV_CAPEX = calculate_PVpanel_CAPEX(PV_kWp_total) + calculate_PVBoP_CAPEX(PV_kWp_total) + calculate_PVroof_CAPEX(0) + calculate_PVground_CAPEX(PV_kWp_total);
-		float EV_CP_CAPEX = calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number) + calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
-		float ASHP_CAPEX = calculate_ASHP_CAPEX(heatpump_power_capacity);
-		float Grid_CAPEX = calculate_Grid_CAPEX(kw_grid_upgrade);
+		calculate_ESS_PCS_CAPEX();
+		calculate_ESS_ENCLOSURE_CAPEX();
+		calculate_ESS_ENCLOSURE_DISPOSAL();
+
+		calculate_PVpanel_CAPEX();
+		calculate_PVBoP_CAPEX();
+		calculate_PVroof_CAPEX();
+		calculate_PVground_CAPEX();
+
+		calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
+		calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
+
+		calculate_Grid_CAPEX();
+
+		calculate_ASHP_CAPEX(heatpump_power_capacity);
+	
+		float ESS_CAPEX = mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL;
+		float PV_CAPEX = mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX + mPVground_CAPEX;
+		float EV_CP_CAPEX = mEV_CP_cost + mEV_CP_install;
+		float ASHP_CAPEX = mASHP_CAPEX;
+		float Grid_CAPEX = mGrid_CAPEX;
 
 		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
 		float Project_cost_grid = Grid_CAPEX * mProject_plan_develop_Grid;
@@ -472,9 +565,9 @@ public:
 	void calculate_total_annualised_cost(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
 		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_power_capacity) {
 
-		float ESS_annualised_cost = ((calculate_ESS_PCS_CAPEX(ESS_kW) + calculate_ESS_ENCLOSURE_CAPEX(ESS_kWh) + calculate_ESS_ENCLOSURE_DISPOSAL(ESS_kWh)) / mESS_lifetime) + calculate_ESS_PCS_OPEX(ESS_kW) + calculate_ESS_ENCLOSURE_OPEX(ESS_kWh);
+		float ESS_annualised_cost = ((mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL) / mESS_lifetime) + mESS_PCS_OPEX + mESS_ENCLOSURE_OPEX;
 		
-		float PV_annualised_cost = ((calculate_PVpanel_CAPEX(PV_kWp_total) + calculate_PVBoP_CAPEX(PV_kWp_total) + calculate_PVroof_CAPEX(0) + calculate_PVground_CAPEX(PV_kWp_total)) / mPV_panel_lifetime) + calculate_PV_OPEX(PV_kWp_total);
+		float PV_annualised_cost = ((mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX + mPVground_CAPEX) / mPV_panel_lifetime) + mPV_OPEX;
 
 		float EV_CP_annualised_cost = calculate_EV_CP_annualised_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
 
@@ -520,8 +613,25 @@ public:
 		mScenario_export_cost = mScenario_export_cost_TS.sum();
 	};
 
+	void calculate_scenario_EV_revenue(const Eload& eload) {
+		year_TS mScenario_EV_revenueTS = eload.getActualEVLoad().array() * mEV_low_price; // will need to separate out EV charge tariffs later, assume all destination charging for no
+		mScenario_EV_revenue = mScenario_EV_revenueTS.sum();
+	};
+
+	void calculate_scenario_HP_revenue(const Eload& eload) {
+		year_TS mScenario_HP_revenueTS = eload.getActual_Data_Centre_load().array() * mHP_price;
+		mScenario_HP_revenue = mScenario_HP_revenueTS.sum();
+	};
+
+	void calculate_scenario_LP_revenue(const Grid& grid) {
+		mLP_price = mMains_gas_price/mBoiler_efficiency;
+		year_TS mScenario_LP_revenueTS = grid.getActualLowPriorityLoad().array() * mLP_price; // will need to separate out EV charge tariffs later, assume all destination charging for no
+		mScenario_LP_revenue = mScenario_LP_revenueTS.sum();
+	}
+
+
 	void calculate_scenario_cost_balance(float Total_annualised_cost) {
-		mScenario_cost_balance = (mBaseline_elec_cost + mBaseline_fuel_cost) - (mScenario_import_cost + mScenario_fuel_cost + mScenario_export_cost + Total_annualised_cost);
+		mScenario_cost_balance = (mBaseline_elec_cost + mBaseline_fuel_cost) - (mScenario_import_cost + mScenario_fuel_cost + mScenario_export_cost - mScenario_EV_revenue - mScenario_HP_revenue - mScenario_LP_revenue + Total_annualised_cost);
 	};
 
 	void calculate_payback_horizon() {
@@ -568,8 +678,15 @@ public:
 		mScenario_export_CO2e = (-grid_export_sum * mSupplier_electricity_kg_CO2e);
 	};
 
+	void calculate_scenario_LP_CO2e(const Grid& grid) {
+	
+		year_TS mScenario_LP_CO2eTS = grid.getActualLowPriorityLoad().array() * mMains_gas_kg_C02e; // will need to separate out EV charge tariffs later, assume all destination charging for no
+		mScenario_LP_CO2e =  -mScenario_LP_CO2eTS.sum();
+	}
+
+
 	void calculate_scenario_carbon_balance() {
-		mScenario_carbon_balance = (mBaseline_elec_CO2e + mBaseline_fuel_CO2e) - (mScenario_elec_CO2e + mScenario_fuel_CO2e + mScenario_export_CO2e);
+		mScenario_carbon_balance = (mBaseline_elec_CO2e + mBaseline_fuel_CO2e) - (mScenario_elec_CO2e + mScenario_fuel_CO2e + mScenario_export_CO2e + mScenario_LP_CO2e);
 	};
 
 	float get_project_CAPEX() const {
@@ -592,6 +709,131 @@ public:
 		return mTotal_annualised_cost;
 	}
 
+	float get_PV_kWp_total() const {
+		return mPV_kWp_total;
+	}
+
+	float get_ESS_kW() const {
+		return mESS_kW;
+	}
+
+	float get_ESS_kWmin() const {
+		return mESS_kWmin;
+	}
+
+	float get_Baseline_elec_cost() const {
+		return mBaseline_elec_cost;
+	}
+
+	float get_Baseline_fuel_cost() const {
+		return mBaseline_fuel_cost;
+	}
+
+	float get_Baseline_elec_CO2e() const {
+		return mBaseline_elec_CO2e;
+	}
+
+	float get_Baseline_fuel_CO2e() const {
+		return mBaseline_fuel_CO2e;
+	}
+
+
+	float get_Scenario_import_cost() const {
+		return mScenario_import_cost;
+	}
+
+	float get_Scenario_fuel_cost() const {
+		return mScenario_fuel_cost;
+	}
+
+	float get_Scenario_export_cost() const {
+		return mScenario_export_cost;
+	}
+
+	float get_Scenario_elec_CO2e() const{
+		return mScenario_elec_CO2e;
+	}
+
+	float get_Scenario_fuel_CO2e() const{
+		return mScenario_fuel_CO2e;
+	}
+
+	float get_Scenario_export_CO2e() const{
+		return mScenario_export_CO2e;
+	}
+
+	float get_Scenario_LP_CO2e() const {
+		return mScenario_LP_CO2e;
+	}
+
+	float get_Scenario_EV_revenue() const {
+		return mScenario_EV_revenue;
+	}
+
+	float  get_Scenario_HP_revenue() const {
+		return mScenario_HP_revenue;
+	};
+
+	float  get_Scenario_LP_revenue() const {
+		return mScenario_LP_revenue;
+	};
+	float get_ESS_PCS_CAPEX() const {
+		return mESS_PCS_CAPEX;
+	}
+
+	float get_ESS_PCS_OPEX() const {
+		return mESS_PCS_OPEX;
+	}
+
+	float get_ESS_ENCLOSURE_CAPEX() const {
+		return mESS_ENCLOSURE_CAPEX;
+	}
+
+	float get_ESS_ENCLOSURE_OPEX() const {
+		return mESS_ENCLOSURE_OPEX;
+	}
+
+	float get_ESS_ENCLOSURE_DISPOSAL() const {
+		return mESS_ENCLOSURE_DISPOSAL;
+	}
+
+	float get_PVpanel_CAPEX() const {
+		return mPVpanel_CAPEX;
+	}
+
+	float get_PVBoP_CAPEX() const {
+		return mPVBoP_CAPEX;
+	}
+
+	float get_PVroof_CAPEX() const {
+		return mPVroof_CAPEX;
+	}
+
+	float get_PVground_CAPEX() const {
+		return mPVground_CAPEX;
+	}
+
+	float get_PV_OPEX() const {
+		return mPV_OPEX;
+	}
+
+	float get_EV_CP_cost() const {
+		return mEV_CP_cost;
+	}
+
+	float get_EV_CP_install() const {
+		return mEV_CP_install;
+	}
+
+	float get_Grid_CAPEX() const {
+		return mGrid_CAPEX;
+	}
+
+	float get_ASHP_CAPEX() const {
+		return mASHP_CAPEX;
+	}
+
+
 	// "hard wired" constants for the moment
 	private:
 		const TaskData& mTaskData;
@@ -613,6 +855,14 @@ public:
 
 		const float mSupplier_electricity_kg_CO2e = 0.182f; //
 
+		// site price
+
+		float mEV_low_price = 0.45f; // £/kWh site price for destination EV charging, 22 kW and below
+		float mEV_high_price = 0.79f; //£/kWh site price for high power EV charging, 50 KW and above
+		float mHP_price = 0.50f; // £/kWh site price for data centre compute (hi priority load)
+		float mLP_price ; // assume this is just the equivalent fossil fuel derived heat
+
+
 		// plant lifetimes in years
 
 		const float mESS_lifetime = 15.0f;
@@ -626,6 +876,7 @@ public:
 
 		float mBaseline_elec_cost;
 		float mBaseline_fuel_cost;
+
 		float mScenario_import_cost;
 		float mScenario_fuel_cost;
 		float mScenario_export_cost;
@@ -637,10 +888,54 @@ public:
 		// variables for calculating CO2e operational emissions
 		float mBaseline_elec_CO2e;
 		float mBaseline_fuel_CO2e;
+
 		float mScenario_elec_CO2e;
 		float mScenario_fuel_CO2e;
 		float mScenario_export_CO2e;
 
+		float mScenario_LP_CO2e;
+
 		float mScenario_carbon_balance;
+
+		float mScenario_EV_revenue;
+
+		float mScenario_HP_revenue;
+
+		float mScenario_LP_revenue;
+
+		// internal variables used in the cost calculation
+
+		float mPV_kWp_total;
+		float mPV_kWp_ground;
+		float mPV_kWp_roof;
+
+		float mESS_kW;
+		float mESS_kWh;
+		float mESS_kWmin;
+
+		float mkW_Grid;
+
+		// asset costs 
+
+		float mESS_PCS_CAPEX;
+		float mESS_PCS_OPEX;
+		float mESS_ENCLOSURE_CAPEX;
+		float mESS_ENCLOSURE_OPEX;
+		float mESS_ENCLOSURE_DISPOSAL;
+
+		float mPVpanel_CAPEX;
+		float mPVBoP_CAPEX;
+		float mPVroof_CAPEX;
+		float mPVground_CAPEX;
+		float mPV_OPEX;
+
+		float mEV_CP_cost;
+		float mEV_CP_install;
+
+		float mGrid_CAPEX;
+
+		float mASHP_CAPEX;
+
+		
 };
 

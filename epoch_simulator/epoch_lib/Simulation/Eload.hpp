@@ -140,11 +140,21 @@ public:
 		return mActual_Data_Centre_load;
 	}
 
+	year_TS getFixLoad1() const {
+		return mFixLoad1;
+	}
+
+	year_TS getEVLoad() const {
+		return mEVLoad;
+	}
+
+	year_TS getActualEVLoad() const {
+		return mActual_EV_load;
+	}
+
 	float getHeadroomL1() const {
 		return mHeadroomL1;
 	}
-
-
 
 private:
 	float mHeadroomL1;

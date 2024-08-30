@@ -20,6 +20,23 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
+
+	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
+	Costs myCost(taskData);
+	myCost.calculate_Project_CAPEX(myCost.get_ESS_kW(), taskData.ESS_capacity, myCost.get_PV_kWp_total(), taskData.s7_EV_CP_number, taskData.f22_EV_CP_number, taskData.r50_EV_CP_number, taskData.u150_EV_CP_number, 0, taskData.ASHP_HPower);
+	if (taskData.CAPEX_limit*1000 < myCost.get_project_CAPEX())
+	{
+		int CAPEX_limit_exceed_flag = 1;
+		FullSimulationResult fullSimulationResult;
+		fullSimulationResult.paramIndex = taskData.paramIndex;
+		fullSimulationResult.total_annualised_cost = 0;
+		fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
+		fullSimulationResult.scenario_cost_balance = 0;
+		fullSimulationResult.payback_horizon_years = 0;
+		fullSimulationResult.scenario_carbon_balance = 0;
+		return fullSimulationResult; // must return function return type - set other objectives to zero
+	}
+
 	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
 
 	Hload MountHload{ historicalData, taskData }; // initialise Hload based on historical data and taskdata
@@ -44,8 +61,8 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
 
-	Costs myCost(taskData);
-	myCost.calculateCosts(MountEload, MountHload, MountGrid, MountBESS);
+	
+	myCost.calculateCosts_no_CAPEX(MountEload, MountHload, MountGrid, MountBESS); // CAPEX calc now at beginning
 
 	//Data reporting
 
@@ -76,7 +93,53 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
 		fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
 		fullSimulationResult.Heat_surplus = MountHload.getEHeatSurplus();
-	}
+		
+		fullSimulationResult.Baseline_electricity_cost = myCost.get_Baseline_elec_cost();
+		fullSimulationResult.Baseline_fuel_cost = myCost.get_Baseline_fuel_cost();
+
+		fullSimulationResult.Baseline_electricity_carbon = myCost.get_Baseline_elec_CO2e();
+		fullSimulationResult.Baseline_fuel_carbon = myCost.get_Baseline_fuel_CO2e();
+
+		fullSimulationResult.Scenario_electricity_cost = myCost.get_Scenario_import_cost();
+		fullSimulationResult.Scenario_fuel_cost = myCost.get_Scenario_fuel_cost();
+		fullSimulationResult.Scenario_grid_export_cost = myCost.get_Scenario_export_cost();
+		
+		fullSimulationResult.Scenario_electricity_carbon = myCost.get_Scenario_elec_CO2e();
+		fullSimulationResult.Scenario_fuel_carbon = myCost.get_Scenario_fuel_CO2e();
+		fullSimulationResult.Scenario_grid_export_carbon = myCost.get_Scenario_export_CO2e();
+		fullSimulationResult.Scenario_avoided_fuel_carbon = myCost.get_Scenario_LP_CO2e();
+
+		fullSimulationResult.Resulting_EV_charge_revenue = myCost.get_Scenario_EV_revenue();
+		fullSimulationResult.Resulting_Data_Centre_revenue = myCost.get_Scenario_HP_revenue();
+		fullSimulationResult.Scenario_avoided_fuel_cost = myCost.get_Scenario_LP_revenue();
+
+		fullSimulationResult.ESS_PCS_CAPEX = myCost.get_ESS_PCS_CAPEX();
+		fullSimulationResult.ESS_PCS_OPEX = myCost.get_ESS_PCS_OPEX();
+		fullSimulationResult.ESS_ENCLOSURE_CAPEX = myCost.get_ESS_ENCLOSURE_CAPEX();
+		fullSimulationResult.ESS_ENCLOSURE_OPEX = myCost.get_ESS_ENCLOSURE_OPEX();
+		fullSimulationResult.ESS_ENCLOSURE_DISPOSAL = myCost.get_ESS_ENCLOSURE_DISPOSAL();
+		
+		fullSimulationResult.PVpanel_CAPEX = myCost.get_PVpanel_CAPEX();
+		fullSimulationResult.PVBoP_CAPEX = myCost.get_PVBoP_CAPEX();
+		fullSimulationResult.PVroof_CAPEX = myCost.get_PVroof_CAPEX();
+		fullSimulationResult.PVground_CAPEX = myCost.get_PVground_CAPEX();
+		fullSimulationResult.PV_OPEX = myCost.get_PV_OPEX();
+		
+		fullSimulationResult.EV_CP_cost = myCost.get_EV_CP_cost();
+		fullSimulationResult.EV_CP_install = myCost.get_EV_CP_install();
+
+		fullSimulationResult.Grid_CAPEX = myCost.get_Grid_CAPEX();
+		fullSimulationResult.ASHP_CAPEX = myCost.get_ASHP_CAPEX();
+
+		float mEV_CP_cost;
+		float mEV_CP_install;
+
+		float mGrid_CAPEX;
+
+		float mASHP_CAPEX;
+	};
+
+	
 
 
 	fullSimulationResult.paramIndex = taskData.paramIndex;
@@ -86,7 +149,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	fullSimulationResult.payback_horizon_years = myCost.get_payback_horizon_years();
 	fullSimulationResult.scenario_carbon_balance = myCost.get_scenario_carbon_balance();
 
-
+	
 	//========================================
 
 	/*WRITE DATA SECTION - AFTER PROFILING CLOCK STOPPED*/

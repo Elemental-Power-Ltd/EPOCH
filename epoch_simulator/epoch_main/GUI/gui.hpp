@@ -638,7 +638,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hTextbox97 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX97, 360, 930, 100, 30, L"44");
 
 	HWND hLabel98 = makeLabel(hWnd, hInstance, L"CAPEX limit, £k", 480, 880, 100, 50);
-	hTextbox98 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX98, 480, 930, 100, 30, L"500");
+	hTextbox98 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX98, 480, 930, 100, 30, L"1000");
 
 	HWND hLabel99 = makeLabel(hWnd, hInstance, L"OPEX limit, £k", 600, 880, 100, 50);
 	hTextbox99 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX99, 600, 930, 100, 30, L"100");

@@ -59,6 +59,12 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallind
 	// note: deliberately not try-catching this
 	// this will crash the program if it cannot write to file (ie the csv is open in Excel!)
 	writeTimeSeriesToCSV(fp, fullResult);
+	
+	fp = mFileConfig.getOutputDir() / "ScenarioCostData.csv";
+
+	writeCostDataToCSV(fp, fullResult);
+
+
 
 	// END HACK
 
