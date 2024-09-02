@@ -162,9 +162,17 @@ async def generate_heating_load(
             http_client=http_client,
         )
     )
+
+    # We do this two step resampling to make sure we don't drop the last 23:30 entry if required
     forecast_weather_df = WeatherDataFrame(
         forecast_weather_df.resample(rule=pd.Timedelta(minutes=30)).mean().interpolate(method="time")
     )
+    forecast_weather_df = WeatherDataFrame(
+        forecast_weather_df.reindex(
+            pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
+        ).ffill()
+    )
+
     forecast_weather_df["bait"] = building_adjusted_internal_temperature(
         forecast_weather_df,
         fitted_coefs.solar_gain,

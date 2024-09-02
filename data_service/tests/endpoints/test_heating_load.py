@@ -46,3 +46,28 @@ class TestHeatingLoad:
         assert 0 <= generated_metadata.json()["params"]["r2_score"] < 1.0
         assert 0 <= generated_metadata.json()["params"]["smoothing"] < 1.0
         assert generated_metadata.json()["params"]["heating_kwh"] > 0
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    async def test_heating_load_right_length(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
+        """Check that we've got the right length of dataset and haven't dropped the last entry."""
+        dataset_id = uploaded_meter_data["dataset_id"]
+
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2023, month=2, day=1, tzinfo=datetime.UTC)
+        generated_metadata = await client.post(
+            "/generate-heating-load",
+            json={"dataset_id": dataset_id, "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+        )
+        heating_load_result = await client.post(
+            "/get-heating-load", json={"dataset_id": generated_metadata.json()["dataset_id"]}
+        )
+        assert datetime.datetime.fromisoformat(generated_metadata.json()["created_at"]) > datetime.datetime.now(
+            datetime.UTC
+        ) - datetime.timedelta(minutes=1)
+
+        assert heating_load_result.json()[0]["Date"] == start_ts.date().strftime("%d-%b")
+        assert heating_load_result.json()[-1]["Date"] == (end_ts - datetime.timedelta(minutes=30)).date().strftime("%d-%b")
+        assert heating_load_result.json()[0]["StartTime"] == "00:00", "First entry isn't 00:00"
+        assert heating_load_result.json()[-1]["StartTime"] == "23:30", "Last entry isn't 23:30"
+        assert len(heating_load_result.json()) == int((end_ts - start_ts) / datetime.timedelta(minutes=30))
