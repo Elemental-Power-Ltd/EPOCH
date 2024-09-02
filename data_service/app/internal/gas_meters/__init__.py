@@ -9,6 +9,7 @@ from .domestic_hot_water import (
 from .domestic_hot_water import (
     assign_hh_dhw_poisson as assign_hh_dhw_poisson,
 )
+from .domestic_hot_water import get_poisson_weights as get_poisson_weights
 from .domestic_hot_water import (
     midday_sin_weights as midday_sin_weights,
 )

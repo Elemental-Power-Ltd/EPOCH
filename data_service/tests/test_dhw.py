@@ -107,7 +107,7 @@ class TestAssignHHDHWPoisson:
     def test_basic_functionality(self, sample_df: HHDataFrame, weights: np.ndarray) -> None:
         """Test that the shape of the dataframe is sane."""
         rng = np.random.default_rng(42)
-        result = assign_hh_dhw_poisson(sample_df, weights, dhw_kwh=1, hdd_kwh=2, max_output=30, rng=rng)
+        result = assign_hh_dhw_poisson(sample_df, weights, dhw_event_size=1, hdd_kwh=2, max_output=30, rng=rng)
 
         assert "dhw" in result.columns
         assert "heating" in result.columns
@@ -118,7 +118,7 @@ class TestAssignHHDHWPoisson:
     def test_reproducibility(self, sample_df: HHDataFrame, weights: np.ndarray) -> None:
         """Test that we can re-use an RNG."""
         rng = np.random.default_rng(42)
-        result1 = assign_hh_dhw_poisson(sample_df, weights, dhw_kwh=1, hdd_kwh=2, max_output=30, rng=rng)
-        result2 = assign_hh_dhw_poisson(sample_df, weights, dhw_kwh=1, hdd_kwh=2, max_output=30, rng=rng)
+        result1 = assign_hh_dhw_poisson(sample_df, weights, dhw_event_size=1, hdd_kwh=2, max_output=30, rng=rng)
+        result2 = assign_hh_dhw_poisson(sample_df, weights, dhw_event_size=1, hdd_kwh=2, max_output=30, rng=rng)
 
         assert np.allclose(result1["dhw"], result2["dhw"])

@@ -44,7 +44,7 @@ select = [
 ]
 ignore = [
     "PD901", # pandas df variable name
-    "UP035", # prefer collections imstead of typing
+#    "UP035", # prefer collections intead of typing
     "PT011", # pytest raises too broad
     "RUF029", # declared async but doesn't use
 ]
@@ -59,6 +59,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "external: marks tests as requiring an external API key (deselect with '-m \"not external\"')",
 ]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.mypy]
 check_untyped_defs = true

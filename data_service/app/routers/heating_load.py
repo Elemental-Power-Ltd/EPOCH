@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabaseDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
-from ..internal.gas_meters import assign_hh_dhw_even, fit_bait_and_model, hh_gas_to_monthly
+from ..internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
 from ..internal.heating import building_adjusted_internal_temperature
 from ..internal.utils import hour_of_year
 from ..models.core import DatasetIDWithTime
@@ -178,7 +178,11 @@ async def generate_heating_load(
     heating_df["hdd"] = (
         np.maximum(fitted_coefs.threshold - forecast_weather_df["bait"], 0) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=1)
     )
-    assign_hh_dhw_even(heating_df, fitted_coefs.dhw_kwh, fitted_coefs.heating_kwh)
+
+    event_size = 1.0  # Change this for future buildings, assumes each DHW event is exactly 1 kWh in size
+    poisson_weights = get_poisson_weights(heating_df, "leisure_centre") * fitted_coefs.dhw_kwh / event_size
+
+    assign_hh_dhw_poisson(heating_df, poisson_weights, dhw_event_size=event_size, hdd_kwh=fitted_coefs.heating_kwh)
 
     metadata = {
         "dataset_id": uuid.uuid4(),
