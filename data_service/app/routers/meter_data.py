@@ -5,16 +5,19 @@ These functions provider wrappers to get it in more sensible formats.
 """
 
 import datetime
+import logging
 import uuid
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from ..dependencies import DatabaseDep
+from ..dependencies import DatabaseDep, HttpClientDep, VaeDep
+from ..internal.elec_meters import monthly_to_hh_eload
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
 from ..internal.utils import hour_of_year
+from ..internal.utils.bank_holidays import get_bank_holidays
 from ..models.core import (
     DatasetID,
     DatasetIDWithTime,
@@ -271,7 +274,9 @@ async def get_meter_data(dataset_id: DatasetID, conn: DatabaseDep) -> list[GasDa
 
 
 @router.post("/get-electricity-load", tags=["get", "electricity"])
-async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> list[EpochElectricityEntry]:
+async def get_electricity_load(
+    params: DatasetIDWithTime, conn: DatabaseDep, http_client: HttpClientDep, elec_vae: VaeDep
+) -> list[EpochElectricityEntry]:
     """
     Get a (possibly synthesised) half hourly electricity load dataset.
 
@@ -282,9 +287,6 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
 
     Parameters
     ----------
-    *request*
-        FastAPI internal request object
-
     *params*
         An electricity meter dataset, and start / end timestamps corresponding to the time period of interest.
 
@@ -298,6 +300,13 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     *HTTPException(400)*
         If the requested meter dataset is half hourly.
     """
+    if (params.end_ts - params.start_ts) > datetime.timedelta(days=366):
+        raise HTTPException(
+            400,
+            f"Timestamps {params.start_ts.isoformat()} and {params.end_ts.isoformat()}"
+            + "are more than 1 year apart. This would result in duplicate readings.",
+        )
+
     readings_and_fuel = await conn.fetchrow(
         """
         SELECT
@@ -311,18 +320,10 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     if readings_and_fuel is None:
         raise HTTPException(400, f"Could not find a reading or fuel type for {params.dataset_id}")
     reading_type, fuel_type = readings_and_fuel
-    if reading_type != "halfhourly":
-        raise HTTPException(400, "Electrical load resampling not yet supported, pick a half hourly dataset.")
 
     if fuel_type != "elec":
         raise HTTPException(400, f"Requested dataset {params.dataset_id} was for {fuel_type}, not 'elec' ")
 
-    if (params.end_ts - params.start_ts) > datetime.timedelta(days=366):
-        raise HTTPException(
-            400,
-            f"Timestamps {params.start_ts.isoformat()} and {params.end_ts.isoformat()}"
-            + "are more than 1 year apart. This would result in duplicate readings.",
-        )
     res = await conn.fetch(
         """
         SELECT
@@ -338,15 +339,29 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
         params.end_ts,
     )
 
-    # Now restructure for EPOCH
     elec_df = pd.DataFrame.from_records(
         res, columns=["start_ts", "consumption"], coerce_float=["consumption"], index="start_ts"
     )
     if elec_df.empty:
         raise HTTPException(400, f"Got an empty dataset for {params.dataset_id}.")
-    elec_df = elec_df.resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
+
+    if reading_type == "halfhourly":
+        # Group these into hourly data
+        elec_df = elec_df.resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
+    else:
+        logger = logging.getLogger("default")
+        logger.info("Resampling from monthly to HH using a VAE for {params.dataset_id}.")
+        holiday_dates_co = get_bank_holidays(http_client=http_client)
+        new_elec_df = monthly_to_hh_eload(
+            holiday_dates=frozenset(await holiday_dates_co),
+            month_labels=elec_df.index.to_series(),
+            monthly_aggregates=elec_df["consumption"].to_numpy(),
+            model=elec_vae,
+        )
+        elec_df = new_elec_df
 
     assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
+    # Now restructure for EPOCH
     elec_df["Date"] = elec_df.index.strftime("%d-%b")
     elec_df["StartTime"] = elec_df.index.strftime("%H:%M")
     elec_df["HourOfYear"] = elec_df.index.map(hour_of_year)
