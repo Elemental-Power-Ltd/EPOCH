@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from ..dependencies import DatabaseDep
-from ..models.core import ResultID, ClientID, SiteID, TaskID
+from ..models.core import ClientID, TaskID
 from ..models.optimisation import Objective, OptimisationResult, OptimisationTaskListEntry, TaskConfig
 
 router = APIRouter()
@@ -83,7 +83,6 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
     results
 
     """
-
     res = await conn.fetch(
         """
         SELECT
