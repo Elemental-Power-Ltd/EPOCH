@@ -141,12 +141,10 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
     time_pairs: list[tuple[pydantic.AwareDatetime, pydantic.AwareDatetime]]
     if params.end_ts - params.start_ts >= pd.Timedelta(days=14):
         time_pairs = list(
-            itertools.pairwise(
-                [
-                    *list(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(days=13))),
-                    params.end_ts,
-                ]
-            )
+            itertools.pairwise([
+                *list(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(days=13))),
+                params.end_ts,
+            ])
         )
     else:
         time_pairs = [(params.start_ts, params.end_ts)]

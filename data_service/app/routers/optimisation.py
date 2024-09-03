@@ -104,7 +104,7 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
             tc.task_id
         ORDER BY tc.created_at ASC
         """,
-        client_id.client_id
+        client_id.client_id,
     )
 
     return [
