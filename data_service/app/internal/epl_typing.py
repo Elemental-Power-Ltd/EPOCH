@@ -6,7 +6,8 @@ as part of an API endpoint.
 Use strong typing as much as possible to avoid errors, and add extra types here liberally.
 """
 
-from typing import Mapping, NewType, TypeVar
+from collections.abc import Mapping
+from typing import NewType, TypeVar
 
 import numpy as np
 import numpy.typing as npt

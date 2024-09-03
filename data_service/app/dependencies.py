@@ -8,9 +8,9 @@ function and FastAPI will figure it out through magic.
 
 import os
 import typing
+from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
-from typing import AsyncGenerator, AsyncIterator, Never
+from typing import Never
 
 import asyncpg
 import httpx
