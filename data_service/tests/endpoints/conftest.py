@@ -10,7 +10,7 @@ Otherwise, leave it in the test file.
 """
 
 # ruff: noqa: D101, D102, D103
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import pytest_asyncio
 import testing.postgresql  # type: ignore

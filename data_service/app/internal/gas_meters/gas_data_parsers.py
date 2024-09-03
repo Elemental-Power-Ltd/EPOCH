@@ -8,7 +8,8 @@ we'll loop over all the parsers to find one that works.
 
 import datetime
 import os
-from typing import BinaryIO, Callable
+from collections.abc import Callable
+from typing import BinaryIO
 
 import numpy as np
 import numpy.typing as npt

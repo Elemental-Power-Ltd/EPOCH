@@ -5,6 +5,8 @@ Generally, these will take a half hourly or monthly dataframe and attempt to all
 There are a few different methods, including a weighted or random assignment pattern.
 """
 
+from collections import defaultdict
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -122,12 +124,91 @@ def assign_hh_dhw_greedy(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float)
     return hh_gas_df
 
 
+def get_poisson_weights(
+    gas_df: HHDataFrame,
+    profile_name: str = "leisure_centre",
+) -> npt.NDArray[np.floating]:
+    """
+    Get a set of DHW weights for a specific type of building.
+
+    Currently only supports a single type of building, a leisure centre,
+    and gets the probability of a DHW event at each half-hourly interval.
+
+    Parameters
+    ----------
+    gas_df
+        Half hourly gas readings with a timestamp index.
+    profile_name
+        The type of building profile you want to retrieve.
+
+    Returns
+    -------
+    Probabilities of a DHW event at each timestamp.
+    Same size as gas_df.index.
+    """
+    LEISURE_CENTRE_PROFILE = np.array([
+        0.013198232248403007,
+        0.01287375600497906,
+        0.012590233192145514,
+        0.013632345855510371,
+        0.013437641014097277,
+        0.013138909703286081,
+        0.013584733222479268,
+        0.013554733980577846,
+        0.013636726903302655,
+        0.013967901456918636,
+        0.01601163335327971,
+        0.024303485070194746,
+        0.023148404054539322,
+        0.024754399372273656,
+        0.02457767290929792,
+        0.02489278968422502,
+        0.024926253669862636,
+        0.02570723466024378,
+        0.024610030785454054,
+        0.024824915835003934,
+        0.024429236589172326,
+        0.02464987677623803,
+        0.025127670754196925,
+        0.02560170025197006,
+        0.02571542345539195,
+        0.026111140395528205,
+        0.02502172158560853,
+        0.02507448091114785,
+        0.024910785592999928,
+        0.02534098620960944,
+        0.024599646981293955,
+        0.025563661051187892,
+        0.025241393957618815,
+        0.026012817635993727,
+        0.025947621066111003,
+        0.02594415353616745,
+        0.0243094597222729,
+        0.023969760681742676,
+        0.02307386711125132,
+        0.023324381216780096,
+        0.02131279601511709,
+        0.021511182389895602,
+        0.019092329127321023,
+        0.01451545603032447,
+        0.01335064071369023,
+        0.012641920193187942,
+        0.012914986636965622,
+        0.013318870435140474,
+    ])
+    # This is a stub for us to add different profiles in later
+    type_profiles: dict[str, npt.NDArray[np.floating]] = defaultdict(lambda: LEISURE_CENTRE_PROFILE)
+    profile = type_profiles[profile_name]
+    weights = gas_df.index.map(lambda item: profile[int((item.hour + (item.minute / 60)) * 2)])
+    return weights.to_numpy()
+
+
 def assign_hh_dhw_poisson(
     hh_gas_df: HHDataFrame,
     weights: npt.NDArray[np.floating],
-    dhw_kwh: float | npt.NDArray[np.floating],
+    dhw_event_size: float,
     hdd_kwh: float,
-    max_output: float = 30.0,
+    max_output: float = float("inf"),
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
     """
@@ -164,9 +245,7 @@ def assign_hh_dhw_poisson(
     """
     if rng is None:
         rng = np.random.default_rng()
-
-    # TODO (2024-06-26 MHJB): calibrate and normalise these somehow for reasonable daily usage?
-    hh_gas_df["dhw"] = rng.poisson(weights) * dhw_kwh
+    hh_gas_df["dhw"] = rng.poisson(weights) * dhw_event_size
     hh_gas_df["heating"] = np.minimum(hdd_kwh * hh_gas_df["hdd"], max_output - hh_gas_df["dhw"])
     hh_gas_df["predicted"] = hh_gas_df["dhw"] + hh_gas_df["heating"]
     return hh_gas_df
