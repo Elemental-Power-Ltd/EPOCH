@@ -8,7 +8,7 @@
 </head>
 <body>
     <h1>File Upload with Metadata</h1>
-    <form action="http://localhost:8000/upload-meter-data/" method="post" enctype="multipart/form-data">
+    <form action="http://localhost:8762/upload-meter-data/" method="post" enctype="multipart/form-data">
         <label for="file">Select a file:</label>
         <input type="file" id="file" name="file" required><br><br>
         
@@ -36,7 +36,7 @@
         $(document).ready(function() {
             // Fetch clients
 			$.ajax({
-				url: 'http://127.0.0.1:8000/get-clients',
+				url: 'http://127.0.0.1:8762/get-clients',
 				type: 'POST',
 				contentType: 'application/json',
 				success: function(data) {
@@ -58,7 +58,7 @@
                 var clientId = $(this).val();
                 if (clientId) {
                     $.ajax({
-                        url: 'http://127.0.0.1:8000/get-sites',
+                        url: 'http://127.0.0.1:8762/get-sites',
                         type: 'POST',
                         contentType: 'application/json',
                         data: JSON.stringify({ client_id: clientId }),

@@ -26,19 +26,21 @@ These are called `elementaldb_tables.sql` for the table structure and schemas, a
 These should be placed in the same directory as your `docker-compose.yml` file, but you can start the service without them.
 If you start the service without them, make sure that you add some client data manually or the foreign key constraints will fail.
 
+By default, the data service will run on port `8762` and the database on port `5432`.
+
 ## Using These Endpoints
 
 The endpoints provided here all take unauthenticated `POST` requests with a JSON body containing the parameters.
 For example, one such request might be
 ```
-    curl --request POST --header "Content-Type: application/json" http://localhost:8000/list-clients 
+    curl --request POST --header "Content-Type: application/json" http://localhost:8762/list-clients 
 ```
 which would return a list of clients.
 
 Or, to pass an argument, you might send
 
 ```
-    curl --request POST --header "Content-Type: application/json" --data '{"client_id": "demo"}' http://localhost:8000/list-sites
+    curl --request POST --header "Content-Type: application/json" --data '{"client_id": "demo"}' http://localhost:8762/list-sites
 ```
 which would return a list of sites associated with the `"demo"` client.
 
@@ -54,7 +56,7 @@ you a unique dataset ID. Keep this to hand for the next stage!
 Then, you must call the `get-*` endpoint with that dataset ID, and often a pair of `start_ts`, `end_ts` timestamps.
 For example, you might call
 ```
-curl --request POST --header "Content-Type: application/json" --data '{"dataset_id": "b2375ee0-29e5-4e39-8ff1-bd2d41e74696", "start_ts": "2024-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"}' http://localhost:8000/get-heating-load
+curl --request POST --header "Content-Type: application/json" --data '{"dataset_id": "b2375ee0-29e5-4e39-8ff1-bd2d41e74696", "start_ts": "2024-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"}' http://localhost:8762/get-heating-load
 ```
 to get the gas meter readings associated with dataset `b2375ee0-29e5-4e39-8ff1-bd2d41e74696`.
 Be careful about the timestamps, as these will sometimes resample the data to the period you have requested (if it is synthetic
