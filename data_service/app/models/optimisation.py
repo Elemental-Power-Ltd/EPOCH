@@ -3,6 +3,7 @@
 # ruff: noqa: D101
 import datetime
 from enum import Enum
+from typing import Literal
 
 import pydantic
 
@@ -59,7 +60,7 @@ class OptimiserEnum(Enum):
     GeneticAlgorithm = "GeneticAlgorithm"
 
 
-class FileLocationEnum(Enum):
+class FileLocationEnum(str, Enum):
     local = "local"
     remote = "remote"
 
@@ -70,13 +71,32 @@ class SearchSpaceEntry(pydantic.BaseModel):
     step: float | int = pydantic.Field(examples=[10, 50], description="The steps to take when searching this variable.")
 
 
-class SiteDataEntry(pydantic.BaseModel):
-    loc: FileLocationEnum = pydantic.Field(
-        examples=["local", "remote"], description="Where we are getting the data from, either a local file or remote DB."
+class DataDuration(str, Enum):
+    year = "year"
+
+
+class RemoteMetaData(pydantic.BaseModel):
+    loc: Literal[FileLocationEnum.remote] = pydantic.Field(
+        examples=["remote"], description="Where we are getting the data from, either a local file or remote DB."
     )
-    path: pydantic.UUID4 | pydantic.UUID1 | pydantic.FilePath | str = pydantic.Field(
+    site_id: site_id_t = site_id_field
+    start_ts: pydantic.AwareDatetime = pydantic.Field(
+        description="Datetime to retrieve data from. Only relevant for remote files."
+    )
+    duration: DataDuration = pydantic.Field(description="Length of time to retrieve data for. Only relevant for remote files.")
+
+
+class LocalMetaData(pydantic.BaseModel):
+    loc: Literal[FileLocationEnum.local] = pydantic.Field(
+        examples=["local"], description="Where we are getting the data from, either a local file or remote DB."
+    )
+    site_id: site_id_t = site_id_field
+    path: pydantic.FilePath | str = pydantic.Field(
         examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it."
     )
+
+
+SiteDataEntry = RemoteMetaData | LocalMetaData
 
 
 class Optimiser(pydantic.BaseModel):
@@ -88,7 +108,6 @@ class Optimiser(pydantic.BaseModel):
 
 class TaskConfig(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
-    site_id: site_id_t = site_id_field
     task_name: str | None = pydantic.Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
     objective_directions: Objective = pydantic.Field(
         default=Objective(carbon_balance=-1, cost_balance=1, capex=-1, payback_horizon=-1, annualised_cost=-1),
@@ -132,9 +151,10 @@ class TaskConfig(pydantic.BaseModel):
     )
 
 
-class OptimisationResultListEntry(pydantic.BaseModel):
+class OptimisationTaskListEntry(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1
     site_id: site_id_t = site_id_field
+    task_name: str | None
     result_ids: list[pydantic.UUID4]
     n_evals: pydantic.PositiveInt = pydantic.Field(
         examples=[8832], description="Number of EPOCH evaluations we ran to calculate this."

@@ -14,7 +14,7 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 8762
 
 # Command to run the application
-CMD ["fastapi", "run", "./app/main.py", "--port", "8000"]
+CMD ["fastapi", "run", "./app/main.py", "--port", "8762"]
