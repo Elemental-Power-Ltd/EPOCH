@@ -5,18 +5,21 @@ Endpoints in here generally add or list clients, sites, or their datasets.
 The structure is that clients are the top level, each client has zero or more sites, and each
 site has zero or more datasets of different kinds.
 """
-
+import datetime
 import logging
 
 import asyncpg
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep
+from ..dependencies import DatabaseDep, HttpClientDep, VaeDep
+from ..internal.site_manager.site_manager import fetch_all_input_data
+from ..models.client_data import SiteDataEntries
 from ..models.core import (
     ClientData,
     ClientID,
     ClientIdNamePair,
     DatasetEntry,
+    DatasetIDWithTime,
     DatasetTypeEnum,
     SiteData,
     SiteID,
@@ -25,6 +28,7 @@ from ..models.core import (
     location_t,
     site_id_t,
 )
+from ..models.optimisation import RemoteMetaData
 
 router = APIRouter()
 
@@ -264,6 +268,39 @@ async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[Datas
         )
         for item in res
     }
+
+
+@router.post("/get-latest-datasets", tags=["db", "get"])
+async def get_latest_datasets(site_data: RemoteMetaData, conn: DatabaseDep, client: HttpClientDep,
+                              vae: VaeDep) -> SiteDataEntries:
+    """
+    Get the most recent dataset entries of each type for this site.
+
+    This endpoint combines a call to /list-latest-datasets with each of the /get endpoints for those datasets
+
+    Parameters
+    ----------
+    site_data
+        A specification for the required site data.
+
+    Returns
+    -------
+        The site data with full time series for each data source
+    """
+    site_id = SiteID(site_id=site_data.site_id)
+    logging.info("Getting latest dataset list")
+    site_data_info = await list_latest_datasets(site_id, conn=conn)
+    site_data_ids = {}
+
+    for dataset_name, dataset_metadata in site_data_info.items():
+        site_data_ids[dataset_name] = DatasetIDWithTime(
+            dataset_id=dataset_metadata.dataset_id,
+            start_ts=site_data.start_ts,
+            end_ts=site_data.start_ts + datetime.timedelta(hours=8760)
+        )
+
+    logging.info("Fetching latest datasets")
+    return await fetch_all_input_data(site_data_ids, conn=conn, client=client, vae=vae)
 
 
 @router.post("/get-location", tags=["db"])
