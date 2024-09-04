@@ -73,6 +73,26 @@ async def get_db_conn() -> AsyncGenerator[DBConnection, None]:
         await db.pool.release(conn)
 
 
+async def get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
+    """
+    Get access to the database connection pool directly.
+
+    Use this for more fine-grained control than get_db_conn
+    """
+    assert db.pool is not None, "Database pool not yet created."
+    yield db.pool
+
+
+@asynccontextmanager
+async def get_conn_from_pool(pool: asyncpg.pool.Pool) -> AsyncGenerator[DBConnection, None]:
+    """Provide an individual connection from the database pool."""
+    conn = await pool.acquire()
+    try:
+        yield conn
+    finally:
+        await pool.release(conn)
+
+
 async def get_vae_model() -> VAE:
     """
     Get a loaded VAE model.
@@ -83,6 +103,7 @@ async def get_vae_model() -> VAE:
 
 
 DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
+DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
 VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
 

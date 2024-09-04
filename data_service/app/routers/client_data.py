@@ -11,7 +11,7 @@ import logging
 import asyncpg
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, HttpClientDep, VaeDep
+from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep, get_conn_from_pool
 from ..internal.site_manager.site_manager import fetch_all_input_data
 from ..models.client_data import SiteDataEntries
 from ..models.core import (
@@ -271,7 +271,7 @@ async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[Datas
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])
-async def get_latest_datasets(site_data: RemoteMetaData, conn: DatabaseDep, client: HttpClientDep,
+async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep, client: HttpClientDep,
                               vae: VaeDep) -> SiteDataEntries:
     """
     Get the most recent dataset entries of each type for this site.
@@ -289,8 +289,10 @@ async def get_latest_datasets(site_data: RemoteMetaData, conn: DatabaseDep, clie
     """
     site_id = SiteID(site_id=site_data.site_id)
     logging.info("Getting latest dataset list")
-    site_data_info = await list_latest_datasets(site_id, conn=conn)
-    site_data_ids = {}
+
+    async with get_conn_from_pool(pool) as conn:
+        site_data_info = await list_latest_datasets(site_id, conn=conn)
+        site_data_ids = {}
 
     for dataset_name, dataset_metadata in site_data_info.items():
         site_data_ids[dataset_name] = DatasetIDWithTime(
@@ -300,7 +302,7 @@ async def get_latest_datasets(site_data: RemoteMetaData, conn: DatabaseDep, clie
         )
 
     logging.info("Fetching latest datasets")
-    return await fetch_all_input_data(site_data_ids, conn=conn, client=client, vae=vae)
+    return await fetch_all_input_data(site_data_ids, pool=pool, client=client, vae=vae)
 
 
 @router.post("/get-location", tags=["db"])
