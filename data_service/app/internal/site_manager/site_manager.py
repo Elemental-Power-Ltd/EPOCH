@@ -6,7 +6,7 @@ from app.dependencies import DatabasePoolDep, HttpClientDep, VaeDep, get_conn_fr
 from app.models import EpochHeatingEntry, EpochRenewablesEntry
 from app.models.carbon_intensity import EpochCarbonEntry
 from app.models.client_data import SiteDataEntries
-from app.models.core import DatasetIDWithTime
+from app.models.core import DatasetIDWithTime, DatasetTypeEnum
 from app.models.import_tariffs import EpochTariffEntry
 from app.models.meter_data import EpochElectricityEntry
 from app.routers.air_source_heat_pump import get_ashp_input, get_ashp_output
@@ -48,8 +48,8 @@ async def fetch_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> li
         return await get_grid_co2(params, conn=conn)
 
 
-async def fetch_all_input_data(site_data_ids: dict[str, DatasetIDWithTime], pool: DatabasePoolDep, client: HttpClientDep,
-                               vae: VaeDep) -> SiteDataEntries:
+async def fetch_all_input_data(site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime], pool: DatabasePoolDep,
+                               client: HttpClientDep, vae: VaeDep) -> SiteDataEntries:
     """
     Take a list of dataset IDs with a timespan and fetch the data for each one from the database.
 
@@ -62,15 +62,22 @@ async def fetch_all_input_data(site_data_ids: dict[str, DatasetIDWithTime], pool
     -------
         The full data for each dataset
     """
-    async with asyncio.TaskGroup() as tg:
-        eload_task = tg.create_task(fetch_electricity_load(site_data_ids["ElectricityMeterData"], pool, client, vae))
-        heat_task = tg.create_task(fetch_heating_load(site_data_ids["HeatingLoad"], pool))
-        rgen_task = tg.create_task(fetch_renewables_generation(site_data_ids["RenewablesGeneration"], pool))
-        tariff_task = tg.create_task(fetch_import_tariffs(site_data_ids["ImportTariff"], pool))
-        grid_co2_task = tg.create_task(fetch_grid_co2(site_data_ids["CarbonIntensity"], pool))
+    electricity_meter_data = site_data_ids[DatasetTypeEnum.ElectricityMeterData]
+    heating_load = site_data_ids[DatasetTypeEnum.HeatingLoad]
+    renewables_generation = site_data_ids[DatasetTypeEnum.RenewablesGeneration]
+    import_tariff = site_data_ids[DatasetTypeEnum.ImportTariff]
+    carbon_intensity = site_data_ids[DatasetTypeEnum.CarbonIntensity]
+    ashp_data = site_data_ids[DatasetTypeEnum.ASHPData]
 
-        ashp_input_task = tg.create_task(get_ashp_input(site_data_ids["ASHPData"]))
-        ashp_output_task = tg.create_task(get_ashp_output(site_data_ids["ASHPData"]))
+    async with asyncio.TaskGroup() as tg:
+        eload_task = tg.create_task(fetch_electricity_load(electricity_meter_data, pool, client, vae))
+        heat_task = tg.create_task(fetch_heating_load(heating_load, pool))
+        rgen_task = tg.create_task(fetch_renewables_generation(renewables_generation, pool))
+        tariff_task = tg.create_task(fetch_import_tariffs(import_tariff, pool))
+        grid_co2_task = tg.create_task(fetch_grid_co2(carbon_intensity, pool))
+
+        ashp_input_task = tg.create_task(get_ashp_input(ashp_data))
+        ashp_output_task = tg.create_task(get_ashp_output(ashp_data))
 
     return SiteDataEntries(
         eload=await eload_task,
