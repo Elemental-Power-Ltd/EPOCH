@@ -14,9 +14,12 @@ import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 
 import {useEpochStore} from "../../State/state";
 import {TaskConfig, TaskObjectives} from "../../State/types";
+
+dayjs.extend(utc);
 
 const TaskConfigForm = () => {
 
@@ -68,9 +71,9 @@ const TaskConfigForm = () => {
             <Grid item xs={6}>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DateTimePicker
-                    label="Start Date" value={dayjs(taskConfig.start_date)}
+                    label="Start Date" value={dayjs(taskConfig.start_date).utc()}
                     onChange={(date) =>
-                        handleChange("start_date", date?.toISOString())
+                        handleChange("start_date", date?.utc().toISOString())
                     }
                 />
               </LocalizationProvider>
