@@ -20,31 +20,31 @@ from app.routers.renewables import get_renewables_generation
 async def fetch_electricity_load(params: DatasetIDWithTime, pool: DatabasePoolDep, client: HttpClientDep,
                                  vae: VaeDep) -> list[EpochElectricityEntry]:
     """Wrap get_electricity_load to get a conn from the pool."""
-    async with get_conn_from_pool(pool) as conn:
+    async with pool.acquire() as conn:
         return await get_electricity_load(params, conn=conn, http_client=client, elec_vae=vae)
 
 
 async def fetch_heating_load(params: DatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochHeatingEntry]:
     """Wrap get_heating_load to get a conn from the pool."""
-    async with get_conn_from_pool(pool) as conn:
+    async with pool.acquire() as conn:
         return await get_heating_load(params, conn=conn)
 
 
 async def fetch_renewables_generation(params: DatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochRenewablesEntry]:
     """Wrap get_renewables_generation to get a conn from the pool."""
-    async with get_conn_from_pool(pool) as conn:
+    async with pool.acquire() as conn:
         return await get_renewables_generation(params, conn=conn)
 
 
 async def fetch_import_tariffs(params: DatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochTariffEntry]:
     """Wrap get_import_tariffs to get a conn from the pool."""
-    async with get_conn_from_pool(pool) as conn:
+    async with pool.acquire() as conn:
         return await get_import_tariffs(params, conn=conn)
 
 
 async def fetch_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochCarbonEntry]:
     """Wrap get_grid_co2 to get a conn from the pool."""
-    async with get_conn_from_pool(pool) as conn:
+    async with pool.acquire() as conn:
         return await get_grid_co2(params, conn=conn)
 
 

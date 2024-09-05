@@ -290,7 +290,7 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep, 
     site_id = SiteID(site_id=site_data.site_id)
     logging.info("Getting latest dataset list")
 
-    async with get_conn_from_pool(pool) as conn:
+    async with pool.acquire() as conn:
         site_data_info = await list_latest_datasets(site_id, conn=conn)
         site_data_ids = {}
 

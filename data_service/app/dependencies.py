@@ -83,16 +83,6 @@ async def get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
     yield db.pool
 
 
-@asynccontextmanager
-async def get_conn_from_pool(pool: asyncpg.pool.Pool) -> AsyncGenerator[DBConnection, None]:
-    """Provide an individual connection from the database pool."""
-    conn = await pool.acquire()
-    try:
-        yield conn
-    finally:
-        await pool.release(conn)
-
-
 async def get_vae_model() -> VAE:
     """
     Get a loaded VAE model.
