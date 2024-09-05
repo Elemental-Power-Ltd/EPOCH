@@ -11,7 +11,7 @@ import logging
 import asyncpg
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep, get_conn_from_pool
+from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
 from ..internal.site_manager.site_manager import fetch_all_input_data
 from ..models.client_data import SiteDataEntries
 from ..models.core import (

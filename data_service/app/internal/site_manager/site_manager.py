@@ -2,7 +2,7 @@
 
 import asyncio
 
-from app.dependencies import DatabasePoolDep, HttpClientDep, VaeDep, get_conn_from_pool
+from app.dependencies import DatabasePoolDep, HttpClientDep, VaeDep
 from app.models import EpochHeatingEntry, EpochRenewablesEntry
 from app.models.carbon_intensity import EpochCarbonEntry
 from app.models.client_data import SiteDataEntries
