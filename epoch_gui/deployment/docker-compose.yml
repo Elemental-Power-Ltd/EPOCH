@@ -1,0 +1,43 @@
+x-shared: &shared
+  network_mode: host
+  environment:
+    EXAMPLE_ENV: "FOO"
+
+services:
+  gui:
+    image: epoch-gui:latest
+    <<: *shared
+
+  optimisation:
+    image: ep-optimisation:latest
+    <<: *shared
+
+  data:
+    image: ep-data-service:latest
+    <<: *shared
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:latest
+    <<: *shared
+    volumes:
+      - ./elementaldb_tables.sql:/docker-entrypoint-initdb.d/01-elementaldb_tables.sql
+      - ./elementaldb_client_info.sql:/docker-entrypoint-initdb.d/02-elementaldb_client_info.sql
+      - ./elementaldb_client_meters.sql:/docker-entrypoint-initdb.d/03-elementaldb_client_meters.sql
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=python
+      - PG_USER=python
+      - POSTGRES_PASSWORD=elemental
+      - POSTGRES_DB=elementaldb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d elementaldb -U python"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+volumes:
+  postgres_data:
