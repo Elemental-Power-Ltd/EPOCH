@@ -17,7 +17,7 @@ class UKCountryEnum(str, enum.Enum):
 
 
 async def get_bank_holidays(
-    http_client: httpx.AsyncClient, country: UKCountryEnum | str = UKCountryEnum.England
+    country: UKCountryEnum | str = UKCountryEnum.England, http_client: httpx.AsyncClient | None = None
 ) -> list[datetime.date]:
     """
     Get a list of bank holidays for different countries in the UK.
@@ -44,7 +44,11 @@ async def get_bank_holidays(
     elif country == UKCountryEnum.NorthernIreland:
         key = "northern-ireland"
 
-    response = await http_client.get("https://www.gov.uk/bank-holidays.json")
+    if http_client is not None:
+        response = await http_client.get("https://www.gov.uk/bank-holidays.json")
+    else:
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.get("https://www.gov.uk/bank-holidays.json")
     if response.status_code != 200:
         raise HTTPException(response.status_code, "Could not get bank holiday information from gov.uk")
 

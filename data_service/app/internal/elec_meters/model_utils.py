@@ -1,9 +1,19 @@
 """Utility functions for loading additional parts for the ML models."""
 
+import enum
 import pathlib
 
 import joblib
 from sklearn.preprocessing import StandardScaler  # type: ignore
+
+
+class ScalerTypeEnum(str, enum.Enum):
+    """Different types of pre-processing scalers for the VAE."""
+
+    Data = "data"
+    Aggregate = "aggregate"
+    StartTime = "start_time"
+    EndTime = "end_time"
 
 
 def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScaler:
@@ -40,3 +50,30 @@ def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScal
         return scaler
     except FileNotFoundError as ex:
         raise FileNotFoundError(f"No StandardScaler found at {path}") from ex
+
+
+def load_all_scalers(
+    directory: str | pathlib.Path = pathlib.Path(".", "models", "final"),
+) -> dict[ScalerTypeEnum, StandardScaler]:
+    """
+    Load all the scalers found within a specific directory.
+
+    The default path should find them, but you might want to change it if you're testing different scalers or
+    running the model from a notebook.
+
+    Parameters
+    ----------
+    directory
+        The directory to search for scalers in
+
+    Returns
+    -------
+    Dictionary of scalers with the type as the key and the scaler object as the value.
+
+    """
+    return {
+        ScalerTypeEnum.Data: load_scaler(pathlib.Path(directory) / "elecVAE_data_scaler.joblib"),
+        ScalerTypeEnum.Aggregate: load_scaler(pathlib.Path(directory) / "elecVAE_aggregate_scaler.joblib"),
+        ScalerTypeEnum.StartTime: load_scaler(pathlib.Path(directory) / "elecVAE_start_time_scaler.joblib"),
+        ScalerTypeEnum.EndTime: load_scaler(pathlib.Path(directory) / "elecVAE_end_time_scaler.joblib"),
+    }

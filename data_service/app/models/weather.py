@@ -9,7 +9,7 @@ import pydantic
 from .core import location_t
 
 
-class BaitAndModelCoeffs(pydantic.BaseModel):
+class BaitAndModelCoefs(pydantic.BaseModel):
     solar_gain: float
     wind_chill: float
     humidity_discomfort: float
