@@ -49,6 +49,46 @@ class TestHeatingLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.external
+    async def test_generate_and_get_with_intervention(
+        self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient
+    ) -> None:
+        dataset_id = uploaded_meter_data["dataset_id"]
+
+        no_intervention_metadata = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": [],
+            },
+        )
+        with_intervention_metadata = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": ["cladding"],
+            },
+        )
+
+        no_intervention_result = await client.post(
+            "/get-heating-load", json={"dataset_id": no_intervention_metadata.json()["dataset_id"]}
+        )
+        with_intervention_result = await client.post(
+            "/get-heating-load", json={"dataset_id": with_intervention_metadata.json()["dataset_id"]}
+        )
+        assert (
+            no_intervention_metadata.json()["params"]["heating_kwh"]
+            > with_intervention_metadata.json()["params"]["heating_kwh"]
+        )
+        no_intervention_total = sum(item["HLoad1"] for item in no_intervention_result.json())
+        with_intervention_total = sum(item["HLoad1"] for item in with_intervention_result.json())
+        assert with_intervention_total < no_intervention_total
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_heating_load_right_length(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         """Check that we've got the right length of dataset and haven't dropped the last entry."""
         dataset_id = uploaded_meter_data["dataset_id"]

@@ -8,7 +8,7 @@ import pandas as pd
 import scipy.optimize  # type: ignore
 from sklearn.linear_model import LinearRegression  # type: ignore
 
-from ...models.weather import BaitAndModelCoeffs
+from ...models.weather import BaitAndModelCoefs
 from ..epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..heating import building_adjusted_internal_temperature
 from .domestic_hot_water import assign_hh_dhw_even
@@ -217,7 +217,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
     return hload_df
 
 
-def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -> BaitAndModelCoeffs:
+def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -> BaitAndModelCoefs:
     """
     Fit BAIT coefficients and a heating load models for these dataframes.
 
@@ -270,7 +270,7 @@ def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -
     mdl.fit(xs, ys)
 
     score = float(mdl.score(xs, ys))
-    return BaitAndModelCoeffs(
+    return BaitAndModelCoefs(
         solar_gain=bait_fitted[0],
         wind_chill=bait_fitted[1],
         humidity_discomfort=bait_fitted[2],

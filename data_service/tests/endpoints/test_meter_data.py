@@ -6,6 +6,8 @@ import json
 import uuid
 
 import httpx
+import numpy as np
+import pandas as pd
 import pytest
 
 from app.internal.gas_meters import parse_half_hourly
@@ -56,7 +58,10 @@ class TestUploadMeterData:
 
     @pytest.mark.asyncio
     async def test_get_non_existent_dataset(self, client: httpx.AsyncClient) -> None:
-        result = await client.post("/get-meter-data", json={"dataset_id": str(uuid.uuid4())})
+        result = await client.post(
+            "/get-meter-data",
+            json={"dataset_id": str(uuid.uuid4()), "start_ts": "2023-01-01T00:00:00Z", "end_ts": "2023-02-01T00:00:00Z"},
+        )
         assert result.status_code == 400
 
     @pytest.mark.asyncio
@@ -107,8 +112,16 @@ class TestUploadMeterData:
         records = json.loads(data.to_json(orient="records"))
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
-        result = await client.post("/get-electricity-load", json={"dataset_id": upload_result["dataset_id"]})
-        assert result.status_code == 400
+        result = await client.post(
+            "/get-electricity-load",
+            json={
+                "dataset_id": upload_result["dataset_id"],
+                "start_ts": data.index.min().isoformat(),
+                "end_ts": data.index.max().isoformat(),
+            },
+        )
+        print(result.json())
+        assert result.status_code == 200
 
     @pytest.mark.asyncio
     async def test_cant_get_elec_from_gas(self, client: httpx.AsyncClient) -> None:
@@ -118,5 +131,40 @@ class TestUploadMeterData:
         records = json.loads(data.to_json(orient="records"))
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
-        result = await client.post("/get-electricity-load", json={"dataset_id": upload_result["dataset_id"]})
+        result = await client.post(
+            "/get-electricity-load",
+            json={
+                "dataset_id": upload_result["dataset_id"],
+                "start_ts": data.index.min().isoformat(),
+                "end_ts": data.end_ts.max().isoformat(),
+            },
+        )
         assert result.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_upload_and_get_resampled_electricity_load(self, client: httpx.AsyncClient) -> None:
+        raw_data = parse_half_hourly("./tests/data/test_elec.csv")
+        raw_data["start_ts"] = raw_data.index
+        month_starts = raw_data[["start_ts"]].resample("1MS").min()
+        month_ends = raw_data[["end_ts"]].resample("1MS").max()
+        data = raw_data[["consumption"]].resample("1MS").sum()
+        data["end_ts"] = np.minimum(month_ends.to_numpy()[:, 0], (data.index + pd.offsets.MonthEnd()).to_numpy())
+        data["start_ts"] = np.maximum(month_starts.to_numpy()[:, 0], (data.index).to_numpy())
+        metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "manual"}
+
+        records = list(json.loads(data.to_json(orient="index")).values())
+        upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
+        result = await client.post(
+            "/get-electricity-load",
+            json={
+                "dataset_id": upload_result["dataset_id"],
+                "start_ts": data.start_ts.min().isoformat(),
+                "end_ts": data.end_ts.max().isoformat(),
+            },
+        )
+        assert result.status_code == 200
+        assert result.json()[-1]["StartTime"] == "23:00"
+        assert result.json()[0]["Date"] == data.start_ts.min().strftime("%d-%b")
+        assert result.json()[-1]["Date"] == (data.end_ts.max() - pd.Timedelta(minutes=30)).strftime("%d-%b")
+        expected_len = int((data.end_ts.max() - data.start_ts.min()) / pd.Timedelta(minutes=60))
+        assert len(result.json()) == expected_len

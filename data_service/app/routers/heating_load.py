@@ -16,10 +16,17 @@ from fastapi import APIRouter, HTTPException
 from ..dependencies import DatabaseDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
-from ..internal.heating import building_adjusted_internal_temperature
+from ..internal.heating import apply_fabric_interventions, building_adjusted_internal_temperature
 from ..internal.utils import hour_of_year
 from ..models.core import DatasetIDWithTime
-from ..models.heating_load import EpochHeatingEntry, HeatingLoadMetadata
+from ..models.heating_load import (
+    EpochHeatingEntry,
+    HeatingLoadMetadata,
+    HeatingLoadRequest,
+    InterventionCostRequest,
+    InterventionCostResult,
+    InterventionEnum,
+)
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
 from .weather import get_weather
 
@@ -61,7 +68,7 @@ def weather_dataset_to_dataframe(records: list[WeatherDatasetEntry]) -> WeatherD
 
 @router.post("/generate-heating-load", tags=["generate", "heating"])
 async def generate_heating_load(
-    params: DatasetIDWithTime, conn: DatabaseDep, http_client: HttpClientDep
+    params: HeatingLoadRequest, conn: DatabaseDep, http_client: HttpClientDep
 ) -> HeatingLoadMetadata:
     """Generate a heating load for this specific site, using regression analysis.
 
@@ -155,6 +162,8 @@ async def generate_heating_load(
     )
     fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df)
 
+    changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions)
+
     forecast_weather_df = weather_dataset_to_dataframe(
         await get_weather(
             WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
@@ -175,28 +184,29 @@ async def generate_heating_load(
 
     forecast_weather_df["bait"] = building_adjusted_internal_temperature(
         forecast_weather_df,
-        fitted_coefs.solar_gain,
-        fitted_coefs.wind_chill,
-        humidity_discomfort=fitted_coefs.humidity_discomfort,
-        smoothing=fitted_coefs.smoothing,
+        changed_coefs.solar_gain,
+        changed_coefs.wind_chill,
+        humidity_discomfort=changed_coefs.humidity_discomfort,
+        smoothing=changed_coefs.smoothing,
     )
 
     heating_df = HHDataFrame(pd.DataFrame(index=forecast_weather_df.index))
     heating_df["air_temperature"] = forecast_weather_df["temp"]
     heating_df["hdd"] = (
-        np.maximum(fitted_coefs.threshold - forecast_weather_df["bait"], 0) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=1)
+        np.maximum(changed_coefs.threshold - forecast_weather_df["bait"], 0) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=1)
     )
 
     event_size = 1.0  # Change this for future buildings, assumes each DHW event is exactly 1 kWh in size
-    poisson_weights = get_poisson_weights(heating_df, "leisure_centre") * fitted_coefs.dhw_kwh / event_size
+    poisson_weights = get_poisson_weights(heating_df, "leisure_centre") * changed_coefs.dhw_kwh / event_size
 
-    assign_hh_dhw_poisson(heating_df, poisson_weights, dhw_event_size=event_size, hdd_kwh=fitted_coefs.heating_kwh)
+    assign_hh_dhw_poisson(heating_df, poisson_weights, dhw_event_size=event_size, hdd_kwh=changed_coefs.heating_kwh)
 
     metadata = {
         "dataset_id": uuid.uuid4(),
         "site_id": site_id,
         "created_at": datetime.datetime.now(datetime.UTC),
-        "params": json.dumps({"source_dataset_id": str(params.dataset_id), **fitted_coefs.model_dump()}),
+        "params": json.dumps({"source_dataset_id": str(params.dataset_id), **changed_coefs.model_dump()}),
+        "interventions": [str(item) for item in params.interventions],
     }
 
     async with conn.transaction():
@@ -207,14 +217,15 @@ async def generate_heating_load(
                     dataset_id,
                     site_id,
                     created_at,
-                    params)
-            VALUES ($1, $2, $3, $4)""",
+                    params,
+                    interventions)
+            VALUES ($1, $2, $3, $4, $5)""",
             metadata["dataset_id"],
             metadata["site_id"],
             metadata["created_at"],
             metadata["params"],
+            metadata["interventions"],
         )
-
         await conn.executemany(
             """
             INSERT INTO
@@ -237,6 +248,44 @@ async def generate_heating_load(
             ),
         )
     return HeatingLoadMetadata(**metadata)
+
+
+@router.post("/get-intervention-cost", tags=["get", "heating"])
+async def get_intervention_cost(params: InterventionCostRequest, conn: DatabaseDep) -> InterventionCostResult:
+    """
+    Get the costs of interventions for a given site.
+
+    This will only return the interventions that are both stored in the database and are in your request.
+    For example, if you request ["Loft", "DoubleGlazing"] and we only have ["Loft"] in the database, you'll
+    only get a cost and corresponding total for the loft.
+
+    Parameters
+    ----------
+    params
+        A list of interventions (can be the empty list) that you are interested in for a site, and the site id
+
+    Returns
+    -------
+    Broken-down costs by intervention type (check that they're all there!), and a total cost for those interventions.
+    """
+    res = await conn.fetch(
+        """
+        SELECT
+            intervention,
+            cost
+        FROM
+            heating.interventions
+        WHERE
+            site_id = $1
+        AND intervention IN $1
+        """,
+        params.site_id,
+        params.interventions,
+    )
+    return InterventionCostResult(
+        breakdown={InterventionEnum(intervention): float(cost) for intervention, cost in res},
+        total=sum(float(cost) for _, cost in res),
+    )
 
 
 @router.post("/get-heating-load", tags=["get", "heating"])
