@@ -273,6 +273,11 @@ async def get_intervention_cost(params: InterventionCostRequest, conn: DatabaseD
     -------
     Broken-down costs by intervention type (check that they're all there!), and a total cost for those interventions.
     """
+    if not params.interventions:
+        return InterventionCostResult(
+            breakdown={},
+            total=0.0,
+        )
     res = await conn.fetch(
         """
         SELECT
@@ -282,10 +287,10 @@ async def get_intervention_cost(params: InterventionCostRequest, conn: DatabaseD
             heating.interventions
         WHERE
             site_id = $1
-        AND intervention IN $1
+        AND intervention = ANY($2::text[])
         """,
         params.site_id,
-        params.interventions,
+        tuple(params.interventions),
     )
     return InterventionCostResult(
         breakdown={InterventionEnum(intervention): float(cost) for intervention, cost in res},
