@@ -218,5 +218,6 @@ def monthly_to_hh_eload(
     daily_df = monthly_to_daily_eload(MonthlyDataFrame(elec_df[~is_hh_mask]), public_holidays)
     halfhourly_df = daily_to_hh_eload(daily_df, scalers=scalers, model=model)
     if not elec_df[is_hh_mask].empty:
+        # TODO (2024-09-06 MHJB): make this also not resample for daily data
         halfhourly_df = HHDataFrame(pd.concat([halfhourly_df, elec_df[is_hh_mask]]))
     return HHDataFrame(halfhourly_df.sort_index())
