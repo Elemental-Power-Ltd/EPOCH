@@ -216,6 +216,28 @@ CREATE TABLE client_meters.metadata (
 
 
 --
+-- Name: fabric_interventions; Type: TABLE; Schema: heating; Owner: -
+--
+
+CREATE TABLE heating.fabric_interventions (
+    site_id text NOT NULL,
+    intervention text NOT NULL,
+    cost numeric(15,6)
+);
+
+
+--
+-- Name: interventions; Type: TABLE; Schema: heating; Owner: -
+--
+
+CREATE TABLE heating.interventions (
+    site_id text NOT NULL,
+    intervention text NOT NULL,
+    cost numeric(15,4)
+);
+
+
+--
 -- Name: metadata; Type: TABLE; Schema: heating; Owner: -
 --
 
@@ -223,7 +245,8 @@ CREATE TABLE heating.metadata (
     dataset_id uuid NOT NULL,
     site_id text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    params jsonb
+    params jsonb,
+    interventions text[]
 );
 
 
@@ -745,6 +768,22 @@ ALTER TABLE ONLY client_meters.metadata
 
 
 --
+-- Name: fabric_interventions fabric_interventions_pkey; Type: CONSTRAINT; Schema: heating; Owner: -
+--
+
+ALTER TABLE ONLY heating.fabric_interventions
+    ADD CONSTRAINT fabric_interventions_pkey PRIMARY KEY (site_id, intervention);
+
+
+--
+-- Name: interventions interventions_pkey; Type: CONSTRAINT; Schema: heating; Owner: -
+--
+
+ALTER TABLE ONLY heating.interventions
+    ADD CONSTRAINT interventions_pkey PRIMARY KEY (site_id, intervention);
+
+
+--
 -- Name: metadata metadata_pkey; Type: CONSTRAINT; Schema: heating; Owner: -
 --
 
@@ -971,6 +1010,22 @@ ALTER TABLE ONLY client_meters.metadata
 
 ALTER TABLE ONLY client_meters.gas_meters
     ADD CONSTRAINT gas_meters_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES client_meters.metadata(dataset_id);
+
+
+--
+-- Name: fabric_interventions fabric_interventions_site_id_fkey; Type: FK CONSTRAINT; Schema: heating; Owner: -
+--
+
+ALTER TABLE ONLY heating.fabric_interventions
+    ADD CONSTRAINT fabric_interventions_site_id_fkey FOREIGN KEY (site_id) REFERENCES client_info.site_info(site_id);
+
+
+--
+-- Name: interventions interventions_site_id_fkey; Type: FK CONSTRAINT; Schema: heating; Owner: -
+--
+
+ALTER TABLE ONLY heating.interventions
+    ADD CONSTRAINT interventions_site_id_fkey FOREIGN KEY (site_id) REFERENCES client_info.site_info(site_id);
 
 
 --

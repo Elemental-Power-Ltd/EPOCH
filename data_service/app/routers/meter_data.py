@@ -13,7 +13,7 @@ import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
 from ..dependencies import DatabaseDep, HttpClientDep, VaeDep
-from ..internal.elec_meters import monthly_to_hh_eload
+from ..internal.elec_meters import load_all_scalers, monthly_to_hh_eload
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
 from ..internal.utils import hour_of_year
@@ -328,11 +328,12 @@ async def get_electricity_load(
         """
         SELECT
             start_ts,
+            end_ts,
             consumption_kwh AS consumption
         FROM client_meters.electricity_meters
         WHERE dataset_id = $1
         AND $2 <= start_ts
-        AND end_ts < $3
+        AND end_ts <= $3
         ORDER BY start_ts ASC""",
         params.dataset_id,
         params.start_ts,
@@ -340,26 +341,26 @@ async def get_electricity_load(
     )
 
     elec_df = pd.DataFrame.from_records(
-        res, columns=["start_ts", "consumption"], coerce_float=["consumption"], index="start_ts"
+        res, columns=["start_ts", "end_ts", "consumption"], coerce_float=["consumption"], index="start_ts"
     )
+    elec_df["start_ts"] = elec_df.index
     if elec_df.empty:
         raise HTTPException(400, f"Got an empty dataset for {params.dataset_id}.")
 
     if reading_type == "halfhourly":
         # Group these into hourly data
-        elec_df = elec_df.resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
+        elec_df = elec_df[["consumption"]].resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
     else:
         logger = logging.getLogger("default")
         logger.info("Resampling from monthly to HH using a VAE for {params.dataset_id}.")
-        holiday_dates_co = get_bank_holidays(http_client=http_client)
         new_elec_df = monthly_to_hh_eload(
-            holiday_dates=frozenset(await holiday_dates_co),
-            month_labels=elec_df.index.to_series(),
-            monthly_aggregates=elec_df["consumption"].to_numpy(),
+            elec_df=MonthlyDataFrame(elec_df),
             model=elec_vae,
+            public_holidays=frozenset(await get_bank_holidays(http_client=http_client)),
+            scalers=load_all_scalers(),
         )
-        elec_df = new_elec_df
-
+        mask = np.logical_and(params.start_ts <= new_elec_df.start_ts, new_elec_df.end_ts <= params.end_ts)
+        elec_df = new_elec_df.loc[mask, ["consumption"]].resample(pd.Timedelta(minutes=60)).sum().ffill()
     assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
     # Now restructure for EPOCH
     elec_df["Date"] = elec_df.index.strftime("%d-%b")

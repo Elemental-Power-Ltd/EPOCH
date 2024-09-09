@@ -17,8 +17,9 @@ from app.routers.meter_data import get_electricity_load
 from app.routers.renewables import get_renewables_generation
 
 
-async def fetch_electricity_load(params: DatasetIDWithTime, pool: DatabasePoolDep, client: HttpClientDep,
-                                 vae: VaeDep) -> list[EpochElectricityEntry]:
+async def fetch_electricity_load(
+    params: DatasetIDWithTime, pool: DatabasePoolDep, client: HttpClientDep, vae: VaeDep
+) -> list[EpochElectricityEntry]:
     """Wrap get_electricity_load to get a conn from the pool."""
     async with pool.acquire() as conn:
         return await get_electricity_load(params, conn=conn, http_client=client, elec_vae=vae)
@@ -48,8 +49,9 @@ async def fetch_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> li
         return await get_grid_co2(params, conn=conn)
 
 
-async def fetch_all_input_data(site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime], pool: DatabasePoolDep,
-                               client: HttpClientDep, vae: VaeDep) -> SiteDataEntries:
+async def fetch_all_input_data(
+    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime], pool: DatabasePoolDep, client: HttpClientDep, vae: VaeDep
+) -> SiteDataEntries:
     """
     Take a list of dataset IDs with a timespan and fetch the data for each one from the database.
 
@@ -86,5 +88,5 @@ async def fetch_all_input_data(site_data_ids: dict[DatasetTypeEnum, DatasetIDWit
         import_tariffs=await tariff_task,
         grid_co2=await grid_co2_task,
         ashp_input=await ashp_input_task,
-        ashp_output=await ashp_output_task
+        ashp_output=await ashp_output_task,
     )

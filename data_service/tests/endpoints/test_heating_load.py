@@ -49,6 +49,46 @@ class TestHeatingLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.external
+    async def test_generate_and_get_with_intervention(
+        self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient
+    ) -> None:
+        dataset_id = uploaded_meter_data["dataset_id"]
+
+        no_intervention_metadata = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": [],
+            },
+        )
+        with_intervention_metadata = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": ["cladding"],
+            },
+        )
+
+        no_intervention_result = await client.post(
+            "/get-heating-load", json={"dataset_id": no_intervention_metadata.json()["dataset_id"]}
+        )
+        with_intervention_result = await client.post(
+            "/get-heating-load", json={"dataset_id": with_intervention_metadata.json()["dataset_id"]}
+        )
+        assert (
+            no_intervention_metadata.json()["params"]["heating_kwh"]
+            > with_intervention_metadata.json()["params"]["heating_kwh"]
+        )
+        no_intervention_total = sum(item["HLoad1"] for item in no_intervention_result.json())
+        with_intervention_total = sum(item["HLoad1"] for item in with_intervention_result.json())
+        assert with_intervention_total < no_intervention_total
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_heating_load_right_length(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         """Check that we've got the right length of dataset and haven't dropped the last entry."""
         dataset_id = uploaded_meter_data["dataset_id"]
@@ -71,3 +111,52 @@ class TestHeatingLoad:
         assert heating_load_result.json()[0]["StartTime"] == "00:00", "First entry isn't 00:00"
         assert heating_load_result.json()[-1]["StartTime"] == "23:30", "Last entry isn't 23:30"
         assert len(heating_load_result.json()) == int((end_ts - start_ts) / datetime.timedelta(minutes=30))
+
+
+class TestFabricInterventionCost:
+    @pytest.mark.asyncio
+    async def test_no_intervention(self, client: httpx.AsyncClient) -> None:
+        """Check that doing nothing costs nothing."""
+        no_interventions_res = await client.post("/get-intervention-cost", json={"site_id": "demo_london"})
+        assert no_interventions_res.status_code == 200
+        assert no_interventions_res.json()["total"] == 0.0
+        assert not no_interventions_res.json()["breakdown"]
+
+    @pytest.mark.asyncio
+    async def test_loft_intervention(self, client: httpx.AsyncClient) -> None:
+        """Check that lofts cost more than nothing."""
+        loft_interventions_res = await client.post(
+            "/get-intervention-cost", json={"site_id": "demo_london", "interventions": ["loft"]}
+        )
+        assert loft_interventions_res.status_code == 200
+        assert loft_interventions_res.json()["total"] > 0
+        assert list(loft_interventions_res.json()["breakdown"].keys()) == ["loft"]
+
+    @pytest.mark.asyncio
+    async def test_multi_intervention(self, client: httpx.AsyncClient) -> None:
+        """Check that two interventions cost more than one."""
+        loft_interventions_res = await client.post(
+            "/get-intervention-cost", json={"site_id": "demo_london", "interventions": ["loft"]}
+        )
+        two_interventions_res = await client.post(
+            "/get-intervention-cost", json={"site_id": "demo_london", "interventions": ["loft", "double_glazing"]}
+        )
+        three_interventions_res = await client.post(
+            "/get-intervention-cost",
+            json={"site_id": "demo_london", "interventions": ["loft", "double_glazing", "cladding"]},
+        )
+        assert two_interventions_res.status_code == 200
+        assert two_interventions_res.json()["total"] > loft_interventions_res.json()["total"]
+        assert three_interventions_res.json()["total"] > two_interventions_res.json()["total"]
+        assert set(two_interventions_res.json()["breakdown"].keys()) == {"loft", "double_glazing"}
+        assert set(three_interventions_res.json()["breakdown"].keys()) == {"loft", "double_glazing", "cladding"}
+
+    @pytest.mark.asyncio
+    async def test_two_intervention(self, client: httpx.AsyncClient) -> None:
+        """Check that two interventions cost more than one."""
+        bad_interventions_res = await client.post(
+            "/get-intervention-cost",
+            json={"site_id": "demo_london", "interventions": ["extremely bad nonexistent intervention"]},
+        )
+        assert bad_interventions_res.status_code == 422
+        assert "extremely bad nonexistent intervention" in bad_interventions_res.json()["detail"][0]["input"]

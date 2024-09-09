@@ -48,6 +48,64 @@ INSERT INTO client_info.site_info (site_id, name, address, location, coordinates
 
 
 
+
+--
+-- Data for Name: interventions; Type: TABLE DATA; Schema: heating; Owner: postgres
+--
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --
 -- Data for Name: optimisers; Type: TABLE DATA; Schema: optimisation; Owner: postgres
 --

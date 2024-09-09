@@ -20,7 +20,7 @@ class TestGetBankHolidays:
     @pytest.mark.asyncio
     async def test_england_bank_holidays(self) -> None:
         client = httpx.AsyncClient()
-        result = await get_bank_holidays(client, "England")
+        result = await get_bank_holidays("England", client)
         assert datetime.date(year=2020, month=12, day=25) in result  # Christmas
         assert datetime.date(year=2019, month=7, day=12) not in result  # battle of the boyne
         assert datetime.date(year=2022, month=11, day=30) not in result  # St Andrew's Day
@@ -29,7 +29,7 @@ class TestGetBankHolidays:
     @pytest.mark.asyncio
     async def test_wales_bank_holidays(self) -> None:
         client = httpx.AsyncClient()
-        result = await get_bank_holidays(client, "Wales")
+        result = await get_bank_holidays("Wales", client)
         assert datetime.date(year=2020, month=12, day=25) in result  # Christmas
         assert datetime.date(year=2019, month=7, day=12) not in result  # battle of the boyne
         assert datetime.date(year=2022, month=11, day=30) not in result  # St Andrew's Day
@@ -38,7 +38,7 @@ class TestGetBankHolidays:
     @pytest.mark.asyncio
     async def test_scotland_bank_holidays(self) -> None:
         client = httpx.AsyncClient()
-        result = await get_bank_holidays(client, "Scotland")
+        result = await get_bank_holidays("Scotland", client)
         assert datetime.date(year=2020, month=12, day=25) in result  # Christmas
         assert datetime.date(year=2019, month=7, day=12) not in result  # battle of the boyne
         assert datetime.date(year=2022, month=11, day=30) in result  # St Andrew's Day
@@ -47,7 +47,7 @@ class TestGetBankHolidays:
     @pytest.mark.asyncio
     async def test_northern_ireland_bank_holidays(self) -> None:
         client = httpx.AsyncClient()
-        result = await get_bank_holidays(client, "NorthernIreland")
+        result = await get_bank_holidays("NorthernIreland", client)
         assert datetime.date(year=2020, month=12, day=25) in result  # Christmas
         assert datetime.date(year=2019, month=7, day=12) in result  # battle of the boyne
         assert datetime.date(year=2022, month=11, day=30) not in result  # St Andrew's Day

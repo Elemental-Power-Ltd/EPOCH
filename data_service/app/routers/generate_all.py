@@ -6,7 +6,8 @@ import uuid
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabaseDep, HttpClientDep
-from ..models.core import DatasetEntry, DatasetIDWithTime, DatasetTypeEnum, SiteID, SiteIDWithTime
+from ..models.core import DatasetEntry, DatasetTypeEnum, SiteID, SiteIDWithTime
+from ..models.heating_load import HeatingLoadRequest
 from ..models.import_tariffs import TariffRequest
 from ..models.renewables import RenewablesRequest
 from .carbon_intensity import generate_grid_co2
@@ -49,7 +50,7 @@ async def generate_all(
     heating_load_dataset = datasets[DatasetTypeEnum.GasMeterData]
     async with conn.transaction():
         heating_load_response = await generate_heating_load(
-            DatasetIDWithTime(dataset_id=heating_load_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
+            HeatingLoadRequest(dataset_id=heating_load_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
             conn=conn,
             http_client=http_client,
         )
