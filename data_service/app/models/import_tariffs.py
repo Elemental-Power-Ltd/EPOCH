@@ -7,15 +7,7 @@ from typing import Self
 
 import pydantic
 
-from .core import (
-    dataset_id_field,
-    dataset_id_t,
-    epoch_date_field,
-    epoch_hour_of_year_field,
-    epoch_start_time_field,
-    site_id_field,
-    site_id_t,
-)
+from .core import EpochEntry, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
 class GSPEnum(str, enum.Enum):
@@ -50,10 +42,7 @@ class GSPCodeResponse(pydantic.BaseModel):
     )
 
 
-class EpochTariffEntry(pydantic.BaseModel):
-    Date: str = epoch_date_field
-    StartTime: str = epoch_start_time_field
-    HourOfYear: float = epoch_hour_of_year_field
+class EpochTariffEntry(EpochEntry):
     Tariff: float = pydantic.Field(examples=[32.4, 14.6], description="Import costs for this time period in p / kWh")
 
 

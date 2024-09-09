@@ -6,7 +6,7 @@ import datetime
 import pydantic
 from pydantic import Field
 
-from .core import dataset_id_t, epoch_date_field, epoch_hour_of_year_field, epoch_start_time_field, site_id_field, site_id_t
+from .core import EpochEntry, dataset_id_t, site_id_field, site_id_t
 
 
 class HeatingLoadEntry(pydantic.BaseModel):
@@ -40,10 +40,7 @@ class HeatingLoadMetadata(pydantic.BaseModel):
     )
 
 
-class EpochHeatingEntry(pydantic.BaseModel):
-    Date: str = epoch_date_field
-    StartTime: str = epoch_start_time_field
-    HourOfYear: float = epoch_hour_of_year_field
+class EpochHeatingEntry(EpochEntry):
     HLoad1: float = pydantic.Field(examples=[0.123, 4.56], description="Heating demand in kWh for this time period.")
     DHWLoad1: float = pydantic.Field(
         examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."

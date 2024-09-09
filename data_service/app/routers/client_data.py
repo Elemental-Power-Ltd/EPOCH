@@ -5,6 +5,7 @@ Endpoints in here generally add or list clients, sites, or their datasets.
 The structure is that clients are the top level, each client has zero or more sites, and each
 site has zero or more datasets of different kinds.
 """
+
 import datetime
 import logging
 
@@ -271,8 +272,9 @@ async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[Datas
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])
-async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep, client: HttpClientDep,
-                              vae: VaeDep) -> SiteDataEntries:
+async def get_latest_datasets(
+    site_data: RemoteMetaData, pool: DatabasePoolDep, client: HttpClientDep, vae: VaeDep
+) -> SiteDataEntries:
     """
     Get the most recent dataset entries of each type for this site.
 
@@ -298,7 +300,7 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep, 
         site_data_ids[dataset_name] = DatasetIDWithTime(
             dataset_id=dataset_metadata.dataset_id,
             start_ts=site_data.start_ts,
-            end_ts=site_data.start_ts + datetime.timedelta(hours=8760)
+            end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
         )
 
     logging.info("Fetching latest datasets")

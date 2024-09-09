@@ -26,6 +26,7 @@ class Database:
 
     def __init__(self, dsn: str) -> None:
         self.dsn = dsn
+        self.pool = None
 
     async def create_pool(self) -> None:
         """Create the PostgreSQL connection pool.
