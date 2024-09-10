@@ -12,6 +12,7 @@ import logging
 import uuid
 
 import httpx
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
@@ -54,7 +55,7 @@ async def get_pv_optima(request: Request, site_id: SiteID, conn: DatabaseDep) ->
 
 @router.post("/generate-renewables-generation", tags=["generate", "solar_pv"])
 async def generate_renewables_generation(
-    params: RenewablesRequest, conn: DatabaseDep, http_client: HttpClientDep
+    params: RenewablesRequest, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> RenewablesMetadata:
     """
     Calculate renewables generation in kW / kWp for this site.
@@ -74,16 +75,17 @@ async def generate_renewables_generation(
     renewables_metadata
         Metadata about the renewables calculation we've put into the database.
     """
-    location, coords = await conn.fetchrow(  # type: ignore
-        """
-        SELECT
-            location,
-            coordinates
-        FROM client_info.site_info AS s
-        WHERE site_id = $1
-        LIMIT 1""",
-        params.site_id,
-    )
+    async with pool.acquire() as conn:
+        location, coords = await conn.fetchrow(  # type: ignore
+            """
+            SELECT
+                location,
+                coordinates
+            FROM client_info.site_info AS s
+            WHERE site_id = $1
+            LIMIT 1""",
+            params.site_id,
+        )
     if location is None or coords is None:
         raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
 
@@ -119,48 +121,48 @@ async def generate_renewables_generation(
         site_id=params.site_id,
         parameters=json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
     )
-
-    async with conn.transaction():
-        await conn.execute(
-            """
-            INSERT INTO
-                renewables.metadata (
-                    dataset_id,
-                    site_id,
-                    created_at,
-                    data_source,
-                    parameters)
-            VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5)""",
-            metadata.dataset_id,
-            metadata.site_id,
-            metadata.created_at,
-            metadata.data_source,
-            json.dumps(metadata.parameters),
-        )
-
-        await conn.executemany(
-            """INSERT INTO
-                    renewables.solar_pv (
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO
+                    renewables.metadata (
                         dataset_id,
-                        timestamp,
-                        solar_generation
-                    )
+                        site_id,
+                        created_at,
+                        data_source,
+                        parameters)
                 VALUES (
-                    $1,
-                    $2,
-                    $3)""",
-            zip(
-                [metadata.dataset_id for _ in renewables_df.index],
-                renewables_df.index,
-                renewables_df.pv,
-                strict=True,
-            ),
-        )
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5)""",
+                metadata.dataset_id,
+                metadata.site_id,
+                metadata.created_at,
+                metadata.data_source,
+                json.dumps(metadata.parameters),
+            )
+
+            await conn.executemany(
+                """INSERT INTO
+                        renewables.solar_pv (
+                            dataset_id,
+                            timestamp,
+                            solar_generation
+                        )
+                    VALUES (
+                        $1,
+                        $2,
+                        $3)""",
+                zip(
+                    [metadata.dataset_id for _ in renewables_df.index],
+                    renewables_df.index,
+                    renewables_df.pv,
+                    strict=True,
+                ),
+            )
     return metadata
 
 
@@ -220,10 +222,15 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
             ]
     except ExceptionGroup as ex:
         raise ex.exceptions[0] from ex
-    total_df = pd.DataFrame(index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(hours=1), inclusive="left"))
+    total_df = pd.DataFrame(
+        index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
+    )
     for i, df in enumerate(all_dfs, 1):  # Careful of off-by-one!
         total_df[f"RGen{i}"] = df.result()["solar_generation"]
-    assert isinstance(total_df.index, pd.DatetimeIndex), "Renewables dataframe must have a DatetimeIndex"
+    print(total_df.head())
+    print(total_df.tail())
+    within_timestamps_mask = np.logical_and(params.start_ts <= total_df.index, total_df.index < params.end_ts)
+    total_df = total_df[within_timestamps_mask].interpolate(method="time").ffill().bfill()
     total_df = add_epoch_fields(total_df)
     return [
         EpochRenewablesEntry(

@@ -22,6 +22,7 @@ from ..models.core import (
     DatasetEntry,
     DatasetIDWithTime,
     DatasetTypeEnum,
+    MultipleDatasetIDWithTime,
     SiteData,
     SiteID,
     SiteIdNamePair,
@@ -294,14 +295,21 @@ async def get_latest_datasets(
 
     async with pool.acquire() as conn:
         site_data_info = await list_latest_datasets(site_id, conn=conn)
-        site_data_ids = {}
 
+    site_data_ids: dict[DatasetTypeEnum, MultipleDatasetIDWithTime | DatasetIDWithTime] = {}
     for dataset_name, dataset_metadata in site_data_info.items():
-        site_data_ids[dataset_name] = DatasetIDWithTime(
-            dataset_id=dataset_metadata.dataset_id,
-            start_ts=site_data.start_ts,
-            end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-        )
+        if dataset_name == DatasetTypeEnum.RenewablesGeneration or dataset_name == DatasetTypeEnum.HeatingLoad:
+            site_data_ids[dataset_name] = MultipleDatasetIDWithTime(
+                dataset_id=[dataset_metadata.dataset_id],
+                start_ts=site_data.start_ts,
+                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+            )
+        else:
+            site_data_ids[dataset_name] = DatasetIDWithTime(
+                dataset_id=dataset_metadata.dataset_id,
+                start_ts=site_data.start_ts,
+                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+            )
 
     logging.info("Fetching latest datasets")
     return await fetch_all_input_data(site_data_ids, pool=pool, client=client, vae=vae)

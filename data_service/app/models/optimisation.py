@@ -77,7 +77,9 @@ class DataDuration(str, Enum):
 
 class RemoteMetaData(pydantic.BaseModel):
     loc: Literal[FileLocationEnum.remote] = pydantic.Field(
-        examples=["remote"], description="Where we are getting the data from, either a local file or remote DB."
+        default=FileLocationEnum.remote,
+        examples=["remote"],
+        description="Where we are getting the data from, either a local file or remote DB.",
     )
     site_id: site_id_t = site_id_field
     start_ts: pydantic.AwareDatetime = pydantic.Field(
@@ -88,7 +90,9 @@ class RemoteMetaData(pydantic.BaseModel):
 
 class LocalMetaData(pydantic.BaseModel):
     loc: Literal[FileLocationEnum.local] = pydantic.Field(
-        examples=["local"], description="Where we are getting the data from, either a local file or remote DB."
+        default=FileLocationEnum.local,
+        examples=["local"],
+        description="Where we are getting the data from, either a local file or remote DB.",
     )
     site_id: site_id_t = site_id_field
     path: pydantic.FilePath | str = pydantic.Field(

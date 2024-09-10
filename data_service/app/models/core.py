@@ -131,7 +131,7 @@ class DatasetIDWithTime(BaseModel):
 
 
 class MultipleDatasetIDWithTime(BaseModel):
-    dataset_id: list[dataset_id_t] | dataset_id_t = pydantic.Field(examples=[uuid.uuid4(), [uuid.uuid4() for _ in range(4)]])
+    dataset_id: list[dataset_id_t] = pydantic.Field(examples=[uuid.uuid4(), [uuid.uuid4() for _ in range(4)]])
     start_ts: pydantic.AwareDatetime = Field(
         examples=["2024-01-01T00:00:00Z"],
         description="The earliest time (inclusive) to retrieve data for.",
@@ -143,15 +143,15 @@ class MultipleDatasetIDWithTime(BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
     )
 
-
-    @pydantic.field_validator('dataset_id', mode='before')
+    @pydantic.field_validator("dataset_id", mode="before")
     @classmethod
-    def check_dataset_list(cls, v):
+    def check_dataset_list(cls, v: dataset_id_t | list[dataset_id_t]) -> list[dataset_id_t]:
+        """Check if we've got a list of datasets, and if we got just one, make it a list."""
         if not isinstance(v, list):
             v = [v]
         assert len(v) <= 4, "Can only request up to 4 datasets."
         return v
-    
+
     @pydantic.model_validator(mode="after")
     def check_timestamps_valid(self) -> Self:
         """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""

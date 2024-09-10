@@ -64,6 +64,6 @@ class TestImportTariffs:
             )
         ).json()
         assert (
-            len(tariff_result) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=60).total_seconds()
+            len(tariff_result) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         )
         assert all(not pd.isna(item["Tariff"]) for item in tariff_result)

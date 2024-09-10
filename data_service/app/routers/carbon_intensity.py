@@ -16,7 +16,7 @@ import pandas as pd
 import pydantic
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, HTTPClient, HttpClientDep
+from ..dependencies import DatabaseDep, DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.utils import hour_of_year
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
@@ -69,7 +69,6 @@ async def fetch_carbon_intensity(
     else:
         ci_url = f"https://api.carbonintensity.org.uk/intensity/{start_ts_str}/{end_ts_str}"
     response = await client.get(ci_url)
-    print(ci_url)
     if not response.status_code == 200:
         raise HTTPException(400, response.text)
     data = response.json()
@@ -96,7 +95,9 @@ async def fetch_carbon_intensity(
 
 
 @router.post("/generate-grid-co2")
-async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_client: HttpClientDep) -> CarbonIntensityMetadata:
+async def generate_grid_co2(
+    params: SiteIDWithTime, pool: DatabasePoolDep, http_client: HttpClientDep
+) -> CarbonIntensityMetadata:
     """
     Get a grid CO2 carbon intensity from the National Grid API.
 
@@ -111,9 +112,6 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
 
     Parameters
     ----------
-    *request*
-        FastAPI internal request object, not necessary for outside users.
-
     *params*
         A JSON body containing `{"site_id":..., "start_ts":..., "end_ts":...}
 
@@ -124,14 +122,15 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
     """
     use_regional = True
 
-    postcode = await conn.fetchval(
-        r"""
-        SELECT
-            (regexp_match(address, '[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}'))[1]
-        FROM client_info.site_info
-        WHERE site_id = $1""",
-        params.site_id,
-    )
+    async with pool.acquire() as conn:
+        postcode = await conn.fetchval(
+            r"""
+            SELECT
+                (regexp_match(address, '[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}'))[1]
+            FROM client_info.site_info
+            WHERE site_id = $1""",
+            params.site_id,
+        )
     if postcode is None:
         logging.warning(f"No postcode found for {params.site_id}, using National data.")
         use_regional = False
@@ -168,63 +167,64 @@ async def generate_grid_co2(params: SiteIDWithTime, conn: DatabaseDep, http_clie
         "site_id": params.site_id,
     }
 
-    async with conn.transaction():
-        await conn.execute(
-            """
-            INSERT INTO
-                carbon_intensity.metadata (
-                    dataset_id,
-                    created_at,
-                    data_source,
-                    is_regional,
-                    site_id)
-            VALUES ($1, $2, $3, $4, $5)""",
-            metadata["dataset_id"],
-            metadata["created_at"],
-            metadata["data_source"],
-            metadata["is_regional"],
-            metadata["site_id"],
-        )
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO
+                    carbon_intensity.metadata (
+                        dataset_id,
+                        created_at,
+                        data_source,
+                        is_regional,
+                        site_id)
+                VALUES ($1, $2, $3, $4, $5)""",
+                metadata["dataset_id"],
+                metadata["created_at"],
+                metadata["data_source"],
+                metadata["is_regional"],
+                metadata["site_id"],
+            )
 
-        await conn.executemany(
-            """
-            INSERT INTO
-                carbon_intensity.grid_co2 (
-                    dataset_id,
-                    start_ts,
-                    end_ts,
-                    forecast,
-                    actual,
-                    gas,
-                    coal,
-                    biomass,
-                    nuclear,
-                    hydro,
-                    imports,
-                    other,
-                    wind,
-                    solar
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
-                )""",
-            zip(
-                [metadata["dataset_id"] for _ in all_data],
-                [item["start_ts"] for item in all_data],
-                [item["end_ts"] for item in all_data],
-                [item.get("forecast") for item in all_data],
-                [item.get("actual") for item in all_data],
-                [item.get("gas") for item in all_data],
-                [item.get("coal") for item in all_data],
-                [item.get("biomass") for item in all_data],
-                [item.get("nuclear") for item in all_data],
-                [item.get("hydro") for item in all_data],
-                [item.get("imports") for item in all_data],
-                [item.get("other") for item in all_data],
-                [item.get("wind") for item in all_data],
-                [item.get("solar") for item in all_data],
-                strict=False,
-            ),
-        )
+            await conn.executemany(
+                """
+                INSERT INTO
+                    carbon_intensity.grid_co2 (
+                        dataset_id,
+                        start_ts,
+                        end_ts,
+                        forecast,
+                        actual,
+                        gas,
+                        coal,
+                        biomass,
+                        nuclear,
+                        hydro,
+                        imports,
+                        other,
+                        wind,
+                        solar
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+                    )""",
+                zip(
+                    [metadata["dataset_id"] for _ in all_data],
+                    [item["start_ts"] for item in all_data],
+                    [item["end_ts"] for item in all_data],
+                    [item.get("forecast") for item in all_data],
+                    [item.get("actual") for item in all_data],
+                    [item.get("gas") for item in all_data],
+                    [item.get("coal") for item in all_data],
+                    [item.get("biomass") for item in all_data],
+                    [item.get("nuclear") for item in all_data],
+                    [item.get("hydro") for item in all_data],
+                    [item.get("imports") for item in all_data],
+                    [item.get("other") for item in all_data],
+                    [item.get("wind") for item in all_data],
+                    [item.get("solar") for item in all_data],
+                    strict=False,
+                ),
+            )
     return CarbonIntensityMetadata(
         **metadata  # type: ignore
     )
@@ -259,7 +259,7 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
     res = await conn.fetch(
         """
         SELECT
-            start_ts, end_ts, forecast, actual
+            start_ts, forecast, actual
         FROM carbon_intensity.grid_co2
         WHERE dataset_id = $1
         AND $2 <= start_ts
@@ -272,10 +272,10 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
     carbon_df = pd.DataFrame.from_records(
         res,
         index="start_ts",
-        columns=["start_ts", "end_ts", "forecast", "actual"],
+        columns=["start_ts", "forecast", "actual"],
     )
     carbon_df.index = pd.to_datetime(carbon_df.index)
-    carbon_df = carbon_df.resample(pd.Timedelta(hours=1)).mean()
+    carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().interpolate(method="time")
     carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))
     carbon_df["GridCO2"] = carbon_df["GridCO2"].interpolate(method="time")
     return [

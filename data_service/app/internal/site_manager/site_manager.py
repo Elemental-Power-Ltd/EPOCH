@@ -6,7 +6,7 @@ from app.dependencies import DatabasePoolDep, HttpClientDep, VaeDep
 from app.models import EpochHeatingEntry, EpochRenewablesEntry
 from app.models.carbon_intensity import EpochCarbonEntry
 from app.models.client_data import SiteDataEntries
-from app.models.core import DatasetIDWithTime, DatasetTypeEnum
+from app.models.core import DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime
 from app.models.import_tariffs import EpochTariffEntry
 from app.models.meter_data import EpochElectricityEntry
 from app.routers.air_source_heat_pump import get_ashp_input, get_ashp_output
@@ -25,16 +25,14 @@ async def fetch_electricity_load(
         return await get_electricity_load(params, conn=conn, http_client=client, elec_vae=vae)
 
 
-async def fetch_heating_load(params: DatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochHeatingEntry]:
+async def fetch_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochHeatingEntry]:
     """Wrap get_heating_load to get a conn from the pool."""
-    async with pool.acquire() as conn:
-        return await get_heating_load(params, conn=conn)
+    return await get_heating_load(params, pool=pool)
 
 
-async def fetch_renewables_generation(params: DatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochRenewablesEntry]:
+async def fetch_renewables_generation(params: MultipleDatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochRenewablesEntry]:
     """Wrap get_renewables_generation to get a conn from the pool."""
-    async with pool.acquire() as conn:
-        return await get_renewables_generation(params, conn=conn)
+    return await get_renewables_generation(params, pool=pool)
 
 
 async def fetch_import_tariffs(params: DatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochTariffEntry]:
@@ -50,7 +48,10 @@ async def fetch_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> li
 
 
 async def fetch_all_input_data(
-    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime], pool: DatabasePoolDep, client: HttpClientDep, vae: VaeDep
+    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime],
+    pool: DatabasePoolDep,
+    client: HttpClientDep,
+    vae: VaeDep,
 ) -> SiteDataEntries:
     """
     Take a list of dataset IDs with a timespan and fetch the data for each one from the database.
@@ -65,11 +66,17 @@ async def fetch_all_input_data(
         The full data for each dataset
     """
     electricity_meter_data = site_data_ids[DatasetTypeEnum.ElectricityMeterData]
+    assert isinstance(electricity_meter_data, DatasetIDWithTime)
     heating_load = site_data_ids[DatasetTypeEnum.HeatingLoad]
+    assert isinstance(heating_load, MultipleDatasetIDWithTime)
     renewables_generation = site_data_ids[DatasetTypeEnum.RenewablesGeneration]
+    assert isinstance(renewables_generation, MultipleDatasetIDWithTime)
     import_tariff = site_data_ids[DatasetTypeEnum.ImportTariff]
+    assert isinstance(import_tariff, DatasetIDWithTime)
     carbon_intensity = site_data_ids[DatasetTypeEnum.CarbonIntensity]
+    assert isinstance(carbon_intensity, DatasetIDWithTime)
     ashp_data = site_data_ids[DatasetTypeEnum.ASHPData]
+    assert isinstance(ashp_data, DatasetIDWithTime)
 
     async with asyncio.TaskGroup() as tg:
         eload_task = tg.create_task(fetch_electricity_load(electricity_meter_data, pool, client, vae))
@@ -82,11 +89,11 @@ async def fetch_all_input_data(
         ashp_output_task = tg.create_task(get_ashp_output(ashp_data))
 
     return SiteDataEntries(
-        eload=await eload_task,
-        heat=await heat_task,
-        rgen=await rgen_task,
-        import_tariffs=await tariff_task,
-        grid_co2=await grid_co2_task,
-        ashp_input=await ashp_input_task,
-        ashp_output=await ashp_output_task,
+        eload=eload_task.result(),
+        heat=heat_task.result(),
+        rgen=rgen_task.result(),
+        import_tariffs=tariff_task.result(),
+        grid_co2=grid_co2_task.result(),
+        ashp_input=ashp_input_task.result(),
+        ashp_output=ashp_output_task.result(),
     )

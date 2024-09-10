@@ -104,7 +104,7 @@ class TestRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=60).total_seconds()
+        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert all(item["RGen1"] >= 0 for item in results)
 
     @pytest.mark.asyncio
@@ -132,12 +132,15 @@ class TestRenewables:
                 "/get-renewables-generation",
                 json={
                     "dataset_id": metadata["dataset_id"],
+                    "start_ts": start_ts.isoformat(),
+                    "end_ts": end_ts.isoformat(),
                 },
             )
         ).json()
 
-        assert len(results) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=60).total_seconds()
+        assert len(results) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert all(item["RGen1"] >= 0 for item in results)
+
 
 class TestMultipleRenewables:
     @pytest.mark.asyncio
@@ -170,11 +173,9 @@ class TestMultipleRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=60).total_seconds()
+        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert all(item["RGen1"] >= 0 for item in results)
-        assert all(
-            item["RGen1"] == item["RGen2"] == item["RGen3"] == item["RGen4"] for item in results
-        )
+        assert all(item["RGen1"] == item["RGen2"] == item["RGen3"] == item["RGen4"] for item in results)
 
     @pytest.mark.asyncio
     @pytest.mark.external
@@ -220,15 +221,12 @@ class TestMultipleRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=60).total_seconds()
+        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert all(item["RGen1"] >= 0 for item in results)
         assert any(item["RGen1"] > 0 for item in results)
         assert all(item["RGen2"] >= 0 for item in results)
         assert any(item["RGen2"] > 0 for item in results)
-        assert not all(
-            item["RGen1"] == item["RGen2"] for item in results
-        )
-
+        assert not all(item["RGen1"] == item["RGen2"] for item in results)
 
 
 class TestRenewablesErrors:

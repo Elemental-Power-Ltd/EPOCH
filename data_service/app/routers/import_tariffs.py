@@ -11,7 +11,7 @@ import uuid
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, HttpClientDep
+from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.utils import hour_of_year
 from ..internal.utils.utils import get_with_fallback
 from ..models.core import DatasetIDWithTime, SiteID, SiteIDWithTime
@@ -210,7 +210,7 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
 
 
 @router.post("/generate-import-tariffs", tags=["generate", "tariff"])
-async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http_client: HttpClientDep) -> TariffMetadata:
+async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, http_client: HttpClientDep) -> TariffMetadata:
     """
     Generate a set of import tariffs, initially from Octopus.
 
@@ -246,15 +246,15 @@ async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http
             f"Tariff {params.tariff_name} only available from {product_available_from}."
             + f"This is after your end timestamp of {params.end_ts}.",
         )
-    region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, conn=conn)).region_code.value
+    async with pool.acquire() as conn:
+        region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, conn=conn)).region_code.value
     region_key = (
         region_code
         if region_code in products["single_register_electricity_tariffs"]
         else next(iter(products["single_register_electricity_tariffs"].keys()))
     )
     regional_data = products["single_register_electricity_tariffs"][region_key]
-
-    tariff_code = get_with_fallback(regional_data, ["direct_debit_monthly", "prepayment"])["code"]
+    tariff_code = get_with_fallback(regional_data, ["varying", "direct_debit_monthly", "prepayment"])["code"]
 
     price_url = url + f"electricity-tariffs/{tariff_code}/standard-unit-rates/"
 
@@ -288,72 +288,73 @@ async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http
     price_df["start_ts"] = price_df.index
     price_df["dataset_id"] = dataset_id
 
-    async with conn.transaction():
-        metadata = {
-            "dataset_id": dataset_id,
-            "site_id": params.site_id,
-            "created_at": datetime.datetime.now(datetime.UTC),
-            "provider": "octopus",
-            "product_name": params.tariff_name,
-            "tariff_name": tariff_code,
-            "valid_from": products.get("available_from"),
-            "valid_to": products.get("available_to") if products.get("available_to") != "null" else None,
-        }
-        # We insert the dataset ID into metadata, but we must wait to validate the
-        # actual data insert until the end
-        await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
-        await conn.execute(
-            """
-            INSERT INTO
-                tariffs.metadata (
-                    dataset_id,
-                    site_id,
-                    created_at,
-                    provider,
-                    product_name,
-                    tariff_name,
-                    valid_from,
-                    valid_to)
-            VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6,
-                    $7,
-                    $8)""",
-            metadata["dataset_id"],
-            metadata["site_id"],
-            metadata["created_at"],
-            metadata["provider"],
-            metadata["product_name"],
-            metadata["tariff_name"],
-            pd.to_datetime(metadata["valid_from"], utc=True, format="ISO8601"),
-            pd.to_datetime(metadata["valid_to"], utc=True, format="ISO8601"),
-        )
-
-        await conn.executemany(
-            """INSERT INTO
-            tariffs.electricity (
-                dataset_id,
-                timestamp,
-                unit_cost,
-                flat_cost
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            metadata = {
+                "dataset_id": dataset_id,
+                "site_id": params.site_id,
+                "created_at": datetime.datetime.now(datetime.UTC),
+                "provider": "octopus",
+                "product_name": params.tariff_name,
+                "tariff_name": tariff_code,
+                "valid_from": products.get("available_from"),
+                "valid_to": products.get("available_to") if products.get("available_to") != "null" else None,
+            }
+            # We insert the dataset ID into metadata, but we must wait to validate the
+            # actual data insert until the end
+            await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
+            await conn.execute(
+                """
+                INSERT INTO
+                    tariffs.metadata (
+                        dataset_id,
+                        site_id,
+                        created_at,
+                        provider,
+                        product_name,
+                        tariff_name,
+                        valid_from,
+                        valid_to)
+                VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8)""",
+                metadata["dataset_id"],
+                metadata["site_id"],
+                metadata["created_at"],
+                metadata["provider"],
+                metadata["product_name"],
+                metadata["tariff_name"],
+                pd.to_datetime(metadata["valid_from"], utc=True, format="ISO8601"),
+                pd.to_datetime(metadata["valid_to"], utc=True, format="ISO8601"),
             )
-            VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4)""",
-            zip(
-                price_df["dataset_id"],
-                price_df["start_ts"],
-                price_df["price"],
-                [None for _ in range(len(price_df.index))],
-                strict=True,
-            ),
-        )
+
+            await conn.executemany(
+                """INSERT INTO
+                tariffs.electricity (
+                    dataset_id,
+                    timestamp,
+                    unit_cost,
+                    flat_cost
+                )
+                VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4)""",
+                zip(
+                    price_df["dataset_id"],
+                    price_df["start_ts"],
+                    price_df["price"],
+                    [None for _ in range(len(price_df.index))],
+                    strict=True,
+                ),
+            )
     return TariffMetadata(**metadata)
 
 
@@ -395,13 +396,13 @@ async def get_import_tariffs(params: DatasetIDWithTime, conn: DatabaseDep) -> li
         params.end_ts,
     )
     df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
-    df.index = pd.to_datetime(df.index)
-    df = df.resample(pd.Timedelta(minutes=60)).max().ffill()
+    df.index = pd.to_datetime(df.index, utc=True)
+    df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
     # If we get 1970-01-01, that means someone didn't specify the timestamps.
     # In that case, we don't resample. But if they did, then pad out to the period of interest.
     if params.start_ts > datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC):
         df = df.reindex(
-            index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=60), inclusive="left"),
+            index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left"),
             method="nearest",
         )
     return [

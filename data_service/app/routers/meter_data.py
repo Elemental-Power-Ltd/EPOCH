@@ -347,7 +347,7 @@ async def get_electricity_load(
 
     if reading_type == "halfhourly":
         # Group these into hourly data
-        elec_df = elec_df.resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
+        elec_df = elec_df.resample(pd.Timedelta(minutes=30)).mean().interpolate(method="time")
     else:
         logger = logging.getLogger("default")
         logger.info("Resampling from monthly to HH using a VAE for {params.dataset_id}.")
