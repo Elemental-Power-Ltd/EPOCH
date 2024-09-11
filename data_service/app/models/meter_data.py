@@ -3,11 +3,10 @@
 
 import datetime
 import enum
-import uuid
 
 import pydantic
 
-from .core import FuelEnum, epoch_date_field, epoch_hour_of_year_field, epoch_start_time_field, site_id_field, site_id_t
+from .core import FuelEnum, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
 class ReadingTypeEnum(str, enum.Enum):
@@ -17,13 +16,13 @@ class ReadingTypeEnum(str, enum.Enum):
 
 
 class MeterMetadata(pydantic.BaseModel):
-    dataset_id: pydantic.UUID4 = pydantic.Field(default_factory=uuid.uuid4)
+    dataset_id: dataset_id_t = dataset_id_field
     created_at: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
     site_id: site_id_t = site_id_field
     fuel_type: FuelEnum
     reading_type: ReadingTypeEnum
     filename: str | None = pydantic.Field(default=None)
-
+    is_synthesised: bool = pydantic.Field(default=False)
 
 class MeterEntry(pydantic.BaseModel):
     start_ts: pydantic.AwareDatetime
@@ -36,13 +35,6 @@ class MeterEntry(pydantic.BaseModel):
 class MeterEntries(pydantic.BaseModel):
     metadata: MeterMetadata
     data: list[MeterEntry]
-
-
-class EpochElectricityEntry(pydantic.BaseModel):
-    Date: str = epoch_date_field
-    StartTime: str = epoch_start_time_field
-    HourOfYear: float = epoch_hour_of_year_field
-    FixLoad1: float = pydantic.Field(examples=[0.123, 4.56], description="Fixed electrical load for this building in kWh.")
 
 
 class GasDatasetEntry(pydantic.BaseModel):

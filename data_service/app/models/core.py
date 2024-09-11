@@ -10,7 +10,7 @@ import datetime
 import uuid
 from enum import Enum
 from typing import Annotated, Self
-
+import uuid
 import pydantic
 from pydantic import BaseModel, Field
 
@@ -34,7 +34,8 @@ client_id_field = Field(
 )
 
 dataset_id_field = Field(
-    examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of a dataset."
+    examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of a dataset.",
+    default_factory=uuid.uuid4
 )
 
 epoch_start_time_field = Field(
@@ -171,6 +172,7 @@ class ClientIdNamePair(pydantic.BaseModel):
 class DatasetTypeEnum(str, Enum):
     GasMeterData = "GasMeterData"
     ElectricityMeterData = "ElectricityMeterData"
+    ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"
     RenewablesGeneration = "RenewablesGeneration"
     Weather = "Weather"
     CarbonIntensity = "CarbonIntensity"

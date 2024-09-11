@@ -38,6 +38,7 @@ class Database:
         to a locally hosted version of Elemental DB if not.
         """
         self.pool = await asyncpg.create_pool(dsn=self.dsn)
+        assert self.pool is not None, "Could not create database pool"
 
 
 db = Database(os.environ.get("DATABASE_URL", "postgresql://python:elemental@localhost/elementaldb"))

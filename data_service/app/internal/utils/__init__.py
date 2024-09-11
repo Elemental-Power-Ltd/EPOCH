@@ -1,5 +1,6 @@
 # ruff: noqa: D104
 
+from .bank_holidays import get_bank_holidays as get_bank_holidays
 from .conversions import (
     celsius_to_kelvin as celsius_to_kelvin,
 )

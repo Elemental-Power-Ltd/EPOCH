@@ -184,6 +184,18 @@ CREATE TABLE client_meters.electricity_meters (
 
 
 --
+-- Name: electricity_meters_synthesised; Type: TABLE; Schema: client_meters; Owner: -
+--
+
+CREATE TABLE client_meters.electricity_meters_synthesised (
+    dataset_id uuid,
+    start_ts timestamp with time zone NOT NULL,
+    end_ts timestamp with time zone NOT NULL,
+    consumption_kwh double precision
+);
+
+
+--
 -- Name: gas_meters; Type: TABLE; Schema: client_meters; Owner: -
 --
 
@@ -210,6 +222,7 @@ CREATE TABLE client_meters.metadata (
     fuel_type text NOT NULL,
     reading_type text,
     filename text,
+    is_synthesised boolean DEFAULT false,
     CONSTRAINT metadata_fuel_type_check CHECK ((fuel_type = ANY (ARRAY['gas'::text, 'elec'::text, 'oil'::text]))),
     CONSTRAINT metadata_reading_type_check CHECK ((reading_type = ANY (ARRAY['halfhourly'::text, 'manual'::text, 'automatic'::text])))
 );
@@ -396,6 +409,14 @@ CREATE VIEW public.combined_dataset_metadata AS
                 END AS dataset_type,
             metadata.site_id
            FROM client_meters.metadata
+          WHERE (metadata.is_synthesised = false)
+        UNION ALL
+         SELECT metadata.dataset_id,
+            metadata.created_at,
+            'ElectricityMeterDataSynthesised'::text AS dataset_type,
+            metadata.site_id
+           FROM client_meters.metadata
+          WHERE ((metadata.is_synthesised = true) AND (metadata.fuel_type = 'gas'::text))
         UNION ALL
          SELECT metadata.dataset_id,
             metadata.created_at,
@@ -994,6 +1015,14 @@ ALTER TABLE ONLY client_info.site_info
 
 ALTER TABLE ONLY client_meters.electricity_meters
     ADD CONSTRAINT electricity_meters_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES client_meters.metadata(dataset_id);
+
+
+--
+-- Name: electricity_meters_synthesised electricity_meters_synthesised_dataset_id_fkey; Type: FK CONSTRAINT; Schema: client_meters; Owner: -
+--
+
+ALTER TABLE ONLY client_meters.electricity_meters_synthesised
+    ADD CONSTRAINT electricity_meters_synthesised_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES client_meters.metadata(dataset_id);
 
 
 --

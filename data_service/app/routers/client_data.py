@@ -6,21 +6,17 @@ The structure is that clients are the top level, each client has zero or more si
 site has zero or more datasets of different kinds.
 """
 
-import datetime
 import logging
 
 import asyncpg
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
-from ..internal.site_manager.site_manager import fetch_all_input_data
-from ..models.client_data import SiteDataEntries
+from ..dependencies import DatabaseDep
 from ..models.core import (
     ClientData,
     ClientID,
     ClientIdNamePair,
     DatasetEntry,
-    DatasetIDWithTime,
     DatasetTypeEnum,
     MultipleDatasetIDWithTime,
     SiteData,
@@ -30,7 +26,6 @@ from ..models.core import (
     location_t,
     site_id_t,
 )
-from ..models.optimisation import RemoteMetaData
 
 router = APIRouter()
 
@@ -219,100 +214,6 @@ async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry
         )
         for item in res
     ]
-
-
-@router.post("/list-latest-datasets", tags=["db", "list"])
-async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[DatasetTypeEnum, DatasetEntry]:
-    """
-    Get the most recent datasets of each type for this site.
-
-    This endpoint is the main one you'd want to call if you are interested in running EPOCH.
-    Note that you may still need to call `generate-*` if the datasets in here are too old, or
-    not listed at all.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site you are interested in
-
-    Returns
-    -------
-        A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
-    """
-    res = await conn.fetch(
-        """
-    SELECT
-        cdm.dataset_id,
-        cdm.dataset_type,
-        cdm.site_id,
-        cdm.created_at
-    FROM public.combined_dataset_metadata AS cdm
-    INNER JOIN (
-        SELECT
-            MAX(created_at) AS max_created_at,
-            dataset_type,
-            site_id
-        FROM
-            public.combined_dataset_metadata
-        WHERE site_id = $1
-        GROUP BY dataset_type, site_id
-    ) AS mc ON
-        cdm.site_id = mc.site_id
-        AND mc.max_created_at = cdm.created_at
-        AND cdm.dataset_type = mc.dataset_type
-    """,
-        site_id.site_id,
-    )
-
-    return {
-        DatasetTypeEnum(item["dataset_type"]): DatasetEntry(
-            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum(item["dataset_type"]), created_at=item["created_at"]
-        )
-        for item in res
-    }
-
-
-@router.post("/get-latest-datasets", tags=["db", "get"])
-async def get_latest_datasets(
-    site_data: RemoteMetaData, pool: DatabasePoolDep, client: HttpClientDep, vae: VaeDep
-) -> SiteDataEntries:
-    """
-    Get the most recent dataset entries of each type for this site.
-
-    This endpoint combines a call to /list-latest-datasets with each of the /get endpoints for those datasets
-
-    Parameters
-    ----------
-    site_data
-        A specification for the required site data.
-
-    Returns
-    -------
-        The site data with full time series for each data source
-    """
-    site_id = SiteID(site_id=site_data.site_id)
-    logging.info("Getting latest dataset list")
-
-    async with pool.acquire() as conn:
-        site_data_info = await list_latest_datasets(site_id, conn=conn)
-
-    site_data_ids: dict[DatasetTypeEnum, MultipleDatasetIDWithTime | DatasetIDWithTime] = {}
-    for dataset_name, dataset_metadata in site_data_info.items():
-        if dataset_name == DatasetTypeEnum.RenewablesGeneration or dataset_name == DatasetTypeEnum.HeatingLoad:
-            site_data_ids[dataset_name] = MultipleDatasetIDWithTime(
-                dataset_id=[dataset_metadata.dataset_id],
-                start_ts=site_data.start_ts,
-                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-            )
-        else:
-            site_data_ids[dataset_name] = DatasetIDWithTime(
-                dataset_id=dataset_metadata.dataset_id,
-                start_ts=site_data.start_ts,
-                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-            )
-
-    logging.info("Fetching latest datasets")
-    return await fetch_all_input_data(site_data_ids, pool=pool, client=client, vae=vae)
 
 
 @router.post("/get-location", tags=["db"])

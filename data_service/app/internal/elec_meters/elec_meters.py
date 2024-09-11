@@ -77,7 +77,7 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame, public_holidays: Contai
     if monthly_df.empty:
         return DailyDataFrame(monthly_df)
     daily_usages = []
-    for start_ts, end_ts, aggregate in zip(monthly_df.start_ts, monthly_df.end_ts, monthly_df.consumption, strict=False):
+    for start_ts, end_ts, aggregate in zip(monthly_df.start_ts, monthly_df.end_ts, monthly_df.consumption_kwh, strict=False):
         month_dates = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(days=1), normalize=True, inclusive="both")
 
         # For this "month", get the type of each day and how many of each type of day there are.
@@ -91,7 +91,7 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame, public_holidays: Contai
         # See https://docs.astral.sh/ruff/rules/function-uses-loop-variable/
         daily_usage = day_types.map(lambda day, agg=aggregate, weights=day_type_weights: agg * weights[day])
 
-        daily_usages.append(pd.DataFrame(index=month_dates, data=daily_usage, columns=["consumption"]))
+        daily_usages.append(pd.DataFrame(index=month_dates, data=daily_usage, columns=["consumption_kwh"]))
 
     total_daily_df = DailyDataFrame(pd.concat(daily_usages))
     total_daily_df.index.name = "start_ts"
@@ -127,7 +127,7 @@ def daily_to_hh_eload(
         return HHDataFrame(daily_df)
     with torch.no_grad():
         consumption_scaled = torch.from_numpy(
-            scalers[ScalerTypeEnum.Aggregate].transform(daily_df["consumption"].to_numpy().reshape(-1, 1)).astype(np.float32)
+            scalers[ScalerTypeEnum.Aggregate].transform(daily_df["consumption_kwh"].to_numpy().reshape(-1, 1)).astype(np.float32)
         )
 
         # TODO (2024-09-05 MHJB): linearly encoding time is a bad idea.
@@ -156,7 +156,7 @@ def daily_to_hh_eload(
     # The scaled data is almost certainly wrong, but we know the daily usages! So re-calibrate the model's outputs
     # to those usages (in an ideal world, the weighting factors are all 1, but alas)
     predicted_daily = result.sum(axis=1)
-    actual_daily = daily_df["consumption"].to_numpy()
+    actual_daily = daily_df["consumption_kwh"].to_numpy()
     weighting_factors = (actual_daily / predicted_daily)[:, np.newaxis]
     result *= weighting_factors
 
@@ -170,7 +170,7 @@ def daily_to_hh_eload(
             # I am relatively sure that this is the right ravel -- each column is one day, so we could also express this
             # as a concat over [i, :], but this saves some memory and mucking around.
             data={
-                "consumption": np.ravel(result, order="F"),
+                "consumption_kwh": np.ravel(result, order="F"),
                 "end_ts": start_ts + pd.Timedelta(minutes=30),
                 "start_ts": start_ts,
             },
@@ -194,7 +194,7 @@ def monthly_to_hh_eload(
     Parameters
     ----------
     elec_df
-        Pandas dataframe with start_ts, end_ts and consumption columns for electricty usage
+        Pandas dataframe with start_ts, end_ts and consumption_kwh columns for electricty usage
     model
         VAE model with latent dimension and a `.decode(...)` method.
     public_holidays
@@ -204,7 +204,7 @@ def monthly_to_hh_eload(
 
     Returns
     -------
-    Half hourly pandas dataframe with start_ts, end_ts and consumption columns
+    Half hourly pandas dataframe with start_ts, end_ts and consumption_kwh columns
     """
     if elec_df.empty:
         return HHDataFrame(elec_df)
