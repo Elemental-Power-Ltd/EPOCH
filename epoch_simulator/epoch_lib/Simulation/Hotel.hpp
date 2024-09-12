@@ -30,8 +30,8 @@ public:
 
     void Report(FullSimulationResult& Result) {
         // report target load to allow calculation of revenue missed
-        Result.Hotel_load = TargetLoad_e;
-        Result.Heatload = TargetHeat_h + TargetDHW_h;
+        //Result.Hotel_load = TargetLoad_e;
+        //Result.Heatload = TargetHeat_h + TargetDHW_h;
     }
 
 private:
