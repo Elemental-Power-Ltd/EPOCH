@@ -1,7 +1,7 @@
 """Utility functions for loading additional parts for the ML models."""
 
-from enum import StrEnum
 import pathlib
+from enum import StrEnum
 
 import joblib
 from sklearn.preprocessing import StandardScaler  # type: ignore

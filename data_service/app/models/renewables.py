@@ -2,7 +2,7 @@
 
 # ruff: noqa: D101
 import datetime
-import enum
+from enum import StrEnum
 from typing import Self
 
 import pydantic
@@ -67,7 +67,7 @@ class EpochRenewablesEntry(EpochEntry):
     )
 
 
-class PvgisDataSourceEnum(str, enum.Enum):
+class PvgisDataSourceEnum(StrEnum):
     SARAH = "PVGIS-SARAH"
     NSRDB = "PVGIS-NSRDB"
     ERA5 = "PVGIS-ERA5"
@@ -75,16 +75,16 @@ class PvgisDataSourceEnum(str, enum.Enum):
     CMSAF = "PVGIS-CMSAF"
 
 
-class PvgisMountingSystemEnum(str, enum.Enum):
+class PvgisMountingSystemEnum(StrEnum):
     fixed = "fixed"
 
 
-class PvgisTypeEnum(str, enum.Enum):
+class PvgisTypeEnum(StrEnum):
     building_integrated = "building-integrated"
     freestanding = "free"
 
 
-class PvgisTechnologyEnum(str, enum.Enum):
+class PvgisTechnologyEnum(StrEnum):
     cryst_si = "c-Si"
     cis = "CIS"
     CdTe = "CdTe"

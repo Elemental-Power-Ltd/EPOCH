@@ -2,7 +2,7 @@
 
 # ruff: noqa: D101
 import datetime
-import enum
+from enum import StrEnum
 from typing import Self
 
 import pydantic
@@ -10,7 +10,7 @@ import pydantic
 from .core import EpochEntry, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
-class GSPEnum(str, enum.Enum):
+class GSPEnum(StrEnum):
     A = "_A"
     B = "_B"
     C = "_C"
@@ -72,7 +72,7 @@ class TariffRequest(pydantic.BaseModel):
         return self
 
 
-class TariffProviderEnum(str, enum.Enum):
+class TariffProviderEnum(StrEnum):
     octopus = "octopus"
 
 

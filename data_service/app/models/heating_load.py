@@ -2,7 +2,7 @@
 
 # ruff: noqa: D101
 import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 import pydantic
@@ -11,7 +11,7 @@ from pydantic import Field
 from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
 
 
-class InterventionEnum(str, Enum):
+class InterventionEnum(StrEnum):
     Loft = "loft"
     DoubleGlazing = "double_glazing"
     Cladding = "cladding"

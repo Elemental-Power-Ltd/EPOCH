@@ -8,7 +8,7 @@ centralise it in here.
 # ruff: noqa: D101
 import datetime
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Self
 
 import pydantic
@@ -60,7 +60,7 @@ epoch_date_field = Field(
 )
 
 
-class FuelEnum(str, Enum):
+class FuelEnum(StrEnum):
     gas = "gas"
     elec = "elec"
     oil = "oil"
@@ -170,7 +170,7 @@ class ClientIdNamePair(pydantic.BaseModel):
     name: str = Field(examples=["Demonstration", "Demonstration"], description="Human readable client name")
 
 
-class DatasetTypeEnum(str, Enum):
+class DatasetTypeEnum(StrEnum):
     GasMeterData = "GasMeterData"
     ElectricityMeterData = "ElectricityMeterData"
     ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"

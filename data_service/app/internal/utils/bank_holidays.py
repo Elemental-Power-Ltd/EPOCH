@@ -1,13 +1,13 @@
 """Functions and utils for getting public holiday information in the UK."""
 
 import datetime
-import enum
+from enum import StrEnum
 
 import httpx
 from fastapi import HTTPException
 
 
-class UKCountryEnum(str, enum.Enum):
+class UKCountryEnum(StrEnum):
     """List of countries making up the UK (not Crown Dependencies!)."""
 
     England = "England"
