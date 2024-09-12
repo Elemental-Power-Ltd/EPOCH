@@ -504,7 +504,7 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame |
             parsed_df = parser(fname)
             consumption_mask = ~pd.isna(parsed_df.consumption)
             return parsed_df[consumption_mask], parser.__name__  # type: ignore
-        except ValueError:  # noqa: PERF203
+        except ValueError:
             continue
         except KeyError:
             continue
