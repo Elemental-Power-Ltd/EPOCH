@@ -4,32 +4,98 @@
 #include <iostream>
 #include <Eigen/Core>
 
-#include "Assets.hpp"
 #include "TaskData.hpp"
+#include "../Definitions.hpp"
+
+#include "Assets.hpp"
 #include "Eload.hpp"
 #include "Grid.hpp"
 #include "Hload.hpp"
 #include "Costs.hpp"
 
+#include "Config.hpp"	//AS ADD
+#include "TempSum.hpp"	//AS ADD
+
+#include "Hotel.hpp"	//AS ADD
+#include "PV.hpp"		//AS ADD
+#include "EV.hpp"		//AS ADD
+#include "Grid3.hpp"	//AS ADD
+#include "MOP.hpp"		//AS ADD
+#include "GasCH.hpp"	//AS ADD
+#include "Battery.hpp"	//AS ADD
+#include "ESS.hpp"		//AS ADD
+#include "ASHPperf.hpp"	//AS ADD
+#include "ASHP.hpp"		//AS ADD
+#include "DataC.hpp"	//AS ADD
+
 Simulator::Simulator() {
 
 }
-
 
 FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const {
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
+	// MOVE COST CALCS here (exit if CAPEX exceeded, set results to sensible values?)
+
+	/* INITIALISE classes that support energy sums and object precedence */
+	Config_cl Config(taskData);	// flags energy component presence in TaskData & balancing modes
+	TempSum_cl TempSum();		// class of arrays for running totals (replace ESUM and Heat)
+	
+	// INITIALISE Energy Components
+	Hotel_cl Hotel(historicalData, taskData);
+	PVbasic_cl PV1(historicalData, taskData);
+	EVbasic_cl EV1(historicalData, taskData);
+
+		// SLB hot water cyclinder
+	// HotWcylA_cl HotWaterCyl(historicalData, taskData);
+
+	// BattData & ESSBattery better inside the ESS class/object
+	BattData_st BattData;
+	BattData.TScount = taskData.calculate_timesteps();
+	BattData.PowerScalar = taskData.timestep_hours;
+	BattData.Charge_power = taskData.ESS_charge_power;
+	BattData.Discharge_power = taskData.ESS_discharge_power;
+	BattData.Capacity = taskData.ESS_capacity;
+	BattData.StartSoC_ratio = taskData.ESS_start_SoC;
+		// RECODE: RTE_Ratio = taskData.ESS_RTE_ratio;
+	BattData.RTE_ratio = 0.86f;
+		// RECODE: Aux_Power = taskData.ESS_AuxPower;
+	BattData.Aux_power = taskData.ESS_capacity / 1200;
+	
+	Battery_cl ESSbattery(BattData);
+	
+	// init ESS object (0= None, 1=basic, 2=hybrid)
+	ESSbasic_cl ESSmain(taskData, ESSbattery);
+
+	// ASHPperf & ASHPhot better inside the ESS class/object
+	ASHPData_st ASHPData1;
+	ASHPData1.TScount = taskData.calculate_timesteps();
+	ASHPData1.PowerScalar = taskData.timestep_hours;
+	ASHPData1.HeatMode = taskData.ASHP_RadTemp;      // Output water (radiator) temp.
+	ASHPData1.HotTemp = taskData.ASHP_HotTemp;       // Hotroom (DataC waste heat) air temp.;
+	ASHPperf_cl ASHPperf1(historicalData, ASHPData1);
+	ASHPhot_cl ASHP1(historicalData, taskData, ASHPData1, ASHPperf1);	// Use pointer to ASHPperf1
+
+	DataC_ASHP_cl DataC(historicalData, taskData, ASHP1);
+
+	// REMOVE THE 3 FROM GRID WHEN CLEANING OLD CODE
+	Grid_cl Grid3(historicalData, taskData);
+	MOP_cl MOP(taskData);
+	GasCH_cl GasCH(taskData);
+
+	// OLD CODE
+
 	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
 
-	Hload MountHload{ historicalData, taskData }; // initialise Hload based on historical data and taskdata
-	Grid MountGrid{ taskData }; //initialise Grid based on taskdata
+	Hload MountHload(historicalData, taskData); // initialise Hload based on historical data and taskdata
+	Grid MountGrid(taskData); //initialise Grid based on taskdata
 
 	MountHload.performHeatCalculations(historicalData, taskData);
 	
-	Eload MountEload{ historicalData, taskData }; // initialise Eload based on historical data and taskdata
+	Eload MountEload(historicalData, taskData); // initialise Eload based on historical data and taskdata
 
-	ESS MountBESS{ taskData }; //initialise ESS based on taskdata
+	ESS MountBESS(taskData); //initialise ESS based on taskdata
 
 	MountEload.calculateLoads(MountHload, MountBESS, RGen_total, taskData);
 	
