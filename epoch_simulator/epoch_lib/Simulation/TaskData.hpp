@@ -19,7 +19,7 @@ public:
         int ESS_charge_mode_val = 1, int ESS_discharge_mode_val = 1,
         float Export_kWh_price_val = 5.0f,
         float time_budget_min_val = 1.0f, int target_max_concurrency_val = 44,
-        float CAPEX_limit_val = 500.0f, float OPEX_limit_val = 20.0f, int paramIndex_val = 0)
+        float CAPEX_limit_val = 1000.0f, float OPEX_limit_val = 20.0f, int paramIndex_val = 0)
         : years(years_val), days(days_val), hours(hours_val), timestep_hours(timestep_hours_val), timewindow(timewindow_val), 
         Fixed_load1_scalar(Fixed_load1_scalar_val), Fixed_load2_scalar(Fixed_load2_scalar_val), Flex_load_max(Flex_load_max_val), Mop_load_max(Mop_load_max_val),
         ScalarRG1(ScalarRG1_val), ScalarRG2(ScalarRG2_val), ScalarRG3(ScalarRG3_val), ScalarRG4(ScalarRG4_val), ScalarHYield(ScalarHYield_val),
