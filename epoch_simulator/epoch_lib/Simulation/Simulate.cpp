@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <iostream>
+#include <limits> 
+
 #include <Eigen/Core>
 
 #include "Assets.hpp"
@@ -26,15 +28,16 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	myCost.calculate_Project_CAPEX(myCost.get_ESS_kW(), taskData.ESS_capacity, myCost.get_PV_kWp_total(), taskData.s7_EV_CP_number, taskData.f22_EV_CP_number, taskData.r50_EV_CP_number, taskData.u150_EV_CP_number, 0, taskData.ASHP_HPower);
 	if (taskData.CAPEX_limit*1000 < myCost.get_project_CAPEX())
 	{
-		int CAPEX_limit_exceed_flag = 1;
+		// TODO - apply proper fix for 'nullable' results
 		FullSimulationResult fullSimulationResult;
 		fullSimulationResult.paramIndex = taskData.paramIndex;
-		fullSimulationResult.total_annualised_cost = 0;
 		fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
-		fullSimulationResult.scenario_cost_balance = 0;
-		fullSimulationResult.payback_horizon_years = 0;
-		fullSimulationResult.scenario_carbon_balance = 0;
-		return fullSimulationResult; // must return function return type - set other objectives to zero
+
+		fullSimulationResult.total_annualised_cost = std::numeric_limits<float>::max();
+		fullSimulationResult.scenario_cost_balance = std::numeric_limits<float>::min();
+		fullSimulationResult.payback_horizon_years = std::numeric_limits<float>::max();
+		fullSimulationResult.scenario_carbon_balance = std::numeric_limits<float>::min();
+		return fullSimulationResult;
 	}
 
 	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
