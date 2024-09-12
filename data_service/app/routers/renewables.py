@@ -227,11 +227,11 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
     )
     for i, df in enumerate(all_dfs, 1):  # Careful of off-by-one!
         total_df[f"RGen{i}"] = df.result()["solar_generation"]
-    print(total_df.head())
-    print(total_df.tail())
+
     within_timestamps_mask = np.logical_and(params.start_ts <= total_df.index, total_df.index < params.end_ts)
     total_df = total_df[within_timestamps_mask].interpolate(method="time").ffill().bfill()
     total_df = add_epoch_fields(total_df)
+    total_df = total_df.dropna()
     return [
         EpochRenewablesEntry(
             Date=item["Date"],

@@ -1,4 +1,5 @@
 """Test that the generate all function works."""
+
 # ruff: noqa: D101, D102, D103
 import datetime
 import json
@@ -8,7 +9,6 @@ import pytest
 import pytest_asyncio
 
 from app.internal.gas_meters import parse_half_hourly
-from app.internal.site_manager.site_manager import fetch_blended_electricity_load, fetch_electricity_load
 
 
 @pytest_asyncio.fixture
@@ -33,7 +33,7 @@ class TestGenerateAll:
     @pytest.mark.asyncio
     @pytest.mark.external
     async def test_all_same_length(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
-        elec_result, gas_result = upload_meter_data
+        _, _ = upload_meter_data
         demo_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
         demo_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
         generate_result = await client.post(

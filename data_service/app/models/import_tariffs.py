@@ -86,6 +86,7 @@ class TariffListEntry(pydantic.BaseModel):
     provider: TariffProviderEnum
     is_tracker: bool = pydantic.Field(description="Whether this is a tracker / agile tariff or not")
     is_prepay: bool = pydantic.Field(description="Whether this is a pre-paid tariff or not")
+    is_variable: bool = pydantic.Field(description="Whether this is a variable rate tariff or not")
 
 
 class TariffMetadata(pydantic.BaseModel):

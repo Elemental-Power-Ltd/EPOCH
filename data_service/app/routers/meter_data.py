@@ -81,9 +81,11 @@ async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> Mete
             entries.metadata.is_synthesised,
         )
 
-        await conn.copy_records_to_table(table_name=table_name, schema_name="client_meters",
+        await conn.copy_records_to_table(
+            table_name=table_name,
+            schema_name="client_meters",
             records=[(entries.metadata.dataset_id, item.start_ts, item.end_ts, item.consumption) for item in entries.data],
-            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"]
+            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
     return MeterMetadata(
@@ -93,7 +95,7 @@ async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> Mete
         fuel_type=entries.metadata.fuel_type,
         reading_type=entries.metadata.reading_type,
         filename=entries.metadata.filename,
-        is_synthesised=entries.metadata.is_synthesised
+        is_synthesised=entries.metadata.is_synthesised,
     )
 
 
@@ -162,7 +164,7 @@ async def upload_meter_file(
         "fuel_type": fuel_type,
         "reading_type": reading_type,
         "filename": file.filename,
-        "is_synthesised": False
+        "is_synthesised": False,
     }
 
     if fuel_type == "gas":
@@ -205,11 +207,10 @@ async def upload_meter_file(
         )
 
         await conn.copy_records_to_table(
-            table_name=table_name, schema_name="client_meters", records=df.itertuples(index=False),
-            columns=["dataset_id",
-                        "start_ts",
-                        "end_ts",
-                       "consumption_kwh"]
+            table_name=table_name,
+            schema_name="client_meters",
+            records=df.itertuples(index=False),
+            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
     return {"rows_uploaded": len(df), "reading_type": reading_type}

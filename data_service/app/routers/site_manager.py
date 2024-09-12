@@ -1,14 +1,16 @@
 """Lazy endpoints for bundling everything together."""
 
+import asyncio
 import datetime
 import logging
+import uuid
 
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
 from ..internal.site_manager.site_manager import fetch_all_input_data
 from ..models.client_data import SiteDataEntries
-from ..models.core import DatasetEntry, DatasetIDWithTime, DatasetTypeEnum, SiteID, SiteIDWithTime
+from ..models.core import DatasetEntry, DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.electricity_load import ElectricalLoadRequest
 from ..models.heating_load import HeatingLoadRequest
 from ..models.import_tariffs import TariffRequest
@@ -19,7 +21,7 @@ from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
 from .import_tariffs import generate_import_tariffs, select_arbitrary_tariff
 from .renewables import generate_renewables_generation
-import uuid
+
 router = APIRouter()
 
 
@@ -54,62 +56,71 @@ async def generate_all(
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
     heating_load_dataset = datasets[DatasetTypeEnum.GasMeterData]
     elec_meter_dataset = datasets[DatasetTypeEnum.ElectricityMeterData]
+    tariff_name = await select_arbitrary_tariff(params, http_client=http_client)
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            heating_load_response = await generate_heating_load(
+    async with asyncio.TaskGroup() as tg:
+        heating_load_response = tg.create_task(
+            generate_heating_load(
                 HeatingLoadRequest(dataset_id=heating_load_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
-                conn=conn,
+                pool=pool,
                 http_client=http_client,
             )
-            grid_co2_response = await generate_grid_co2(params, conn=conn, http_client=http_client)
-            tariff_name = await select_arbitrary_tariff(params, http_client=http_client)
-            import_tariff_response = await generate_import_tariffs(
+        )
+        grid_co2_response = tg.create_task(generate_grid_co2(params, pool=pool, http_client=http_client))
+
+        import_tariff_response = tg.create_task(
+            generate_import_tariffs(
                 TariffRequest(site_id=params.site_id, tariff_name=tariff_name, start_ts=params.start_ts, end_ts=params.end_ts),
-                conn=conn,
+                pool=pool,
                 http_client=http_client,
             )
-            renewables_response = await generate_renewables_generation(
+        )
+
+        renewables_response = tg.create_task(
+            generate_renewables_generation(
                 RenewablesRequest(
                     site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None
                 ),
-                conn=conn,
+                pool=pool,
                 http_client=http_client,
             )
+        )
 
-    elec_response = await generate_electricity_load(
-        ElectricalLoadRequest(dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
-        pool=pool,
-        http_client=http_client,
-        vae=vae,
-    )
+        elec_response = tg.create_task(
+            generate_electricity_load(
+                ElectricalLoadRequest(dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
+                pool=pool,
+                http_client=http_client,
+                vae=vae,
+            )
+        )
 
     return {
         DatasetTypeEnum.HeatingLoad: DatasetEntry(
-            dataset_id=heating_load_response.dataset_id,
+            dataset_id=heating_load_response.result().dataset_id,
             dataset_type=DatasetTypeEnum.HeatingLoad,
-            created_at=heating_load_response.created_at,
+            created_at=heating_load_response.result().created_at,
         ),
         DatasetTypeEnum.CarbonIntensity: DatasetEntry(
-            dataset_id=grid_co2_response.dataset_id,
+            dataset_id=grid_co2_response.result().dataset_id,
             dataset_type=DatasetTypeEnum.CarbonIntensity,
-            created_at=grid_co2_response.created_at,
+            created_at=grid_co2_response.result().created_at,
         ),
         DatasetTypeEnum.ImportTariff: DatasetEntry(
-            dataset_id=import_tariff_response.dataset_id,
+            dataset_id=import_tariff_response.result().dataset_id,
             dataset_type=DatasetTypeEnum.ImportTariff,
-            created_at=import_tariff_response.created_at,
+            created_at=import_tariff_response.result().created_at,
         ),
         DatasetTypeEnum.RenewablesGeneration: DatasetEntry(
-            dataset_id=renewables_response.dataset_id,
+            dataset_id=renewables_response.result().dataset_id,
             dataset_type=DatasetTypeEnum.RenewablesGeneration,
-            created_at=renewables_response.created_at,
+            created_at=renewables_response.result().created_at,
         ),
         DatasetTypeEnum.ElectricityMeterData: datasets[DatasetTypeEnum.ElectricityMeterData],
         DatasetTypeEnum.ElectricityMeterDataSynthesised: DatasetEntry(
-            dataset_id=elec_response.dataset_id,
+            dataset_id=elec_response.result().dataset_id,
             dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
-            created_at=elec_response.created_at,
+            created_at=elec_response.result().created_at,
         ),
         DatasetTypeEnum.ASHPData: DatasetEntry(
             dataset_id=uuid.uuid4(),
@@ -155,7 +166,7 @@ async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[Datas
            FROM client_meters.metadata
            WHERE is_synthesised = False
         UNION ALL
-        SELECT 
+        SELECT
             metadata.dataset_id,
             metadata.created_at,
             'ElectricityMeterDataSynthesised'::text AS dataset_type,
@@ -242,19 +253,27 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) 
     -------
         The site data with full time series for each data source
     """
-    site_id = SiteID(site_id=site_data.site_id)
     logging.info("Getting latest dataset list")
 
     async with pool.acquire() as conn:
-        site_data_info = await list_latest_datasets(site_id, conn=conn)
-        site_data_ids = {}
+        site_data_info = await list_latest_datasets(SiteID(site_id=site_data.site_id), conn=conn)
 
+    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
     for dataset_name, dataset_metadata in site_data_info.items():
-        site_data_ids[dataset_name] = DatasetIDWithTime(
-            dataset_id=dataset_metadata.dataset_id,
-            start_ts=site_data.start_ts,
-            end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-        )
+        if dataset_name == DatasetTypeEnum.HeatingLoad or dataset_name == DatasetTypeEnum.RenewablesGeneration:
+            site_data_ids[dataset_name] = MultipleDatasetIDWithTime(
+                dataset_id=[dataset_metadata.dataset_id],
+                start_ts=site_data.start_ts,
+                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+            )
+        else:
+            site_data_ids[dataset_name] = DatasetIDWithTime(
+                dataset_id=dataset_metadata.dataset_id,
+                start_ts=site_data.start_ts,
+                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+            )
 
     logging.info("Fetching latest datasets")
-    return await fetch_all_input_data(site_data_ids, pool=pool)
+    all_datasets = await fetch_all_input_data(site_data_ids, pool=pool)
+
+    return all_datasets

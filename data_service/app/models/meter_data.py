@@ -24,6 +24,7 @@ class MeterMetadata(pydantic.BaseModel):
     filename: str | None = pydantic.Field(default=None)
     is_synthesised: bool = pydantic.Field(default=False)
 
+
 class MeterEntry(pydantic.BaseModel):
     start_ts: pydantic.AwareDatetime
     end_ts: pydantic.AwareDatetime

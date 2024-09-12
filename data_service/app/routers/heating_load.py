@@ -14,16 +14,12 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabasePoolDep, HttpClientDep
+from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
-from ..internal.heating import building_adjusted_internal_temperature
-from ..internal.utils import add_epoch_fields
-from ..models.core import DatasetIDWithTime, MultipleDatasetIDWithTime, dataset_id_t
-from ..models.heating_load import EpochHeatingEntry, HeatingLoadMetadata
 from ..internal.heating import apply_fabric_interventions, building_adjusted_internal_temperature
-from ..internal.utils import hour_of_year
-from ..models.core import DatasetIDWithTime
+from ..internal.utils import add_epoch_fields
+from ..models.core import MultipleDatasetIDWithTime, dataset_id_t
 from ..models.heating_load import (
     EpochHeatingEntry,
     HeatingLoadMetadata,
@@ -73,7 +69,7 @@ def weather_dataset_to_dataframe(records: list[WeatherDatasetEntry]) -> WeatherD
 
 @router.post("/generate-heating-load", tags=["generate", "heating"])
 async def generate_heating_load(
-    params: DatasetIDWithTime, pool: DatabasePoolDep, http_client: HttpClientDep
+    params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> HeatingLoadMetadata:
     """Generate a heating load for this specific site, using regression analysis.
 
@@ -175,8 +171,6 @@ async def generate_heating_load(
                 http_client=http_client,
             )
         )
-    
-
 
     # We do this two step resampling to make sure we don't drop the last 23:30 entry if required
     forecast_weather_df = WeatherDataFrame(
@@ -212,7 +206,7 @@ async def generate_heating_load(
         "site_id": site_id,
         "created_at": datetime.datetime.now(datetime.UTC),
         "params": json.dumps({"source_dataset_id": str(params.dataset_id), **changed_coefs.model_dump()}),
-        "interventions": [str(item) for item in params.interventions],
+        "interventions": [item.value for item in params.interventions],
     }
     async with pool.acquire() as conn:
         async with conn.transaction():

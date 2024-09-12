@@ -1,14 +1,16 @@
 """Tests for electrical data synthesis."""
 
 # ruff: noqa: D101, D102, D103
+import datetime
 import json
 
 import httpx
+import numpy as np
 import pandas as pd
 import pytest
-import numpy as np
+
 from app.internal.gas_meters import parse_half_hourly
-import datetime
+
 
 class TestUploadMeterData:
     @pytest.mark.asyncio
@@ -55,7 +57,6 @@ class TestUploadMeterData:
         )
         assert result.status_code == 400
 
-
     @pytest.mark.asyncio
     async def test_upload_and_get_resampled_electricity_load(self, client: httpx.AsyncClient) -> None:
         raw_data = parse_half_hourly("./tests/data/test_elec.csv")
@@ -76,7 +77,7 @@ class TestUploadMeterData:
             json={
                 "dataset_id": upload_result["dataset_id"],
                 "start_ts": demo_start_ts.isoformat(),
-                "end_ts": demo_end_ts.isoformat()
+                "end_ts": demo_end_ts.isoformat(),
             },
         )
         assert generate_result.status_code == 200, generate_result.json()
@@ -85,7 +86,7 @@ class TestUploadMeterData:
             json={
                 "dataset_id": generate_result.json()["dataset_id"],
                 "start_ts": demo_start_ts.isoformat(),
-                "end_ts": demo_end_ts.isoformat()
+                "end_ts": demo_end_ts.isoformat(),
             },
         )
         assert get_result.status_code == 200, get_result.json()
@@ -94,6 +95,7 @@ class TestUploadMeterData:
         assert get_result.json()[-1]["Date"] == (demo_end_ts - pd.Timedelta(minutes=30)).strftime("%d-%b")
         expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
         assert len(get_result.json()) == expected_len
+
 
 class TestGetBlendedData:
     @pytest.mark.asyncio
@@ -105,27 +107,47 @@ class TestGetBlendedData:
         elec_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
         demo_start_ts = elec_data.start_ts.min().replace(month=1, day=1)
-        demo_end_ts =  elec_data.start_ts.min().replace(month=12, day=31)
-        generate_request = await client.post("/generate-electricity-load",
-                                             json={"dataset_id": elec_result["dataset_id"],
-                                                   "start_ts": demo_start_ts.isoformat(),
-                                                   "end_ts": demo_end_ts.isoformat()})
+        demo_end_ts = elec_data.start_ts.min().replace(month=12, day=31)
+        generate_request = await client.post(
+            "/generate-electricity-load",
+            json={
+                "dataset_id": elec_result["dataset_id"],
+                "start_ts": demo_start_ts.isoformat(),
+                "end_ts": demo_end_ts.isoformat(),
+            },
+        )
         assert generate_request.status_code == 200, generate_request.text
 
-        blended_result = await client.post("/get-blended-electricity-load",
-                                         json={"real_params": {"dataset_id": elec_result["dataset_id"],
-                                                               "start_ts": demo_start_ts.isoformat(),
-                                                                "end_ts": demo_end_ts.isoformat()},
-                                                                "synthetic_params": {"dataset_id": generate_request.json()["dataset_id"],
-                                                               "start_ts": demo_start_ts.isoformat(),
-                                                                "end_ts": demo_end_ts.isoformat()}})
-        
-        real_result = await client.post("/get-electricity-load",
-                                         json={"dataset_id": elec_result["dataset_id"],
-                                                               "start_ts": demo_start_ts.isoformat(),
-                                                                "end_ts": demo_end_ts.isoformat()})
-        synthetic_result = await client.post("/get-electricity-load",
-                                         json={"dataset_id": generate_request.json()["dataset_id"],
-                                            "start_ts": demo_start_ts.isoformat(),
-                                            "end_ts": demo_end_ts.isoformat()})
+        blended_result = await client.post(
+            "/get-blended-electricity-load",
+            json={
+                "real_params": {
+                    "dataset_id": elec_result["dataset_id"],
+                    "start_ts": demo_start_ts.isoformat(),
+                    "end_ts": demo_end_ts.isoformat(),
+                },
+                "synthetic_params": {
+                    "dataset_id": generate_request.json()["dataset_id"],
+                    "start_ts": demo_start_ts.isoformat(),
+                    "end_ts": demo_end_ts.isoformat(),
+                },
+            },
+        )
+
+        _ = await client.post(
+            "/get-electricity-load",
+            json={
+                "dataset_id": elec_result["dataset_id"],
+                "start_ts": demo_start_ts.isoformat(),
+                "end_ts": demo_end_ts.isoformat(),
+            },
+        )
+        synthetic_result = await client.post(
+            "/get-electricity-load",
+            json={
+                "dataset_id": generate_request.json()["dataset_id"],
+                "start_ts": demo_start_ts.isoformat(),
+                "end_ts": demo_end_ts.isoformat(),
+            },
+        )
         assert len(synthetic_result.json()) == len(blended_result.json())

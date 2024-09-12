@@ -1,6 +1,7 @@
 """API endpoints for electrical loads, including resampling."""
 
 import datetime
+import logging
 import uuid
 
 import numpy as np
@@ -10,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
 from ..internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
 from ..internal.epl_typing import DailyDataFrame, MonthlyDataFrame
-from ..internal.utils import get_bank_holidays, hour_of_year
+from ..internal.utils import add_epoch_fields, get_bank_holidays
 from ..models.core import DatasetIDWithTime, FuelEnum
 from ..models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
 
@@ -60,11 +61,10 @@ async def generate_electricity_load(
         )
 
     raw_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "consumption_kwh"])
-    raw_df.index = pd.to_datetime(raw_df["start_ts"])
+    raw_df.index = pd.DatetimeIndex(pd.to_datetime(raw_df["start_ts"]))
 
     public_holidays = await get_bank_holidays("England", http_client=http_client)
     if reading_type != "halfhourly":
-        
         daily_df = monthly_to_daily_eload(MonthlyDataFrame(raw_df), public_holidays=public_holidays)
     else:
         # We've got half hourly data, so we can skip the horrible daily profiles bit
@@ -244,21 +244,23 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     )
     elec_df["start_ts"] = elec_df.index
     if elec_df.empty:
-        raise HTTPException(400, f"Got an empty dataset for {params.dataset_id}.")
+        logging.warning(
+            f"Got an empty electricity meter dataset for {params.dataset_id} between {params.start_ts} and {params.end_ts}"
+        )
+        return []
 
     assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
     # Now restructure for EPOCH
-    elec_df["Date"] = elec_df.index.strftime("%d-%b")
-    elec_df["StartTime"] = elec_df.index.strftime("%H:%M")
-    elec_df["HourOfYear"] = elec_df.index.map(hour_of_year)
-    elec_df = elec_df.rename(columns={"consumption_kwh": "FixLoad1"})
+    elec_df = elec_df[["consumption_kwh"]].interpolate(method="time").ffill().bfill()
+    elec_df = add_epoch_fields(elec_df)
 
     return [
         EpochElectricityEntry(
-            Date=item["Date"], StartTime=item["StartTime"], HourOfYear=item["HourOfYear"], FixLoad1=item["FixLoad1"]
+            Date=item["Date"], StartTime=item["StartTime"], HourOfYear=item["HourOfYear"], FixLoad1=item["consumption_kwh"]
         )
         for item in elec_df.to_dict(orient="records")
     ]
+
 
 @router.post("/get-blended-electricity-load")
 async def fetch_blended_electricity_load(

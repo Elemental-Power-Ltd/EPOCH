@@ -70,17 +70,6 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         finally:
             await db.pool.release(conn)
 
-    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
-        """
-        Override the database creation with our database from this file.
-
-        This is nested to use the `db` object from this functional scope,
-        and not the global `db` object we use elsewhere.
-        """
-        await db.create_pool()
-        assert db.pool is not None, "Could not create DB pool."
-        yield db.pool
-
     async def override_get_http_client() -> AsyncGenerator[AsyncClient, None]:
         """
         Override the HTTP client with a functional local http client.

@@ -148,6 +148,7 @@ async def list_import_tariffs(params: SiteIDWithTime, http_client: HttpClientDep
             provider=TariffProviderEnum.octopus,
             is_tracker=True if item.get("is_tracker") == "true" else False,
             is_prepay=True if item.get("is_prepay") == "true" else False,
+            is_variable=True if item.get("is_variable") == "true" else False,
         )
 
     tariff_list = (
@@ -157,7 +158,7 @@ async def list_import_tariffs(params: SiteIDWithTime, http_client: HttpClientDep
         )
     ).json()
 
-    all_tariffs = [extract_tariff(item) for item in tariff_list["results"] if item.get("direction") == "IMPORT"]
+    all_tariffs = [extract_tariff(item) for item in tariff_list["results"] if item.get("direction", "").upper() == "IMPORT"]
     while tariff_list.get("next") is not None:
         tariff_list = (await http_client.get(tariff_list["next"])).json()
 
@@ -198,6 +199,7 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
         )
 
         ranking.append((overlap, tariff.is_tracker, not tariff.is_prepay, tariff.tariff_name))
+
     ranking = sorted(ranking, reverse=True)
 
     if ranking[0][0] < 1.0:
@@ -282,12 +284,23 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
         price_df = price_df.drop(columns=["payment_method"])
     price_df["valid_from"] = pd.to_datetime(price_df["valid_from"], utc=True, format="ISO8601")
     price_df["valid_to"] = pd.to_datetime(price_df["valid_to"], utc=True, format="ISO8601")
-    price_df = price_df.set_index("valid_from").sort_index().resample(pd.Timedelta(hours=1)).max().ffill()
+    # If we only got one entry in the price dataframe (not unlikely for fixed tariffs), then
+    # we need to fill it out fully as the resampling won't work.
+    # We do the resampling first to make sure that our timestamps are aligned, and then
+    # add a whole new index of the relevant size.
+    # However, Pandas was super fussy about timestamps here (maybe 'UTC' != datetime.UTC? I'm flummoxed)
+    # so we have to go through a whole song and dance to fix it.
+    price_df = price_df.set_index("valid_from").sort_index().resample(pd.Timedelta(minutes=30)).max().ffill()
+    idx_start = min(price_df.index.min().tz_convert(params.start_ts.tzinfo), params.start_ts)
+    idx_end = max(price_df.index.max().tz_convert(params.start_ts.tzinfo), params.end_ts)
+
+    new_index = pd.DatetimeIndex(pd.date_range(idx_start, idx_end, freq=pd.Timedelta(minutes=30), inclusive="both"))
+    price_df = price_df.reindex(new_index).ffill().bfill()
 
     price_df = price_df[["value_exc_vat"]].rename(columns={"value_exc_vat": "price", "valid_from": "start_ts"})
     price_df["start_ts"] = price_df.index
     price_df["dataset_id"] = dataset_id
-
+    # Note that it doesn't matter that we've got "too  much" tariff data here, as we'll sort it out when we get it.
     async with pool.acquire() as conn:
         async with conn.transaction():
             metadata = {
@@ -334,27 +347,13 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
                 pd.to_datetime(metadata["valid_to"], utc=True, format="ISO8601"),
             )
 
-            await conn.executemany(
-                """INSERT INTO
-                tariffs.electricity (
-                    dataset_id,
-                    timestamp,
-                    unit_cost,
-                    flat_cost
-                )
-                VALUES (
-                        $1,
-                        $2,
-                        $3,
-                        $4)""",
-                zip(
-                    price_df["dataset_id"],
-                    price_df["start_ts"],
-                    price_df["price"],
-                    [None for _ in range(len(price_df.index))],
-                    strict=True,
-                ),
+            await conn.copy_records_to_table(
+                table_name="electricity",
+                schema_name="tariffs",
+                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["price"], strict=True),
+                columns=["dataset_id", "timestamp", "unit_cost"],
             )
+
     return TariffMetadata(**metadata)
 
 

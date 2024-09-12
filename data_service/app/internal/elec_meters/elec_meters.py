@@ -127,7 +127,9 @@ def daily_to_hh_eload(
         return HHDataFrame(daily_df)
     with torch.no_grad():
         consumption_scaled = torch.from_numpy(
-            scalers[ScalerTypeEnum.Aggregate].transform(daily_df["consumption_kwh"].to_numpy().reshape(-1, 1)).astype(np.float32)
+            scalers[ScalerTypeEnum.Aggregate]
+            .transform(daily_df["consumption_kwh"].to_numpy().reshape(-1, 1))
+            .astype(np.float32)
         )
 
         # TODO (2024-09-05 MHJB): linearly encoding time is a bad idea.

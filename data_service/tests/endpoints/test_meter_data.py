@@ -6,8 +6,6 @@ import json
 import uuid
 
 import httpx
-import numpy as np
-import pandas as pd
 import pytest
 
 from app.internal.gas_meters import parse_half_hourly
@@ -24,7 +22,7 @@ class TestUploadMeterData:
             "fuel_type": "elec",
             "site_id": "demo_london",
             "reading_type": "halfhourly",
-            "is_synthetic": False
+            "is_synthetic": False,
         }
         records = json.loads(data.to_json(orient="records"))
         result = await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
@@ -107,7 +105,6 @@ class TestUploadMeterData:
 
     @pytest.mark.asyncio
     async def test_upload_and_get_electricity_load_non_hh(self, client: httpx.AsyncClient) -> None:
-        """Test that we"""
         data = parse_half_hourly("./tests/data/test_elec.csv")
         data["start_ts"] = data.index
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "manual"}
@@ -123,5 +120,3 @@ class TestUploadMeterData:
             },
         )
         assert result.status_code == 200
-
-

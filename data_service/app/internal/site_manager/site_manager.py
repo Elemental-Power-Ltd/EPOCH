@@ -6,12 +6,8 @@ from app.dependencies import DatabasePoolDep
 from app.models import EpochHeatingEntry, EpochRenewablesEntry
 from app.models.carbon_intensity import EpochCarbonEntry
 from app.models.client_data import SiteDataEntries
-<<<<<<< HEAD
 from app.models.core import DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime
-=======
-from app.models.core import DatasetIDWithTime, DatasetTypeEnum
 from app.models.electricity_load import EpochElectricityEntry
->>>>>>> 171d74e (Updated the site manager to be its own router; made electrical data resampling work to resample to arbitrary periods)
 from app.models.import_tariffs import EpochTariffEntry
 from app.routers.air_source_heat_pump import get_ashp_input, get_ashp_output
 from app.routers.carbon_intensity import get_grid_co2
@@ -91,8 +87,6 @@ async def fetch_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> li
 async def fetch_all_input_data(
     site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime],
     pool: DatabasePoolDep,
-    client: HttpClientDep,
-    vae: VaeDep,
 ) -> SiteDataEntries:
     """
     Take a list of dataset IDs with a timespan and fetch the data for each one from the database.
@@ -108,6 +102,8 @@ async def fetch_all_input_data(
     """
     electricity_meter_data = site_data_ids[DatasetTypeEnum.ElectricityMeterData]
     assert isinstance(electricity_meter_data, DatasetIDWithTime)
+    electricity_meter_data_synthetic = site_data_ids[DatasetTypeEnum.ElectricityMeterDataSynthesised]
+    assert isinstance(electricity_meter_data_synthetic, DatasetIDWithTime)
     heating_load = site_data_ids[DatasetTypeEnum.HeatingLoad]
     assert isinstance(heating_load, MultipleDatasetIDWithTime)
     renewables_generation = site_data_ids[DatasetTypeEnum.RenewablesGeneration]

@@ -8,12 +8,14 @@ from typing import Self
 import pydantic
 from pydantic import Field
 
-from .core import EpochEntry, dataset_id_t, site_id_field, site_id_t, dataset_id_field
+from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
+
 
 class InterventionEnum(str, Enum):
     Loft = "loft"
     DoubleGlazing = "double_glazing"
     Cladding = "cladding"
+
 
 class HeatingLoadEntry(pydantic.BaseModel):
     timestamp: pydantic.AwareDatetime = pydantic.Field(
@@ -73,18 +75,7 @@ class EpochHeatingEntry(EpochEntry):
     AirTemp: float = pydantic.Field(examples=[16.7], description="Air temperature at this time in °C.")
 
 
-class HeatingLoadRequest(pydantic.BaseModel):
-    dataset_id: dataset_id_t = dataset_id_field
-    start_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-01-01T00:00:00Z"],
-        description="The earliest time (inclusive) to retrieve data for.",
-        default=datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC),
-    )
-    end_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-05-31T00:00:00Z"],
-        description="The latest time (exclusive) to retrieve data for.",
-        default_factory=lambda: datetime.datetime.now(datetime.UTC),
-    )
+class HeatingLoadRequest(DatasetIDWithTime):
     interventions: list[InterventionEnum] = Field(
         examples=[[InterventionEnum.Loft], []],
         default=[],
