@@ -55,13 +55,9 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	// init ESS object (0= None, 1=basic, 2=hybrid)
 	ESSbasic_cl ESSmain(taskData, ESSbattery);
 
-	// ASHPperf & ASHPhot better inside the ESS class/object
-	ASHPData_st ASHPData1;
-	ASHPData1.TScount = taskData.calculate_timesteps();
-	ASHPData1.PowerScalar = taskData.timestep_hours;
-	ASHPData1.HeatMode = taskData.ASHP_RadTemp;      // Output water (radiator) temp.
-	ASHPData1.HotTemp = taskData.ASHP_HotTemp;       // Hotroom (DataC waste heat) air temp.;
-	ASHPperf_cl ASHPperf1(historicalData, ASHPData1);
+
+	ASHPperf_cl ASHPperf1(taskData);
+
 	ASHPhot_cl ASHP1(historicalData, taskData, ASHPData1, ASHPperf1);	// Use pointer to ASHPperf1
 
 	DataC_ASHP_cl DataC(historicalData, taskData, ASHP1);
