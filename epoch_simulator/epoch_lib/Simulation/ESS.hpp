@@ -12,7 +12,7 @@
 class ESSbasic_cl {
 
 public:
-    ESSbasic_cl(const TaskData& taskData, Battery_cl& extBattery) :
+    ESSbasic_cl(const TaskData& taskData, Battery& extBattery) :
         // Initialise Persistent Values
         ESS_mode(taskData.ESS_charge_mode),
         TScount(taskData.calculate_timesteps()),
@@ -93,15 +93,15 @@ public:
     }
 
     void Report(FullSimulationResult& Result) {
-        Result.ESS_charge = ptrBattery->HistCharg_e;
-        Result.ESS_discharge = ptrBattery->HistDisch_e;
-        Result.ESS_resulting_SoC = ptrBattery->HistSoC_e;
+        Result.ESS_charge = ptrBattery->mHistCharg_e;
+        Result.ESS_discharge = ptrBattery->mHistDisch_e;
+        Result.ESS_resulting_SoC = ptrBattery->mHistSoC_e;
         // ADD ESS Losses
-        // Result.ESS_AuxLoad = ptrBattery->HistAux_e;
-        // Result.ESS_RTL = ptrBattery->HistRTL_e;
+        // Result.ESS_AuxLoad = ptrBattery->mHistAux_e;
+        // Result.ESS_RTL = ptrBattery->mHistRTL_e;
     }
 private:
-    Battery_cl *ptrBattery;
+    Battery *ptrBattery;
     const int ESS_mode;
     const int TScount;
     const float ThresholdSoC;

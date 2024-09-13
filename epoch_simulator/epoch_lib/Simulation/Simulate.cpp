@@ -50,7 +50,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		// SLB hot water cyclinder
 	// HotWcylA_cl HotWaterCyl(historicalData, taskData);
 
-	Battery_cl ESSbattery(taskData);
+	Battery ESSbattery(taskData);
 	
 	// init ESS object (0= None, 1=basic, 2=hybrid)
 	ESSbasic_cl ESSmain(taskData, ESSbattery);

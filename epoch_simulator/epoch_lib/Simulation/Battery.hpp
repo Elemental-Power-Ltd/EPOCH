@@ -7,69 +7,69 @@
 #include "../Definitions.hpp"
 
 // Battery is only used within an ESS or other component with electricity storage
-class Battery_cl {
+class Battery {
 
 public:
-	Battery_cl(const TaskData& taskData) :
-		Capacity_e(taskData.ESS_capacity),
-		PreSoC_e(taskData.ESS_start_SoC * taskData.ESS_capacity), // Init State of Charge in kWhs
+	Battery(const TaskData& taskData) :
+		mCapacity_e(taskData.ESS_capacity),
+		mPreSoC_e(taskData.ESS_start_SoC * taskData.ESS_capacity), // Init State of Charge in kWhs
 		// TODO - reintroduce RTE to TaskData
-		RTLrate(1.0f - 0.86f), // loss rate easier in calcs
+		mRTLrate(1.0f - 0.86f), // loss rate easier in calcs
 
 		// timestep_hours can be considered a power scalar per timestep
-		ChargMax_e(taskData.ESS_charge_power * taskData.timestep_hours), // kWh per timestep
-		DischMax_e(taskData.ESS_discharge_power * taskData.timestep_hours), // UkWh per timestep
-		AuxLoad_e(taskData.ESS_capacity / 1200 * taskData.timestep_hours), // kWh per timestep
+		mChargMax_e(taskData.ESS_charge_power * taskData.timestep_hours), // kWh per timestep
+		mDischMax_e(taskData.ESS_discharge_power * taskData.timestep_hours), // UkWh per timestep
+		mAuxLoad_e(taskData.ESS_capacity / 1200 * taskData.timestep_hours), // kWh per timestep
 
 		// Initilaise results data vectors with all values to zero
-		HistSoC_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),      // Resulting State of Charge per timestep
-		HistCharg_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Charge kWh per timestep
-		HistDisch_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Discharge kWh per timestep
-		HistRTL_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),     // Round trip loss kWh per timestep
-		HistAux_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))     // Auxiliary Load kWh per timestep
+		mHistSoC_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),      // Resulting State of Charge per timestep
+		mHistCharg_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Charge kWh per timestep
+		mHistDisch_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Discharge kWh per timestep
+		mHistRTL_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),     // Round trip loss kWh per timestep
+		mHistAux_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))     // Auxiliary Load kWh per timestep
 
 	{
 		// Auxiliary same every timestep: is there a vector function for this?
 		for (int t = 1; t <= taskData.calculate_timesteps(); t++) {
-			HistAux_e[t] = AuxLoad_e;
+			mHistAux_e[t] = mAuxLoad_e;
 		}
 	}
 
 	float AvailCharg() const {
-		return std::min(ChargMax_e, (Capacity_e - PreSoC_e) / (1 - RTLrate));
+		return std::min(mChargMax_e, (mCapacity_e - mPreSoC_e) / (1 - mRTLrate));
 	}
 
 	float AvailDisch() const {
-		return std::min(DischMax_e, PreSoC_e);
+		return std::min(mDischMax_e, mPreSoC_e);
 	}
 
-	float GetSoC() { return PreSoC_e; }
+	float GetSoC() { return mPreSoC_e; }
 
 	void DoCharg(float Charge_e, int t) {
-		HistCharg_e[t] = Charge_e;
-		HistRTL_e[t] = Charge_e * RTLrate;
-		HistSoC_e[t] = PreSoC_e + Charge_e - HistRTL_e[t];
-		PreSoC_e = HistSoC_e[t];			//for next timestep
+		mHistCharg_e[t] = Charge_e;
+		mHistRTL_e[t] = Charge_e * mRTLrate;
+		mHistSoC_e[t] = mPreSoC_e + Charge_e - mHistRTL_e[t];
+		mPreSoC_e = mHistSoC_e[t];			//for next timestep
 	}
 
 	void DoDisch(float DisCharge_e, int t) {
-		HistDisch_e[t] = DisCharge_e;
-		HistSoC_e[t] = PreSoC_e - DisCharge_e;
-		PreSoC_e = HistSoC_e[t];			//for next timestep
+		mHistDisch_e[t] = DisCharge_e;
+		mHistSoC_e[t] = mPreSoC_e - DisCharge_e;
+		mPreSoC_e = mHistSoC_e[t];			//for next timestep
 	}
 
 	// Public output data, create private Battery object in parent
-	year_TS HistSoC_e;
-	year_TS HistCharg_e;
-	year_TS HistDisch_e;
-	year_TS HistAux_e;
-	year_TS HistRTL_e;
+	year_TS mHistSoC_e;
+	year_TS mHistCharg_e;
+	year_TS mHistDisch_e;
+	year_TS mHistAux_e;
+	year_TS mHistRTL_e;
 
 private:
-	const float Capacity_e;
-	const float ChargMax_e;
-	const float DischMax_e;
-	const float RTLrate;
-	const float AuxLoad_e;
-	float PreSoC_e;
+	const float mCapacity_e;
+	const float mChargMax_e;
+	const float mDischMax_e;
+	const float mRTLrate;
+	const float mAuxLoad_e;
+	float mPreSoC_e;
 };
