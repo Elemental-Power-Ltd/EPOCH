@@ -9,10 +9,10 @@
 #include "TempSum.hpp"
 #include "Battery.hpp"
 
-class ESSbasic_cl {
+class BasicESS {
 
 public:
-    ESSbasic_cl(const TaskData& taskData) :
+    BasicESS(const TaskData& taskData) :
         // Initialise Persistent Values
         ESS_mode(taskData.ESS_charge_mode),
         TScount(taskData.calculate_timesteps()),

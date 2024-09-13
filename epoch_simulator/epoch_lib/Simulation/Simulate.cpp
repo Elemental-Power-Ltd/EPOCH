@@ -51,7 +51,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	// HotWcylA_cl HotWaterCyl(historicalData, taskData);
 	
 	// init ESS object (0= None, 1=basic, 2=hybrid)
-	ESSbasic_cl ESSmain(taskData);
+	BasicESS ESSmain(taskData);
 
 
 	ASHPperf_cl ASHPperf1(taskData);
