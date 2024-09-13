@@ -36,24 +36,24 @@ public:
 		}
 	}
 
-	float AvailCharg() const {
+	float getAvailableCharge() const {
 		return std::min(mChargMax_e, (mCapacity_e - mPreSoC_e) / (1 - mRTLrate));
 	}
 
-	float AvailDisch() const {
+	float getAvailableDischarge() const {
 		return std::min(mDischMax_e, mPreSoC_e);
 	}
 
 	float GetSoC() { return mPreSoC_e; }
 
-	void DoCharg(float Charge_e, int t) {
+	void doCharge(float Charge_e, int t) {
 		mHistCharg_e[t] = Charge_e;
 		mHistRTL_e[t] = Charge_e * mRTLrate;
 		mHistSoC_e[t] = mPreSoC_e + Charge_e - mHistRTL_e[t];
 		mPreSoC_e = mHistSoC_e[t];			//for next timestep
 	}
 
-	void DoDisch(float DisCharge_e, int t) {
+	void doDischarge(float DisCharge_e, int t) {
 		mHistDisch_e[t] = DisCharge_e;
 		mHistSoC_e[t] = mPreSoC_e - DisCharge_e;
 		mPreSoC_e = mHistSoC_e[t];			//for next timestep

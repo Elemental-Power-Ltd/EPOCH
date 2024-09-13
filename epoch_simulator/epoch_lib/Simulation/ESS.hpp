@@ -24,7 +24,7 @@ public:
     }
 
     float AvailDisch() const {
-        return mBattery.AvailDisch();
+        return mBattery.getAvailableDischarge();
     }
 
     void StepCalc(TempSum_cl &TempSum, const float AvailGridImp, const int t) {
@@ -32,13 +32,13 @@ public:
         switch (ESS_mode) {
         case 1: // Consume mode
             if (TempSum.Elec_e[t] >= 0) {  // Surplus Demand, discharge ESS
-                Ecalc = std::min(TempSum.Elec_e[t], mBattery.AvailDisch());
-                mBattery.DoDisch(Ecalc, t);
+                Ecalc = std::min(TempSum.Elec_e[t], mBattery.getAvailableDischarge());
+                mBattery.doDischarge(Ecalc, t);
                 TempSum.Elec_e[t] = TempSum.Elec_e[t] - Ecalc;
             }
             else {        // Surplus Generation, charge ESS
-                Ecalc = std::min(-TempSum.Elec_e[t], mBattery.AvailCharg());
-                mBattery.DoCharg(Ecalc, t);
+                Ecalc = std::min(-TempSum.Elec_e[t], mBattery.getAvailableCharge());
+                mBattery.doCharge(Ecalc, t);
                 TempSum.Elec_e[t] = TempSum.Elec_e[t] + Ecalc;
             }
             break;
@@ -46,25 +46,25 @@ public:
         case 3: // Threshold mode
             if (mBattery.GetSoC() > ThresholdSoC) {   // High SoC = Consume mode (1)
                 if (TempSum.Elec_e[t] >= 0) {   // Surplus Demand, discharge ESS
-                    Ecalc = std::min(TempSum.Elec_e[t], mBattery.AvailDisch());
-                    mBattery.DoDisch(Ecalc, t);
+                    Ecalc = std::min(TempSum.Elec_e[t], mBattery.getAvailableDischarge());
+                    mBattery.doDischarge(Ecalc, t);
                     TempSum.Elec_e[t] = TempSum.Elec_e[t] - Ecalc;
                 }
                 else {            // Surplus Generation, charge ESS
-                    Ecalc = std::min(-TempSum.Elec_e[t], mBattery.AvailCharg());
-                    mBattery.DoCharg(Ecalc, t);
+                    Ecalc = std::min(-TempSum.Elec_e[t], mBattery.getAvailableCharge());
+                    mBattery.doCharge(Ecalc, t);
                     TempSum.Elec_e[t] = TempSum.Elec_e[t] + Ecalc;
                 }
             }
             else {                              // Low SoC = Resilient Mode	
                 if ((TempSum.Elec_e[t] - AvailGridImp) >= 0) {		// Grid cannot meet Demand, discharge ESS		
-                    Ecalc = std::min((TempSum.Elec_e[t] - AvailGridImp), mBattery.AvailDisch());
-                    mBattery.DoDisch(Ecalc, t);
+                    Ecalc = std::min((TempSum.Elec_e[t] - AvailGridImp), mBattery.getAvailableDischarge());
+                    mBattery.doDischarge(Ecalc, t);
                     TempSum.Elec_e[t] = TempSum.Elec_e[t] - Ecalc;
                 }
                 else {  // Charge ESS from Grid headroom or surplus Generation		
-                    Ecalc = std::min(-(TempSum.Elec_e[t] - AvailGridImp), mBattery.AvailCharg());
-                    mBattery.DoCharg(Ecalc, t);
+                    Ecalc = std::min(-(TempSum.Elec_e[t] - AvailGridImp), mBattery.getAvailableCharge());
+                    mBattery.doCharge(Ecalc, t);
                     TempSum.Elec_e[t] = TempSum.Elec_e[t] + Ecalc;
                 }
             }
@@ -81,13 +81,13 @@ public:
 
         default: // Resilient Mode case should be default							
             if ((TempSum.Elec_e[t] - AvailGridImp) >= 0) {		// Grid cannot meet Demand, discharge ESS		
-                Ecalc = std::min((TempSum.Elec_e[t] - AvailGridImp), mBattery.AvailDisch());
-                mBattery.DoDisch(Ecalc, t);
+                Ecalc = std::min((TempSum.Elec_e[t] - AvailGridImp), mBattery.getAvailableDischarge());
+                mBattery.doDischarge(Ecalc, t);
                 TempSum.Elec_e[t] = TempSum.Elec_e[t] - Ecalc;
             }
             else {  // Charge ESS from Grid headroom or surplus Generation		
-                Ecalc = std::min(-(TempSum.Elec_e[t] - AvailGridImp), mBattery.AvailCharg());
-                mBattery.DoCharg(Ecalc, t);
+                Ecalc = std::min(-(TempSum.Elec_e[t] - AvailGridImp), mBattery.getAvailableCharge());
+                mBattery.doCharge(Ecalc, t);
                 TempSum.Elec_e[t] = TempSum.Elec_e[t] + Ecalc;
             }
         }
