@@ -14,7 +14,7 @@ export interface TaskConfig {
     objectives: TaskObjectives;
     site_id: string;
     start_date: string;
-    duration: "year"
+    duration: "year";
     timestep_minutes: 30 | 60
 }
 

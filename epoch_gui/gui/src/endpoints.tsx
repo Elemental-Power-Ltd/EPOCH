@@ -1,4 +1,4 @@
-import {OptimisationResult, Site, Task} from "./State/types";
+import {OptimisationResult, Site, Task, Client} from "./State/types";
 
 export const submitOptimisationJob = async(payload) => {
     try {
@@ -36,6 +36,26 @@ export const getStatus = async() => {
     } catch (error) {
         console.error("Failed to get status:", error);
         return {"status": "OFFLINE"}
+    }
+}
+
+export const listClients = async(): Promise<Client[]> => {
+    try {
+        const response = await fetch("/api/data/list-clients", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+        });
+
+        if(!response.ok) {
+            console.error(`HTTP error! Status: ${response.status}`);
+            return [];
+        }
+
+        return await response.json();
+
+    } catch (error) {
+        console.error("Failed to list clients", error);
+        return [];
     }
 }
 
@@ -108,3 +128,23 @@ export const getOptimisationResults = async(task_id: string): Promise<Optimisati
     }
 }
 
+export const generateAllData = async (site_id: string, start_ts: string, end_ts: string) => {
+    const payload = { site_id, start_ts, end_ts };
+  
+    try {
+      const response = await fetch("/api/data/generate-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+  
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to generate data:", error);
+      throw error;
+    }
+  }
