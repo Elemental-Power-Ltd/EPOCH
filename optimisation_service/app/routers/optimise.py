@@ -42,6 +42,8 @@ def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
     optimiser_func = Optimiser[task.optimiser.name].value
     optimiser = optimiser_func(**task.optimiser.hyperparameters.model_dump(mode="python"))
     search_parameters: ParameterDict = task.search_parameters.model_dump(mode="python")
+    with open(data_manager.temp_data_dir / "task_config.json", "w") as fi:
+        fi.write(task.search_parameters.model_dump_json())
     problem = Problem(
         objectives=task.objectives,
         constraints={},

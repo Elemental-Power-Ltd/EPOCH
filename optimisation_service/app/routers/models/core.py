@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Annotated
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt
-
+import uuid
 from .optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
 from .problem import EndpointParameterDict
 from .site_data import SiteMetaData
@@ -40,7 +40,7 @@ class EndpointTask(BaseModel):
 
 
 class TaskWithUUID(EndpointTask):
-    task_id: Annotated[UUID4, "String serialised UUID"] = Field(
+    task_id: Annotated[UUID4, "String serialised UUID"] = Field(default_factory=uuid.uuid4,
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
     )
 
