@@ -10,11 +10,12 @@ export interface TaskObjectives {
 
 export interface TaskConfig {
     task_name: string;
+    task_id: string;
     optimiser: "GridSearch" | "GeneticAlgorithm";
     objectives: TaskObjectives;
     site_id: string;
     start_date: string;
-    duration: "year"
+    duration: "year";
     timestep_minutes: 30 | 60
 }
 

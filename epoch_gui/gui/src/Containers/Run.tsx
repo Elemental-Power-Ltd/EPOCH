@@ -3,12 +3,15 @@ import "./Run.css"
 import AccordionSection from "../util/Widgets/AccordionSection";
 import HyperParamForm from "../Components/HyperParams/OptimiserConfig";
 import SearchForm from "../Components/SearchParameters/SearchForm";
+
 import {useEffect, useState} from "react";
 
 import {getStatus, submitOptimisationJob} from "../endpoints";
 
 import {useEpochStore} from "../State/state";
 import TaskConfigForm from "../Components/TaskConfig/TaskConfigForm";
+
+import {v4 as uuidv4} from 'uuid';
 
 function RunContainer() {
 
@@ -18,6 +21,7 @@ function RunContainer() {
 
         const payload = {
             task_name: state.taskConfig.task_name,
+            task_id: uuidv4(),
             optimiser: {
                 // name: state.taskConfig.optimiser,
                 name: "NSGA2",

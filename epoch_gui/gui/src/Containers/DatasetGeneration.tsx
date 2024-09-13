@@ -1,0 +1,152 @@
+import React, { useState, useEffect } from 'react';
+import {
+  TextField,
+  Button,
+  Grid,
+  Container,
+  Typography,
+  MenuItem,
+  CircularProgress
+} from '@mui/material';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+
+import { useEpochStore } from '../State/state';
+import { generateAllData, listClients, listSites } from '../endpoints';
+
+dayjs.extend(utc);
+
+const DatasetGenerationContainer = () => {
+  const [clients, setClients] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [selectedClient, setSelectedClient] = useState('');
+  const [selectedSite, setSelectedSite] = useState('');
+  const [startDate, setStartDate] = useState(dayjs().startOf('day'));
+  const [endDate, setEndDate] = useState(dayjs().endOf('day'));
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationResult, setGenerationResult] = useState(null);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      const clientList = await listClients();
+      setClients(clientList);
+    };
+    fetchClients();
+  }, []);
+
+  useEffect(() => {
+    const fetchSites = async () => {
+      if (selectedClient) {
+        const siteList = await listSites(selectedClient);
+        setSites(siteList);
+      } else {
+        setSites([]);
+      }
+    };
+    fetchSites();
+  }, [selectedClient]);
+
+  const handleGenerateDataset = async () => {
+    setIsGenerating(true);
+    setGenerationResult(null);
+    try {
+      const result = await generateAllData(
+        selectedSite,
+        startDate.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
+        endDate.utc().format('YYYY-MM-DDTHH:mm:ss[Z]')
+      );
+      setGenerationResult(result);
+    } catch (error) {
+      setGenerationResult({ error: 'Failed to generate dataset' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <Container maxWidth="sm">
+      <Typography variant="h4" gutterBottom>
+        Generate Dataset
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            select
+            label="Client"
+            value={selectedClient}
+            onChange={(e) => {
+              setSelectedClient(e.target.value);
+              setSelectedSite('');
+            }}
+          >
+            {clients.map((client) => (
+              <MenuItem key={client.client_id} value={client.client_id}>
+                {client.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            select
+            label="Site"
+            value={selectedSite}
+            onChange={(e) => setSelectedSite(e.target.value)}
+            disabled={!selectedClient}
+          >
+            {sites.map((site) => (
+              <MenuItem key={site.site_id} value={site.site_id}>
+                {site.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid item xs={6}>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DateTimePicker
+              label="Start Date"
+              value={startDate}
+              onChange={(date) => setStartDate(date)}
+            />
+          </LocalizationProvider>
+        </Grid>
+        <Grid item xs={6}>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DateTimePicker
+              label="End Date"
+              value={endDate}
+              onChange={(date) => setEndDate(date)}
+            />
+          </LocalizationProvider>
+        </Grid>
+        <Grid item xs={12}>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={handleGenerateDataset}
+            disabled={!selectedSite || isGenerating}
+          >
+            {isGenerating ? <CircularProgress size={24} /> : 'Generate Dataset'}
+          </Button>
+        </Grid>
+        {generationResult && (
+          <Grid item xs={12}>
+            <Typography variant="body1">
+              {generationResult.error
+                ? `Error: ${generationResult.error}`
+                : `Dataset generated successfully: ${JSON.stringify(generationResult)}`}
+            </Typography>
+          </Grid>
+        )}
+      </Grid>
+    </Container>
+  );
+};
+
+export default DatasetGenerationContainer;

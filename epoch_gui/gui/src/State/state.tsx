@@ -1,4 +1,5 @@
 import {create} from 'zustand'
+import {v4 as uuidv4} from 'uuid';
 
 import DefaultGrid from "../util/json/default/DefaultGridConfig.json";
 import DefaultGA from "../util/json/default/DefaultGAConfig.json";
@@ -19,10 +20,11 @@ import {
 
 const defaultTaskConfig: TaskConfig = {
     task_name: "",
+    task_id: uuidv4(),
     optimiser: "GridSearch",
     objectives: {capex: true, carbon_balance: true, cost_balance: true, payback_horizon: true, annualised_cost: true},
     site_id: "",
-    start_date: "2022-01-01 00:00:00+00",
+    start_date: "2022-01-01 00:00:00+00:00",
     duration: "year",
     timestep_minutes: 30
 }
@@ -55,6 +57,7 @@ export const useEpochStore = create<AppState>()((set) => ({
             client_id: "demo",
             name: "Bassetlaw Coucil"
         },
+        clients: [],
         client_sites: []
     },
     run: defaultRunContainer,
@@ -79,6 +82,8 @@ export const useEpochStore = create<AppState>()((set) => ({
             results: defaultResultsContainer
         }
     )),
+
+    setClients: (clients: Client[]) => set((state) => ({global: {...state.global, clients: clients}})),
     setSites: (sites: Site[]) => set((state) => ({global: {...state.global, client_sites: sites}})),
     setTasks: (tasks: Task[]) => set((state) => ({results: {...state.results, tasks: tasks}})),
 
