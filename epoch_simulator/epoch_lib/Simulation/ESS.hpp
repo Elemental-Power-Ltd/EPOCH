@@ -12,18 +12,19 @@
 class ESSbasic_cl {
 
 public:
-    ESSbasic_cl(const TaskData& taskData, Battery& extBattery) :
+    ESSbasic_cl(const TaskData& taskData) :
         // Initialise Persistent Values
         ESS_mode(taskData.ESS_charge_mode),
         TScount(taskData.calculate_timesteps()),
         // RECODE: ThresholdSoC(taskData.ESS_capacity * taskData.ESS_threshold),
-        ThresholdSoC(taskData.ESS_capacity * 0.5f)
+        ThresholdSoC(taskData.ESS_capacity * 0.5f),
+        mBattery(taskData)
     {
-        ptrBattery = &extBattery;
+
     }
 
     float AvailDisch() const {
-        return ptrBattery->AvailDisch();
+        return mBattery.AvailDisch();
     }
 
     void StepCalc(TempSum_cl &TempSum, const float AvailGridImp, const int t) {
@@ -31,39 +32,39 @@ public:
         switch (ESS_mode) {
         case 1: // Consume mode
             if (TempSum.Elec_e[t] >= 0) {  // Surplus Demand, discharge ESS
-                Ecalc = std::min(TempSum.Elec_e[t], ptrBattery->AvailDisch());
-                ptrBattery->DoDisch(Ecalc, t);
+                Ecalc = std::min(TempSum.Elec_e[t], mBattery.AvailDisch());
+                mBattery.DoDisch(Ecalc, t);
                 TempSum.Elec_e[t] = TempSum.Elec_e[t] - Ecalc;
             }
             else {        // Surplus Generation, charge ESS
-                Ecalc = std::min(-TempSum.Elec_e[t], ptrBattery->AvailCharg());
-                ptrBattery->DoCharg(Ecalc, t);
+                Ecalc = std::min(-TempSum.Elec_e[t], mBattery.AvailCharg());
+                mBattery.DoCharg(Ecalc, t);
                 TempSum.Elec_e[t] = TempSum.Elec_e[t] + Ecalc;
             }
             break;
 
         case 3: // Threshold mode
-            if (ptrBattery->GetSoC() > ThresholdSoC) {   // High SoC = Consume mode (1)
+            if (mBattery.GetSoC() > ThresholdSoC) {   // High SoC = Consume mode (1)
                 if (TempSum.Elec_e[t] >= 0) {   // Surplus Demand, discharge ESS
-                    Ecalc = std::min(TempSum.Elec_e[t], ptrBattery->AvailDisch());
-                    ptrBattery->DoDisch(Ecalc, t);
+                    Ecalc = std::min(TempSum.Elec_e[t], mBattery.AvailDisch());
+                    mBattery.DoDisch(Ecalc, t);
                     TempSum.Elec_e[t] = TempSum.Elec_e[t] - Ecalc;
                 }
                 else {            // Surplus Generation, charge ESS
-                    Ecalc = std::min(-TempSum.Elec_e[t], ptrBattery->AvailCharg());
-                    ptrBattery->DoCharg(Ecalc, t);
+                    Ecalc = std::min(-TempSum.Elec_e[t], mBattery.AvailCharg());
+                    mBattery.DoCharg(Ecalc, t);
                     TempSum.Elec_e[t] = TempSum.Elec_e[t] + Ecalc;
                 }
             }
             else {                              // Low SoC = Resilient Mode	
                 if ((TempSum.Elec_e[t] - AvailGridImp) >= 0) {		// Grid cannot meet Demand, discharge ESS		
-                    Ecalc = std::min((TempSum.Elec_e[t] - AvailGridImp), ptrBattery->AvailDisch());
-                    ptrBattery->DoDisch(Ecalc, t);
+                    Ecalc = std::min((TempSum.Elec_e[t] - AvailGridImp), mBattery.AvailDisch());
+                    mBattery.DoDisch(Ecalc, t);
                     TempSum.Elec_e[t] = TempSum.Elec_e[t] - Ecalc;
                 }
                 else {  // Charge ESS from Grid headroom or surplus Generation		
-                    Ecalc = std::min(-(TempSum.Elec_e[t] - AvailGridImp), ptrBattery->AvailCharg());
-                    ptrBattery->DoCharg(Ecalc, t);
+                    Ecalc = std::min(-(TempSum.Elec_e[t] - AvailGridImp), mBattery.AvailCharg());
+                    mBattery.DoCharg(Ecalc, t);
                     TempSum.Elec_e[t] = TempSum.Elec_e[t] + Ecalc;
                 }
             }
@@ -80,28 +81,28 @@ public:
 
         default: // Resilient Mode case should be default							
             if ((TempSum.Elec_e[t] - AvailGridImp) >= 0) {		// Grid cannot meet Demand, discharge ESS		
-                Ecalc = std::min((TempSum.Elec_e[t] - AvailGridImp), ptrBattery->AvailDisch());
-                ptrBattery->DoDisch(Ecalc, t);
+                Ecalc = std::min((TempSum.Elec_e[t] - AvailGridImp), mBattery.AvailDisch());
+                mBattery.DoDisch(Ecalc, t);
                 TempSum.Elec_e[t] = TempSum.Elec_e[t] - Ecalc;
             }
             else {  // Charge ESS from Grid headroom or surplus Generation		
-                Ecalc = std::min(-(TempSum.Elec_e[t] - AvailGridImp), ptrBattery->AvailCharg());
-                ptrBattery->DoCharg(Ecalc, t);
+                Ecalc = std::min(-(TempSum.Elec_e[t] - AvailGridImp), mBattery.AvailCharg());
+                mBattery.DoCharg(Ecalc, t);
                 TempSum.Elec_e[t] = TempSum.Elec_e[t] + Ecalc;
             }
         }
     }
 
     void Report(FullSimulationResult& Result) {
-        Result.ESS_charge = ptrBattery->mHistCharg_e;
-        Result.ESS_discharge = ptrBattery->mHistDisch_e;
-        Result.ESS_resulting_SoC = ptrBattery->mHistSoC_e;
+        Result.ESS_charge = mBattery.mHistCharg_e;
+        Result.ESS_discharge = mBattery.mHistDisch_e;
+        Result.ESS_resulting_SoC = mBattery.mHistSoC_e;
         // ADD ESS Losses
-        // Result.ESS_AuxLoad = ptrBattery->mHistAux_e;
-        // Result.ESS_RTL = ptrBattery->mHistRTL_e;
+        // Result.ESS_AuxLoad = mBattery.mHistAux_e;
+        // Result.ESS_RTL = mBattery.mHistRTL_e;
     }
 private:
-    Battery *ptrBattery;
+    Battery mBattery;
     const int ESS_mode;
     const int TScount;
     const float ThresholdSoC;
