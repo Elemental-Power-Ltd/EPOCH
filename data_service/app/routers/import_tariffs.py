@@ -11,7 +11,7 @@ import uuid
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, HttpClientDep
+from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.utils import hour_of_year
 from ..internal.utils.utils import get_with_fallback
 from ..models.core import DatasetIDWithTime, SiteID, SiteIDWithTime
@@ -148,6 +148,7 @@ async def list_import_tariffs(params: SiteIDWithTime, http_client: HttpClientDep
             provider=TariffProviderEnum.octopus,
             is_tracker=True if item.get("is_tracker") == "true" else False,
             is_prepay=True if item.get("is_prepay") == "true" else False,
+            is_variable=True if item.get("is_variable") == "true" else False,
         )
 
     tariff_list = (
@@ -157,7 +158,7 @@ async def list_import_tariffs(params: SiteIDWithTime, http_client: HttpClientDep
         )
     ).json()
 
-    all_tariffs = [extract_tariff(item) for item in tariff_list["results"] if item.get("direction") == "IMPORT"]
+    all_tariffs = [extract_tariff(item) for item in tariff_list["results"] if item.get("direction", "").upper() == "IMPORT"]
     while tariff_list.get("next") is not None:
         tariff_list = (await http_client.get(tariff_list["next"])).json()
 
@@ -198,6 +199,7 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
         )
 
         ranking.append((overlap, tariff.is_tracker, not tariff.is_prepay, tariff.tariff_name))
+
     ranking = sorted(ranking, reverse=True)
 
     if ranking[0][0] < 1.0:
@@ -210,7 +212,7 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
 
 
 @router.post("/generate-import-tariffs", tags=["generate", "tariff"])
-async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http_client: HttpClientDep) -> TariffMetadata:
+async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, http_client: HttpClientDep) -> TariffMetadata:
     """
     Generate a set of import tariffs, initially from Octopus.
 
@@ -246,15 +248,15 @@ async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http
             f"Tariff {params.tariff_name} only available from {product_available_from}."
             + f"This is after your end timestamp of {params.end_ts}.",
         )
-    region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, conn=conn)).region_code.value
+    async with pool.acquire() as conn:
+        region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, conn=conn)).region_code.value
     region_key = (
         region_code
         if region_code in products["single_register_electricity_tariffs"]
         else next(iter(products["single_register_electricity_tariffs"].keys()))
     )
     regional_data = products["single_register_electricity_tariffs"][region_key]
-
-    tariff_code = get_with_fallback(regional_data, ["direct_debit_monthly", "prepayment"])["code"]
+    tariff_code = get_with_fallback(regional_data, ["varying", "direct_debit_monthly", "prepayment"])["code"]
 
     price_url = url + f"electricity-tariffs/{tariff_code}/standard-unit-rates/"
 
@@ -282,78 +284,76 @@ async def generate_import_tariffs(params: TariffRequest, conn: DatabaseDep, http
         price_df = price_df.drop(columns=["payment_method"])
     price_df["valid_from"] = pd.to_datetime(price_df["valid_from"], utc=True, format="ISO8601")
     price_df["valid_to"] = pd.to_datetime(price_df["valid_to"], utc=True, format="ISO8601")
-    price_df = price_df.set_index("valid_from").sort_index().resample(pd.Timedelta(hours=1)).max().ffill()
+    # If we only got one entry in the price dataframe (not unlikely for fixed tariffs), then
+    # we need to fill it out fully as the resampling won't work.
+    # We do the resampling first to make sure that our timestamps are aligned, and then
+    # add a whole new index of the relevant size.
+    # However, Pandas was super fussy about timestamps here (maybe 'UTC' != datetime.UTC? I'm flummoxed)
+    # so we have to go through a whole song and dance to fix it.
+    price_df = price_df.set_index("valid_from").sort_index().resample(pd.Timedelta(minutes=30)).max().ffill()
+    idx_start = min(price_df.index.min().tz_convert(params.start_ts.tzinfo), params.start_ts)
+    idx_end = max(price_df.index.max().tz_convert(params.start_ts.tzinfo), params.end_ts)
+
+    new_index = pd.DatetimeIndex(pd.date_range(idx_start, idx_end, freq=pd.Timedelta(minutes=30), inclusive="both"))
+    price_df = price_df.reindex(new_index).ffill().bfill()
 
     price_df = price_df[["value_exc_vat"]].rename(columns={"value_exc_vat": "price", "valid_from": "start_ts"})
     price_df["start_ts"] = price_df.index
     price_df["dataset_id"] = dataset_id
-
-    async with conn.transaction():
-        metadata = {
-            "dataset_id": dataset_id,
-            "site_id": params.site_id,
-            "created_at": datetime.datetime.now(datetime.UTC),
-            "provider": "octopus",
-            "product_name": params.tariff_name,
-            "tariff_name": tariff_code,
-            "valid_from": products.get("available_from"),
-            "valid_to": products.get("available_to") if products.get("available_to") != "null" else None,
-        }
-        # We insert the dataset ID into metadata, but we must wait to validate the
-        # actual data insert until the end
-        await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
-        await conn.execute(
-            """
-            INSERT INTO
-                tariffs.metadata (
-                    dataset_id,
-                    site_id,
-                    created_at,
-                    provider,
-                    product_name,
-                    tariff_name,
-                    valid_from,
-                    valid_to)
-            VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6,
-                    $7,
-                    $8)""",
-            metadata["dataset_id"],
-            metadata["site_id"],
-            metadata["created_at"],
-            metadata["provider"],
-            metadata["product_name"],
-            metadata["tariff_name"],
-            pd.to_datetime(metadata["valid_from"], utc=True, format="ISO8601"),
-            pd.to_datetime(metadata["valid_to"], utc=True, format="ISO8601"),
-        )
-
-        await conn.executemany(
-            """INSERT INTO
-            tariffs.electricity (
-                dataset_id,
-                timestamp,
-                unit_cost,
-                flat_cost
+    # Note that it doesn't matter that we've got "too  much" tariff data here, as we'll sort it out when we get it.
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            metadata = {
+                "dataset_id": dataset_id,
+                "site_id": params.site_id,
+                "created_at": datetime.datetime.now(datetime.UTC),
+                "provider": "octopus",
+                "product_name": params.tariff_name,
+                "tariff_name": tariff_code,
+                "valid_from": products.get("available_from"),
+                "valid_to": products.get("available_to") if products.get("available_to") != "null" else None,
+            }
+            # We insert the dataset ID into metadata, but we must wait to validate the
+            # actual data insert until the end
+            await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
+            await conn.execute(
+                """
+                INSERT INTO
+                    tariffs.metadata (
+                        dataset_id,
+                        site_id,
+                        created_at,
+                        provider,
+                        product_name,
+                        tariff_name,
+                        valid_from,
+                        valid_to)
+                VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8)""",
+                metadata["dataset_id"],
+                metadata["site_id"],
+                metadata["created_at"],
+                metadata["provider"],
+                metadata["product_name"],
+                metadata["tariff_name"],
+                pd.to_datetime(metadata["valid_from"], utc=True, format="ISO8601"),
+                pd.to_datetime(metadata["valid_to"], utc=True, format="ISO8601"),
             )
-            VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4)""",
-            zip(
-                price_df["dataset_id"],
-                price_df["start_ts"],
-                price_df["price"],
-                [None for _ in range(len(price_df.index))],
-                strict=True,
-            ),
-        )
+
+            await conn.copy_records_to_table(
+                table_name="electricity",
+                schema_name="tariffs",
+                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["price"], strict=True),
+                columns=["dataset_id", "timestamp", "unit_cost"],
+            )
+
     return TariffMetadata(**metadata)
 
 
@@ -395,13 +395,13 @@ async def get_import_tariffs(params: DatasetIDWithTime, conn: DatabaseDep) -> li
         params.end_ts,
     )
     df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
-    df.index = pd.to_datetime(df.index)
-    df = df.resample(pd.Timedelta(minutes=60)).max().ffill()
+    df.index = pd.to_datetime(df.index, utc=True)
+    df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
     # If we get 1970-01-01, that means someone didn't specify the timestamps.
     # In that case, we don't resample. But if they did, then pad out to the period of interest.
     if params.start_ts > datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC):
         df = df.reindex(
-            index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=60), inclusive="left"),
+            index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left"),
             method="nearest",
         )
     return [

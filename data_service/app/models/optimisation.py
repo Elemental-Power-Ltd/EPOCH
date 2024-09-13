@@ -2,12 +2,12 @@
 
 # ruff: noqa: D101
 import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 import pydantic
 
-from .core import site_id_field, site_id_t
+from .core import dataset_id_t, site_id_field, site_id_t
 
 
 class Objective(pydantic.BaseModel):
@@ -54,13 +54,13 @@ class OptimisationResult(pydantic.BaseModel):
     )
 
 
-class OptimiserEnum(Enum):
+class OptimiserEnum(StrEnum):
     GridSearch = "GridSearch"
     NSGA2 = "NSGA2"
     GeneticAlgorithm = "GeneticAlgorithm"
 
 
-class FileLocationEnum(str, Enum):
+class FileLocationEnum(StrEnum):
     local = "local"
     remote = "remote"
 
@@ -71,13 +71,15 @@ class SearchSpaceEntry(pydantic.BaseModel):
     step: float | int = pydantic.Field(examples=[10, 50], description="The steps to take when searching this variable.")
 
 
-class DataDuration(str, Enum):
+class DataDuration(StrEnum):
     year = "year"
 
 
 class RemoteMetaData(pydantic.BaseModel):
     loc: Literal[FileLocationEnum.remote] = pydantic.Field(
-        examples=["remote"], description="Where we are getting the data from, either a local file or remote DB."
+        default=FileLocationEnum.remote,
+        examples=["remote"],
+        description="Where we are getting the data from, either a local file or remote DB.",
     )
     site_id: site_id_t = site_id_field
     start_ts: pydantic.AwareDatetime = pydantic.Field(
@@ -88,7 +90,9 @@ class RemoteMetaData(pydantic.BaseModel):
 
 class LocalMetaData(pydantic.BaseModel):
     loc: Literal[FileLocationEnum.local] = pydantic.Field(
-        examples=["local"], description="Where we are getting the data from, either a local file or remote DB."
+        default=FileLocationEnum.local,
+        examples=["local"],
+        description="Where we are getting the data from, either a local file or remote DB.",
     )
     site_id: site_id_t = site_id_field
     path: pydantic.FilePath | str = pydantic.Field(
@@ -152,7 +156,7 @@ class TaskConfig(pydantic.BaseModel):
 
 
 class OptimisationTaskListEntry(pydantic.BaseModel):
-    task_id: pydantic.UUID4 | pydantic.UUID1
+    task_id: dataset_id_t
     site_id: site_id_t = site_id_field
     task_name: str | None
     result_ids: list[pydantic.UUID4]

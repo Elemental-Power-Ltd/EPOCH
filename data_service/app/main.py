@@ -14,12 +14,13 @@ from .routers import (
     air_source_heat_pump,
     carbon_intensity,
     client_data,
-    generate_all,
+    electricity_load,
     heating_load,
     import_tariffs,
     meter_data,
     optimisation,
     renewables,
+    site_manager,
     weather,
 )
 
@@ -44,7 +45,8 @@ app.include_router(carbon_intensity.router)
 app.include_router(optimisation.router)
 app.include_router(air_source_heat_pump.router)
 app.include_router(import_tariffs.router)
-app.include_router(generate_all.router)
+app.include_router(site_manager.router)
+app.include_router(electricity_load.router)
 
 
 @app.get("/")

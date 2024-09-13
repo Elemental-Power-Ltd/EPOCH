@@ -26,6 +26,7 @@ class Database:
 
     def __init__(self, dsn: str) -> None:
         self.dsn = dsn
+        self.pool: asyncpg.pool.Pool | None = None
 
     async def create_pool(self) -> None:
         """Create the PostgreSQL connection pool.
@@ -37,6 +38,7 @@ class Database:
         to a locally hosted version of Elemental DB if not.
         """
         self.pool = await asyncpg.create_pool(dsn=self.dsn)
+        assert self.pool is not None, "Could not create database pool"
 
 
 db = Database(os.environ.get("DATABASE_URL", "postgresql://python:elemental@localhost/elementaldb"))

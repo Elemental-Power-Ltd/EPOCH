@@ -2,24 +2,16 @@
 
 # ruff: noqa: D101
 import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 import pydantic
 from pydantic import Field
 
-from .core import (
-    dataset_id_field,
-    dataset_id_t,
-    epoch_date_field,
-    epoch_hour_of_year_field,
-    epoch_start_time_field,
-    site_id_field,
-    site_id_t,
-)
+from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
 
 
-class InterventionEnum(str, Enum):
+class InterventionEnum(StrEnum):
     Loft = "loft"
     DoubleGlazing = "double_glazing"
     Cladding = "cladding"
@@ -54,32 +46,36 @@ class HeatingLoadMetadata(pydantic.BaseModel):
         examples=["{'source_dataset': '...'}"],
         description="Parameters used to generate this dataset, for example the original dataset.",
     )
-    interventions: list[str] = Field(examples=["Loft"], default=[])
+    interventions: list[InterventionEnum] = Field(examples=["Loft"], default=[])
 
 
-class EpochHeatingEntry(pydantic.BaseModel):
-    Date: str = epoch_date_field
-    StartTime: str = epoch_start_time_field
-    HourOfYear: float = epoch_hour_of_year_field
+class EpochHeatingEntry(EpochEntry):
     HLoad1: float = pydantic.Field(examples=[0.123, 4.56], description="Heating demand in kWh for this time period.")
     DHWLoad1: float = pydantic.Field(
         examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
     )
+    HLoad2: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="Heating demand in kWh for this time period."
+    )
+    DHWLoad2: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
+    )
+    HLoad3: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="Heating demand in kWh for this time period."
+    )
+    DHWLoad3: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
+    )
+    HLoad4: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="Heating demand in kWh for this time period."
+    )
+    DHWLoad4: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
+    )
     AirTemp: float = pydantic.Field(examples=[16.7], description="Air temperature at this time in °C.")
 
 
-class HeatingLoadRequest(pydantic.BaseModel):
-    dataset_id: dataset_id_t = dataset_id_field
-    start_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-01-01T00:00:00Z"],
-        description="The earliest time (inclusive) to retrieve data for.",
-        default=datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC),
-    )
-    end_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-05-31T00:00:00Z"],
-        description="The latest time (exclusive) to retrieve data for.",
-        default_factory=lambda: datetime.datetime.now(datetime.UTC),
-    )
+class HeatingLoadRequest(DatasetIDWithTime):
     interventions: list[InterventionEnum] = Field(
         examples=[[InterventionEnum.Loft], []],
         default=[],

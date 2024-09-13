@@ -2,12 +2,12 @@
 
 # ruff: noqa: D101
 import datetime
-import enum
+from enum import StrEnum
 from typing import Self
 
 import pydantic
 
-from .core import dataset_id_field, epoch_date_field, epoch_hour_of_year_field, epoch_start_time_field, site_id_field, site_id_t
+from .core import EpochEntry, dataset_id_field, site_id_field, site_id_t
 
 
 class RenewablesRequest(pydantic.BaseModel):
@@ -54,14 +54,20 @@ class RenewablesMetadata(pydantic.BaseModel):
     parameters: pydantic.Json = pydantic.Field(description="The parameters we sent to the data source in generating this.")
 
 
-class EpochRenewablesEntry(pydantic.BaseModel):
-    Date: str = epoch_date_field
-    StartTime: str = epoch_start_time_field
-    HourOfYear: float = epoch_hour_of_year_field
+class EpochRenewablesEntry(EpochEntry):
     RGen1: float = pydantic.Field(examples=[0.123, 4.56], description="The renewables generation in kW / kWp for this array.")
+    RGen2: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="The renewables generation in kW / kWp for this array."
+    )
+    RGen3: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="The renewables generation in kW / kWp for this array."
+    )
+    RGen4: float | None = pydantic.Field(
+        default=None, examples=[0.123, 4.56], description="The renewables generation in kW / kWp for this array."
+    )
 
 
-class PvgisDataSourceEnum(str, enum.Enum):
+class PvgisDataSourceEnum(StrEnum):
     SARAH = "PVGIS-SARAH"
     NSRDB = "PVGIS-NSRDB"
     ERA5 = "PVGIS-ERA5"
@@ -69,16 +75,16 @@ class PvgisDataSourceEnum(str, enum.Enum):
     CMSAF = "PVGIS-CMSAF"
 
 
-class PvgisMountingSystemEnum(str, enum.Enum):
+class PvgisMountingSystemEnum(StrEnum):
     fixed = "fixed"
 
 
-class PvgisTypeEnum(str, enum.Enum):
+class PvgisTypeEnum(StrEnum):
     building_integrated = "building-integrated"
     freestanding = "free"
 
 
-class PvgisTechnologyEnum(str, enum.Enum):
+class PvgisTechnologyEnum(StrEnum):
     cryst_si = "c-Si"
     cis = "CIS"
     CdTe = "CdTe"

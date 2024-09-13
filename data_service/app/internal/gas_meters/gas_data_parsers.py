@@ -144,7 +144,7 @@ def parse_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame:
         except ValueError:
             continue
     else:
-        raise ValueError(f"Could not parse {consumption_df['start_ts'].to_numpy()[0]} with {DATE_FORMATS}")
+        raise ValueError(f"Could not parse {consumption_df["start_ts"].to_numpy()[0]} with {DATE_FORMATS}")
     consumption_df = consumption_df.set_index("start_ts")
     return HHDataFrame(consumption_df[["end_ts", "consumption"]])
 
@@ -504,7 +504,7 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame |
             parsed_df = parser(fname)
             consumption_mask = ~pd.isna(parsed_df.consumption)
             return parsed_df[consumption_mask], parser.__name__  # type: ignore
-        except ValueError:  # noqa: PERF203
+        except ValueError:
             continue
         except KeyError:
             continue

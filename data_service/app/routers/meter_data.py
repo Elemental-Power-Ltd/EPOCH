@@ -5,26 +5,20 @@ These functions provider wrappers to get it in more sensible formats.
 """
 
 import datetime
-import logging
 import uuid
 
 import numpy as np
-import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from ..dependencies import DatabaseDep, HttpClientDep, VaeDep
-from ..internal.elec_meters import load_all_scalers, monthly_to_hh_eload
+from ..dependencies import DatabaseDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
-from ..internal.utils import hour_of_year
-from ..internal.utils.bank_holidays import get_bank_holidays
 from ..models.core import (
     DatasetID,
-    DatasetIDWithTime,
     FuelEnum,
     site_id_t,
 )
-from ..models.meter_data import EpochElectricityEntry, GasDatasetEntry, MeterEntries, MeterMetadata
+from ..models.meter_data import GasDatasetEntry, MeterEntries, MeterMetadata
 
 router = APIRouter()
 
@@ -68,39 +62,41 @@ async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> Mete
                     site_id,
                     fuel_type,
                     reading_type,
-                    filename)
+                    filename,
+                    is_synthesised)
             VALUES (
                     $1,
                     $2,
                     $3,
                     $4,
                     $5,
-                    $6)""",
+                    $6,
+                    $7)""",
             entries.metadata.dataset_id,
             entries.metadata.created_at,
             entries.metadata.site_id,
             entries.metadata.fuel_type,
             entries.metadata.reading_type,
             entries.metadata.filename,
+            entries.metadata.is_synthesised,
         )
 
-        await conn.executemany(
-            f"""INSERT INTO
-                    client_meters.{table_name} (
-                        dataset_id,
-                        start_ts,
-                        end_ts,
-                        consumption_kwh
-                    )
-                VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4)""",
-            [(entries.metadata.dataset_id, item.start_ts, item.end_ts, item.consumption) for item in entries.data],
+        await conn.copy_records_to_table(
+            table_name=table_name,
+            schema_name="client_meters",
+            records=[(entries.metadata.dataset_id, item.start_ts, item.end_ts, item.consumption) for item in entries.data],
+            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
-    return entries.metadata
+    return MeterMetadata(
+        dataset_id=entries.metadata.dataset_id,
+        created_at=entries.metadata.created_at,
+        site_id=entries.metadata.site_id,
+        fuel_type=entries.metadata.fuel_type,
+        reading_type=entries.metadata.reading_type,
+        filename=entries.metadata.filename,
+        is_synthesised=entries.metadata.is_synthesised,
+    )
 
 
 @router.post("/upload-meter-file", tags=["db", "add", "meter"])
@@ -168,6 +164,7 @@ async def upload_meter_file(
         "fuel_type": fuel_type,
         "reading_type": reading_type,
         "filename": file.filename,
+        "is_synthesised": False,
     }
 
     if fuel_type == "gas":
@@ -179,7 +176,8 @@ async def upload_meter_file(
             400,
             f"Fuel type {fuel_type} is not supported. Please select from ('gas', 'elec')",
         )
-
+    df["dataset_id"] = metadata["dataset_id"]
+    df["start_ts"] = df.index
     async with conn.transaction():
         await conn.execute(
             """
@@ -190,7 +188,8 @@ async def upload_meter_file(
                     site_id,
                     fuel_type,
                     reading_type,
-                    filename)
+                    filename,
+                    is_synthesised)
             VALUES (
                     $1,
                     $2,
@@ -204,28 +203,14 @@ async def upload_meter_file(
             metadata["fuel_type"],
             metadata["reading_type"],
             metadata["filename"],
+            metadata["is_synthesised"],
         )
 
-        await conn.executemany(
-            f"""INSERT INTO
-                    client_meters.{table_name} (
-                        dataset_id,
-                        start_ts,
-                        end_ts,
-                        consumption_kwh
-                    )
-                VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4)""",
-            zip(
-                [metadata["dataset_id"] for _ in df.index],
-                df.index,
-                df.end_ts,
-                df.consumption,
-                strict=True,
-            ),
+        await conn.copy_records_to_table(
+            table_name=table_name,
+            schema_name="client_meters",
+            records=df.itertuples(index=False),
+            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
     return {"rows_uploaded": len(df), "reading_type": reading_type}
@@ -271,106 +256,3 @@ async def get_meter_data(dataset_id: DatasetID, conn: DatabaseDep) -> list[GasDa
     if not res:
         raise HTTPException(400, f"Got an empty meter dataset for {dataset_id}.")
     return [GasDatasetEntry(**item) for item in res]
-
-
-@router.post("/get-electricity-load", tags=["get", "electricity"])
-async def get_electricity_load(
-    params: DatasetIDWithTime, conn: DatabaseDep, http_client: HttpClientDep, elec_vae: VaeDep
-) -> list[EpochElectricityEntry]:
-    """
-    Get a (possibly synthesised) half hourly electricity load dataset.
-
-    Specify a dataset ID corresponding to a set of half hourly or monthly meter readings,
-    and the timestamps you're interested in.
-    Currently, if the dataset ID you specify is monthly, this method will fail.
-    However, it will provide synthesised data in future (maybe via a `generate-` call?)
-
-    Parameters
-    ----------
-    *params*
-        An electricity meter dataset, and start / end timestamps corresponding to the time period of interest.
-
-    Returns
-    -------
-    epoch_electricity_entries
-        A list of EPOCH formatted JSON entries including consumption in kWh
-
-    Raises
-    ------
-    *HTTPException(400)*
-        If the requested meter dataset is half hourly.
-    """
-    if (params.end_ts - params.start_ts) > datetime.timedelta(days=366):
-        raise HTTPException(
-            400,
-            f"Timestamps {params.start_ts.isoformat()} and {params.end_ts.isoformat()}"
-            + "are more than 1 year apart. This would result in duplicate readings.",
-        )
-
-    readings_and_fuel = await conn.fetchrow(
-        """
-        SELECT
-            reading_type,
-            fuel_type
-        FROM client_meters.metadata AS m
-        WHERE dataset_id = $1
-        LIMIT 1""",
-        params.dataset_id,
-    )
-    if readings_and_fuel is None:
-        raise HTTPException(400, f"Could not find a reading or fuel type for {params.dataset_id}")
-    reading_type, fuel_type = readings_and_fuel
-
-    if fuel_type != "elec":
-        raise HTTPException(400, f"Requested dataset {params.dataset_id} was for {fuel_type}, not 'elec' ")
-
-    res = await conn.fetch(
-        """
-        SELECT
-            start_ts,
-            end_ts,
-            consumption_kwh AS consumption
-        FROM client_meters.electricity_meters
-        WHERE dataset_id = $1
-        AND $2 <= start_ts
-        AND end_ts <= $3
-        ORDER BY start_ts ASC""",
-        params.dataset_id,
-        params.start_ts,
-        params.end_ts,
-    )
-
-    elec_df = pd.DataFrame.from_records(
-        res, columns=["start_ts", "end_ts", "consumption"], coerce_float=["consumption"], index="start_ts"
-    )
-    elec_df["start_ts"] = elec_df.index
-    if elec_df.empty:
-        raise HTTPException(400, f"Got an empty dataset for {params.dataset_id}.")
-
-    if reading_type == "halfhourly":
-        # Group these into hourly data
-        elec_df = elec_df[["consumption"]].resample(pd.Timedelta(minutes=60)).sum().interpolate(method="time")
-    else:
-        logger = logging.getLogger("default")
-        logger.info("Resampling from monthly to HH using a VAE for {params.dataset_id}.")
-        new_elec_df = monthly_to_hh_eload(
-            elec_df=MonthlyDataFrame(elec_df),
-            model=elec_vae,
-            public_holidays=frozenset(await get_bank_holidays(http_client=http_client)),
-            scalers=load_all_scalers(),
-        )
-        mask = np.logical_and(params.start_ts <= new_elec_df.start_ts, new_elec_df.end_ts <= params.end_ts)
-        elec_df = new_elec_df.loc[mask, ["consumption"]].resample(pd.Timedelta(minutes=60)).sum().ffill()
-    assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
-    # Now restructure for EPOCH
-    elec_df["Date"] = elec_df.index.strftime("%d-%b")
-    elec_df["StartTime"] = elec_df.index.strftime("%H:%M")
-    elec_df["HourOfYear"] = elec_df.index.map(hour_of_year)
-    elec_df = elec_df.rename(columns={"consumption": "FixLoad1"})
-
-    return [
-        EpochElectricityEntry(
-            Date=item["Date"], StartTime=item["StartTime"], HourOfYear=item["HourOfYear"], FixLoad1=item["FixLoad1"]
-        )
-        for item in elec_df.to_dict(orient="records")
-    ]

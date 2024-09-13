@@ -24,7 +24,10 @@ def apply_fabric_interventions(bait_coefs: BaitAndModelCoefs, interventions: lis
     """
     Apply some fabric interventions to the BAIT and model coefficients to mimic energy savings.
 
-    This is currently a filthy hack -- be wary!
+    This is currently a filthy hack -- be wary! It just drops the heating kWh per HDD by
+    a flat savings percentage, and for some interventions will also affect the BAIT windchill
+    coefficient.
+    You can get the costs of each intervention from `/get-intervention-costs`.
 
     Parameters
     ----------
@@ -32,7 +35,8 @@ def apply_fabric_interventions(bait_coefs: BaitAndModelCoefs, interventions: lis
         Fitted BAIT and heating model coefficients, calculated from gas meter data.
     interventions
         Some building fabric interventions you would like to do.
-        Currently assumes that these are multiplicative (e.g. two interventions with 10% saving lead to 19% total saving)
+        Currently assumes that these are multiplicative
+        (e.g. two interventions with 10% saving lead to 19% total saving)
 
     Returns
     -------
