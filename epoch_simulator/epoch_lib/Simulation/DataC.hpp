@@ -34,10 +34,7 @@ public:
         case 3: // Carbon minimisation mode
             // placholder for lookahead grid carbon mode
         default: // Target Power Mode (initially Max Load)							
-            // Replace with vector arithmetic
-            for(int t = 1; t <= TScount; t++) {
-                TargetLoad_e[t] = DataCmaxLoad_e;
-            }
+            TargetLoad_e.setConstant(DataCmaxLoad_e);
         }
     }
 

@@ -26,14 +26,9 @@ public:
 		mHistSoC_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),      // Resulting State of Charge per timestep
 		mHistCharg_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Charge kWh per timestep
 		mHistDisch_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Discharge kWh per timestep
-		mHistRTL_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),     // Round trip loss kWh per timestep
-		mHistAux_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))     // Auxiliary Load kWh per timestep
-
+		mHistRTL_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))     // Round trip loss kWh per timestep
 	{
-		// Auxiliary same every timestep: is there a vector function for this?
-		for (int t = 1; t <= taskData.calculate_timesteps(); t++) {
-			mHistAux_e[t] = mAuxLoad_e;
-		}
+		mHistAux_e = Eigen::VectorXf::Constant(taskData.calculate_timesteps(), mAuxLoad_e);
 	}
 
 	float getAvailableCharge() const {
