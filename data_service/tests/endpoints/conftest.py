@@ -12,11 +12,12 @@ Otherwise, leave it in the test file.
 # ruff: noqa: D101, D102, D103
 from collections.abc import AsyncGenerator
 
+import asyncpg
 import pytest_asyncio
 import testing.postgresql  # type: ignore
 from httpx import ASGITransport, AsyncClient
 
-from app.dependencies import Database, DBConnection, get_db_conn, get_http_client
+from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
 from app.main import app
 
 db_factory = testing.postgresql.PostgresqlFactory()
@@ -43,6 +44,16 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         await conn.execute(fi.read())
     with open("./elementaldb_client_info.sql") as fi:
         await conn.execute(fi.read())
+
+    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
+        """
+        Override the database creation with our database from this file.
+
+        This is nested to use the `db` object from this functional scope,
+        and not the global `db` object we use elsewhere.
+        """
+        assert db.pool is not None, "Database pool not yet created."
+        yield db.pool
 
     async def override_get_db_conn() -> AsyncGenerator[DBConnection, None]:
         """
@@ -71,6 +82,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         async with AsyncClient(headers=[("Connection", "close")], timeout=10.0) as http_client:
             yield http_client
 
+    app.dependency_overrides[get_db_pool] = override_get_db_pool
     app.dependency_overrides[get_db_conn] = override_get_db_conn
     app.dependency_overrides[get_http_client] = override_get_http_client
 
@@ -80,3 +92,5 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     ) as client:
         yield client
     del app.dependency_overrides[get_db_conn]
+    del app.dependency_overrides[get_db_pool]
+    del app.dependency_overrides[get_http_client]

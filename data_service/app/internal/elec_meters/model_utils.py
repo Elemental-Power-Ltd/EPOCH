@@ -1,13 +1,13 @@
 """Utility functions for loading additional parts for the ML models."""
 
-import enum
 import pathlib
+from enum import StrEnum
 
 import joblib
 from sklearn.preprocessing import StandardScaler  # type: ignore
 
 
-class ScalerTypeEnum(str, enum.Enum):
+class ScalerTypeEnum(StrEnum):
     """Different types of pre-processing scalers for the VAE."""
 
     Data = "data"

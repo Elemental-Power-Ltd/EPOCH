@@ -6,8 +6,8 @@ import pydantic
 from app.models import EpochHeatingEntry, EpochRenewablesEntry
 from app.models.air_source_heat_pump import ASHPCOPResponse
 from app.models.carbon_intensity import EpochCarbonEntry
+from app.models.electricity_load import EpochElectricityEntry
 from app.models.import_tariffs import EpochTariffEntry
-from app.models.meter_data import EpochElectricityEntry
 
 
 class SiteDataEntries(pydantic.BaseModel):

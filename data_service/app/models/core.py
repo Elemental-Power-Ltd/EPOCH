@@ -7,7 +7,8 @@ centralise it in here.
 
 # ruff: noqa: D101
 import datetime
-from enum import Enum
+import uuid
+from enum import StrEnum
 from typing import Annotated, Self
 
 import pydantic
@@ -33,7 +34,9 @@ client_id_field = Field(
 )
 
 dataset_id_field = Field(
-    examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of a dataset."
+    examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"],
+    description="Unique ID (generally a UUIDv4) of a dataset.",
+    default_factory=uuid.uuid4,
 )
 
 epoch_start_time_field = Field(
@@ -57,7 +60,7 @@ epoch_date_field = Field(
 )
 
 
-class FuelEnum(str, Enum):
+class FuelEnum(StrEnum):
     gas = "gas"
     elec = "elec"
     oil = "oil"
@@ -81,6 +84,12 @@ class ClientID(BaseModel):
 
 class SiteID(BaseModel):
     site_id: site_id_t = site_id_field
+
+
+class EpochEntry(pydantic.BaseModel):
+    Date: str = epoch_date_field
+    StartTime: str = epoch_start_time_field
+    HourOfYear: float = epoch_hour_of_year_field
 
 
 class SiteIDWithTime(BaseModel):
@@ -123,6 +132,37 @@ class DatasetIDWithTime(BaseModel):
         return self
 
 
+class MultipleDatasetIDWithTime(BaseModel):
+    dataset_id: list[dataset_id_t] = pydantic.Field(examples=[uuid.uuid4(), [uuid.uuid4() for _ in range(4)]])
+    start_ts: pydantic.AwareDatetime = Field(
+        examples=["2024-01-01T00:00:00Z"],
+        description="The earliest time (inclusive) to retrieve data for.",
+        default=datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC),
+    )
+    end_ts: pydantic.AwareDatetime = Field(
+        examples=["2024-05-31T00:00:00Z"],
+        description="The latest time (exclusive) to retrieve data for.",
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
+    )
+
+    @pydantic.field_validator("dataset_id", mode="before")
+    @classmethod
+    def check_dataset_list(cls, v: dataset_id_t | list[dataset_id_t]) -> list[dataset_id_t]:
+        """Check if we've got a list of datasets, and if we got just one, make it a list."""
+        if not isinstance(v, list):
+            v = [v]
+        assert len(v) <= 4, "Can only request up to 4 datasets."
+        return v
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self
+
+
 class ClientIdNamePair(pydantic.BaseModel):
     """A client_id, name pair."""
 
@@ -130,9 +170,10 @@ class ClientIdNamePair(pydantic.BaseModel):
     name: str = Field(examples=["Demonstration", "Demonstration"], description="Human readable client name")
 
 
-class DatasetTypeEnum(str, Enum):
+class DatasetTypeEnum(StrEnum):
     GasMeterData = "GasMeterData"
     ElectricityMeterData = "ElectricityMeterData"
+    ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"
     RenewablesGeneration = "RenewablesGeneration"
     Weather = "Weather"
     CarbonIntensity = "CarbonIntensity"

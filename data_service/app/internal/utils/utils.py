@@ -42,6 +42,8 @@ def hour_of_year(ts: pd.Timestamp) -> int:
     YYYY-01-01 00:00 is hour 1 (to mimic Excel numbering).
     Watch out for varying timezones and DST as you go through the year.
 
+    Note that this will drop partial times, e.g. hour_of_year(... 00:30) == 1
+
     Parameters
     ----------
     ts
@@ -212,3 +214,23 @@ def split_into_sessions[T: (float, int, datetime.datetime, datetime.date, pd.Tim
     # Make sure we get the last one as well!
     sessions.append(curr_session)
     return sessions
+
+
+def add_epoch_fields(non_epoch_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add EPOCH date and time columns to a given dataframe.
+
+    EPOCH currently needs the columns 'Date', 'StartTime' and 'HourOfYear',
+    although it doesn't read all of them.
+    This may change in future, so the additions are grouped together here.
+
+    """
+    assert isinstance(
+        non_epoch_df.index, pd.DatetimeIndex
+    ), f"Dataframes for EPOCH must have a DateTimeIndex but got {type(non_epoch_df.index)}"
+
+    non_epoch_df["Date"] = non_epoch_df.index.strftime("%d-%b")
+    non_epoch_df["StartTime"] = non_epoch_df.index.strftime("%H:%M")
+    non_epoch_df["HourOfYear"] = non_epoch_df.index.map(hour_of_year)
+
+    return non_epoch_df
