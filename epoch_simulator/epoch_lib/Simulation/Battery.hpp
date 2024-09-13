@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "../Definitions.hpp"
+#include "TaskData.hpp"
 
 // Battery is only used within an ESS or other component with electricity storage
 class Battery {
