@@ -8,29 +8,30 @@
 #include "../Definitions.hpp"
 #include "ASHPperf.hpp"
 
+
+
+
+
+
 // ASHPhot is only used within an DataC or alternative heat waste object
 class ASHPhot_cl {
 
 public:
-	ASHPhot_cl(const HistoricalData& historicalData, const TaskData& taskData, 
-							const ASHPData_st& ASHPData, ASHPperf_cl extASHPperf) :
+	ASHPhot_cl(const HistoricalData& historicalData, const TaskData& taskData) :
 		// Initialise Persistent Values
-		ptrASHPperf(&extASHPperf),
+		mASHPperf(taskData),
 		TScount(taskData.calculate_timesteps()),
-		PowerScalar(ASHPData.PowerScalar),
-		HotTemp(ASHPData.HotTemp),
+		PowerScalar(taskData.timestep_hours),
+		HotTemp(taskData.ASHP_HotTemp),
 		AmbientC(historicalData.airtemp_data),	// Ambient Temperature
 
 		// Initilaise results data vectors with all values to zero
-		Load_e(Eigen::VectorXf::Zero(ASHPData.TScount)),	// ASHP electrical load
-		Heat_h(Eigen::VectorXf::Zero(ASHPData.TScount)),	// ASHP heat output
-		FreeHeat_h(Eigen::VectorXf::Zero(ASHPData.TScount)),	// ASHP heat from ambient
-		UsedHotHeat_h(Eigen::VectorXf::Zero(ASHPData.TScount))	// ASHP heat from Hotroom
-	{
-		// Persistent pointer to ASHP performance lookup tables object
-		//ptrASHPperf = &extASHPperf;
-		
-		ASHPmaxAmb.Heat_h = 0;	// For ptrASHPperf->Lookup results
+		Load_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
+		Heat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat output
+		FreeHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat from ambient
+		UsedHotHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))	// ASHP heat from Hotroom
+	{		
+		ASHPmaxAmb.Heat_h = 0;	// For mASHPperf->Lookup results
 		ASHPmaxAmb.Load_e = 0;
 		ASHPmaxHot.Heat_h = 0;
 		ASHPmaxHot.Load_e = 0;
@@ -38,13 +39,13 @@ public:
 
 	const float MaxElec() {
 		// Lookup max possible ASHP electrical load
-		return ptrASHPperf->MaxElecLoad();
+		return mASHPperf.MaxElecLoad();
 	}
 
 	void AllCalcs(const year_TS& TargetHeat_h, const year_TS& AvailHotHeat_h) {
 		for(int t = 1; t <= TScount; t++) {
-			ptrASHPperf->Lookup(AmbientC[t], ASHPmaxAmb);	// 2nd Arg is return values struct
-			ptrASHPperf->Lookup(HotTemp, ASHPmaxHot);		// 2nd Arg is return values struct
+			mASHPperf.Lookup(AmbientC[t], ASHPmaxAmb);	// 2nd Arg is return values struct
+			mASHPperf.Lookup(HotTemp, ASHPmaxHot);		// 2nd Arg is return values struct
 			
 			// If TargetHeat < ASHPmax = lower of Hotroom & Ambient+CoE (Conservation of Energy value)
 			ASHPmax_h = std::min((ASHPmaxAmb.Heat_h + AvailHotHeat_h[t]), ASHPmaxHot.Heat_h);
@@ -76,8 +77,8 @@ public:
 		}
 		else {
 			// Calculate the best the ASHP can do to meet target heat
-			ptrASHPperf->Lookup(AmbientC[t], ASHPmaxAmb);	// 2nd Arg is return values struct
-			ptrASHPperf->Lookup(HotTemp, ASHPmaxHot);		// 2nd Arg is return values struct
+			mASHPperf.Lookup(AmbientC[t], ASHPmaxAmb);	// 2nd Arg is return values struct
+			mASHPperf.Lookup(HotTemp, ASHPmaxHot);		// 2nd Arg is return values struct
 			// if TargetHeat < ASHPmax = lower of Hotroom & Ambient+CoE (Conservation of Energy value)
 			ASHPmax_h = std::min((ASHPmaxAmb.Heat_h + AvailHotHeat_h), ASHPmaxHot.Heat_h);
 			if(TargetHeat_h <= ASHPmax_h) {
@@ -109,7 +110,7 @@ public:
 	year_TS UsedHotHeat_h;
 
 private:
-	ASHPperf_cl* ptrASHPperf;
+	ASHPperf_cl mASHPperf;
 	
 	const int TScount;
 	const float PowerScalar;

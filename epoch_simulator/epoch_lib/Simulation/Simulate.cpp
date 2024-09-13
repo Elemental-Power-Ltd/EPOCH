@@ -54,9 +54,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	BasicESS ESSmain(taskData);
 
 
-	ASHPperf_cl ASHPperf1(taskData);
-
-	ASHPhot_cl ASHP1(historicalData, taskData, ASHPData1, ASHPperf1);	// Use pointer to ASHPperf1
+	ASHPhot_cl ASHP1(historicalData, taskData);
 
 	DataC_ASHP_cl DataC(historicalData, taskData, ASHP1);
 

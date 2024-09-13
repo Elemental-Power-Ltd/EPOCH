@@ -2,6 +2,13 @@
 
 #include "TaskData.hpp"
 
+// TODO
+// guess at what this struct needs to contain
+struct ASHP_HE_st {
+	float Heat_h;
+	float Load_e;
+};
+
 class ASHPperf_cl
 {
 public:
@@ -23,6 +30,7 @@ public:
 		ASHPoutputs.Heat_h = mMaxHeat_h;
 		ASHPoutputs.Load_e = mMaxLoad_e;
 	}
+
 
 private:
 	// Lookup arrays: Index Input temp, output max Heat & max electricity
