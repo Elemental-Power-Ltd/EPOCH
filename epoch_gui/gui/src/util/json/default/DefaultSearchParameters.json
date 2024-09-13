@@ -11,7 +11,7 @@
     "ASHP_RadTemp": {
       "min": 60.0, "max": 70.0, "step": 10.0
     },
-    "CAPEX_limit": 500.0,
+    "CAPEX_limit": 1000.0,
     "ESS_capacity": {
       "min": 800.0, "max": 800.0, "step": 0.0
     },
