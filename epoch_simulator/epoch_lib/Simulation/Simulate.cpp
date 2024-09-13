@@ -50,20 +50,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		// SLB hot water cyclinder
 	// HotWcylA_cl HotWaterCyl(historicalData, taskData);
 
-	// BattData & ESSBattery better inside the ESS class/object
-	BattData_st BattData;
-	BattData.TScount = taskData.calculate_timesteps();
-	BattData.PowerScalar = taskData.timestep_hours;
-	BattData.Charge_power = taskData.ESS_charge_power;
-	BattData.Discharge_power = taskData.ESS_discharge_power;
-	BattData.Capacity = taskData.ESS_capacity;
-	BattData.StartSoC_ratio = taskData.ESS_start_SoC;
-		// RECODE: RTE_Ratio = taskData.ESS_RTE_ratio;
-	BattData.RTE_ratio = 0.86f;
-		// RECODE: Aux_Power = taskData.ESS_AuxPower;
-	BattData.Aux_power = taskData.ESS_capacity / 1200;
-	
-	Battery_cl ESSbattery(BattData);
+	Battery_cl ESSbattery(taskData);
 	
 	// init ESS object (0= None, 1=basic, 2=hybrid)
 	ESSbasic_cl ESSmain(taskData, ESSbattery);

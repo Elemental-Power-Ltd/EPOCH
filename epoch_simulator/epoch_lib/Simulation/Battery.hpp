@@ -10,23 +10,27 @@
 class Battery_cl {
 
 public:
-	Battery_cl(const BattData_st BattData) :
-		Capacity_e(BattData.Capacity),
-		PreSoC_e(BattData.StartSoC_ratio* BattData.Capacity), // Init State of Charge in kWhs
-		RTLrate(1.0f - BattData.RTE_ratio), // loss rate easier in calcs
-		ChargMax_e(BattData.Charge_power * BattData.PowerScalar), // kWh per timestep
-		DischMax_e(BattData.Discharge_power * BattData.PowerScalar), // UkWh per timestep
-		AuxLoad_e(BattData.Aux_power * BattData.PowerScalar), // kWh per timestep
+	Battery_cl(const TaskData& taskData) :
+		Capacity_e(taskData.ESS_capacity),
+		PreSoC_e(taskData.ESS_start_SoC * taskData.ESS_capacity), // Init State of Charge in kWhs
+		// TODO - reintroduce RTE to TaskData
+		RTLrate(1.0f - 0.86f), // loss rate easier in calcs
+
+		// timestep_hours can be considered a power scalar per timestep
+		ChargMax_e(taskData.ESS_charge_power * taskData.timestep_hours), // kWh per timestep
+		DischMax_e(taskData.ESS_discharge_power * taskData.timestep_hours), // UkWh per timestep
+		AuxLoad_e(taskData.ESS_capacity / 1200 * taskData.timestep_hours), // kWh per timestep
 
 		// Initilaise results data vectors with all values to zero
-		HistSoC_e(Eigen::VectorXf::Zero(BattData.TScount)),      // Resulting State of Charge per timestep
-		HistCharg_e(Eigen::VectorXf::Zero(BattData.TScount)),   // Charge kWh per timestep
-		HistDisch_e(Eigen::VectorXf::Zero(BattData.TScount)),   // Discharge kWh per timestep
-		HistRTL_e(Eigen::VectorXf::Zero(BattData.TScount)),     // Round trip loss kWh per timestep
-		HistAux_e(Eigen::VectorXf::Zero(BattData.TScount))     // Auxiliary Load kWh per timestep
+		HistSoC_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),      // Resulting State of Charge per timestep
+		HistCharg_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Charge kWh per timestep
+		HistDisch_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Discharge kWh per timestep
+		HistRTL_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),     // Round trip loss kWh per timestep
+		HistAux_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))     // Auxiliary Load kWh per timestep
+
 	{
 		// Auxiliary same every timestep: is there a vector function for this?
-		for (int t = 1; t <= BattData.TScount; t++) {
+		for (int t = 1; t <= taskData.calculate_timesteps(); t++) {
 			HistAux_e[t] = AuxLoad_e;
 		}
 	}
