@@ -11,8 +11,6 @@ import {getStatus, submitOptimisationJob} from "../endpoints";
 import {useEpochStore} from "../State/state";
 import TaskConfigForm from "../Components/TaskConfig/TaskConfigForm";
 
-import {v4 as uuidv4} from 'uuid';
-
 function RunContainer() {
 
     const state = useEpochStore((state) => state.run);
@@ -21,7 +19,6 @@ function RunContainer() {
 
         const payload = {
             task_name: state.taskConfig.task_name,
-            task_id: uuidv4(),
             optimiser: {
                 // name: state.taskConfig.optimiser,
                 name: "NSGA2",

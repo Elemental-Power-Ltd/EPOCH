@@ -10,7 +10,6 @@ export interface TaskObjectives {
 
 export interface TaskConfig {
     task_name: string;
-    task_id: string;
     optimiser: "GridSearch" | "GeneticAlgorithm";
     objectives: TaskObjectives;
     site_id: string;
