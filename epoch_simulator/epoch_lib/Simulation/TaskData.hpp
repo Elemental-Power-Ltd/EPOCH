@@ -3,8 +3,13 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <Eigen/Core>
 
 #include <spdlog/spdlog.h>
+
+using year_TS = Eigen::VectorXf;
+
+class FullSimulationResult;
 
 class TaskData {
 
@@ -19,18 +24,18 @@ public:
         int ESS_charge_mode_val = 1, int ESS_discharge_mode_val = 1,
         float Export_kWh_price_val = 5.0f,
         float time_budget_min_val = 1.0f, int target_max_concurrency_val = 44,
-        float CAPEX_limit_val = 500.0f, float OPEX_limit_val = 20.0f, int paramIndex_val = 0)
-        : years(years_val), days(days_val), hours(hours_val), timestep_hours(timestep_hours_val), timewindow(timewindow_val), 
+        float CAPEX_limit_val = 500.0f, float OPEX_limit_val = 20.0f, int paramIndex_val = 0, float cylinder_vol = 2500.0f)
+        : years(years_val), days(days_val), hours(hours_val), timestep_hours(timestep_hours_val), timewindow(timewindow_val),
         Fixed_load1_scalar(Fixed_load1_scalar_val), Fixed_load2_scalar(Fixed_load2_scalar_val), Flex_load_max(Flex_load_max_val), Mop_load_max(Mop_load_max_val),
         ScalarRG1(ScalarRG1_val), ScalarRG2(ScalarRG2_val), ScalarRG3(ScalarRG3_val), ScalarRG4(ScalarRG4_val), ScalarHYield(ScalarHYield_val),
         s7_EV_CP_number(s7_EV_CP_number_val), f22_EV_CP_number(f22_EV_CP_number_val), r50_EV_CP_number(r50_EV_CP_number_val), u150_EV_CP_number(u150_EV_CP_number_val), EV_flex(EV_flex_val),
         ScalarHL1(ScalarHL1_val), ASHP_HPower(ASHP_HPower_val), ASHP_HSource(ASHP_HSource_val), ASHP_RadTemp(ASHP_RadTemp_val), ASHP_HotTemp(ASHP_HotTemp_val),
-        GridImport(GridImport_val), GridExport(GridExport_val), Import_headroom(Import_headroom_val), Export_headroom(Export_headroom_val),Min_power_factor(Min_power_factor_val),
+        GridImport(GridImport_val), GridExport(GridExport_val), Import_headroom(Import_headroom_val), Export_headroom(Export_headroom_val), Min_power_factor(Min_power_factor_val),
         ESS_charge_power(ESS_charge_power_val), ESS_discharge_power(ESS_discharge_power_val), ESS_capacity(ESS_capacity_val), ESS_start_SoC(ESS_start_SoC_val),
         ESS_charge_mode(ESS_charge_mode_val), ESS_discharge_mode(ESS_discharge_mode_val),
         Export_kWh_price(Export_kWh_price_val),
         time_budget_min(time_budget_min_val), target_max_concurrency(target_max_concurrency_val),
-        CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val),
+        CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val), cylinder_vol(cylinder_vol),
         // initialize unordered maps to allow setting of member variables using (string) dictionary keys
         param_map_float({ {"years",&years}, { "days",&days }, { "hours",&hours }, { "timestep_hours",&timestep_hours }, { "timewindow",&timewindow },
             { "Fixed_load1_scalar",&Fixed_load1_scalar }, { "Fixed_load2_scalar",&Fixed_load2_scalar }, { "Flex_load_max",&Flex_load_max }, { "Mop_load_max",&Mop_load_max },
@@ -39,11 +44,11 @@ public:
             { "ScalarHL1",&ScalarHL1 }, { "ASHP_HPower", &ASHP_HPower }, { "ASHP_RadTemp", &ASHP_RadTemp }, { "ASHP_HotTemp", &ASHP_HotTemp },
             { "GridImport",&GridImport }, { "GridExport",&GridExport }, { "Import_headroom",&Import_headroom }, { "Export_headroom",&Export_headroom }, {"Min_power_factor",&Min_power_factor},
             { "ESS_charge_power",&ESS_charge_power }, { "ESS_discharge_power",&ESS_discharge_power }, {"ESS_capacity",&ESS_capacity}, {"ESS_start_SoC",&ESS_start_SoC},
-            { "Export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit }}),
-        param_map_int({{ "s7_EV_CP_number",&s7_EV_CP_number }, { "f22_EV_CP_number",&f22_EV_CP_number }, { "r50_EV_CP_number",&r50_EV_CP_number }, { "u150_EV_CP_number",&u150_EV_CP_number},
+            { "Export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit } }),
+        param_map_int({ { "s7_EV_CP_number",&s7_EV_CP_number }, { "f22_EV_CP_number",&f22_EV_CP_number }, { "r50_EV_CP_number",&r50_EV_CP_number }, { "u150_EV_CP_number",&u150_EV_CP_number},
             { "ASHP_HSource", &ASHP_HSource },
-            {"ESS_charge_mode",&ESS_charge_mode}, {"ESS_discharge_mode",&ESS_discharge_mode}, {"target_max_concurrency",&target_max_concurrency }})
-        {}
+            {"ESS_charge_mode",&ESS_charge_mode}, {"ESS_discharge_mode",&ESS_discharge_mode}, {"target_max_concurrency",&target_max_concurrency } })
+    {}
     
     int calculate_timesteps() const {
         // number of hours is a float in case we need sub-hourly timewindows
@@ -129,6 +134,89 @@ public:
     int target_max_concurrency;
     float CAPEX_limit;
     float OPEX_limit;
+    float cylinder_vol;
+    year_TS Elec_e;
 
     uint64_t paramIndex;
+
+    class Config_cl
+    {
+    public:
+        Config_cl(const TaskData& taskData) :
+            // Flags determine whether to create an energy component, initialise to 'not present' (=0)
+            EV1flag(0),
+            DataCflag(0),
+            // Flags determine whether to call an energy component 'in loop' for balancing, initialise to 'not balancing' (=0)
+            EV1balancing(0),
+            DataCbalancing(0)
+        {
+            // Check TaskData for component presence (to avoid creating and running empty components)
+            if ((taskData.s7_EV_CP_number + taskData.f22_EV_CP_number + taskData.r50_EV_CP_number + taskData.u150_EV_CP_number) > 0) {
+                // At least 1 EV_CP
+                EV1flag = 1;
+                EV1balancing = 1;
+            }
+            if (taskData.Flex_load_max > 0) {
+                // There is a DataC
+                DataCflag = 1;
+                DataCbalancing = 1;
+            }
+            if (taskData.EV_flex > 0) {
+                // EV charging is flexible (2)
+                EV1balancing = 2;
+            }
+            if (taskData.Flex_load_max > 0) {
+                // FUTURE: Seperate DataC load from its flex status (2)
+                DataCbalancing = 2;
+            }
+            // if(taskData.ScalarRG1 + taskData.ScalarRG2 + taskData.ScalarRG3 + taskData.ScalarRG4) > 0) {PV1flag = 1;}
+            // could also test PV hist data > 0
+            // if(std:min(taskData.ESS_charge_power, taskData.ESS_discharge_power, taskData.ESS_capacity) > 0) {ESSflag = 1;}
+        }
+
+        int DataC() {
+            return DataCflag;
+        }
+        int EV1() {
+            return EV1flag;
+        }
+        int EV1bal() {
+            return EV1balancing;
+        }
+        int DataCbal() {
+            return DataCbalancing;
+        }
+
+    private:
+        int EV1flag;
+        int DataCflag;
+        int EV1balancing;
+        int DataCbalancing;
+        year_TS Elec_e;
+    };
+
+    class TempSum_cl
+    {
+    public:
+        TempSum_cl(const TaskData& taskData) :
+                                                                    // Initilaise temporary vectors with all values to zero
+    Elec_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// Electricity energy balance
+    Heat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())), // Building heat energy balance
+    DHW_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Hot water energy balance
+    Pool_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Pool energy balance
+    Waste_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))   // Waste heat
+        {}
+        // Public data, can be overwritten
+        year_TS Elec_e;
+        year_TS Heat_h;
+        year_TS DHW_h;
+        year_TS Pool_h;
+        year_TS Waste_h;
+
+        void Report(FullSimulationResult& Result) const; // added this function to purpuse taskData cpp file to avoid circular header include with Simulate.hpp
+           
+
+    };
+
+
 };

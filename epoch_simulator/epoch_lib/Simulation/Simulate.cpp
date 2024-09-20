@@ -10,6 +10,11 @@
 #include "Grid.hpp"
 #include "Hload.hpp"
 #include "Costs.hpp"
+#include "HotWcylA_cl.hpp"
+
+//#include "Grid3.hpp"
+//#include "ESS2.hpp"
+//#include "Battery.hpp"
 
 Simulator::Simulator() {
 
@@ -29,11 +34,11 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		int CAPEX_limit_exceed_flag = 1;
 		FullSimulationResult fullSimulationResult;
 		fullSimulationResult.paramIndex = taskData.paramIndex;
-		fullSimulationResult.total_annualised_cost = 0;
+		fullSimulationResult.total_annualised_cost = FLT_MAX; //Effectively a NULL value that GA can very quickly discount solution
 		fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
-		fullSimulationResult.scenario_cost_balance = 0;
-		fullSimulationResult.payback_horizon_years = 0;
-		fullSimulationResult.scenario_carbon_balance = 0;
+		fullSimulationResult.scenario_cost_balance = -FLT_MAX;
+		fullSimulationResult.payback_horizon_years = FLT_MAX;
+		fullSimulationResult.scenario_carbon_balance = -FLT_MAX;
 		return fullSimulationResult; // must return function return type - set other objectives to zero
 	}
 
@@ -44,13 +49,23 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	MountHload.performHeatCalculations(historicalData, taskData);
 	
-	Eload MountEload{ historicalData, taskData }; // initialise Eload based on historical data and taskdata
+	Eload MountEload{historicalData, taskData }; // initialise Eload based on historical data and taskdata
+
+	HotWcylA_cl HotWaterCyl{ historicalData, taskData }; // initialise Hotwater cylinder based on taskData
 
 	ESS MountBESS{ taskData }; //initialise ESS based on taskdata
 
 	MountEload.calculateLoads(MountHload, MountBESS, RGen_total, taskData);
 	
 	year_TS ESUM = MountEload.getTotal_target_load_fixed_flex() - RGen_total;
+
+	// non balancing actions for stateful components
+
+	HotWaterCyl.AllCalcs(ESUM); // this will be TempSum in V08
+
+	ESUM += HotWaterCyl.getDHW_Charging(); // add the DHW electrical charging loads from ESUM 
+
+	// in V08 we will split DHW charging load sent to TempSum between Heat pump () heating load and instantaneous electric heating (HotWaterCyl.getDHW_diverter() + HotWaterCyl.getDHW_shortfall());
 
 	MountBESS.initialise(ESUM[0]);
 	MountBESS.runTimesteps(ESUM);
@@ -61,7 +76,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
 
-	
 	myCost.calculateCosts_no_CAPEX(MountEload, MountHload, MountGrid, MountBESS); // CAPEX calc now at beginning
 
 	//Data reporting
@@ -89,6 +103,12 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
 		fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
 		fullSimulationResult.Heatload = historicalData.heatload_data;
+		fullSimulationResult.DHW_load = historicalData.DHWdemand_data;
+		fullSimulationResult.DHW_charging = HotWaterCyl.getDHW_Charging();
+		fullSimulationResult.DHW_SoC = HotWaterCyl.getDHW_SoC_history();
+		fullSimulationResult.DHW_Standby_loss = HotWaterCyl.getDHW_standby_losses();
+		fullSimulationResult.DHW_ave_temperature = HotWaterCyl.getDHW_ave_temperature();
+		fullSimulationResult.DHW_Shortfall = HotWaterCyl.getDHW_shortfall();
 		fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
 		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
 		fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
