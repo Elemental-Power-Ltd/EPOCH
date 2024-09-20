@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 import numpy as np
+import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
@@ -16,6 +17,7 @@ from app.routers.optimise import convert_task, process_results
 from app.routers.utils.datamanager import DataManager
 
 
+@pytest.mark.requires_epoch
 def test_submit_task(client: TestClient, endpointtask_factory: EndpointTask):
     """
     Test /submit-task endpoint.
