@@ -30,7 +30,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
 	Costs myCost(taskData);
-	myCost.calculate_Project_CAPEX(myCost.get_ESS_kW(), taskData.ESS_capacity, myCost.get_PV_kWp_total(), taskData.s7_EV_CP_number, taskData.f22_EV_CP_number, taskData.r50_EV_CP_number, taskData.u150_EV_CP_number, 0, taskData.ASHP_HPower);
+	myCost.calculate_Project_CAPEX();
 	if (taskData.CAPEX_limit*1000 < myCost.get_project_CAPEX())
 	{
 		// TODO - apply proper fix for 'nullable' results

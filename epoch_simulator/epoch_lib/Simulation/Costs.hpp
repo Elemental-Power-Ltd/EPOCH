@@ -42,6 +42,37 @@ public:
 		mkW_Grid = 0; // set Grid upgrade to zero for the moment
 	
 	}
+
+	void calculate_Project_CAPEX() {
+
+		calculate_ESS_PCS_CAPEX();
+		calculate_ESS_ENCLOSURE_CAPEX();
+		calculate_ESS_ENCLOSURE_DISPOSAL();
+
+		calculate_PVpanel_CAPEX();
+		calculate_PVBoP_CAPEX();
+		calculate_PVroof_CAPEX();
+		calculate_PVground_CAPEX();
+
+		calculate_EV_CP_cost();
+		calculate_EV_CP_install();
+
+		calculate_Grid_CAPEX();
+
+		calculate_ASHP_CAPEX(mTaskData.ASHP_HPower);
+
+		float ESS_CAPEX = mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL;
+		float PV_CAPEX = mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX + mPVground_CAPEX;
+		float EV_CP_CAPEX = mEV_CP_cost + mEV_CP_install;
+		float ASHP_CAPEX = mASHP_CAPEX;
+		float Grid_CAPEX = mGrid_CAPEX;
+
+		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
+		float Project_cost_grid = Grid_CAPEX * mProject_plan_develop_Grid;
+
+		mProject_CAPEX = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX + Project_cost + Project_cost_grid);
+	}
+
 	
 	void calculateCosts_no_CAPEX(const Eload& eload, const Hload& hload, const Grid& grid, ESS& MountBESS) {
 
@@ -410,30 +441,32 @@ public:
 
 	// Cost model for EV charge points is based on per unit of each charger type, 7 kW, 22 kW, 50 kW and 150 kW
 
-	void calculate_EV_CP_cost(int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) {
+	void calculate_EV_CP_cost() {
 		// costs in £ / unit (1 hd unit 2 connectors)
 		float s7_EV_cost = 1200.00;
 		float f22_EV_cost = 2500.00;
 		float r50_EV_cost = 20000.00;
 		float u150_EV_cost = 60000.00;
 
-		 mEV_CP_cost = (float(s7_EV_CP_number) * s7_EV_cost) + (float(f22_EV_CP_number) * f22_EV_cost) 
-			+ (float(r50_EV_CP_number) * r50_EV_cost) + (float(u150_EV_CP_number) * u150_EV_cost);
+		 mEV_CP_cost = (float(mTaskData.s7_EV_CP_number) * s7_EV_cost) 
+			 + (float(mTaskData.f22_EV_CP_number) * f22_EV_cost)
+			 + (float(mTaskData.r50_EV_CP_number) * r50_EV_cost)
+			 + (float(mTaskData.u150_EV_CP_number) * u150_EV_cost);
 
 		return;
 	}
 
-	void calculate_EV_CP_install(int s7_EV_CP_number,
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number) {
+	void calculate_EV_CP_install() {
 		// costs in £ / unit (1 hd unit 2 connectors)
 		float s7_EV_install = 600.00;
 		float f22_EV_install = 1000.00;
 		float r50_EV_install = 3000.00;
 		float u150_EV_install = 10000.00;
 
-		mEV_CP_install = (float(s7_EV_CP_number) * s7_EV_install) + (float(f22_EV_CP_number) * f22_EV_install)
-			+ (float(r50_EV_CP_number) * r50_EV_install) + (float(u150_EV_CP_number) * u150_EV_install);
+		mEV_CP_install = (float(mTaskData.s7_EV_CP_number) * s7_EV_install) 
+			+ (float(mTaskData.f22_EV_CP_number) * f22_EV_install)
+			+ (float(mTaskData.r50_EV_CP_number) * r50_EV_install)
+			+ (float(mTaskData.u150_EV_CP_number) * u150_EV_install);
 
 		return;
 	}
@@ -527,37 +560,6 @@ public:
 		float Project_annualised_cost = (Project_cost + Project_cost_grid) / mProject_lifetime;
 
 		return Project_annualised_cost;
-	}
-
-	void calculate_Project_CAPEX(float ESS_kW, float ESS_kWh, float PV_kWp_total, int s7_EV_CP_number, 
-		int f22_EV_CP_number, int r50_EV_CP_number, int u150_EV_CP_number, float kw_grid_upgrade, float heatpump_power_capacity) {
-
-		calculate_ESS_PCS_CAPEX();
-		calculate_ESS_ENCLOSURE_CAPEX();
-		calculate_ESS_ENCLOSURE_DISPOSAL();
-
-		calculate_PVpanel_CAPEX();
-		calculate_PVBoP_CAPEX();
-		calculate_PVroof_CAPEX();
-		calculate_PVground_CAPEX();
-
-		calculate_EV_CP_cost(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
-		calculate_EV_CP_install(s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number);
-
-		calculate_Grid_CAPEX();
-
-		calculate_ASHP_CAPEX(heatpump_power_capacity);
-	
-		float ESS_CAPEX = mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL;
-		float PV_CAPEX = mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX + mPVground_CAPEX;
-		float EV_CP_CAPEX = mEV_CP_cost + mEV_CP_install;
-		float ASHP_CAPEX = mASHP_CAPEX;
-		float Grid_CAPEX = mGrid_CAPEX;
-
-		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
-		float Project_cost_grid = Grid_CAPEX * mProject_plan_develop_Grid;
-
-		mProject_CAPEX = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX + Project_cost + Project_cost_grid);
 	}
 
 	// Calculate annualised costs
