@@ -194,7 +194,7 @@ public:
 			if (mESS_kW < small_thresh) {
 				mESS_PCS_CAPEX = small_cost * mESS_kW;
 			}
-			else if (small_thresh < mESS_kW && mESS_kW < mid_thresh) {
+			else if (small_thresh <= mESS_kW && mESS_kW <= mid_thresh) {
 				mESS_PCS_CAPEX = (small_cost * small_thresh) + ((mESS_kW - small_thresh) * mid_cost);
 			}
 			else if (mESS_kW > mid_thresh) {
@@ -229,7 +229,7 @@ public:
 			if (mESS_kW < small_thresh) {
 				mESS_PCS_OPEX = small_cost * mESS_kW;
 			}
-			else if (small_thresh < mESS_kW && mESS_kW < mid_thresh) {
+			else if (small_thresh <= mESS_kW && mESS_kW <= mid_thresh) {
 				mESS_PCS_OPEX = (small_cost * small_thresh) + ((mESS_kW - small_thresh) * mid_cost);
 			}
 			else if (mESS_kW > mid_thresh) {
@@ -263,7 +263,7 @@ public:
 			if (mESS_kWh < small_thresh) {
 				mESS_ENCLOSURE_CAPEX = small_cost * mESS_kWh;
 			}
-			else if (small_thresh < mESS_kWh && mESS_kWh < mid_thresh) {
+			else if (small_thresh <= mESS_kWh && mESS_kWh <= mid_thresh) {
 				mESS_ENCLOSURE_CAPEX = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
 			}
 			else if (mESS_kWh > mid_thresh) {
@@ -295,7 +295,7 @@ public:
 			if (mESS_kWh < small_thresh) {
 				mESS_ENCLOSURE_OPEX = small_cost * mESS_kWh;
 			}
-			else if (small_thresh < mESS_kWh && mESS_kWh < mid_thresh) {
+			else if (small_thresh <= mESS_kWh && mESS_kWh <= mid_thresh) {
 				mESS_ENCLOSURE_OPEX = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
 			}
 			else if (mESS_kWh > mid_thresh) {
@@ -325,7 +325,7 @@ public:
 
 		if (mESS_kWh < small_thresh) {
 			mESS_ENCLOSURE_DISPOSAL = small_cost * mESS_kWh;
-		} else if (small_thresh < mESS_kWh && mESS_kWh < mid_thresh) {
+		} else if (small_thresh <= mESS_kWh && mESS_kWh <= mid_thresh) {
 			mESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
 		} else if (mESS_kWh > mid_thresh) {
 			mESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kWh - small_thresh - mid_thresh) * large_cost);
@@ -348,7 +348,7 @@ public:
 
 		if (mPV_kWp_total < small_thresh) {
 			mPVpanel_CAPEX = small_cost * mPV_kWp_total;
-		} else if (small_thresh < mPV_kWp_total && mPV_kWp_total < mid_thresh) {
+		} else if (small_thresh <= mPV_kWp_total && mPV_kWp_total <= mid_thresh) {
 			mPVpanel_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
 		} else if (mPV_kWp_total > mid_thresh) {
 			mPVpanel_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
@@ -368,7 +368,7 @@ public:
 
 		if (mPV_kWp_total < small_thresh) {
 			mPVBoP_CAPEX = small_cost * mPV_kWp_total;
-		} else if (small_thresh < mPV_kWp_total && mPV_kWp_total < mid_thresh) {
+		} else if (small_thresh <= mPV_kWp_total && mPV_kWp_total <= mid_thresh) {
 			mPVBoP_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
 		} else if (mPV_kWp_total > mid_thresh) {
 			mPVBoP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
@@ -388,7 +388,7 @@ public:
 
 		if (mPV_kWp_roof < small_thresh) {
 			mPVroof_CAPEX = small_cost * mPV_kWp_roof;
-		} else if (small_thresh < mPV_kWp_roof && mPV_kWp_roof < mid_thresh) {
+		} else if (small_thresh <= mPV_kWp_roof && mPV_kWp_roof <= mid_thresh) {
 			mPVroof_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_roof - small_thresh) * mid_cost);
 		} else if (mPV_kWp_roof > mid_thresh) {
 			mPVroof_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_roof - small_thresh - mid_thresh) * large_cost);
@@ -408,7 +408,7 @@ public:
 
 		if (mPV_kWp_ground < small_thresh) {
 			mPVground_CAPEX = small_cost * mPV_kWp_ground;
-		} else if (small_thresh < mPV_kWp_ground && mPV_kWp_ground < mid_thresh) {
+		} else if (small_thresh <= mPV_kWp_ground && mPV_kWp_ground <= mid_thresh) {
 			mPVground_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_ground - small_thresh) * mid_cost);
 		} else if (mPV_kWp_ground > mid_thresh) {
 			mPVground_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_ground - small_thresh - mid_thresh) * large_cost);
@@ -428,7 +428,7 @@ public:
 
 		if (mPV_kWp_total < small_thresh) {
 			mPV_OPEX = small_cost * mPV_kWp_total;
-		} else if (small_thresh < mPV_kWp_total && mPV_kWp_total < mid_thresh) {
+		} else if (small_thresh <= mPV_kWp_total && mPV_kWp_total <= mid_thresh) {
 			mPV_OPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
 		} else if (mPV_kWp_total > mid_thresh) {
 			mPV_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
@@ -484,7 +484,7 @@ public:
 
 		if (mkW_Grid < small_thresh) {
 			mGrid_CAPEX = small_cost * mkW_Grid;
-		} else if (small_thresh < mkW_Grid && mkW_Grid < mid_thresh) {
+		} else if (small_thresh <= mkW_Grid && mkW_Grid <= mid_thresh) {
 			mGrid_CAPEX = (small_cost * small_thresh) + ((mkW_Grid - small_thresh) * mid_cost);
 		} else if (mkW_Grid > mid_thresh) {
 			mGrid_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mkW_Grid - small_thresh - mid_thresh) * large_cost);
@@ -506,7 +506,7 @@ public:
 
 		if (heatpump_power_capacity < small_thresh) {
 			mASHP_CAPEX = small_cost * heatpump_power_capacity;
-		} else if (small_thresh < heatpump_power_capacity && heatpump_power_capacity < mid_thresh) {
+		} else if (small_thresh <= heatpump_power_capacity && heatpump_power_capacity <= mid_thresh) {
 			mASHP_CAPEX = (small_cost * small_thresh) + ((heatpump_power_capacity - small_thresh) * mid_cost);
 		} else if (heatpump_power_capacity > mid_thresh) {
 			mASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((heatpump_power_capacity - small_thresh - mid_thresh) * large_cost);
