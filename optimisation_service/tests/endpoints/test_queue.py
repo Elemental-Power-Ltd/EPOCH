@@ -4,10 +4,10 @@ import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.routers.models.core import EndpointTask
-from app.routers.models.tasks import Task
-from app.routers.queue import IQueue, task_state
+from ...app.main import app
+from ...app.routers.models.core import EndpointTask
+from ...app.routers.models.tasks import Task
+from ...app.routers.queue import IQueue, task_state
 
 
 class TestQueueEndpoint:
