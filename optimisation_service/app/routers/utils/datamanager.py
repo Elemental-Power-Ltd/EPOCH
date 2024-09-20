@@ -1,5 +1,3 @@
-import asyncio
-import datetime
 import logging
 import os
 import shutil
@@ -55,10 +53,7 @@ class DataManager:
         if site_data.loc == FileLoc.local:
             self.copy_input_data(site_data.path, self.temp_data_dir)
         else:
-            async with httpx.AsyncClient() as client:
-                site_data_entries = await self.db_post(client=client, subdirectory="/get-latest-datasets",
-                                                       data=site_data)
-
+            site_data_entries = await self.fetch_latest_datasets(site_data)
             dfs = self.transform_all_input_data(site_data_entries)
             logger.info(f"Saving site data to {self.temp_data_dir}.")
             for name, df in dfs.items():
@@ -79,18 +74,23 @@ class DataManager:
         for file in self.input_data_files:
             shutil.copy(Path(source, file), Path(destination, file))
 
-    async def fetch_site_data_info(self, site_data_id: str) -> dict[str, DatasetIDWithTime]:
+    async def fetch_latest_datasets(self, site_data: SiteMetaData):
         """
-        Fetch site data info.
+        Fetch from the database the datasets relevant to the site data.
 
         Parameters
         ----------
-        site_data_id
-            ID to retreive data details from database.
+        site_data
+            Description of data.
+
+        Returns
+        -------
+        site_data_entries
+            Dictionary of unprocessed datasets.
         """
-        logger.debug(f"Fetching site data info {site_data_id}.")
         async with httpx.AsyncClient() as client:
-            return await self.db_post(client=client, subdirectory="/list-latest-datasets", data={"site_id": site_data_id})
+            site_data_entries = await self.db_post(client=client, subdirectory="/get-latest-datasets", data=site_data)
+        return site_data_entries
 
     def transform_all_input_data(self, site_data_entries) -> dict[str, pd.DataFrame]:
         """

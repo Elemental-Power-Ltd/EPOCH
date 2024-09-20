@@ -12,7 +12,7 @@ from ..internal.models.algorithms import Optimiser
 from ..internal.models.problem import ParameterDict
 from ..internal.problem import _OBJECTIVES, Problem
 from ..internal.result import Result
-from .models.core import EndpointResult, EndpointTask, TaskWithUUID, TaskResponse, ObjectiveValues, OptimisationSolution
+from .models.core import EndpointResult, EndpointTask, ObjectiveValues, OptimisationSolution, TaskResponse, TaskWithUUID
 from .models.tasks import Task
 from .queue import IQueue
 from .utils.datamanager import DataManager
@@ -51,7 +51,7 @@ def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
     return Task(task_id=task.task_id, problem=problem, optimiser=optimiser, data_manager=data_manager)
 
 
-def postprocess_results(task: Task, results: Result, completed_at: datetime.datetime) -> list[EndpointResult]:
+def process_results(task: Task, results: Result, completed_at: datetime.datetime) -> list[EndpointResult]:
     logger.info(f"Postprocessing results of {task.task_id}.")
     Optimisation_Results = []
     for solutions, objective_values in zip(results.solutions, results.objective_values):
@@ -89,7 +89,7 @@ async def process_requests(q: IQueue):
             results = await task.optimiser.run(task.problem)
             logger.info(f"Finished optimising {task.task_id}.")
             completed_at = datetime.datetime.now(datetime.UTC)
-            payload = postprocess_results(task, results, completed_at)
+            payload = process_results(task, results, completed_at)
             await task.data_manager.transmit_results(payload)
         except Exception:
             logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)
