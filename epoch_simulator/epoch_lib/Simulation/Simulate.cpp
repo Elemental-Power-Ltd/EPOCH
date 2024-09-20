@@ -43,9 +43,9 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	TempSum_cl TempSum();		// class of arrays for running totals (replace ESUM and Heat)
 	
 	// INITIALISE Energy Components
-	Hotel_cl Hotel(historicalData, taskData);
-	PVbasic_cl PV1(historicalData, taskData);
-	EVbasic_cl EV1(historicalData, taskData);
+	Hotel Hotel(historicalData, taskData);
+	BasicPV PV1(historicalData, taskData);
+	BasicElectricVehicle EV1(historicalData, taskData);
 
 		// SLB hot water cyclinder
 	// HotWcylA_cl HotWaterCyl(historicalData, taskData);
@@ -60,8 +60,11 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	// REMOVE THE 3 FROM GRID WHEN CLEANING OLD CODE
 	Grid_cl Grid3(historicalData, taskData);
-	MOP_cl MOP(taskData);
-	GasCH_cl GasCH(taskData);
+	MOP MOP(taskData);
+	GasCombustionHeater GasCH(taskData);
+
+	// NON-BALANCING LOGIC
+	// BALANCING LOOP
 
 	// OLD CODE
 
