@@ -413,6 +413,12 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult f
 	outFile << "Actual_high_priority_load" << ",";
 	outFile << "Actual_low_priority_load" << ",";
 	outFile << "Heatload" << ",";
+	outFile << "DWH_load" << ",";
+	outFile << "DHW_charging" << ",";
+	outFile << "DHW_SoC" << ",";
+	outFile << "DHW_Standby_loss" << ",";
+	outFile << "DHW_temperature" << ",";
+	outFile << "DHW_Shortfall" << ",";
 	outFile << "Scaled_heatload" << ",";
 	outFile << "Electrical_load_scaled_heat_yield" << ",";
 	outFile << "Heat_shortfall" << ",";
@@ -441,6 +447,12 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult f
 		outFile << fullResult.Actual_high_priority_load[i] << ",";
 		outFile << fullResult.Actual_low_priority_load[i] << ",";
 		outFile << fullResult.Heatload[i] << ",";
+		outFile << fullResult.DHW_load[i] << ",";
+		outFile << fullResult.DHW_charging[i] << ",";
+		outFile << fullResult.DHW_SoC[i] << ",";
+		outFile << fullResult.DHW_Standby_loss[i] << ",";
+		outFile << fullResult.DHW_ave_temperature[i] << ",";
+		outFile << fullResult.DHW_Shortfall[i] << ",";
 		outFile << fullResult.Scaled_heatload[i] << ",";
 		outFile << fullResult.Electrical_load_scaled_heat_yield[i] << ",";
 		outFile << fullResult.Heat_shortfall[i] << ",";
@@ -691,7 +703,7 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	//read the heat load data
 	std::filesystem::path hloadFilepath = fileConfig.getHloadFilepath();
 	std::vector<float> heatload_data = readCSVColumnAndSkipHeader(hloadFilepath, 4); // read the column of the CSV data and store in vector data
-
+	
 	//read the renewable generation data
 	std::filesystem::path rgenFilepath = fileConfig.getRgenFilepath();
 	std::vector<float> RGen_data_1 = readCSVColumnAndSkipHeader(rgenFilepath, 4); // read the column of the CSV data and store in vector data
@@ -711,6 +723,11 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	std::filesystem::path gridCO2Filepath = fileConfig.getGridCO2Filepath();
 	std::vector<float> gridCO2_data = readCSVColumnAndSkipHeader(gridCO2Filepath, 4);
 
+	//read in the DWH demand data
+	std::filesystem::path DHWloadFilepath = fileConfig.getDHWloadFilepath();
+	std::vector<float> DHWload_data = readCSVColumnAndSkipHeader(DHWloadFilepath, 4); // read the column of the CSV data and store in vector data
+
+
 	//read in the ASHP data
 	std::filesystem::path ASHPinputFilepath = fileConfig.getASHPinputFilepath();
 	std::vector<std::vector<float>> ASHPinputtable = readCSVAsTable(ASHPinputFilepath);
@@ -718,6 +735,7 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	std::filesystem::path ASHPoutputFilepath = fileConfig.getASHPoutputFilepath();
 	std::vector<std::vector<float>> ASHPoutputtable = readCSVAsTable(ASHPoutputFilepath);
 
+	
 	return {
 	   toEigen(hotel_eload_data),
 	   toEigen(ev_eload_data),
@@ -729,6 +747,7 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	   toEigen(airtemp_data),
 	   toEigen(importtariff_data),
 	   toEigen(gridCO2_data),
+	   toEigen(DHWload_data),
 	   toEigen(ASHPinputtable),
 	   toEigen(ASHPoutputtable)
 	};

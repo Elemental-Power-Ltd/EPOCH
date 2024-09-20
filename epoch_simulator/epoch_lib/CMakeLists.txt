@@ -23,7 +23,7 @@ add_library(Epoch_lib STATIC
 	"io/EpochConfig.hpp"
 	"io/BufferedCSVWriter.cpp"
 	"io/BufferedCSVWriter.hpp"
-)
+ "Simulation/TaskData.cpp")
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)

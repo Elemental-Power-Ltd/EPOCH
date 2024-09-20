@@ -69,6 +69,12 @@ struct FullSimulationResult {
 	year_TS Actual_high_priority_load;
 	year_TS Actual_low_priority_load;
 	year_TS Heatload;
+	year_TS DHW_load;
+	year_TS DHW_charging;
+	year_TS DHW_SoC;
+	year_TS DHW_Standby_loss;
+	year_TS DHW_ave_temperature;
+	year_TS DHW_Shortfall;
 	year_TS Scaled_heatload;
 	year_TS Electrical_load_scaled_heat_yield;
 	year_TS Heat_shortfall;
@@ -214,6 +220,7 @@ struct HistoricalData {
 	year_TS airtemp_data;
 	year_TS importtariff_data;
 	year_TS gridCO2_data;
+	year_TS DHWdemand_data;
 	Eigen::MatrixXf ASHPinputtable;
 	Eigen::MatrixXf ASHPoutputtable;
 };

@@ -24,6 +24,7 @@ public:
         airtempFilename("CSVAirtemp.csv"),
         importtariffFilename("CSVImporttariff.csv"),
         gridCO2Filename("CSVGridCO2.csv"),
+        DHWFilename("CSVDHWdemand.csv"),
         ASHPinputFilename("CSVASHPinput.csv"),
         ASHPoutputFilename("CSVASHPoutput.csv"),
       
@@ -49,6 +50,7 @@ public:
         std::filesystem::path airtempFilename,
         std::filesystem::path importtariffFilename,
         std::filesystem::path gridCO2Filename,
+        std::filesystem::path DHWFilename,
         std::filesystem::path ASHPinputFilename,
         std::filesystem::path ASHPoutputFilename,
 
@@ -66,6 +68,7 @@ public:
         airtempFilename(airtempFilename),
         importtariffFilename(importtariffFilename),
         gridCO2Filename(gridCO2Filename),
+        DHWFilename(DHWFilename),
         ASHPinputFilename(ASHPinputFilename),
         ASHPoutputFilename(ASHPoutputFilename),
 
@@ -108,6 +111,10 @@ public:
 
     std::filesystem::path getImporttariffFilepath() const {
         return inputDir / importtariffFilename;
+    }
+
+    std::filesystem::path getDHWloadFilepath() const {
+        return inputDir / DHWFilename;
     }
 
     std::filesystem::path getGridCO2Filepath() const {
@@ -165,6 +172,7 @@ private:
     std::filesystem::path airtempFilename;
     std::filesystem::path importtariffFilename;
     std::filesystem::path gridCO2Filename;
+    std::filesystem::path DHWFilename;
     std::filesystem::path ASHPinputFilename;
     std::filesystem::path ASHPoutputFilename;
 
