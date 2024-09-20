@@ -13,19 +13,19 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 from pandas.core.api import DataFrame as DataFrame
 
-from ...app.internal.grid_search import GridSearch
-from ...app.internal.models.problem import ParameterDict, ParamRange
-from ...app.internal.problem import Problem
-from ...app.main import app
-from ...app.routers.models.core import EndpointResult, EndpointTask, Objectives, TaskWithUUID
-from ...app.routers.models.optimisers import (
+from app.internal.grid_search import GridSearch
+from app.internal.models.problem import ParameterDict, ParamRange
+from app.internal.problem import Problem
+from app.main import app
+from app.routers.models.core import EndpointResult, EndpointTask, Objectives, TaskWithUUID
+from app.routers.models.optimisers import (
     GABaseHyperParam,
     NSGA2Optmiser,
 )
-from ...app.routers.models.problem import EndpointParameterDict, EndpointParamRange
-from ...app.routers.models.site_data import FileLoc, RemoteMetaData, SiteMetaData
-from ...app.routers.models.tasks import Task
-from ...app.routers.utils.datamanager import DataManager
+from app.routers.models.problem import EndpointParameterDict, EndpointParamRange
+from app.routers.models.site_data import FileLoc, RemoteMetaData, SiteMetaData
+from app.routers.models.tasks import Task
+from app.routers.utils.datamanager import DataManager
 
 logger = logging.getLogger("default")
 
