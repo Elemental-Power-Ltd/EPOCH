@@ -8,12 +8,12 @@ import numpy as np
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
-from ...app.internal.models.algorithms import Optimiser
-from ...app.internal.result import Result
-from ...app.routers.models.core import EndpointTask, TaskWithUUID
-from ...app.routers.models.tasks import Task
-from ...app.routers.optimise import convert_task, process_results
-from ...app.routers.utils.datamanager import DataManager
+from app.internal.models.algorithms import Optimiser
+from app.internal.result import Result
+from app.routers.models.core import EndpointTask, TaskWithUUID
+from app.routers.models.tasks import Task
+from app.routers.optimise import convert_task, process_results
+from app.routers.utils.datamanager import DataManager
 
 
 def test_submit_task(client: TestClient, endpointtask_factory: EndpointTask):
