@@ -36,7 +36,7 @@ class GridSearch(Algorithm):
         """
         self.keep_degenerate = keep_degenerate
 
-    async def run(self, problem: Problem) -> Result:
+    def run(self, problem: Problem) -> Result:
         """
         Run grid search optimisation.
 
@@ -68,7 +68,7 @@ class GridSearch(Algorithm):
             json.dump(convert_param(problem.parameters), f)
 
         t0 = time.perf_counter()
-        await run_headless(
+        run_headless(
             project_path=str(os.environ.get("EPOCH_DIR", "../Epoch")),
             config_dir=str(config_dir),
             input_dir=str(problem.input_dir),

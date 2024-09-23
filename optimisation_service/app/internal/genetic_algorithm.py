@@ -115,7 +115,7 @@ class NSGA2(Algorithm):
 
         self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals)
 
-    async def run(self, problem: Problem) -> Result:
+    def run(self, problem: Problem) -> Result:
         """
         Run NSGA optimisation.
 
@@ -133,7 +133,7 @@ class NSGA2(Algorithm):
         """
         pi = ProblemInstance(problem)
 
-        pareto_front = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+        pareto_front = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
         # To facilitate the algorithm, the problem parameter values are scaled, with ranges from 0 to n and a stepsize of 1.
         # Hence, resutls need to be scaled back to valid values.
         solutions = pi.scale_solutions(pareto_front.X)
@@ -217,7 +217,7 @@ class GeneticAlgorithm(Algorithm):
 
         self.termination_criteria = SingleTermination(tol, period, n_max_gen, n_max_evals)
 
-    async def run(self, problem: Problem) -> Result:
+    def run(self, problem: Problem) -> Result:
         """
         Run GA optimisation.
 
@@ -237,7 +237,7 @@ class GeneticAlgorithm(Algorithm):
         exec_time, n_evals = 0, 0
         for sub_problem in problem.split_objectives():
             pi = ProblemInstance(sub_problem)
-            single_solution = await minimize_async(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+            single_solution = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
             # To facilitate the algorithm, the problem parameter values are scaled, with ranges from 0 to n and a stepsize of 1.
             # Hence, resutls need to be scaled back to valid values.
             x = pi.scale_solutions(single_solution.X)

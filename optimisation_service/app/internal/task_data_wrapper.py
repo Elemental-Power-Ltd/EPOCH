@@ -2,11 +2,11 @@
 Wrappers for Epoch that are more ergonomic for python.
 """
 
-import asyncio
 import json
 import os
 import pathlib
 import platform
+import subprocess
 from typing import Generator
 
 import numpy as np
@@ -33,7 +33,7 @@ except ImportError as ex:
             raise NotImplementedError()
 
 
-async def run_headless(
+def run_headless(
     project_path: os.PathLike | str,
     input_dir: os.PathLike | str | None = None,
     output_dir: os.PathLike | str | None = None,
@@ -93,31 +93,11 @@ async def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / "inputParameters.json"} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / "EpochConfig.json"} is not a file"
 
-    proc = await asyncio.create_subprocess_exec(
-        str(full_path_to_exe),
-        "--input",
-        str(input_dir),
-        "--output",
-        str(output_dir),
-        "--config",
-        str(config_dir),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    result = subprocess.run(
+        [str(full_path_to_exe), "--input", str(input_dir), "--output", str(output_dir), "--config", str(config_dir)]
     )
 
-    async def read_stream(stream):
-        while True:
-            line = await stream.readline()
-            if not line:
-                break
-            print(f"{line.decode().rstrip()}")
-
-    stdout_task = asyncio.create_task(read_stream(proc.stdout))
-    stderr_task = asyncio.create_task(read_stream(proc.stderr))
-    returncode = await proc.wait()
-    await asyncio.gather(stdout_task, stderr_task)
-
-    assert returncode == 0
+    assert result.returncode == 0
 
     output_json = output_dir / "outputParameters.json"
 

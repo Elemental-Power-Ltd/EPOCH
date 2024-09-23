@@ -1,8 +1,9 @@
+import asyncio
 import datetime
 import logging
-import os
 import typing
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,7 +20,6 @@ from .utils.datamanager import DataManager
 
 router = APIRouter()
 logger = logging.getLogger("default")
-database_url = os.environ.get("DB_API_URL", "http://localhost:8762")
 
 
 def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
@@ -86,7 +86,9 @@ async def process_requests(q: IQueue):
         task = await q.get()
         try:
             logger.info(f"Optimising {task.task_id}.")
-            results = await task.optimiser.run(task.problem)
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as executor:
+                results = await loop.run_in_executor(executor, lambda: task.optimiser.run(task.problem))  # noqa: B023
             logger.info(f"Finished optimising {task.task_id}.")
             completed_at = datetime.datetime.now(datetime.UTC)
             payload = process_results(task, results, completed_at)
