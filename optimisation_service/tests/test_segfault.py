@@ -1,8 +1,11 @@
-from epoch_simulator import TaskData, Simulator
-import os
 import pathlib
 
+import pytest
 
+from app.internal.task_data_wrapper import Simulator, TaskData
+
+
+@pytest.mark.requires_epoch
 def test_bad_taskdata():
     taskdata_values = {
         "OPEX_limit": 0,
@@ -20,8 +23,6 @@ def test_bad_taskdata():
         "Export_kWh_price": 0,
         "EV_flex": 0.22536692,
         "ScalarHL1": 0.23298134,
-        "timestep_hours": 0,
-        "timewindow": 8760,
         "ASHP_HPower": 0.96678114,
         "ASHP_HotTemp": 0.8829448,
         "ASHP_RadTemp": 0.51420677,
@@ -44,8 +45,6 @@ def test_bad_taskdata():
         "s7_EV_CP_number": 0,
     }
 
-    # taskdata_values["timestep_hours"] = 1.0
-    taskdata_values["timestep_hours"] = 2.0
     td = TaskData()
     for key, val in taskdata_values.items():
         setattr(td, key, val)

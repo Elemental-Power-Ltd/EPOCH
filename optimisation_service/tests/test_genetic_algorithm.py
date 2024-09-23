@@ -40,25 +40,23 @@ class TestNSGA2:
             NSGA2(sampling_method=1)  # type: ignore
 
     @pytest.mark.slow
-    @pytest.mark.asyncio
-    async def test_run(self, example_problem: Problem) -> None:
+    def test_run(self, example_problem: Problem) -> None:
         """
         Test algorithm run.
         """
         alg = NSGA2()
         t0 = perf_counter()
-        await alg.run(example_problem)
+        alg.run(example_problem)
         exec_time = perf_counter() - t0
         assert exec_time < 60
 
     @pytest.mark.slow
-    @pytest.mark.asyncio
-    async def test_res(self, example_problem: Problem) -> None:
+    def test_res(self, example_problem: Problem) -> None:
         """
         Test output of algorithm.
         """
         alg = NSGA2()
-        res = await alg.run(example_problem)
+        res = alg.run(example_problem)
         assert isinstance(res, Result)
 
 
@@ -84,25 +82,23 @@ class TestGeneticAlgorithm:
             GeneticAlgorithm(sampling_method=1)  # type: ignore
 
     @pytest.mark.slow
-    @pytest.mark.asyncio
-    async def test_run(self, example_problem: Problem) -> None:
+    def test_run(self, example_problem: Problem) -> None:
         """
         Test algorithm run.
         """
         alg = GeneticAlgorithm()
         t0 = perf_counter()
-        await alg.run(example_problem)
+        alg.run(example_problem)
         exec_time = perf_counter() - t0
         assert exec_time < 60
 
     @pytest.mark.slow
-    @pytest.mark.asyncio
-    async def test_res(self, example_problem: Problem) -> None:
+    def test_res(self, example_problem: Problem) -> None:
         """
         Test output of algorithm.
         """
         alg = GeneticAlgorithm()
-        res = await alg.run(example_problem)
+        res = alg.run(example_problem)
         assert isinstance(res, Result)
 
 

@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
 import pytest
+from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -25,9 +26,10 @@ class TestQueueEndpoint:
         """
         task1 = endpointtask_factory()
         task2 = endpointtask_factory()
-        client.post("/submit-task", json=task1)
-        client.post("/submit-task", json=task2)
-        response = client.post("/cancel-task", params={"task_id": task1["task_id"]})
+        _ = client.post("/submit-task", json=jsonable_encoder(task1))
+        response2 = client.post("/submit-task", json=jsonable_encoder(task2))
+        task2_id = response2.json()["task_id"]
+        response = client.post("/cancel-task", params={"task_id": task2_id})
         assert response.status_code == 200
 
     def test_clear_queue(self, client: TestClient):

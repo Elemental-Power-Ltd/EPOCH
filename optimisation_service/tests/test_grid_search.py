@@ -33,20 +33,20 @@ class TestGridSearch:
         """
         GridSearch(keep_degenerate=False)
 
-    async def test_run(self, example_problem: Problem) -> None:
+    def test_run(self, example_problem: Problem) -> None:
         """
         Test algorithm run.
         """
         alg = GridSearch(keep_degenerate=False)
         t0 = perf_counter()
-        await alg.run(example_problem)
+        alg.run(example_problem)
         exec_time = perf_counter() - t0
         assert exec_time < 60
 
-    async def test_res(self, example_problem: Problem) -> None:
+    def test_res(self, example_problem: Problem) -> None:
         """
         Test output of algorithm.
         """
         alg = GridSearch(keep_degenerate=False)
-        res = await alg.run(example_problem)
+        res = alg.run(example_problem)
         assert isinstance(res, Result)

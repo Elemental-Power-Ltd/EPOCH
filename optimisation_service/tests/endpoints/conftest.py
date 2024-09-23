@@ -2,7 +2,6 @@ import datetime
 import json
 import logging
 import os
-import shutil
 from pathlib import Path
 from typing import Generator
 from uuid import uuid4
@@ -13,20 +12,18 @@ import pytest_asyncio
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 from pandas.core.api import DataFrame as DataFrame
-from pydantic import UUID4
 
 from app.internal.grid_search import GridSearch
-from app.internal.models.problem import ParameterDict
+from app.internal.models.problem import ParameterDict, ParamRange
 from app.internal.problem import Problem
 from app.main import app
-from app.routers.models.core import EndpointResult, EndpointTask, Objectives
-from app.routers.models.database import DatasetIDWithTime
+from app.routers.models.core import EndpointResult, EndpointTask, Objectives, TaskWithUUID
 from app.routers.models.optimisers import (
     GABaseHyperParam,
     NSGA2Optmiser,
 )
 from app.routers.models.problem import EndpointParameterDict, EndpointParamRange
-from app.routers.models.site_data import FileLoc, SiteMetaData
+from app.routers.models.site_data import FileLoc, RemoteMetaData, SiteMetaData
 from app.routers.models.tasks import Task
 from app.routers.utils.datamanager import DataManager
 
@@ -35,76 +32,15 @@ logger = logging.getLogger("default")
 
 @pytest_asyncio.fixture(scope="function")
 def client() -> Generator[TestClient, None, None]:
-    class DataManagerOverride:
+    class DataManagerOverride(DataManager):
         def __init__(self) -> None:
+            super().__init__()
             self.temp_dir = Path("tests", "temp")
-            self.input_data_files = [
-                "CSVEload.csv",
-                "CSVHload.csv",
-                "CSVAirtemp.csv",
-                "CSVRGen.csv",
-                "CSVASHPinput.csv",
-                "CSVASHPoutput.csv",
-                "CSVImporttariff.csv",
-                "CSVGridCO2.csv",
-            ]
 
-        def copy_input_data(self, source: str | os.PathLike, destination: str | os.PathLike) -> None:
-            """
-            Copies input data files from source to destination folder.
-
-            Parameters
-            ----------
-            source
-                Folder to copy files from.
-            destination
-                Folder to copy files to.
-            """
-            logger.debug(f"Copying local data files from {source} to {destination}.")
-            for file in self.input_data_files:
-                shutil.copy(Path(source, file), Path(destination, file))
-
-        async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4) -> os.PathLike:
-            """
-            Process task site data.
-            Either copy local files to temp dir or fetch and process data from database and save to temp dir.
-
-            Parameters
-            ----------
-            site_data
-                Description of data.
-            """
-            logger.debug(f"Processing site data for {task_id}.")
-            self.temp_data_dir = Path(self.temp_dir, str(task_id))
-            # self.temp_data_dir = Path("tests") / "temp"/ "keepme"
-            logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
-            os.makedirs(self.temp_data_dir)
-            if site_data.loc == FileLoc.local:
-                self.copy_input_data(site_data.path, self.temp_data_dir)
-            else:
-                site_data_info = await self.fetch_site_data_info(site_data.key)
-                dfs = await self.fetch_all_input_data(site_data_info)
-                for name, df in dfs.items():
-                    df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
-
-        async def transmit_results(self, results: list[EndpointResult]) -> None:
-            with open(Path(self.temp_dir, f"R_{results[0].task_id}.json"), "w") as f:
-                json.dump(jsonable_encoder(results), f)
+        async def fetch_latest_datasets(self, site_data: SiteMetaData):
             return None
 
-        async def transmit_task(self, task: EndpointTask) -> None:
-            with open(Path(self.temp_dir, f"T_{task.task_id}.json"), "w") as f:
-                json.dump(jsonable_encoder(task), f)
-            return None
-
-        async def fetch_site_data_info(self, site_data_id: UUID4) -> None:
-            logger.debug(f"Fetching site data info {site_data_id}.")
-            _ = site_data_id
-            return None
-
-        async def fetch_all_input_data(self, site_data_ids: dict[str, DatasetIDWithTime]) -> dict[str, DataFrame]:
-            logger.debug("Fetching all input data.")
-            _ = site_data_ids
+        def transform_all_input_data(self, site_data_entries) -> dict[str, DataFrame]:
             sample_data_path = Path("tests", "data", "benchmarks", "var-3", "InputData")
             site_data = {
                 "Eload": pd.read_csv(Path(sample_data_path, "CSVEload.csv")),
@@ -117,6 +53,13 @@ def client() -> Generator[TestClient, None, None]:
                 "GridCO2": pd.read_csv(Path(sample_data_path, "CSVGridCO2.csv")),
             }
             return site_data
+
+        async def transmit_results(self, results: list[EndpointResult]) -> None:
+            with open(Path(self.temp_dir, f"R_{results[0].task_id}.json"), "w") as f:
+                json.dump(jsonable_encoder(results), f)
+
+        async def transmit_task(self, task: TaskWithUUID) -> None:
+            return None
 
     app.dependency_overrides[DataManager] = DataManagerOverride
 
@@ -174,18 +117,15 @@ def endpointtask_factory():
             Objectives.cost_balance,
             Objectives.payback_horizon,
         ]
-        site_data = SiteMetaData(loc=FileLoc.remote, key=uuid4())
+        site_data = RemoteMetaData(loc=FileLoc.remote, site_id="test", start_ts="2024-01-01 00:00:00+00:00", duration="year")
 
-        return jsonable_encoder(
-            EndpointTask(
-                task_id=uuid4(),
-                task_name="test",
-                optimiser=optimiser,
-                search_parameters=search_parameters,
-                objectives=objectives,
-                site_data=site_data,
-                created_at=datetime.datetime.now(datetime.UTC),
-            )
+        return EndpointTask(
+            task_name="test",
+            optimiser=optimiser,
+            search_parameters=search_parameters,
+            objectives=objectives,
+            site_data=site_data,
+            created_at=datetime.datetime.now(datetime.UTC),
         )
 
     return __create_endpointtask
@@ -211,36 +151,36 @@ def task_factory(tmpdir_factory: pytest.TempdirFactory):
             ],
             constraints={},
             parameters=ParameterDict(
-                ASHP_HPower=EndpointParamRange(min=0, max=1, step=1),
-                ASHP_HSource=EndpointParamRange(min=0, max=1, step=1),
-                ASHP_HotTemp=EndpointParamRange(min=0, max=1, step=1),
-                ASHP_RadTemp=EndpointParamRange(min=0, max=1, step=1),
-                ESS_capacity=EndpointParamRange(min=0, max=1, step=1),
-                ESS_charge_mode=EndpointParamRange(min=0, max=1, step=1),
-                ESS_charge_power=EndpointParamRange(min=0, max=1, step=1),
-                ESS_discharge_mode=EndpointParamRange(min=0, max=1, step=1),
-                ESS_discharge_power=EndpointParamRange(min=0, max=1, step=1),
-                ESS_start_SoC=EndpointParamRange(min=0, max=1, step=1),
-                EV_flex=EndpointParamRange(min=0, max=1, step=1),
-                Export_headroom=EndpointParamRange(min=0, max=1, step=1),
-                Fixed_load1_scalar=EndpointParamRange(min=0, max=1, step=1),
-                Fixed_load2_scalar=EndpointParamRange(min=0, max=1, step=1),
-                Flex_load_max=EndpointParamRange(min=0, max=1, step=1),
-                GridExport=EndpointParamRange(min=0, max=1, step=1),
-                GridImport=EndpointParamRange(min=0, max=1, step=1),
-                Import_headroom=EndpointParamRange(min=0, max=1, step=1),
-                Min_power_factor=EndpointParamRange(min=0, max=1, step=1),
-                Mop_load_max=EndpointParamRange(min=0, max=1, step=1),
-                ScalarHL1=EndpointParamRange(min=0, max=1, step=1),
-                ScalarHYield=EndpointParamRange(min=0, max=1, step=1),
-                ScalarRG1=EndpointParamRange(min=0, max=1, step=1),
-                ScalarRG2=EndpointParamRange(min=0, max=1, step=1),
-                ScalarRG3=EndpointParamRange(min=0, max=1, step=1),
-                ScalarRG4=EndpointParamRange(min=0, max=1, step=1),
-                f22_EV_CP_number=EndpointParamRange(min=0, max=1, step=1),
-                r50_EV_CP_number=EndpointParamRange(min=0, max=1, step=1),
-                s7_EV_CP_number=EndpointParamRange(min=0, max=1, step=1),
-                u150_EV_CP_number=EndpointParamRange(min=0, max=1, step=1),
+                ASHP_HPower=ParamRange(min=0, max=1, step=1),
+                ASHP_HSource=ParamRange(min=0, max=1, step=1),
+                ASHP_HotTemp=ParamRange(min=0, max=1, step=1),
+                ASHP_RadTemp=ParamRange(min=0, max=1, step=1),
+                ESS_capacity=ParamRange(min=0, max=1, step=1),
+                ESS_charge_mode=ParamRange(min=0, max=1, step=1),
+                ESS_charge_power=ParamRange(min=0, max=1, step=1),
+                ESS_discharge_mode=ParamRange(min=0, max=1, step=1),
+                ESS_discharge_power=ParamRange(min=0, max=1, step=1),
+                ESS_start_SoC=ParamRange(min=0, max=1, step=1),
+                EV_flex=ParamRange(min=0, max=1, step=1),
+                Export_headroom=ParamRange(min=0, max=1, step=1),
+                Fixed_load1_scalar=ParamRange(min=0, max=1, step=1),
+                Fixed_load2_scalar=ParamRange(min=0, max=1, step=1),
+                Flex_load_max=ParamRange(min=0, max=1, step=1),
+                GridExport=ParamRange(min=0, max=1, step=1),
+                GridImport=ParamRange(min=0, max=1, step=1),
+                Import_headroom=ParamRange(min=0, max=1, step=1),
+                Min_power_factor=ParamRange(min=0, max=1, step=1),
+                Mop_load_max=ParamRange(min=0, max=1, step=1),
+                ScalarHL1=ParamRange(min=0, max=1, step=1),
+                ScalarHYield=ParamRange(min=0, max=1, step=1),
+                ScalarRG1=ParamRange(min=0, max=1, step=1),
+                ScalarRG2=ParamRange(min=0, max=1, step=1),
+                ScalarRG3=ParamRange(min=0, max=1, step=1),
+                ScalarRG4=ParamRange(min=0, max=1, step=1),
+                f22_EV_CP_number=ParamRange(min=0, max=1, step=1),
+                r50_EV_CP_number=ParamRange(min=0, max=1, step=1),
+                s7_EV_CP_number=ParamRange(min=0, max=1, step=1),
+                u150_EV_CP_number=ParamRange(min=0, max=1, step=1),
                 CAPEX_limit=0,
                 Export_kWh_price=0,
                 OPEX_limit=0,
