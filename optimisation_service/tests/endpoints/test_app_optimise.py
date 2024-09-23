@@ -3,22 +3,23 @@ import os
 import time
 import uuid
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
-from app.internal.models.algorithms import Optimiser
 from app.internal.result import Result
 from app.routers.models.core import EndpointTask, TaskWithUUID
+from app.routers.models.optimisers import OptimiserFunc
 from app.routers.models.tasks import Task
 from app.routers.optimise import convert_task, process_results
 from app.routers.utils.datamanager import DataManager
 
 
 @pytest.mark.requires_epoch
-def test_submit_task(client: TestClient, endpointtask_factory: EndpointTask):
+def test_submit_task(client: TestClient, endpointtask_factory: Callable[[], EndpointTask]):
     """
     Test /submit-task endpoint.
     """
@@ -31,7 +32,7 @@ def test_submit_task(client: TestClient, endpointtask_factory: EndpointTask):
     assert os.path.isfile(Path(Path("tests", "temp"), f"R_{task_id}.json"))
 
 
-def test_convert_task(endpointtask_factory: EndpointTask):
+def test_convert_task(endpointtask_factory: Callable[[], EndpointTask]):
     """
     Test task convertion.
     """
@@ -39,14 +40,14 @@ def test_convert_task(endpointtask_factory: EndpointTask):
     task_id = uuid.uuid4()
     endpointtask = TaskWithUUID(**endpointtask.model_dump(), task_id=task_id)
     data_manager = DataManager()
-    data_manager.temp_data_dir = ""
+    data_manager.temp_data_dir = Path("")
     task = convert_task(endpointtask, data_manager)
     assert task.task_id == task_id
-    assert isinstance(task.optimiser, Optimiser[endpointtask.optimiser.name].value)
+    assert isinstance(task.optimiser, OptimiserFunc[endpointtask.optimiser.name].value)
     assert task.data_manager == data_manager
 
 
-def test_process_results(task_factory: Task):
+def test_process_results(task_factory: Callable[[], Task]):
     """
     Test result processing.
     """

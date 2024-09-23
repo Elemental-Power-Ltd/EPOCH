@@ -1,23 +1,16 @@
 import datetime
 import logging
-from enum import StrEnum
 from typing import Annotated
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt
+
+from app.internal.models.problem import Objectives
 
 from .optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
 from .problem import EndpointParameterDict
 from .site_data import SiteMetaData
 
 logger = logging.getLogger("default")
-
-
-class Objectives(StrEnum):
-    carbon_balance = "carbon_balance"
-    cost_balance = "cost_balance"
-    capex = "capex"
-    payback_horizon = "payback_horizon"
-    annualised_cost = "annualised_cost"
 
 
 class EndpointTask(BaseModel):

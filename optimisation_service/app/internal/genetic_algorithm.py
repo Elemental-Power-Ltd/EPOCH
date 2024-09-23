@@ -11,7 +11,7 @@ from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
 from pymoo.algorithms.soo.nonconvex.ga import GA as Pymoo_GA  # type: ignore
 from pymoo.config import Config  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
-from pymoo.core.result import Result as Pymoo_Result
+from pymoo.core.result import Result as Pymoo_Result  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
@@ -25,7 +25,7 @@ from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: i
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from .opt_algorithm import Algorithm
+from .models.algorithms import Algorithm
 from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
@@ -250,13 +250,13 @@ class GeneticAlgorithm(Algorithm):
             exec_time += single_solution.exec_time
             n_evals += single_solution.algorithm.evaluator.n_eval
 
-        exec_time = timedelta(seconds=float(exec_time))
+        exec_timedelta = timedelta(seconds=float(exec_time))
         objective_values_arr, solutions_arr = np.asarray(objective_values), np.asarray(solutions)
 
         objective_values_arr, non_degen_idx = np.unique(objective_values_arr, axis=0, return_index=True)
         solutions_arr = solutions_arr[non_degen_idx]
 
-        return Result(solutions=solutions_arr, objective_values=objective_values_arr, exec_time=exec_time, n_evals=n_evals)
+        return Result(solutions=solutions_arr, objective_values=objective_values_arr, exec_time=exec_timedelta, n_evals=n_evals)
 
 
 class ProblemInstance(ElementwiseProblem):

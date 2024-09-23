@@ -1,15 +1,22 @@
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
 
-from ...internal.genetic_algorithm import SamplingMethod
+from app.internal.genetic_algorithm import NSGA2, GeneticAlgorithm, SamplingMethod
+from app.internal.grid_search import GridSearch
 
 
-class Optimiser(str, Enum):
+class OptimiserStr(StrEnum):
     NSGA2 = "NSGA2"
     GeneticAlgorithm = "GeneticAlgorithm"
     GridSearch = "GridSearch"
+
+
+class OptimiserFunc(Enum):
+    NSGA2 = NSGA2
+    GeneticAlgorithm = GeneticAlgorithm
+    GridSearch = GridSearch
 
 
 class GABaseHyperParam(BaseModel):
@@ -22,7 +29,7 @@ class GABaseHyperParam(BaseModel):
     )
     sampling_method: SamplingMethod = Field(
         description="Sampling method used to generate initial population.",
-        default="LHS",
+        default=SamplingMethod.LHS,
     )
     prob_crossover: PositiveFloat = Field(
         examples=[0.1, 0.5, 0.9], description="Probability of applying crossover between two parents.", default=0.9
@@ -68,15 +75,15 @@ class GridSearchHyperParam(BaseModel):
 
 
 class NSGA2Optmiser(BaseModel):
-    name: Literal[Optimiser.NSGA2]
+    name: Literal[OptimiserStr.NSGA2]
     hyperparameters: GABaseHyperParam
 
 
 class GAOptimiser(BaseModel):
-    name: Literal[Optimiser.GeneticAlgorithm]
+    name: Literal[OptimiserStr.GeneticAlgorithm]
     hyperparameters: GeneticAlgorithmHyperParam
 
 
 class GridSearchOptimiser(BaseModel):
-    name: Literal[Optimiser.GridSearch]
+    name: Literal[OptimiserStr.GridSearch]
     hyperparameters: GridSearchHyperParam

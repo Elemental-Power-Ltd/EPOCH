@@ -21,9 +21,10 @@ from app.routers.models.core import EndpointResult, EndpointTask, Objectives, Ta
 from app.routers.models.optimisers import (
     GABaseHyperParam,
     NSGA2Optmiser,
+    OptimiserStr,
 )
 from app.routers.models.problem import EndpointParameterDict, EndpointParamRange
-from app.routers.models.site_data import FileLoc, RemoteMetaData, SiteMetaData
+from app.routers.models.site_data import DataDuration, FileLoc, RemoteMetaData, SiteMetaData
 from app.routers.models.tasks import Task
 from app.routers.utils.datamanager import DataManager
 
@@ -70,7 +71,7 @@ def client() -> Generator[TestClient, None, None]:
 @pytest.fixture(scope="function")
 def endpointtask_factory():
     def __create_endpointtask() -> EndpointTask:
-        optimiser = NSGA2Optmiser(name="NSGA2", hyperparameters=GABaseHyperParam())
+        optimiser = NSGA2Optmiser(name=OptimiserStr.NSGA2, hyperparameters=GABaseHyperParam())
         search_parameters = EndpointParameterDict(
             ASHP_HPower=EndpointParamRange(min=70, max=70, step=0),
             ASHP_HSource=EndpointParamRange(min=1, max=1, step=0),
@@ -117,7 +118,9 @@ def endpointtask_factory():
             Objectives.cost_balance,
             Objectives.payback_horizon,
         ]
-        site_data = RemoteMetaData(loc=FileLoc.remote, site_id="test", start_ts="2024-01-01 00:00:00+00:00", duration="year")
+        start_ts = datetime.datetime(year=2024, month=1, day=1, hour=0, minute=0, second=0, tzinfo=datetime.timezone.utc)
+        duration = DataDuration.year
+        site_data = RemoteMetaData(loc=FileLoc.remote, site_id="test", start_ts=start_ts, duration=duration)
 
         return EndpointTask(
             task_name="test",
@@ -143,11 +146,11 @@ def task_factory(tmpdir_factory: pytest.TempdirFactory):
         data_manager.copy_input_data("./tests/data/benchmarks/var-3/InputData", temp_data_folder)
         problem = Problem(
             objectives=[
-                "carbon_balance",
-                "cost_balance",
-                "capex",
-                "payback_horizon",
-                "annualised_cost",
+                Objectives.carbon_balance,
+                Objectives.cost_balance,
+                Objectives.capex,
+                Objectives.annualised_cost,
+                Objectives.payback_horizon,
             ],
             constraints={},
             parameters=ParameterDict(

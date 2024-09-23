@@ -9,11 +9,10 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import UUID4
 
-from ..internal.models.algorithms import Optimiser
-from ..internal.models.problem import ParameterDict
 from ..internal.problem import _OBJECTIVES, Problem
 from ..internal.result import Result
-from .models.core import EndpointResult, EndpointTask, ObjectiveValues, OptimisationSolution, TaskResponse, TaskWithUUID
+from .models.core import EndpointResult, EndpointTask, TaskResponse, TaskWithUUID
+from .models.optimisers import OptimiserFunc
 from .models.tasks import Task
 from .queue import IQueue
 from .utils.datamanager import DataManager
@@ -39,13 +38,13 @@ def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
         Initialised optimiser.
     """
     logger.info(f"Converting {task.task_id}.")
-    optimiser_func = Optimiser[task.optimiser.name].value
+    optimiser_func = OptimiserFunc[task.optimiser.name].value
     optimiser = optimiser_func(**task.optimiser.hyperparameters.model_dump(mode="python"))
-    search_parameters: ParameterDict = task.search_parameters.model_dump(mode="python")
+    search_parameters = task.search_parameters.model_dump(mode="python")  # type: ignore
     problem = Problem(
         objectives=task.objectives,
         constraints={},
-        parameters=search_parameters,
+        parameters=search_parameters,  # type: ignore
         input_dir=data_manager.temp_data_dir,
     )
     return Task(task_id=task.task_id, problem=problem, optimiser=optimiser, data_manager=data_manager)
@@ -56,13 +55,13 @@ def process_results(task: Task, results: Result, completed_at: datetime.datetime
     Optimisation_Results = []
     for solutions, objective_values in zip(results.solutions, results.objective_values):
         solution_dict = task.problem.constant_param() | dict(zip(task.problem.variable_param().keys(), solutions))
-        solution: OptimisationSolution = solution_dict
-        objective_values: ObjectiveValues = dict(zip(_OBJECTIVES, objective_values))
+        solution = solution_dict
+        objective_values_dict = dict(zip(_OBJECTIVES, objective_values))
         OptRes = EndpointResult(
             task_id=str(task.task_id),
             result_id=str(uuid.uuid4()),  # generate a uuid to refer back to later
-            solution=solution,
-            objective_values=objective_values,
+            solution=solution,  # type: ignore
+            objective_values=objective_values_dict,  # type: ignore
             n_evals=results.n_evals,
             exec_time=results.exec_time,
             completed_at=str(completed_at),

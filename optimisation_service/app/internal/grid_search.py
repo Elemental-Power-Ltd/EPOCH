@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from paretoset import paretoset  # type: ignore
 
-from .opt_algorithm import Algorithm
+from .models.algorithms import Algorithm
 from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem, convert_param
 from .result import Result
 from .task_data_wrapper import run_headless

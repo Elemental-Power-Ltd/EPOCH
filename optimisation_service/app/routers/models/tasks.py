@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 from pydantic import UUID4
 
-from ...internal.opt_algorithm import Algorithm
-from ...internal.problem import Problem
-from ..utils.datamanager import DataManager
+from app.internal.models.algorithms import Algorithm
+from app.internal.problem import Problem
+from app.routers.utils.datamanager import DataManager
 
 
 @dataclass

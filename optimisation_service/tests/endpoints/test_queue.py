@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Callable
 
 import pytest
 from fastapi.encoders import jsonable_encoder
@@ -20,7 +21,7 @@ class TestQueueEndpoint:
             assert response.status_code == 200
 
     @pytest.mark.slow
-    def test_cancel_task(self, client: TestClient, endpointtask_factory: EndpointTask):
+    def test_cancel_task(self, client: TestClient, endpointtask_factory: Callable[[], EndpointTask]):
         """
         Test /cancel-task endpoint.
         """
@@ -55,7 +56,7 @@ class TestQueue:
             IQueue(maxsize=-5)
 
     @pytest.mark.asyncio
-    async def test_put(self, task_factory: Task):
+    async def test_put(self, task_factory: Callable[[], Task]):
         """
         Test IQueue put method.
         """
@@ -63,7 +64,7 @@ class TestQueue:
         await q.put(task_factory())
 
     @pytest.mark.asyncio
-    async def test_get(self, task_factory: Task):
+    async def test_get(self, task_factory: Callable[[], Task]):
         """
         Test IQueue get method.
         """
@@ -73,7 +74,7 @@ class TestQueue:
         assert isinstance(task, Task)
 
     @pytest.mark.asyncio
-    async def test_mark_task_done(self, task_factory: Task):
+    async def test_mark_task_done(self, task_factory: Callable[[], Task]):
         """
         Test Iqueue mark_task_done method.
         """
@@ -85,7 +86,7 @@ class TestQueue:
         assert task.task_id not in q.q
 
     @pytest.mark.asyncio
-    async def test_cancel_task(self, task_factory: Task):
+    async def test_cancel_task(self, task_factory: Callable[[], Task]):
         """
         Test IQueue cancel method.
         """
@@ -96,7 +97,7 @@ class TestQueue:
         assert q.q[task.task_id].state == task_state.CANCELLED
 
     @pytest.mark.asyncio
-    async def test_uncancelled(self, task_factory: Task):
+    async def test_uncancelled(self, task_factory: Callable[[], Task]):
         """
         Test IQueue uncancelled method.
         """
@@ -109,7 +110,7 @@ class TestQueue:
         assert task.task_id in uncancelled
 
     @pytest.mark.asyncio
-    async def test_qsize(self, task_factory: Task):
+    async def test_qsize(self, task_factory: Callable[[], Task]):
         """
         Test IQueue qsize method.
         """

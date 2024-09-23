@@ -9,23 +9,25 @@ from typing import Generator, Self
 
 import numpy as np
 
-from .models.problem import ConstraintDict, OldParameterDict, ParameterDict, ParamRange
+from .models.problem import (
+    ConstraintDict,
+    Objectives,
+    OldParameterDict,
+    ParameterDict,
+    ParametersWORange,
+    ParametersWRange,
+    ParamRange,
+)
 from .task_data_wrapper import PyTaskData
 
-_OBJECTIVES = [
-    "carbon_balance",
-    "cost_balance",
-    "capex",
-    "payback_horizon",
-    "annualised_cost",
-]
+_OBJECTIVES = [objective.value for objective in Objectives]
 
 _OBJECTIVES_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "payback_horizon": 1, "annualised_cost": 1}
 
 
 @dataclass(frozen=True)
 class Problem:
-    objectives: list[str]
+    objectives: list[Objectives]
     constraints: ConstraintDict
     parameters: ParameterDict
     input_dir: str | PathLike
@@ -47,14 +49,14 @@ class Problem:
                 f"Missing or invalid parameter keys. Extra parameters: {param_set - valid_set}."
                 f"Missing parameters: {valid_set - param_set}"
             )
-        for value in self.parameters.values():
-            if isinstance(value, dict):
-                if value["min"] > value["max"]:
-                    raise ValueError("parameter lower bounds must be smaller or equal to upper bounds.")
-                step_is_zero = value["step"] == 0
-                min_is_equal_max = value["min"] == value["max"]
-                if (step_is_zero and not min_is_equal_max) or (not step_is_zero and min_is_equal_max):
-                    raise ValueError("parameter bounds must be equal if stepsize is 0.")
+        for param_name in ParametersWRange:
+            value = self.parameters[param_name]  # type: ignore
+            if value["min"] > value["max"]:
+                raise ValueError("parameter lower bounds must be smaller or equal to upper bounds.")
+            step_is_zero = value["step"] == 0
+            min_is_equal_max = value["min"] == value["max"]
+            if (step_is_zero and not min_is_equal_max) or (not step_is_zero and min_is_equal_max):
+                raise ValueError("parameter bounds must be equal if stepsize is 0.")
 
     def variable_param(self) -> dict[str, ParamRange]:
         """
@@ -66,10 +68,10 @@ class Problem:
             Dictionary of parameter ranges.
         """
         param_dict = {}
-        for key, value in self.parameters.items():
-            if isinstance(value, dict):
-                if (value["step"] != 0) and (value["min"] != value["max"]):
-                    param_dict[key] = value
+        for param_name in ParametersWRange:
+            value = self.parameters[param_name]  # type: ignore
+            if (value["step"] != 0) and (value["min"] != value["max"]):
+                param_dict[param_name] = value
         return param_dict
 
     def constant_param(self) -> dict[str, float]:
@@ -82,12 +84,12 @@ class Problem:
             Dictionary of parameter values.
         """
         param_dict = {}
-        for key, value in self.parameters.items():
-            if isinstance(value, dict):
-                if (value["step"] == 0) and (value["min"] == value["max"]):
-                    param_dict[key] = value["min"]
-            else:
-                param_dict[key] = value
+        for param_name in ParametersWRange:
+            value = self.parameters[param_name]  # type: ignore
+            if (value["step"] == 0) and (value["min"] == value["max"]):
+                param_dict[param_name] = value["min"]
+        for param_name in ParametersWORange:
+            param_dict[param_name] = self.parameters[param_name]  # type: ignore
         return param_dict
 
     def size(self) -> int:
@@ -207,9 +209,9 @@ def convert_param(parameters: ParameterDict) -> OldParameterDict:
         Dictionary of parameters with values in the format [min, max, step] or int or float.
     """
     new_dict = {}
-    for key, value in parameters.items():
-        if isinstance(value, dict):
-            new_dict[key] = [value["min"], value["max"], value["step"]]
-        elif isinstance(value, int | float):
-            new_dict[key] = value
+    for param_name in ParametersWRange:
+        value = parameters[param_name]  # type: ignore
+        new_dict[param_name] = [value["min"], value["max"], value["step"]]
+    for param_name in ParametersWORange:
+        new_dict[param_name] = parameters[param_name]  # type: ignore
     return new_dict
