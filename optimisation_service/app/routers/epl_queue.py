@@ -3,13 +3,12 @@ import datetime
 import logging
 import shutil
 from collections import OrderedDict
-from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import PositiveInt
+from pydantic import UUID4, PositiveInt
 
-from .models.queue import QueueElem, QueueStatus, task_state
-from .models.tasks import Task
+from ..models.epl_queue import QueueElem, QueueStatus, task_state
+from ..models.tasks import Task
 
 logger = logging.getLogger("default")
 
@@ -19,19 +18,22 @@ class IQueue(asyncio.Queue):
     Inspectable Queue with cancelling of tasks.
     """
 
-    def __init__(self, maxsize: PositiveInt = 1) -> None:
+    def __init__(self, maxsize: PositiveInt = 1, remove_directory: bool = False) -> None:
         """
         Parameters
         ----------
         maxsize
             Maximum number of tasks to hold in queue.
+        remove_directory
+            Whether to remove the directory when we're finished with a task.
         """
-        logger.info("Initalisaing Queue.")
+        logger.info("Initialising Queue.")
         if maxsize <= 0:
             raise ValueError("Queue maxsize must be positive integer.")
         super().__init__(maxsize=0)
         self.q: OrderedDict = OrderedDict()
         self.q_len = maxsize
+        self.remove_directory = remove_directory
 
     async def put(self, task: Task) -> None:
         """
@@ -77,10 +79,11 @@ class IQueue(asyncio.Queue):
         """
         logger.info(f"Marking as done {task.task_id}.")
         del self.q[task.task_id]
-        shutil.rmtree(task.data_manager.temp_data_dir)
+        if self.remove_directory:
+            shutil.rmtree(task.data_manager.temp_data_dir)
         super().task_done()
 
-    def cancel(self, task_id: UUID):
+    def cancel(self, task_id: UUID4) -> None:
         """
         Cancel a task in queue.
 
@@ -105,7 +108,7 @@ class IQueue(asyncio.Queue):
         """
         return len(self.uncancelled())
 
-    def full(self):
+    def full(self) -> bool:
         """
         Check if queue is full.
 
@@ -114,17 +117,14 @@ class IQueue(asyncio.Queue):
         boolean
             True if full, False otherwise.
         """
-        if self.qsize() >= self.q_len:
-            return True
-        else:
-            return False
+        return self.qsize() >= self.q_len
 
 
 router = APIRouter()
 
 
-@router.post("/queue-status", response_model=QueueStatus)
-async def get_queue_status(request: Request):
+@router.post("/queue-status")
+async def get_queue_status(request: Request) -> QueueStatus:
     """
     View tasks in queue.
 
@@ -137,7 +137,7 @@ async def get_queue_status(request: Request):
 
 
 @router.post("/cancel-task")
-async def cancel_task_in_queue(request: Request, task_id: UUID):
+async def cancel_task_in_queue(request: Request, task_id: UUID4) -> str:
     """
     Cancels task in queue.
     Can not be used to cancel tasks already running.
@@ -150,19 +150,24 @@ async def cancel_task_in_queue(request: Request, task_id: UUID):
     if request.app.state.q.q[task_id].state == task_state.QUEUED:
         request.app.state.q.cancel(task_id)
         return "Task cancelled."
-    elif task_id not in list(request.app.state.q.q.keys()):
+
+    if task_id not in list(request.app.state.q.q.keys()):
         logger.error(f"Task {task_id} not found in queue.")
-        return HTTPException(status_code=400, detail="Task not found in queue.")
-    elif request.app.state.q.q[task_id].state == task_state.RUNNING:
+        raise HTTPException(status_code=400, detail="Task not found in queue.")
+
+    if request.app.state.q.q[task_id].state == task_state.RUNNING:
         logger.error(f"Task {task_id} already running.")
-        return HTTPException(status_code=400, detail="Task already running.")
-    elif request.app.state.q.q[task_id].state == task_state.CANCELLED:
+        raise HTTPException(status_code=400, detail="Task already running.")
+
+    if request.app.state.q.q[task_id].state == task_state.CANCELLED:
         logger.error(f"Task {task_id} already cancelled.")
-        return HTTPException(status_code=400, detail="Task already cancelled.")
+        raise HTTPException(status_code=400, detail="Task already cancelled.")
+
+    raise HTTPException(status_code=400, detail=f"Unhandled task state for {task_id}: {request.app.state.q.q[task_id].state}")
 
 
 @router.post("/clear-queue")
-async def clear_queue(request: Request):
+async def clear_queue(request: Request) -> str:
     """
     Cancels all tasks in queue.
     """

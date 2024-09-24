@@ -1,8 +1,8 @@
 import os
 import shutil
+from collections.abc import Generator
 from pathlib import Path
 from time import perf_counter
-from typing import Generator
 
 import pytest
 

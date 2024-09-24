@@ -3,18 +3,47 @@ import os
 import tempfile
 import time
 from datetime import timedelta
+from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from paretoset import paretoset  # type: ignore
 
-from .models.algorithms import Algorithm
-from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem, convert_param
+from ..models.algorithms import Algorithm
+from ..models.problem import EndpointParameterDict, OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
+from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import run_headless
 
 _EPOCH_CONFIG = {"optimiser": {"leagueTableCapacity": 1, "produceExhaustiveOutput": True}}
+
+
+def convert_param(parameters: ParameterDict | EndpointParameterDict | dict[str, Any]) -> OldParameterDict:
+    """
+    Converts dictionary of parameters from dict of dicts to dict of lists.
+    ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
+
+    Parameters
+    ----------
+    parameters
+        Dictionary of parameters with values in the format {"min":min, "max":max, "step":step} or int or float.
+
+    Returns
+    -------
+    ParameterDict
+        Dictionary of parameters with values in the format [min, max, step] or int or float.
+    """
+    if isinstance(parameters, EndpointParameterDict):
+        parameters = parameters.model_dump()
+    new_dict = {}
+    for param_name in ParametersWRange:
+        value = parameters[param_name]  # type: ignore
+        new_dict[param_name] = [value["min"], value["max"], value["step"]]
+    for param_name in ParametersWORange:
+        new_dict[param_name] = parameters[param_name]  # type: ignore
+    return new_dict
 
 
 class GridSearch(Algorithm):
@@ -79,7 +108,7 @@ class GridSearch(Algorithm):
         os.remove(Path(problem.input_dir, "inputParameters.json"))
 
         variable_param = list(problem.variable_param().keys())
-        usecols = problem.objectives + variable_param
+        usecols = [item.value if isinstance(item, Enum) else str(item) for item in problem.objectives + variable_param]
 
         df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32, usecols=usecols)
 

@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -8,15 +9,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routers import optimise, queue
+from .routers import epl_queue, optimise
+from .routers.epl_queue import IQueue
 from .routers.optimise import process_requests
-from .routers.queue import IQueue
 
 logger = logging.getLogger("default")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Create queue that is served by process_requests from moment app is created until it is closed.
     """
@@ -43,7 +44,7 @@ app.add_middleware(
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     logging.error(f"Validation error: {exc.errors()} | Body: {exc.body}")
     return JSONResponse(
         status_code=422,
@@ -52,9 +53,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.get("/")
-async def read_main():
+async def read_main() -> dict[str, str]:
     return {"message": "Welcome to the Optimisation API!"}
 
 
 app.include_router(optimise.router)
-app.include_router(queue.router)
+app.include_router(epl_queue.router)

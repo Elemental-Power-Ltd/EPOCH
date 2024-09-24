@@ -7,7 +7,7 @@ import os
 import pathlib
 import platform
 import subprocess
-from typing import Generator
+from collections.abc import Generator
 
 import numpy as np
 
@@ -41,8 +41,9 @@ def run_headless(
 ) -> dict[str, float]:
     """
     Run the headless version of Epoch as a subprocess
+
     Parameters
-    -----------
+    ----------
     project_path
         The path to the root of the Epoch repository
     input_dir
@@ -51,6 +52,7 @@ def run_headless(
          The directory to write the output to. Defaults to ./Data/OutputData
     config_dir
         A directory containing the config file(s) for Epoch. Defaults to $project_path$/Config
+
     Returns
     -------
         A dictionary containing the best value for each of the five objectives
@@ -93,15 +95,21 @@ def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / "inputParameters.json"} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / "EpochConfig.json"} is not a file"
 
-    result = subprocess.run(
-        [str(full_path_to_exe), "--input", str(input_dir), "--output", str(output_dir), "--config", str(config_dir)]
-    )
+    result = subprocess.run([
+        str(full_path_to_exe),
+        "--input",
+        str(input_dir),
+        "--output",
+        str(output_dir),
+        "--config",
+        str(config_dir),
+    ])
 
     assert result.returncode == 0
 
     output_json = output_dir / "outputParameters.json"
 
-    with open(output_json, "r") as f:
+    with open(output_json) as f:
         full_output = json.load(f)
 
     minimal_output = {
@@ -122,7 +130,7 @@ class PyTaskData(TaskData):
     Implements dict-like access, with string keys.
     """
 
-    _VALID_KEYS = [
+    _VALID_KEYS = frozenset([
         "ASHP_HPower",
         "ASHP_HSource",
         "ASHP_HotTemp",
@@ -159,16 +167,15 @@ class PyTaskData(TaskData):
         "time_budget_min",
         "timestep_hours",
         "u150_EV_CP_number",
-    ]
+    ])
 
-    _INTEGER_KEYS = {"ESS_charge_mode", "ESS_discharge_mode", "target_max_concurrency"}
+    _INTEGER_KEYS = frozenset(["ESS_charge_mode", "ESS_discharge_mode", "target_max_concurrency"])
 
     def __init__(self, **kwargs: float | int | np.floating):
         super().__init__()
         for key, value in kwargs.items():
-            assert isinstance(value, (float, int, np.floating)), f"Can only set numeric values, got {value}"
+            assert isinstance(value, float | int | np.floating), f"Can only set numeric values, got {value}"
             self[key] = value
-        self["timestep_hours"] = 1
 
     def __setitem__(self, key: str, value: float | int | np.float32) -> None:
         if key not in PyTaskData._VALID_KEYS:

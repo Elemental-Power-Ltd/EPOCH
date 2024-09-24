@@ -6,7 +6,7 @@ from app.internal.task_data_wrapper import Simulator, TaskData
 
 
 @pytest.mark.requires_epoch
-def test_bad_taskdata():
+def test_bad_taskdata() -> None:
     taskdata_values = {
         "OPEX_limit": 0,
         "time_budget_min": 0,

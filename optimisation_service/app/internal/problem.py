@@ -2,17 +2,18 @@ import glob
 import json
 import os
 import shutil
+from collections.abc import Generator
 from dataclasses import dataclass
+from enum import Enum
 from os import PathLike
 from pathlib import Path
-from typing import Generator, Self
+from typing import Self
 
 import numpy as np
 
-from .models.problem import (
+from ..models.problem import (
     ConstraintDict,
     Objectives,
-    OldParameterDict,
     ParameterDict,
     ParametersWORange,
     ParametersWRange,
@@ -36,7 +37,10 @@ class Problem:
         if not len(self.objectives) >= 1:
             raise ValueError("objectives must have at least one objective")
         if not set(self.objectives).issubset(_OBJECTIVES):
-            raise ValueError(f"Invalid objective(s): {set(self.objectives) - set(_OBJECTIVES)}")
+            raise ValueError(
+                "Invalid objective(s):"
+                + str({item.value if isinstance(item, Enum) else str(item) for item in self.objectives} - set(_OBJECTIVES))
+            )
         if not set(self.constraints.keys()).issubset(_OBJECTIVES):
             raise ValueError(f"Invalid constraint name(s): {set(self.constraints.keys()) - set(_OBJECTIVES)}")
         for bounds in self.constraints.values():
@@ -142,7 +146,7 @@ def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
     input_dir = Path(problem_path, "InputData")
     assert os.path.isdir(input_dir), "Benchmark does not have an InputData folder."
 
-    with open(Path(problem_path, "objectives.json"), "r") as f:
+    with open(Path(problem_path, "objectives.json")) as f:
         objectives = json.load(f)
     with open(Path(problem_path, "constraints.json")) as f:
         constraints = json.load(f)
@@ -191,27 +195,3 @@ def save_problem(problem: Problem, name: str, save_dir: str | os.PathLike, overw
         json.dump(problem.constraints, f)
     with open(Path(save_path, "parameters.json"), "w") as f:
         json.dump(problem.parameters, f)
-
-
-def convert_param(parameters: ParameterDict) -> OldParameterDict:
-    """
-    Converts dictionary of parameters from dict of dicts to dict of lists.
-    ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
-
-    Parameters
-    ----------
-    parameters
-        Dictionary of parameters with values in the format {"min":min, "max":max, "step":step} or int or float.
-
-    Returns
-    -------
-    ParameterDict
-        Dictionary of parameters with values in the format [min, max, step] or int or float.
-    """
-    new_dict = {}
-    for param_name in ParametersWRange:
-        value = parameters[param_name]  # type: ignore
-        new_dict[param_name] = [value["min"], value["max"], value["step"]]
-    for param_name in ParametersWORange:
-        new_dict[param_name] = parameters[param_name]  # type: ignore
-    return new_dict
