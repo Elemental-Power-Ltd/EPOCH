@@ -28,7 +28,7 @@ add_library(Epoch_lib STATIC
 	"Simulation/ASHPperf.hpp"
 	"Simulation/Battery.hpp"
 	"Simulation/Config.hpp"
-	"Simulation/DataC.hpp"
+	"Simulation/DataCentre.hpp"
 	"Simulation/ESS.hpp"
 	"Simulation/EV.hpp"
 	"Simulation/GasCH.hpp"

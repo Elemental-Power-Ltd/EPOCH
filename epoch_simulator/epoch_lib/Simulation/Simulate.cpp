@@ -26,7 +26,7 @@
 #include "ESS.hpp"		//AS ADD
 #include "ASHPperf.hpp"	//AS ADD
 #include "ASHP.hpp"		//AS ADD
-#include "DataC.hpp"	//AS ADD
+#include "DataCentre.hpp"	//AS ADD
 
 Simulator::Simulator() {
 
