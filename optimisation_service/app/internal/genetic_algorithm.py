@@ -1,12 +1,17 @@
-from enum import Enum
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
+from datetime import timedelta
+from enum import StrEnum
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-from pymoo.algorithms.moo.nsga2 import NSGA2 as _NSGA2  # type: ignore
-from pymoo.algorithms.soo.nonconvex.ga import GA as _GA  # type: ignore
+from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
+from pymoo.algorithms.soo.nonconvex.ga import GA as Pymoo_GA  # type: ignore
 from pymoo.config import Config  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
+from pymoo.core.result import Result as Pymoo_Result  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
@@ -20,17 +25,27 @@ from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: i
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from .opt_algorithm import Algorithm, alg_param_to_string
-from .problem import Problem
+from .models.algorithms import Algorithm
+from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
 
 Config.warnings["not_compiled"] = False
 
 
-class SamplingMethod(Enum):
-    LHS = LatinHypercubeSampling()
-    RS = FloatRandomSampling()
+async def minimize_async(**kwargs) -> Pymoo_Result:
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as executor:
+        res = await loop.run_in_executor(executor, lambda: minimize(**kwargs))
+    return res
+
+
+class SamplingMethod(StrEnum):
+    LHS = "LHS"
+    RS = "RS"
+
+
+SamplingMethods = {SamplingMethod.LHS: LatinHypercubeSampling(), SamplingMethod.RS: FloatRandomSampling()}
 
 
 class NSGA2(Algorithm):
@@ -86,10 +101,10 @@ class NSGA2(Algorithm):
         if n_offsprings is None:
             n_offsprings = pop_size
 
-        self.algorithm = _NSGA2(
+        self.algorithm = Pymoo_NSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=sampling_method.value,
+            sampling=SamplingMethods[sampling_method],
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
             eliminate_duplicates=True,
@@ -100,21 +115,7 @@ class NSGA2(Algorithm):
 
         self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals)
 
-        self.paramstr = alg_param_to_string(
-            pop_size,
-            n_offsprings,
-            sampling_method,
-            prob_crossover,
-            n_crossover,
-            prob_mutation,
-            std_scaler,
-            tol,
-            period,
-            n_max_gen,
-            n_max_evals,
-        )
-
-    def run(self, problem: Problem, verbose: bool = False) -> Result:
+    def run(self, problem: Problem) -> Result:
         """
         Run NSGA optimisation.
 
@@ -132,14 +133,21 @@ class NSGA2(Algorithm):
         """
         pi = ProblemInstance(problem)
 
-        res = minimize(pi, self.algorithm, self.termination_criteria, verbose=verbose)
+        pareto_front = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+        # To facilitate the algorithm, the problem parameter values are scaled, with ranges from 0 to n and a stepsize of 1.
+        # Hence, resutls need to be scaled back to valid values.
+        solutions = pi.scale_solutions(pareto_front.X)
+        # Moreover, the optimiser only maintains track of optimised objectives.
+        # Hence, each solution in the pareto front is reevaluated to gather missing objective values.
+        objective_values = []
+        for sol in solutions:
+            simresult = pi.simulate(sol)
+            objective_values.append([simresult[objective] for objective in _OBJECTIVES])
+        objective_values_arr = np.asarray(objective_values)
+        n_evals = pareto_front.algorithm.evaluator.n_eval
+        exec_time = timedelta(seconds=pareto_front.exec_time)
 
-        objective_values = res.F * np.fromiter(problem.objectives.values(), dtype=float)
-        solutions = res.X * pi.step + pi.lb
-        n_evals = res.algorithm.evaluator.n_eval
-        exec_time = res.exec_time
-
-        return Result(solutions=solutions, objective_values=objective_values, exec_time=exec_time, n_evals=n_evals)
+        return Result(solutions=solutions, objective_values=objective_values_arr, exec_time=exec_time, n_evals=n_evals)
 
 
 class GeneticAlgorithm(Algorithm):
@@ -197,10 +205,10 @@ class GeneticAlgorithm(Algorithm):
         if n_offsprings is None:
             n_offsprings = pop_size
 
-        self.algorithm = _GA(
+        self.algorithm = Pymoo_GA(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=sampling_method.value,
+            sampling=SamplingMethods[sampling_method],
             selection=TournamentSelection(pressure=k_tournament, func_comp=comp_by_cv_and_fitness),
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
@@ -209,22 +217,7 @@ class GeneticAlgorithm(Algorithm):
 
         self.termination_criteria = SingleTermination(tol, period, n_max_gen, n_max_evals)
 
-        self.paramstr = alg_param_to_string(
-            pop_size,
-            n_offsprings,
-            sampling_method,
-            k_tournament,
-            prob_crossover,
-            n_crossover,
-            prob_mutation,
-            std_scaler,
-            tol,
-            period,
-            n_max_gen,
-            n_max_evals,
-        )
-
-    def run(self, problem: Problem, verbose: bool = False) -> Result:
+    def run(self, problem: Problem) -> Result:
         """
         Run GA optimisation.
 
@@ -242,28 +235,28 @@ class GeneticAlgorithm(Algorithm):
         """
         objective_values, solutions = [], []
         exec_time, n_evals = 0, 0
-        objectives = problem.objectives.keys()
         for sub_problem in problem.split_objectives():
             pi = ProblemInstance(sub_problem)
-            res = minimize(pi, self.algorithm, self.termination_criteria, verbose=verbose)
+            single_solution = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+            # To facilitate the algorithm, the problem parameter values are scaled, with ranges from 0 to n and a stepsize of 1.
+            # Hence, resutls need to be scaled back to valid values.
+            x = pi.scale_solutions(single_solution.X)
+            # Moreover, the optimiser only maintains track of optimised objectives.
+            # Hence, each solution in the pareto front is reevaluated to gather missing objective values.
+            solutions.append(x)
+            simresult = pi.simulate(x)
+            objective_values.append([simresult[objective] for objective in _OBJECTIVES])
 
-            sol = res.X * pi.step + pi.lb
-            solutions.append(sol)
+            exec_time += single_solution.exec_time
+            n_evals += single_solution.algorithm.evaluator.n_eval
 
-            for parameter, value in zip(pi.v_params, sol):
-                pi.TaskData[parameter] = value
-            simresult = PySimulationResult(pi.sim.simulate_scenario(pi.TaskData))
-            objective_values.append([simresult[objective] for objective in objectives])
-
-            exec_time += res.exec_time
-            n_evals += res.algorithm.evaluator.n_eval
-
+        exec_timedelta = timedelta(seconds=float(exec_time))
         objective_values_arr, solutions_arr = np.asarray(objective_values), np.asarray(solutions)
 
         objective_values_arr, non_degen_idx = np.unique(objective_values_arr, axis=0, return_index=True)
         solutions_arr = solutions_arr[non_degen_idx]
 
-        return Result(solutions=solutions_arr, objective_values=objective_values_arr, exec_time=exec_time, n_evals=n_evals)
+        return Result(solutions=solutions_arr, objective_values=objective_values_arr, exec_time=exec_timedelta, n_evals=n_evals)
 
 
 class ProblemInstance(ElementwiseProblem):
@@ -280,41 +273,48 @@ class ProblemInstance(ElementwiseProblem):
         Problem
             Problem to optimise
         """
-        n_obj = len(problem.objectives.keys())
-        self.TaskData = PyTaskData(**problem.constant_param())
+        n_obj = len(problem.objectives)
+        self.constant_param = deepcopy(problem.constant_param())
         self.sim = Simulator(inputDir=str(problem.input_dir))  # epoch_simulator doesn't accept windows paths
         self.objectives = problem.objectives
+        self.constraints = problem.constraints
 
-        self.constraints: dict[str, dict[str, float]] = {"lbs": {}, "ubs": {}}
-        n_ieq_constr = 0
-        for constraint, (c_lb, c_ub) in problem.constraints.items():
-            if c_lb is not None:
-                self.constraints["lbs"][constraint] = c_lb
-                n_ieq_constr += 1
-            if c_ub is not None:
-                self.constraints["ubs"][constraint] = c_ub
-                n_ieq_constr += 1
+        n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
 
         self.v_params, self.lb, ub, self.step = [], np.array([]), np.array([]), np.array([])
         n_var = 0
         for key, value in problem.variable_param().items():
             self.v_params.append(key)
-            self.lb = np.append(self.lb, value[0])
-            ub = np.append(ub, value[1])
-            self.step = np.append(self.step, value[-1])
+            self.lb = np.append(self.lb, value["min"])
+            ub = np.append(ub, value["max"])
+            self.step = np.append(self.step, value["step"])
             n_var += 1
 
         super().__init__(n_var=n_var, n_obj=n_obj, n_ieq_constr=n_ieq_constr, xl=[0] * n_var, xu=(ub - self.lb) / self.step)
 
-    def _evaluate(self, x: float, out: dict[str, list[np.floating]]) -> None:
-        x_ = x * self.step + self.lb
-        for parameter, value in zip(self.v_params, x_):
-            self.TaskData[parameter] = value
-        result = PySimulationResult(self.sim.simulate_scenario(self.TaskData))
+    def scale_solutions(self, x: npt.NDArray) -> npt.NDArray:
+        return x * self.step + self.lb
 
-        out["F"] = [result[objective] * sense for objective, sense in self.objectives.items()]
-        out["G"] = [lb - result[objective] for objective, lb in self.constraints["lbs"].items()]
-        out["G"].extend([result[objective] - ub for objective, ub in self.constraints["ubs"].items()])
+    def simulate(self, x: npt.NDArray) -> PySimulationResult:
+        variable_param = dict(zip(self.v_params, x))
+        all_param = variable_param | deepcopy(self.constant_param)
+        pytd = PyTaskData(**all_param)
+        return PySimulationResult(self.sim.simulate_scenario(pytd))
+
+    def _evaluate(self, x: npt.NDArray, out: dict[str, list[np.floating]]) -> None:
+        x = self.scale_solutions(x)
+        result = self.simulate(x)
+
+        out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]
+        out["G"] = []
+        for constraint, bounds in self.constraints.items():
+            min_value = bounds.get("min", None)
+            max_value = bounds.get("max", None)
+
+            if min_value is not None:
+                out["G"].append(min_value - result[constraint])
+            if max_value is not None:
+                out["G"].append(result[constraint] - max_value)
 
 
 class SingleTermination(Termination):
@@ -368,18 +368,14 @@ def comp_by_cv_and_fitness(pop: Any, P: npt.NDArray, **kwargs: Any) -> npt.NDArr
         candidates = P[i, :]
         feasible = [candidate for candidate in candidates if pop[candidate].CV <= 0.0]
         if len(feasible) > 0:
-            minimum = np.inf
-            best_candidates = []
-            for candidate in feasible:
-                if pop[candidate].F <= minimum:
-                    best_candidates.append(candidate)
+            candidates_fitnesses = [pop[candidate].F for candidate in feasible]
+            minimum = min(candidates_fitnesses)
+            best_candidates = [candidate for candidate in feasible if pop[candidate].F == minimum]
             S[i] = rng.choice(best_candidates)
         else:
-            minimum = np.inf
-            best_candidates = []
-            for candidate in candidates:
-                if pop[candidate].CV <= minimum:
-                    best_candidates.append(candidate)
+            candidates_fitnesses = [pop[candidate].CV for candidate in feasible]
+            minimum = min(candidates_fitnesses)
+            best_candidates = [candidate for candidate in feasible if pop[candidate].CV == minimum]
             S[i] = rng.choice(best_candidates)
 
-    return S[:, None].astype(int)
+    return S[:, np.newaxis].astype(int)

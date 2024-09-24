@@ -1,6 +1,7 @@
 import os
 import pickle as pkl
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import TypedDict
 
@@ -24,7 +25,7 @@ class Result:
     solutions: npt.NDArray
     objective_values: npt.NDArray
     n_evals: int
-    exec_time: float
+    exec_time: timedelta
 
     def __post_init__(self) -> None:
         if not self.solutions.ndim == 2:
@@ -35,7 +36,7 @@ class Result:
             raise ValueError("Solutions and Fitnesses must have the same shape.")
         if not self.n_evals > 0:
             raise ValueError("Number of Evaluations must be positive.")
-        if not self.exec_time > 0:
+        if not self.exec_time > timedelta(seconds=0):
             raise ValueError("Execution time must be positive.")
 
 

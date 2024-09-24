@@ -7,82 +7,119 @@ from os import PathLike
 from pathlib import Path
 from typing import Generator, Self
 
-from .epl_typing import ConstraintDict, ObjectiveDict, ParameterDict
+import numpy as np
+
+from .models.problem import (
+    ConstraintDict,
+    Objectives,
+    OldParameterDict,
+    ParameterDict,
+    ParametersWORange,
+    ParametersWRange,
+    ParamRange,
+)
 from .task_data_wrapper import PyTaskData
 
-ACTUAL_OBJECTIVES = [
-    "carbon_balance",
-    "cost_balance",
-    "capex",
-    "payback_horizon",
-    "annualised_cost",
-]
+_OBJECTIVES = [objective.value for objective in Objectives]
 
-_OPTIMISATION_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "payback_horizon": 1, "annualised_cost": 1}
+_OBJECTIVES_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "payback_horizon": 1, "annualised_cost": 1}
 
 
 @dataclass(frozen=True)
 class Problem:
-    name: str
-    objectives: ObjectiveDict
+    objectives: list[Objectives]
     constraints: ConstraintDict
     parameters: ParameterDict
     input_dir: str | PathLike
 
     def __post_init__(self) -> None:
-        if not len(self.objectives.keys()) >= 1:
+        if not len(self.objectives) >= 1:
             raise ValueError("objectives must have at least one objective")
-        for objective, direction in self.objectives.items():
-            if objective not in ACTUAL_OBJECTIVES:
-                raise ValueError(f"objectives keys must be one of {ACTUAL_OBJECTIVES}.")
-            if direction != 1 and direction != -1:
-                raise ValueError(f"Objectives values must be integers 1 or -1, but got {direction}")
-        if set(self.constraints.keys()) != set(ACTUAL_OBJECTIVES):
-            raise ValueError(f"constraints must contain values for all of {ACTUAL_OBJECTIVES}.")
+        if not set(self.objectives).issubset(_OBJECTIVES):
+            raise ValueError(f"Invalid objective(s): {set(self.objectives) - set(_OBJECTIVES)}")
+        if not set(self.constraints.keys()).issubset(_OBJECTIVES):
+            raise ValueError(f"Invalid constraint name(s): {set(self.constraints.keys()) - set(_OBJECTIVES)}")
         for bounds in self.constraints.values():
-            if bounds[0] is not None and bounds[1] is not None:
-                if bounds[0] > bounds[1]:
-                    raise ValueError("constraints lower bounds must be smaller or equal to upper bounds.")
+            if bounds.get("min", -np.inf) > bounds.get("max", np.inf):
+                raise ValueError("constraints lower bounds must be smaller or equal to upper bounds.")
         if set(self.parameters.keys()) != set(PyTaskData()._VALID_KEYS):
             param_set = set(self.parameters.keys())
             valid_set = set(PyTaskData()._VALID_KEYS)
-            raise ValueError(f"Missing or invalid parameter keys. Extra in parameters: {param_set - valid_set}")
-        for value in self.parameters.values():
-            if isinstance(value, tuple | list):
-                if value[0] > value[1]:
-                    raise ValueError("parameter lower bounds must be smaller or equal to upper bounds.")
-                if (value[2] == 0) & (value[0] != value[1]):
-                    raise ValueError("parameter bounds must be equal if stepsize is 0.")
+            raise ValueError(
+                f"Missing or invalid parameter keys. Extra parameters: {param_set - valid_set}."
+                f"Missing parameters: {valid_set - param_set}"
+            )
+        for param_name in ParametersWRange:
+            value = self.parameters[param_name]  # type: ignore
+            if value["min"] > value["max"]:
+                raise ValueError("parameter lower bounds must be smaller or equal to upper bounds.")
+            step_is_zero = value["step"] == 0
+            min_is_equal_max = value["min"] == value["max"]
+            if (step_is_zero and not min_is_equal_max) or (not step_is_zero and min_is_equal_max):
+                raise ValueError("parameter bounds must be equal if stepsize is 0.")
 
-    def variable_param(self) -> dict[str, list | tuple]:
-        param_dict: dict[str, list | tuple] = {}
-        for key, value in self.parameters.items():
-            if isinstance(value, (list, tuple)):
-                if value[0] != value[1] and value[-1] != 0:
-                    param_dict[key] = value
+    def variable_param(self) -> dict[str, ParamRange]:
+        """
+        Get parameters which have more than 1 possible value.
+
+        Returns
+        -------
+        dict
+            Dictionary of parameter ranges.
+        """
+        param_dict = {}
+        for param_name in ParametersWRange:
+            value = self.parameters[param_name]  # type: ignore
+            if (value["step"] != 0) and (value["min"] != value["max"]):
+                param_dict[param_name] = value
         return param_dict
 
     def constant_param(self) -> dict[str, float]:
+        """
+        Get parameters which have only 1 possible value.
+
+        Returns
+        -------
+        dict
+            Dictionary of parameter values.
+        """
         param_dict = {}
-        for key, value in self.parameters.items():
-            if isinstance(value, (list, tuple)):
-                if value[-1] == 0:
-                    param_dict[key] = value[0]
-            else:
-                param_dict[key] = value
+        for param_name in ParametersWRange:
+            value = self.parameters[param_name]  # type: ignore
+            if (value["step"] == 0) and (value["min"] == value["max"]):
+                param_dict[param_name] = value["min"]
+        for param_name in ParametersWORange:
+            param_dict[param_name] = self.parameters[param_name]  # type: ignore
         return param_dict
 
     def size(self) -> int:
+        """
+        Get size of parameter search space.
+        Calculated by multiplying the number of possible values for each parameter together.
+
+        Returns
+        -------
+        int
+            Size of parameter search space.
+        """
         size = 1
-        for values in self.variable_param().values():
-            n_pos_values = (values[1] - values[0]) / values[-1] + 1
+        for value in self.variable_param().values():
+            n_pos_values = (value["max"] - value["min"]) / value["step"] + 1
             size = int(size * n_pos_values)
 
         return size
 
     def split_objectives(self) -> Generator[Self, None, None]:
-        for objective, sense in self.objectives.items():
-            yield Problem(self.name, {objective: sense}, self.constraints, self.parameters, self.input_dir)  # type: ignore
+        """
+        Split a problem with multiple objectives (MOO) into multiple single objective (SOO) problems.
+
+        Yield
+        -------
+        Problem
+            Problem instance with single objectives
+        """
+        for objective in self.objectives:
+            yield Problem([objective], self.constraints, self.parameters, self.input_dir)  # type: ignore
 
 
 def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
@@ -105,7 +142,7 @@ def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
     input_dir = Path(problem_path, "InputData")
     assert os.path.isdir(input_dir), "Benchmark does not have an InputData folder."
 
-    with open(Path(problem_path, "objectives.json")) as f:
+    with open(Path(problem_path, "objectives.json"), "r") as f:
         objectives = json.load(f)
     with open(Path(problem_path, "constraints.json")) as f:
         constraints = json.load(f)
@@ -113,7 +150,6 @@ def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
         parameters = json.load(f)
 
     return Problem(
-        name=name,
         objectives=objectives,
         constraints=constraints,
         parameters=parameters,
@@ -121,16 +157,18 @@ def load_problem(name: str, save_dir: str | os.PathLike) -> Problem:
     )
 
 
-def save_problem(problem: Problem, save_dir: str | os.PathLike, overwrite: bool = False) -> None:
+def save_problem(problem: Problem, name: str, save_dir: str | os.PathLike, overwrite: bool = False) -> None:
     """
     Saves a problem's objectives, constraints and parameters to json files and copies input data files.
-    All are placed into the save directory under the problem name.
+    All are placed into the save directory under name.
     The parameters and input data files are placed in the subdirectory "InputData".
 
     Parameters
     ----------
     problem
         The problem instance to save
+    name
+        Name to save problem under
     save_dir
         The directory to place the files
     overwrite
@@ -138,9 +176,9 @@ def save_problem(problem: Problem, save_dir: str | os.PathLike, overwrite: bool 
     """
     assert Path(problem.input_dir).exists(), "Couldn't find problem input directory."
 
-    save_path = Path(save_dir, problem.name)
+    save_path = Path(save_dir, name)
     if not overwrite:
-        assert not os.path.isdir(save_path), "Problem savefiles already exist."
+        assert not os.path.isdir(save_path), "Savefiles already exist under this name."
 
     Path(save_path).mkdir(parents=False, exist_ok=True)
     Path(save_path, "InputData").mkdir(parents=False, exist_ok=True)
@@ -155,25 +193,7 @@ def save_problem(problem: Problem, save_dir: str | os.PathLike, overwrite: bool 
         json.dump(problem.parameters, f)
 
 
-def convert_objectives(objectives: list) -> ObjectiveDict:
-    """
-    Convert list of objectives to dictionary of objectives with corresponding optimisation direction.
-    1 for minimisation and -1 for maximisation.
-
-    Parameters
-    ----------
-    objectives
-        List of objectives to convert.
-
-    Returns
-    -------
-    ObjectiveDict
-        Dictionary of objectives with corresponding optimisation direction.
-    """
-    return {key: _OPTIMISATION_DIRECTION[key] for key in objectives}
-
-
-def convert_parameters(parameters: dict) -> ParameterDict:
+def convert_param(parameters: ParameterDict) -> OldParameterDict:
     """
     Converts dictionary of parameters from dict of dicts to dict of lists.
     ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
@@ -189,9 +209,9 @@ def convert_parameters(parameters: dict) -> ParameterDict:
         Dictionary of parameters with values in the format [min, max, step] or int or float.
     """
     new_dict = {}
-    for key, value in parameters.items():
-        if isinstance(value, dict):
-            new_dict[key] = [value["min"], value["max"], value["step"]]
-        else:
-            new_dict[key] = value
+    for param_name in ParametersWRange:
+        value = parameters[param_name]  # type: ignore
+        new_dict[param_name] = [value["min"], value["max"], value["step"]]
+    for param_name in ParametersWORange:
+        new_dict[param_name] = parameters[param_name]  # type: ignore
     return new_dict

@@ -36,8 +36,8 @@ class TestNSGA2:
         """
         Test sampling_method initialisation parameter with bad values.
         """
-        with pytest.raises(AttributeError):
-            NSGA2(sampling_method="RS")  # type: ignore
+        with pytest.raises(KeyError):
+            NSGA2(sampling_method=1)  # type: ignore
 
     @pytest.mark.slow
     def test_run(self, example_problem: Problem) -> None:
@@ -78,8 +78,8 @@ class TestGeneticAlgorithm:
         """
         Test sampling_method initialisation parameter with bad values.
         """
-        with pytest.raises(AttributeError):
-            GeneticAlgorithm(sampling_method="RS")  # type: ignore
+        with pytest.raises(KeyError):
+            GeneticAlgorithm(sampling_method=1)  # type: ignore
 
     @pytest.mark.slow
     def test_run(self, example_problem: Problem) -> None:

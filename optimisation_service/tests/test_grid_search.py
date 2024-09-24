@@ -31,21 +31,13 @@ class TestGridSearch:
         """
         Test algorithm initialisation.
         """
-        GridSearch(
-            output_dir=temporary_directory,
-            project_path=Path("..", "Epoch"),
-            config_dir=None,
-        )
+        GridSearch(keep_degenerate=False)
 
     def test_run(self, example_problem: Problem) -> None:
         """
         Test algorithm run.
         """
-        alg = GridSearch(
-            output_dir=None,
-            project_path=Path("..", "Epoch"),
-            config_dir=None,
-        )
+        alg = GridSearch(keep_degenerate=False)
         t0 = perf_counter()
         alg.run(example_problem)
         exec_time = perf_counter() - t0
@@ -55,10 +47,6 @@ class TestGridSearch:
         """
         Test output of algorithm.
         """
-        alg = GridSearch(
-            output_dir=None,
-            project_path=Path("..", "Epoch"),
-            config_dir=None,
-        )
+        alg = GridSearch(keep_degenerate=False)
         res = alg.run(example_problem)
         assert isinstance(res, Result)
