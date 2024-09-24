@@ -9,7 +9,6 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
 from ..models.core import EndpointResult, TaskWithUUID
-from ..models.database import DatasetIDWithTime
 from ..models.site_data import FileLoc, SiteMetaData
 
 logger = logging.getLogger("default")
@@ -35,7 +34,7 @@ class DataManager:
         self.temp_dir = _TEMP_DIR
         self.input_data_files = _INPUT_DATA_FILES
 
-    async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4) -> os.PathLike:
+    async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4):
         """
         Process task site data.
         Either copy local files to temp dir or fetch and process data from database and save to temp dir.
@@ -120,7 +119,7 @@ class DataManager:
         site_data["DHWdemand"] = self.transform_grid_CO2_data(site_data_entries["heat"])
         return site_data
 
-    async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data: dict | DatasetIDWithTime):
+    async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data):
         """
         Send a post request to the database api server.
 
@@ -215,7 +214,7 @@ class DataManager:
         df = df.reset_index()
         df = df.rename(columns={"temperature": 0})
         df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-        df = df.sort_values(0)
+        df = df.sort_values(str(0))
         return df
 
     def transform_ASHP_output_data(self, ashp_output) -> pd.DataFrame:
@@ -223,7 +222,7 @@ class DataManager:
         df = df.reset_index()
         df = df.rename(columns={"temperature": 0})
         df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-        df = df.sort_values(0)
+        df = df.sort_values(str(0))
         return df
 
     def transform_import_tariff_data(self, import_tariffs) -> pd.DataFrame:

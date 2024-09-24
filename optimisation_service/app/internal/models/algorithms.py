@@ -1,10 +1,23 @@
-from enum import Enum
+from abc import ABC, abstractmethod
 
-from ..genetic_algorithm import NSGA2, GeneticAlgorithm
-from ..grid_search import GridSearch
+from app.internal.problem import Problem
+from app.internal.result import Result
 
 
-class Optimiser(Enum):
-    NSGA2 = NSGA2
-    GeneticAlgorithm = GeneticAlgorithm
-    GridSearch = GridSearch
+class Algorithm(ABC):
+    @abstractmethod
+    def run(self, problem: Problem) -> Result:
+        """
+        Run optimisation.
+
+        Parameters
+        ----------
+
+        problem
+            Problem instance to optimise.
+
+        Returns
+        -------
+        Result
+        """
+        pass
