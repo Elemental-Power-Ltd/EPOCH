@@ -12,7 +12,6 @@ class Algorithm(ABC):
 
         Parameters
         ----------
-
         problem
             Problem instance to optimise.
 

@@ -1,12 +1,67 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Optimisation Elemental"
+version = "0.1"
+authors = [
+ { name="William Drouard", email="william@elementalpower.co.uk" },
+  { name="Matt Bailey", email="matthew@elementalpower.co.uk"},
+]
+description = "Optimisation Backend for Elemental Power"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
 [tool.ruff]
 extend-include = ["*.ipynb"]
 line-length = 128
 
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [tool.ruff.lint]
-select = ["E", "W", "F", "B", "I", "A", "C4", "FAST"]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warning
+    "F", # pyflakes
+    "B", # flake8-bugbear
+    "I", # isort
+    "A", # flake8-builtins
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "DTZ", # datetime
+    "PT", # pytest
+    "PD", # pandas
+    "PERF", # performance,
+    "RUF", # ruff
+    "FAST", # fastAPI
+    # "D", # pydocstyle
+]
+ignore = [
+    "PD901", # pandas df variable name
+    "PT011", # pytest raises too broad
+    "RUF029", # declared async but doesn't use
+    "B905", # zip() without an explicit strict= parameter.
+]
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
 
 [tool.pytest.ini_options]
 markers = [
     "requires_epoch: Mark tests as requiring Epoch, and disable if we can't find it (deselect with '-m \"not requires_epoch\"')",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "external: marks tests as requiring an external API key (deselect with '-m \"not external\"')",
 ]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unreachable = true

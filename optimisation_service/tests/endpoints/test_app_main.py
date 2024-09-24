@@ -4,7 +4,7 @@ from app.main import app
 
 
 class TestMain:
-    def test_read_main(self):
+    def test_read_main(self) -> None:
         """
         Test server.
         """

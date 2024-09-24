@@ -9,7 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
 from ..models.core import EndpointResult, TaskWithUUID
-from ..models.site_data import FileLoc, SiteMetaData
+from ..models.site_data import ASHPResult, FileLoc, LocalMetaData, RecordsList, RemoteMetaData, SiteDataEntries, SiteMetaData
 
 logger = logging.getLogger("default")
 
@@ -24,7 +24,7 @@ _INPUT_DATA_FILES = [
     "CSVASHPoutput.csv",
     "CSVImporttariff.csv",
     "CSVGridCO2.csv",
-    "CSVDHWdemand.csv"
+    "CSVDHWdemand.csv",
 ]
 
 
@@ -34,7 +34,7 @@ class DataManager:
         self.temp_dir = _TEMP_DIR
         self.input_data_files = _INPUT_DATA_FILES
 
-    async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4):
+    async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4) -> None:
         """
         Process task site data.
         Either copy local files to temp dir or fetch and process data from database and save to temp dir.
@@ -74,7 +74,7 @@ class DataManager:
         for file in self.input_data_files:
             shutil.copy(Path(source, file), Path(destination, file))
 
-    async def fetch_latest_datasets(self, site_data: SiteMetaData):
+    async def fetch_latest_datasets(self, site_data: SiteMetaData) -> SiteDataEntries:
         """
         Fetch from the database the datasets relevant to the site data.
 
@@ -92,7 +92,7 @@ class DataManager:
             site_data_entries = await self.db_post(client=client, subdirectory="/get-latest-datasets", data=site_data)
         return site_data_entries
 
-    def transform_all_input_data(self, site_data_entries) -> dict[str, pd.DataFrame]:
+    def transform_all_input_data(self, site_data_entries: SiteDataEntries) -> dict[str, pd.DataFrame]:
         """
         Transform a response from /get-latest-datasets into a set of dataframes
 
@@ -106,20 +106,22 @@ class DataManager:
         site_data
             Dictionary of pandas DataFrame for each Epoch input data field.
         """
-
-        site_data = {}
-        site_data["Eload"] = self.transform_electricity_data(site_data_entries["eload"])
-        site_data["Hload"] = self.transform_heat_data(site_data_entries["heat"])
-        site_data["Airtemp"] = self.transform_airtemp_data(site_data_entries["heat"])
-        site_data["RGen"] = self.transform_rgen_data(site_data_entries["rgen"])
-        site_data["ASHPinput"] = self.transform_ASHP_input_data(site_data_entries["ashp_input"])
-        site_data["ASHPoutput"] = self.transform_ASHP_output_data(site_data_entries["ashp_output"])
-        site_data["Importtariff"] = self.transform_import_tariff_data(site_data_entries["import_tariffs"])
-        site_data["GridCO2"] = self.transform_grid_CO2_data(site_data_entries["grid_co2"])
-        site_data["DHWdemand"] = self.transform_grid_CO2_data(site_data_entries["heat"])
+        site_data = {
+            "Eload": self.transform_electricity_data(site_data_entries["eload"]),
+            "Hload": self.transform_heat_data(site_data_entries["heat"]),
+            "Airtemp": self.transform_airtemp_data(site_data_entries["heat"]),
+            "RGen": self.transform_rgen_data(site_data_entries["rgen"]),
+            "ASHPinput": self.transform_ASHP_input_data(site_data_entries["ashp_input"]),
+            "ASHPoutput": self.transform_ASHP_output_data(site_data_entries["ashp_output"]),
+            "Importtariff": self.transform_import_tariff_data(site_data_entries["import_tariffs"]),
+            "GridCO2": self.transform_grid_CO2_data(site_data_entries["grid_co2"]),
+            "DHWdemand": self.transform_grid_CO2_data(site_data_entries["heat"]),
+        }
         return site_data
 
-    async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data):
+    async def db_post(
+        self, client: httpx.AsyncClient, subdirectory: str, data: RemoteMetaData | LocalMetaData
+    ) -> SiteDataEntries:
         """
         Send a post request to the database api server.
 
@@ -145,7 +147,7 @@ class DataManager:
             logger.error(f"Error response {e.response.status_code} while requesting {e.request.url!r}: {e.response.text}.")
             raise
         except httpx.RequestError as e:
-            logger.error(f"Request error while requesting {e.request.url!r}: {str(e)}", exc_info=True)
+            logger.error(f"Request error while requesting {e.request.url!r}: {e!s}", exc_info=True)
             raise
 
     async def transmit_results(self, results: list[EndpointResult]) -> None:
@@ -174,15 +176,15 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-task", data=jsonable_encoder(task))
 
-    def transform_electricity_data(self, eload) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(eload)
+    def transform_electricity_data(self, eload: RecordsList) -> pd.DataFrame:
+        df = pd.DataFrame.from_records(eload)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1"])
         df["FixLoad2"] = 0
         df = df.sort_values("HourOfYear")
         return df
 
-    def transform_rgen_data(self, rgen) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(rgen)
+    def transform_rgen_data(self, rgen: RecordsList) -> pd.DataFrame:
+        df = pd.DataFrame.from_records(rgen)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
         df = df.sort_values("HourOfYear")
         df["RGen2"] = 0
@@ -190,49 +192,48 @@ class DataManager:
         df["RGen4"] = 0
         return df
 
-    def transform_heat_data(self, heat) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(heat)
+    def transform_heat_data(self, heat: RecordsList) -> pd.DataFrame:
+        df = pd.DataFrame.from_records(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
         df = df.sort_values("HourOfYear")
         return df
 
-    def transform_airtemp_data(self, heat) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(heat)
+    def transform_airtemp_data(self, heat: RecordsList) -> pd.DataFrame:
+        df = pd.DataFrame.from_records(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "AirTemp"])
         df = df.sort_values("HourOfYear")
         return df
-    
 
-    def transform_dhw_data(self, heat) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(heat)
+    def transform_dhw_data(self, heat: RecordsList) -> pd.DataFrame:
+        df = pd.DataFrame.from_records(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "DHWLoad1", "DHWLoad2", "DHWLoad3", "DHWLoad4"])
         df = df.sort_values("HourOfYear")
         return df
 
-    def transform_ASHP_input_data(self, ashp_input) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(ashp_input, orient="tight")
+    def transform_ASHP_input_data(self, ashp_input: ASHPResult) -> pd.DataFrame:
+        df = pd.DataFrame.from_dict(dict(ashp_input), orient="tight")
         df = df.reset_index()
         df = df.rename(columns={"temperature": 0})
         df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
         df = df.sort_values(str(0))
         return df
 
-    def transform_ASHP_output_data(self, ashp_output) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(ashp_output, orient="tight")
+    def transform_ASHP_output_data(self, ashp_output: ASHPResult) -> pd.DataFrame:
+        df = pd.DataFrame.from_dict(dict(ashp_output), orient="tight")
         df = df.reset_index()
         df = df.rename(columns={"temperature": 0})
         df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
         df = df.sort_values(str(0))
         return df
 
-    def transform_import_tariff_data(self, import_tariffs) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(import_tariffs)
+    def transform_import_tariff_data(self, import_tariffs: RecordsList) -> pd.DataFrame:
+        df = pd.DataFrame.from_records(import_tariffs)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
         df = df.sort_values("HourOfYear")
         return df
 
-    def transform_grid_CO2_data(self, grid_co2) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(grid_co2)
+    def transform_grid_CO2_data(self, grid_co2: RecordsList) -> pd.DataFrame:
+        df = pd.DataFrame.from_records(grid_co2)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "GridCO2"])
         df = df.sort_values("HourOfYear")
         return df

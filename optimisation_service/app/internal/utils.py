@@ -1,8 +1,12 @@
 import typing
+from typing import Any, Never
 
 import numpy as np
+import numpy.typing as npt
 from pymoo.core.mutation import Mutation  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
+
+from ..internal.genetic_algorithm import ProblemInstance
 
 
 def typename(x: typing.Any) -> str:
@@ -21,7 +25,7 @@ def typename(x: typing.Any) -> str:
     return type(x).__name__
 
 
-def mut_simple_int(X, xl, xu, prob):
+def mut_simple_int(X: npt.NDArray, xl: npt.NDArray, xu: npt.NDArray, prob: npt.NDArray) -> npt.NDArray:
     """
     Mutate integer variables by 1.
     """
@@ -45,10 +49,10 @@ class SimpleIntMutation(Mutation):
     Mutate integer variables by 1.
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-    def _do(self, problem, X, **kwargs):
+    def _do(self, problem: ProblemInstance, X: npt.NDArray, **kwargs: Never) -> npt.NDArray:
         X.astype(float)
         prob_var = self.get_prob_var(problem, size=len(X))
         Xp = mut_simple_int(X, problem.xl, problem.xu, prob_var)

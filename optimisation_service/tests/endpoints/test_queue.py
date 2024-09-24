@@ -1,18 +1,18 @@
 from collections import OrderedDict
-from typing import Callable
+from collections.abc import Callable
 
 import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.routers.models.core import EndpointTask
-from app.routers.models.tasks import Task
-from app.routers.queue import IQueue, task_state
+from app.models.core import EndpointTask
+from app.models.tasks import Task
+from app.routers.epl_queue import IQueue, task_state
 
 
 class TestQueueEndpoint:
-    def test_queue_status(self):
+    def test_queue_status(self) -> None:
         """
         Test /queue-status endpoint.
         """
@@ -21,7 +21,7 @@ class TestQueueEndpoint:
             assert response.status_code == 200
 
     @pytest.mark.slow
-    def test_cancel_task(self, client: TestClient, endpointtask_factory: Callable[[], EndpointTask]):
+    def test_cancel_task(self, client: TestClient, endpointtask_factory: Callable[[], EndpointTask]) -> None:
         """
         Test /cancel-task endpoint.
         """
@@ -33,7 +33,7 @@ class TestQueueEndpoint:
         response = client.post("/cancel-task", params={"task_id": task2_id})
         assert response.status_code == 200
 
-    def test_clear_queue(self, client: TestClient):
+    def test_clear_queue(self, client: TestClient) -> None:
         """
         Test /clear-queue endpoint.
         """
@@ -42,13 +42,13 @@ class TestQueueEndpoint:
 
 
 class TestQueue:
-    def test_init(self):
+    def test_init(self) -> None:
         """
         Test IQueue class init.
         """
         IQueue(maxsize=5)
 
-    def test_bad_init_maxsize(self):
+    def test_bad_init_maxsize(self) -> None:
         """
         Test IQueue class init with bad maxsize arg.
         """
@@ -56,7 +56,7 @@ class TestQueue:
             IQueue(maxsize=-5)
 
     @pytest.mark.asyncio
-    async def test_put(self, task_factory: Callable[[], Task]):
+    async def test_put(self, task_factory: Callable[[], Task]) -> None:
         """
         Test IQueue put method.
         """
@@ -64,7 +64,7 @@ class TestQueue:
         await q.put(task_factory())
 
     @pytest.mark.asyncio
-    async def test_get(self, task_factory: Callable[[], Task]):
+    async def test_get(self, task_factory: Callable[[], Task]) -> None:
         """
         Test IQueue get method.
         """
@@ -74,7 +74,7 @@ class TestQueue:
         assert isinstance(task, Task)
 
     @pytest.mark.asyncio
-    async def test_mark_task_done(self, task_factory: Callable[[], Task]):
+    async def test_mark_task_done(self, task_factory: Callable[[], Task]) -> None:
         """
         Test Iqueue mark_task_done method.
         """
@@ -86,7 +86,7 @@ class TestQueue:
         assert task.task_id not in q.q
 
     @pytest.mark.asyncio
-    async def test_cancel_task(self, task_factory: Callable[[], Task]):
+    async def test_cancel_task(self, task_factory: Callable[[], Task]) -> None:
         """
         Test IQueue cancel method.
         """
@@ -97,7 +97,7 @@ class TestQueue:
         assert q.q[task.task_id].state == task_state.CANCELLED
 
     @pytest.mark.asyncio
-    async def test_uncancelled(self, task_factory: Callable[[], Task]):
+    async def test_uncancelled(self, task_factory: Callable[[], Task]) -> None:
         """
         Test IQueue uncancelled method.
         """
@@ -110,7 +110,7 @@ class TestQueue:
         assert task.task_id in uncancelled
 
     @pytest.mark.asyncio
-    async def test_qsize(self, task_factory: Callable[[], Task]):
+    async def test_qsize(self, task_factory: Callable[[], Task]) -> None:
         """
         Test IQueue qsize method.
         """

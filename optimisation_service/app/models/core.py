@@ -1,14 +1,12 @@
 import datetime
 import logging
+import uuid
 from typing import Annotated
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt
 
-import uuid
-from app.internal.models.problem import Objectives
-
 from .optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
-from .problem import EndpointParameterDict
+from .problem import EndpointParameterDict, Objectives
 from .site_data import SiteMetaData
 
 logger = logging.getLogger("default")
@@ -34,8 +32,10 @@ class EndpointTask(BaseModel):
 
 
 class TaskWithUUID(EndpointTask):
-    task_id: Annotated[UUID4, "String serialised UUID"] = Field(default_factory=uuid.uuid4,
-        examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
+    task_id: Annotated[UUID4, "String serialised UUID"] = Field(
+        default_factory=uuid.uuid4,
+        examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"],
+        description="Unique ID (generally a UUIDv4) of an optimisation task.",
     )
 
 

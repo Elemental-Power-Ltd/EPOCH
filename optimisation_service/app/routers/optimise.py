@@ -9,14 +9,13 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import UUID4
 
-from ..internal.problem import _OBJECTIVES, Problem
+from ..internal.datamanager import DataManager
+from ..internal.problem import _OBJECTIVES, ParameterDict, Problem
 from ..internal.result import Result
-from .models.core import EndpointResult, EndpointTask, TaskResponse, TaskWithUUID
-from .models.optimisers import OptimiserFunc
-from .models.tasks import Task
-from .models.problem import EndpointParameterDict
-from .queue import IQueue
-from .utils.datamanager import DataManager
+from ..models.core import EndpointResult, EndpointTask, TaskResponse, TaskWithUUID
+from ..models.optimisers import OptimiserFunc
+from ..models.tasks import Task
+from .epl_queue import IQueue
 
 router = APIRouter()
 logger = logging.getLogger("default")
@@ -43,13 +42,12 @@ def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
     optimiser = optimiser_func(**task.optimiser.hyperparameters.model_dump(mode="python"))
 
     # Write out the parameters for debug purposes; EPOCH doesn't actually use them.
-    search_parameters: EndpointParameterDict = task.search_parameters.model_dump(mode="python")
     with open(data_manager.temp_data_dir / "inputParameters.json", "w") as fi:
         fi.write(task.search_parameters.model_dump_json(indent=4))
     problem = Problem(
         objectives=task.objectives,
         constraints={},
-        parameters=search_parameters,  # type: ignore
+        parameters=ParameterDict(**task.search_parameters.model_dump()),  # type: ignore
         input_dir=data_manager.temp_data_dir,
     )
     return Task(task_id=task.task_id, problem=problem, optimiser=optimiser, data_manager=data_manager)
@@ -75,7 +73,7 @@ def process_results(task: Task, results: Result, completed_at: datetime.datetime
     return Optimisation_Results
 
 
-async def process_requests(q: IQueue):
+async def process_requests(q: IQueue) -> None:
     """
     Loop to process tasks in queue.
 
@@ -135,8 +133,8 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
             await q.put(pytask)
             return TaskResponse(task_id=task.task_id)
         except httpx.HTTPStatusError as e:
-            logger.warning(f"Failed to add task to database: {str(e.response.text)}")
-            raise HTTPException(status_code=500, detail=f"Failed to add task to database: {str(e.response.text)}") from e
+            logger.warning(f"Failed to add task to database: {e.response.text!s}")
+            raise HTTPException(status_code=500, detail=f"Failed to add task to database: {e.response.text!s}") from e
         except Exception as e:
-            logger.warning(f"Failed to add task to queue: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to add task to queue: {str(e)}") from e
+            logger.warning(f"Failed to add task to queue: {e!s}")
+            raise HTTPException(status_code=500, detail=f"Failed to add task to queue: {e!s}") from e

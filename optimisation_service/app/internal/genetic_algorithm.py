@@ -25,7 +25,7 @@ from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: i
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from .models.algorithms import Algorithm
+from ..models.algorithms import Algorithm
 from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
@@ -33,7 +33,7 @@ from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
 Config.warnings["not_compiled"] = False
 
 
-async def minimize_async(**kwargs) -> Pymoo_Result:
+async def minimize_async(**kwargs: Any) -> Pymoo_Result:
     loop = asyncio.get_event_loop()
     with ThreadPoolExecutor() as executor:
         res = await loop.run_in_executor(executor, lambda: minimize(**kwargs))
@@ -63,7 +63,7 @@ class NSGA2(Algorithm):
         prob_mutation: float = 0.9,
         std_scaler: float = 0.2,
         tol: float = 1e-14,
-        period: int = 25,
+        period: int | None = 25,
         n_max_gen: int = int(1e14),
         n_max_evals: int = int(1e14),
     ) -> None:
@@ -97,7 +97,6 @@ class NSGA2(Algorithm):
         n_max_evals
             Max number of evaluations of EPOCH before termination
         """
-
         if n_offsprings is None:
             n_offsprings = pop_size
 
@@ -247,6 +246,7 @@ class GeneticAlgorithm(Algorithm):
             simresult = pi.simulate(x)
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
 
+            assert single_solution.exec_time is not None
             exec_time += single_solution.exec_time
             n_evals += single_solution.algorithm.evaluator.n_eval
 
@@ -357,6 +357,7 @@ def comp_by_cv_and_fitness(pop: Any, P: npt.NDArray, **kwargs: Any) -> npt.NDArr
         Candidates in tournanemt
     kwargs
         ???
+
     Returns
     -------
     Parents from tournament selection

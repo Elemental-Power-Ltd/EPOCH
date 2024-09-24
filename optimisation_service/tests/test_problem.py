@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from app.internal.models.problem import ConstraintDict, ParameterDict
 from app.internal.problem import Objectives, Problem, load_problem
+from app.models.problem import ConstraintDict, ParameterDict
 
 
 @pytest.fixture

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 try:
@@ -18,8 +20,7 @@ class TestEpochIntegration:
         """
         old_td = TaskData()
         new_td = PyTaskData()
-
-        sim = Simulator()
+        sim = Simulator(inputDir=str(Path("tests", "data", "benchmarks", "var-3", "InputData")))
 
         old_res = PySimulationResult(sim.simulate_scenario(old_td))
         new_res = PySimulationResult(sim.simulate_scenario(new_td))
@@ -35,7 +36,7 @@ class TestEpochIntegration:
 
         old_td.ESS_capacity += 10
         new_td["ESS_capacity"] += 10
-        sim = Simulator()
+        sim = Simulator(inputDir=str(Path("tests", "data", "benchmarks", "var-3", "InputData")))
 
         old_res = PySimulationResult(sim.simulate_scenario(old_td))
         new_res = PySimulationResult(sim.simulate_scenario(new_td))
@@ -47,7 +48,6 @@ class TestEpochIntegration:
 class TestPyTaskDataWrapped:
     def test_kwargs_works(self) -> None:
         """Test that the kwarg setter works"""
-
         td = PyTaskData(CAPEX_limit=3142)
         assert td["CAPEX_limit"] == 3142
         assert td.CAPEX_limit == 3142

@@ -2,24 +2,24 @@ import datetime
 import os
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
+from app.internal.datamanager import DataManager
 from app.internal.result import Result
-from app.routers.models.core import EndpointTask, TaskWithUUID
-from app.routers.models.optimisers import OptimiserFunc
-from app.routers.models.tasks import Task
+from app.models.core import EndpointTask, TaskWithUUID
+from app.models.optimisers import OptimiserFunc
+from app.models.tasks import Task
 from app.routers.optimise import convert_task, process_results
-from app.routers.utils.datamanager import DataManager
 
 
 @pytest.mark.requires_epoch
-def test_submit_task(client: TestClient, endpointtask_factory: Callable[[], EndpointTask]):
+def test_submit_task(client: TestClient, endpointtask_factory: Callable[[], EndpointTask]) -> None:
     """
     Test /submit-task endpoint.
     """
@@ -32,7 +32,7 @@ def test_submit_task(client: TestClient, endpointtask_factory: Callable[[], Endp
     assert os.path.isfile(Path(Path("tests", "temp"), f"R_{task_id}.json"))
 
 
-def test_convert_task(endpointtask_factory: Callable[[], EndpointTask]):
+def test_convert_task(endpointtask_factory: Callable[[], EndpointTask]) -> None:
     """
     Test task convertion.
     """
@@ -47,14 +47,14 @@ def test_convert_task(endpointtask_factory: Callable[[], EndpointTask]):
     assert task.data_manager == data_manager
 
 
-def test_process_results(task_factory: Callable[[], Task]):
+def test_process_results(task_factory: Callable[[], Task]) -> None:
     """
     Test result processing.
     """
     task = task_factory()
     parameters = task.problem.variable_param()
     solution = []
-    for _, param_range in parameters.items():
+    for param_range in parameters.values():
         min_v = param_range["min"]
         max_v = param_range["max"]
         step = param_range["step"]

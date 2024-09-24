@@ -1,16 +1,16 @@
-from enum import Enum
+from enum import StrEnum
 from os import PathLike
-from typing import Literal
+from typing import Literal, TypedDict
 
 from pydantic import AwareDatetime, BaseModel, Field
 
 
-class FileLoc(str, Enum):
+class FileLoc(StrEnum):
     remote = "remote"
     local = "local"
 
 
-class DataDuration(str, Enum):
+class DataDuration(StrEnum):
     year = "year"
 
 
@@ -35,6 +35,25 @@ class LocalMetaData(BaseModel):
         description="The database ID for a site, all lower case, joined by underscores.",
     )
     path: PathLike = Field(examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it.")
+
+
+type RecordsList = list[dict[str, str | float | int]]
+
+
+class ASHPResult(BaseModel):
+    index: list[float]
+    columns: list[float]
+    data: list[list[float]]
+
+
+class SiteDataEntries(TypedDict):
+    eload: RecordsList
+    heat: RecordsList
+    ashp_input: ASHPResult
+    ashp_output: ASHPResult
+    import_tariffs: RecordsList
+    grid_co2: RecordsList
+    rgen: RecordsList
 
 
 SiteMetaData = RemoteMetaData | LocalMetaData

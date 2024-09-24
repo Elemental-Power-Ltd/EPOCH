@@ -2,8 +2,8 @@ import datetime
 import json
 import logging
 import os
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Generator
 from uuid import uuid4
 
 import pandas as pd
@@ -13,35 +13,42 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 from pandas.core.api import DataFrame as DataFrame
 
+from app.internal.datamanager import DataManager
 from app.internal.grid_search import GridSearch
-from app.internal.models.problem import ParameterDict, ParamRange
 from app.internal.problem import Problem
 from app.main import app
-from app.routers.models.core import EndpointResult, EndpointTask, Objectives, TaskWithUUID
-from app.routers.models.optimisers import (
+from app.models.core import EndpointResult, EndpointTask, Objectives, TaskWithUUID
+from app.models.optimisers import (
     GABaseHyperParam,
     NSGA2Optmiser,
     OptimiserStr,
 )
-from app.routers.models.problem import EndpointParameterDict, EndpointParamRange
-from app.routers.models.site_data import DataDuration, FileLoc, RemoteMetaData, SiteMetaData
-from app.routers.models.tasks import Task
-from app.routers.utils.datamanager import DataManager
+from app.models.problem import EndpointParameterDict, EndpointParamRange, ParameterDict, ParamRange
+from app.models.site_data import ASHPResult, DataDuration, FileLoc, RemoteMetaData, SiteDataEntries, SiteMetaData
+from app.models.tasks import Task
 
 logger = logging.getLogger("default")
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture()
 def client() -> Generator[TestClient, None, None]:
     class DataManagerOverride(DataManager):
         def __init__(self) -> None:
             super().__init__()
             self.temp_dir = Path("tests", "temp")
 
-        async def fetch_latest_datasets(self, site_data: SiteMetaData):
-            return None
+        async def fetch_latest_datasets(self, site_data: SiteMetaData) -> SiteDataEntries:
+            return {
+                "eload": [],
+                "heat": [],
+                "ashp_input": ASHPResult(index=[], columns=[], data=[]),
+                "ashp_output": ASHPResult(index=[], columns=[], data=[]),
+                "import_tariffs": [],
+                "grid_co2": [],
+                "rgen": [],
+            }
 
-        def transform_all_input_data(self, site_data_entries) -> dict[str, DataFrame]:
+        def transform_all_input_data(self, site_data_entries: SiteDataEntries) -> dict[str, DataFrame]:
             sample_data_path = Path("tests", "data", "benchmarks", "var-3", "InputData")
             site_data = {
                 "Eload": pd.read_csv(Path(sample_data_path, "CSVEload.csv")),
@@ -52,6 +59,7 @@ def client() -> Generator[TestClient, None, None]:
                 "ASHPoutput": pd.read_csv(Path(sample_data_path, "CSVASHPoutput.csv")),
                 "Importtariff": pd.read_csv(Path(sample_data_path, "CSVImporttariff.csv")),
                 "GridCO2": pd.read_csv(Path(sample_data_path, "CSVGridCO2.csv")),
+                "DHWdemand": pd.read_csv(Path(sample_data_path, "CSVDHWdemand.csv")),
             }
             return site_data
 
@@ -68,8 +76,8 @@ def client() -> Generator[TestClient, None, None]:
         yield client
 
 
-@pytest.fixture(scope="function")
-def endpointtask_factory():
+@pytest.fixture
+def endpointtask_factory() -> Callable[[], EndpointTask]:
     def __create_endpointtask() -> EndpointTask:
         optimiser = NSGA2Optmiser(name=OptimiserStr.NSGA2, hyperparameters=GABaseHyperParam())
         search_parameters = EndpointParameterDict(
@@ -118,7 +126,7 @@ def endpointtask_factory():
             Objectives.cost_balance,
             Objectives.payback_horizon,
         ]
-        start_ts = datetime.datetime(year=2024, month=1, day=1, hour=0, minute=0, second=0, tzinfo=datetime.timezone.utc)
+        start_ts = datetime.datetime(year=2024, month=1, day=1, hour=0, minute=0, second=0, tzinfo=datetime.UTC)
         duration = DataDuration.year
         site_data = RemoteMetaData(loc=FileLoc.remote, site_id="test", start_ts=start_ts, duration=duration)
 
@@ -134,8 +142,8 @@ def endpointtask_factory():
     return __create_endpointtask
 
 
-@pytest.fixture(scope="function")
-def task_factory(tmpdir_factory: pytest.TempdirFactory):
+@pytest.fixture
+def task_factory(tmpdir_factory: pytest.TempdirFactory) -> Callable[[], Task]:
     def __create_task() -> Task:
         task_id = uuid4()
         temp_data_dir = tmpdir_factory.mktemp("tmp")
