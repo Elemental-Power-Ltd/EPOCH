@@ -5,13 +5,14 @@ import time
 from datetime import timedelta
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from paretoset import paretoset  # type: ignore
 
 from ..models.algorithms import Algorithm
-from ..models.problem import OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
+from ..models.problem import EndpointParameterDict, OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
 from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import run_headless
@@ -19,7 +20,7 @@ from .task_data_wrapper import run_headless
 _EPOCH_CONFIG = {"optimiser": {"leagueTableCapacity": 1, "produceExhaustiveOutput": True}}
 
 
-def convert_param(parameters: ParameterDict) -> OldParameterDict:
+def convert_param(parameters: ParameterDict | EndpointParameterDict | dict[str, Any]) -> OldParameterDict:
     """
     Converts dictionary of parameters from dict of dicts to dict of lists.
     ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
@@ -34,6 +35,8 @@ def convert_param(parameters: ParameterDict) -> OldParameterDict:
     ParameterDict
         Dictionary of parameters with values in the format [min, max, step] or int or float.
     """
+    if isinstance(parameters, EndpointParameterDict):
+        parameters = parameters.model_dump()
     new_dict = {}
     for param_name in ParametersWRange:
         value = parameters[param_name]  # type: ignore

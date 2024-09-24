@@ -121,7 +121,7 @@ class EndpointParameterDict(BaseModel):
     OPEX_limit: int | float = Field(description="OPEX limit to set in EPOCH. Not Implemented !")
     target_max_concurrency: int | float = Field(description="Number of cores to allocate to EPOCH. Not Implemented !")
     time_budget_min: int | float
-    timestep_hours: int | float = Field(default=1.0)
+    timestep_hours: int | float = Field(default=0.5)
 
 
 class ParameterDict(TypedDict):

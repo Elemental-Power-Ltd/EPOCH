@@ -211,19 +211,21 @@ class DataManager:
         return df
 
     def transform_ASHP_input_data(self, ashp_input: ASHPResult) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(dict(ashp_input), orient="tight")
-        df = df.reset_index()
-        df = df.rename(columns={"temperature": 0})
-        df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-        df = df.sort_values(str(0))
+        df = (
+            pd.DataFrame.from_dict(dict(ashp_input), orient="tight")
+            .sort_index()
+            .reset_index(drop=False)
+            .rename(columns={"temperature": 0})
+        )
         return df
 
     def transform_ASHP_output_data(self, ashp_output: ASHPResult) -> pd.DataFrame:
-        df = pd.DataFrame.from_dict(dict(ashp_output), orient="tight")
-        df = df.reset_index()
-        df = df.rename(columns={"temperature": 0})
-        df = df.reindex(columns=[0, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70])
-        df = df.sort_values(str(0))
+        df = (
+            pd.DataFrame.from_dict(dict(ashp_output), orient="tight")
+            .sort_index()
+            .reset_index(drop=False)
+            .rename(columns={"temperature": 0})
+        )
         return df
 
     def transform_import_tariff_data(self, import_tariffs: RecordsList) -> pd.DataFrame:

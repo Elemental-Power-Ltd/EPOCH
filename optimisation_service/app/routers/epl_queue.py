@@ -18,7 +18,7 @@ class IQueue(asyncio.Queue):
     Inspectable Queue with cancelling of tasks.
     """
 
-    def __init__(self, maxsize: PositiveInt = 1, remove_directory: bool = True) -> None:
+    def __init__(self, maxsize: PositiveInt = 1, remove_directory: bool = False) -> None:
         """
         Parameters
         ----------

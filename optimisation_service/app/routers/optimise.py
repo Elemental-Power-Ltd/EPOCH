@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import logging
 import typing
 import uuid
@@ -10,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import UUID4
 
 from ..internal.datamanager import DataManager
+from ..internal.grid_search import convert_param
 from ..internal.problem import _OBJECTIVES, ParameterDict, Problem
 from ..internal.result import Result
 from ..models.core import EndpointResult, EndpointTask, TaskResponse, TaskWithUUID
@@ -43,7 +45,7 @@ def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
 
     # Write out the parameters for debug purposes; EPOCH doesn't actually use them.
     with open(data_manager.temp_data_dir / "inputParameters.json", "w") as fi:
-        fi.write(task.search_parameters.model_dump_json(indent=4))
+        json.dump(convert_param(task.search_parameters), fi)
     problem = Problem(
         objectives=task.objectives,
         constraints={},
@@ -136,5 +138,5 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
             logger.warning(f"Failed to add task to database: {e.response.text!s}")
             raise HTTPException(status_code=500, detail=f"Failed to add task to database: {e.response.text!s}") from e
         except Exception as e:
-            logger.warning(f"Failed to add task to queue: {e!s}")
+            logger.warning(f"Failed to add task to queue: {type(e)}: {e!s}")
             raise HTTPException(status_code=500, detail=f"Failed to add task to queue: {e!s}") from e
