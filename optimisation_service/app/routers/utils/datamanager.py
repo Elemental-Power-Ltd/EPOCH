@@ -25,6 +25,7 @@ _INPUT_DATA_FILES = [
     "CSVASHPoutput.csv",
     "CSVImporttariff.csv",
     "CSVGridCO2.csv",
+    "CSVDHWdemand.csv"
 ]
 
 
@@ -116,7 +117,7 @@ class DataManager:
         site_data["ASHPoutput"] = self.transform_ASHP_output_data(site_data_entries["ashp_output"])
         site_data["Importtariff"] = self.transform_import_tariff_data(site_data_entries["import_tariffs"])
         site_data["GridCO2"] = self.transform_grid_CO2_data(site_data_entries["grid_co2"])
-
+        site_data["DHWdemand"] = self.transform_grid_CO2_data(site_data_entries["heat"])
         return site_data
 
     async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data: dict | DatasetIDWithTime):
@@ -199,6 +200,13 @@ class DataManager:
     def transform_airtemp_data(self, heat) -> pd.DataFrame:
         df = pd.DataFrame.from_dict(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "AirTemp"])
+        df = df.sort_values("HourOfYear")
+        return df
+    
+
+    def transform_dhw_data(self, heat) -> pd.DataFrame:
+        df = pd.DataFrame.from_dict(heat)
+        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "DHWLoad1", "DHWLoad2", "DHWLoad3", "DHWLoad4"])
         df = df.sort_values("HourOfYear")
         return df
 

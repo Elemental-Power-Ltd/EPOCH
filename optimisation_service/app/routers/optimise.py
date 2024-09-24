@@ -41,6 +41,8 @@ def convert_task(task: TaskWithUUID, data_manager: DataManager) -> Task:
     logger.info(f"Converting {task.task_id}.")
     optimiser_func = Optimiser[task.optimiser.name].value
     optimiser = optimiser_func(**task.optimiser.hyperparameters.model_dump(mode="python"))
+
+    # Write out the parameters for debug purposes; EPOCH doesn't actually use them.
     search_parameters: ParameterDict = task.search_parameters.model_dump(mode="python")
     with open(data_manager.temp_data_dir / "inputParameters.json", "w") as fi:
         fi.write(task.search_parameters.model_dump_json(indent=4))
