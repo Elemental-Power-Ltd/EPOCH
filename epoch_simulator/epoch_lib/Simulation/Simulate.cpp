@@ -40,7 +40,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	/* INITIALISE classes that support energy sums and object precedence */
 	Config_cl Config(taskData);	// flags energy component presence in TaskData & balancing modes
-	TempSum_cl TempSum();		// class of arrays for running totals (replace ESUM and Heat)
+	TempSum_cl TempSum(taskData);		// class of arrays for running totals (replace ESUM and Heat)
 	
 	// INITIALISE Energy Components
 	Hotel Hotel(historicalData, taskData);
@@ -54,9 +54,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	BasicESS ESSmain(taskData);
 
 
-	ASHPhot_cl ASHP1(historicalData, taskData);
-
-	DataC_ASHP_cl DataC(historicalData, taskData, ASHP1);
+	DataCentre dataCentre(historicalData, taskData);
 
 	// REMOVE THE 3 FROM GRID WHEN CLEANING OLD CODE
 	Grid_cl Grid3(historicalData, taskData);

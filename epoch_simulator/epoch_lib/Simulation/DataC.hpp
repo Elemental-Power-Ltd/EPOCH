@@ -9,68 +9,79 @@
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
-class DataC_ASHP_cl
+class DataCentre
 {
 public:
-    DataC_ASHP_cl(const HistoricalData& historicalData, const TaskData& taskData, ASHPhot_cl extASHPhot) :
+    DataCentre(const HistoricalData& historicalData, const TaskData& taskData) :
         // Initialise Persistent Values
-        ptrASHPhot(&extASHPhot),
-        TScount(taskData.calculate_timesteps()),
-        OptMode(1), // Mode: 1=Target, 2=Price, 3=Carbon
-        DataCmaxLoad_e(taskData.Flex_load_max* taskData.timestep_hours),    // Max kWh per TS
-        HeatScalar(taskData.ScalarHYield),    // Percentage of waste heat captured for ASHP
-        // Initilaise results data vectors with all values to zero
-        TargetLoad_e(Eigen::VectorXf::Zero(TScount)),      // DataC Target Elec load TS
-        ActualLoad_e(Eigen::VectorXf::Zero(TScount)),      // DataC Actual Elec load TS
-        AvailHotHeat_h(Eigen::VectorXf::Zero(TScount)),      // DataC waste heat, usable by the ASHP, TS
-        TargetHeat_h(Eigen::VectorXf::Zero(TScount))       // Target heat output for the ASHP
-    {
-        ASHPmaxElec_e = ptrASHPhot->MaxElec();       // Peak kWh per TS of ASHP
+        mHeatPump(historicalData, taskData),
+        mTimesteps(taskData.calculate_timesteps()),
+        // Mode: 1=Target, 2=Price, 3=Carbon
+        mOptimisationMode(1),
+        // Max kWh per TS
+        mDataCentreMaxLoad_e(taskData.Flex_load_max* taskData.timestep_hours),
+        // Percentage of waste heat captured for ASHP
+        mHeatScalar(taskData.ScalarHYield),
 
-        // Calculate Target Load based on OptMode: 1=Target (default), 2=Price, 3=Carbon
-        switch (OptMode) {
+        mTargetLoad_e(Eigen::VectorXf::Zero(mTimesteps)),
+        mActualLoad_e(Eigen::VectorXf::Zero(mTimesteps)),
+        mAvailableHotHeat_h(Eigen::VectorXf::Zero(mTimesteps)),
+        mTargetHeat_h(Eigen::VectorXf::Zero(mTimesteps))
+    {
+        mHeatPumpMaxElectricalLoad_e = mHeatPump.MaxElec();
+
+        // Calculate Target Load based on the optimisation mode: 1=Target (default), 2=Price, 3=Carbon
+        switch (mOptimisationMode) {
         case 2: // Price minimisation mode
             // placeholder for lookahead supplier price mode
         case 3: // Carbon minimisation mode
             // placholder for lookahead grid carbon mode
         default: // Target Power Mode (initially Max Load)							
-            TargetLoad_e.setConstant(DataCmaxLoad_e);
+            mTargetLoad_e.setConstant(mDataCentreMaxLoad_e);
         }
     }
 
     void AllCalcs(TempSum_cl &TempSum) {
         // If Data Centre  is not balancing, actual loads will be target
-        ActualLoad_e = TargetLoad_e;
-        AvailHotHeat_h = ActualLoad_e * HeatScalar;
+        mActualLoad_e = mTargetLoad_e;
+        mAvailableHotHeat_h = mActualLoad_e * mHeatScalar;
         // FUTURE can switch TargetHeat to Pool, DHW or combo
-        TargetHeat_h = TempSum.Heat_h;
-        ptrASHPhot->AllCalcs(TargetHeat_h, AvailHotHeat_h);
+        mTargetHeat_h = TempSum.Heat_h;
+        mHeatPump.AllCalcs(mTargetHeat_h, mAvailableHotHeat_h);
 
-        TempSum.Elec_e = TempSum.Elec_e + ActualLoad_e + ptrASHPhot->Load_e;
-        TempSum.Heat_h = TempSum.Heat_h - ptrASHPhot->Heat_h;
+        TempSum.Elec_e = TempSum.Elec_e + mActualLoad_e + mHeatPump.Load_e;
+        TempSum.Heat_h = TempSum.Heat_h - mHeatPump.Heat_h;
     }
 
-    void StepCalc(TempSum_cl &TempSum, const float FutureEnergy_e, const int t) {
-        // FUTURE can switch TargetHeat to Pool, DHW or combo
-        TargetHeat_h[t] = TempSum.Heat_h[t];
-        // Set Electricty Budget for ASHP
-        if (FutureEnergy_e <= 0) {
-            ActualLoad_e[t] = 0;
-            ASHPBudget_e = 0;
-        } else if (FutureEnergy_e > TargetLoad_e[t] + ASHPmaxElec_e) {
-            // Set Load & Budget to maximums
-            ActualLoad_e[t] = TargetLoad_e[t];
-            ASHPBudget_e = FutureEnergy_e - TargetLoad_e[t];
-        }
-        else {
-            // Reduce Load & Budget to largest without breaching FutureEnergy
-                ThrottleScalar = FutureEnergy_e / (TargetLoad_e[t] + ASHPmaxElec_e);
-                ActualLoad_e[t] = TargetLoad_e[t] * ThrottleScalar;
-                ASHPBudget_e = FutureEnergy_e - ActualLoad_e[t];
-        }
-        AvailHotHeat_h[t] = ActualLoad_e[t] * HeatScalar;
+	void StepCalc(TempSum_cl& TempSum, const float futureEnergy_e, const int t) {
+		// FUTURE can switch TargetHeat to Pool, DHW or combo
+		mTargetHeat_h[t] = TempSum.Heat_h[t];
 
-        ptrASHPhot->StepCalc(TargetHeat_h[t], AvailHotHeat_h[t], ASHPBudget_e, t);
+
+		// Set Electricty Budget for ASHP
+        float heatPumpBudget_e;
+		if (futureEnergy_e <= 0) {
+			mActualLoad_e[t] = 0;
+            heatPumpBudget_e = 0;
+		}
+		else if (futureEnergy_e > mTargetLoad_e[t] + mHeatPumpMaxElectricalLoad_e) {
+			// Set Load & Budget to maximums
+			mActualLoad_e[t] = mTargetLoad_e[t];
+            heatPumpBudget_e = futureEnergy_e - mTargetLoad_e[t];
+		}
+		else {
+			// Reduce Load & Budget to largest without breaching FutureEnergy
+			float throttleScalar = futureEnergy_e / (mTargetLoad_e[t] + mHeatPumpMaxElectricalLoad_e);
+			mActualLoad_e[t] = mTargetLoad_e[t] * throttleScalar;
+            heatPumpBudget_e = futureEnergy_e - mActualLoad_e[t];
+		}
+		mAvailableHotHeat_h[t] = mActualLoad_e[t] * mHeatScalar;
+
+		mHeatPump.StepCalc(mTargetHeat_h[t], mAvailableHotHeat_h[t], heatPumpBudget_e, t);
+	}
+
+    float getTargetLoad(int timestep) {
+        return mTargetLoad_e[timestep];
     }
 
     void Report(const FullSimulationResult& Result) const {
@@ -79,18 +90,16 @@ public:
     }
 
 private:
-    ASHPhot_cl* ptrASHPhot;
+    HotRoomHeatPump mHeatPump;
 
-    const int TScount;
-    const int OptMode;
-    const float DataCmaxLoad_e;
-    const float HeatScalar;
-    float ASHPmaxElec_e;
-    float ASHPBudget_e;
-    float ThrottleScalar;
+    const int mTimesteps;
+    const int mOptimisationMode;
+    const float mDataCentreMaxLoad_e;
+    const float mHeatScalar;
+    float mHeatPumpMaxElectricalLoad_e;
 
-    year_TS TargetLoad_e;
-    year_TS ActualLoad_e;
-    year_TS AvailHotHeat_h;
-    year_TS TargetHeat_h;
+    year_TS mTargetLoad_e;
+    year_TS mActualLoad_e;
+    year_TS mAvailableHotHeat_h;
+    year_TS mTargetHeat_h;
 };

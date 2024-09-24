@@ -8,22 +8,17 @@
 #include "../Definitions.hpp"
 #include "ASHPperf.hpp"
 
-
-
-
-
-
-// ASHPhot is only used within an DataC or alternative heat waste object
-class ASHPhot_cl {
+// ASHPhot is only used within a DataCentre or alternative heat waste object
+class HotRoomHeatPump {
 
 public:
-	ASHPhot_cl(const HistoricalData& historicalData, const TaskData& taskData) :
+	HotRoomHeatPump(const HistoricalData& historicalData, const TaskData& taskData) :
 		// Initialise Persistent Values
 		mASHPperf(taskData),
-		TScount(taskData.calculate_timesteps()),
-		PowerScalar(taskData.timestep_hours),
-		HotTemp(taskData.ASHP_HotTemp),
-		AmbientC(historicalData.airtemp_data),	// Ambient Temperature
+		mTimesteps(taskData.calculate_timesteps()),
+		mPowerScalar(taskData.timestep_hours),
+		mHotTemp(taskData.ASHP_HotTemp),
+		mAmbientTemperature(historicalData.airtemp_data),	// Ambient Temperature
 
 		// Initilaise results data vectors with all values to zero
 		Load_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
@@ -31,36 +26,36 @@ public:
 		FreeHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat from ambient
 		UsedHotHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))	// ASHP heat from Hotroom
 	{		
-		ASHPmaxAmb.Heat_h = 0;	// For mASHPperf->Lookup results
-		ASHPmaxAmb.Load_e = 0;
-		ASHPmaxHot.Heat_h = 0;
-		ASHPmaxHot.Load_e = 0;
+		mHeatPumpMaxAmbient.Heat_h = 0;	// For mASHPperf->Lookup results
+		mHeatPumpMaxAmbient.Load_e = 0;
+		mHeatPumpMaxHotRoom.Heat_h = 0;
+		mHeatPumpMaxHotRoom.Load_e = 0;
 	}
 
 	const float MaxElec() {
-		// Lookup max possible ASHP electrical load
+		// Peak kWh per timestep of ASHP
 		return mASHPperf.MaxElecLoad();
 	}
 
 	void AllCalcs(const year_TS& TargetHeat_h, const year_TS& AvailHotHeat_h) {
-		for(int t = 1; t <= TScount; t++) {
-			mASHPperf.Lookup(AmbientC[t], ASHPmaxAmb);	// 2nd Arg is return values struct
-			mASHPperf.Lookup(HotTemp, ASHPmaxHot);		// 2nd Arg is return values struct
+		for(int t = 1; t <= mTimesteps; t++) {
+			mASHPperf.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);	// 2nd Arg is return values struct
+			mASHPperf.Lookup(mHotTemp, mHeatPumpMaxHotRoom);		// 2nd Arg is return values struct
 			
 			// If TargetHeat < ASHPmax = lower of Hotroom & Ambient+CoE (Conservation of Energy value)
-			ASHPmax_h = std::min((ASHPmaxAmb.Heat_h + AvailHotHeat_h[t]), ASHPmaxHot.Heat_h);
-			if(TargetHeat_h[t] <= ASHPmax_h) {
+			mHeatPumpMax_h = std::min((mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h[t]), mHeatPumpMaxHotRoom.Heat_h);
+			if(TargetHeat_h[t] <= mHeatPumpMax_h) {
 				Heat_h[t] = TargetHeat_h[t];
-				Load_e[t] = ASHPmaxHot.Load_e * TargetHeat_h[t] / ASHPmaxHot.Heat_h;
+				Load_e[t] = mHeatPumpMaxHotRoom.Load_e * TargetHeat_h[t] / mHeatPumpMaxHotRoom.Heat_h;
 			}
 			else {	// ASHP cannot meet TargetHeat, so use values from lower of Hotroom & Amb+CoE
-				if(ASHPmaxAmb.Heat_h <= ASHPmaxHot.Heat_h) {
-					Heat_h[t] = ASHPmaxAmb.Heat_h;
-					Load_e[t] = ASHPmaxAmb.Load_e;
+				if(mHeatPumpMaxAmbient.Heat_h <= mHeatPumpMaxHotRoom.Heat_h) {
+					Heat_h[t] = mHeatPumpMaxAmbient.Heat_h;
+					Load_e[t] = mHeatPumpMaxAmbient.Load_e;
 				}
 				else {
-					Heat_h[t] = ASHPmaxHot.Heat_h;
-					Load_e[t] = ASHPmaxHot.Load_e;
+					Heat_h[t] = mHeatPumpMaxHotRoom.Heat_h;
+					Load_e[t] = mHeatPumpMaxHotRoom.Load_e;
 				}
 			}
 		}
@@ -77,22 +72,22 @@ public:
 		}
 		else {
 			// Calculate the best the ASHP can do to meet target heat
-			mASHPperf.Lookup(AmbientC[t], ASHPmaxAmb);	// 2nd Arg is return values struct
-			mASHPperf.Lookup(HotTemp, ASHPmaxHot);		// 2nd Arg is return values struct
+			mASHPperf.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);	// 2nd Arg is return values struct
+			mASHPperf.Lookup(mHotTemp, mHeatPumpMaxHotRoom);		// 2nd Arg is return values struct
 			// if TargetHeat < ASHPmax = lower of Hotroom & Ambient+CoE (Conservation of Energy value)
-			ASHPmax_h = std::min((ASHPmaxAmb.Heat_h + AvailHotHeat_h), ASHPmaxHot.Heat_h);
-			if(TargetHeat_h <= ASHPmax_h) {
+			mHeatPumpMax_h = std::min((mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h), mHeatPumpMaxHotRoom.Heat_h);
+			if(TargetHeat_h <= mHeatPumpMax_h) {
 				Heat_h[t] = TargetHeat_h;
-				Load_e[t] = ASHPmaxHot.Load_e * TargetHeat_h / ASHPmaxHot.Heat_h;
+				Load_e[t] = mHeatPumpMaxHotRoom.Load_e * TargetHeat_h / mHeatPumpMaxHotRoom.Heat_h;
 			}
 			else {	// ASHP cannot meet TargetHeat, so use values from lower of Hotroom & Amb+CoE
-				if(ASHPmaxAmb.Heat_h <= ASHPmaxHot.Heat_h) {
-					Heat_h[t] = ASHPmaxAmb.Heat_h;
-					Load_e[t] = ASHPmaxAmb.Load_e;
+				if(mHeatPumpMaxAmbient.Heat_h <= mHeatPumpMaxHotRoom.Heat_h) {
+					Heat_h[t] = mHeatPumpMaxAmbient.Heat_h;
+					Load_e[t] = mHeatPumpMaxAmbient.Load_e;
 				}
 				else {
-					Heat_h[t] = ASHPmaxHot.Heat_h;
-					Load_e[t] = ASHPmaxHot.Load_e;
+					Heat_h[t] = mHeatPumpMaxHotRoom.Heat_h;
+					Load_e[t] = mHeatPumpMaxHotRoom.Load_e;
 				}
 			}
 			if(Load_e[t] > ElecBudget_e) {
@@ -112,13 +107,13 @@ public:
 private:
 	ASHPperf_cl mASHPperf;
 	
-	const int TScount;
-	const float PowerScalar;
-	const int HotTemp;
-	float ASHPmax_h;
+	const int mTimesteps;
+	const float mPowerScalar;
+	const int mHotTemp;
+	float mHeatPumpMax_h;
 
-	const year_TS AmbientC;	// Local ambient temperatures for calcs TS
+	const year_TS mAmbientTemperature;
 
-	ASHP_HE_st ASHPmaxAmb;	// Max Heat & Elec for Ambient input - Struct: 2x TS
-	ASHP_HE_st ASHPmaxHot;	// Max Heat & Elec for Hotroom input - Struct: 2x TS
+	ASHP_HE_st mHeatPumpMaxAmbient;	// Max Heat & Elec for Ambient input - Struct: 2x TS
+	ASHP_HE_st mHeatPumpMaxHotRoom;	// Max Heat & Elec for Hotroom input - Struct: 2x TS
 };
