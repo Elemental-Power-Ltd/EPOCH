@@ -92,6 +92,7 @@ Or a description of data to fetch from the data service:
     "start_ts": <Datetime to retrieve data from>
     "duration": <Length of time to retrieve data for>
 }
+```
 The data must already have been generated for this to work.
 Currently only `year` durations are functional.
 
