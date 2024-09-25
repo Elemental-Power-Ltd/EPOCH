@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { SelectChangeEvent } from '@mui/material';
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -52,8 +53,8 @@ const TaskConfigForm = () => {
     setTaskConfig({ [field]: value });
   };
 
-  const handleClientChange = async (event: React.ChangeEvent<{ value: unknown }>) => {
-    const clientId = event.target.value as string;
+  const handleClientChange = async (event: SelectChangeEvent<string>)  => {
+    const clientId = event.target.value;
     handleChange("client_id", clientId);
     handleChange("site_id", ""); // Reset site selection when client changes
   };

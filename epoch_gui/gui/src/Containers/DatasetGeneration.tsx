@@ -11,23 +11,24 @@ import {
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs from 'dayjs';
+import dayjs, {Dayjs} from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 
 import { useEpochStore } from '../State/state';
 import { generateAllData, listClients, listSites } from '../endpoints';
+import {Client, Site} from '../State/types'
 
 dayjs.extend(utc);
 
 const DatasetGenerationContainer = () => {
-  const [clients, setClients] = useState([]);
-  const [sites, setSites] = useState([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedSite, setSelectedSite] = useState('');
-  const [startDate, setStartDate] = useState(dayjs().startOf('day'));
-  const [endDate, setEndDate] = useState(dayjs().endOf('day'));
+  const [startDate, setStartDate] = useState<Dayjs | null>(dayjs().startOf('day'));
+  const [endDate, setEndDate] = useState<Dayjs | null>(dayjs().endOf('day'));
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationResult, setGenerationResult] = useState(null);
+  const [generationResult, setGenerationResult] = useState<any>(null);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -55,8 +56,8 @@ const DatasetGenerationContainer = () => {
     try {
       const result = await generateAllData(
         selectedSite,
-        startDate.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
-        endDate.utc().format('YYYY-MM-DDTHH:mm:ss[Z]')
+        startDate!.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
+        endDate!.utc().format('YYYY-MM-DDTHH:mm:ss[Z]')
       );
       setGenerationResult(result);
     } catch (error) {

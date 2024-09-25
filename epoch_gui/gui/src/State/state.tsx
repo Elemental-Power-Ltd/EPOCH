@@ -1,5 +1,4 @@
 import {create} from 'zustand'
-import {v4 as uuidv4} from 'uuid';
 
 import DefaultGrid from "../util/json/default/DefaultGridConfig.json";
 import DefaultGA from "../util/json/default/DefaultGAConfig.json";
@@ -20,9 +19,9 @@ import {
 
 const defaultTaskConfig: TaskConfig = {
     task_name: "",
-    task_id: uuidv4(),
     optimiser: "GridSearch",
     objectives: {capex: true, carbon_balance: true, cost_balance: true, payback_horizon: true, annualised_cost: true},
+    client_id: "",
     site_id: "",
     start_date: "2022-01-01 00:00:00+00:00",
     duration: "year",

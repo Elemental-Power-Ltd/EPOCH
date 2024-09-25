@@ -12,6 +12,7 @@ export interface TaskConfig {
     task_name: string;
     optimiser: "GridSearch" | "GeneticAlgorithm";
     objectives: TaskObjectives;
+    client_id: string;
     site_id: string;
     start_date: string;
     duration: "year";
@@ -77,7 +78,9 @@ export interface Client {
 
 
 interface GlobalState {
-    client: Client
+    client: Client;
+
+    clients: Client[];
     client_sites: Site[];
 }
 
@@ -101,4 +104,6 @@ export interface AppState {
     setCurrentTaskResults: (results: OptimisationResult[]) => void;
 
     setTaskConfig: (config: Partial<TaskConfig>) => void;
+
+    setClients: (clients: Client[]) => void;
 }
