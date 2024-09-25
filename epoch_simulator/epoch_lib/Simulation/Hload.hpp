@@ -24,7 +24,8 @@ public:
 		mMaxHeatpumpOutput(Eigen::VectorXf::Zero(mTimesteps)),
 		mMaxHeatpumpELoad(Eigen::VectorXf::Zero(mTimesteps)),
 		mASHPTargetLoading(Eigen::VectorXf::Zero(mTimesteps)),
-		mActualHeatpumpOutput(Eigen::VectorXf::Zero(mTimesteps))
+		mActualHeatpumpOutput(Eigen::VectorXf::Zero(mTimesteps)),
+		mDHWload(Eigen::VectorXf::Zero(mTimesteps))
 	{
 	}
 
@@ -142,6 +143,10 @@ public:
 		return mTargetDatacentreASHPload;
 	}
 
+	year_TS getDWHload() const {
+		return mDHWload;
+	}
+
 
 private:
 	const int mTimesteps;
@@ -161,6 +166,7 @@ private:
 	year_TS mASHPTargetLoading;
 	year_TS mActualHeatpumpOutput;
 	year_TS mTargetDatacentreASHPload;
+	year_TS mDHWload;
 
 };
 

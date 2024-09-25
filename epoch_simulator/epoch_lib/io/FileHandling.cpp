@@ -413,6 +413,12 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult f
 	outFile << "Actual_high_priority_load" << ",";
 	outFile << "Actual_low_priority_load" << ",";
 	outFile << "Heatload" << ",";
+	outFile << "DWH_load" << ",";
+	outFile << "DHW_charging" << ",";
+	outFile << "DHW_SoC" << ",";
+	outFile << "DHW_Standby_loss" << ",";
+	outFile << "DHW_temperature" << ",";
+	outFile << "DHW_Shortfall" << ",";
 	outFile << "Scaled_heatload" << ",";
 	outFile << "Electrical_load_scaled_heat_yield" << ",";
 	outFile << "Heat_shortfall" << ",";
@@ -441,6 +447,12 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult f
 		outFile << fullResult.Actual_high_priority_load[i] << ",";
 		outFile << fullResult.Actual_low_priority_load[i] << ",";
 		outFile << fullResult.Heatload[i] << ",";
+		outFile << fullResult.DHW_load[i] << ",";
+		outFile << fullResult.DHW_charging[i] << ",";
+		outFile << fullResult.DHW_SoC[i] << ",";
+		outFile << fullResult.DHW_Standby_loss[i] << ",";
+		outFile << fullResult.DHW_ave_temperature[i] << ",";
+		outFile << fullResult.DHW_Shortfall[i] << ",";
 		outFile << fullResult.Scaled_heatload[i] << ",";
 		outFile << fullResult.Electrical_load_scaled_heat_yield[i] << ",";
 		outFile << fullResult.Heat_shortfall[i] << ",";
@@ -450,6 +462,125 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult f
 
 }
 
+void writeCostDataToCSV(std::filesystem::path filepath, FullSimulationResult fullResult)
+{
+	std::ofstream outFile(filepath);
+
+	if (!outFile.is_open()) {
+		spdlog::error("Failed to open the output file!");
+		throw FileReadException(filepath.filename().string());
+	}
+
+	// Write the column headers
+
+	//outFile << "ESUM" << ",";
+	outFile << "Baseline_electricity_cost (£)" << ",";	// no trailing comma
+	outFile << "Baseline_fuel_cost (£)" << ",";
+	
+	outFile << "Baseline_electricity_carbon (kgCO2)" << ",";
+	outFile << "Baseline_fuel_carbon (kgCO2)" << ",";
+	
+	outFile << "Scenario_electricity_cost (£)" << ",";
+	outFile << "Scenario_fuel_cost (£)" << ",";
+	outFile << "Scenario_grid_export_cost (£)" << ",";
+
+	outFile << "Resulting_EV_charge_revenue (£)" << ",";
+	outFile << "Resulting_Data_Centre_revenue (£)" << ",";
+	outFile << "Scenario_avoided_fuel_cost (£)" << ",";
+
+	outFile << "Scenario_electricity_carbon (kgCO2)" << ",";
+	outFile << "Scenario_fuel_carbon (kgCO2)" << ",";
+	outFile << "Scenario_grid_export_carbon (kgCO2)" << ",";
+	outFile << "Scenario_avoided_fuel_carbon (kgCO2)" << ",";
+
+	outFile << "ESS_PCS_CAPEX (£)" << ",";
+	outFile << "ESS_PCS_OPEX (£)" << ",";
+	outFile << "ESS_ENCLOSURE_CAPEX (£)" << ",";
+	outFile << "ESS_ENCLOSURE_OPEX (£)" << ",";
+	outFile << "ESS_ENCLOSURE_DISPOSAL (£)" << ",";
+
+	outFile << "PVpanel_CAPEX (£)" << ",";
+	outFile << "PVBoP_CAPEX (£)" << ",";
+	outFile << "PVroof_CAPEX (£)" << ",";
+	outFile << "PVground_CAPEX (£)" << ",";
+	outFile << "PV_OPEX (£)" << ",";
+
+	outFile << "EV_CP_cost (£)" << ",";
+	outFile << "EV_CP_install (£)" << ",";
+
+	outFile << "Grid_CAPEX (£)" << ",";
+
+	outFile << "ASHP_CAPEX (£)";
+
+	// no trailing comma
+	outFile << "\n"; // newline
+
+	// write the values
+     //	outFile << fullResult.ESUM[i] << ",";
+	outFile << fullResult.Baseline_electricity_cost << ","; 
+	outFile << fullResult.Baseline_fuel_cost << ",";
+
+	outFile << fullResult.Baseline_electricity_carbon << ",";
+	outFile << fullResult.Baseline_fuel_carbon << ",";
+
+	outFile << fullResult.Scenario_electricity_cost << ",";
+	outFile << fullResult.Scenario_fuel_cost << ",";
+	outFile << fullResult.Scenario_grid_export_cost << ",";
+	
+	outFile << fullResult.Resulting_EV_charge_revenue << ",";
+
+	outFile << fullResult.Resulting_Data_Centre_revenue << ",";
+
+	outFile << fullResult.Scenario_avoided_fuel_cost << ",";
+
+	outFile << fullResult.Scenario_electricity_carbon << ",";
+	outFile << fullResult.Scenario_fuel_carbon << ",";
+	outFile << fullResult.Scenario_grid_export_carbon << ",";
+	outFile << fullResult.Scenario_avoided_fuel_carbon << "'";
+	
+
+	outFile << fullResult.ESS_PCS_CAPEX << ",";
+	outFile << fullResult.ESS_PCS_OPEX << ",";
+	outFile << fullResult.ESS_ENCLOSURE_CAPEX << ",";
+	outFile << fullResult.ESS_ENCLOSURE_OPEX << ",";
+	outFile << fullResult.ESS_ENCLOSURE_DISPOSAL << ",";
+
+	outFile << fullResult.PVpanel_CAPEX << ",";
+	outFile << fullResult.PVBoP_CAPEX << ",";
+	outFile << fullResult.PVroof_CAPEX << ",";
+	outFile << fullResult.PVground_CAPEX << ",";
+	outFile << fullResult.PV_OPEX << ",";
+
+	outFile << fullResult.EV_CP_cost << ",";
+	outFile << fullResult.EV_CP_install << ",";
+
+	outFile << fullResult.Grid_CAPEX << ",";
+
+	outFile << fullResult.ASHP_CAPEX; // no trailing comma
+
+	outFile << "\n";
+	
+
+	//Report the objectives in same file
+
+	//outFile << "ESUM" << ",";
+	outFile << "Total_annualsed_cost (£)" << ",";	// no trailing comma
+	outFile << "Project_CAPEX (£)" << ",";
+	outFile << "Scenario_cost_balance (£)" << ",";
+	outFile << "Payback_horizon" << ",";
+	outFile << "Scenario_carbon_balance (kgCO2)" << ",";
+
+	outFile << "\n";
+
+	outFile << fullResult.total_annualised_cost << ",";
+	outFile << fullResult.project_CAPEX << ",";
+	outFile << fullResult.scenario_cost_balance << ",";
+	outFile << fullResult.payback_horizon_years << ",";
+	outFile << fullResult.scenario_carbon_balance;
+
+	outFile << "\n";
+
+}
 
 
 
@@ -572,7 +703,7 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	//read the heat load data
 	std::filesystem::path hloadFilepath = fileConfig.getHloadFilepath();
 	std::vector<float> heatload_data = readCSVColumnAndSkipHeader(hloadFilepath, 4); // read the column of the CSV data and store in vector data
-
+	
 	//read the renewable generation data
 	std::filesystem::path rgenFilepath = fileConfig.getRgenFilepath();
 	std::vector<float> RGen_data_1 = readCSVColumnAndSkipHeader(rgenFilepath, 4); // read the column of the CSV data and store in vector data
@@ -592,6 +723,11 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	std::filesystem::path gridCO2Filepath = fileConfig.getGridCO2Filepath();
 	std::vector<float> gridCO2_data = readCSVColumnAndSkipHeader(gridCO2Filepath, 4);
 
+	//read in the DWH demand data
+	std::filesystem::path DHWloadFilepath = fileConfig.getDHWloadFilepath();
+	std::vector<float> DHWload_data = readCSVColumnAndSkipHeader(DHWloadFilepath, 4); // read the column of the CSV data and store in vector data
+
+
 	//read in the ASHP data
 	std::filesystem::path ASHPinputFilepath = fileConfig.getASHPinputFilepath();
 	std::vector<std::vector<float>> ASHPinputtable = readCSVAsTable(ASHPinputFilepath);
@@ -599,6 +735,7 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	std::filesystem::path ASHPoutputFilepath = fileConfig.getASHPoutputFilepath();
 	std::vector<std::vector<float>> ASHPoutputtable = readCSVAsTable(ASHPoutputFilepath);
 
+	
 	return {
 	   toEigen(hotel_eload_data),
 	   toEigen(ev_eload_data),
@@ -610,6 +747,7 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	   toEigen(airtemp_data),
 	   toEigen(importtariff_data),
 	   toEigen(gridCO2_data),
+	   toEigen(DHWload_data),
 	   toEigen(ASHPinputtable),
 	   toEigen(ASHPoutputtable)
 	};

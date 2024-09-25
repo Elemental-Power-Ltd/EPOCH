@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <iostream>
+#include <limits> 
+
 #include <Eigen/Core>
 
 #include "TaskData.hpp"
@@ -12,6 +14,7 @@
 #include "Grid.hpp"
 #include "Hload.hpp"
 #include "Costs.hpp"
+#include "HotWcylA_cl.hpp"
 
 #include "Config.hpp"	//AS ADD
 #include "TempSum.hpp"	//AS ADD
@@ -36,7 +39,22 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
-	// MOVE COST CALCS here (exit if CAPEX exceeded, set results to sensible values?)
+	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
+	Costs myCost(taskData);
+	myCost.calculate_Project_CAPEX();
+	if (taskData.CAPEX_limit*1000 < myCost.get_project_CAPEX())
+	{
+		// TODO - apply proper fix for 'nullable' results
+		FullSimulationResult fullSimulationResult;
+		fullSimulationResult.paramIndex = taskData.paramIndex;
+		fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
+
+		fullSimulationResult.total_annualised_cost = std::numeric_limits<float>::max();
+		fullSimulationResult.scenario_cost_balance = std::numeric_limits<float>::min();
+		fullSimulationResult.payback_horizon_years = std::numeric_limits<float>::max();
+		fullSimulationResult.scenario_carbon_balance = std::numeric_limits<float>::min();
+		return fullSimulationResult;
+	}
 
 	/* INITIALISE classes that support energy sums and object precedence */
 	Config config(taskData);	// flags energy component presence in TaskData & balancing modes
@@ -60,6 +78,8 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	Grid_cl Grid3(historicalData, taskData);
 	MOP MOP(taskData);
 	GasCombustionHeater GasCH(taskData);
+	
+	HotWcylA_cl HotWaterCyl{ historicalData, taskData };
 
 	// NON-BALANCING LOGIC
 
@@ -140,6 +160,14 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	
 	year_TS ESUM = MountEload.getTotal_target_load_fixed_flex() - RGen_total;
 
+	// non balancing actions for stateful components
+
+	HotWaterCyl.AllCalcs(ESUM); // this will be TempSum in V08
+
+	ESUM += HotWaterCyl.getDHW_Charging(); // add the DHW electrical charging loads from ESUM 
+
+	// in V08 we will split DHW charging load sent to TempSum between Heat pump () heating load and instantaneous electric heating (HotWaterCyl.getDHW_diverter() + HotWaterCyl.getDHW_shortfall());
+
 	MountBESS.initialise(ESUM[0]);
 	MountBESS.runTimesteps(ESUM);
 
@@ -149,8 +177,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
 
-	Costs myCost(taskData);
-	myCost.calculateCosts(MountEload, MountHload, MountGrid, MountBESS);
+	myCost.calculateCosts_no_CAPEX(MountEload, MountHload, MountGrid, MountBESS); // CAPEX calc now at beginning
 
 	//Data reporting
 
@@ -175,11 +202,63 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
 		fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
 		fullSimulationResult.Heatload = historicalData.heatload_data;
+		fullSimulationResult.DHW_load = historicalData.DHWdemand_data;
+		fullSimulationResult.DHW_charging = HotWaterCyl.getDHW_Charging();
+		fullSimulationResult.DHW_SoC = HotWaterCyl.getDHW_SoC_history();
+		fullSimulationResult.DHW_Standby_loss = HotWaterCyl.getDHW_standby_losses();
+		fullSimulationResult.DHW_ave_temperature = HotWaterCyl.getDHW_ave_temperature();
+		fullSimulationResult.DHW_Shortfall = HotWaterCyl.getDHW_shortfall();
 		fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
 		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
 		fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
 		fullSimulationResult.Heat_surplus = MountHload.getEHeatSurplus();
-	}
+		
+		fullSimulationResult.Baseline_electricity_cost = myCost.get_Baseline_elec_cost();
+		fullSimulationResult.Baseline_fuel_cost = myCost.get_Baseline_fuel_cost();
+
+		fullSimulationResult.Baseline_electricity_carbon = myCost.get_Baseline_elec_CO2e();
+		fullSimulationResult.Baseline_fuel_carbon = myCost.get_Baseline_fuel_CO2e();
+
+		fullSimulationResult.Scenario_electricity_cost = myCost.get_Scenario_import_cost();
+		fullSimulationResult.Scenario_fuel_cost = myCost.get_Scenario_fuel_cost();
+		fullSimulationResult.Scenario_grid_export_cost = myCost.get_Scenario_export_cost();
+		
+		fullSimulationResult.Scenario_electricity_carbon = myCost.get_Scenario_elec_CO2e();
+		fullSimulationResult.Scenario_fuel_carbon = myCost.get_Scenario_fuel_CO2e();
+		fullSimulationResult.Scenario_grid_export_carbon = myCost.get_Scenario_export_CO2e();
+		fullSimulationResult.Scenario_avoided_fuel_carbon = myCost.get_Scenario_LP_CO2e();
+
+		fullSimulationResult.Resulting_EV_charge_revenue = myCost.get_Scenario_EV_revenue();
+		fullSimulationResult.Resulting_Data_Centre_revenue = myCost.get_Scenario_HP_revenue();
+		fullSimulationResult.Scenario_avoided_fuel_cost = myCost.get_Scenario_LP_revenue();
+
+		fullSimulationResult.ESS_PCS_CAPEX = myCost.get_ESS_PCS_CAPEX();
+		fullSimulationResult.ESS_PCS_OPEX = myCost.get_ESS_PCS_OPEX();
+		fullSimulationResult.ESS_ENCLOSURE_CAPEX = myCost.get_ESS_ENCLOSURE_CAPEX();
+		fullSimulationResult.ESS_ENCLOSURE_OPEX = myCost.get_ESS_ENCLOSURE_OPEX();
+		fullSimulationResult.ESS_ENCLOSURE_DISPOSAL = myCost.get_ESS_ENCLOSURE_DISPOSAL();
+		
+		fullSimulationResult.PVpanel_CAPEX = myCost.get_PVpanel_CAPEX();
+		fullSimulationResult.PVBoP_CAPEX = myCost.get_PVBoP_CAPEX();
+		fullSimulationResult.PVroof_CAPEX = myCost.get_PVroof_CAPEX();
+		fullSimulationResult.PVground_CAPEX = myCost.get_PVground_CAPEX();
+		fullSimulationResult.PV_OPEX = myCost.get_PV_OPEX();
+		
+		fullSimulationResult.EV_CP_cost = myCost.get_EV_CP_cost();
+		fullSimulationResult.EV_CP_install = myCost.get_EV_CP_install();
+
+		fullSimulationResult.Grid_CAPEX = myCost.get_Grid_CAPEX();
+		fullSimulationResult.ASHP_CAPEX = myCost.get_ASHP_CAPEX();
+
+		float mEV_CP_cost;
+		float mEV_CP_install;
+
+		float mGrid_CAPEX;
+
+		float mASHP_CAPEX;
+	};
+
+	
 
 
 	fullSimulationResult.paramIndex = taskData.paramIndex;
@@ -189,7 +268,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	fullSimulationResult.payback_horizon_years = myCost.get_payback_horizon_years();
 	fullSimulationResult.scenario_carbon_balance = myCost.get_scenario_carbon_balance();
 
-
+	
 	//========================================
 
 	/*WRITE DATA SECTION - AFTER PROFILING CLOCK STOPPED*/

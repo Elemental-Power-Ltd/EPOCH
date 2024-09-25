@@ -19,7 +19,7 @@
         70.0,
         0.0
     ],
-    "CAPEX_limit": 500.0,
+    "CAPEX_limit": 1000.0,
     "ESS_capacity": [
         800.0,
         800.0,

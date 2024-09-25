@@ -104,6 +104,14 @@ struct FullSimulationResult {
 
 	// GasCombustionHeater
 	year_TS GasCH_load;
+	
+	// DHW
+	year_TS DHW_load;
+	year_TS DHW_charging;
+	year_TS DHW_SoC;
+	year_TS DHW_Standby_loss;
+	year_TS DHW_ave_temperature;
+	year_TS DHW_Shortfall;
 
 	float runtime;
 	uint64_t paramIndex;
@@ -113,6 +121,43 @@ struct FullSimulationResult {
 	float scenario_cost_balance;
 	float payback_horizon_years;
 	float scenario_carbon_balance;
+
+	float Baseline_electricity_cost;
+	float Baseline_fuel_cost;
+
+	float Baseline_electricity_carbon;
+	float Baseline_fuel_carbon;
+
+	float Scenario_electricity_cost;
+	float Scenario_fuel_cost;
+	float Scenario_grid_export_cost;
+	float Resulting_EV_charge_revenue;
+	float Resulting_Data_Centre_revenue;
+	float Scenario_avoided_fuel_cost;
+
+	float Scenario_electricity_carbon;
+	float Scenario_fuel_carbon;
+	float Scenario_grid_export_carbon;
+	float Scenario_avoided_fuel_carbon;
+
+	float ESS_PCS_CAPEX;
+	float ESS_PCS_OPEX;
+	float ESS_ENCLOSURE_CAPEX;
+	float ESS_ENCLOSURE_OPEX;
+	float ESS_ENCLOSURE_DISPOSAL;
+
+	float PVpanel_CAPEX;
+	float PVBoP_CAPEX;
+	float PVroof_CAPEX;
+	float PVground_CAPEX;
+	float PV_OPEX;
+
+	float EV_CP_cost;
+	float EV_CP_install;
+
+	float Grid_CAPEX;
+
+	float ASHP_CAPEX;
 };
 
 
@@ -207,6 +252,7 @@ struct HistoricalData {
 	year_TS airtemp_data;
 	year_TS importtariff_data;
 	year_TS gridCO2_data;
+	year_TS DHWdemand_data;
 	Eigen::MatrixXf ASHPinputtable;
 	Eigen::MatrixXf ASHPoutputtable;
 };
