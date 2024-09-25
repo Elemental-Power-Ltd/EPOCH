@@ -41,7 +41,7 @@ public:
         }
     }
 
-    void AllCalcs(TempSum_cl &TempSum) {
+    void AllCalcs(TempSum &TempSum) {
         // If Data Centre  is not balancing, actual loads will be target
         mActualLoad_e = mTargetLoad_e;
         mAvailableHotHeat_h = mActualLoad_e * mHeatScalar;
@@ -53,9 +53,9 @@ public:
         TempSum.Heat_h = TempSum.Heat_h - mHeatPump.Heat_h;
     }
 
-	void StepCalc(TempSum_cl& TempSum, const float futureEnergy_e, const int t) {
+	void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) {
 		// FUTURE can switch TargetHeat to Pool, DHW or combo
-		mTargetHeat_h[t] = TempSum.Heat_h[t];
+		mTargetHeat_h[t] = tempSum.Heat_h[t];
 
 
 		// Set Electricty Budget for ASHP

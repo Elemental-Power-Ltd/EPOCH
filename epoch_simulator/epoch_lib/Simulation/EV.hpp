@@ -20,17 +20,17 @@ public:
         mTargetLoad_e = historicalData.ev_eload_data * taskData.Fixed_load2_scalar;
     }
 
-    void AllCalcs(TempSum_cl& TempSum) {
+    void AllCalcs(TempSum& tempSum) {
         // If EV charge point is not balancing, actual loads will be target
         mActualLoad_e = mTargetLoad_e;
-        TempSum.Elec_e = TempSum.Elec_e + mActualLoad_e;
+        tempSum.Elec_e = tempSum.Elec_e + mActualLoad_e;
     }
 
-    void StepCalc(TempSum_cl& TempSum, const float futureEnergy_e, const int t) {
+    void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) {
         if (mTargetLoad_e[t] <= 0) {
             mActualLoad_e[t] = mTargetLoad_e[t];
         } else {
-            mAvailableEnergy_e = futureEnergy_e - TempSum.Elec_e[t];
+            mAvailableEnergy_e = futureEnergy_e - tempSum.Elec_e[t];
             // Apply a floor of flex load, a ceiling of target load or use the available energy
             if (mAvailableEnergy_e <= mTargetLoad_e[t] * mFlexRatio) {
                 mActualLoad_e[t] = mTargetLoad_e[t] * mFlexRatio;
@@ -41,7 +41,7 @@ public:
                 mActualLoad_e[t] = mAvailableEnergy_e;
             }
         }
-        TempSum.Elec_e[t] = TempSum.Elec_e[t] + mActualLoad_e[t];
+        tempSum.Elec_e[t] = tempSum.Elec_e[t] + mActualLoad_e[t];
     }
 
     void Report(FullSimulationResult & Result) {

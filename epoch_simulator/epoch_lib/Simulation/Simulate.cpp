@@ -40,7 +40,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	/* INITIALISE classes that support energy sums and object precedence */
 	Config_cl Config(taskData);	// flags energy component presence in TaskData & balancing modes
-	TempSum_cl TempSum(taskData);		// class of arrays for running totals (replace ESUM and Heat)
+	TempSum tempSum(taskData);		// class of arrays for running totals (replace ESUM and Heat)
 	
 	// INITIALISE Energy Components
 	Hotel Hotel(historicalData, taskData);
@@ -64,11 +64,11 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	// NON-BALANCING LOGIC
 
 	if (Config.EV1bal() == 1) {
-		EV1.AllCalcs(TempSum);
+		EV1.AllCalcs(tempSum);
 	}
 
 	if (Config.DataCbal() == 1) {
-		dataCentre.AllCalcs(TempSum);
+		dataCentre.AllCalcs(tempSum);
 	}
 
 	// BALANCING LOOP
@@ -81,35 +81,35 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		// EV is curtailed before the Data Centre
 		for (int t = 0; t < timesteps; t++) {
 			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch() - dataCentre.getTargetLoad(t);
-			EV1.StepCalc(TempSum, futureEnergy, t);
+			EV1.StepCalc(tempSum, futureEnergy, t);
 			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
-			dataCentre.StepCalc(TempSum, futureEnergy, t);
-			ESSmain.StepCalc(TempSum, Grid3.AvailImport(), t);
+			dataCentre.StepCalc(tempSum, futureEnergy, t);
+			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
 		}
 	}
 	else if (Config.DataCbal() == 1 && Config.EV1bal() == 2) {
 		for (int t = 0; t < timesteps; t++) {
 			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
-			EV1.StepCalc(TempSum, futureEnergy, t);
-			ESSmain.StepCalc(TempSum, Grid3.AvailImport(), t);
+			EV1.StepCalc(tempSum, futureEnergy, t);
+			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
 		}
 	}
 	else if (Config.DataCbal() == 2 && Config.EV1bal() == 1) {
 		for (int t = 0; t < timesteps; t++) {
 			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
-			dataCentre.StepCalc(TempSum, futureEnergy, t);
-			ESSmain.StepCalc(TempSum, Grid3.AvailImport(), t);
+			dataCentre.StepCalc(tempSum, futureEnergy, t);
+			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
 		}
 	}
 	else {
 		for (int t = 0; t < timesteps; t++) {
-			ESSmain.StepCalc(TempSum, Grid3.AvailImport(), t);
+			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
 		}
 	}
 
-	Grid3.Calcs(TempSum);
-	MOP.AllCalcs(TempSum);
-	GasCH.AllCalcs(TempSum);
+	Grid3.Calcs(tempSum);
+	MOP.AllCalcs(tempSum);
+	GasCH.AllCalcs(tempSum);
 
 	// OLD CODE
 

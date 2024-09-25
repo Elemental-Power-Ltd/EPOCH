@@ -5,10 +5,10 @@
 
 #include "TaskData.hpp"
 
-class TempSum_cl
+class TempSum
 {
 public:
-	TempSum_cl(const TaskData& taskData) :
+	TempSum(const TaskData& taskData) :
 		// Initilaise temporary vectors with all values to zero
 		TScount(taskData.calculate_timesteps()),
 		Elec_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// Electricity energy balance

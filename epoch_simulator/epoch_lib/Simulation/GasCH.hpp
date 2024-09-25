@@ -17,20 +17,20 @@ public:
 		mGasCH_e(Eigen::VectorXf::Zero(mTimesteps))
 	{}
 
-	void AllCalcs(TempSum_cl& TempSum) {
+	void AllCalcs(TempSum& tempSum) {
 		// VECTOR OPERATIONS APPLY TO ALL TIMESTEPS
 		// Clamp between 0 and GasCHmax to capture addressable heat load
-			//mGasCH_e = TempSum.Heat_e.cwiseMax(0.0f).cwiseMin(GasCHmax_e);
+			//mGasCH_e = tempSum.Heat_e.cwiseMax(0.0f).cwiseMin(GasCHmax_e);
 		
 		// Assume infinite GasCH power provides all remaining heat load and Heat_h not -ve
-		mGasCH_e = TempSum.Heat_h;
-		TempSum.Heat_h(Eigen::VectorXf::Zero(mTimesteps));
+		mGasCH_e = tempSum.Heat_h;
+		tempSum.Heat_h(Eigen::VectorXf::Zero(mTimesteps));
 
 		//FUTURE: Enable GasCH to heat DHW (and poss pool)
-		//mGasCH_e = mGasCH_e + TempSum.DHW_h;
-		//TempSum.DHW_h(Eigen::VectorXf::Zero(mTimesteps);
-		//mGasCH_e = mGasCH_e + TempSum.Pool_h;
-		//TempSum.Pool_h(Eigen::VectorXf::Zero(mTimesteps);
+		//mGasCH_e = mGasCH_e + tempSum.DHW_h;
+		//tempSum.DHW_h(Eigen::VectorXf::Zero(mTimesteps);
+		//mGasCH_e = mGasCH_e + tempSum.Pool_h;
+		//tempSum.Pool_h(Eigen::VectorXf::Zero(mTimesteps);
 	}
 
 	void Report(FullSimulationResult& Result) {

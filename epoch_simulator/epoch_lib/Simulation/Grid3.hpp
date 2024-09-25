@@ -27,15 +27,15 @@ public:
 		return ExpMax_e;
 	}
 
-	void Calcs(TempSum_cl& TempSum) {
+	void Calcs(TempSum& tempSum) {
 		// VECTOR OPERATIONS APPLY TO ALL TIMESTEPS
 		// clamp the grid import between 0 and Import Max at each timestep
-		Imp_e = TempSum.Elec_e.cwiseMax(0.0f).cwiseMin(ImpMax_e);
+		Imp_e = tempSum.Elec_e.cwiseMax(0.0f).cwiseMin(ImpMax_e);
 		// flip the ESUM then clamp between 0 and Export Max at each timestep
-		Exp_e = -1.0f * TempSum.Elec_e;
+		Exp_e = -1.0f * tempSum.Elec_e;
 		Exp_e = Exp_e.cwiseMax(0.0f).cwiseMin(ExpMax_e);
-		// Write the new electricity balance to TempSum: Load/Export is +ve & Gen/Import is -ve
-		TempSum.Elec_e = TempSum.Elec_e + Exp_e - Imp_e;
+		// Write the new electricity balance to tempSum: Load/Export is +ve & Gen/Import is -ve
+		tempSum.Elec_e = tempSum.Elec_e + Exp_e - Imp_e;
 	}
 
 	void Report(FullSimulationResult& Result) {

@@ -27,7 +27,7 @@ public:
         return mBattery.getAvailableDischarge();
     }
 
-    void StepCalc(TempSum_cl &TempSum, const float AvailGridImp, const int t) {
+    void StepCalc(TempSum &TempSum, const float AvailGridImp, const int t) {
         // mESS_mode Consume = 1, Resilient = 2, Threshold = 3, Price = 4, Carbon = 5
         switch (mESS_mode) {
         case 1: // Consume mode
