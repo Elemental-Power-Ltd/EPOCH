@@ -142,6 +142,15 @@ void update_SoC_basic(float E_charge_kWh, float V_draw_kWh, int timestep) {
 
     }
 
+    void Report(FullSimulationResult& result) {
+        result.DHW_load = mDHW_discharging;
+        result.DHW_charging = mDHW_charging;
+        result.DHW_SoC = mDHW_SoC_history;
+        result.DHW_Standby_loss = mDHW_standby_losses;
+        result.DHW_ave_temperature = mDHW_ave_temperature;
+        result.DHW_Shortfall = mDHW_shortfall;
+    }
+
     // Get the current temperature of the water in the tank
     float get_average_Temperature() const {
         return mT_ave;

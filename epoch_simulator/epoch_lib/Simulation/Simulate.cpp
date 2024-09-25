@@ -145,6 +145,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	Grid3.Report(fullSimulationResult);
 	MOP.Report(fullSimulationResult);
 	GasCH.Report(fullSimulationResult);
+	hotWaterCylinder.Report(fullSimulationResult);
 
 	// OLD CODE
 
@@ -199,12 +200,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
 		fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
 		fullSimulationResult.Heatload = historicalData.heatload_data;
-		fullSimulationResult.DHW_load = historicalData.DHWdemand_data;
-		fullSimulationResult.DHW_charging = hotWaterCylinder.getDHW_Charging();
-		fullSimulationResult.DHW_SoC = hotWaterCylinder.getDHW_SoC_history();
-		fullSimulationResult.DHW_Standby_loss = hotWaterCylinder.getDHW_standby_losses();
-		fullSimulationResult.DHW_ave_temperature = hotWaterCylinder.getDHW_ave_temperature();
-		fullSimulationResult.DHW_Shortfall = hotWaterCylinder.getDHW_shortfall();
 		fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
 		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
 		fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
