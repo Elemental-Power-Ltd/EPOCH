@@ -84,9 +84,11 @@ public:
         return mTargetLoad_e[timestep];
     }
 
-    void Report(const FullSimulationResult& Result) const {
-        // ADD RESULTS
-        // Target Load & Actual Load + ASHP stuff
+    void Report(FullSimulationResult& Result) const {
+        Result.Data_centre_target_load = mTargetLoad_e;
+        Result.Data_centre_actual_load = mActualLoad_e;
+        Result.Data_centre_target_heat = mTargetHeat_h;
+        Result.Data_centre_available_hot_heat = mAvailableHotHeat_h;
     }
 
 private:

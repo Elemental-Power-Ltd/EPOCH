@@ -46,8 +46,8 @@ public:
 
     void Report(FullSimulationResult & Result) {
         // report target load to allow calculation of revenue missed
-        //Result.EV_targetload = mTargetLoad_e;
-        //Result.EV_actualload = mActualLoad_e;
+        Result.EV_targetload = mTargetLoad_e;
+        Result.EV_actualload = mActualLoad_e;
     }
 
 private:

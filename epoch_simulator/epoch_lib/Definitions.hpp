@@ -55,24 +55,55 @@ struct FullSimulationResult {
 	year_TS ESS_available_discharge_power;
 	year_TS ESS_available_charge_power;
 	year_TS ESS_Rgen_only_charge;
-	year_TS ESS_discharge;
-	year_TS ESS_charge;
-	year_TS ESS_resulting_SoC;
 	year_TS Pre_grid_balance;
-	year_TS Grid_Import;
-	year_TS Grid_Export;
 	year_TS Post_grid_balance;
 	year_TS Pre_flex_import_shortfall;
 	year_TS Pre_Mop_curtailed_export;
-	year_TS Actual_import_shortfall;
-	year_TS Actual_curtailed_export;
 	year_TS Actual_high_priority_load;
 	year_TS Actual_low_priority_load;
-	year_TS Heatload;
 	year_TS Scaled_heatload;
 	year_TS Electrical_load_scaled_heat_yield;
+
+	// TempSum
+	year_TS Actual_import_shortfall;
+	year_TS Actual_curtailed_export;
 	year_TS Heat_shortfall;
 	year_TS Heat_surplus;
+
+	// Hotel
+	year_TS Hotel_load;
+	year_TS Heatload;
+
+	// PV
+	year_TS PVdcGen;
+	year_TS PVacGen;
+
+	// EV
+	year_TS EV_targetload;
+	year_TS EV_actualload;
+
+	// ESS
+	year_TS ESS_charge;
+	year_TS ESS_discharge;
+	year_TS ESS_resulting_SoC;
+	year_TS ESS_AuxLoad;
+	year_TS ESS_RTL;
+
+	// DataCentre
+	year_TS Data_centre_target_load;
+	year_TS Data_centre_actual_load;
+	year_TS Data_centre_target_heat;
+	year_TS Data_centre_available_hot_heat;
+
+	// Grid
+	year_TS Grid_Import;
+	year_TS Grid_Export;
+
+	// MOP
+	year_TS MOP_load;
+
+	// GasCombustionHeater
+	year_TS GasCH_load;
 
 	float runtime;
 	uint64_t paramIndex;

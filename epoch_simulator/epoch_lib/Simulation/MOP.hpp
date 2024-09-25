@@ -25,7 +25,7 @@ public:
 	}
 
 	void Report(FullSimulationResult& Result) {
-		//Result.MOP_load = mMOP_e;
+		Result.MOP_load = mMOP_e;
 	}
 
 private:

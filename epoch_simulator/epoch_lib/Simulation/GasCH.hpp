@@ -34,7 +34,7 @@ public:
 	}
 
 	void Report(FullSimulationResult& Result) {
-		//Result.GasCH_load = mGasCH_e;
+		Result.GasCH_load = mGasCH_e;
 	}
 
 private:

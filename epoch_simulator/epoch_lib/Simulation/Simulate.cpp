@@ -111,6 +111,18 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	MOP.AllCalcs(tempSum);
 	GasCH.AllCalcs(tempSum);
 
+	FullSimulationResult fullSimulationResult;
+
+	tempSum.Report(fullSimulationResult);
+	Hotel.Report(fullSimulationResult);
+	PV1.Report(fullSimulationResult);
+	EV1.Report(fullSimulationResult);
+	ESSmain.Report(fullSimulationResult);
+	dataCentre.Report(fullSimulationResult);
+	Grid3.Report(fullSimulationResult);
+	MOP.Report(fullSimulationResult);
+	GasCH.Report(fullSimulationResult);
+
 	// OLD CODE
 
 	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
@@ -141,8 +153,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	myCost.calculateCosts(MountEload, MountHload, MountGrid, MountBESS);
 
 	//Data reporting
-
-	FullSimulationResult fullSimulationResult;
 
 	if (simulationType == SimulationType::FullReporting) {
 		fullSimulationResult.Rgen_total = RGen_total;

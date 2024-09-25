@@ -93,14 +93,16 @@ public:
         }
     }
 
-    void Report(FullSimulationResult& Result) {
-        Result.ESS_charge = mBattery.mHistCharg_e;
-        Result.ESS_discharge = mBattery.mHistDisch_e;
-        Result.ESS_resulting_SoC = mBattery.mHistSoC_e;
-        // ADD ESS Losses
-        // Result.ESS_AuxLoad = mBattery.mHistAux_e;
-        // Result.ESS_RTL = mBattery.mHistRTL_e;
-    }
+	void Report(FullSimulationResult& Result) {
+		Result.ESS_charge = mBattery.mHistCharg_e;
+		Result.ESS_discharge = mBattery.mHistDisch_e;
+		Result.ESS_resulting_SoC = mBattery.mHistSoC_e;
+
+        // TODO - make a report method in the battery and call that instead
+		Result.ESS_AuxLoad = mBattery.mHistAux_e;
+		Result.ESS_RTL = mBattery.mHistRTL_e;
+	}
+
 private:
     Battery mBattery;
     const int mESS_mode;
