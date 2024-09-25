@@ -7,7 +7,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
+from ..dependencies import DatabasePoolDep, HttpClientDep, VaeDep
 from ..internal.site_manager.site_manager import fetch_all_input_data
 from ..models.client_data import SiteDataEntries
 from ..models.core import DatasetEntry, DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
@@ -23,6 +23,312 @@ from .import_tariffs import generate_import_tariffs, select_arbitrary_tariff
 from .renewables import generate_renewables_generation
 
 router = APIRouter()
+
+
+async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List the gas meter datasets we have for a given site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site that we've generated datasets for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+                SELECT
+                    metadata.dataset_id,
+                    metadata.created_at
+                FROM client_meters.metadata
+                WHERE (metadata.is_synthesised = false) AND metadata.fuel_type = 'gas' AND site_id = $1""",
+            site_id.site_id,
+        )
+    return [
+        DatasetEntry(dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.GasMeterData, created_at=item["created_at"])
+        for item in res
+    ]
+
+
+async def list_elec_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List the true electricity meter datasets we have for a given site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site that we've generated datasets for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+            SELECT
+                metadata.dataset_id,
+                metadata.created_at
+            FROM client_meters.metadata
+            WHERE (metadata.is_synthesised = false) AND metadata.fuel_type = 'elec' AND site_id = $1""",
+            site_id.site_id,
+        )
+    return [
+        DatasetEntry(
+            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.ElectricityMeterData, created_at=item["created_at"]
+        )
+        for item in res
+    ]
+
+
+async def list_elec_synthesised_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List the synthetic electricity datasets we have for a given site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site that we've generated datasets for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+            SELECT
+                metadata.dataset_id,
+                metadata.created_at
+            FROM client_meters.metadata
+            WHERE (metadata.is_synthesised = true) AND metadata.fuel_type = 'elec' AND site_id = $1""",
+            site_id.site_id,
+        )
+    return [
+        DatasetEntry(
+            dataset_id=item["dataset_id"],
+            dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
+            created_at=item["created_at"],
+        )
+        for item in res
+    ]
+
+
+async def list_import_tariff_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List the import tariff datasets we have for a given site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site that we've generated datasets for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+            SELECT
+                metadata.dataset_id,
+                metadata.created_at
+            FROM tariffs.metadata
+            WHERE site_id = $1""",
+            site_id.site_id,
+        )
+    return [
+        DatasetEntry(dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.ImportTariff, created_at=item["created_at"])
+        for item in res
+    ]
+
+
+async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List the renewables generation (solar) datasets we have for a given site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site that we've generated datasets for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+            SELECT
+                metadata.dataset_id,
+                metadata.created_at
+            FROM renewables.metadata
+            WHERE site_id = $1""",
+            site_id.site_id,
+        )
+    return [
+        DatasetEntry(
+            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.RenewablesGeneration, created_at=item["created_at"]
+        )
+        for item in res
+    ]
+
+
+async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List the heating load datasets we have for a given site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site that we've generated datasets for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+            SELECT
+                metadata.dataset_id,
+                metadata.created_at
+            FROM heating.metadata
+            WHERE site_id = $1""",
+            site_id.site_id,
+        )
+    return [
+        DatasetEntry(dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.HeatingLoad, created_at=item["created_at"])
+        for item in res
+    ]
+
+
+async def list_carbon_intensity_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List the Carbon Intensity datasets we have for a given site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site that we've generated datasets for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+                SELECT
+                    metadata.dataset_id,
+                    metadata.created_at
+                FROM carbon_intensity.metadata
+                WHERE site_id = $1""",
+            site_id.site_id,
+        )
+    return [
+        DatasetEntry(dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum.CarbonIntensity, created_at=item["created_at"])
+        for item in res
+    ]
+
+
+async def list_ashp_datasets() -> list[DatasetEntry]:
+    """
+    List the ASHP datasets we have in the database.
+
+    This is a dummy function as we don't actually store them, but it returns a reasonable looking response.
+    """
+    return [
+        DatasetEntry(
+            dataset_id=uuid.uuid4(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC)
+        )
+    ]
+
+
+@router.post("/list-datasets", tags=["db", "list"])
+async def list_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    Get all the datasets associated with a particular site, in the form of a list of UUID strings.
+
+    This covers datasets across all types; it is your responsibility to then pass them to the correct endpoints
+    (for example, sending a dataset ID corresponding to a gas dataset will not work when requesting renewables.)
+    This will make multiple database calls, as doing it all in a single SQL query caused a terrible mess.
+
+    Parameters
+    ----------
+    *site_id*
+        Database ID for the site you are interested in.
+
+    Returns
+    -------
+    A list of UUID dataset strings, with the earliest at the start and the latest at the end.
+    """
+    async with asyncio.TaskGroup() as tg:
+        gas_task = tg.create_task(list_gas_datasets(site_id, pool))
+        elec_task = tg.create_task(list_elec_datasets(site_id, pool))
+        elec_synth_task = tg.create_task(list_elec_synthesised_datasets(site_id, pool))
+        import_tariff_task = tg.create_task(list_import_tariff_datasets(site_id, pool))
+        renewables_generation_task = tg.create_task(list_renewables_generation_datasets(site_id, pool))
+        heating_load_task = tg.create_task(list_heating_load_datasets(site_id, pool))
+        carbon_intensity_task = tg.create_task(list_carbon_intensity_datasets(site_id, pool))
+        ashp_task = tg.create_task(list_ashp_datasets())
+
+    res = [
+        *gas_task.result(),
+        *elec_task.result(),
+        *elec_synth_task.result(),
+        *import_tariff_task.result(),
+        *renewables_generation_task.result(),
+        *heating_load_task.result(),
+        *carbon_intensity_task.result(),
+        *ashp_task.result(),
+    ]
+    logging.info(f"Returning {len(res)} datasets for {site_id}")
+    return res
+
+
+@router.post("/list-latest-datasets", tags=["db", "list"])
+async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> dict[DatasetTypeEnum, DatasetEntry]:
+    """
+    Get the most recent datasets of each type for this site.
+
+    This endpoint is the main one you'd want to call if you are interested in running EPOCH.
+    Note that you may still need to call `generate-*` if the datasets in here are too old, or
+    not listed at all.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site you are interested in
+
+    Returns
+    -------
+        A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
+    """
+    all_datasets = await list_datasets(site_id, pool)
+
+    latest_ds: dict[DatasetTypeEnum, DatasetEntry] = {}
+    for dataset in all_datasets:
+        if dataset.dataset_type not in latest_ds or (latest_ds[dataset.dataset_type].created_at < dataset.created_at):
+            latest_ds[dataset.dataset_type] = dataset
+    return dict(latest_ds)
+
+
+@router.post("/get-latest-datasets", tags=["db", "get"])
+async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
+    """
+    Get the most recent dataset entries of each type for this site.
+
+    This endpoint combines a call to /list-latest-datasets with each of the /get endpoints for those datasets
+
+    Parameters
+    ----------
+    site_data
+        A specification for the required site data.
+
+    Returns
+    -------
+        The site data with full time series for each data source
+    """
+    logging.info("Getting latest dataset list")
+
+    site_data_info = await list_latest_datasets(SiteID(site_id=site_data.site_id), pool=pool)
+
+    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
+    for dataset_name, dataset_metadata in site_data_info.items():
+        if dataset_name == DatasetTypeEnum.HeatingLoad or dataset_name == DatasetTypeEnum.RenewablesGeneration:
+            site_data_ids[dataset_name] = MultipleDatasetIDWithTime(
+                dataset_id=[dataset_metadata.dataset_id],
+                start_ts=site_data.start_ts,
+                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+            )
+        else:
+            site_data_ids[dataset_name] = DatasetIDWithTime(
+                dataset_id=dataset_metadata.dataset_id,
+                start_ts=site_data.start_ts,
+                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+            )
+
+    logging.info("Fetching latest datasets")
+    all_datasets = await fetch_all_input_data(site_data_ids, pool=pool)
+
+    return all_datasets
 
 
 @router.post("/generate-all")
@@ -47,8 +353,7 @@ async def generate_all(
     datasets
         Dataset Type: Dataset Entry mapping, including UUIDs under the 'dataset_id' key that you can retrieve from `get-*`.
     """
-    async with pool.acquire() as conn:
-        datasets = await list_latest_datasets(SiteID(site_id=params.site_id), conn=conn)
+    datasets = await list_latest_datasets(SiteID(site_id=params.site_id), pool=pool)
 
     if DatasetTypeEnum.GasMeterData not in datasets:
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
@@ -128,152 +433,3 @@ async def generate_all(
             created_at=datetime.datetime.now(tz=datetime.UTC),
         ),
     }
-
-
-@router.post("/list-latest-datasets", tags=["db", "list"])
-async def list_latest_datasets(site_id: SiteID, conn: DatabaseDep) -> dict[DatasetTypeEnum, DatasetEntry]:
-    """
-    Get the most recent datasets of each type for this site.
-
-    This endpoint is the main one you'd want to call if you are interested in running EPOCH.
-    Note that you may still need to call `generate-*` if the datasets in here are too old, or
-    not listed at all.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site you are interested in
-
-    Returns
-    -------
-        A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
-    """
-    res = await conn.fetch(
-        """
-    WITH cdm AS (
-     SELECT u.dataset_id,
-    u.created_at,
-    u.dataset_type,
-    u.site_id
-   FROM ( SELECT metadata.dataset_id,
-            metadata.created_at,
-                CASE
-                    WHEN metadata.fuel_type = 'elec'::text THEN 'ElectricityMeterData'::text
-                    WHEN metadata.fuel_type = 'gas'::text THEN 'GasMeterData'::text
-                    ELSE NULL::text
-                END AS dataset_type,
-            metadata.site_id
-           FROM client_meters.metadata
-           WHERE is_synthesised = False
-        UNION ALL
-        SELECT
-            metadata.dataset_id,
-            metadata.created_at,
-            'ElectricityMeterDataSynthesised'::text AS dataset_type,
-            metadata.site_id
-           FROM client_meters.metadata
-           WHERE is_synthesised = True AND fuel_type = 'elec'
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'ImportTariff'::text AS dataset_type,
-            metadata.site_id
-           FROM tariffs.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'RenewablesGeneration'::text AS dataset_type,
-            metadata.site_id
-           FROM renewables.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'HeatingLoad'::text AS dataset_type,
-            metadata.site_id
-           FROM heating.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'CarbonIntensity'::text AS dataset_type,
-            metadata.site_id
-           FROM carbon_intensity.metadata
-        UNION ALL
-         SELECT gen_random_uuid() AS dataset_id,
-            now() AS created_at,
-            'ASHPData'::text AS dataset_type,
-            si.site_id
-           FROM ( SELECT DISTINCT site_info.site_id
-                   FROM client_info.site_info) si) u
-  ORDER BY u.created_at)
-
-    SELECT
-        cdm.dataset_id,
-        cdm.dataset_type,
-        cdm.site_id,
-        cdm.created_at
-    FROM cdm
-    INNER JOIN (
-        SELECT
-            MAX(created_at) AS max_created_at,
-            dataset_type,
-            site_id
-        FROM
-            cdm
-        WHERE site_id = $1
-        GROUP BY dataset_type, site_id
-    ) AS mc ON
-        cdm.site_id = mc.site_id
-        AND mc.max_created_at = cdm.created_at
-        AND cdm.dataset_type = mc.dataset_type
-    """,
-        site_id.site_id,
-    )
-
-    return {
-        DatasetTypeEnum(item["dataset_type"]): DatasetEntry(
-            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum(item["dataset_type"]), created_at=item["created_at"]
-        )
-        for item in res
-    }
-
-
-@router.post("/get-latest-datasets", tags=["db", "get"])
-async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
-    """
-    Get the most recent dataset entries of each type for this site.
-
-    This endpoint combines a call to /list-latest-datasets with each of the /get endpoints for those datasets
-
-    Parameters
-    ----------
-    site_data
-        A specification for the required site data.
-
-    Returns
-    -------
-        The site data with full time series for each data source
-    """
-    logging.info("Getting latest dataset list")
-
-    async with pool.acquire() as conn:
-        site_data_info = await list_latest_datasets(SiteID(site_id=site_data.site_id), conn=conn)
-
-    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
-    for dataset_name, dataset_metadata in site_data_info.items():
-        if dataset_name == DatasetTypeEnum.HeatingLoad or dataset_name == DatasetTypeEnum.RenewablesGeneration:
-            site_data_ids[dataset_name] = MultipleDatasetIDWithTime(
-                dataset_id=[dataset_metadata.dataset_id],
-                start_ts=site_data.start_ts,
-                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-            )
-        else:
-            site_data_ids[dataset_name] = DatasetIDWithTime(
-                dataset_id=dataset_metadata.dataset_id,
-                start_ts=site_data.start_ts,
-                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-            )
-
-    logging.info("Fetching latest datasets")
-    all_datasets = await fetch_all_input_data(site_data_ids, pool=pool)
-
-    return all_datasets
