@@ -62,7 +62,54 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	GasCombustionHeater GasCH(taskData);
 
 	// NON-BALANCING LOGIC
+
+	if (Config.EV1bal() == 1) {
+		EV1.AllCalcs(TempSum);
+	}
+
+	if (Config.DataCbal() == 1) {
+		dataCentre.AllCalcs(TempSum);
+	}
+
 	// BALANCING LOOP
+
+	float futureEnergy = 0.0f;
+	int timesteps = taskData.calculate_timesteps();
+
+	if (Config.DataCbal() == 2 && Config.EV1bal() == 2) {
+		// This represents the logic in M-VEST v0-7:
+		// EV is curtailed before the Data Centre
+		for (int t = 0; t < timesteps; t++) {
+			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch() - dataCentre.getTargetLoad(t);
+			EV1.StepCalc(TempSum, futureEnergy, t);
+			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
+			dataCentre.StepCalc(TempSum, futureEnergy, t);
+			ESSmain.StepCalc(TempSum, Grid3.AvailImport(), t);
+		}
+	}
+	else if (Config.DataCbal() == 1 && Config.EV1bal() == 2) {
+		for (int t = 0; t < timesteps; t++) {
+			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
+			EV1.StepCalc(TempSum, futureEnergy, t);
+			ESSmain.StepCalc(TempSum, Grid3.AvailImport(), t);
+		}
+	}
+	else if (Config.DataCbal() == 2 && Config.EV1bal() == 1) {
+		for (int t = 0; t < timesteps; t++) {
+			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
+			dataCentre.StepCalc(TempSum, futureEnergy, t);
+			ESSmain.StepCalc(TempSum, Grid3.AvailImport(), t);
+		}
+	}
+	else {
+		for (int t = 0; t < timesteps; t++) {
+			ESSmain.StepCalc(TempSum, Grid3.AvailImport(), t);
+		}
+	}
+
+	Grid3.Calcs(TempSum);
+	MOP.AllCalcs(TempSum);
+	GasCH.AllCalcs(TempSum);
 
 	// OLD CODE
 
