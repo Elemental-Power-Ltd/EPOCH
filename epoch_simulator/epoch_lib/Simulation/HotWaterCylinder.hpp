@@ -151,51 +151,17 @@ void update_SoC_basic(float E_charge_kWh, float V_draw_kWh, int timestep) {
         result.DHW_Shortfall = mDHW_shortfall;
     }
 
-    // Get the current temperature of the water in the tank
-    float get_average_Temperature() const {
-        return mT_ave;
-    }
-
     // Get the current stored energy in the tank in kWh
     float getCylEnergy() const {
         return mCylEnergy_h;
-    }
-
-    // Get the current stored energy in the tank in kWh
-    float getCylinderVolume() const {
-        return mCylinderVolume;
-    }
-
-    float getCapacity_h() const {
-        return mCapacity_h;
     }
 
     year_TS getDHW_Charging() const {
         return mDHW_charging;
     }
 
-    year_TS getDHW_standby_losses() const {
-        return mDHW_standby_losses;
-    }
-
     year_TS getDHW_shortfall() const {
         return mDHW_shortfall;
-    }
-
-    year_TS getDHW_SoC_history() const {
-        return mDHW_SoC_history;
-    }
-
-    year_TS getDHW_ave_temperature() const {
-        return mDHW_ave_temperature;
-    }
-
-    year_TS getDHW_heat_pump_load_h() const {
-        return mDHW_heat_pump_load_h;
-    }
-
-    year_TS getDHW_mDHW_diverter_load() const {
-        return mDHW_diverter_load_e;
     }
 
 
