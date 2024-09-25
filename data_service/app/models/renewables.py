@@ -73,6 +73,7 @@ class PvgisDataSourceEnum(StrEnum):
     ERA5 = "PVGIS-ERA5"
     COSMO = "PVGIS-COSMO"
     CMSAF = "PVGIS-CMSAF"
+    SARAH2 = "PVGIS-SARAH2"
 
 
 class PvgisMountingSystemEnum(StrEnum):

@@ -1221,6 +1221,13 @@ GRANT ALL ON TABLE client_meters.electricity_meters TO python;
 
 
 --
+-- Name: TABLE electricity_meters_synthesised; Type: ACL; Schema: client_meters; Owner: -
+--
+
+GRANT ALL ON TABLE client_meters.electricity_meters_synthesised TO python;
+
+
+--
 -- Name: TABLE gas_meters; Type: ACL; Schema: client_meters; Owner: -
 --
 

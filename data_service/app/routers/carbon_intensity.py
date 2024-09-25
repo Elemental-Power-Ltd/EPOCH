@@ -94,7 +94,7 @@ async def fetch_carbon_intensity(
     return df[within_timestamps_mask].to_dict(orient="records")  # type: ignore
 
 
-@router.post("/generate-grid-co2")
+@router.post("/generate-grid-co2", tags=["co2", "generate"])
 async def generate_grid_co2(
     params: SiteIDWithTime, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> CarbonIntensityMetadata:
@@ -230,7 +230,7 @@ async def generate_grid_co2(
     )
 
 
-@router.post("/get-grid-co2")
+@router.post("/get-grid-co2", tags=["co2", "get"])
 async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[EpochCarbonEntry]:
     """
     Get a specific grid carbon itensity dataset that we generated with `generate-grid-co2`.
@@ -276,6 +276,10 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
     )
     carbon_df.index = pd.to_datetime(carbon_df.index)
     carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().interpolate(method="time")
+    carbon_df = carbon_df.reindex(
+        pd.DatetimeIndex(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left"))
+    )
+
     carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))
     carbon_df["GridCO2"] = carbon_df["GridCO2"].interpolate(method="time")
     return [

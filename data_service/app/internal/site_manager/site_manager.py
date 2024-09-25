@@ -1,6 +1,9 @@
 """Logic to combine multiple datasets into a single response for convenience."""
 
 import asyncio
+import logging
+
+from fastapi import HTTPException
 
 from app.dependencies import DatabasePoolDep
 from app.models import EpochHeatingEntry, EpochRenewablesEntry
@@ -18,7 +21,7 @@ from app.routers.renewables import get_renewables_generation
 
 
 async def fetch_blended_electricity_load(
-    real_params: DatasetIDWithTime, synthetic_params: DatasetIDWithTime, pool: DatabasePoolDep
+    real_params: DatasetIDWithTime, synthetic_params: DatasetIDWithTime | None, pool: DatabasePoolDep
 ) -> list[EpochElectricityEntry]:
     """
     Fetch a combination of real and synthetic electricity data across a time period.
@@ -42,8 +45,17 @@ async def fetch_blended_electricity_load(
     List of electricity entries, like the normal endpoints would give, but with synthetic data where required.
     """
     async with pool.acquire() as conn:
-        real_data = await get_electricity_load(real_params, conn=conn)
-        synth_data = await get_electricity_load(synthetic_params, conn=conn)
+        try:
+            real_data = await get_electricity_load(real_params, conn=conn)
+        except HTTPException:
+            real_data = []
+
+        if synthetic_params is not None:
+            synth_data = await get_electricity_load(synthetic_params, conn=conn)
+        else:
+            # Early return as we've got no synthetic data
+            logging.warning(f"Got no synthetic data, returning only {real_params.dataset_id}")
+            return real_data
 
     # The EPOCH format makes it a bit hard to just zip these together, so
     # assume each entry is uniquely identified by a (Date, StartTime) pair
@@ -102,8 +114,8 @@ async def fetch_all_input_data(
     """
     electricity_meter_data = site_data_ids[DatasetTypeEnum.ElectricityMeterData]
     assert isinstance(electricity_meter_data, DatasetIDWithTime)
-    electricity_meter_data_synthetic = site_data_ids[DatasetTypeEnum.ElectricityMeterDataSynthesised]
-    assert isinstance(electricity_meter_data_synthetic, DatasetIDWithTime)
+    electricity_meter_data_synthetic = site_data_ids.get(DatasetTypeEnum.ElectricityMeterDataSynthesised)
+    assert isinstance(electricity_meter_data_synthetic, DatasetIDWithTime | None)
     heating_load = site_data_ids[DatasetTypeEnum.HeatingLoad]
     assert isinstance(heating_load, MultipleDatasetIDWithTime)
     renewables_generation = site_data_ids[DatasetTypeEnum.RenewablesGeneration]
