@@ -2,10 +2,10 @@
 
 #include "TaskData.hpp"
 
-class Config_cl
+class Config
 {
 public:
-	Config_cl(const TaskData& taskData) :
+	Config(const TaskData& taskData) :
 		// Flags determine whether to create an energy component, initialise to 'not present' (=0)
 		EV1flag(0),
 		DataCflag(0),

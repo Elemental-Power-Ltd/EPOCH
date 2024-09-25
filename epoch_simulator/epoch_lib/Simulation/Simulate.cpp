@@ -39,7 +39,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	// MOVE COST CALCS here (exit if CAPEX exceeded, set results to sensible values?)
 
 	/* INITIALISE classes that support energy sums and object precedence */
-	Config_cl Config(taskData);	// flags energy component presence in TaskData & balancing modes
+	Config config(taskData);	// flags energy component presence in TaskData & balancing modes
 	TempSum tempSum(taskData);		// class of arrays for running totals (replace ESUM and Heat)
 	
 	// INITIALISE Energy Components
@@ -63,11 +63,11 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	// NON-BALANCING LOGIC
 
-	if (Config.EV1bal() == 1) {
+	if (config.EV1bal() == 1) {
 		EV1.AllCalcs(tempSum);
 	}
 
-	if (Config.DataCbal() == 1) {
+	if (config.DataCbal() == 1) {
 		dataCentre.AllCalcs(tempSum);
 	}
 
@@ -76,7 +76,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	float futureEnergy = 0.0f;
 	int timesteps = taskData.calculate_timesteps();
 
-	if (Config.DataCbal() == 2 && Config.EV1bal() == 2) {
+	if (config.DataCbal() == 2 && config.EV1bal() == 2) {
 		// This represents the logic in M-VEST v0-7:
 		// EV is curtailed before the Data Centre
 		for (int t = 0; t < timesteps; t++) {
@@ -87,14 +87,14 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
 		}
 	}
-	else if (Config.DataCbal() == 1 && Config.EV1bal() == 2) {
+	else if (config.DataCbal() == 1 && config.EV1bal() == 2) {
 		for (int t = 0; t < timesteps; t++) {
 			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
 			EV1.StepCalc(tempSum, futureEnergy, t);
 			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
 		}
 	}
-	else if (Config.DataCbal() == 2 && Config.EV1bal() == 1) {
+	else if (config.DataCbal() == 2 && config.EV1bal() == 1) {
 		for (int t = 0; t < timesteps; t++) {
 			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
 			dataCentre.StepCalc(tempSum, futureEnergy, t);
