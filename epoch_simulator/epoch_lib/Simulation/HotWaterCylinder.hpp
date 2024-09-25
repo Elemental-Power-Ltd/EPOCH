@@ -83,7 +83,7 @@ public:
 		return;
 	}
 
-	void AllCalcs(const TempSum& tempSum) {
+	void AllCalcs(const year_TS& ESUM) {
 
 		intialise_SoC();
 		calculate_U();
@@ -108,9 +108,9 @@ public:
 			float timestep_shortfall_charge = 0; // this is by restive immersion heating, electric shower or other instantaneous electric method assume 1kWe = 1kWh
 			float timestep_lowtariff_charge = 0; // to charge from tariff schedule, this can be achieved by heat pump
 
-			if (tempSum.Elec_e[timestep] < 0) // if there is a surplus of renewables, permit DHW charging by immersion and/or charge if there is a requirement for boost// must be after first timestep // can add tariff considertion later 
+			if (ESUM[timestep] < 0) // if there is a surplus of renewables, permit DHW charging by immersion and/or charge if there is a requirement for boost// must be after first timestep // can add tariff considertion later 
 			{
-				timestep_renewable_charge = std::min(-tempSum.Elec_e[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
+				timestep_renewable_charge = std::min(-ESUM[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
 			}
 
 			if (mImport_tariff[timestep] < mAverage_tariff)

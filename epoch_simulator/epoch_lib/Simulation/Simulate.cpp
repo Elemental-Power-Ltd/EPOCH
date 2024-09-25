@@ -89,7 +89,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	}
 
 	// TODO - fix hotWater integration
-	hotWaterCylinder.AllCalcs(tempSum);
+	//hotWaterCylinder.AllCalcs(ESUM);
 	//ESUM += hotWaterCylinder.getDHW_Charging(); // add the DHW electrical charging loads from ESUM 
 	// in V08 we will split DHW charging load sent to TempSum between Heat pump () heating load and instantaneous electric heating 
 	// (hotWaterCylinder.getDHW_diverter() + hotWaterCylinder.getDHW_shortfall());
