@@ -14,7 +14,7 @@
 #include "Grid.hpp"
 #include "Hload.hpp"
 #include "Costs.hpp"
-#include "HotWcylA_cl.hpp"
+#include "HotWaterCylinder.hpp"
 
 #include "Config.hpp"	//AS ADD
 #include "TempSum.hpp"	//AS ADD
@@ -64,9 +64,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	Hotel Hotel(historicalData, taskData);
 	BasicPV PV1(historicalData, taskData);
 	BasicElectricVehicle EV1(historicalData, taskData);
-
-		// SLB hot water cyclinder
-	// HotWcylA_cl HotWaterCyl(historicalData, taskData);
 	
 	// init ESS object (0= None, 1=basic, 2=hybrid)
 	BasicESS ESSmain(taskData);
@@ -79,7 +76,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	MOP MOP(taskData);
 	GasCombustionHeater GasCH(taskData);
 	
-	HotWcylA_cl HotWaterCyl{ historicalData, taskData };
+	HotWaterCylinder hotWaterCylinder{ historicalData, taskData };
 
 	// NON-BALANCING LOGIC
 
@@ -90,6 +87,12 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	if (config.DataCbal() == 1) {
 		dataCentre.AllCalcs(tempSum);
 	}
+
+	// TODO - fix hotWater integration
+	hotWaterCylinder.AllCalcs(tempSum);
+	//ESUM += hotWaterCylinder.getDHW_Charging(); // add the DHW electrical charging loads from ESUM 
+	// in V08 we will split DHW charging load sent to TempSum between Heat pump () heating load and instantaneous electric heating 
+	// (hotWaterCylinder.getDHW_diverter() + hotWaterCylinder.getDHW_shortfall());
 
 	// BALANCING LOOP
 
@@ -162,12 +165,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	// non balancing actions for stateful components
 
-	HotWaterCyl.AllCalcs(ESUM); // this will be TempSum in V08
-
-	ESUM += HotWaterCyl.getDHW_Charging(); // add the DHW electrical charging loads from ESUM 
-
-	// in V08 we will split DHW charging load sent to TempSum between Heat pump () heating load and instantaneous electric heating (HotWaterCyl.getDHW_diverter() + HotWaterCyl.getDHW_shortfall());
-
 	MountBESS.initialise(ESUM[0]);
 	MountBESS.runTimesteps(ESUM);
 
@@ -203,11 +200,11 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
 		fullSimulationResult.Heatload = historicalData.heatload_data;
 		fullSimulationResult.DHW_load = historicalData.DHWdemand_data;
-		fullSimulationResult.DHW_charging = HotWaterCyl.getDHW_Charging();
-		fullSimulationResult.DHW_SoC = HotWaterCyl.getDHW_SoC_history();
-		fullSimulationResult.DHW_Standby_loss = HotWaterCyl.getDHW_standby_losses();
-		fullSimulationResult.DHW_ave_temperature = HotWaterCyl.getDHW_ave_temperature();
-		fullSimulationResult.DHW_Shortfall = HotWaterCyl.getDHW_shortfall();
+		fullSimulationResult.DHW_charging = hotWaterCylinder.getDHW_Charging();
+		fullSimulationResult.DHW_SoC = hotWaterCylinder.getDHW_SoC_history();
+		fullSimulationResult.DHW_Standby_loss = hotWaterCylinder.getDHW_standby_losses();
+		fullSimulationResult.DHW_ave_temperature = hotWaterCylinder.getDHW_ave_temperature();
+		fullSimulationResult.DHW_Shortfall = hotWaterCylinder.getDHW_shortfall();
 		fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
 		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
 		fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();

@@ -1,10 +1,12 @@
 #include <cmath>
 
-class HotWcylA_cl {
+#include "TempSum.hpp"
+
+class HotWaterCylinder {
 
 public:
     // Constructor
-    HotWcylA_cl(const HistoricalData& historicalData, const TaskData& taskData) :
+    HotWaterCylinder(const HistoricalData& historicalData, const TaskData& taskData) :
 
     mCylinderVolume(taskData.cylinder_vol), // cylinder volume n litres
     mTimesteps(taskData.calculate_timesteps()),
@@ -81,7 +83,7 @@ void update_SoC_basic(float E_charge_kWh, float V_draw_kWh, int timestep) {
         return;
     }
     
-    void AllCalcs(const year_TS& ESUM) {
+    void AllCalcs(const TempSum& tempSum) {
 
         intialise_SoC();
         calculate_U();
@@ -106,9 +108,9 @@ void update_SoC_basic(float E_charge_kWh, float V_draw_kWh, int timestep) {
             float timestep_shortfall_charge = 0; // this is by restive immersion heating, electric shower or other instantaneous electric method assume 1kWe = 1kWh
             float timestep_lowtariff_charge = 0; // to charge from tariff schedule, this can be achieved by heat pump
 
-                if (ESUM[timestep] < 0) // if there is a surplus of renewables, permit DHW charging by immersion and/or charge if there is a requirement for boost// must be after first timestep // can add tariff considertion later 
+                if (tempSum.Elec_e[timestep] < 0) // if there is a surplus of renewables, permit DHW charging by immersion and/or charge if there is a requirement for boost// must be after first timestep // can add tariff considertion later 
                 {
-                    timestep_renewable_charge = std::min(-ESUM[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
+                    timestep_renewable_charge = std::min(-tempSum.Elec_e[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
                 }
               
                 if (mImport_tariff[timestep] < mAverage_tariff)
