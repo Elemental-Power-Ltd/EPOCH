@@ -27,7 +27,7 @@ public:
 		return ExpMax_e;
 	}
 
-	void Calcs(TempSum& tempSum) {
+	void AllCalcs(TempSum& tempSum) {
 		// VECTOR OPERATIONS APPLY TO ALL TIMESTEPS
 		// clamp the grid import between 0 and Import Max at each timestep
 		Imp_e = tempSum.Elec_e.cwiseMax(0.0f).cwiseMin(ImpMax_e);

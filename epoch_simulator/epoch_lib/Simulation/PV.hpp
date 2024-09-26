@@ -23,9 +23,16 @@ public:
                   + historicalData.RGen_data_4 * taskData.ScalarRG4;
     }
 
-    void AllCalcs() {
+    void AllCalcs(TempSum& tempSum) {
         // FUTURE: Apply oversizing
-        mPVdcGen_e = mPVacGen_e;
+        mPVacGen_e = mPVdcGen_e;
+
+        // Subtract PV generation from the electrical demand
+        tempSum.Elec_e -= mPVacGen_e;
+    }
+
+    year_TS get_PV_AC_out() const {
+        return mPVacGen_e;
     }
 
     void Report(FullSimulationResult &Result) {

@@ -61,7 +61,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	TempSum tempSum(taskData);		// class of arrays for running totals (replace ESUM and Heat)
 	
 	// INITIALISE Energy Components
-	Hotel Hotel(historicalData, taskData);
+	Hotel hotel(historicalData, taskData);
 	BasicPV PV1(historicalData, taskData);
 	BasicElectricVehicle EV1(historicalData, taskData);
 	
@@ -79,6 +79,10 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	HotWaterCylinder hotWaterCylinder{ historicalData, taskData };
 
 	// NON-BALANCING LOGIC
+
+	hotel.AllCalcs(tempSum);
+	PV1.AllCalcs(tempSum);
+
 
 	if (config.EV1bal() == 1) {
 		EV1.AllCalcs(tempSum);
@@ -130,14 +134,14 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		}
 	}
 
-	Grid3.Calcs(tempSum);
 	MOP.AllCalcs(tempSum);
+	Grid3.AllCalcs(tempSum);
 	GasCH.AllCalcs(tempSum);
 
 	FullSimulationResult fullSimulationResult;
 
 	tempSum.Report(fullSimulationResult);
-	Hotel.Report(fullSimulationResult);
+	hotel.Report(fullSimulationResult);
 	PV1.Report(fullSimulationResult);
 	EV1.Report(fullSimulationResult);
 	ESSmain.Report(fullSimulationResult);

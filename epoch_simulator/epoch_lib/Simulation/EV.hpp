@@ -28,7 +28,7 @@ public:
 
     void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) {
         if (mTargetLoad_e[t] <= 0) {
-            mActualLoad_e[t] = mTargetLoad_e[t];
+            mActualLoad_e[t] = 0.0f;
         } else {
             mAvailableEnergy_e = futureEnergy_e - tempSum.Elec_e[t];
             // Apply a floor of flex load, a ceiling of target load or use the available energy

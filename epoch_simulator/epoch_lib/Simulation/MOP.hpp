@@ -21,7 +21,7 @@ public:
 		mMOP_e = -1.0f * tempSum.Elec_e;
 		mMOP_e = mMOP_e.cwiseMax(0.0f).cwiseMin(mMOPmax_e);
 		// Write the new electricity balance to tempSum: Load/Export is +ve & Gen/Import is -ve
-		tempSum.Elec_e = tempSum.Elec_e + mMOP_e;
+		tempSum.Elec_e += mMOP_e;
 	}
 
 	void Report(FullSimulationResult& Result) {

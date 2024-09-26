@@ -17,11 +17,13 @@ public:
 		// TODO
 		// FUDGED WITH FIXED VALUES
 		// UNFUDGE: Initilaise lookup tables using historicalData.ASHPinputtable .ASHPoutputtable
-		mMaxLoad_e(taskData.timestep_hours * 0.5f),
-		mMaxHeat_h(taskData.timestep_hours * 2.0f)
+		mMaxLoad_e(taskData.timestep_hours * 0.5f * taskData.ASHP_HPower),
+		mMaxHeat_h(taskData.timestep_hours * 2.0f * taskData.ASHP_HPower)
 	{}
 
 	float MaxElecLoad() const {
+		// We always return the maximum theoretical load from the heatpump
+		// This avoids throttling calculations when there is adequate power
 		return mMaxLoad_e;
 	}
 
