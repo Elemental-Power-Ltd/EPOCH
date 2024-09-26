@@ -180,7 +180,20 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
 
-	myCost.calculateCosts_no_CAPEX(MountEload, MountHload, MountGrid, MountBESS); // CAPEX calc now at beginning
+
+	CostVectors costVectors;
+
+	costVectors.actual_ev_load_e = fullSimulationResult.EV_actualload;
+	costVectors.actual_data_centre_load_e = fullSimulationResult.Data_centre_actual_load;
+	costVectors.building_load_e = fullSimulationResult.Hotel_load;
+	costVectors.heatload_h = fullSimulationResult.Heatload;
+	costVectors.heat_shortfall_h = fullSimulationResult.Heat_shortfall;
+	costVectors.grid_import_e = fullSimulationResult.Grid_Import;
+	costVectors.grid_export_e = fullSimulationResult.Grid_Export;
+	costVectors.actual_low_priority_load_e = fullSimulationResult.MOP_load;
+
+
+	myCost.calculateCosts_no_CAPEX(costVectors);
 
 	//Data reporting
 

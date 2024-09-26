@@ -160,6 +160,21 @@ struct FullSimulationResult {
 	float ASHP_CAPEX;
 };
 
+// A struct containing all of the necessary vectors for cost calculations
+// bridging from V7 to V8
+struct CostVectors {
+	year_TS actual_ev_load_e;
+	year_TS actual_data_centre_load_e;
+	year_TS building_load_e;
+
+	year_TS heatload_h;
+	year_TS heat_shortfall_h;
+
+	year_TS grid_import_e;
+	year_TS grid_export_e;
+	year_TS actual_low_priority_load_e;
+};
+
 
 // Contains the five objectives and the TaskData that was used to produce the result
 struct ObjectiveResult {

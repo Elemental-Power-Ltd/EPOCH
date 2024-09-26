@@ -74,7 +74,7 @@ public:
 	}
 
 	
-	void calculateCosts_no_CAPEX(const Eload& eload, const Hload& hload, const Grid& grid, ESS& MountBESS) {
+	void calculateCosts_no_CAPEX(const CostVectors& costVectors) {
 
 		//	This function is an alterntive to calculateCosts() without CAPEX if CAPEX is already calculated earlier in Simulate.cpp
 		// 
@@ -117,25 +117,25 @@ public:
 		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), 0.3) };
 		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Export_kWh_price) };
 		// year_TS baseline_elec_load = eload.getTotalBaselineFixLoad() + grid.getActualLowPriorityLoad() + MountBESS.getAuxLoad() + eload.getActual_Data_Centre_load(); // depreciated in V 08 due to simplified baselining
-		year_TS baseline_elec_load = eload.getFixLoad1();
+		year_TS baseline_elec_load = costVectors.building_load_e;
 
 		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
 
 		//year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad(); // depreciated in V 08 due to simplified baselining
 
-		year_TS baseline_heat_load = hload.getHeatload();
+		year_TS baseline_heat_load = costVectors.heatload_h;
 
 		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), IMPORT_FUEL_PRICE) };
 
 		calculate_baseline_fuel_cost(baseline_heat_load, import_fuel_prices, BOILER_EFFICIENCY);
 
-		calculate_scenario_elec_cost(grid.getGridImport(), import_elec_prices);
-		calculate_scenario_fuel_cost(hload.getHeatShortfall(), import_fuel_prices);
-		calculate_scenario_export_cost(grid.getGridExport(), export_elec_prices);
+		calculate_scenario_elec_cost(costVectors.grid_import_e, import_elec_prices);
+		calculate_scenario_fuel_cost(costVectors.heat_shortfall_h, import_fuel_prices);
+		calculate_scenario_export_cost(costVectors.grid_export_e, export_elec_prices);
 
-		calculate_scenario_EV_revenue(eload);
-		calculate_scenario_HP_revenue(eload);
-		calculate_scenario_LP_revenue(grid);
+		calculate_scenario_EV_revenue(costVectors.actual_ev_load_e);
+		calculate_scenario_HP_revenue(costVectors.actual_data_centre_load_e);
+		calculate_scenario_LP_revenue(costVectors.actual_low_priority_load_e);
 
 
 		calculate_scenario_cost_balance(mTotal_annualised_cost);
@@ -157,13 +157,13 @@ public:
 
 		calculate_baseline_fuel_CO2e(baseline_heat_load);
 
-		calculate_scenario_elec_CO2e(grid.getGridImport());
+		calculate_scenario_elec_CO2e(costVectors.grid_import_e);
 
-		calculate_scenario_fuel_CO2e(hload.getHeatShortfall());
+		calculate_scenario_fuel_CO2e(costVectors.heat_shortfall_h);
 
-		calculate_scenario_export_CO2e(grid.getGridExport());
+		calculate_scenario_export_CO2e(costVectors.grid_export_e);
 
-		calculate_scenario_LP_CO2e(grid);
+		calculate_scenario_LP_CO2e(costVectors.actual_low_priority_load_e);
 
 		calculate_scenario_carbon_balance();
 	}
@@ -615,19 +615,19 @@ public:
 		mScenario_export_cost = mScenario_export_cost_TS.sum();
 	};
 
-	void calculate_scenario_EV_revenue(const Eload& eload) {
-		year_TS mScenario_EV_revenueTS = eload.getActualEVLoad().array() * mEV_low_price; // will need to separate out EV charge tariffs later, assume all destination charging for no
+	void calculate_scenario_EV_revenue(const year_TS& actual_ev_load) {
+		year_TS mScenario_EV_revenueTS = actual_ev_load.array() * mEV_low_price; // will need to separate out EV charge tariffs later, assume all destination charging for no
 		mScenario_EV_revenue = mScenario_EV_revenueTS.sum();
 	};
 
-	void calculate_scenario_HP_revenue(const Eload& eload) {
-		year_TS mScenario_HP_revenueTS = eload.getActual_Data_Centre_load().array() * mHP_price;
+	void calculate_scenario_HP_revenue(const year_TS& actual_data_centre_load) {
+		year_TS mScenario_HP_revenueTS = actual_data_centre_load.array() * mHP_price;
 		mScenario_HP_revenue = mScenario_HP_revenueTS.sum();
 	};
 
-	void calculate_scenario_LP_revenue(const Grid& grid) {
+	void calculate_scenario_LP_revenue(const year_TS& actual_low_priority_load) {
 		mLP_price = mMains_gas_price/mBoiler_efficiency;
-		year_TS mScenario_LP_revenueTS = grid.getActualLowPriorityLoad().array() * mLP_price; // will need to separate out EV charge tariffs later, assume all destination charging for no
+		year_TS mScenario_LP_revenueTS = actual_low_priority_load.array() * mLP_price; // will need to separate out EV charge tariffs later, assume all destination charging for no
 		mScenario_LP_revenue = mScenario_LP_revenueTS.sum();
 	}
 
@@ -680,9 +680,9 @@ public:
 		mScenario_export_CO2e = (-grid_export_sum * mSupplier_electricity_kg_CO2e);
 	};
 
-	void calculate_scenario_LP_CO2e(const Grid& grid) {
+	void calculate_scenario_LP_CO2e(const year_TS& actual_low_priority_load) {
 	
-		year_TS mScenario_LP_CO2eTS = grid.getActualLowPriorityLoad().array() * mMains_gas_kg_C02e; // will need to separate out EV charge tariffs later, assume all destination charging for no
+		year_TS mScenario_LP_CO2eTS = actual_low_priority_load.array() * mMains_gas_kg_C02e; // will need to separate out EV charge tariffs later, assume all destination charging for no
 		mScenario_LP_CO2e =  -mScenario_LP_CO2eTS.sum();
 	}
 
