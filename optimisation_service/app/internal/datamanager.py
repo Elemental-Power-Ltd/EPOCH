@@ -53,11 +53,14 @@ class DataManager:
         if site_data.loc == FileLoc.local:
             self.copy_input_data(site_data.path, self.temp_data_dir)
         else:
-            site_data_entries = await self.fetch_latest_datasets(site_data)
-            dfs = self.transform_all_input_data(site_data_entries)
-            logger.info(f"Saving site data to {self.temp_data_dir}.")
-            for name, df in dfs.items():
-                df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
+            if site_data.site_id == "demo_edinburgh":
+                self.copy_input_data(Path("mount_site_data"), self.temp_data_dir)
+            else:
+                site_data_entries = await self.fetch_latest_datasets(site_data)
+                dfs = self.transform_all_input_data(site_data_entries)
+                logger.info(f"Saving site data to {self.temp_data_dir}.")
+                for name, df in dfs.items():
+                    df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
 
     def copy_input_data(self, source: str | os.PathLike, destination: str | os.PathLike) -> None:
         """
