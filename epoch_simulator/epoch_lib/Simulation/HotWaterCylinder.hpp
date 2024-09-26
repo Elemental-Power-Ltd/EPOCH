@@ -16,7 +16,7 @@ public:
 		mDHW_discharging(historicalData.DHWdemand_data),
 		mCylinderStartSoC_h(calculate_Capacity_h()), // set start SoC to full for now
 		mDHW_charging(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
-		mDHW_shortfall(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
+		mDHW_shortfall_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
 		mDHW_standby_losses(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
 		mDHW_SoC_history(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
 		mDHW_ave_temperature(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
@@ -68,7 +68,7 @@ public:
 
 		//if (mCylEnergy_h < 0)
 		//{
-		//    mDHW_shortfall[timestep] = -mCylEnergy_h; // record shortfall in absolute terms
+		//    mDHW_shortfall_e[timestep] = -mCylEnergy_h; // record shortfall in absolute terms
 		//    mCylEnergy_h = 0;
 		//}
 
@@ -83,7 +83,7 @@ public:
 		return;
 	}
 
-	void AllCalcs(const year_TS& ESUM) {
+	void AllCalcs(TempSum& tempSum) {
 
 		intialise_SoC();
 		calculate_U();
@@ -108,9 +108,9 @@ public:
 			float timestep_shortfall_charge = 0; // this is by restive immersion heating, electric shower or other instantaneous electric method assume 1kWe = 1kWh
 			float timestep_lowtariff_charge = 0; // to charge from tariff schedule, this can be achieved by heat pump
 
-			if (ESUM[timestep] < 0) // if there is a surplus of renewables, permit DHW charging by immersion and/or charge if there is a requirement for boost// must be after first timestep // can add tariff considertion later 
+			if (tempSum.Elec_e[timestep] < 0) // if there is a surplus of renewables, permit DHW charging by immersion and/or charge if there is a requirement for boost// must be after first timestep // can add tariff considertion later 
 			{
-				timestep_renewable_charge = std::min(-ESUM[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
+				timestep_renewable_charge = std::min(-tempSum.Elec_e[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
 			}
 
 			if (mImport_tariff[timestep] < mAverage_tariff)
@@ -123,7 +123,7 @@ public:
 				// this is the minimum to support instantenous charging
 			{
 				timestep_shortfall_charge = std::min(max_charge_energy, (mDHW_discharging[timestep] - timestep_renewable_charge - timestep_lowtariff_charge - mDHW_SoC_history[timestep - 1]));
-				mDHW_shortfall[timestep] = timestep_shortfall_charge;
+				mDHW_shortfall_e[timestep] = timestep_shortfall_charge;
 			}
 
 			timestep_charge = timestep_renewable_charge + timestep_lowtariff_charge + timestep_shortfall_charge;
@@ -138,6 +138,12 @@ public:
 
 		};
 
+		// update tempSum to apply the electrical loads
+		tempSum.Elec_e += mDHW_shortfall_e;
+		tempSum.Elec_e += mDHW_diverter_load_e;
+
+		tempSum.DHW_heatpump_ask_h += mDHW_heat_pump_load_h;
+
 		return;
 
 	}
@@ -148,7 +154,7 @@ public:
 		result.DHW_SoC = mDHW_SoC_history;
 		result.DHW_Standby_loss = mDHW_standby_losses;
 		result.DHW_ave_temperature = mDHW_ave_temperature;
-		result.DHW_Shortfall = mDHW_shortfall;
+		result.DHW_Shortfall = mDHW_shortfall_e;
 	}
 
 	// Get the current stored energy in the tank in kWh
@@ -161,7 +167,7 @@ public:
 	}
 
 	year_TS getDHW_shortfall() const {
-		return mDHW_shortfall;
+		return mDHW_shortfall_e;
 	}
 
 
@@ -196,7 +202,7 @@ private:
 	year_TS mDHW_charging; // member timeseries for calculated charging
 	year_TS mDHW_discharging;  // member timeseries for discharging from historical data
 	year_TS mDHW_standby_losses;
-	year_TS mDHW_shortfall;
+	year_TS mDHW_shortfall_e;
 	year_TS mDHW_SoC_history;
 	year_TS mDHW_ave_temperature;
 	year_TS mDHW_heat_pump_load_h;

@@ -92,11 +92,12 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		dataCentre.AllCalcs(tempSum);
 	}
 
-	// TODO - fix hotWater integration
-	//hotWaterCylinder.AllCalcs(ESUM);
-	//ESUM += hotWaterCylinder.getDHW_Charging(); // add the DHW electrical charging loads from ESUM 
+
+	// TODO - consider applying battery aux load before considering DHW
+	// something like: ESSmain.ApplyAuxLoad(tempSum);
+
+	hotWaterCylinder.AllCalcs(tempSum);
 	// in V08 we will split DHW charging load sent to TempSum between Heat pump () heating load and instantaneous electric heating 
-	// (hotWaterCylinder.getDHW_diverter() + hotWaterCylinder.getDHW_shortfall());
 
 	// BALANCING LOOP
 
@@ -184,74 +185,74 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	//Data reporting
 
 	if (simulationType == SimulationType::FullReporting) {
-		fullSimulationResult.Rgen_total = RGen_total;
-		fullSimulationResult.Total_load = MountEload.getTotalLoad();
-		fullSimulationResult.ESUM = ESUM;
-		fullSimulationResult.ESS_available_discharge_power = MountBESS.getESSAvailableDischargePower();;
-		fullSimulationResult.ESS_available_charge_power = MountBESS.getESSAvailableChargePower();
-		fullSimulationResult.ESS_Rgen_only_charge = MountBESS.getESSRgenOnlyCharge();
-		fullSimulationResult.ESS_discharge = MountBESS.getESSDischarge();
-		fullSimulationResult.ESS_charge = MountBESS.getESSCharge();
-		fullSimulationResult.ESS_resulting_SoC = MountBESS.getESSResultingSoC();
-		fullSimulationResult.Pre_grid_balance = MountGrid.getPreGridBalance();
-		fullSimulationResult.Grid_Import = MountGrid.getGridImport();
-		fullSimulationResult.Grid_Export = MountGrid.getGridExport();
-		fullSimulationResult.Post_grid_balance = MountGrid.getPostGridBalance();
-		fullSimulationResult.Pre_flex_import_shortfall = MountGrid.getPreFlexImportShortfall();
-		fullSimulationResult.Pre_Mop_curtailed_export = MountGrid.getPreMopCurtailedExport();
-		fullSimulationResult.Actual_import_shortfall = MountGrid.getActualImportShortfall();
-		fullSimulationResult.Actual_curtailed_export = MountGrid.getActualCurtailedExport();
-		fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
-		fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
-		fullSimulationResult.Heatload = historicalData.heatload_data;
-		fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
-		fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
-		fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
-		fullSimulationResult.Heat_surplus = MountHload.getEHeatSurplus();
-		
-		fullSimulationResult.Baseline_electricity_cost = myCost.get_Baseline_elec_cost();
-		fullSimulationResult.Baseline_fuel_cost = myCost.get_Baseline_fuel_cost();
+		//fullSimulationResult.Rgen_total = RGen_total;
+		//fullSimulationResult.Total_load = MountEload.getTotalLoad();
+		//fullSimulationResult.ESUM = ESUM;
+		//fullSimulationResult.ESS_available_discharge_power = MountBESS.getESSAvailableDischargePower();;
+		//fullSimulationResult.ESS_available_charge_power = MountBESS.getESSAvailableChargePower();
+		//fullSimulationResult.ESS_Rgen_only_charge = MountBESS.getESSRgenOnlyCharge();
+		//fullSimulationResult.ESS_discharge = MountBESS.getESSDischarge();
+		//fullSimulationResult.ESS_charge = MountBESS.getESSCharge();
+		//fullSimulationResult.ESS_resulting_SoC = MountBESS.getESSResultingSoC();
+		//fullSimulationResult.Pre_grid_balance = MountGrid.getPreGridBalance();
+		//fullSimulationResult.Grid_Import = MountGrid.getGridImport();
+		//fullSimulationResult.Grid_Export = MountGrid.getGridExport();
+		//fullSimulationResult.Post_grid_balance = MountGrid.getPostGridBalance();
+		//fullSimulationResult.Pre_flex_import_shortfall = MountGrid.getPreFlexImportShortfall();
+		//fullSimulationResult.Pre_Mop_curtailed_export = MountGrid.getPreMopCurtailedExport();
+		//fullSimulationResult.Actual_import_shortfall = MountGrid.getActualImportShortfall();
+		//fullSimulationResult.Actual_curtailed_export = MountGrid.getActualCurtailedExport();
+		//fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
+		//fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
+		//fullSimulationResult.Heatload = historicalData.heatload_data;
+		//fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
+		//fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
+		//fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
+		//fullSimulationResult.Heat_surplus = MountHload.getEHeatSurplus();
+		//
+		//fullSimulationResult.Baseline_electricity_cost = myCost.get_Baseline_elec_cost();
+		//fullSimulationResult.Baseline_fuel_cost = myCost.get_Baseline_fuel_cost();
 
-		fullSimulationResult.Baseline_electricity_carbon = myCost.get_Baseline_elec_CO2e();
-		fullSimulationResult.Baseline_fuel_carbon = myCost.get_Baseline_fuel_CO2e();
+		//fullSimulationResult.Baseline_electricity_carbon = myCost.get_Baseline_elec_CO2e();
+		//fullSimulationResult.Baseline_fuel_carbon = myCost.get_Baseline_fuel_CO2e();
 
-		fullSimulationResult.Scenario_electricity_cost = myCost.get_Scenario_import_cost();
-		fullSimulationResult.Scenario_fuel_cost = myCost.get_Scenario_fuel_cost();
-		fullSimulationResult.Scenario_grid_export_cost = myCost.get_Scenario_export_cost();
-		
-		fullSimulationResult.Scenario_electricity_carbon = myCost.get_Scenario_elec_CO2e();
-		fullSimulationResult.Scenario_fuel_carbon = myCost.get_Scenario_fuel_CO2e();
-		fullSimulationResult.Scenario_grid_export_carbon = myCost.get_Scenario_export_CO2e();
-		fullSimulationResult.Scenario_avoided_fuel_carbon = myCost.get_Scenario_LP_CO2e();
+		//fullSimulationResult.Scenario_electricity_cost = myCost.get_Scenario_import_cost();
+		//fullSimulationResult.Scenario_fuel_cost = myCost.get_Scenario_fuel_cost();
+		//fullSimulationResult.Scenario_grid_export_cost = myCost.get_Scenario_export_cost();
+		//
+		//fullSimulationResult.Scenario_electricity_carbon = myCost.get_Scenario_elec_CO2e();
+		//fullSimulationResult.Scenario_fuel_carbon = myCost.get_Scenario_fuel_CO2e();
+		//fullSimulationResult.Scenario_grid_export_carbon = myCost.get_Scenario_export_CO2e();
+		//fullSimulationResult.Scenario_avoided_fuel_carbon = myCost.get_Scenario_LP_CO2e();
 
-		fullSimulationResult.Resulting_EV_charge_revenue = myCost.get_Scenario_EV_revenue();
-		fullSimulationResult.Resulting_Data_Centre_revenue = myCost.get_Scenario_HP_revenue();
-		fullSimulationResult.Scenario_avoided_fuel_cost = myCost.get_Scenario_LP_revenue();
+		//fullSimulationResult.Resulting_EV_charge_revenue = myCost.get_Scenario_EV_revenue();
+		//fullSimulationResult.Resulting_Data_Centre_revenue = myCost.get_Scenario_HP_revenue();
+		//fullSimulationResult.Scenario_avoided_fuel_cost = myCost.get_Scenario_LP_revenue();
 
-		fullSimulationResult.ESS_PCS_CAPEX = myCost.get_ESS_PCS_CAPEX();
-		fullSimulationResult.ESS_PCS_OPEX = myCost.get_ESS_PCS_OPEX();
-		fullSimulationResult.ESS_ENCLOSURE_CAPEX = myCost.get_ESS_ENCLOSURE_CAPEX();
-		fullSimulationResult.ESS_ENCLOSURE_OPEX = myCost.get_ESS_ENCLOSURE_OPEX();
-		fullSimulationResult.ESS_ENCLOSURE_DISPOSAL = myCost.get_ESS_ENCLOSURE_DISPOSAL();
-		
-		fullSimulationResult.PVpanel_CAPEX = myCost.get_PVpanel_CAPEX();
-		fullSimulationResult.PVBoP_CAPEX = myCost.get_PVBoP_CAPEX();
-		fullSimulationResult.PVroof_CAPEX = myCost.get_PVroof_CAPEX();
-		fullSimulationResult.PVground_CAPEX = myCost.get_PVground_CAPEX();
-		fullSimulationResult.PV_OPEX = myCost.get_PV_OPEX();
-		
-		fullSimulationResult.EV_CP_cost = myCost.get_EV_CP_cost();
-		fullSimulationResult.EV_CP_install = myCost.get_EV_CP_install();
+		//fullSimulationResult.ESS_PCS_CAPEX = myCost.get_ESS_PCS_CAPEX();
+		//fullSimulationResult.ESS_PCS_OPEX = myCost.get_ESS_PCS_OPEX();
+		//fullSimulationResult.ESS_ENCLOSURE_CAPEX = myCost.get_ESS_ENCLOSURE_CAPEX();
+		//fullSimulationResult.ESS_ENCLOSURE_OPEX = myCost.get_ESS_ENCLOSURE_OPEX();
+		//fullSimulationResult.ESS_ENCLOSURE_DISPOSAL = myCost.get_ESS_ENCLOSURE_DISPOSAL();
+		//
+		//fullSimulationResult.PVpanel_CAPEX = myCost.get_PVpanel_CAPEX();
+		//fullSimulationResult.PVBoP_CAPEX = myCost.get_PVBoP_CAPEX();
+		//fullSimulationResult.PVroof_CAPEX = myCost.get_PVroof_CAPEX();
+		//fullSimulationResult.PVground_CAPEX = myCost.get_PVground_CAPEX();
+		//fullSimulationResult.PV_OPEX = myCost.get_PV_OPEX();
+		//
+		//fullSimulationResult.EV_CP_cost = myCost.get_EV_CP_cost();
+		//fullSimulationResult.EV_CP_install = myCost.get_EV_CP_install();
 
-		fullSimulationResult.Grid_CAPEX = myCost.get_Grid_CAPEX();
-		fullSimulationResult.ASHP_CAPEX = myCost.get_ASHP_CAPEX();
+		//fullSimulationResult.Grid_CAPEX = myCost.get_Grid_CAPEX();
+		//fullSimulationResult.ASHP_CAPEX = myCost.get_ASHP_CAPEX();
 
-		float mEV_CP_cost;
-		float mEV_CP_install;
+		//float mEV_CP_cost;
+		//float mEV_CP_install;
 
-		float mGrid_CAPEX;
+		//float mGrid_CAPEX;
 
-		float mASHP_CAPEX;
+		//float mASHP_CAPEX;
 	};
 
 	

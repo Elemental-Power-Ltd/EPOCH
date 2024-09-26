@@ -27,8 +27,8 @@ public:
 		tempSum.Heat_h(Eigen::VectorXf::Zero(mTimesteps));
 
 		//FUTURE: Enable GasCH to heat DHW (and poss pool)
-		//mGasCH_e = mGasCH_e + tempSum.DHW_h;
-		//tempSum.DHW_h(Eigen::VectorXf::Zero(mTimesteps);
+		//mGasCH_e = mGasCH_e + tempSum.DHW_load_h;
+		//tempSum.DHW_load_h(Eigen::VectorXf::Zero(mTimesteps);
 		//mGasCH_e = mGasCH_e + tempSum.Pool_h;
 		//tempSum.Pool_h(Eigen::VectorXf::Zero(mTimesteps);
 	}

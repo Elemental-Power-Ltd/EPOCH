@@ -77,7 +77,10 @@ public:
 		}
 		mAvailableHotHeat_h[t] = mActualLoad_e[t] * mHeatScalar;
 
+        // TODO - should the heatpump be modifying tempSum? (analagous to AllCalc above)
+        // Yes
 		mHeatPump.StepCalc(mTargetHeat_h[t], mAvailableHotHeat_h[t], heatPumpBudget_e, t);
+
 	}
 
     float getTargetLoad(int timestep) {
