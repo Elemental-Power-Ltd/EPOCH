@@ -40,7 +40,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
-	Costs myCost(taskData);
+	Costs myCost(historicalData, taskData);
 	myCost.calculate_Project_CAPEX();
 	if (taskData.CAPEX_limit*1000 < myCost.get_project_CAPEX())
 	{
@@ -153,7 +153,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	hotWaterCylinder.Report(fullSimulationResult);
 
 	// OLD CODE
-
+	/*
 	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
 
 	Hload MountHload(historicalData, taskData); // initialise Hload based on historical data and taskdata
@@ -179,7 +179,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	MountEload.calculateElectricHeat(MountGrid, MountHload, taskData);
 
 	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
-
+	*/
 
 	CostVectors costVectors;
 
