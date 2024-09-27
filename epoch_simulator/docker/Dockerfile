@@ -42,4 +42,4 @@ WORKDIR /EP/Epoch
 RUN cmake -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_POSITION_INDEPENDENT_CODE=ON --preset headless-linux
 RUN cmake --build --preset=headless-rel-linux
 
-CMD ["sh", "-c", "LD_PRELOAD=${MIMALLOC_SO} ./build/headless/epoch_main/Epoch"]
+CMD ["sh", "-c", "LD_PRELOAD=${MIMALLOC_SO} ./build/epoch_main/Epoch"]
