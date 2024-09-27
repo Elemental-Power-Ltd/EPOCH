@@ -9,8 +9,8 @@
     {
       "name": "headless",
       "inherits": "base",
-      "binaryDir": "${sourceDir}/build/headless",
-      "installDir": "${sourceDir}/install/headless",
+      "binaryDir": "${sourceDir}/build/epoch_main",
+      "installDir": "${sourceDir}/install/epoch_main",
       "cacheVariables": {
         "BUILD_GUI": "OFF"
       }
