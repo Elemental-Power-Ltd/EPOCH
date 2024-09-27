@@ -87,11 +87,18 @@ public:
         return mTargetLoad_e[timestep];
     }
 
-    void Report(FullSimulationResult& Result) const {
-        Result.Data_centre_target_load = mTargetLoad_e;
-        Result.Data_centre_actual_load = mActualLoad_e;
-        Result.Data_centre_target_heat = mTargetHeat_h;
-        Result.Data_centre_available_hot_heat = mAvailableHotHeat_h;
+    void Report(FullSimulationResult& result) const {
+        result.Data_centre_target_load = mTargetLoad_e;
+        result.Data_centre_actual_load = mActualLoad_e;
+        result.Data_centre_target_heat = mTargetHeat_h;
+        result.Data_centre_available_hot_heat = mAvailableHotHeat_h;
+        
+        // NEED TO ADD HEATPUMP RESULTS
+        //result.HeatPump_elec_load = mHeatPump.DHWload_e + mHeatPump.CHload_e;
+        //result.HeatPump_DHWoutput = mHeatPump.DHWout_h;
+        //result.HeatPump_CHoutput = mHeatPump.CHout_h;
+        //result.HeatPump_UsedAmbientHeat = mHeatPump.FreeHeat_h;
+        //result.HeatPump_UsedHotHeat = mHeatPump.UsedHotHeat_h;
     }
 
 private:
