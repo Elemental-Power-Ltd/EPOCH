@@ -19,7 +19,7 @@ public:
         // Mode: 1=Target, 2=Price, 3=Carbon
         mOptimisationMode(1),
         // Max kWh per TS
-        mDataCentreMaxLoad_e(taskData.Flex_load_max* taskData.timestep_hours),
+        mDataCentreMaxLoad_e(taskData.Flex_load_max * taskData.timestep_hours),
         // Percentage of waste heat captured for ASHP
         mHeatScalar(taskData.ScalarHYield),
 
@@ -41,22 +41,21 @@ public:
         }
     }
 
-    void AllCalcs(TempSum &TempSum) {
+    void AllCalcs(TempSum& tempSum) {
         // If Data Centre  is not balancing, actual loads will be target
         mActualLoad_e = mTargetLoad_e;
         mAvailableHotHeat_h = mActualLoad_e * mHeatScalar;
         // FUTURE can switch TargetHeat to Pool, DHW or combo
-        mTargetHeat_h = TempSum.Heat_h;
-        mHeatPump.AllCalcs(mTargetHeat_h, mAvailableHotHeat_h);
+        // mTargetHeat_h = tempSum.Heat_h; REMOVED to support DHW & CH
+        mHeatPump.AllCalcs(tempSum, mAvailableHotHeat_h);
 
-        TempSum.Elec_e = TempSum.Elec_e + mActualLoad_e + mHeatPump.Load_e;
-        TempSum.Heat_h = TempSum.Heat_h - mHeatPump.Heat_h;
+        // update Temp Energy Balances
+        tempSum.Elec_e += mActualLoad_e;
     }
 
 	void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) {
-		// FUTURE can switch TargetHeat to Pool, DHW or combo
-		mTargetHeat_h[t] = tempSum.Heat_h[t];
-
+		// Switch to Pool, DHW, CH done in HeatPump
+		// mTargetHeat_h[t] = tempSum.Heat_h[t];REMOVED to support DHW & CH
 
 		// Set Electricty Budget for ASHP
         float heatPumpBudget_e;
@@ -64,7 +63,7 @@ public:
 			mActualLoad_e[t] = 0;
             heatPumpBudget_e = 0;
 		}
-		else if (futureEnergy_e > mTargetLoad_e[t] + mHeatPumpMaxElectricalLoad_e) {
+		else if (futureEnergy_e > (mTargetLoad_e[t] + mHeatPumpMaxElectricalLoad_e)) {
 			// Set Load & Budget to maximums
 			mActualLoad_e[t] = mTargetLoad_e[t];
             heatPumpBudget_e = futureEnergy_e - mTargetLoad_e[t];
@@ -75,12 +74,13 @@ public:
 			mActualLoad_e[t] = mTargetLoad_e[t] * throttleScalar;
             heatPumpBudget_e = futureEnergy_e - mActualLoad_e[t];
 		}
-		mAvailableHotHeat_h[t] = mActualLoad_e[t] * mHeatScalar;
+		// Set hot heat (beyond ambient) available from DataCentre
+        mAvailableHotHeat_h[t] = mActualLoad_e[t] * mHeatScalar;
 
-        // TODO - should the heatpump be modifying tempSum? (analagous to AllCalc above)
-        // Yes
-		mHeatPump.StepCalc(mTargetHeat_h[t], mAvailableHotHeat_h[t], heatPumpBudget_e, t);
-
+		mHeatPump.StepCalc(tempSum, mAvailableHotHeat_h[t], heatPumpBudget_e, t);
+        
+        // Update Temp Energy Balances
+        tempSum.Elec_e[t] += mActualLoad_e[t];
 	}
 
     float getTargetLoad(int timestep) {

@@ -12,9 +12,10 @@ struct ASHP_HE_st {
 class ASHPperf_cl
 {
 public:
-	ASHPperf_cl(const TaskData& taskData) :
+	ASHPperf_cl(const TaskData& taskData, const int& outputMode) :
 
 		// TODO
+		// outputMode is the taskData.ASHP_RadTemp (or new .ASHP_DHWtemp)
 		// FUDGED WITH FIXED VALUES
 		// UNFUDGE: Initilaise lookup tables using historicalData.ASHPinputtable .ASHPoutputtable
 		mMaxLoad_e(taskData.timestep_hours * 0.5f * taskData.ASHP_HPower),
