@@ -2,22 +2,49 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "base",
+      "name": "base-windows",
       "hidden": true,
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "generator": "Ninja Multi-Config",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     },
     {
-      "name": "headless",
-      "inherits": "base",
-      "binaryDir": "${sourceDir}/build/epoch_main",
-      "installDir": "${sourceDir}/install/epoch_main",
+      "name": "base-linux",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "generator": "Unix Makefiles",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "headless-windows",
+      "inherits": "base-windows",
+      "binaryDir": "${sourceDir}/build/headless",
+      "installDir": "${sourceDir}/install/headless",
       "cacheVariables": {
         "BUILD_GUI": "OFF"
       }
     },
     {
-      "name": "gui",
-      "inherits": "base",
+      "name": "headless-linux",
+      "inherits": "base-linux",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "BUILD_GUI": "OFF",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "gui-windows",
+      "inherits": "base-windows",
       "binaryDir": "${sourceDir}/build/gui",
       "installDir": "${sourceDir}/install/gui",
       "cacheVariables": {
@@ -25,46 +52,67 @@
       }
     },
     {
-      "name": "python",
-      "inherits": "base",
+      "name": "python-windows",
+      "inherits": "base-windows",
       "binaryDir": "${sourceDir}/build/epoch_py",
       "installDir": "${sourceDir}/install/epoch_py",
       "cacheVariables": {
         "PYBIND": "ON"
       }
+    },
+    {
+      "name": "python-linux",
+      "inherits": "base-linux",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "PYBIND": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
     {
-      "name": "gui-rel",
-      "displayName": "GUI Release",
-      "configurePreset": "gui",
+      "name": "gui-rel-windows",
+      "displayName": "GUI Release (Windows)",
+      "configurePreset": "gui-windows",
       "configuration": "RelWithDebInfo"
     },
     {
-      "name": "gui-debug",
-      "displayName": "GUI Debug",
-      "configurePreset": "gui",
+      "name": "gui-debug-windows",
+      "displayName": "GUI Debug (Windows)",
+      "configurePreset": "gui-windows",
       "configuration": "Debug"
     },
     {
-      "name": "headless-rel",
-      "displayName": "Headless Release",
-      "configurePreset": "headless",
+      "name": "headless-rel-windows",
+      "displayName": "Headless Release (Windows)",
+      "configurePreset": "headless-windows",
       "configuration": "RelWithDebInfo"
     },
     {
-      "name": "headless-debug",
-      "displayName": "Headless Debug",
-      "configurePreset": "headless",
+      "name": "headless-debug-windows",
+      "displayName": "Headless Debug (Windows)",
+      "configurePreset": "headless-windows",
       "configuration": "Debug"
     },
     {
-      "name": "python-rel",
-      "displayName": "Python Bindings",
-      "configurePreset": "python",
+      "name": "python-rel-windows",
+      "displayName": "Python Bindings (Windows)",
+      "configurePreset": "python-windows",
       "configuration": "Release"
+    },
+    {
+      "name": "headless-rel-linux",
+      "displayName": "Headless Release (Linux)",
+      "configurePreset": "headless-linux",
+      "targets":  ["Epoch"]
+    },
+    {
+      "name": "python-rel-linux",
+      "displayName": "Python Bindings (Linux)",
+      "configurePreset": "python-linux",
+      "targets": ["epoch_simulator"]
     }
-
   ]
 }
