@@ -12,10 +12,11 @@ class Costs
 {
 public:
 
-	Costs(const TaskData& taskData):
+	Costs(const HistoricalData& historicalData, const TaskData& taskData):
 		mTaskData(taskData),
 		mBaseline_elec_cost(0.0f),
 		mBaseline_fuel_cost(0.0f),
+		mImport_prices(historicalData.importtariff_data),
 		mScenario_import_cost(0.0f),
 		mScenario_fuel_cost(0.0f),
 		mScenario_export_cost(0.0f),
@@ -113,13 +114,12 @@ public:
 			f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_power_capacity);
 
 
-		// for now, simply fix import/export price
-		year_TS import_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), 0.3) };
+		// for now, simply fix export price
 		year_TS export_elec_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mTaskData.Export_kWh_price) };
 		// year_TS baseline_elec_load = eload.getTotalBaselineFixLoad() + grid.getActualLowPriorityLoad() + MountBESS.getAuxLoad() + eload.getActual_Data_Centre_load(); // depreciated in V 08 due to simplified baselining
 		year_TS baseline_elec_load = costVectors.building_load_e;
 
-		calculate_baseline_elec_cost(baseline_elec_load, import_elec_prices);
+		calculate_baseline_elec_cost(baseline_elec_load);
 
 		//year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad(); // depreciated in V 08 due to simplified baselining
 
@@ -129,7 +129,7 @@ public:
 
 		calculate_baseline_fuel_cost(baseline_heat_load, import_fuel_prices, BOILER_EFFICIENCY);
 
-		calculate_scenario_elec_cost(costVectors.grid_import_e, import_elec_prices);
+		calculate_scenario_elec_cost(costVectors.grid_import_e);
 		calculate_scenario_fuel_cost(costVectors.heat_shortfall_h, import_fuel_prices);
 		calculate_scenario_export_cost(costVectors.grid_export_e, export_elec_prices);
 
@@ -584,9 +584,9 @@ public:
 
 	// time-dependent scenario costs
 
-	void calculate_baseline_elec_cost(const year_TS& baseline_elec_load, const year_TS& import_elec_prices) {
+	void calculate_baseline_elec_cost(const year_TS& baseline_elec_load) {
 
-		year_TS mBaseline_elec_cost_TS = (baseline_elec_load.array() * import_elec_prices.array()); 
+		year_TS mBaseline_elec_cost_TS = (baseline_elec_load.array() * mImport_prices.array()); 
 		mBaseline_elec_cost = mBaseline_elec_cost_TS.sum();
 	};
 
@@ -596,9 +596,9 @@ public:
 		mBaseline_fuel_cost = (baseline_heat_load_sum * import_fuel_prices[0] / boiler_efficiency) / 100; // this should be changed to divided by boiler efficiency
 	};
 
-	void calculate_scenario_elec_cost(const year_TS& grid_import, const year_TS& import_elec_prices) {
+	void calculate_scenario_elec_cost(const year_TS& grid_import) {
 
-		year_TS mScenario_import_cost_TS = (grid_import.array() * import_elec_prices.array());
+		year_TS mScenario_import_cost_TS = (grid_import.array() * mImport_prices.array());
 		mScenario_import_cost = mScenario_import_cost_TS.sum(); // just use fixed value for now
 	};
 
@@ -857,6 +857,8 @@ public:
 
 		const float mSupplier_electricity_kg_CO2e = 0.182f; //
 
+		year_TS mImport_prices;
+
 		// site price
 
 		float mEV_low_price = 0.45f; // £/kWh site price for destination EV charging, 22 kW and below
@@ -879,6 +881,7 @@ public:
 		float mBaseline_elec_cost;
 		float mBaseline_fuel_cost;
 
+		
 		float mScenario_import_cost;
 		float mScenario_fuel_cost;
 		float mScenario_export_cost;
