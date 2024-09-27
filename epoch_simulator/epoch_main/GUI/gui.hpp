@@ -343,7 +343,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 	HWND hLabelTimestepHours = makeLabel(hWnd, hInstance, L"Timestep, Hours", 360, 80, 100, 50);
 
-	hTextboxTimestepHours = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_TIMESTEP_HOURS, 360, 130, 100, 30, L"1");
+	hTextboxTimestepHours = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_TIMESTEP_HOURS, 360, 130, 100, 30, L"0.5");
 
 	HWND hLabelTimeWindowHours = makeLabel(hWnd, hInstance, L"Time window, hours", 480, 80, 100, 50);
 
