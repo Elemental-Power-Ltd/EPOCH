@@ -15,6 +15,7 @@ WORKDIR /vcpkg
 RUN ./bootstrap-vcpkg.sh
 ENV VCPKG_ROOT="/vcpkg"
 ENV PATH="$VCPKG_ROOT:$PATH"
+ENV EPOCH_DIR="/code/Epoch"
 
 
 WORKDIR /code
@@ -23,12 +24,19 @@ COPY . .
 # Build EPOCH using CMake.
 # This process is currently a bit hacky: first configure it with the python present and some preloaded settings,
 # then actually build it.
-# Finally, copy the file from its horrible location back down to the core location.
 WORKDIR /code/Epoch
+# Build python bindings
 RUN rm -rf ./build
 RUN cmake . --preset=python -B build -DCMAKE_CXX_COMPILER=g++ -DCMAKE_MAKE_PROGRAM=make -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 RUN cmake --build --preset=python-rel -j
+# Copy the file from its horrible location back down to the core location.
 RUN cp /code/Epoch/build/epoch_py/epoch_simulator.cpython-312-x86_64-linux-musl.so /code/
+RUN rm -rf ./build
+# Build headless release
+RUN cmake . --preset=headless -B build -DCMAKE_CXX_COMPILER=g++ -DCMAKE_MAKE_PROGRAM=make -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+RUN cmake --build --preset=headless-rel -j
+# Copy the file to usual build location.
+RUN cp /code/Epoch/build/epoch_main/Epoch /code/Epoch/install/headless/bin/
 
 # Finally, we can configure our python code!
 # Install all the requirements, watching out for those that cause trouble for Alpine.
