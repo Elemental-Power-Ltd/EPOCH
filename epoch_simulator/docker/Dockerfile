@@ -39,7 +39,7 @@ ENV MIMALLOC_SO=/usr/lib/x86_64-linux-gnu/libmimalloc.so
 COPY . ./Epoch
 
 WORKDIR /EP/Epoch
-RUN cmake -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_POSITION_INDEPENDENT_CODE=ON --preset headless-linux
+RUN cmake -DCMAKE_CXX_COMPILER=g++-13 --preset headless-linux
 RUN cmake --build --preset=headless-rel-linux
 
 CMD ["sh", "-c", "LD_PRELOAD=${MIMALLOC_SO} ./build/epoch_main/Epoch"]
