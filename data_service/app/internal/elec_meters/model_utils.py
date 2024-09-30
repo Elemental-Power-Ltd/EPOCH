@@ -4,7 +4,10 @@ import pathlib
 from enum import StrEnum
 
 import joblib
+import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import StandardScaler  # type: ignore
+from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction
 
 
 class ScalerTypeEnum(StrEnum):
@@ -15,6 +18,100 @@ class ScalerTypeEnum(StrEnum):
     StartTime = "start_time"
     EndTime = "end_time"
 
+
+
+
+class RBFTimestampEncoder(TransformerMixin):
+    """
+    A wrapper class around the RepeatingBasisFunction class from scikit-lego.
+
+    This class performs preprocessing on the input X before calling the
+    transform() method of the RepeatingBasisFunction class.
+    """
+
+    def __init__(self, **kwargs):
+        """
+        Initialize the wrapper class.
+
+        Args:
+            **kwargs: Keyword arguments passed to the RepeatingBasisFunction
+                constructor.
+        """
+        self.basis_function = RepeatingBasisFunction(**kwargs)
+        self.is_fitted = False
+
+    def _preprocess(self, X):
+        """
+        Apply preprocessing to the input X.
+
+        Args:
+            X (numpy.ndarray): The input data.
+
+        Returns
+        -------
+            numpy.ndarray: The preprocessed data.
+        """
+        # Preprocess the data: X is an ndarray, with each element being
+        # a Unix timestamp in seconds. Instead, we want to know the day
+        # of the year
+        # TODO (2024-09-24 JSM): inputs are being coerced to and from
+        # datetime types, to minimise disruption before demo day. Let's
+        # streamline this.
+        X_dates = pd.to_datetime(X.flatten(), unit='s')
+        X_dayofyear = X_dates.dayofyear.to_numpy().reshape(-1, 1)
+
+        return X_dayofyear
+
+    def fit(self, X):
+        """
+        Fit the RepeatingBasisFunction instance and perform any preprocessing.
+
+        Args:
+            X (numpy.ndarray): The input data.
+
+        Returns
+        -------
+            self
+        """
+        X_preprocessed = self._preprocess(X)
+        self.basis_function.fit(X_preprocessed)
+        self.is_fitted = True
+        return self
+
+    def transform(self, X):
+        """
+        Transform the input data using the RepeatingBasisFunction.
+
+        Args:
+            X (numpy.ndarray): The input data.
+
+        Returns
+        -------
+            numpy.ndarray: The transformed data.
+        """
+        if not self.is_fitted:
+            raise ValueError("The model needs to be fitted before transforming data.")
+        X_preprocessed = self._preprocess(X)
+        return self.basis_function.transform(X_preprocessed)
+
+    def fit_transform(self, X):
+        """
+        Fit the RepeatingBasisFunction instance and transform the input data.
+
+        Args:
+            X (numpy.ndarray): The input data.
+
+        Returns
+        -------
+            numpy.ndarray: The transformed data.
+        """
+        if not self.is_fitted:
+            X_preprocessed = self._preprocess(X)
+            self.basis_function.fit(X_preprocessed)
+            self.is_fitted = True
+            return self.basis_function.transform(X_preprocessed)
+        else:
+            return self.transform(X)
 
 def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScaler:
     """
@@ -42,8 +139,10 @@ def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScal
     """
     try:
         scaler = joblib.load(path)
-        if not isinstance(scaler, StandardScaler):
-            raise ValueError("Loaded object is not a StandardScaler")
+        # if not isinstance(scaler, StandardScaler):
+        #     raise ValueError("Loaded object is not a StandardScaler")
+        # TODO (2024-09-16 JSM) This was commented out as the new time scaler (for rbf encoding months) is not a StandardScaler
+        # Reintroduce scaler typechecking for time scalers.
 
         if refresh:
             joblib.dump(scaler, path)
