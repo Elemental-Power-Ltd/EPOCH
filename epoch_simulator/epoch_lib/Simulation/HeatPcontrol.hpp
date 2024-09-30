@@ -3,7 +3,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "ASHP.hpp"
+#include "ASHPambient.hpp"
 #include "TempSum.hpp"
 
 #include "TaskData.hpp"
@@ -14,7 +14,7 @@ class HeatPcontrol
 public:
     HeatPcontrol(const HistoricalData& historicalData, const TaskData& taskData) :
         // Initialise Persistent Values
-        mHeatPump(historicalData, taskData),
+        mHeatPump(historicalData, taskData)
     {}
 
     void AllCalcs(TempSum& tempSum) {

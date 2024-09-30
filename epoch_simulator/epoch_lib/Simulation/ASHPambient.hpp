@@ -27,13 +27,13 @@ public:
 		mMaxElec_e(0.0f),
 
 		// Initilaise results data vectors with all values to zero
-		DHWload_e(Eigen::VectorXf::Zero(mTimesteps)),	// ASHP electrical load
-		DHWout_h(Eigen::VectorXf::Zero(mTimesteps)),	// ASHP heat output
-		CHload_e(Eigen::VectorXf::Zero(mTimesteps)),	// ASHP electrical load
-		CHout_h(Eigen::VectorXf::Zero(mTimesteps)),		// ASHP heat output
-		FreeHeat_h(Eigen::VectorXf::Zero(mTimesteps))	// ASHP heat from ambient
+		DHWload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
+		DHWout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat output
+		CHload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
+		CHout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),		// ASHP heat output
+		FreeHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))	// ASHP heat from ambient
 	{
-		mResidualCapacity = Eigen::VectorXf::Constant(mTimesteps, 1.0f);// Remaining heatpump capacity
+		mResidualCapacity = Eigen::VectorXf::Constant(taskData.calculate_timesteps(), 1.0f);// Remaining heatpump capacity
 		mHeatPumpMaxAmbient.Heat_h = 0;	// For mASHPperf->Lookup results
 		mHeatPumpMaxAmbient.Load_e = 0;
 	}
@@ -41,7 +41,7 @@ public:
 	void AllCalcs(TempSum& tempSum) {
 		// Applies fixed precedence: hot water is served before central heating
 		if (mDHWflag == 1) {
-			for (int t = 1; t <= mTimesteps; t++) {
+			for (int t = 0; t < mTimesteps; t++) {
 				// Lookup performances for DHW (hot water) output temperature
 				mASHPperfDHW.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);	// 2nd Arg is return values struct
 
@@ -65,13 +65,13 @@ public:
 			FreeHeat_h = DHWout_h - DHWload_e;	// How much heat from ambient
 		}
 		if (mCHflag == 1) {
-			for (int t = 1; t <= mTimesteps; t++) {
+			for (int t = 0; t < mTimesteps; t++) {
 				// Lookup performances for CH (central heating) output temperature
 				mASHPperfCH.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);// 2nd Arg is return values struct
 
-					mHeatPumpMax_h = mHeatPumpMaxAmbient.Heat_h * mResidualCapacity[t];
-					mHeatPumpMax_e = mHeatPumpMaxAmbient.Load_e * mResidualCapacity[t];
-				}
+				mHeatPumpMax_h = mHeatPumpMaxAmbient.Heat_h * mResidualCapacity[t];
+				mHeatPumpMax_e = mHeatPumpMaxAmbient.Load_e * mResidualCapacity[t];
+				
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
 					CHout_h[t] = 0;
@@ -197,7 +197,6 @@ private:
 	ASHPperf_cl mASHPperfCH;
 
 	const int mTimesteps;
-	const int mHotTemp;
 	const int mDHWflag;
 	const int mCHflag;
 	float mHeatPumpMax_h;

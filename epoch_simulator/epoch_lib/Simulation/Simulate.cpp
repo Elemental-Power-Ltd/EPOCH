@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iostream>
 #include <limits> 
+#include <memory>
 
 #include <Eigen/Core>
 
@@ -25,7 +26,9 @@
 #include "ESS.hpp"		//AS ADD
 #include "ASHPperf.hpp"	//AS ADD
 #include "ASHP.hpp"		//AS ADD
-#include "DataCentre.hpp"	//AS ADD
+#include "HeatPcontrol.hpp"
+
+#include "Components/DataCentre.hpp"
 
 Simulator::Simulator() {
 
@@ -64,8 +67,27 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	// init ESS object (0= None, 1=basic, 2=hybrid)
 	BasicESS ESSmain(taskData);
 
+	std::unique_ptr<DataCentre> dataCentre;
+	std::unique_ptr<HeatPcontrol> ambientController;
 
-	DataCentre dataCentre(historicalData, taskData);
+	if (config.DataC() == 1 && taskData.ASHP_HSource == 2) {
+		// make a DataCentre with a hotroom heatpump
+		dataCentre = std::make_unique<DataCentreWithASHP>(historicalData, taskData);
+	}
+	else if (config.DataC() == 1 && taskData.ASHP_HSource == 1) {
+		// make a basic data centre (without a heatpump)
+		dataCentre =  std::make_unique<BasicDataCentre>(historicalData, taskData);
+		ambientController = std::make_unique<HeatPcontrol>(historicalData, taskData);
+	}
+	else if (config.DataC() != 1 && taskData.ASHP_HSource == 1) {
+		// no DataCentre, ambient heatpump
+		ambientController = std::make_unique<HeatPcontrol>(historicalData, taskData);
+	}
+	else {
+		// INVALID STATE
+		throw std::exception();
+	}
+
 
 	// REMOVE THE 3 FROM GRID WHEN CLEANING OLD CODE
 	Grid_cl Grid3(historicalData, taskData);
@@ -84,16 +106,18 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		EV1.AllCalcs(tempSum);
 	}
 
-	if (config.DataCbal() == 1) {
-		dataCentre.AllCalcs(tempSum);
-	}
-
-
 	// TODO - consider applying battery aux load before considering DHW
 	// something like: ESSmain.ApplyAuxLoad(tempSum);
 
 	hotWaterCylinder.AllCalcs(tempSum);
-	// in V08 we will split DHW charging load sent to TempSum between Heat pump () heating load and instantaneous electric heating 
+
+	if (taskData.ASHP_HSource == 1) {
+		ambientController->AllCalcs(tempSum);
+	}
+
+	if (config.DataCbal() == 1) {
+		dataCentre->AllCalcs(tempSum);
+	} 
 
 	// BALANCING LOOP
 
@@ -103,11 +127,12 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	if (config.DataCbal() == 2 && config.EV1bal() == 2) {
 		// This represents the logic in M-VEST v0-7:
 		// EV is curtailed before the Data Centre
+
 		for (int t = 0; t < timesteps; t++) {
-			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch() - dataCentre.getTargetLoad(t);
+			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch() - dataCentre->getTargetLoad(t);
 			EV1.StepCalc(tempSum, futureEnergy, t);
 			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
-			dataCentre.StepCalc(tempSum, futureEnergy, t);
+			dataCentre->StepCalc(tempSum, futureEnergy, t);
 			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
 		}
 	}
@@ -121,7 +146,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	else if (config.DataCbal() == 2 && config.EV1bal() == 1) {
 		for (int t = 0; t < timesteps; t++) {
 			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
-			dataCentre.StepCalc(tempSum, futureEnergy, t);
+			dataCentre->StepCalc(tempSum, futureEnergy, t);
 			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
 		}
 	}
@@ -142,7 +167,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	PV1.Report(fullSimulationResult);
 	EV1.Report(fullSimulationResult);
 	ESSmain.Report(fullSimulationResult);
-	dataCentre.Report(fullSimulationResult);
+	dataCentre->Report(fullSimulationResult);
 	Grid3.Report(fullSimulationResult);
 	MOP.Report(fullSimulationResult);
 	GasCH.Report(fullSimulationResult);

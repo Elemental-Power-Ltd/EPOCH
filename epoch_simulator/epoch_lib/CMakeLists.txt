@@ -24,7 +24,6 @@ add_library(Epoch_lib STATIC
 	"Simulation/ASHPperf.hpp"
 	"Simulation/Battery.hpp"
 	"Simulation/Config.hpp"
-	"Simulation/DataCentre.hpp"
 	"Simulation/ESS.hpp"
 	"Simulation/EV.hpp"
 	"Simulation/GasCH.hpp"
@@ -34,7 +33,9 @@ add_library(Epoch_lib STATIC
 	"Simulation/MOP.hpp"
 	"Simulation/PV.hpp"
 	"Simulation/TempSum.hpp"
-)
+	"Simulation/Components/DataCentre.hpp"
+	"Simulation/Components/DataCentreWithASHP.cpp" 
+	"Simulation/Components/BasicDataCentre.cpp")
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)
