@@ -26,7 +26,7 @@
 #include "ESS.hpp"
 #include "ASHPperf.hpp"
 #include "ASHP.hpp"
-#include "HeatPcontrol.hpp"
+#include "HeatPumpController.hpp"
 
 #include "Components/DataCentre.hpp"
 
@@ -68,7 +68,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	BasicESS ESSmain(taskData);
 
 	std::unique_ptr<DataCentre> dataCentre;
-	std::unique_ptr<HeatPcontrol> ambientController;
+	std::unique_ptr<AmbientHeatPumpController> ambientController;
 
 	if (config.DataC() == 1 && taskData.ASHP_HSource == 2) {
 		// make a DataCentre with a hotroom heatpump
@@ -77,11 +77,11 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	else if (config.DataC() == 1 && taskData.ASHP_HSource == 1) {
 		// make a basic data centre (without a heatpump)
 		dataCentre =  std::make_unique<BasicDataCentre>(historicalData, taskData);
-		ambientController = std::make_unique<HeatPcontrol>(historicalData, taskData);
+		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData);
 	}
 	else if (config.DataC() != 1 && taskData.ASHP_HSource == 1) {
 		// no DataCentre, ambient heatpump
-		ambientController = std::make_unique<HeatPcontrol>(historicalData, taskData);
+		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData);
 	}
 	else {
 		// INVALID STATE

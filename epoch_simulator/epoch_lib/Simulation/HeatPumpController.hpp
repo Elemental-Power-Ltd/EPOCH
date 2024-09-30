@@ -9,10 +9,10 @@
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
-class HeatPcontrol
+class AmbientHeatPumpController
 {
 public:
-    HeatPcontrol(const HistoricalData& historicalData, const TaskData& taskData) :
+    AmbientHeatPumpController(const HistoricalData& historicalData, const TaskData& taskData) :
         // Initialise Persistent Values
         mHeatPump(historicalData, taskData)
     {}

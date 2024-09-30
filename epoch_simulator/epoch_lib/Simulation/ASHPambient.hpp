@@ -9,7 +9,7 @@
 #include "ASHPperf.hpp"
 #include "TempSum.hpp"
 
-// ASHPambient is only used within a HeatPcontrol object
+// ASHPambient is only used within a AmbientHeatPumpController object
 class AmbientHeatPump {
 
 public:
