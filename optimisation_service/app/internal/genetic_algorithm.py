@@ -3,18 +3,20 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import timedelta
 from enum import StrEnum
-from typing import Any
+from typing import Any, Never
 
 import numpy as np
 import numpy.typing as npt
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
 from pymoo.algorithms.soo.nonconvex.ga import GA as Pymoo_GA  # type: ignore
 from pymoo.config import Config  # type: ignore
+from pymoo.core.mutation import Mutation  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
 from pymoo.core.result import Result as Pymoo_Result  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
+from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 from pymoo.operators.repair.rounding import RoundingRepair  # type: ignore
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling  # type: ignore
 from pymoo.operators.sampling.rnd import FloatRandomSampling  # type: ignore
@@ -380,3 +382,38 @@ def comp_by_cv_and_fitness(pop: Any, P: npt.NDArray, **kwargs: Any) -> npt.NDArr
             S[i] = rng.choice(best_candidates)
 
     return S[:, np.newaxis].astype(int)
+
+
+def mut_simple_int(X: npt.NDArray, xl: npt.NDArray, xu: npt.NDArray, prob: npt.NDArray) -> npt.NDArray:
+    """
+    Mutate integer variables by 1.
+    """
+    n, _ = X.shape
+    assert len(prob) == n
+
+    Xp = np.full(X.shape, np.inf)
+    mut = np.random.random(X.shape) < prob[:, None]
+    mut_pos = (np.random.random(mut.shape) < 0.5) * mut
+    mut_neg = mut * ~mut_pos
+    Xp[:, :] = X
+    Xp += mut_pos.astype(int) + mut_neg.astype(int) * -1
+
+    Xp = repair_random_init(Xp, X, xl, xu)
+
+    return Xp
+
+
+class SimpleIntMutation(Mutation):
+    """
+    Mutate integer variables by 1.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+    def _do(self, problem: ProblemInstance, X: npt.NDArray, **kwargs: Never) -> npt.NDArray:
+        X.astype(float)
+        prob_var = self.get_prob_var(problem, size=len(X))
+        Xp = mut_simple_int(X, problem.xl, problem.xu, prob_var)
+
+        return Xp
