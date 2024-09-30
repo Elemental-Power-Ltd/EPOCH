@@ -52,6 +52,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("ESS_start_SoC", &TaskData::ESS_start_SoC)
 		.def_readwrite("ESS_charge_mode", &TaskData::ESS_charge_mode)
 		.def_readwrite("ESS_discharge_mode", &TaskData::ESS_discharge_mode)
+		.def_readwrite("DHW_cylinder_volume", &TaskData::DHW_cylinder_volume)
 		.def_readwrite("Export_kWh_price", &TaskData::Export_kWh_price)
 		.def_readwrite("time_budget_min", &TaskData::time_budget_min)
 		.def_readwrite("target_max_concurrency", &TaskData::target_max_concurrency)
