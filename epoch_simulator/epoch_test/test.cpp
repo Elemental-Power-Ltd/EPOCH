@@ -14,7 +14,8 @@ TEST(EpochTestCase, MatchesKnownOutput) {
 	FileConfig fileConfig = FileConfig{
 		"KnownInput", "OutputData", "Config",
 		"CSVEload.csv", "CSVHload.csv", "CSVRGen.csv",
-		"CSVAirtemp.csv", "CSVImporttariff.csv", "CSVGridCO2.csv", "CSVASHPinput.csv", "CSVASHPoutput.csv",
+		"CSVAirtemp.csv", "CSVImporttariff.csv", "CSVGridCO2.csv", 
+		"CSVASHPinput.csv", "CSVASHPoutput.csv", "CSVDHWdemand.csv",
 		"knownInput.json", "TestResults.csv", "TestOutputParameters.json", "TestOuputParametersFromInit.json"
 	};
 
