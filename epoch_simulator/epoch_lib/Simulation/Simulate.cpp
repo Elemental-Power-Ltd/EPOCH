@@ -9,10 +9,6 @@
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
-#include "Assets.hpp"
-#include "Eload.hpp"
-#include "Grid.hpp"
-#include "Hload.hpp"
 #include "Costs.hpp"
 #include "HotWaterCylinder.hpp"
 
@@ -152,35 +148,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	GasCH.Report(fullSimulationResult);
 	hotWaterCylinder.Report(fullSimulationResult);
 
-	// OLD CODE
-	/*
-	year_TS RGen_total = calculateRGenTotal(historicalData, taskData);
-
-	Hload MountHload(historicalData, taskData); // initialise Hload based on historical data and taskdata
-	Grid MountGrid(taskData); //initialise Grid based on taskdata
-
-	MountHload.performHeatCalculations(historicalData, taskData);
-	
-	Eload MountEload(historicalData, taskData); // initialise Eload based on historical data and taskdata
-
-	ESS MountBESS(taskData); //initialise ESS based on taskdata
-
-	MountEload.calculateLoads(MountHload, MountBESS, RGen_total, taskData);
-	
-	year_TS ESUM = MountEload.getTotal_target_load_fixed_flex() - RGen_total;
-
-	// non balancing actions for stateful components
-
-	MountBESS.initialise(ESUM[0]);
-	MountBESS.runTimesteps(ESUM);
-
-	MountGrid.performGridCalculations(ESUM, MountBESS, MountHload, MountEload.getHeadroomL1());
-
-	MountEload.calculateElectricHeat(MountGrid, MountHload, taskData);
-
-	MountHload.calculateHeatSUM(MountEload.getData_Centre_HP_load_scalar(), MountGrid.getActualLowPriorityLoad());
-	*/
-
 	CostVectors costVectors;
 
 	costVectors.actual_ev_load_e = fullSimulationResult.EV_actualload;
@@ -198,31 +165,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	//Data reporting
 
 	if (simulationType == SimulationType::FullReporting) {
-		//fullSimulationResult.Rgen_total = RGen_total;
-		//fullSimulationResult.Total_load = MountEload.getTotalLoad();
-		//fullSimulationResult.ESUM = ESUM;
-		//fullSimulationResult.ESS_available_discharge_power = MountBESS.getESSAvailableDischargePower();;
-		//fullSimulationResult.ESS_available_charge_power = MountBESS.getESSAvailableChargePower();
-		//fullSimulationResult.ESS_Rgen_only_charge = MountBESS.getESSRgenOnlyCharge();
-		//fullSimulationResult.ESS_discharge = MountBESS.getESSDischarge();
-		//fullSimulationResult.ESS_charge = MountBESS.getESSCharge();
-		//fullSimulationResult.ESS_resulting_SoC = MountBESS.getESSResultingSoC();
-		//fullSimulationResult.Pre_grid_balance = MountGrid.getPreGridBalance();
-		//fullSimulationResult.Grid_Import = MountGrid.getGridImport();
-		//fullSimulationResult.Grid_Export = MountGrid.getGridExport();
-		//fullSimulationResult.Post_grid_balance = MountGrid.getPostGridBalance();
-		//fullSimulationResult.Pre_flex_import_shortfall = MountGrid.getPreFlexImportShortfall();
-		//fullSimulationResult.Pre_Mop_curtailed_export = MountGrid.getPreMopCurtailedExport();
-		//fullSimulationResult.Actual_import_shortfall = MountGrid.getActualImportShortfall();
-		//fullSimulationResult.Actual_curtailed_export = MountGrid.getActualCurtailedExport();
-		//fullSimulationResult.Actual_high_priority_load = MountGrid.getActualHighPriorityLoad();
-		//fullSimulationResult.Actual_low_priority_load = MountGrid.getActualLowPriorityLoad();
-		//fullSimulationResult.Heatload = historicalData.heatload_data;
-		//fullSimulationResult.Scaled_heatload = MountHload.getHeatload();
-		//fullSimulationResult.Electrical_load_scaled_heat_yield = MountHload.getElectricalLoadScaledHeatYield();
-		//fullSimulationResult.Heat_shortfall = MountHload.getHeatShortfall();
-		//fullSimulationResult.Heat_surplus = MountHload.getEHeatSurplus();
-		//
 		//fullSimulationResult.Baseline_electricity_cost = myCost.get_Baseline_elec_cost();
 		//fullSimulationResult.Baseline_fuel_cost = myCost.get_Baseline_fuel_cost();
 
@@ -269,8 +211,6 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	};
 
 	
-
-
 	fullSimulationResult.paramIndex = taskData.paramIndex;
 	fullSimulationResult.total_annualised_cost = myCost.get_total_annualised_cost();
 	fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();

@@ -4,9 +4,6 @@
 
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
-#include "Eload.hpp"
-#include "Hload.hpp"
-#include "Grid.hpp"
 
 class Costs
 {
