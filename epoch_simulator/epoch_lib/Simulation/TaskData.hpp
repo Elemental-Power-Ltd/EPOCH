@@ -35,7 +35,7 @@ public:
         ESS_charge_mode(ESS_charge_mode_val), ESS_discharge_mode(ESS_discharge_mode_val),
         Export_kWh_price(Export_kWh_price_val),
         time_budget_min(time_budget_min_val), target_max_concurrency(target_max_concurrency_val),
-        CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val), cylinder_vol(cylinder_vol),
+        CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val), DHW_cylinder_volume(cylinder_vol),
         // initialize unordered maps to allow setting of member variables using (string) dictionary keys
         param_map_float({ {"years",&years}, { "days",&days }, { "hours",&hours }, { "timestep_hours",&timestep_hours }, { "timewindow",&timewindow },
             { "Fixed_load1_scalar",&Fixed_load1_scalar }, { "Fixed_load2_scalar",&Fixed_load2_scalar }, { "Flex_load_max",&Flex_load_max }, { "Mop_load_max",&Mop_load_max },
@@ -44,7 +44,7 @@ public:
             { "ScalarHL1",&ScalarHL1 }, { "ASHP_HPower", &ASHP_HPower }, { "ASHP_RadTemp", &ASHP_RadTemp }, { "ASHP_HotTemp", &ASHP_HotTemp },
             { "GridImport",&GridImport }, { "GridExport",&GridExport }, { "Import_headroom",&Import_headroom }, { "Export_headroom",&Export_headroom }, {"Min_power_factor",&Min_power_factor},
             { "ESS_charge_power",&ESS_charge_power }, { "ESS_discharge_power",&ESS_discharge_power }, {"ESS_capacity",&ESS_capacity}, {"ESS_start_SoC",&ESS_start_SoC},
-            { "Export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit } }),
+            { "Export_kWh_price",&Export_kWh_price }, { "time_budget_min",&time_budget_min }, { "CAPEX_limit",&CAPEX_limit }, { "OPEX_limit",&OPEX_limit }, {"DHW_cylinder_volume", &DHW_cylinder_volume}}),
         param_map_int({ { "s7_EV_CP_number",&s7_EV_CP_number }, { "f22_EV_CP_number",&f22_EV_CP_number }, { "r50_EV_CP_number",&r50_EV_CP_number }, { "u150_EV_CP_number",&u150_EV_CP_number},
             { "ASHP_HSource", &ASHP_HSource },
             {"ESS_charge_mode",&ESS_charge_mode}, {"ESS_discharge_mode",&ESS_discharge_mode}, {"target_max_concurrency",&target_max_concurrency } })
@@ -134,7 +134,7 @@ public:
     int target_max_concurrency;
     float CAPEX_limit;
     float OPEX_limit;
-    float cylinder_vol;
+    float DHW_cylinder_volume;
     year_TS Elec_e;
 
     uint64_t paramIndex;

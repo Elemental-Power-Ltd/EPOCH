@@ -99,6 +99,7 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallind
 	output.ESS_start_SoC = taskData.ESS_start_SoC;
 	output.ESS_charge_mode = taskData.ESS_charge_mode;
 	output.ESS_discharge_mode = taskData.ESS_discharge_mode;
+	output.DHW_cylinder_volume = taskData.DHW_cylinder_volume;
 	output.Export_kWh_price = taskData.Export_kWh_price;
 
 	return output;
@@ -262,6 +263,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	output.ESS_start_SoC = 23.0;
 	output.ESS_charge_mode = 24;
 	output.ESS_discharge_mode = 25;
+	output.DHW_cylinder_volume = 26;
 
 	writeResultsToCSVs(leagueTable);
 

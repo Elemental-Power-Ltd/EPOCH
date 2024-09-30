@@ -8,7 +8,7 @@ public:
 	// Constructor
 	HotWaterCylinder(const HistoricalData& historicalData, const TaskData& taskData) :
 
-		mCylinderVolume(taskData.cylinder_vol), // cylinder volume n litres
+		mCylinderVolume(taskData.DHW_cylinder_volume), // cylinder volume n litres
 		mTimesteps(taskData.calculate_timesteps()),
 		mTimestep_seconds(taskData.timestep_hours * 60 * 60),// set up timestep seconds in constructor
 		mTimestep_hours(taskData.timestep_hours),
