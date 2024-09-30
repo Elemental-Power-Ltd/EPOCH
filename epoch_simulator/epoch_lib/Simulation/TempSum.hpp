@@ -14,7 +14,6 @@ public:
 		Elec_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// Electricity energy balance
 		Heat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())), // Building heat energy balance
 		DHW_load_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Hot water energy balance
-		DHW_heatpump_ask_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
 		Pool_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Pool energy balance
 		Waste_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))   // Waste heat
 	{}
@@ -23,7 +22,6 @@ public:
 	year_TS Heat_h;
 	// The water demand load for DHW
 	year_TS DHW_load_h;
-	year_TS DHW_heatpump_ask_h;
 	year_TS Pool_h;
 	year_TS Waste_h;
 

@@ -142,7 +142,7 @@ public:
 		tempSum.Elec_e += mDHW_shortfall_e;
 		tempSum.Elec_e += mDHW_diverter_load_e;
 
-		tempSum.DHW_heatpump_ask_h += mDHW_heat_pump_load_h;
+		tempSum.DHW_load_h = mDHW_heat_pump_load_h;
 
 		return;
 
