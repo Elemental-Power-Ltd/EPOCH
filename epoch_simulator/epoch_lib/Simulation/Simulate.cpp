@@ -13,19 +13,19 @@
 #include "Costs.hpp"
 #include "HotWaterCylinder.hpp"
 
-#include "Config.hpp"	//AS ADD
-#include "TempSum.hpp"	//AS ADD
+#include "Config.hpp"
+#include "TempSum.hpp"
 
-#include "Hotel.hpp"	//AS ADD
-#include "PV.hpp"		//AS ADD
-#include "EV.hpp"		//AS ADD
-#include "Grid3.hpp"	//AS ADD
-#include "MOP.hpp"		//AS ADD
-#include "GasCH.hpp"	//AS ADD
-#include "Battery.hpp"	//AS ADD
-#include "ESS.hpp"		//AS ADD
-#include "ASHPperf.hpp"	//AS ADD
-#include "ASHP.hpp"		//AS ADD
+#include "Hotel.hpp"
+#include "PV.hpp"
+#include "EV.hpp"
+#include "Grid.hpp"
+#include "MOP.hpp"
+#include "GasCH.hpp"
+#include "Battery.hpp"
+#include "ESS.hpp"
+#include "ASHPperf.hpp"
+#include "ASHP.hpp"
 #include "HeatPcontrol.hpp"
 
 #include "Components/DataCentre.hpp"
@@ -90,7 +90,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 
 	// REMOVE THE 3 FROM GRID WHEN CLEANING OLD CODE
-	Grid_cl Grid3(historicalData, taskData);
+	Grid grid(historicalData, taskData);
 	MOP MOP(taskData);
 	GasCombustionHeater GasCH(taskData);
 	
@@ -129,35 +129,35 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		// EV is curtailed before the Data Centre
 
 		for (int t = 0; t < timesteps; t++) {
-			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch() - dataCentre->getTargetLoad(t);
+			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch() - dataCentre->getTargetLoad(t);
 			EV1.StepCalc(tempSum, futureEnergy, t);
-			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
+			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch();
 			dataCentre->StepCalc(tempSum, futureEnergy, t);
-			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
+			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
 		}
 	}
 	else if (config.DataCbal() == 1 && config.EV1bal() == 2) {
 		for (int t = 0; t < timesteps; t++) {
-			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
+			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch();
 			EV1.StepCalc(tempSum, futureEnergy, t);
-			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
+			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
 		}
 	}
 	else if (config.DataCbal() == 2 && config.EV1bal() == 1) {
 		for (int t = 0; t < timesteps; t++) {
-			futureEnergy = Grid3.AvailImport() + ESSmain.AvailDisch();
+			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch();
 			dataCentre->StepCalc(tempSum, futureEnergy, t);
-			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
+			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
 		}
 	}
 	else {
 		for (int t = 0; t < timesteps; t++) {
-			ESSmain.StepCalc(tempSum, Grid3.AvailImport(), t);
+			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
 		}
 	}
 
 	MOP.AllCalcs(tempSum);
-	Grid3.AllCalcs(tempSum);
+	grid.AllCalcs(tempSum);
 	GasCH.AllCalcs(tempSum);
 
 	FullSimulationResult fullSimulationResult;
@@ -168,7 +168,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	EV1.Report(fullSimulationResult);
 	ESSmain.Report(fullSimulationResult);
 	dataCentre->Report(fullSimulationResult);
-	Grid3.Report(fullSimulationResult);
+	grid.Report(fullSimulationResult);
 	MOP.Report(fullSimulationResult);
 	GasCH.Report(fullSimulationResult);
 	hotWaterCylinder.Report(fullSimulationResult);

@@ -27,7 +27,7 @@ add_library(Epoch_lib STATIC
 	"Simulation/ESS.hpp"
 	"Simulation/EV.hpp"
 	"Simulation/GasCH.hpp"
-	"Simulation/Grid3.hpp"
+	"Simulation/Grid.hpp"
 	"Simulation/HeatPump.hpp"
 	"Simulation/Hotel.hpp"
 	"Simulation/MOP.hpp"

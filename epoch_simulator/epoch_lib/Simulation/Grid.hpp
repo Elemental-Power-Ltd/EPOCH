@@ -6,10 +6,10 @@
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
-class Grid_cl
+class Grid
 {
 public:
-	Grid_cl(const HistoricalData& historicalData, const TaskData& taskData) :
+	Grid(const HistoricalData& historicalData, const TaskData& taskData) :
 		// Initilaise results data vectors with all values to zero
 		Imp_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())), 			// Grid Import
 		Exp_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),			// Grid Export
