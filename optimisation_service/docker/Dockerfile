@@ -27,14 +27,15 @@ COPY . .
 WORKDIR /code/Epoch
 # Build python bindings
 RUN rm -rf ./build
-RUN cmake . --preset=python -B build -DCMAKE_CXX_COMPILER=g++ -DCMAKE_MAKE_PROGRAM=make -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-RUN cmake --build --preset=python-rel -j
+RUN cmake . --preset=python-linux -DCMAKE_CXX_COMPILER=g++
+RUN cmake --build --preset=python-rel-linux -j
+
 # Copy the file from its horrible location back down to the core location.
 RUN cp /code/Epoch/build/epoch_py/epoch_simulator.cpython-312-x86_64-linux-musl.so /code/
 RUN rm -rf ./build
 # Build headless release
-RUN cmake . --preset=headless -B build -DCMAKE_CXX_COMPILER=g++ -DCMAKE_MAKE_PROGRAM=make -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-RUN cmake --build --preset=headless-rel -j
+RUN cmake . --preset=headless-linux -DCMAKE_CXX_COMPILER=g++
+RUN cmake --build --preset=headless-rel-linux -j
 # Copy the file to usual build location.
 RUN cp /code/Epoch/build/epoch_main/Epoch /code/Epoch/install/headless/bin/
 
