@@ -425,7 +425,7 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult f
 	outFile << "\n"; // newline
 
 	// write the values
-	for (int i = 0; i < fullResult.ESUM.size(); i++) {
+	for (int i = 0; i < fullResult.Actual_import_shortfall.size(); i++) {
 		outFile << fullResult.Actual_import_shortfall[i] << ",";
 		outFile << fullResult.Actual_curtailed_export[i] << ",";
 		outFile << fullResult.Heat_shortfall[i] << ",";
