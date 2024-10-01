@@ -1,6 +1,13 @@
 #pragma once
 
+#include <pybind11/pybind11.h>
+
+
 #include "../epoch_lib/Simulation/Simulate.hpp"
+#include "../epoch_lib/io/FileHandling.hpp"
+#include "../epoch_lib/io/FileConfig.hpp"
+
+
 
 // This class is a thin wrapper around the Simulator class
 // to allow creation of a Simulator with less arguments

@@ -1,11 +1,5 @@
 #include "Simulate_py.hpp"
 
-#include <pybind11/pybind11.h>
-
-#include "../epoch_lib/io/FileHandling.hpp"
-#include "../epoch_lib/io/FileConfig.hpp"
-
-
 Simulator_py::Simulator_py(const std::string& input_dir, const std::string& output_dir, const std::string& config_dir) :
 	mFileConfig(input_dir, output_dir, config_dir),
 	mHistoricalData{ readHistoricalData(mFileConfig)},
