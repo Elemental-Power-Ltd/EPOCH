@@ -12,6 +12,9 @@
       "min": 60.0, "max": 70.0, "step": 10.0
     },
     "CAPEX_limit": 1000.0,
+    "DHW_cylinder_volume": {
+      "min": 2000.0, "max": 3000.0, "step": 500.0
+    },
     "ESS_capacity": {
       "min": 800.0, "max": 800.0, "step": 0.0
     },

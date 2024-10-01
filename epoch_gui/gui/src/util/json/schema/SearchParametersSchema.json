@@ -9,6 +9,8 @@
     "ASHP_HotTemp": {"$ref": "#/definitions/paramRangeFloat", "title": "Heat Pump Hot Temp"},
     "ASHP_RadTemp": {"$ref": "#/definitions/paramRangeFloat", "title": "Heat Pump Rad Temp"},
 
+    "DHW_cylinder_volume": {"$ref":  "#/definitions/paramRangeFloat", "title":  "DHW Cylinder Volume"},
+
     "ESS_capacity": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Capacity"},
     "ESS_charge_mode": {"$ref": "#/definitions/paramRangeInt", "title": "ESS Charge Mode"},
     "ESS_charge_power": {"$ref": "#/definitions/paramRangeFloat", "title": "ESS Charge Power"},
