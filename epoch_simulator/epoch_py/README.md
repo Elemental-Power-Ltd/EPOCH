@@ -54,3 +54,14 @@ Run a scenario, returning a `Result` object
 The result class is returned by calls to `simulate_scenario`. It contains the result values for each of the five objectives.
 
 This class implements the `__repr__` method so the print method can be used to see the state.
+
+
+#### Verbose Results
+
+Optionally, the flag `fullReporting=True` can be added to `simulate_scenario` in order to write verbose time series information to a CSV in the output directory.
+
+```Python
+simulate_scenario(task, fullReporting=True)
+```
+
+The CSV will be always be called `FullTimeSeries.csv`
