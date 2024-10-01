@@ -2,7 +2,6 @@
 
 import pathlib
 from enum import StrEnum
-from typing import Any
 
 import joblib
 import numpy as np
@@ -30,7 +29,7 @@ class RBFTimestampEncoder(TransformerMixin):
     transform() method of the RepeatingBasisFunction class.
     """
 
-    def __init__(self, **kwargs: dict[str, Any]):
+    def __init__(self, n_periods: int, input_range: tuple[int, int]):
         """
         Initialize the wrapper class.
 
@@ -38,8 +37,9 @@ class RBFTimestampEncoder(TransformerMixin):
             **kwargs: Keyword arguments passed to the RepeatingBasisFunction
                 constructor.
         """
-        self.basis_function = RepeatingBasisFunction(**kwargs)
+        self.basis_function = RepeatingBasisFunction(n_periods=n_periods, input_range=input_range)
         self.is_fitted = False
+        self.n_periods = n_periods
 
     def _preprocess(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.integer]:
         """
@@ -61,7 +61,6 @@ class RBFTimestampEncoder(TransformerMixin):
         # TODO (2024-10-01 MHJB): the type hints are actually correct here, but pandas complains anyway
         X_dates = pd.to_datetime(X.flatten(), unit="s", origin="unix")  # type: ignore
         X_dayofyear = X_dates.dayofyear.to_numpy().reshape(-1, 1)
-
         return X_dayofyear
 
     def fit(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
