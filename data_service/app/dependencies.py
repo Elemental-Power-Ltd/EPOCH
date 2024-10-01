@@ -44,7 +44,7 @@ class Database:
 db = Database(os.environ.get("DATABASE_URL", "postgresql://python:elemental@localhost/elementaldb"))
 http_client = httpx.AsyncClient()
 
-elec_vae_mdl = VAE(input_dim=1, aggregate_dim=1, date_dim=1, latent_dim=5, hidden_dim=64, num_layers=1)
+elec_vae_mdl: VAE | None = None
 
 DBConnection = asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
 HTTPClient = httpx.AsyncClient
@@ -91,6 +91,9 @@ async def get_vae_model() -> VAE:
 
     This should have been loaded in when we did the lifespan events to start up.
     """
+    global elec_vae_mdl
+    if elec_vae_mdl is None:
+        elec_vae_mdl = load_vae()
     return elec_vae_mdl
 
 
@@ -125,13 +128,20 @@ def find_model_path(base_dir: Path = Path(".")) -> Path:
     raise FileNotFoundError(f"Could not find {final_dir}")
 
 
+def load_vae() -> VAE:
+    """Load the VAE from a file, with the relevant sizes."""
+    mdl = VAE(input_dim=1, aggregate_dim=1, date_dim=13, latent_dim=5, hidden_dim=64, num_layers=1)
+    mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
+    return mdl
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
     """Set up a long clients: a database pool and an HTTP client."""
     # Startup events
     await db.create_pool()
-    print(list(Path(".", "models", "final").walk()))
-    elec_vae_mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
+    global elec_vae_mdl
+    elec_vae_mdl = load_vae()
     yield  # type: ignore
     # Shutdown events
     await http_client.aclose()

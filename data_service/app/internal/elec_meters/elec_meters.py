@@ -132,8 +132,8 @@ def daily_to_hh_eload(
             .astype(np.float32)
         )
 
-        # TODO (2024-09-05 MHJB): linearly encoding time is a bad idea.
-        # Let's instead add some clever one-hot encoding for months, or sinusoidal time encoding?
+        # TODO (2024-09-30 JSM): time now encoded using 13 radial basis functions.
+        # Let's discuss whether this is the best encoding method.
         start_date_scaled = torch.from_numpy(
             scalers[ScalerTypeEnum.StartTime]
             .transform(daily_df["start_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
@@ -169,10 +169,10 @@ def daily_to_hh_eload(
                 start_ts,
                 name="start_ts",
             ),
-            # I am relatively sure that this is the right ravel -- each column is one day, so we could also express this
+            # Each row is one day, so we could also express this
             # as a concat over [i, :], but this saves some memory and mucking around.
             data={
-                "consumption_kwh": np.ravel(result, order="F"),
+                "consumption_kwh": np.ravel(result, order="C"),
                 "end_ts": start_ts + pd.Timedelta(minutes=30),
                 "start_ts": start_ts,
             },
