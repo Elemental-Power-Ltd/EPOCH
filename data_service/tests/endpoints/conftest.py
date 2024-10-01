@@ -17,7 +17,7 @@ import pytest_asyncio
 import testing.postgresql  # type: ignore
 from httpx import ASGITransport, AsyncClient
 
-from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client, load_vae
+from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
 from app.main import app
 
 db_factory = testing.postgresql.PostgresqlFactory()
@@ -32,9 +32,6 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     and populate it with some test data.
     It then overrides the `get_db_conn` for all the endpoints deeper in, using mysterious FastAPI magic.
     """
-    global elec_vae_mdl
-    elec_vae_mdl = load_vae()
-
     underlying_db = db_factory()
     db = Database(dsn=underlying_db.url())
 
