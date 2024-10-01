@@ -18,7 +18,9 @@ PYBIND11_MODULE(epoch_simulator, m) {
 				pybind11::arg("inputDir") = std::string("./InputData"),
 				pybind11::arg("outputDir") = std::string("./OutputData"),
 			 	pybind11::arg("configDir") = std::string("./ConfigData"))
-		.def("simulate_scenario", &Simulator_py::simulateScenario);
+		.def("simulate_scenario", &Simulator_py::simulateScenario,
+			pybind11::arg("taskData"),
+			pybind11::arg("fullReporting") = false);
 
 	pybind11::class_<TaskData>(m, "TaskData")
 		.def(pybind11::init<>())

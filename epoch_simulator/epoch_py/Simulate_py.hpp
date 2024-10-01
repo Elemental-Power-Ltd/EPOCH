@@ -12,11 +12,12 @@ class Simulator_py {
 public:
 	Simulator_py(const std::string& input_dir, const std::string& output_dir, const std::string& config_dir);
 
-	SimulationResult simulateScenario(const TaskData& taskData);
+	SimulationResult simulateScenario(const TaskData& taskData, bool fullReporting = false);
 
 private:
-	Simulator mSimulator;
+	FileConfig mFileConfig;
 	HistoricalData mHistoricalData;
+	Simulator mSimulator;
 };
 
 
