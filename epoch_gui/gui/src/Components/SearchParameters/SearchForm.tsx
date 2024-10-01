@@ -1,13 +1,16 @@
-import Form from '@rjsf/mui'
-import { RJSFSchema } from '@rjsf/utils';
+import React from 'react';
+import Form from '@rjsf/mui';
+import {RJSFSchema} from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
 import InputSchema from '../../util/json/schema/SearchParametersSchema.json';
 import {useEpochStore} from "../../State/state";
 
+import {Button, IconButton} from '@mui/material';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DownloadIcon from '@mui/icons-material/Download';
 
 const SearchForm = () => {
-
     const state = useEpochStore((state) => state.run);
     const setSearchParameters = useEpochStore((state) => state.setSearchParameters);
 
@@ -15,11 +18,65 @@ const SearchForm = () => {
         setSearchParameters(evt.formData);
     }
 
+    const handleDownload = () => {
+        const jsonData = JSON.stringify(state.searchParameters, null, 2);
+        const blob = new Blob([jsonData], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'search_parameters.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const json = JSON.parse(e.target?.result as string);
+                    setSearchParameters(json);
+                } catch (error) {
+                    console.error('Invalid JSON file');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
 
     return (
         <div>
-            <h2>SEARCH</h2>
+            <div style={{marginTop: '20px'}}>
+                <Button
+                    variant="outlined"
+                    onClick={handleDownload}
+                    startIcon={<DownloadIcon/>}
+                    style={{marginRight: '10px'}}
+                >
+                    Download Parameters
+                </Button>
 
+                <label htmlFor="upload-json-file">
+                    <input
+                        id="upload-json-file"
+                        type="file"
+                        accept=".json"
+                        onChange={handleUpload}
+                        style={{display: 'none'}}
+                    />
+                    <Button
+                        variant="outlined"
+                        component="span"
+                        startIcon={<UploadFileIcon/>}
+                    >
+                        Upload Parameters
+                    </Button>
+                </label>
+            </div>
+            <h2>SEARCH</h2>
             <Form
                 schema={InputSchema as RJSFSchema}
                 uiSchema={{
@@ -30,13 +87,8 @@ const SearchForm = () => {
                 formData={state.searchParameters}
                 onChange={changeSearchParameters}
             />
-
-            {/*<div>*/}
-            {/*    <button>Submit</button>*/}
-            {/*    <button>Save</button>*/}
-            {/*</div>*/}
         </div>
-    )
+    );
 }
 
 export default SearchForm;
