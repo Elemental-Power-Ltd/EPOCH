@@ -217,7 +217,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
     return hload_df
 
 
-def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -> BaitAndModelCoefs:
+def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame, apply_bait: bool = True) -> BaitAndModelCoefs:
     """
     Fit BAIT coefficients and a heating load models for these dataframes.
 
@@ -238,10 +238,10 @@ def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -
     """
     # These are the "default" values from the original BAIT paper
     bait_initial = [
-        0.012,  # solar gain
-        -0.20,  # wind chill
-        -0.05,  # humidity discomfort
-        0.5,  # smoothing
+        0.012 if apply_bait else 0.0,  # solar gain
+        -0.20 if apply_bait else 0.0,  # wind chill
+        -0.05 if apply_bait else 0.0,  # humidity discomfort
+        0.5 if apply_bait else 0.0,  # smoothing
         15.5,  # threshold
     ]
 
@@ -250,7 +250,13 @@ def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -
         bait_initial,
         args=(gas_df, weather_df),
         method="Nelder-Mead",
-        bounds=[(0, None), (None, 0), (None, None), (0, 1), (13, 20)],
+        bounds=[
+            (0.0, None if apply_bait else 0.0),
+            (None if apply_bait else 0.0, 0.0),
+            (None if apply_bait else 0.0, None if apply_bait else 0.0),
+            (0.0, 1.0 if apply_bait else 0.0),
+            (13, 20),
+        ],
     )
     assert result.success, "Optimisation did not succeed"
     bait_fitted = result.x

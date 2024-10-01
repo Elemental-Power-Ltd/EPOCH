@@ -9,14 +9,20 @@ import copy
 from ...models.heating_load import InterventionEnum
 from ...models.weather import BaitAndModelCoefs
 
-FABRIC_SAVINGS = {
-    InterventionEnum.Loft: 1 - (2.4 / 100),  # via NEED 2021
-    InterventionEnum.Cladding: 1 - (8.8 / 100),  # via NEED 2021
-    InterventionEnum.DoubleGlazing: 1 - (4.4 / 100),
-    # via https://www.sciencedirect.com/science/article/abs/pii/S0378778819312782
-}
+# FABRIC_SAVINGS = {
+#    InterventionEnum.Loft: 1 - (2.4 / 100),  # via NEED 2021
+#    InterventionEnum.Cladding: 1 - (8.8 / 100),  # via NEED 2021
+#    InterventionEnum.DoubleGlazing: 1 - (4.4 / 100),
+#    # via https://www.sciencedirect.com/science/article/abs/pii/S0378778819312782
+# }
 
 # These numbers are made up!
+FABRIC_SAVINGS = {
+    InterventionEnum.Loft: 1 - 0.1,
+    InterventionEnum.Cladding: 1 - 0.2,
+    InterventionEnum.DoubleGlazing: 1 - 0.15,
+}
+
 FABRIC_WINDCHILL = {InterventionEnum.Loft: 1.00, InterventionEnum.Cladding: 0.95, InterventionEnum.DoubleGlazing: 0.90}
 
 

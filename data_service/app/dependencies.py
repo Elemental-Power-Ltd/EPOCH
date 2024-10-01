@@ -100,12 +100,38 @@ HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
 VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
 
 
+def find_model_path(base_dir: Path = Path(".")) -> Path:
+    """
+    Search upwards from this directory to find the models directory.
+
+    This is useful if you're loading from a notebooks directory.
+
+    Parameters
+    ----------
+    base_dir
+        Initial directory to look in. We'll check for a given models suffix here, and then check "..", "../.." etc.
+
+    Returns
+    -------
+        Fully resolved path to elecVAE_weights.pth
+    """
+    final_dir = Path("models", "final", "elecVAE_weights.pth")
+
+    fpath = base_dir / final_dir
+    for _ in range(3):
+        if fpath.exists():
+            return fpath.resolve()
+        fpath = Path("..") / fpath
+    raise FileNotFoundError(f"Could not find {final_dir}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
     """Set up a long clients: a database pool and an HTTP client."""
     # Startup events
     await db.create_pool()
-    elec_vae_mdl.load_state_dict(torch.load(Path(".", "models", "final", "elecVAE_weights.pth")))
+    print(list(Path(".", "models", "final").walk()))
+    elec_vae_mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
     yield  # type: ignore
     # Shutdown events
     await http_client.aclose()
