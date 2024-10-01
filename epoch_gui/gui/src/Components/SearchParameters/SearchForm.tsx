@@ -38,9 +38,24 @@ const SearchForm = () => {
             reader.onload = (e) => {
                 try {
                     const json = JSON.parse(e.target?.result as string);
-                    setSearchParameters(json);
+
+                    // try and validate the uploaded JSON against the schema
+
+                    // TODO - the schema is currently too permissive as there are no required fields at the top level
+                    //  so almost any JSON is parsed as valid
+
+                    const validationResult = validator.validateFormData(json, InputSchema as RJSFSchema);
+
+                    if (validationResult.errors.length === 0) {
+                        setSearchParameters(json);
+                    } else {
+                        console.error("Invalid Search Parameters");
+                        console.error(validationResult.errors);
+                        alert("Failed to parse search parameters!")
+                    }
                 } catch (error) {
-                    console.error('Invalid JSON file');
+                    console.error("Invalid JSON file");
+                    alert("Invalid JSON file");
                 }
             };
             reader.readAsText(file);
