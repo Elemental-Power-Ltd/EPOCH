@@ -121,7 +121,8 @@ const TaskConfigForm = () => {
               required
             >
               <MenuItem value="GridSearch">Grid Search</MenuItem>
-              <MenuItem value="GeneticAlgorithm">Genetic Algorithm</MenuItem>
+              <MenuItem value="NSGA2">Genetic Algorithm (Multi-Objective)</MenuItem>
+              <MenuItem value="GeneticAlgorithm">Genetic Algorithm (Single-Objective)</MenuItem>
             </TextField>
           </Grid>
 

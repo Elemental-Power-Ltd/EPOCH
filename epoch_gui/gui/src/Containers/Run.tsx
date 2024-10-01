@@ -4,7 +4,7 @@ import AccordionSection from "../util/Widgets/AccordionSection";
 import HyperParamForm from "../Components/HyperParams/OptimiserConfig";
 import SearchForm from "../Components/SearchParameters/SearchForm";
 
-import {useEffect, useState} from "react";
+import {Button, Container} from '@mui/material';
 
 import {getStatus, submitOptimisationJob} from "../endpoints";
 
@@ -20,9 +20,8 @@ function RunContainer() {
         const payload = {
             task_name: state.taskConfig.task_name,
             optimiser: {
-                // name: state.taskConfig.optimiser,
-                name: "NSGA2",
-                hyperparameters: {}  // TODO
+                name: state.taskConfig.optimiser,
+                hyperparameters: {}
             },
 
             search_parameters: state.searchParameters,
@@ -44,17 +43,17 @@ function RunContainer() {
         <div className="run-tab">
             <AccordionSection title="Config Form">
                 <TaskConfigForm/>
-                <HyperParamForm/>
+                {/*<HyperParamForm/>*/}
             </AccordionSection>
 
             <AccordionSection title="Search Form">
                 <SearchForm />
             </AccordionSection>
-
-            <div className="run-footer">
-                <button onClick={onRun}>RUN</button>
-                <button onClick={()=>{alert("TODO")}}>SAVE CONFIGURATION</button>
-            </div>
+            <Button
+                onClick={onRun}
+                variant="contained"
+                size="large"
+            >Run Optimisation</Button>
 
         </div>
     )
