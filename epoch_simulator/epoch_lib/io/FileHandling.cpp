@@ -317,6 +317,7 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	outFile << taskData.ESS_discharge_power << ",";
 	outFile << taskData.ESS_capacity << ",";
 	outFile << taskData.ESS_start_SoC << ",";
+	outFile << taskData.DHW_cylinder_volume << ",";
 	outFile << taskData.Export_kWh_price << ",";
 	outFile << taskData.time_budget_min << ",";
 	outFile << taskData.CAPEX_limit << ",";
