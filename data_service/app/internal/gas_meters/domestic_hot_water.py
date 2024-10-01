@@ -208,6 +208,7 @@ def assign_hh_dhw_poisson(
     weights: npt.NDArray[np.floating],
     dhw_event_size: float,
     hdd_kwh: float,
+    flat_heating_kwh: float = 0.0,
     max_output: float = float("inf"),
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -237,6 +238,8 @@ def assign_hh_dhw_poisson(
         Maximum boiler output, in kWh per period.
     rng
         Numpy random generator for reproducible results
+    dhw_fraction
+        Fraction of the "DHW" component that's actually DHW. Assigns the rest to heating if this is < 1
 
     Returns
     -------
@@ -246,6 +249,6 @@ def assign_hh_dhw_poisson(
     if rng is None:
         rng = np.random.default_rng()
     hh_gas_df["dhw"] = rng.poisson(weights) * dhw_event_size
-    hh_gas_df["heating"] = np.minimum(hdd_kwh * hh_gas_df["hdd"], max_output - hh_gas_df["dhw"])
+    hh_gas_df["heating"] = np.minimum((hdd_kwh * hh_gas_df["hdd"]) + flat_heating_kwh, max_output - hh_gas_df["dhw"])
     hh_gas_df["predicted"] = hh_gas_df["dhw"] + hh_gas_df["heating"]
     return hh_gas_df

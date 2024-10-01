@@ -177,44 +177,6 @@ async def list_sites(client_id: ClientID, conn: DatabaseDep) -> list[SiteIdNameP
     return [SiteIdNamePair(site_id=site_id_t(item[0]), name=str(item[1])) for item in res]
 
 
-@router.post("/list-datasets", tags=["db", "list"])
-async def list_datasets(site_id: SiteID, conn: DatabaseDep) -> list[DatasetEntry]:
-    """
-    Get all the datasets associated with a particular site, in the form of a list of UUID strings.
-
-    This covers datasets across all types; it is your responsibility to then pass them to the correct endpoints
-    (for example, sending a dataset ID corresponding to a gas dataset will not work when requesting renewables.)
-
-    Parameters
-    ----------
-    *site_id*
-        Database ID for the site you are interested in.
-
-    Returns
-    -------
-    A list of UUID dataset strings, with the earliest at the start and the latest at the end.
-    """
-    # TODO (2024-08-05 MHJB): make this method make more sense
-
-    res = await conn.fetch(
-        """
-        SELECT
-            dataset_id,
-            created_at,
-            dataset_type
-        FROM public.combined_dataset_metadata
-        ORDER BY created_at ASC"""
-    )
-
-    logging.info(f"Returning {len(res)} datasets for {site_id}")
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"], dataset_type=DatasetTypeEnum(item["dataset_type"]), created_at=item["created_at"]
-        )
-        for item in res
-    ]
-
-
 @router.post("/get-location", tags=["db"])
 async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
     """

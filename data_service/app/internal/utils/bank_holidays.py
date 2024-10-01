@@ -43,7 +43,8 @@ async def get_bank_holidays(
         key = "scotland"
     elif country == UKCountryEnum.NorthernIreland:
         key = "northern-ireland"
-
+    else:
+        raise ValueError("Got unknown country for public holidays: " + str(country))
     if http_client is not None:
         response = await http_client.get("https://www.gov.uk/bank-holidays.json")
     else:

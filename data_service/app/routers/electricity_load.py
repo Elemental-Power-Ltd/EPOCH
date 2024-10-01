@@ -18,7 +18,7 @@ from ..models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequ
 router = APIRouter()
 
 
-@router.post("/generate-electricity-load")
+@router.post("/generate-electricity-load", tags=["electricity", "generate"])
 async def generate_electricity_load(
     params: ElectricalLoadRequest, vae: VaeDep, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> ElectricalLoadMetadata:

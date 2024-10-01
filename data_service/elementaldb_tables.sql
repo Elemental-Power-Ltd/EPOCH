@@ -336,122 +336,6 @@ CREATE TABLE renewables.metadata (
 
 
 --
--- Name: metadata; Type: TABLE; Schema: tariffs; Owner: -
---
-
-CREATE TABLE tariffs.metadata (
-    dataset_id uuid NOT NULL,
-    site_id text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    deleted_at timestamp with time zone,
-    provider text,
-    product_name text,
-    tariff_name text,
-    valid_from timestamp with time zone,
-    valid_to timestamp with time zone
-);
-
-
---
--- Name: all_metadata; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.all_metadata AS
- SELECT u.dataset_id,
-    u.created_at,
-    u.dataset_type,
-    u.site_id
-   FROM ( SELECT metadata.dataset_id,
-            metadata.created_at,
-                CASE
-                    WHEN (metadata.fuel_type = 'elec'::text) THEN 'ElectricityMeter'::text
-                    WHEN (metadata.fuel_type = 'gas'::text) THEN 'GasMeter'::text
-                    ELSE NULL::text
-                END AS dataset_type,
-            metadata.site_id
-           FROM client_meters.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'ImportTariff'::text AS dataset_type,
-            metadata.site_id
-           FROM tariffs.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'RenewablesGeneration'::text AS dataset_type,
-            metadata.site_id
-           FROM renewables.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'HeatingLoad'::text AS dataset_type,
-            metadata.site_id
-           FROM heating.metadata) u
-  ORDER BY u.created_at;
-
-
---
--- Name: combined_dataset_metadata; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.combined_dataset_metadata AS
- SELECT u.dataset_id,
-    u.created_at,
-    u.dataset_type,
-    u.site_id
-   FROM ( SELECT metadata.dataset_id,
-            metadata.created_at,
-                CASE
-                    WHEN (metadata.fuel_type = 'elec'::text) THEN 'ElectricityMeterData'::text
-                    WHEN (metadata.fuel_type = 'gas'::text) THEN 'GasMeterData'::text
-                    ELSE NULL::text
-                END AS dataset_type,
-            metadata.site_id
-           FROM client_meters.metadata
-          WHERE (metadata.is_synthesised = false)
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'ElectricityMeterDataSynthesised'::text AS dataset_type,
-            metadata.site_id
-           FROM client_meters.metadata
-          WHERE ((metadata.is_synthesised = true) AND (metadata.fuel_type = 'gas'::text))
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'ImportTariff'::text AS dataset_type,
-            metadata.site_id
-           FROM tariffs.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'RenewablesGeneration'::text AS dataset_type,
-            metadata.site_id
-           FROM renewables.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'HeatingLoad'::text AS dataset_type,
-            metadata.site_id
-           FROM heating.metadata
-        UNION ALL
-         SELECT metadata.dataset_id,
-            metadata.created_at,
-            'CarbonIntensity'::text AS dataset_type,
-            metadata.site_id
-           FROM carbon_intensity.metadata
-        UNION ALL
-         SELECT gen_random_uuid() AS dataset_id,
-            now() AS created_at,
-            'ASHPData'::text AS dataset_type,
-            si.site_id
-           FROM ( SELECT DISTINCT site_info.site_id
-                   FROM client_info.site_info) si) u
-  ORDER BY u.created_at;
-
-
---
 -- Name: solar_pv; Type: TABLE; Schema: renewables; Owner: -
 --
 
@@ -471,6 +355,23 @@ CREATE TABLE tariffs.electricity (
     "timestamp" timestamp with time zone NOT NULL,
     unit_cost numeric(15,4),
     flat_cost numeric(15,5)
+);
+
+
+--
+-- Name: metadata; Type: TABLE; Schema: tariffs; Owner: -
+--
+
+CREATE TABLE tariffs.metadata (
+    dataset_id uuid NOT NULL,
+    site_id text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone,
+    provider text,
+    product_name text,
+    tariff_name text,
+    valid_from timestamp with time zone,
+    valid_to timestamp with time zone
 );
 
 
@@ -1221,6 +1122,13 @@ GRANT ALL ON TABLE client_meters.electricity_meters TO python;
 
 
 --
+-- Name: TABLE electricity_meters_synthesised; Type: ACL; Schema: client_meters; Owner: -
+--
+
+GRANT ALL ON TABLE client_meters.electricity_meters_synthesised TO python;
+
+
+--
 -- Name: TABLE gas_meters; Type: ACL; Schema: client_meters; Owner: -
 --
 
@@ -1270,13 +1178,6 @@ GRANT ALL ON TABLE renewables.metadata TO python;
 
 
 --
--- Name: TABLE metadata; Type: ACL; Schema: tariffs; Owner: -
---
-
-GRANT ALL ON TABLE tariffs.metadata TO python;
-
-
---
 -- Name: TABLE solar_pv; Type: ACL; Schema: renewables; Owner: -
 --
 
@@ -1288,6 +1189,13 @@ GRANT ALL ON TABLE renewables.solar_pv TO python;
 --
 
 GRANT ALL ON TABLE tariffs.electricity TO python;
+
+
+--
+-- Name: TABLE metadata; Type: ACL; Schema: tariffs; Owner: -
+--
+
+GRANT ALL ON TABLE tariffs.metadata TO python;
 
 
 --

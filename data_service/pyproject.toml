@@ -44,7 +44,6 @@ select = [
 ]
 ignore = [
     "PD901", # pandas df variable name
-#    "UP035", # prefer collections intead of typing
     "PT011", # pytest raises too broad
     "RUF029", # declared async but doesn't use
 ]

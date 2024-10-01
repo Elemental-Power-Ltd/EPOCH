@@ -162,7 +162,8 @@ async def generate_heating_load(
                 http_client=http_client,
             )
         )
-        fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df)
+
+        fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df, apply_bait=params.apply_bait)
         changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions)
         forecast_weather_df = weather_dataset_to_dataframe(
             await get_weather(
@@ -193,14 +194,25 @@ async def generate_heating_load(
     heating_df = HHDataFrame(pd.DataFrame(index=forecast_weather_df.index))
     heating_df["air_temperature"] = forecast_weather_df["temp"]
     heating_df["hdd"] = (
-        np.maximum(changed_coefs.threshold - forecast_weather_df["bait"], 0) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=1)
+        np.maximum(changed_coefs.threshold - forecast_weather_df["bait"], 0) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=24)
     )
 
     event_size = 1.0  # Change this for future buildings, assumes each DHW event is exactly 1 kWh in size
-    poisson_weights = get_poisson_weights(heating_df, "leisure_centre") * changed_coefs.dhw_kwh / event_size
+    poisson_weights = (
+        get_poisson_weights(heating_df, "leisure_centre") * changed_coefs.dhw_kwh * params.dhw_fraction / event_size
+    )
 
-    assign_hh_dhw_poisson(heating_df, poisson_weights, dhw_event_size=event_size, hdd_kwh=changed_coefs.heating_kwh)
-
+    flat_heating_kwh = changed_coefs.dhw_kwh * (1.0 - params.dhw_fraction) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=24)
+    heating_df = assign_hh_dhw_poisson(
+        heating_df,
+        poisson_weights,
+        dhw_event_size=event_size,
+        hdd_kwh=changed_coefs.heating_kwh,
+        flat_heating_kwh=flat_heating_kwh,
+    )
+    print(heating_df.head())
+    print(flat_heating_kwh)
+    print(changed_coefs)
     metadata = {
         "dataset_id": uuid.uuid4(),
         "site_id": site_id,
