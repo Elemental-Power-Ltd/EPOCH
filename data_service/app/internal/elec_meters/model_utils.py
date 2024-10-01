@@ -2,12 +2,15 @@
 
 import pathlib
 from enum import StrEnum
+from typing import Any
 
 import joblib
+import numpy as np
+import numpy.typing as npt
 import pandas as pd
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import TransformerMixin  # type: ignore
 from sklearn.preprocessing import StandardScaler  # type: ignore
-from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction
+from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction  # type: ignore
 
 
 class ScalerTypeEnum(StrEnum):
@@ -19,8 +22,6 @@ class ScalerTypeEnum(StrEnum):
     EndTime = "end_time"
 
 
-
-
 class RBFTimestampEncoder(TransformerMixin):
     """
     A wrapper class around the RepeatingBasisFunction class from scikit-lego.
@@ -29,7 +30,7 @@ class RBFTimestampEncoder(TransformerMixin):
     transform() method of the RepeatingBasisFunction class.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: dict[str, Any]):
         """
         Initialize the wrapper class.
 
@@ -40,7 +41,7 @@ class RBFTimestampEncoder(TransformerMixin):
         self.basis_function = RepeatingBasisFunction(**kwargs)
         self.is_fitted = False
 
-    def _preprocess(self, X):
+    def _preprocess(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.integer]:
         """
         Apply preprocessing to the input X.
 
@@ -57,12 +58,13 @@ class RBFTimestampEncoder(TransformerMixin):
         # TODO (2024-09-24 JSM): inputs are being coerced to and from
         # datetime types, to minimise disruption before demo day. Let's
         # streamline this.
-        X_dates = pd.to_datetime(X.flatten(), unit='s')
+        # TODO (2024-10-01 MHJB): the type hints are actually correct here, but pandas complains anyway
+        X_dates = pd.to_datetime(X.flatten(), unit="s", origin="unix")  # type: ignore
         X_dayofyear = X_dates.dayofyear.to_numpy().reshape(-1, 1)
 
         return X_dayofyear
 
-    def fit(self, X):
+    def fit(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Fit the RepeatingBasisFunction instance and perform any preprocessing.
 
@@ -78,7 +80,7 @@ class RBFTimestampEncoder(TransformerMixin):
         self.is_fitted = True
         return self
 
-    def transform(self, X):
+    def transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Transform the input data using the RepeatingBasisFunction.
 
@@ -94,7 +96,7 @@ class RBFTimestampEncoder(TransformerMixin):
         X_preprocessed = self._preprocess(X)
         return self.basis_function.transform(X_preprocessed)
 
-    def fit_transform(self, X):
+    def fit_transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Fit the RepeatingBasisFunction instance and transform the input data.
 
@@ -112,6 +114,7 @@ class RBFTimestampEncoder(TransformerMixin):
             return self.basis_function.transform(X_preprocessed)
         else:
             return self.transform(X)
+
 
 def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScaler:
     """

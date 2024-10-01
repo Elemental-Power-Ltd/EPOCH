@@ -46,7 +46,7 @@ async def fetch_blended_electricity_load(
     """
     async with pool.acquire() as conn:
         try:
-            real_data = await get_electricity_losad(real_params, conn=conn)
+            real_data = await get_electricity_load(real_params, conn=conn)
         except HTTPException:
             real_data = []
 

@@ -16,8 +16,6 @@ from ..models.core import (
     ClientData,
     ClientID,
     ClientIdNamePair,
-    DatasetEntry,
-    DatasetTypeEnum,
     SiteData,
     SiteID,
     SiteIdNamePair,
