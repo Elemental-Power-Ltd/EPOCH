@@ -81,6 +81,12 @@ class HeatingLoadRequest(DatasetIDWithTime):
         default=[],
         description="Single energy saving intervention to make for this site.",
     )
+    apply_bait: bool = True
+    dhw_fraction: float = Field(
+        default=1.0,
+        description="What fraction of the non-varying load is due to DHW."
+        + "For most buildings this should be 1, unless there is an unusually inefficient heating system.",
+    )
 
     @pydantic.model_validator(mode="after")
     def check_timestamps_valid(self) -> Self:

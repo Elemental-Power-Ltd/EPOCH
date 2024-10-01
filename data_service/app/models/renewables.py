@@ -68,12 +68,13 @@ class EpochRenewablesEntry(EpochEntry):
 
 
 class PvgisDataSourceEnum(StrEnum):
-    SARAH = "PVGIS-SARAH"
     NSRDB = "PVGIS-NSRDB"
     ERA5 = "PVGIS-ERA5"
     COSMO = "PVGIS-COSMO"
     CMSAF = "PVGIS-CMSAF"
+    SARAH = "PVGIS-SARAH"
     SARAH2 = "PVGIS-SARAH2"
+    SARAH3 = "PVGIS-SARAH3"
 
 
 class PvgisMountingSystemEnum(StrEnum):

@@ -5,6 +5,7 @@ import datetime
 import logging
 import uuid
 
+import pydantic
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HttpClientDep, VaeDep
@@ -16,6 +17,7 @@ from ..models.heating_load import HeatingLoadRequest
 from ..models.import_tariffs import TariffRequest
 from ..models.optimisation import RemoteMetaData
 from ..models.renewables import RenewablesRequest
+from ..models.site_manager import DatasetRequest
 from .carbon_intensity import generate_grid_co2
 from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
@@ -257,8 +259,11 @@ async def list_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetE
         *renewables_generation_task.result(),
         *heating_load_task.result(),
         *carbon_intensity_task.result(),
-        *ashp_task.result(),
     ]
+    # If we didn't get any real datasets, then
+    # don't insert a dummy ASHP dataset
+    if res:
+        res += ashp_task.result()
     logging.info(f"Returning {len(res)} datasets for {site_id}")
     return res
 
@@ -288,6 +293,52 @@ async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> dict[D
         if dataset.dataset_type not in latest_ds or (latest_ds[dataset.dataset_type].created_at < dataset.created_at):
             latest_ds[dataset.dataset_type] = dataset
     return dict(latest_ds)
+
+
+@router.post("/get-specific-datasets", tags=["db", "get"])
+async def get_specific_datasets(site_data: DatasetRequest, pool: DatabasePoolDep) -> SiteDataEntries:
+    """
+    Get specific datasets with chosen IDs for a given site.
+
+    This endpoint combines a call to /list-latest-datasets with each of the /get endpoints for those datasets.
+    If a dataset isn't specified in the call, then we'll return the latest.
+
+    Parameters
+    ----------
+    site_data
+        A specification for the required site data; UUIDs of the datasets of each type you wish to request.
+
+    Returns
+    -------
+        The site data with full time series for each data source
+    """
+    latest_datasets_info = await list_latest_datasets(SiteID(site_id=site_data.site_id), pool=pool)
+
+    specified_or_latest_ids: dict[DatasetTypeEnum, pydantic.UUID4] = {}
+    dumped_site_info = site_data.model_dump()
+    for ds_type in DatasetTypeEnum:
+        if ds_type.value in dumped_site_info and dumped_site_info[ds_type.value] is not None:
+            specified_or_latest_ids[ds_type] = dumped_site_info[ds_type.value]
+        elif ds_type in latest_datasets_info:
+            specified_or_latest_ids[ds_type] = latest_datasets_info[ds_type].dataset_id
+
+    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
+    for ds_type, dataset_id in specified_or_latest_ids.items():
+        if ds_type == DatasetTypeEnum.HeatingLoad or ds_type == DatasetTypeEnum.RenewablesGeneration:
+            site_data_ids[ds_type] = MultipleDatasetIDWithTime(
+                dataset_id=[dataset_id],
+                start_ts=site_data.start_ts,
+                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+            )
+        else:
+            site_data_ids[ds_type] = DatasetIDWithTime(
+                dataset_id=dataset_id,
+                start_ts=site_data.start_ts,
+                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+            )
+    all_datasets = await fetch_all_input_data(site_data_ids, pool=pool)
+
+    return all_datasets
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])
