@@ -16,7 +16,6 @@ std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filenam
 std::vector<std::vector<float>> readCSVAsTable(const std::filesystem::path& filename);
 
 
-void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results);
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<ObjectiveResult>& results);
 void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& result);
 

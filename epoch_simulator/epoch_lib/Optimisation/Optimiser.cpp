@@ -164,7 +164,7 @@ ObjectiveResult Optimiser::reproduceResult(uint64_t paramIndex) const {
 
 	Simulator sim{};
 
-	SimulationResult simResult = sim.simulateScenario(mHistoricalData, taskData, SimulationType::FullReporting);
+	SimulationResult simResult = sim.simulateScenario(mHistoricalData, taskData, SimulationType::ResultOnly);
 
 	return toObjectiveResult(simResult, taskData);
 }

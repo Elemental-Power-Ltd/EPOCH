@@ -13,31 +13,6 @@ const std::string EPOCH_VERSION = "0.2.2";
 using year_TS = Eigen::VectorXf;
 
 struct SimulationResult {
-	float Rgen_total;
-	float Total_load;
-	float ESUM;
-	float ESS_available_discharge_power;
-	float ESS_available_charge_power;
-	float ESS_Rgen_only_charge;
-	float ESS_discharge;
-	float ESS_charge;
-	float ESS_resulting_SoC;
-	float Pre_grid_balance;
-	float Grid_Import;
-	float Grid_Export;
-	float Post_grid_balance;
-	float Pre_flex_import_shortfall;
-	float Pre_Mop_curtailed_export;
-	float Actual_import_shortfall;
-	float Actual_curtailed_export;
-	float Actual_high_priority_load;
-	float Actual_low_priority_load;
-	float Heatload;
-	float Scaled_heatload;
-	float Electrical_load_scaled_heat_yield;
-	float Heat_shortfall;
-	float Heat_surplus;
-
 	float runtime;
 	uint64_t paramIndex;
 
@@ -49,21 +24,6 @@ struct SimulationResult {
 };
 
 struct FullSimulationResult {
-	year_TS Rgen_total;
-	year_TS Total_load;
-	year_TS ESUM;
-	year_TS ESS_available_discharge_power;
-	year_TS ESS_available_charge_power;
-	year_TS ESS_Rgen_only_charge;
-	year_TS Pre_grid_balance;
-	year_TS Post_grid_balance;
-	year_TS Pre_flex_import_shortfall;
-	year_TS Pre_Mop_curtailed_export;
-	year_TS Actual_high_priority_load;
-	year_TS Actual_low_priority_load;
-	year_TS Scaled_heatload;
-	year_TS Electrical_load_scaled_heat_yield;
-
 	// TempSum
 	year_TS Actual_import_shortfall;
 	year_TS Actual_curtailed_export;

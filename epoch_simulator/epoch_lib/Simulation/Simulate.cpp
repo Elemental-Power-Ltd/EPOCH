@@ -267,35 +267,6 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 	const FullSimulationResult& fullSimulationResult = simulateScenarioFull(historicalData, taskData, simulationType);
 	SimulationResult simResult{};
 
-	// By default we don't compute these sums during the main optimisation as we're only concerned with the output results
-	// but for recall of specific scenarios (e.g. to write to a csv) we want to compute these
-	if (simulationType == SimulationType::FullReporting) {
-		simResult.Rgen_total = fullSimulationResult.Rgen_total.sum();
-		simResult.Total_load = fullSimulationResult.Total_load.sum();
-		simResult.ESUM = fullSimulationResult.ESUM.sum();
-		simResult.ESS_available_discharge_power = fullSimulationResult.ESS_available_discharge_power.sum();
-		simResult.ESS_available_charge_power = fullSimulationResult.ESS_available_charge_power.sum();
-		simResult.ESS_Rgen_only_charge = fullSimulationResult.ESS_Rgen_only_charge.sum();
-		simResult.ESS_discharge = fullSimulationResult.ESS_discharge.sum();
-		simResult.ESS_charge = fullSimulationResult.ESS_charge.sum();
-		simResult.ESS_resulting_SoC = fullSimulationResult.ESS_resulting_SoC.sum();
-		simResult.Pre_grid_balance = fullSimulationResult.Pre_grid_balance.sum();
-		simResult.Grid_Import = fullSimulationResult.Grid_Import.sum();
-		simResult.Grid_Export = fullSimulationResult.Grid_Export.sum();
-		simResult.Post_grid_balance = fullSimulationResult.Post_grid_balance.sum();
-		simResult.Pre_flex_import_shortfall = fullSimulationResult.Pre_flex_import_shortfall.sum();
-		simResult.Pre_Mop_curtailed_export = fullSimulationResult.Pre_Mop_curtailed_export.sum();
-		simResult.Actual_import_shortfall = fullSimulationResult.Actual_import_shortfall.sum();
-		simResult.Actual_curtailed_export = fullSimulationResult.Actual_curtailed_export.sum();
-		simResult.Actual_high_priority_load = fullSimulationResult.Actual_high_priority_load.sum();
-		simResult.Actual_low_priority_load = fullSimulationResult.Actual_low_priority_load.sum();
-		simResult.Heatload = fullSimulationResult.Heatload.sum();
-		simResult.Scaled_heatload = fullSimulationResult.Scaled_heatload.sum();
-		simResult.Electrical_load_scaled_heat_yield = fullSimulationResult.Electrical_load_scaled_heat_yield.sum();
-		simResult.Heat_shortfall = fullSimulationResult.Heat_shortfall.sum();
-		simResult.Heat_surplus = fullSimulationResult.Heat_surplus.sum();
-	}
-
 	simResult.runtime = fullSimulationResult.runtime;
 	simResult.paramIndex = fullSimulationResult.paramIndex;
 	simResult.total_annualised_cost = fullSimulationResult.total_annualised_cost;
