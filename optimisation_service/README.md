@@ -17,7 +17,7 @@ Then, to get started with this repository, run
 It is then easiest to run these services in a container.
 To do so, run
 ```
-    docker compose -f docker/docker-compose.yaml up
+    docker compose -f docker/docker-compose.yml up
 ```
 in your terminal.
 

@@ -36,8 +36,6 @@ RUN rm -rf ./build
 # Build headless release
 RUN cmake . --preset=headless-linux -DCMAKE_CXX_COMPILER=g++
 RUN cmake --build --preset=headless-rel-linux -j
-# Copy the file to usual build location.
-RUN cp /code/Epoch/build/epoch_main/Epoch /code/Epoch/install/headless/bin/
 
 # Finally, we can configure our python code!
 # Install all the requirements, watching out for those that cause trouble for Alpine.

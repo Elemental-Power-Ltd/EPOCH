@@ -35,6 +35,7 @@ ParametersWRange: Final = [
     "r50_EV_CP_number",
     "s7_EV_CP_number",
     "u150_EV_CP_number",
+    "DHW_cylinder_volume",
 ]
 
 ParametersWORange: Final = [
@@ -116,6 +117,7 @@ class EndpointParameterDict(BaseModel):
     r50_EV_CP_number: EndpointParamRange = param_range
     s7_EV_CP_number: EndpointParamRange = param_range
     u150_EV_CP_number: EndpointParamRange = param_range
+    DHW_cylinder_volume: EndpointParamRange = param_range
     CAPEX_limit: int | float = Field(description="CAPEX limit to set in EPOCH. Not Implemented !")
     Export_kWh_price: int | float = Field(description="Export kWh price to set in EPOCH.")
     OPEX_limit: int | float = Field(description="OPEX limit to set in EPOCH. Not Implemented !")
@@ -155,6 +157,7 @@ class ParameterDict(TypedDict):
     r50_EV_CP_number: ParamRange
     s7_EV_CP_number: ParamRange
     u150_EV_CP_number: ParamRange
+    DHW_cylinder_volume: ParamRange
     CAPEX_limit: int | float
     Export_kWh_price: int | float
     OPEX_limit: int | float

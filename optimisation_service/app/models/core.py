@@ -80,6 +80,7 @@ class OptimisationSolution(BaseModel):
     time_budget_min: float | int
     u150_EV_CP_number: float | int
     timestep_hours: float | int
+    DHW_cylinder_volume: float | int
 
 
 class ObjectiveValues(BaseModel):

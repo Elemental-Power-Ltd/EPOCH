@@ -1,8 +1,6 @@
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
+import logging
 from copy import deepcopy
 from datetime import timedelta
-from enum import StrEnum
 from typing import Any, Never
 
 import numpy as np
@@ -12,14 +10,12 @@ from pymoo.algorithms.soo.nonconvex.ga import GA as Pymoo_GA  # type: ignore
 from pymoo.config import Config  # type: ignore
 from pymoo.core.mutation import Mutation  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
-from pymoo.core.result import Result as Pymoo_Result  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 from pymoo.operators.repair.rounding import RoundingRepair  # type: ignore
-from pymoo.operators.sampling.lhs import LatinHypercubeSampling  # type: ignore
-from pymoo.operators.sampling.rnd import FloatRandomSampling  # type: ignore
+from pymoo.operators.sampling.rnd import IntegerRandomSampling  # type: ignore
 from pymoo.operators.selection.tournament import TournamentSelection  # type: ignore
 from pymoo.optimize import minimize  # type: ignore
 from pymoo.termination.ftol import MultiObjectiveSpaceTermination, SingleObjectiveSpaceTermination  # type: ignore
@@ -32,22 +28,9 @@ from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
 
+logger = logging.getLogger("default")
+
 Config.warnings["not_compiled"] = False
-
-
-async def minimize_async(**kwargs: Any) -> Pymoo_Result:
-    loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor() as executor:
-        res = await loop.run_in_executor(executor, lambda: minimize(**kwargs))
-    return res
-
-
-class SamplingMethod(StrEnum):
-    LHS = "LHS"
-    RS = "RS"
-
-
-SamplingMethods = {SamplingMethod.LHS: LatinHypercubeSampling(), SamplingMethod.RS: FloatRandomSampling()}
 
 
 class NSGA2(Algorithm):
@@ -59,7 +42,6 @@ class NSGA2(Algorithm):
         self,
         pop_size: int = 128,
         n_offsprings: int | None = None,
-        sampling_method: SamplingMethod = SamplingMethod.LHS,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
         prob_mutation: float = 0.9,
@@ -78,8 +60,6 @@ class NSGA2(Algorithm):
             population size of GA
         n_offsprings
             number of offspring to generate at each generation, defaults to pop_size
-        sampling_method
-            sampling method used to generate initial population, either LatinHypercubeSampling (LHS) or RandomSampling (RS)
         prob_crossover
             probability of applying crossover between two parents
         n_crossover
@@ -105,7 +85,7 @@ class NSGA2(Algorithm):
         self.algorithm = Pymoo_NSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=SamplingMethods[sampling_method],
+            sampling=IntegerRandomSampling(),
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
             eliminate_duplicates=True,
@@ -160,7 +140,6 @@ class GeneticAlgorithm(Algorithm):
         self,
         pop_size: int = 128,
         n_offsprings: int | None = None,
-        sampling_method: SamplingMethod = SamplingMethod.LHS,
         k_tournament: int = 2,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
@@ -180,8 +159,6 @@ class GeneticAlgorithm(Algorithm):
             population size of GA
         n_offsprings
             number of offspring to generate at each generation, defaults to pop_size
-        sampling_method
-            sampling method used to generate initial population, either LatinHypercubeSampling (LHS) or RandomSampling (RS)
         k_tournament
             number of parents taking part in selection tournament
         prob_crossover
@@ -204,12 +181,12 @@ class GeneticAlgorithm(Algorithm):
             Max number of evaluations of EPOCH before termination
         """
         if n_offsprings is None:
-            n_offsprings = pop_size
+            n_offsprings = pop_size // 2
 
         self.algorithm = Pymoo_GA(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=SamplingMethods[sampling_method],
+            sampling=IntegerRandomSampling(),
             selection=TournamentSelection(pressure=k_tournament, func_comp=comp_by_cv_and_fitness),
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
@@ -304,10 +281,19 @@ class ProblemInstance(ElementwiseProblem):
         return PySimulationResult(self.sim.simulate_scenario(pytd))
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[np.floating]]) -> None:
+        fractional_parts, _ = np.modf(x)
+        if np.any(fractional_parts != 0):
+            logger.warning(f"Solution contains decimal values: {x}")
         x = self.scale_solutions(x)
+        fractional_parts, _ = np.modf(x)
+        if np.any(fractional_parts != 0):
+            logger.warning(f"Scaled solution contains decimal values: {x}")
         result = self.simulate(x)
 
         out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]
+        if np.isnan(out["F"]).any():
+            logger.warning(f"nan in objective values for sol: {x}")
+
         out["G"] = []
         for constraint, bounds in self.constraints.items():
             min_value = bounds.get("min", None)
