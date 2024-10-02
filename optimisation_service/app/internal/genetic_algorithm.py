@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import timedelta
@@ -31,6 +32,8 @@ from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
 
 Config.warnings["not_compiled"] = False
+
+logger = logging.getLogger("default")
 
 
 async def minimize_async(**kwargs: Any) -> Pymoo_Result:
@@ -299,7 +302,10 @@ class ProblemInstance(ElementwiseProblem):
         variable_param = dict(zip(self.v_params, x))
         all_param = variable_param | deepcopy(self.constant_param)
         pytd = PyTaskData(**all_param)
-        return PySimulationResult(self.sim.simulate_scenario(pytd))
+        res = PySimulationResult(self.sim.simulate_scenario(pytd))
+        if any(np.isnan(val) for val in res.values()):
+            logger.error(f"Got NaN simulation result {res} for config: {pytd}")
+        return res
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[np.floating]]) -> None:
         x = self.scale_solutions(x)
@@ -341,7 +347,10 @@ class MultiTermination(Termination):
         self.criteria = [self.f, self.max_gen, self.max_evals]
 
     def _update(self, algorithm: Algorithm) -> float:
-        p = [criterion.update(algorithm) for criterion in self.criteria]
+        f_progress = self.f.update(algorithm)
+        max_gen_progess = self.max_gen.update(algorithm)
+        max_evals_progress = self.max_evals.update(algorithm)
+        p = [f_progress, max_gen_progess, max_evals_progress]
         return max(p)
 
 

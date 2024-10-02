@@ -59,8 +59,28 @@ class Problem:
                 raise ValueError("parameter lower bounds must be smaller or equal to upper bounds.")
             step_is_zero = value["step"] == 0
             min_is_equal_max = value["min"] == value["max"]
-            if (step_is_zero and not min_is_equal_max) or (not step_is_zero and min_is_equal_max):
-                raise ValueError("parameter bounds must be equal if stepsize is 0.")
+            if step_is_zero and not min_is_equal_max:
+                raise ValueError(
+                    f"Parameter bounds for {param_name} must be equal if stepsize is 0",
+                    f"but got {value["min"]} and {value["max"]}",
+                )
+            if not step_is_zero and min_is_equal_max:
+                raise ValueError(
+                    f"Stepsize for {param_name} must be equal if bounds are equal,",
+                    f"but got {value["min"]} and {value["max"]} with a step of {value["step"]}",
+                )
+
+        if self.parameters["Export_kWh_price"] < 1:
+            raise ValueError(
+                f"Export kWH price of {self.parameters["Export_kWh_price"]} is less than 1p / kWh.",
+                " Check that the units are correctly in p / kWh and not £ / kWh.",
+            )
+
+        if self.parameters["ASHP_HSource"]["step"] != 0:
+            raise ValueError(
+                "Scanning over ASHP_HSource parameters for a site without a hot room.",
+                " Set ASHP_HSource['min'] == ASHP_HSource['max'] == 1.",
+            )
 
     def variable_param(self) -> dict[str, ParamRange]:
         """

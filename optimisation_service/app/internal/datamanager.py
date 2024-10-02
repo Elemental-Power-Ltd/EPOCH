@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pandas as pd
@@ -50,17 +51,19 @@ class DataManager:
         logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
         os.makedirs(self.temp_data_dir)
 
-        if site_data.loc == FileLoc.local:
+        if site_data.site_id == "demo_edinburgh":
+            self.copy_input_data(Path("mount_site_data"), self.temp_data_dir)
+        elif site_data.loc == FileLoc.local:
             self.copy_input_data(site_data.path, self.temp_data_dir)
-        else:
-            if site_data.site_id == "demo_edinburgh":
-                self.copy_input_data(Path("mount_site_data"), self.temp_data_dir)
+        elif site_data.loc == FileLoc.remote:
+            if site_data.dataset_ids:
+                site_data_entries = await self.fetch_specific_datasets(site_data)
             else:
                 site_data_entries = await self.fetch_latest_datasets(site_data)
-                dfs = self.transform_all_input_data(site_data_entries)
-                logger.info(f"Saving site data to {self.temp_data_dir}.")
-                for name, df in dfs.items():
-                    df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
+            dfs = self.transform_all_input_data(site_data_entries)
+            logger.info(f"Saving site data to {self.temp_data_dir}.")
+            for name, df in dfs.items():
+                df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
 
     def copy_input_data(self, source: str | os.PathLike, destination: str | os.PathLike) -> None:
         """
@@ -95,6 +98,39 @@ class DataManager:
             site_data_entries = await self.db_post(client=client, subdirectory="/get-latest-datasets", data=site_data)
         return site_data_entries
 
+    async def fetch_specific_datasets(self, site_data: RemoteMetaData) -> SiteDataEntries:
+        """
+        Fetch some specificially chosen datasets from the database.
+
+        Parameters
+        ----------
+        site_data
+            Description of data.
+
+        Returns
+        -------
+        site_data_entries
+            Dictionary of unprocessed datasets.
+        """
+        logger.info(f"Selecting specific datasets: {site_data.dataset_ids}")
+        async with httpx.AsyncClient() as client:
+            site_data_entries = await self.db_post(
+                client=client,
+                subdirectory="/get-specific-datasets",
+                data={
+                    "site_id": site_data.site_id,
+                    "start_ts": site_data.start_ts,
+                    "HeatingLoad": site_data.dataset_ids.get("HeatingLoad"),
+                    "ASHPData": site_data.dataset_ids.get("ASHPData"),
+                    "CarbonIntensity": site_data.dataset_ids.get("CarbonIntensity"),
+                    "ElectricityMeterData": site_data.dataset_ids.get("ElectricityMeterData"),
+                    "ElectricityMeterDataSynthesised": site_data.dataset_ids.get("ElectricityMeterDataSynthesised"),
+                    "ImportTariff": site_data.dataset_ids.get("ImportTariff"),
+                    "Weather": site_data.dataset_ids.get("Weather"),
+                },
+            )
+        return site_data_entries
+
     def transform_all_input_data(self, site_data_entries: SiteDataEntries) -> dict[str, pd.DataFrame]:
         """
         Transform a response from /get-latest-datasets into a set of dataframes
@@ -118,12 +154,12 @@ class DataManager:
             "ASHPoutput": self.transform_ASHP_output_data(site_data_entries["ashp_output"]),
             "Importtariff": self.transform_import_tariff_data(site_data_entries["import_tariffs"]),
             "GridCO2": self.transform_grid_CO2_data(site_data_entries["grid_co2"]),
-            "DHWdemand": self.transform_grid_CO2_data(site_data_entries["heat"]),
+            "DHWdemand": self.transform_dhw_data(site_data_entries["heat"]),
         }
         return site_data
 
     async def db_post(
-        self, client: httpx.AsyncClient, subdirectory: str, data: RemoteMetaData | LocalMetaData
+        self, client: httpx.AsyncClient, subdirectory: str, data: RemoteMetaData | LocalMetaData | dict[str, Any]
     ) -> SiteDataEntries:
         """
         Send a post request to the database api server.
@@ -183,13 +219,11 @@ class DataManager:
         df = pd.DataFrame.from_records(eload)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1"])
         df["FixLoad2"] = 0
-        df = df.sort_values("HourOfYear")
         return df
 
     def transform_rgen_data(self, rgen: RecordsList) -> pd.DataFrame:
         df = pd.DataFrame.from_records(rgen)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
-        df = df.sort_values("HourOfYear")
         df["RGen2"] = 0
         df["RGen3"] = 0
         df["RGen4"] = 0
@@ -198,19 +232,16 @@ class DataManager:
     def transform_heat_data(self, heat: RecordsList) -> pd.DataFrame:
         df = pd.DataFrame.from_records(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
-        df = df.sort_values("HourOfYear")
         return df
 
     def transform_airtemp_data(self, heat: RecordsList) -> pd.DataFrame:
         df = pd.DataFrame.from_records(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "AirTemp"])
-        df = df.sort_values("HourOfYear")
         return df
 
     def transform_dhw_data(self, heat: RecordsList) -> pd.DataFrame:
         df = pd.DataFrame.from_records(heat)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "DHWLoad1", "DHWLoad2", "DHWLoad3", "DHWLoad4"])
-        df = df.sort_values("HourOfYear")
+        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "DHWLoad1"])
         return df
 
     def transform_ASHP_input_data(self, ashp_input: ASHPResult) -> pd.DataFrame:
@@ -234,11 +265,9 @@ class DataManager:
     def transform_import_tariff_data(self, import_tariffs: RecordsList) -> pd.DataFrame:
         df = pd.DataFrame.from_records(import_tariffs)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
-        df = df.sort_values("HourOfYear")
         return df
 
     def transform_grid_CO2_data(self, grid_co2: RecordsList) -> pd.DataFrame:
         df = pd.DataFrame.from_records(grid_co2)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "GridCO2"])
-        df = df.sort_values("HourOfYear")
         return df

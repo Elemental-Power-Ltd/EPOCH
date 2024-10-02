@@ -14,7 +14,7 @@ from ..internal.datamanager import DataManager
 from ..internal.grid_search import convert_param
 from ..internal.problem import _OBJECTIVES, ParameterDict, Problem
 from ..internal.result import Result
-from ..models.core import EndpointResult, EndpointTask, TaskResponse, TaskWithUUID
+from ..models.core import EndpointResult, EndpointTask, ObjectiveValues, TaskResponse, TaskWithUUID
 from ..models.optimisers import OptimiserFunc
 from ..models.tasks import Task
 from .epl_queue import IQueue
@@ -63,13 +63,19 @@ def process_results(task: Task, results: Result, completed_at: datetime.datetime
         solution = solution_dict
         objective_values_dict = dict(zip(_OBJECTIVES, objective_values))
         OptRes = EndpointResult(
-            task_id=str(task.task_id),
-            result_id=str(uuid.uuid4()),  # generate a uuid to refer back to later
+            task_id=task.task_id,
+            result_id=uuid.uuid4(),  # generate a uuid to refer back to later
             solution=solution,  # type: ignore
-            objective_values=objective_values_dict,  # type: ignore
+            objective_values=ObjectiveValues(
+                carbon_balance=objective_values_dict.get("carbon_balance", float("NaN")),
+                capex=objective_values_dict.get("capex", float("NaN")),
+                cost_balance=objective_values_dict.get("cost_balance", float("NaN")),
+                payback_horizon=objective_values_dict.get("payback_horizon", float("NaN")),
+                annualised_cost=objective_values_dict.get("annualised_cost", float("NaN")),
+            ),  # type: ignore
             n_evals=results.n_evals,
             exec_time=results.exec_time,
-            completed_at=str(completed_at),
+            completed_at=completed_at,
         )
         Optimisation_Results.append(OptRes)
     return Optimisation_Results
