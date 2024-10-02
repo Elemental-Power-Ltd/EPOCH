@@ -11,6 +11,8 @@ from collections.abc import Generator
 
 import numpy as np
 
+from app.models.problem import ParametersWORange, ParametersWRange
+
 from .log import logger
 
 try:
@@ -95,15 +97,17 @@ def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / "inputParameters.json"} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / "EpochConfig.json"} is not a file"
 
-    result = subprocess.run([
-        str(full_path_to_exe),
-        "--input",
-        str(input_dir),
-        "--output",
-        str(output_dir),
-        "--config",
-        str(config_dir),
-    ])
+    result = subprocess.run(
+        [
+            str(full_path_to_exe),
+            "--input",
+            str(input_dir),
+            "--output",
+            str(output_dir),
+            "--config",
+            str(config_dir),
+        ]
+    )
 
     assert result.returncode == 0
 
@@ -130,44 +134,7 @@ class PyTaskData(TaskData):
     Implements dict-like access, with string keys.
     """
 
-    _VALID_KEYS = frozenset([
-        "ASHP_HPower",
-        "ASHP_HSource",
-        "ASHP_HotTemp",
-        "ASHP_RadTemp",
-        "CAPEX_limit",
-        "ESS_capacity",
-        "ESS_charge_mode",
-        "ESS_charge_power",
-        "ESS_discharge_mode",
-        "ESS_discharge_power",
-        "ESS_start_SoC",
-        "EV_flex",
-        "Export_headroom",
-        "Export_kWh_price",
-        "Fixed_load1_scalar",
-        "Fixed_load2_scalar",
-        "Flex_load_max",
-        "GridExport",
-        "GridImport",
-        "Import_headroom",
-        "Min_power_factor",
-        "Mop_load_max",
-        "OPEX_limit",
-        "ScalarHL1",
-        "ScalarHYield",
-        "ScalarRG1",
-        "ScalarRG2",
-        "ScalarRG3",
-        "ScalarRG4",
-        "f22_EV_CP_number",
-        "r50_EV_CP_number",
-        "s7_EV_CP_number",
-        "target_max_concurrency",
-        "time_budget_min",
-        "timestep_hours",
-        "u150_EV_CP_number",
-    ])
+    _VALID_KEYS = frozenset(ParametersWRange + ParametersWORange)
 
     _INTEGER_KEYS = frozenset(["ESS_charge_mode", "ESS_discharge_mode", "target_max_concurrency"])
 
