@@ -161,13 +161,13 @@ def run_headless(
     if platform.system() == "Windows":
         exe_name = "Epoch.exe"
     else:
-        exe_name = "epoch"
+        exe_name = "Epoch"
 
     project_path = pathlib.Path(project_path)
 
     full_path_to_exe = pathlib.Path(exe_name)
     if not full_path_to_exe.is_file():
-        suffix = pathlib.Path("install", "headless", "bin")
+        suffix = pathlib.Path("build", "epoch_main")
         full_path_to_exe = project_path / suffix / exe_name
     assert pathlib.Path(full_path_to_exe).exists(), f"Could not find an EPOCH executable at {full_path_to_exe}"
 
