@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import timedelta
@@ -31,6 +32,8 @@ from ..models.algorithms import Algorithm
 from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
 from .task_data_wrapper import PySimulationResult, PyTaskData, Simulator
+
+logger = logging.getLogger("default")
 
 Config.warnings["not_compiled"] = False
 
@@ -308,6 +311,9 @@ class ProblemInstance(ElementwiseProblem):
         result = self.simulate(x)
 
         out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]
+        if np.isnan(out["F"]).any():
+            logger.warning(f"nan in objective values for sol: {x}")
+
         out["G"] = []
         for constraint, bounds in self.constraints.items():
             min_value = bounds.get("min", None)
