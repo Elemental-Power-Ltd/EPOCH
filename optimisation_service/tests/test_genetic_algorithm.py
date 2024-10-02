@@ -7,7 +7,6 @@ from app.internal.genetic_algorithm import (
     NSGA2,
     GeneticAlgorithm,
     ProblemInstance,
-    SamplingMethod,
 )
 from app.internal.problem import Problem, load_problem
 from app.internal.result import Result
@@ -24,20 +23,6 @@ class TestNSGA2:
         Test default algorithm initialisation.
         """
         NSGA2()
-
-    def test_good_sampling_method(self) -> None:
-        """
-        Test sampling_method initialisation parameter with good values.
-        """
-        NSGA2(sampling_method=SamplingMethod.LHS)
-        NSGA2(sampling_method=SamplingMethod.RS)
-
-    def test_bad_sampling_method(self) -> None:
-        """
-        Test sampling_method initialisation parameter with bad values.
-        """
-        with pytest.raises(KeyError):
-            NSGA2(sampling_method=1)  # type: ignore
 
     @pytest.mark.slow
     def test_run(self, example_problem: Problem) -> None:
@@ -66,20 +51,6 @@ class TestGeneticAlgorithm:
         Test default algorithm initialisation.
         """
         GeneticAlgorithm()
-
-    def test_good_sampling_method(self) -> None:
-        """
-        Test sampling_method initialisation parameter with good values.
-        """
-        GeneticAlgorithm(sampling_method=SamplingMethod.LHS)
-        GeneticAlgorithm(sampling_method=SamplingMethod.RS)
-
-    def test_bad_sampling_method(self) -> None:
-        """
-        Test sampling_method initialisation parameter with bad values.
-        """
-        with pytest.raises(KeyError):
-            GeneticAlgorithm(sampling_method=1)  # type: ignore
 
     @pytest.mark.slow
     def test_run(self, example_problem: Problem) -> None:

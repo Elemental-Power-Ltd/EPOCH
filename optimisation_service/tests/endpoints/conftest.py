@@ -111,12 +111,14 @@ def endpointtask_factory() -> Callable[[], EndpointTask]:
             r50_EV_CP_number=EndpointParamRange(min=0, max=0, step=0),
             s7_EV_CP_number=EndpointParamRange(min=0, max=0, step=0),
             u150_EV_CP_number=EndpointParamRange(min=0, max=0, step=0),
+            DHW_cylinder_volume=EndpointParamRange(min=100, max=100, step=0),
             CAPEX_limit=0,
             Export_kWh_price=5,
             OPEX_limit=0,
             target_max_concurrency=44,
             time_budget_min=5,
             timestep_hours=1,
+            timewindow=8760,
         )
 
         objectives = [
@@ -192,12 +194,14 @@ def task_factory(tmpdir_factory: pytest.TempdirFactory) -> Callable[[], Task]:
                 r50_EV_CP_number=ParamRange(min=0, max=1, step=1),
                 s7_EV_CP_number=ParamRange(min=0, max=1, step=1),
                 u150_EV_CP_number=ParamRange(min=0, max=1, step=1),
+                DHW_cylinder_volume=ParamRange(min=100, max=100, step=0),
                 CAPEX_limit=0,
                 Export_kWh_price=0,
                 OPEX_limit=0,
                 target_max_concurrency=0,
                 time_budget_min=0,
-                timestep_hours=0,
+                timestep_hours=0.5,
+                timewindow=8670,
             ),
             input_dir=temp_data_folder,
         )

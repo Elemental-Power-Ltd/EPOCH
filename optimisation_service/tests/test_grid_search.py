@@ -25,7 +25,6 @@ def example_problem() -> Problem:
     return load_problem(name="var-3", save_dir=Path("tests", "data", "benchmarks"))
 
 
-@pytest.mark.requires_epoch
 class TestGridSearch:
     def test_initialisation(self, temporary_directory: os.PathLike) -> None:
         """
@@ -33,6 +32,7 @@ class TestGridSearch:
         """
         GridSearch(keep_degenerate=False)
 
+    @pytest.mark.requires_epoch
     def test_run(self, example_problem: Problem) -> None:
         """
         Test algorithm run.
@@ -43,6 +43,7 @@ class TestGridSearch:
         exec_time = perf_counter() - t0
         assert exec_time < 60
 
+    @pytest.mark.requires_epoch
     def test_res(self, example_problem: Problem) -> None:
         """
         Test output of algorithm.
