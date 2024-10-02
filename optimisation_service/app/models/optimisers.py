@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
 
-from app.internal.genetic_algorithm import NSGA2, GeneticAlgorithm, SamplingMethod
+from app.internal.genetic_algorithm import NSGA2, GeneticAlgorithm
 from app.internal.grid_search import GridSearch
 
 
@@ -26,10 +26,6 @@ class GABaseHyperParam(BaseModel):
         description="Number of offsprings to generate through crossover at each generation."
         + "Can be greater or smaller than initial pop_size",
         default=128,
-    )
-    sampling_method: SamplingMethod = Field(
-        description="Sampling method used to generate initial population.",
-        default=SamplingMethod.LHS,
     )
     prob_crossover: PositiveFloat = Field(
         examples=[0.1, 0.5, 0.9], description="Probability of applying crossover between two parents.", default=0.9
