@@ -43,15 +43,10 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	myCost.calculate_Project_CAPEX();
 	if (taskData.CAPEX_limit*1000 < myCost.get_project_CAPEX())
 	{
-		// TODO - apply proper fix for 'nullable' results
-		FullSimulationResult fullSimulationResult;
-		fullSimulationResult.paramIndex = taskData.paramIndex;
-		fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
+		auto fullSimulationResult = makeInvalidResult(taskData);
 
-		fullSimulationResult.total_annualised_cost = std::numeric_limits<float>::max();
-		fullSimulationResult.scenario_cost_balance = std::numeric_limits<float>::min();
-		fullSimulationResult.payback_horizon_years = std::numeric_limits<float>::max();
-		fullSimulationResult.scenario_carbon_balance = std::numeric_limits<float>::min();
+		// but this invalid result can still have a valid CAPEX
+		fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
 		return fullSimulationResult;
 	}
 
@@ -70,22 +65,24 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	std::unique_ptr<DataCentre> dataCentre;
 	std::unique_ptr<AmbientHeatPumpController> ambientController;
 
-	if (config.DataC() == 1 && taskData.ASHP_HSource == 2) {
+	if (config.dataCentrePresent() && taskData.ASHP_HSource == 2) {
 		// make a DataCentre with a hotroom heatpump
 		dataCentre = std::make_unique<DataCentreWithASHP>(historicalData, taskData);
 	}
-	else if (config.DataC() == 1 && taskData.ASHP_HSource == 1) {
+	else if (config.dataCentrePresent() && taskData.ASHP_HSource == 1) {
 		// make a basic data centre (without a heatpump)
 		dataCentre =  std::make_unique<BasicDataCentre>(historicalData, taskData);
 		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData);
 	}
-	else if (config.DataC() != 1 && taskData.ASHP_HSource == 1) {
+	else if (!config.dataCentrePresent() && taskData.ASHP_HSource == 1) {
 		// no DataCentre, ambient heatpump
 		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData);
 	}
 	else {
-		// INVALID STATE
-		throw std::exception();
+		// WARNING - THIS IS AN INVALID STATE
+
+		// return an 'invalid' simulation result
+		return makeInvalidResult(taskData);
 	}
 
 
@@ -102,7 +99,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	PV1.AllCalcs(tempSum);
 
 
-	if (config.EV1bal() == 1) {
+	if (config.getEVFlag() == EVFlag::NON_BALANCING) {
 		EV1.AllCalcs(tempSum);
 	}
 
@@ -115,7 +112,7 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 		ambientController->AllCalcs(tempSum);
 	}
 
-	if (config.DataCbal() == 1) {
+	if (config.getDataCentreFlag() == DataCentreFlag::NON_BALANCING) {
 		dataCentre->AllCalcs(tempSum);
 	} 
 
@@ -124,7 +121,10 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	float futureEnergy = 0.0f;
 	int timesteps = taskData.calculate_timesteps();
 
-	if (config.DataCbal() == 2 && config.EV1bal() == 2) {
+	auto dcFlag = config.getDataCentreFlag();
+	auto evFlag = config.getEVFlag();
+
+	if (dcFlag == DataCentreFlag::BALANCING && evFlag == EVFlag::BALANCING) {
 		// This represents the logic in M-VEST v0-7:
 		// EV is curtailed before the Data Centre
 
@@ -136,14 +136,14 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
 		}
 	}
-	else if (config.DataCbal() == 1 && config.EV1bal() == 2) {
+	else if (dcFlag != DataCentreFlag::BALANCING && evFlag == EVFlag::BALANCING) {
 		for (int t = 0; t < timesteps; t++) {
 			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch();
 			EV1.StepCalc(tempSum, futureEnergy, t);
 			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
 		}
 	}
-	else if (config.DataCbal() == 2 && config.EV1bal() == 1) {
+	else if (dcFlag == DataCentreFlag::BALANCING && evFlag != EVFlag::BALANCING) {
 		for (int t = 0; t < timesteps; t++) {
 			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch();
 			dataCentre->StepCalc(tempSum, futureEnergy, t);
@@ -167,7 +167,13 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	PV1.Report(fullSimulationResult);
 	EV1.Report(fullSimulationResult);
 	ESSmain.Report(fullSimulationResult);
-	dataCentre->Report(fullSimulationResult);
+	if (config.dataCentrePresent()) {
+		dataCentre->Report(fullSimulationResult);
+	}
+	else {
+		ambientController->Report(fullSimulationResult);
+	}
+	// TODO do HeatPump Reporting
 	grid.Report(fullSimulationResult);
 	MOP.Report(fullSimulationResult);
 	GasCH.Report(fullSimulationResult);
@@ -260,6 +266,22 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 
 	return fullSimulationResult;
 
+}
+
+FullSimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
+	// When a scenario is invalid, for now we return the FLT_MAX or FLT_MIN for each objective as appropriate
+
+	// TODO - apply proper fix for 'nullable' results
+	FullSimulationResult fullSimulationResult;
+	fullSimulationResult.paramIndex = taskData.paramIndex;
+
+	fullSimulationResult.project_CAPEX = std::numeric_limits<float>::max();
+	fullSimulationResult.total_annualised_cost = std::numeric_limits<float>::max();
+	fullSimulationResult.scenario_cost_balance = std::numeric_limits<float>::min();
+	fullSimulationResult.payback_horizon_years = std::numeric_limits<float>::max();
+	fullSimulationResult.scenario_carbon_balance = std::numeric_limits<float>::min();
+
+	return fullSimulationResult;
 }
 
 SimulationResult Simulator::simulateScenario(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const {

@@ -2,57 +2,57 @@
 
 #include "TaskData.hpp"
 
+
+enum class EVFlag { NOT_PRESENT, NON_BALANCING, BALANCING };
+enum class DataCentreFlag {NOT_PRESENT, NON_BALANCING, BALANCING };
+
 class Config
 {
 public:
-	Config(const TaskData& taskData) :
-		// Flags determine whether to create an energy component, initialise to 'not present' (=0)
-		EV1flag(0),
-		DataCflag(0),
-		// Flags determine whether to call an energy component 'in loop' for balancing, initialise to 'not balancing' (=0)
-		EV1balancing(0),
-		DataCbalancing(0)
+	Config(const TaskData& taskData)
 	{
 		// Check TaskData for component presence (to avoid creating and running empty components)
 		if ((taskData.s7_EV_CP_number + taskData.f22_EV_CP_number + taskData.r50_EV_CP_number + taskData.u150_EV_CP_number) > 0) {
-			// At least 1 EV_CP
-			EV1flag = 1;
-			EV1balancing = 1;
+
+			if (taskData.EV_flex > 0) {
+				mEVConfiguration = EVFlag::BALANCING;
+			}
+			else {
+				mEVConfiguration = EVFlag::NON_BALANCING;
+			}
 		}
+		else {
+			mEVConfiguration = EVFlag::NOT_PRESENT;
+		}
+
+		// With the current configuration, there is no way to specify that there is a Data Centre but it is non-balancing
 		if (taskData.Flex_load_max > 0) {
-			// There is a DataC
-			DataCflag = 1;
-			DataCbalancing = 1;
+			mDataCentreConfiguration = DataCentreFlag::BALANCING;
 		}
-		if (taskData.EV_flex > 0) {
-			// EV charging is flexible (2)
-			EV1balancing = 2;
+		else {
+			mDataCentreConfiguration = DataCentreFlag::NOT_PRESENT;
 		}
-		if (taskData.Flex_load_max > 0) {
-			// FUTURE: Seperate DataC load from its flex status (2)
-			DataCbalancing = 2;
-		}
-		// if(taskData.ScalarRG1 + taskData.ScalarRG2 + taskData.ScalarRG3 + taskData.ScalarRG4) > 0) {PV1flag = 1;}
-		// could also test PV hist data > 0
-		// if(std:min(taskData.ESS_charge_power, taskData.ESS_discharge_power, taskData.ESS_capacity) > 0) {ESSflag = 1;}
 	}
 
-	int DataC() {
-		return DataCflag;
+	EVFlag getEVFlag() {
+		return mEVConfiguration;
 	}
-	int EV1() {
-		return EV1flag;
+
+	DataCentreFlag getDataCentreFlag() {
+		return mDataCentreConfiguration;
 	}
-	int EV1bal() {
-		return EV1balancing;
+
+	bool dataCentrePresent() {
+		return mDataCentreConfiguration == DataCentreFlag::BALANCING || mDataCentreConfiguration == DataCentreFlag::NON_BALANCING;
 	}
-	int DataCbal() {
-		return DataCbalancing;
+
+	bool EVPresent() {
+		return mEVConfiguration == EVFlag::BALANCING || mEVConfiguration == EVFlag::NON_BALANCING;
 	}
+
 
 private:
-	int EV1flag;
-	int DataCflag;
-	int EV1balancing;
-	int DataCbalancing;
+
+	EVFlag mEVConfiguration;
+	DataCentreFlag mDataCentreConfiguration;
 };

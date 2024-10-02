@@ -8,6 +8,8 @@
 #include "../TaskData.hpp"
 #include "../../Definitions.hpp"
 
+enum class DataCentreOptimisationMode { Target, Price, Carbon };
+
 class DataCentre {
 
 public:
@@ -53,7 +55,7 @@ private:
     HotRoomHeatPump mHeatPump;
 
     const int mTimesteps;
-    const int mOptimisationMode;
+    const DataCentreOptimisationMode mOptimisationMode;
     const float mDataCentreMaxLoad_e;
     const float mHeatScalar;
     float mHeatPumpMaxElectricalLoad_e;

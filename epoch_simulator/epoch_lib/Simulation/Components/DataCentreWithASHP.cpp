@@ -4,8 +4,7 @@ DataCentreWithASHP::DataCentreWithASHP(const HistoricalData& historicalData, con
 	DataCentre(historicalData, taskData),
 	mHeatPump(historicalData, taskData),
 	mTimesteps(taskData.calculate_timesteps()),
-	// Mode: 1=Target, 2=Price, 3=Carbon
-	mOptimisationMode(1),
+	mOptimisationMode(DataCentreOptimisationMode::Target),
 	// Max kWh per TS
 	mDataCentreMaxLoad_e(taskData.Flex_load_max* taskData.timestep_hours),
 	// Percentage of waste heat captured for ASHP
@@ -20,12 +19,17 @@ DataCentreWithASHP::DataCentreWithASHP(const HistoricalData& historicalData, con
 
 	// Calculate Target Load based on the optimisation mode: 1=Target (default), 2=Price, 3=Carbon
 	switch (mOptimisationMode) {
-	case 2: // Price minimisation mode
-		// placeholder for lookahead supplier price mode
-	case 3: // Carbon minimisation mode
-		// placholder for lookahead grid carbon mode
-	default: // Target Power Mode (initially Max Load)							
+	case DataCentreOptimisationMode::Target:
 		mTargetLoad_e.setConstant(mDataCentreMaxLoad_e);
+		break;
+	case DataCentreOptimisationMode::Price:
+		// placeholder for lookahead supplier price mode
+		throw std::logic_error("Not Implemented");
+		break;
+	case DataCentreOptimisationMode::Carbon:
+		// placholder for lookahead grid carbon mode
+		throw std::logic_error("Not Implemented");
+		break;
 	}
 }
 
@@ -78,6 +82,7 @@ float DataCentreWithASHP::getTargetLoad(int timestep) {
 void DataCentreWithASHP::Report(FullSimulationResult& result) const {
 	result.Data_centre_target_load = mTargetLoad_e;
 	result.Data_centre_actual_load = mActualLoad_e;
+	// TODO - investigate mTargetHeat_h (is it always 0?)
 	result.Data_centre_target_heat = mTargetHeat_h;
 	result.Data_centre_available_hot_heat = mAvailableHotHeat_h;
 

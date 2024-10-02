@@ -22,5 +22,7 @@ public:
 
 	FullSimulationResult simulateScenarioFull(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const;
 
+	FullSimulationResult makeInvalidResult(const TaskData& taskData) const;
+
 	year_TS calculateRGenTotal(const HistoricalData& historicalData, const TaskData& taskData) const;
 };
