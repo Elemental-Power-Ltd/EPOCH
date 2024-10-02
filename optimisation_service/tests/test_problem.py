@@ -50,6 +50,7 @@ def default_parameters() -> ParameterDict:
         "time_budget_min": 1.0,
         "timestep_hours": 1.0,
         "u150_EV_CP_number": {"min": 0, "max": 0, "step": 0},
+        "DHW_cylinder_volume": {"min": 100, "max": 100, "step": 0},
     }
 
 
@@ -189,6 +190,7 @@ class TestProblem:
             "time_budget_min": 1.0,
             "timestep_hours": 1.0,
             "u150_EV_CP_number": 0,
+            "DHW_cylinder_volume": 100,
         }
 
     def test_size(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
@@ -269,5 +271,6 @@ class TestProblemLoading:
             "time_budget_min": 1.0,
             "timestep_hours": 1.0,
             "u150_EV_CP_number": {"min": 0, "max": 0, "step": 0},
+            "DHW_cylinder_volume": {"min": 100, "max": 100, "step": 0},
         }
         assert problem.input_dir == Path("tests", "data", "benchmarks", "var-3", "InputData")
