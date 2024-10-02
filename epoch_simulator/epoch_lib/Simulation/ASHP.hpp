@@ -30,13 +30,13 @@ public:
 		mMaxElec_e(0.0f),
 
 		// Initilaise results data vectors with all values to zero
-		DHWload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
-		DHWout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat output
-		CHload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
-		CHout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),		// ASHP heat output
-		FreeHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),		// ASHP heat from ambient
+		mDHWload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
+		mDHWout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat output
+		mCHload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
+		mCHout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),		// ASHP heat output
+		mFreeHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),		// ASHP heat from ambient
 		FreeHeatTemp_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat: temp value for calcs
-		UsedHotHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))	// ASHP heat from Hotroom
+		mUsedHotHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))	// ASHP heat from Hotroom
 
 	{
 		mResidualCapacity = Eigen::VectorXf::Constant(taskData.calculate_timesteps(), 1.0f);// Remaining heatpump capacity
@@ -54,9 +54,11 @@ public:
 
 	void AllCalcs(TempSum& tempSum, const year_TS& AvailHotHeat_h) {
 		// Applies fixed precedence: hot water is served before central heating
-		if (mDHWflag == 1) {
-			mASHPperfDHW.Lookup(mHotTemp, mHeatPumpMaxHotRoom);		// 2nd Arg is return values struct
-			for (int t = 1; t <= mTimesteps; t++) {
+
+		mASHPperfDHW.Lookup(mHotTemp, mHeatPumpMaxHotRoom);		// 2nd Arg is return values struct
+
+		for (int t = 0; t < mTimesteps; t++) {
+			if (mDHWflag == 1) {
 				// Lookup performances for DHW (hot water) output temperature
 				mASHPperfDHW.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);	// 2nd Arg is return values struct
 
@@ -71,70 +73,70 @@ public:
 				}
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
-					DHWout_h[t] = 0;
-					DHWload_e[t] = 0;
+					mDHWout_h[t] = 0;
+					mDHWload_e[t] = 0;
 					mResidualCapacity[t] = 0;
 				} else if (tempSum.DHW_load_h[t] <= mHeatPumpMax_h) {	// Adjust values to load
-					DHWout_h[t] = tempSum.DHW_load_h[t];
-					DHWload_e[t] = mHeatPumpMax_e * DHWout_h[t] / mHeatPumpMax_h;
-					mResidualCapacity[t] = 1 - DHWout_h[t] / mHeatPumpMax_h;
+					mDHWout_h[t] = tempSum.DHW_load_h[t];
+					mDHWload_e[t] = mHeatPumpMax_e * mDHWout_h[t] / mHeatPumpMax_h;
+					mResidualCapacity[t] = 1 - mDHWout_h[t] / mHeatPumpMax_h;
 				} else {	// ASHP cannot meet heating target, so will do maximum capacity
-					DHWout_h[t] = mHeatPumpMax_h;
-					DHWload_e[t] = mHeatPumpMax_e;
+					mDHWout_h[t] = mHeatPumpMax_h;
+					mDHWload_e[t] = mHeatPumpMax_e;
 					mResidualCapacity[t] = 0;
 				}
 			}
-			FreeHeat_h = DHWout_h - DHWload_e - AvailHotHeat_h;	// How much heat from ambient
-			FreeHeat_h.cwiseMax(0.0f);	// Prevent -ve values where not all AvailHotHeat_h was required
-			UsedHotHeat_h = DHWout_h - DHWload_e - FreeHeat_h;
-		}
-		if (mCHflag == 1) {
-			mASHPperfCH.Lookup(mHotTemp, mHeatPumpMaxHotRoom);				// 2nd Arg is return values struct
-			for (int t = 1; t <= mTimesteps; t++) {
+			mFreeHeat_h[t] = std::max(mDHWout_h[t] - mDHWload_e[t] - AvailHotHeat_h[t], 0.0f);	// How much heat from ambient
+			mUsedHotHeat_h[t] = mDHWout_h[t] - mDHWload_e[t] - mFreeHeat_h[t];
+
+			if (mCHflag == 1) {
+
 				// Lookup performances for CH (central heating) output temperature
 				mASHPperfCH.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);// 2nd Arg is return values struct
-		
-				mAvailHotHeatTemp_h = AvailHotHeat_h[t] - UsedHotHeat_h[t];
+
+				mAvailHotHeatTemp_h = AvailHotHeat_h[t] - mUsedHotHeat_h[t];
 				// Use lower of Hotroom temperature values & Ambient + hotroom energy values (Conservation of Energy)
 				if ((mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h[t]) >= mHeatPumpMaxHotRoom.Heat_h) {
 					mHeatPumpMax_h = mHeatPumpMaxHotRoom.Heat_h * mResidualCapacity[t];
 					mHeatPumpMax_e = mHeatPumpMaxHotRoom.Load_e * mResidualCapacity[t];
-				} else {
+				}
+				else {
 					mHeatPumpMax_h = (mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h[t]) * mResidualCapacity[t];
 					mHeatPumpMax_e = mHeatPumpMaxAmbient.Load_e * mResidualCapacity[t];
 				}
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
-					CHout_h[t] = 0;
-					CHload_e[t] = 0;
-					mResidualCapacity[t] = 0;
-				} else if (tempSum.Heat_h[t] <= mHeatPumpMax_h) {	// Adjust values to load
-					CHout_h[t] = tempSum.Heat_h[t];
-					CHload_e[t] = mHeatPumpMax_e * CHout_h[t] / mHeatPumpMax_h;
-					mResidualCapacity[t] = mResidualCapacity[t] * (1 - CHout_h[t] / mHeatPumpMax_h);
-				} else {	// ASHP cannot meet heating target, so will do maximum capacity
-					CHout_h[t] = mHeatPumpMax_h;
-					CHload_e[t] = mHeatPumpMax_e;
+					mCHout_h[t] = 0;
+					mCHload_e[t] = 0;
 					mResidualCapacity[t] = 0;
 				}
+				else if (tempSum.Heat_h[t] <= mHeatPumpMax_h) {	// Adjust values to load
+					mCHout_h[t] = tempSum.Heat_h[t];
+					mCHload_e[t] = mHeatPumpMax_e * mCHout_h[t] / mHeatPumpMax_h;
+					mResidualCapacity[t] = mResidualCapacity[t] * (1 - mCHout_h[t] / mHeatPumpMax_h);
+				}
+				else {	// ASHP cannot meet heating target, so will do maximum capacity
+					mCHout_h[t] = mHeatPumpMax_h;
+					mCHload_e[t] = mHeatPumpMax_e;
+					mResidualCapacity[t] = 0;
+				}
+				FreeHeatTemp_h[t] = std::max(mCHout_h[t] - mCHload_e[t] - AvailHotHeat_h[t], 0.0f);	// How much heat from ambient
+				mFreeHeat_h[t] += FreeHeatTemp_h[t];
+				mUsedHotHeat_h[t] = mUsedHotHeat_h[t] + mCHout_h[t] - mCHload_e[t] - FreeHeatTemp_h[t];
 			}
-			FreeHeatTemp_h = CHout_h - CHload_e - AvailHotHeat_h;	// How much heat from ambient
-			FreeHeatTemp_h.cwiseMax(0.0f);	// Prevent -ve values where not all AvailHotHeat_h was required
-			FreeHeat_h += FreeHeatTemp_h;
-			UsedHotHeat_h = UsedHotHeat_h + CHout_h - CHload_e - FreeHeatTemp_h;
 		}
-		tempSum.Elec_e = tempSum.Elec_e + DHWload_e + CHload_e;
-		tempSum.DHW_load_h = tempSum.DHW_load_h - DHWout_h;
-		tempSum.Heat_h = tempSum.Heat_h - CHout_h;
+		tempSum.Elec_e = tempSum.Elec_e + mDHWload_e + mCHload_e;
+		tempSum.DHW_load_h = tempSum.DHW_load_h - mDHWout_h;
+		tempSum.Heat_h = tempSum.Heat_h - mCHout_h;
 	}
 
 	void StepCalc(TempSum& tempSum, const float AvailHotHeat_h, const float ElecBudget_e, int t) {
 		if(ElecBudget_e <= 0) {
 			// No electricty available for the ASHP (balancing object)
-			DHWout_h[t] = 0.0f;
-			DHWload_e[t] = 0.0f;
-			CHout_h[t] = 0.0f;
-			CHload_e[t] = 0.0f;
+			mDHWout_h[t] = 0.0f;
+			mDHWload_e[t] = 0.0f;
+			mCHout_h[t] = 0.0f;
+			mCHload_e[t] = 0.0f;
 			mResidualCapacity[t] = 0.0f;
 			mElecResidual_e = 0.0f;
 		}
@@ -156,37 +158,37 @@ public:
 				}
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
-					DHWout_h[t] = 0;
-					DHWload_e[t] = 0;
+					mDHWout_h[t] = 0;
+					mDHWload_e[t] = 0;
 					mResidualCapacity[t] = 0;
 				}
 				else if (tempSum.DHW_load_h[t] <= mHeatPumpMax_h) {	// Adjust values to load
-					DHWout_h[t] = tempSum.DHW_load_h[t];
-					DHWload_e[t] = mHeatPumpMax_e * DHWout_h[t] / mHeatPumpMax_h;
-					mResidualCapacity[t] = 1 - DHWout_h[t] / mHeatPumpMax_h;
+					mDHWout_h[t] = tempSum.DHW_load_h[t];
+					mDHWload_e[t] = mHeatPumpMax_e * mDHWout_h[t] / mHeatPumpMax_h;
+					mResidualCapacity[t] = 1 - mDHWout_h[t] / mHeatPumpMax_h;
 				}
 				else {	// ASHP cannot meet heating target, so will do maximum capacity
-					DHWout_h[t] = mHeatPumpMax_h;
-					DHWload_e[t] = mHeatPumpMax_e;
+					mDHWout_h[t] = mHeatPumpMax_h;
+					mDHWload_e[t] = mHeatPumpMax_e;
 					mResidualCapacity[t] = 0;
 				}
 				// Adjust output and load to meet available electricity
-				if (DHWload_e[t] > ElecBudget_e) {
+				if (mDHWload_e[t] > ElecBudget_e) {
 					// Check whether the ASHP load exceeds the electricity budget, if so, reduce proportionally
-					DHWout_h[t] = DHWout_h[t] * ElecBudget_e / DHWload_e[t];
-					DHWload_e[t] = ElecBudget_e;
-					mResidualCapacity[t] = (1 - DHWout_h[t] / mHeatPumpMax_h) * ElecBudget_e / DHWload_e[t];
+					mDHWout_h[t] = mDHWout_h[t] * ElecBudget_e / mDHWload_e[t];
+					mDHWload_e[t] = ElecBudget_e;
+					mResidualCapacity[t] = (1 - mDHWout_h[t] / mHeatPumpMax_h) * ElecBudget_e / mDHWload_e[t];
 				}
-				FreeHeat_h[t] = DHWout_h[t] - DHWload_e[t] - AvailHotHeat_h;	// How much heat from ambient		
-				if (FreeHeat_h[t] < 0) { FreeHeat_h[t] = 0; }	// Prevent -ve values (not all AvailHotHeat_h required)
-				UsedHotHeat_h[t] = DHWout_h[t] - DHWload_e[t] - FreeHeat_h[t];
-				mElecResidual_e = ElecBudget_e - DHWload_e[t];
+				mFreeHeat_h[t] = mDHWout_h[t] - mDHWload_e[t] - AvailHotHeat_h;	// How much heat from ambient		
+				if (mFreeHeat_h[t] < 0) { mFreeHeat_h[t] = 0; }	// Prevent -ve values (not all AvailHotHeat_h required)
+				mUsedHotHeat_h[t] = mDHWout_h[t] - mDHWload_e[t] - mFreeHeat_h[t];
+				mElecResidual_e = ElecBudget_e - mDHWload_e[t];
 			}
 		}
 		if (mElecResidual_e <= 0) {
 			// No electricty remains for the ASHP CH
-			CHout_h[t] = 0;
-			CHload_e[t] = 0;
+			mCHout_h[t] = 0;
+			mCHload_e[t] = 0;
 			mResidualCapacity[t] = 0;
 		} else {
 			if (mCHflag == 1) {
@@ -194,7 +196,7 @@ public:
 				mASHPperfCH.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);	// 2nd Arg is return values struct
 				mASHPperfCH.Lookup(mHotTemp, mHeatPumpMaxHotRoom);		// 2nd Arg is return values struct
 				
-				mAvailHotHeatTemp_h = AvailHotHeat_h - UsedHotHeat_h[t];
+				mAvailHotHeatTemp_h = AvailHotHeat_h - mUsedHotHeat_h[t];
 				// Max values = lower of Hotroom lookup value & Ambient + hotroom energy value (Conservation of Energy)
 				if ((mHeatPumpMaxAmbient.Heat_h + mAvailHotHeatTemp_h) >= mHeatPumpMaxHotRoom.Heat_h) {
 					mHeatPumpMax_h = mHeatPumpMaxHotRoom.Heat_h;
@@ -207,45 +209,45 @@ public:
 				}
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
-					CHout_h[t] = 0;
-					CHload_e[t] = 0;
+					mCHout_h[t] = 0;
+					mCHload_e[t] = 0;
 					mResidualCapacity[t] = 0;
 				}
 				else if (tempSum.Heat_h[t] <= mHeatPumpMax_h) {	// Adjust values to load
-					CHout_h[t] = tempSum.Heat_h[t];
-					CHload_e[t] = mHeatPumpMax_e * CHout_h[t] / mHeatPumpMax_h;
-					mResidualCapacity[t] = mResidualCapacity[t] * (1 - CHout_h[t] / mHeatPumpMax_h);
+					mCHout_h[t] = tempSum.Heat_h[t];
+					mCHload_e[t] = mHeatPumpMax_e * mCHout_h[t] / mHeatPumpMax_h;
+					mResidualCapacity[t] = mResidualCapacity[t] * (1 - mCHout_h[t] / mHeatPumpMax_h);
 				}
 				else {	// ASHP cannot meet heating target, so do maximum capacity
-					CHout_h[t] = mHeatPumpMax_h;
-					CHload_e[t] = mHeatPumpMax_e;
+					mCHout_h[t] = mHeatPumpMax_h;
+					mCHload_e[t] = mHeatPumpMax_e;
 					mResidualCapacity[t] = 0;
 				}
 				// Adjust output and load to meet available electricity
-				if (CHload_e[t] > mElecResidual_e) {
+				if (mCHload_e[t] > mElecResidual_e) {
 					// Check whether the ASHP load exceeds the electricity budget, if so, reduce proportionally
-					CHout_h[t] = CHout_h[t] * ElecBudget_e / CHload_e[t];
-					CHload_e[t] = ElecBudget_e;
-					mResidualCapacity[t] = (1 - CHout_h[t] / mHeatPumpMax_h) * ElecBudget_e / CHload_e[t];
+					mCHout_h[t] = mCHout_h[t] * ElecBudget_e / mCHload_e[t];
+					mCHload_e[t] = ElecBudget_e;
+					mResidualCapacity[t] = (1 - mCHout_h[t] / mHeatPumpMax_h) * ElecBudget_e / mCHload_e[t];
 				}
-				FreeHeatTemp_h[t] = CHout_h[t] - CHload_e[t] - mAvailHotHeatTemp_h;	// How much heat from ambient		
+				FreeHeatTemp_h[t] = mCHout_h[t] - mCHload_e[t] - mAvailHotHeatTemp_h;	// How much heat from ambient		
 				if (FreeHeatTemp_h[t] < 0) { FreeHeatTemp_h[t] = 0; }	// Prevent -ve values (not all AvailHotHeat_h required)
-				UsedHotHeat_h[t] = UsedHotHeat_h[t] + DHWout_h[t] - DHWload_e[t] - FreeHeatTemp_h[t];
-				mElecResidual_e = mElecResidual_e - CHload_e[t];
+				mUsedHotHeat_h[t] = mUsedHotHeat_h[t] + mDHWout_h[t] - mDHWload_e[t] - FreeHeatTemp_h[t];
+				mElecResidual_e = mElecResidual_e - mCHload_e[t];
 			}
 		}
-		tempSum.Elec_e[t] = tempSum.Elec_e[t] + DHWload_e[t] + CHload_e[t];
-		tempSum.DHW_load_h[t] = tempSum.DHW_load_h[t] - DHWout_h[t];
-		tempSum.Heat_h[t] = tempSum.Heat_h[t] - CHout_h[t];
+		tempSum.Elec_e[t] = tempSum.Elec_e[t] + mDHWload_e[t] + mCHload_e[t];
+		tempSum.DHW_load_h[t] = tempSum.DHW_load_h[t] - mDHWout_h[t];
+		tempSum.Heat_h[t] = tempSum.Heat_h[t] - mCHout_h[t];
 	}
 
 	// Public output data, create private ASHP object in parent
-	year_TS DHWload_e;
-	year_TS DHWout_h;
-	year_TS CHload_e;
-	year_TS CHout_h;
-	year_TS FreeHeat_h;
-	year_TS UsedHotHeat_h;
+	year_TS mDHWload_e;
+	year_TS mDHWout_h;
+	year_TS mCHload_e;
+	year_TS mCHout_h;
+	year_TS mFreeHeat_h;
+	year_TS mUsedHotHeat_h;
 
 private:
 	const int DHW_OUT_TEMP;
