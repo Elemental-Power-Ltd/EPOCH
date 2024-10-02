@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import pathlib
 import platform
@@ -18,6 +19,8 @@ from ..models.algorithms import Algorithm
 from ..models.problem import EndpointParameterDict, OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
 from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
 from .result import Result
+
+logger = logging.getLogger("default")
 
 _EPOCH_CONFIG = {"optimiser": {"leagueTableCapacity": 1, "produceExhaustiveOutput": True}}
 
@@ -153,6 +156,8 @@ def run_headless(
     -------
         A dictionary containing the best value for each of the five objectives
     """
+    logger.debug("Running run_headless.")
+
     if platform.system() == "Windows":
         exe_name = "Epoch.exe"
     else:
