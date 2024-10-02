@@ -5,6 +5,7 @@ from typing import Any, Never
 
 import numpy as np
 import numpy.typing as npt
+from paretoset import paretoset
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
 from pymoo.algorithms.soo.nonconvex.ga import GA as Pymoo_GA  # type: ignore
 from pymoo.config import Config  # type: ignore
@@ -125,8 +126,14 @@ class NSGA2(Algorithm):
             simresult = pi.simulate(sol)
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
         objective_values_arr = np.asarray(objective_values)
+
         n_evals = pareto_front.algorithm.evaluator.n_eval
         exec_time = timedelta(seconds=pareto_front.exec_time)
+
+        obj_direct = ["max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in problem.objectives]
+        pareto_efficient = paretoset(objective_values_arr, obj_direct, distinct=True)
+        solutions = solutions[pareto_efficient]
+        objective_values_arr = objective_values_arr[pareto_efficient]
 
         return Result(solutions=solutions, objective_values=objective_values_arr, exec_time=exec_time, n_evals=n_evals)
 
@@ -232,8 +239,10 @@ class GeneticAlgorithm(Algorithm):
         exec_timedelta = timedelta(seconds=float(exec_time))
         objective_values_arr, solutions_arr = np.asarray(objective_values), np.asarray(solutions)
 
-        objective_values_arr, non_degen_idx = np.unique(objective_values_arr, axis=0, return_index=True)
-        solutions_arr = solutions_arr[non_degen_idx]
+        obj_direct = ["max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in problem.objectives]
+        pareto_efficient = paretoset(objective_values_arr, obj_direct, distinct=True)
+        solutions_arr = solutions_arr[pareto_efficient]
+        objective_values_arr = objective_values_arr[pareto_efficient]
 
         return Result(solutions=solutions_arr, objective_values=objective_values_arr, exec_time=exec_timedelta, n_evals=n_evals)
 

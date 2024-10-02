@@ -208,7 +208,7 @@ def run_headless(
         ]
     )
 
-    assert result.returncode == 0
+    assert result.returncode == 0, result
 
     output_json = output_dir / "outputParameters.json"
 
