@@ -6,7 +6,7 @@
 
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
-#include "ASHPperf.hpp"
+#include "ASHPLookup.hpp"
 #include "TempSum.hpp"
 
 // ASHPhot is only used within a DataCentre or alternative heat waste object
@@ -16,13 +16,13 @@ public:
 	HotRoomHeatPump(const HistoricalData& historicalData, const TaskData& taskData) :
 		// Initialise Persistent Values
 		DHW_OUT_TEMP(60),	// FUTURE: removed when taskData.ASHP_DHWtemp available
-		mASHPperfDHW(taskData, DHW_OUT_TEMP),	// lookup object for DHW performance
-		mASHPperfCH(taskData, taskData.ASHP_RadTemp),	// lookup object for CH performance
+		mASHPperfDHW(historicalData, taskData, DHW_OUT_TEMP),	// lookup object for DHW performance
+		mASHPperfCH(historicalData, taskData, taskData.ASHP_RadTemp),	// lookup object for CH performance
 		mTimesteps(taskData.calculate_timesteps()),
 		mPowerScalar(taskData.timestep_hours),
 		mHotTemp(taskData.ASHP_HotTemp),
-		mDHWflag(1),	// FUTURE: read value from (new) taskData value or use ASHP_DHWtemp not zero
-		mCHflag(1),		// FUTURE: read value from (new) taskData value or use ASHP_RadTemp not zero
+		mHeatpumpSuppliesDHW(true),	// FUTURE: read value from (new) taskData value or use ASHP_DHWtemp not zero
+		mHeatpumpSuppliesCentralHeating(true),		// FUTURE: read value from (new) taskData value or use ASHP_RadTemp not zero
 		mAmbientTemperature(historicalData.airtemp_data),	// Ambient Temperature
 		mHeatPumpMax_h(1.0f),
 		mHeatPumpMax_e(1.0f),
@@ -40,10 +40,6 @@ public:
 
 	{
 		mResidualCapacity = Eigen::VectorXf::Constant(taskData.calculate_timesteps(), 1.0f);// Remaining heatpump capacity
-		mHeatPumpMaxAmbient.Heat_h = 0;	// For mASHPperf->Lookup results
-		mHeatPumpMaxAmbient.Load_e = 0;
-		mHeatPumpMaxHotRoom.Heat_h = 0;
-		mHeatPumpMaxHotRoom.Load_e = 0;
 	}
 
 	const float MaxElec() {
@@ -55,21 +51,22 @@ public:
 	void AllCalcs(TempSum& tempSum, const year_TS& AvailHotHeat_h) {
 		// Applies fixed precedence: hot water is served before central heating
 
-		mASHPperfDHW.Lookup(mHotTemp, mHeatPumpMaxHotRoom);		// 2nd Arg is return values struct
+		HeatpumpValues hotRoomDHW = mASHPperfDHW.Lookup(mHotTemp);
+		HeatpumpValues hotRoomCH = mASHPperfCH.Lookup(mHotTemp);
 
 		for (int t = 0; t < mTimesteps; t++) {
-			if (mDHWflag == 1) {
+			if (mHeatpumpSuppliesDHW) {
 				// Lookup performances for DHW (hot water) output temperature
-				mASHPperfDHW.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);	// 2nd Arg is return values struct
+				HeatpumpValues ambientDHW = mASHPperfDHW.Lookup(mAmbientTemperature[t]);
 
 				// Output = lower of Hotroom lookup value & Ambient + hotroom energy value (Conservation of Energy)
-				if ((mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h[t]) >= mHeatPumpMaxHotRoom.Heat_h) {
-					mHeatPumpMax_h = mHeatPumpMaxHotRoom.Heat_h;
-					mHeatPumpMax_e = mHeatPumpMaxHotRoom.Load_e;
+				if ((ambientDHW.Heat_h + AvailHotHeat_h[t]) >= hotRoomDHW.Heat_h) {
+					mHeatPumpMax_h = hotRoomDHW.Heat_h;
+					mHeatPumpMax_e = hotRoomDHW.Load_e;
 				} else {
-					mHeatPumpMax_h = mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h[t];
+					mHeatPumpMax_h = ambientDHW.Heat_h + AvailHotHeat_h[t];
 					// Apply higher of energy input values if applying (Conservation of Energy)
-					mHeatPumpMax_e = std::max(mHeatPumpMaxAmbient.Load_e, mHeatPumpMaxHotRoom.Load_e);
+					mHeatPumpMax_e = std::max(ambientDHW.Load_e, hotRoomDHW.Load_e);
 				}
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
@@ -89,20 +86,19 @@ public:
 			mFreeHeat_h[t] = std::max(mDHWout_h[t] - mDHWload_e[t] - AvailHotHeat_h[t], 0.0f);	// How much heat from ambient
 			mUsedHotHeat_h[t] = mDHWout_h[t] - mDHWload_e[t] - mFreeHeat_h[t];
 
-			if (mCHflag == 1) {
-
+			if (mHeatpumpSuppliesCentralHeating) {
 				// Lookup performances for CH (central heating) output temperature
-				mASHPperfCH.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);// 2nd Arg is return values struct
+				HeatpumpValues ambientCH = mASHPperfCH.Lookup(mAmbientTemperature[t]);
 
 				mAvailHotHeatTemp_h = AvailHotHeat_h[t] - mUsedHotHeat_h[t];
 				// Use lower of Hotroom temperature values & Ambient + hotroom energy values (Conservation of Energy)
-				if ((mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h[t]) >= mHeatPumpMaxHotRoom.Heat_h) {
-					mHeatPumpMax_h = mHeatPumpMaxHotRoom.Heat_h * mResidualCapacity[t];
-					mHeatPumpMax_e = mHeatPumpMaxHotRoom.Load_e * mResidualCapacity[t];
+				if ((ambientCH.Heat_h + AvailHotHeat_h[t]) >= hotRoomCH.Heat_h) {
+					mHeatPumpMax_h = hotRoomCH.Heat_h * mResidualCapacity[t];
+					mHeatPumpMax_e = hotRoomCH.Load_e * mResidualCapacity[t];
 				}
 				else {
-					mHeatPumpMax_h = (mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h[t]) * mResidualCapacity[t];
-					mHeatPumpMax_e = mHeatPumpMaxAmbient.Load_e * mResidualCapacity[t];
+					mHeatPumpMax_h = (ambientCH.Heat_h + AvailHotHeat_h[t]) * mResidualCapacity[t];
+					mHeatPumpMax_e = ambientCH.Load_e * mResidualCapacity[t];
 				}
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
@@ -141,20 +137,20 @@ public:
 			mElecResidual_e = 0.0f;
 		}
 		else {
-			if (mDHWflag == 1) {
+			if (mHeatpumpSuppliesDHW) {
 				// Lookup performances for DHW (hot water) output temperature
-				mASHPperfDHW.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);	// 2nd Arg is return values struct
-				mASHPperfDHW.Lookup(mHotTemp, mHeatPumpMaxHotRoom);		// 2nd Arg is return values struct
+				HeatpumpValues ambientDHW = mASHPperfDHW.Lookup(mAmbientTemperature[t]);
+				HeatpumpValues hotRoomDHW = mASHPperfDHW.Lookup(mHotTemp);
 
 				// Max values = lower of Hotroom lookup value & Ambient + hotroom energy value (Conservation of Energy)
-				if ((mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h) >= mHeatPumpMaxHotRoom.Heat_h) {
-					mHeatPumpMax_h = mHeatPumpMaxHotRoom.Heat_h;
-					mHeatPumpMax_e = mHeatPumpMaxHotRoom.Load_e;
+				if ((ambientDHW.Heat_h + AvailHotHeat_h) >= hotRoomDHW.Heat_h) {
+					mHeatPumpMax_h = hotRoomDHW.Heat_h;
+					mHeatPumpMax_e = hotRoomDHW.Load_e;
 				}
 				else {
-					mHeatPumpMax_h = mHeatPumpMaxAmbient.Heat_h + AvailHotHeat_h;
+					mHeatPumpMax_h = ambientDHW.Heat_h + AvailHotHeat_h;
 					// Apply higher of energy input values if applying (Conservation of Energy)
-					mHeatPumpMax_e = std::max(mHeatPumpMaxAmbient.Load_e, mHeatPumpMaxHotRoom.Load_e);
+					mHeatPumpMax_e = std::max(ambientDHW.Load_e, hotRoomDHW.Load_e);
 				}
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
@@ -191,21 +187,21 @@ public:
 			mCHload_e[t] = 0;
 			mResidualCapacity[t] = 0;
 		} else {
-			if (mCHflag == 1) {
+			if (mHeatpumpSuppliesCentralHeating) {
 				// Lookup performances for CH (central heating) output temperature
-				mASHPperfCH.Lookup(mAmbientTemperature[t], mHeatPumpMaxAmbient);	// 2nd Arg is return values struct
-				mASHPperfCH.Lookup(mHotTemp, mHeatPumpMaxHotRoom);		// 2nd Arg is return values struct
+				HeatpumpValues ambientCH = mASHPperfCH.Lookup(mAmbientTemperature[t]);
+				HeatpumpValues hotRoomCH = mASHPperfCH.Lookup(mHotTemp);
 				
 				mAvailHotHeatTemp_h = AvailHotHeat_h - mUsedHotHeat_h[t];
 				// Max values = lower of Hotroom lookup value & Ambient + hotroom energy value (Conservation of Energy)
-				if ((mHeatPumpMaxAmbient.Heat_h + mAvailHotHeatTemp_h) >= mHeatPumpMaxHotRoom.Heat_h) {
-					mHeatPumpMax_h = mHeatPumpMaxHotRoom.Heat_h;
-					mHeatPumpMax_e = mHeatPumpMaxHotRoom.Load_e;
+				if ((ambientCH.Heat_h + mAvailHotHeatTemp_h) >= hotRoomCH.Heat_h) {
+					mHeatPumpMax_h = hotRoomCH.Heat_h;
+					mHeatPumpMax_e = hotRoomCH.Load_e;
 				}
 				else {
-					mHeatPumpMax_h = mHeatPumpMaxAmbient.Heat_h + mAvailHotHeatTemp_h;
+					mHeatPumpMax_h = ambientCH.Heat_h + mAvailHotHeatTemp_h;
 					// Apply higher of energy input values if applying (Conservation of Energy)
-					mHeatPumpMax_e = std::max(mHeatPumpMaxAmbient.Load_e, mHeatPumpMaxHotRoom.Load_e);
+					mHeatPumpMax_e = std::max(ambientCH.Load_e, hotRoomCH.Load_e);
 				}
 				// Adjust output and load to meet heating demand
 				if (mHeatPumpMax_h <= 0) {	// If no HeatPump capacity, set values to zero
@@ -252,14 +248,14 @@ public:
 private:
 	const int DHW_OUT_TEMP;
 	
-	ASHPperf_cl mASHPperfDHW;
-	ASHPperf_cl mASHPperfCH;
+	ASHPLookup mASHPperfDHW;
+	ASHPLookup mASHPperfCH;
 
 	const int mTimesteps;
 	const float mPowerScalar;
 	const int mHotTemp;
-	const int mDHWflag;
-	const int mCHflag;
+	const bool mHeatpumpSuppliesDHW;
+	const bool mHeatpumpSuppliesCentralHeating;
 	float mHeatPumpMax_h;
 	float mHeatPumpMax_e;
 	float mElecResidual_e;
@@ -269,7 +265,4 @@ private:
 	const year_TS mAmbientTemperature;
 	year_TS mResidualCapacity;
 	year_TS FreeHeatTemp_h;
-
-	ASHP_HE_st mHeatPumpMaxAmbient;	// Max Heat & Elec for Ambient input - Struct: 2x TS
-	ASHP_HE_st mHeatPumpMaxHotRoom;	// Max Heat & Elec for Hotroom input - Struct: 2x TS
 };

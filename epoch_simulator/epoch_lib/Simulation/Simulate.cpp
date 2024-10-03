@@ -24,7 +24,6 @@
 #include "GasCH.hpp"
 #include "Battery.hpp"
 #include "ESS.hpp"
-#include "ASHPperf.hpp"
 #include "ASHP.hpp"
 #include "HeatPumpController.hpp"
 
