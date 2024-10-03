@@ -5,46 +5,47 @@ from typing import Final, TypedDict
 from pydantic import BaseModel, Field
 
 ParametersWRange: Final = [
-    "ASHP_HPower",
-    "ASHP_HSource",
-    "ASHP_HotTemp",
-    "ASHP_RadTemp",
-    "ESS_capacity",
-    "ESS_charge_mode",
-    "ESS_charge_power",
-    "ESS_discharge_mode",
-    "ESS_discharge_power",
-    "ESS_start_SoC",
-    "EV_flex",
-    "Export_headroom",
     "Fixed_load1_scalar",
     "Fixed_load2_scalar",
     "Flex_load_max",
-    "GridExport",
-    "GridImport",
-    "Import_headroom",
-    "Min_power_factor",
     "Mop_load_max",
-    "ScalarHL1",
-    "ScalarHYield",
     "ScalarRG1",
     "ScalarRG2",
     "ScalarRG3",
     "ScalarRG4",
+    "ScalarHYield",
+    "s7_EV_CP_number",
     "f22_EV_CP_number",
     "r50_EV_CP_number",
-    "s7_EV_CP_number",
     "u150_EV_CP_number",
+    "EV_flex",
+    "ASHP_HPower",
+    "ASHP_HSource",
+    "ASHP_RadTemp",
+    "ASHP_HotTemp",
+    "ScalarHL1",
+    "GridImport",
+    "GridExport",
+    "Import_headroom",
+    "Export_headroom",
+    "Min_power_factor",
+    "ESS_charge_power",
+    "ESS_discharge_power",
+    "ESS_capacity",
+    "ESS_start_SoC",
+    "ESS_charge_mode",
+    "ESS_discharge_mode",
     "DHW_cylinder_volume",
 ]
 
 ParametersWORange: Final = [
-    "CAPEX_limit",
     "Export_kWh_price",
-    "OPEX_limit",
-    "target_max_concurrency",
     "time_budget_min",
+    "target_max_concurrency",
     "timestep_hours",
+    "CAPEX_limit",
+    "OPEX_limit",
+    "timewindow",
 ]
 
 param_range = Field(
@@ -123,7 +124,8 @@ class EndpointParameterDict(BaseModel):
     OPEX_limit: int | float = Field(description="OPEX limit to set in EPOCH. Not Implemented !")
     target_max_concurrency: int | float = Field(description="Number of cores to allocate to EPOCH. Not Implemented !")
     time_budget_min: int | float
-    timestep_hours: int | float = Field(default=0.5)
+    timestep_hours: int | float
+    timewindow: float | int
 
 
 class ParameterDict(TypedDict):
@@ -164,3 +166,4 @@ class ParameterDict(TypedDict):
     target_max_concurrency: int | float
     time_budget_min: int | float
     timestep_hours: int | float
+    timewindow: float | int

@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Create queue that is served by process_requests from moment app is created until it is closed.
     """
-    q = IQueue(maxsize=5)
+    q = IQueue(maxsize=20)
     app.state.q = q
     app.state.start_time = datetime.datetime.now(datetime.UTC)
     # https://textual.textualize.io/blog/2023/02/11/the-heisenbug-lurking-in-your-async-code/

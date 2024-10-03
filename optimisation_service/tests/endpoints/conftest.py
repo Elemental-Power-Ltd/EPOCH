@@ -118,6 +118,7 @@ def endpointtask_factory() -> Callable[[], EndpointTask]:
             target_max_concurrency=44,
             time_budget_min=5,
             timestep_hours=1,
+            timewindow=8760,
         )
 
         objectives = [
@@ -164,7 +165,7 @@ def task_factory(tmpdir_factory: pytest.TempdirFactory) -> Callable[[], Task]:
             constraints={},
             parameters=ParameterDict(
                 ASHP_HPower=ParamRange(min=0, max=1, step=1),
-                ASHP_HSource=ParamRange(min=0, max=1, step=1),
+                ASHP_HSource=ParamRange(min=1, max=1, step=0),
                 ASHP_HotTemp=ParamRange(min=0, max=1, step=1),
                 ASHP_RadTemp=ParamRange(min=0, max=1, step=1),
                 ESS_capacity=ParamRange(min=0, max=1, step=1),
@@ -199,7 +200,8 @@ def task_factory(tmpdir_factory: pytest.TempdirFactory) -> Callable[[], Task]:
                 OPEX_limit=0,
                 target_max_concurrency=0,
                 time_budget_min=0,
-                timestep_hours=0,
+                timestep_hours=0.5,
+                timewindow=8670,
             ),
             input_dir=temp_data_folder,
         )

@@ -2,7 +2,7 @@ from enum import StrEnum
 from os import PathLike
 from typing import Literal, TypedDict
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import UUID4, AwareDatetime, BaseModel, Field
 
 
 class FileLoc(StrEnum):
@@ -24,6 +24,7 @@ class RemoteMetaData(BaseModel):
     )
     start_ts: AwareDatetime = Field(description="Datetime to retrieve data from. Only relevant for remote files.")
     duration: DataDuration = Field(description="Length of time to retrieve data for. Only relevant for remote files.")
+    dataset_ids: dict[str, UUID4] = Field(default={}, description="Specific dataset IDs to fetch.")
 
 
 class LocalMetaData(BaseModel):
