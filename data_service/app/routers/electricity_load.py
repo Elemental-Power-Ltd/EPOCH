@@ -36,7 +36,6 @@ async def generate_electricity_load(
     -------
     Metadata about the generated synthetic half hourly dataset, that you can now request with `get-electrical-load`
     """
-    print(vae)
     async with pool.acquire() as conn:
         ds_meta = await conn.fetchrow(
             """SELECT site_id, fuel_type, reading_type FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""",

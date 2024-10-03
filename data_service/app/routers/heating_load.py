@@ -210,9 +210,7 @@ async def generate_heating_load(
         hdd_kwh=changed_coefs.heating_kwh,
         flat_heating_kwh=flat_heating_kwh,
     )
-    print(heating_df.head())
-    print(flat_heating_kwh)
-    print(changed_coefs)
+
     metadata = {
         "dataset_id": uuid.uuid4(),
         "site_id": site_id,
