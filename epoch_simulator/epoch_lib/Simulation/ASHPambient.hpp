@@ -16,8 +16,8 @@ public:
 	AmbientHeatPump(const HistoricalData& historicalData, const TaskData& taskData) :
 		// Initialise Persistent Values
 		DHW_OUT_TEMP(60),	// FUTURE: removed when taskData.ASHP_DHWtemp available
-		mASHPperfDHW(historicalData, taskData, DHW_OUT_TEMP),	// lookup object for DHW performance
-		mASHPperfCH(historicalData, taskData, taskData.ASHP_RadTemp),	// lookup object for CH performance
+		mASHPperfDHW(historicalData, taskData, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
+		mASHPperfCH(historicalData, taskData, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
 		mTimesteps(taskData.calculate_timesteps()),
 		mHeatpumpSuppliesDHW(true),	// FUTURE: read value from (new) taskData value or use ASHP_DHWtemp not zero
 		mHeatpumpSuppliesCentralHeating(true),		// FUTURE: read value from (new) taskData value or use ASHP_RadTemp not zero

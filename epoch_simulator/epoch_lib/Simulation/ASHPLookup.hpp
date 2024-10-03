@@ -3,6 +3,11 @@
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
+// For the demo, always use the weather compensation mode in column 2
+// We look this is up by passing 2 as the sendTemp
+// (this is not 2 degrees, the table is hacked to include some compensation modes)
+const float FIXED_SEND_TEMP_VAL = 2;
+
 struct HeatpumpValues {
     float Heat_h;
     float Load_e;

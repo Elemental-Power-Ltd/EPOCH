@@ -9,6 +9,7 @@
 #include "ASHPLookup.hpp"
 #include "TempSum.hpp"
 
+
 // ASHPhot is only used within a DataCentre or alternative heat waste object
 class HotRoomHeatPump {
 
@@ -16,8 +17,8 @@ public:
 	HotRoomHeatPump(const HistoricalData& historicalData, const TaskData& taskData) :
 		// Initialise Persistent Values
 		DHW_OUT_TEMP(60),	// FUTURE: removed when taskData.ASHP_DHWtemp available
-		mASHPperfDHW(historicalData, taskData, DHW_OUT_TEMP),	// lookup object for DHW performance
-		mASHPperfCH(historicalData, taskData, taskData.ASHP_RadTemp),	// lookup object for CH performance
+		mASHPperfDHW(historicalData, taskData, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
+		mASHPperfCH(historicalData, taskData, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
 		mTimesteps(taskData.calculate_timesteps()),
 		mPowerScalar(taskData.timestep_hours),
 		mHotTemp(taskData.ASHP_HotTemp),
