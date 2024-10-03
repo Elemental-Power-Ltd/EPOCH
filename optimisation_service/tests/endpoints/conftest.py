@@ -165,7 +165,7 @@ def task_factory(tmpdir_factory: pytest.TempdirFactory) -> Callable[[], Task]:
             constraints={},
             parameters=ParameterDict(
                 ASHP_HPower=ParamRange(min=0, max=1, step=1),
-                ASHP_HSource=ParamRange(min=0, max=1, step=1),
+                ASHP_HSource=ParamRange(min=1, max=1, step=0),
                 ASHP_HotTemp=ParamRange(min=0, max=1, step=1),
                 ASHP_RadTemp=ParamRange(min=0, max=1, step=1),
                 ESS_capacity=ParamRange(min=0, max=1, step=1),

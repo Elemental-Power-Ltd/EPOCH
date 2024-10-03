@@ -70,7 +70,7 @@ class Problem:
                     f"but got {value["min"]} and {value["max"]} with a step of {value["step"]}",
                 )
 
-        if self.parameters["Export_kWh_price"] < 1:
+        if self.parameters["Export_kWh_price"] < 1 and self.parameters["Export_kWh_price"] != 0:
             raise ValueError(
                 f"Export kWH price of {self.parameters["Export_kWh_price"]} is less than 1p / kWh.",
                 " Check that the units are correctly in p / kWh and not £ / kWh.",
