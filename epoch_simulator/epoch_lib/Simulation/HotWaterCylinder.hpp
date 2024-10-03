@@ -184,7 +184,7 @@ private:
 	const float T_cold = 10.0;         // Cold water inlet temperature in °C
 	const float T_ambient = 20.0;      // Ambient temperature in °C
 	// 30 minutes in seconds
-	const float T_setpoint = 55.0;     // Setpoint temperature for hot water in °C
+	const float T_setpoint = 60.0;     // Setpoint temperature for hot water in °C
 
 
 
