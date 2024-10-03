@@ -78,9 +78,9 @@ export interface Client {
 
 
 interface GlobalState {
-    client: Client;
+    selectedClient: Client | null;
 
-    clients: Client[];
+    availableClients: Client[];
     client_sites: Site[];
 }
 
@@ -97,13 +97,13 @@ export interface AppState {
     setGAConfig: (form: any) => void;
     setSearchParameters: (form: any) => void;
     setOptimiserServiceStatus: (status: any) => void;
-    setClient: (client: Client) => void;
-    setSites: (sites: Site[]) => void;
+    setSelectedClient: (client: Client) => void;
+    setClientSites: (sites: Site[]) => void;
     setTasks: (tasks: Task[]) => void;
     setCurrentTask: (task: Task) => void;
     setCurrentTaskResults: (results: OptimisationResult[]) => void;
 
     setTaskConfig: (config: Partial<TaskConfig>) => void;
 
-    setClients: (clients: Client[]) => void;
+    setAvailableClients: (clients: Client[]) => void;
 }

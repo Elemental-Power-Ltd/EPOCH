@@ -42,17 +42,19 @@ function ResultsContainer() {
     }, []);
 
     useEffect(() => {
-        if (globalState.client) {
+        const clientId = globalState.selectedClient?.client_id;
+
+        if (clientId) {
 
             const fetchTasks = async () => {
-                const tasks = await listOptimisationTasks(globalState.client.client_id);
+                const tasks = await listOptimisationTasks(clientId);
                 setTasks(tasks);
             }
 
             fetchTasks();
         }
 
-    }, [globalState.client.client_id])
+    }, [globalState.selectedClient?.client_id])
 
     useEffect(() => {
         if (state.currentTask !== null) {

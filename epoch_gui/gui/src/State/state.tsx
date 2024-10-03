@@ -50,13 +50,8 @@ const defaultResultsContainer: ResultsContainer = {
 
 export const useEpochStore = create<AppState>()((set) => ({
     global: {
-        client: {
-            // client_id: "demo",
-            // name: "Jewelery Quarter Businesses",
-            client_id: "demo",
-            name: "Bassetlaw Coucil"
-        },
-        clients: [],
+        selectedClient: null,
+        availableClients: [],
         client_sites: []
     },
     run: defaultRunContainer,
@@ -74,21 +69,20 @@ export const useEpochStore = create<AppState>()((set) => ({
 
     // changing the client should invalidate/reset a lot of the other state and needs careful attention
     // The safest way to do this is to reset all the container states to their default state
-    setClient: (client: Client) => set((state) => (
+    setSelectedClient: (client: Client) => set((state) => (
         {
-            global: {...state.global, client: client, client_sites: []},
+            global: {...state.global, selectedClient: client, client_sites: []},
             run: defaultRunContainer,
             results: defaultResultsContainer
         }
     )),
 
-    setClients: (clients: Client[]) => set((state) => ({global: {...state.global, clients: clients}})),
-    setSites: (sites: Site[]) => set((state) => ({global: {...state.global, client_sites: sites}})),
-    setTasks: (tasks: Task[]) => set((state) => ({results: {...state.results, tasks: tasks}})),
+    setAvailableClients: (clients: Client[]) => set((state) => ({global: {...state.global, availableClients: clients}})),
+    setClientSites: (sites: Site[]) => set((state) => ({global: {...state.global, client_sites: sites}})),
 
+    setTasks: (tasks: Task[]) => set((state) => ({results: {...state.results, tasks: tasks}})),
     setCurrentTask: (task: Task) => set((state) => ({results: {...state.results, currentTask: task, currentTaskResults: []}})),
     setCurrentTaskResults: (results: OptimisationResult[]) => set((state) => ({results: {...state.results, currentTaskResults: results}})),
-
     setTaskConfig: (config: Partial<TaskConfig>) => set((state) => ({run: {...state.run, taskConfig: {...state.run.taskConfig, ...config}}})),
 
 }))

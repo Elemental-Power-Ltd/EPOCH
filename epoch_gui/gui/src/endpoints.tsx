@@ -39,27 +39,34 @@ export const getStatus = async() => {
     }
 }
 
-export const listClients = async(): Promise<Client[]> => {
+export type ApiResponse<T> = {
+    success: boolean;
+    data: T | null;
+    error?: string;
+};
+
+export const listClients = async (): Promise<ApiResponse<Client[]>> => {
     try {
         const response = await fetch("/api/data/list-clients", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
         });
 
-        if(!response.ok) {
-            console.error(`HTTP error! Status: ${response.status}`);
-            return [];
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
         }
 
-        return await response.json();
-
+        const data: Client[] = await response.json();
+        return {success: true, data};
     } catch (error) {
         console.error("Failed to list clients", error);
-        return [];
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
-}
+};
 
-export const listSites = async(client_id: string): Promise<Site[]> => {
+export const listSites = async (client_id: string): Promise<ApiResponse<Site[]>> => {
     const payload = {client_id: client_id};
 
     try {
@@ -69,18 +76,20 @@ export const listSites = async(client_id: string): Promise<Site[]> => {
             body: JSON.stringify(payload)
         });
 
-        if(!response.ok) {
-            console.error(`HTTP error! Status: ${response.status}`);
-            return [];
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
         }
 
-        return await response.json();
-
+        const data: Site[] = await response.json();
+        return {success: true, data};
     } catch (error) {
         console.error("Failed to list sites", error);
-        return [];
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
-}
+};
+
 
 export const listOptimisationTasks = async(client_id: string): Promise<Task[]> => {
     const payload = {client_id: client_id};

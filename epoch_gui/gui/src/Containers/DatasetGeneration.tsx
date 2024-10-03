@@ -21,34 +21,15 @@ import {Client, Site} from '../State/types'
 dayjs.extend(utc);
 
 const DatasetGenerationContainer = () => {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [sites, setSites] = useState<Site[]>([]);
-  const [selectedClient, setSelectedClient] = useState('');
+
+  const selectedClient = useEpochStore((state) => state.global.selectedClient);
+  const sites = useEpochStore((state) => state.global.client_sites);
+
   const [selectedSite, setSelectedSite] = useState('');
   const [startDate, setStartDate] = useState<Dayjs | null>(dayjs().startOf('day'));
   const [endDate, setEndDate] = useState<Dayjs | null>(dayjs().endOf('day'));
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchClients = async () => {
-      const clientList = await listClients();
-      setClients(clientList);
-    };
-    fetchClients();
-  }, []);
-
-  useEffect(() => {
-    const fetchSites = async () => {
-      if (selectedClient) {
-        const siteList = await listSites(selectedClient);
-        setSites(siteList);
-      } else {
-        setSites([]);
-      }
-    };
-    fetchSites();
-  }, [selectedClient]);
 
   const handleGenerateDataset = async () => {
     setIsGenerating(true);
@@ -73,24 +54,6 @@ const DatasetGenerationContainer = () => {
         Generate Dataset
       </Typography>
       <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            select
-            label="Client"
-            value={selectedClient}
-            onChange={(e) => {
-              setSelectedClient(e.target.value);
-              setSelectedSite('');
-            }}
-          >
-            {clients.map((client) => (
-              <MenuItem key={client.client_id} value={client.client_id}>
-                {client.name}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
         <Grid item xs={12}>
           <TextField
             fullWidth
