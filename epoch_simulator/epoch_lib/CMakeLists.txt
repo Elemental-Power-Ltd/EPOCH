@@ -13,12 +13,14 @@ add_library(Epoch_lib STATIC
 	"Simulation/Costs.hpp"
 	
 	"Simulation/Simulate.hpp"
+	"Simulation/Simulate.cpp"
 	"io/EpochConfig.cpp"
 	"io/EpochConfig.hpp"
 	"io/BufferedCSVWriter.cpp"
 	"io/BufferedCSVWriter.hpp"
 
 	"Simulation/ASHP.hpp"
+	"Simulation/ASHPambient.hpp"
 	"Simulation/ASHPLookup.hpp"
 	"Simulation/ASHPLookup.cpp"
 	"Simulation/Battery.hpp"
