@@ -58,7 +58,6 @@ private:
     const DataCentreOptimisationMode mOptimisationMode;
     const float mDataCentreMaxLoad_e;
     const float mHeatScalar;
-    float mHeatPumpMaxElectricalLoad_e;
 
     year_TS mTargetLoad_e;
     year_TS mActualLoad_e;

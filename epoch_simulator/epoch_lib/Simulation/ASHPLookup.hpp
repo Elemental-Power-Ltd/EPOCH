@@ -18,8 +18,6 @@ class ASHPLookup
 public:
     ASHPLookup(const HistoricalData& historicalData, const TaskData& taskData, float sendTemperature);
 
-    float MaxElecLoad() const;
-
     HeatpumpValues Lookup(float airTemp);
 
 private:
@@ -31,8 +29,6 @@ private:
 
     int airTempToRowIndex(const HistoricalData& historicalData, float airTemp) const;
     int sendTempToColIndex(const HistoricalData& historicalData, float sendTemp) const;
-
-    float mMaxLoad_e;
 
     std::vector<float> mInputByDegree;
     std::vector<float> mOutputByDegree;

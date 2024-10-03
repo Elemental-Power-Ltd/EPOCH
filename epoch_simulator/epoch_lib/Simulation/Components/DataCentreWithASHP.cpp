@@ -15,7 +15,6 @@ DataCentreWithASHP::DataCentreWithASHP(const HistoricalData& historicalData, con
 	mAvailableHotHeat_h(Eigen::VectorXf::Zero(mTimesteps)),
 	mTargetHeat_h(Eigen::VectorXf::Zero(mTimesteps))
 {
-	mHeatPumpMaxElectricalLoad_e = mHeatPump.MaxElec();
 
 	// Calculate Target Load based on the optimisation mode: 1=Target (default), 2=Price, 3=Carbon
 	switch (mOptimisationMode) {
@@ -49,20 +48,22 @@ void DataCentreWithASHP::StepCalc(TempSum& tempSum, const float futureEnergy_e, 
 	// Switch to Pool, DHW, CH done in HeatPump
 	// mTargetHeat_h[t] = tempSum.Heat_h[t];REMOVED to support DHW & CH
 
+	float heatpumpMaxElectricalLoad = mHeatPump.MaxElec(t);
+
 	// Set Electricty Budget for ASHP
 	float heatPumpBudget_e;
 	if (futureEnergy_e <= 0) {
 		mActualLoad_e[t] = 0;
 		heatPumpBudget_e = 0;
 	}
-	else if (futureEnergy_e > (mTargetLoad_e[t] + mHeatPumpMaxElectricalLoad_e)) {
+	else if (futureEnergy_e > (mTargetLoad_e[t] + heatpumpMaxElectricalLoad)) {
 		// Set Load & Budget to maximums
 		mActualLoad_e[t] = mTargetLoad_e[t];
 		heatPumpBudget_e = futureEnergy_e - mTargetLoad_e[t];
 	}
 	else {
 		// Reduce Load & Budget to largest without breaching FutureEnergy
-		float throttleScalar = futureEnergy_e / (mTargetLoad_e[t] + mHeatPumpMaxElectricalLoad_e);
+		float throttleScalar = futureEnergy_e / (mTargetLoad_e[t] + heatpumpMaxElectricalLoad);
 		mActualLoad_e[t] = mTargetLoad_e[t] * throttleScalar;
 		heatPumpBudget_e = futureEnergy_e - mActualLoad_e[t];
 	}

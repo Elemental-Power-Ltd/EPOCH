@@ -3,17 +3,8 @@
 ASHPLookup::ASHPLookup(const HistoricalData& historicalData, const TaskData& taskData, float sendTemperature)
 {
     precomputeLookupTable(historicalData, taskData, sendTemperature);
-
-    // We need to calculate the highest possible power we might have to draw from this heatpump
-    // This is at the lowest temperature (index 0)
-    mMaxLoad_e = mInputByDegree[0];
 }
 
-float ASHPLookup::MaxElecLoad() const {
-    // We always return the maximum theoretical load from the heatpump
-    // This avoids throttling calculations when there is adequate power
-    return mMaxLoad_e;
-}
 
 // Lookup the CoP values for the given temperature
 // This could either be the ambient air temperature or a hotroom air temperature

@@ -43,9 +43,13 @@ public:
 		mResidualCapacity = Eigen::VectorXf::Constant(taskData.calculate_timesteps(), 1.0f);// Remaining heatpump capacity
 	}
 
-	const float MaxElec() {
+	const float MaxElec(int timestep) {
 		// Peak kWh per timestep of ASHP
-		mMaxElec_e = std::max(mASHPperfDHW.MaxElecLoad(), mASHPperfCH.MaxElecLoad());
+
+		float dhwMaxLoad = mASHPperfDHW.Lookup(mAmbientTemperature[timestep]).Load_e;
+		float chMaxLoad = mASHPperfCH.Lookup(mAmbientTemperature[timestep]).Load_e;
+
+		mMaxElec_e = std::max(dhwMaxLoad, chMaxLoad);
 		return mMaxElec_e;
 	}
 
