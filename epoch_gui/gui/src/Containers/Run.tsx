@@ -25,7 +25,9 @@ function RunContainer() {
             },
 
             search_parameters: state.searchParameters,
-            objectives: Object.keys(state.taskConfig.objectives),
+            objectives: Object.keys(state.taskConfig.objectives).filter(
+                (objective) => state.taskConfig.objectives[objective]
+            ),
             site_data: {
                 loc: "remote",
                 site_id: state.taskConfig.site_id,

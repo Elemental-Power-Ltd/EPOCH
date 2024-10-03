@@ -3,8 +3,12 @@ import {
   TextField,
   MenuItem,
   Grid,
+  Checkbox,
   Container,
   FormControl,
+  FormLabel,
+  FormControlLabel,
+  FormGroup,
   InputLabel,
   Select,
 } from "@mui/material";
@@ -28,6 +32,14 @@ const TaskConfigForm = () => {
   const setClientSites = useEpochStore((state) => state.setSites);
   const clients = useEpochStore((state) => state.global.clients);
   const setClients = useEpochStore((state) => state.setClients);
+
+  const displayNames = {
+    "capex": "CAPEX",
+    "carbon_balance": "Carbon Balance",
+    "cost_balance": "Cost Balance",
+    "payback_horizon": "Payback Horizon",
+    "annualised_cost": "Annualised Cost"
+  }
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -58,6 +70,14 @@ const TaskConfigForm = () => {
     handleChange("client_id", clientId);
     handleChange("site_id", ""); // Reset site selection when client changes
   };
+
+  const handleObjectiveChange = (event) => {
+    const {name, checked} = event.target;
+    handleChange("objectives", {
+      ...taskConfig.objectives,
+      [name]: checked,
+    });
+  }
 
   return (
     <Container maxWidth="sm">
@@ -150,6 +170,28 @@ const TaskConfigForm = () => {
               <MenuItem value={60}>60 Minutes</MenuItem>
               <MenuItem value={30}>30 Minutes</MenuItem>
             </TextField>
+          </Grid>
+
+          <Grid item xs={12}>
+            <FormGroup>
+              <FormLabel component="legend" style={{textAlign: 'center', marginBottom: '8px'}}>Objectives</FormLabel>
+              <Grid container spacing={2} justifyContent="center" alignItems="center">
+                {Object.keys(taskConfig.objectives).map((objectiveKey) => (
+                    <Grid item xs={4} key={objectiveKey} style={{display: 'flex', justifyContent: 'center'}}>
+                      <FormControlLabel
+                          control={
+                            <Checkbox
+                                checked={taskConfig.objectives[objectiveKey]}
+                                onChange={handleObjectiveChange}
+                                name={objectiveKey}
+                            />
+                          }
+                          label={displayNames[objectiveKey]}
+                      />
+                    </Grid>
+                ))}
+              </Grid>
+            </FormGroup>
           </Grid>
         </Grid>
       </form>
