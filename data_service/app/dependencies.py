@@ -42,7 +42,7 @@ class Database:
 
 
 db = Database(os.environ.get("DATABASE_URL", "postgresql://python:elemental@localhost/elementaldb"))
-http_client = httpx.AsyncClient()
+http_client = httpx.AsyncClient(timeout=60)
 
 elec_vae_mdl: VAE | None = None
 

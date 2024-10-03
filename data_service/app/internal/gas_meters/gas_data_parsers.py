@@ -190,7 +190,6 @@ def parse_daily_readings(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFram
         ).astype(np.float64)
         gas_df["consumption"] = m3_to_kwh(m3_consumptions)
     elif "consumption_m3" in readings_df.columns:
-        print(readings_df)
         gas_df["consumption"] = m3_to_kwh(readings_df["consumption_m3"].to_numpy())
     else:
         gas_df["consumption"] = readings_df["consumption"]
