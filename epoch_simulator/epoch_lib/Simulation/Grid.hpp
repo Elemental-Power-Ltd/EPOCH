@@ -3,188 +3,53 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "Assets.hpp"
-#include "Hload.hpp"
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
 class Grid
 {
 public:
-	Grid(const TaskData& taskData): 
-		mMaxGridImportkVA(taskData.GridImport),
-		mMaxGridExportkVA(taskData.GridExport),
-		mMinPowerFactor(taskData.Min_power_factor),
-		mImportHeadroom(taskData.Import_headroom),
-		mExportHeadroom(taskData.Export_headroom),
-		mTimesteps(taskData.calculate_timesteps()),
-		mFlexLoadMax(taskData.Flex_load_max),
-		mMopLoadMax(taskData.Mop_load_max),
-
-		mGridImport(Eigen::VectorXf::Zero(mTimesteps)),
-		mGridExport(Eigen::VectorXf::Zero(mTimesteps)),
-		mPreGridBalance(Eigen::VectorXf::Zero(mTimesteps)),
-		mPostGridBalance(Eigen::VectorXf::Zero(mTimesteps)),
-		mPreFlexImportShortfall(Eigen::VectorXf::Zero(mTimesteps)),
-		mPreMopCurtailedExport(Eigen::VectorXf::Zero(mTimesteps)),
-		mActualImportShortfall(Eigen::VectorXf::Zero(mTimesteps)),
-		mActualCurtailedExport(Eigen::VectorXf::Zero(mTimesteps)),
-
-		mActualHighPriorityLoad(Eigen::VectorXf::Zero(mTimesteps)),
-		mActualLowPriorityLoad(Eigen::VectorXf::Zero(mTimesteps))
+	Grid(const HistoricalData& historicalData, const TaskData& taskData) :
+		// Initilaise results data vectors with all values to zero
+		Imp_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())), 			// Grid Import
+		Exp_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),			// Grid Export
+		ImpHeadroom_e(taskData.Import_headroom * taskData.Fixed_load1_scalar * historicalData.hotel_eload_data.maxCoeff()),
+		// Following are Import and Export Max kWh per timestep (adjusted for Power Factor & Headroom)
+		ImpMax_e((taskData.GridImport * taskData.Min_power_factor - ImpHeadroom_e) * taskData.timestep_hours),
+		ExpMax_e(taskData.GridExport * taskData.timestep_hours)
 	{}
 
-	void performGridCalculations(const year_TS& ESUM, const ESS& ess, const Hload& hload, float HeadroomL1) {
-
-		// calculate the pre-grid balance
-		mPreGridBalance = ESUM - ess.getESSDischarge() + ess.getESSCharge();
-
-		//Calculate Grid Import = IF(BB4>0,MIN(BB4,Grid_imp),0)
-		calculateGridImport(HeadroomL1);
-
-		//Calculate Grid Export = IF(BB4<0,MIN(-BB4,Grid_exp),0)
-		calculateGridExport();
-
-		//Calculate Post-grid balance = BB4-B4+AB4
-		mPostGridBalance = mPreGridBalance - mGridImport + mGridExport;
-
-		//Calulate Pre-Flex Import shortfall = IF(CB>0, CB4, 0)
-		calculatePreFlexImportShortfall();
-
-		//Calculate Pre-Mop Curtailed Export = IF(CB<0,-CB4,0)
-		calculatePreMopCurtailedExport();
-
-		//Actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
-		calculateActualImportShortfall(hload.getASHPTargetLoading(), hload.getMaxHeatpumpELoad());
-
-		//Actual Curtailed Export = IF(EB>ESum!EB4,EB4-ESum!EB4,0)
-		calculateActualCurtailedExport();
-
-		calculateActualHighPriorityLoad();
-
-		calculateActualLowPriorityLoad();
+	float AvailImport() const {
+		return ImpMax_e;
 	}
 
-
-	// Functionality
-	// these functions account for headroom built in to Grid_connection to take import/export power peaks intratimestep, and minimum power factor 
-	float calculate_Grid_imp(float HeadroomL1) const {
-		float Grid_imp = mMaxGridImportkVA * mMinPowerFactor - HeadroomL1;// *(1 - mImportHeadroom);
-		return Grid_imp;
+	float AvailExport() const {
+		return ExpMax_e;
 	}
 
-	float calculate_Grid_exp() const {
-		float Grid_exp = mMaxGridExportkVA * mMinPowerFactor;// *(1 - mExportHeadroom);
-		return Grid_exp;
+	void AllCalcs(TempSum& tempSum) {
+		// VECTOR OPERATIONS APPLY TO ALL TIMESTEPS
+		// clamp the grid import between 0 and Import Max at each timestep
+		Imp_e = tempSum.Elec_e.cwiseMax(0.0f).cwiseMin(ImpMax_e);
+		// flip the ESUM then clamp between 0 and Export Max at each timestep
+		Exp_e = -1.0f * tempSum.Elec_e;
+		Exp_e = Exp_e.cwiseMax(0.0f).cwiseMin(ExpMax_e);
+		// Write the new electricity balance to tempSum: Load/Export is +ve & Gen/Import is -ve
+		tempSum.Elec_e = tempSum.Elec_e + Exp_e - Imp_e;
 	}
 
-	//Calculate Grid Import = IF(BB4>0,MIN(BB4,Grid_imp),0)
-	void calculateGridImport(float HeadroomL1) {
-		float gridImp = calculate_Grid_imp(HeadroomL1);
-
-		// clamp the grid import between 0 and gridImp at each timestep
-		mGridImport = mPreGridBalance.cwiseMax(0.0f).cwiseMin(gridImp);
+	void Report(FullSimulationResult& Result) {
+		Result.Grid_Import = Imp_e;
+		Result.Grid_Export = Exp_e;
 	}
 
-	//Calculate Grid Export = IF(BB4<0,MIN(-BB4,Grid_exp),0)
-	void calculateGridExport() {
-		float gridExp = calculate_Grid_exp();
-
-		// flip the preGridBalance then clamp between 0 and gridExp at each timestep
-		mGridExport = -1.0f * mPreGridBalance;
-		mGridExport = mGridExport.cwiseMax(0.0f).cwiseMin(gridExp);
-	}
-
-	//Calulate Pre-Flex Import shortfall = IF(CB>0, CB4, 0)
-	void calculatePreFlexImportShortfall() {
-		mPreFlexImportShortfall = mPostGridBalance.cwiseMax(0.0f);
-	}
-
-	//Calculate Pre-Mop Curtailed Export = IF(CB<0,-CB4,0)
-	void calculatePreMopCurtailedExport() {
-		mPreMopCurtailedExport = mPostGridBalance.cwiseMin(0.0f);
-		// we want the positive counterpart at each timestep, so multiply the vector by -1
-		mPreMopCurtailedExport *= -1.0f;
-	}
-
-	//Calculate actual Import shortfall (load curtailment) = IF(DB4>ESum!DB4,DB4-ESum!DB4,0)
-	void calculateActualImportShortfall(const year_TS& ASHPTargetLoading, const year_TS& HeatpumpELoad) {
-		mActualImportShortfall = mActualImportShortfall.array() - mFlexLoadMax - (ASHPTargetLoading.array() * HeatpumpELoad.array());
-		mActualImportShortfall = mActualImportShortfall.cwiseMax(0);
-	}
-
-	void calculateActualCurtailedExport() {
-		// preMopCurtailedExport - MopLoadMax, floored at 0
-		mActualCurtailedExport = (mPreMopCurtailedExport.array() - mMopLoadMax).cwiseMin(0.0f);
-	}
-
-	void calculateActualHighPriorityLoad() {
-		mActualHighPriorityLoad = (mFlexLoadMax - mPreFlexImportShortfall.array()).cwiseMax(0.0f);
-	}
-
-	void calculateActualLowPriorityLoad() {
-		mActualLowPriorityLoad = mPreMopCurtailedExport.cwiseMin(mMopLoadMax);
-	}
-
-	year_TS getGridImport() const {
-		return mGridImport;
-	}
-
-	year_TS getGridExport() const {
-		return mGridExport;
-	}
-
-	year_TS getPreGridBalance() const {
-		return mPreGridBalance;
-	}
-
-	year_TS getPostGridBalance() const {
-		return mPostGridBalance;
-	}
-
-	year_TS getPreFlexImportShortfall() const {
-		return mPreFlexImportShortfall;
-	}
-
-	year_TS getPreMopCurtailedExport() const {
-		return mPreMopCurtailedExport;
-	}
-
-	year_TS getActualImportShortfall() const {
-		return mActualImportShortfall;
-	}
-
-	year_TS getActualCurtailedExport() const {
-		return mActualCurtailedExport;
-	}
-
-	year_TS getActualHighPriorityLoad() const {
-		return mActualHighPriorityLoad;
-	}
-
-	year_TS getActualLowPriorityLoad() const {
-		return mActualLowPriorityLoad;
-	}
+	// Can't go direct to Acc values for 'SimulationResult' as Import & Export vectors required for Supplier ToU costs
 
 private:
-	const float mMaxGridImportkVA;
-	const float mMaxGridExportkVA;
-	const float mMinPowerFactor;
-	const float mImportHeadroom;
-	const float mExportHeadroom;
-	const int mTimesteps;
-	const float mFlexLoadMax;
-	const float mMopLoadMax;
+	const float ImpHeadroom_e;
+	const float ImpMax_e;
+	const float ExpMax_e;
 
-	year_TS mGridImport;
-	year_TS mGridExport;
-	year_TS mPreGridBalance;
-	year_TS mPostGridBalance;
-	year_TS mPreFlexImportShortfall;
-	year_TS mPreMopCurtailedExport;
-	year_TS mActualImportShortfall;
-	year_TS mActualCurtailedExport;
-	year_TS mActualHighPriorityLoad;
-	year_TS mActualLowPriorityLoad;
+	year_TS Imp_e;
+	year_TS Exp_e;
 };
-

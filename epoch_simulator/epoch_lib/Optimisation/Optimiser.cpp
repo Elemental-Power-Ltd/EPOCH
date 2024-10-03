@@ -49,6 +49,26 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallind
 
 	TaskData taskData = mTaskGenerator->getTask(recallindex);
 
+	// HACK - write the recalled scenario to a CSV for full reporting exploration
+	spdlog::info("Writing Time Series for recalled scenario to file");
+	Simulator tempSim = Simulator();
+	auto fullResult = tempSim.simulateScenarioFull(mHistoricalData, taskData, SimulationType::FullReporting);
+
+	auto fp = mFileConfig.getOutputDir() / "FullTimeSeries.csv";
+
+	// note: deliberately not try-catching this
+	// this will crash the program if it cannot write to file (ie the csv is open in Excel!)
+	writeTimeSeriesToCSV(fp, fullResult);
+	
+	fp = mFileConfig.getOutputDir() / "ScenarioCostData.csv";
+
+	writeCostDataToCSV(fp, fullResult);
+
+
+
+	// END HACK
+
+
 	output.Fixed_load1_scalar = taskData.Fixed_load1_scalar;
 	output.Fixed_load2_scalar = taskData.Fixed_load2_scalar;
 	output.Flex_load_max = taskData.Flex_load_max;
@@ -79,6 +99,7 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallind
 	output.ESS_start_SoC = taskData.ESS_start_SoC;
 	output.ESS_charge_mode = taskData.ESS_charge_mode;
 	output.ESS_discharge_mode = taskData.ESS_discharge_mode;
+	output.DHW_cylinder_volume = taskData.DHW_cylinder_volume;
 	output.Export_kWh_price = taskData.Export_kWh_price;
 
 	return output;
@@ -143,7 +164,7 @@ ObjectiveResult Optimiser::reproduceResult(uint64_t paramIndex) const {
 
 	Simulator sim{};
 
-	SimulationResult simResult = sim.simulateScenario(mHistoricalData, taskData, SimulationType::FullReporting);
+	SimulationResult simResult = sim.simulateScenario(mHistoricalData, taskData, SimulationType::ResultOnly);
 
 	return toObjectiveResult(simResult, taskData);
 }
@@ -242,6 +263,7 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	output.ESS_start_SoC = 23.0;
 	output.ESS_charge_mode = 24;
 	output.ESS_discharge_mode = 25;
+	output.DHW_cylinder_volume = 26;
 
 	writeResultsToCSVs(leagueTable);
 

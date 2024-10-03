@@ -109,6 +109,9 @@
 #define ID_TEXTBOX97 97
 #define ID_TEXTBOX98 98
 #define ID_TEXTBOX99 99
+#define ID_TEXTBOX100 100
+#define ID_TEXTBOX101 101
+#define ID_TEXTBOX102 102
 
 #define ID_TEXTBOX_INDEX 200
 
@@ -177,6 +180,7 @@ HWND hTextbox61; HWND hTextbox62; HWND hTextbox63; HWND hTextbox64; HWND hTextbo
 HWND hTextbox71; HWND hTextbox72; HWND hTextbox73; HWND hTextbox74; HWND hTextbox75; HWND hTextbox76; HWND hTextbox77; HWND hTextbox78; HWND hTextbox79; HWND hTextbox80;
 HWND hTextbox81; HWND hTextbox82; HWND hTextbox83; HWND hTextbox84; HWND hTextbox85; HWND hTextbox86; HWND hTextbox87; HWND hTextbox88; HWND hTextbox89; HWND hTextbox90;
 HWND hTextbox91; HWND hTextbox92; HWND hTextbox93; HWND hTextbox94; HWND hTextbox95; HWND hTextbox96; HWND hTextbox97; HWND hTextbox98; HWND hTextbox99;
+HWND hTextbox100; HWND hTextbox101; HWND hTextbox102;
 
 HWND hTextboxIndex;
 
@@ -343,7 +347,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 	HWND hLabelTimestepHours = makeLabel(hWnd, hInstance, L"Timestep, Hours", 360, 80, 100, 50);
 
-	hTextboxTimestepHours = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_TIMESTEP_HOURS, 360, 130, 100, 30, L"1");
+	hTextboxTimestepHours = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX_TIMESTEP_HOURS, 360, 130, 100, 30, L"0.5");
 
 	HWND hLabelTimeWindowHours = makeLabel(hWnd, hInstance, L"Time window, hours", 480, 80, 100, 50);
 
@@ -604,6 +608,15 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hLabel87 = makeLabel(hWnd, hInstance, L"ESS capacity step", 1080, 680, 100, 50);
 	hTextbox87 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX87, 1080, 730, 100, 30, L"0");
 
+	HWND hLabel100 = makeLabel(hWnd, hInstance, L"DHW cylinder lower", 1200, 680, 100, 50);
+	hTextbox100 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX100, 1200, 730, 100, 30, L"2000.0");
+
+	HWND hLabel101 = makeLabel(hWnd, hInstance, L"DHW cylinder upper", 1320, 680, 100, 50);
+	hTextbox101 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX101, 1320, 730, 100, 30, L"3000.0");
+
+	HWND hLabel102 = makeLabel(hWnd, hInstance, L"DHW cylinder step", 1440, 680, 100, 50);
+	hTextbox102 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX102, 1440, 730, 100, 30, L"500.0");
+
 	// new GUI row 
 
 	HWND hLabel88 = makeLabel(hWnd, hInstance, L"ESS start SoC lower", 120, 780, 100, 50);
@@ -638,7 +651,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hTextbox97 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX97, 360, 930, 100, 30, L"44");
 
 	HWND hLabel98 = makeLabel(hWnd, hInstance, L"CAPEX limit, £k", 480, 880, 100, 50);
-	hTextbox98 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX98, 480, 930, 100, 30, L"500");
+	hTextbox98 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX98, 480, 930, 100, 30, L"1000");
 
 	HWND hLabel99 = makeLabel(hWnd, hInstance, L"OPEX limit, £k", 600, 880, 100, 50);
 	hTextbox99 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX99, 600, 930, 100, 30, L"100");
@@ -800,6 +813,9 @@ InputValues readInputFromForm() {
 	wchar_t buffer97[100];
 	wchar_t buffer98[100];
 	wchar_t buffer99[100];
+	wchar_t buffer100[100];
+	wchar_t buffer101[100];
+	wchar_t buffer102[100];
 
 	GetWindowText(hTextbox1, buffer1, 100);
 	GetWindowText(hTextbox2, buffer2, 100);
@@ -900,6 +916,10 @@ InputValues readInputFromForm() {
 	GetWindowText(hTextbox97, buffer97, 100);
 	GetWindowText(hTextbox98, buffer98, 100);
 	GetWindowText(hTextbox99, buffer99, 100);
+	GetWindowText(hTextbox100, buffer100, 100);
+	GetWindowText(hTextbox101, buffer101, 100);
+	GetWindowText(hTextbox102, buffer102, 100);
+
 	// ... retrieve text from more textboxes as needed
 
 	//InputValues inputvalues =
@@ -1023,6 +1043,10 @@ InputValues readInputFromForm() {
 	float ESS_start_SoC_upper = static_cast<float>(_wtof(buffer89));
 	float ESS_start_SoC_step = static_cast<float>(_wtof(buffer90));
 
+	float DHW_cylinder_volume_lower = static_cast<float>(_wtof(buffer100));
+	float DHW_cylinder_volume_upper = static_cast<float>(_wtof(buffer101));
+	float DHW_cylinder_volume_step = static_cast<float>(_wtof(buffer102));
+
 	int ESS_charge_mode_lower = static_cast<int>(_wtoi(buffer91));
 	int ESS_charge_mode_upper = static_cast<int>(_wtoi(buffer92));
 
@@ -1070,6 +1094,7 @@ InputValues readInputFromForm() {
 		ESS_start_SoC_lower, ESS_start_SoC_upper, ESS_start_SoC_step,
 		ESS_charge_mode_lower, ESS_charge_mode_upper,
 		ESS_discharge_mode_lower, ESS_discharge_mode_upper,
+		DHW_cylinder_volume_lower, DHW_cylinder_volume_upper, DHW_cylinder_volume_step,
 		Export_kWh_price,
 		time_budget_min, target_max_concurrency,
 		CAPEX_limit, OPEX_limit
@@ -1443,6 +1468,15 @@ void writeRecallValuesToForm(const OutputValues& output) {
 
 	swprintf_s(buffer, 300, L"%s", L"_");
 	SetWindowText(hTextbox94, buffer);
+
+	swprintf_s(buffer, 300, L"%f", output.DHW_cylinder_volume);
+	SetWindowText(hTextbox100, buffer);
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox101, buffer);
+
+	swprintf_s(buffer, 300, L"%s", L"_");
+	SetWindowText(hTextbox102, buffer);
 
 	swprintf_s(buffer, 300, L"%f", output.Export_kWh_price);
 	SetWindowText(hTextbox95, buffer);

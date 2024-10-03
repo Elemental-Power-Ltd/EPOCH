@@ -13,31 +13,6 @@ const std::string EPOCH_VERSION = "0.2.2";
 using year_TS = Eigen::VectorXf;
 
 struct SimulationResult {
-	float Rgen_total;
-	float Total_load;
-	float ESUM;
-	float ESS_available_discharge_power;
-	float ESS_available_charge_power;
-	float ESS_Rgen_only_charge;
-	float ESS_discharge;
-	float ESS_charge;
-	float ESS_resulting_SoC;
-	float Pre_grid_balance;
-	float Grid_Import;
-	float Grid_Export;
-	float Post_grid_balance;
-	float Pre_flex_import_shortfall;
-	float Pre_Mop_curtailed_export;
-	float Actual_import_shortfall;
-	float Actual_curtailed_export;
-	float Actual_high_priority_load;
-	float Actual_low_priority_load;
-	float Heatload;
-	float Scaled_heatload;
-	float Electrical_load_scaled_heat_yield;
-	float Heat_shortfall;
-	float Heat_surplus;
-
 	float runtime;
 	uint64_t paramIndex;
 
@@ -49,30 +24,54 @@ struct SimulationResult {
 };
 
 struct FullSimulationResult {
-	year_TS Rgen_total;
-	year_TS Total_load;
-	year_TS ESUM;
-	year_TS ESS_available_discharge_power;
-	year_TS ESS_available_charge_power;
-	year_TS ESS_Rgen_only_charge;
-	year_TS ESS_discharge;
-	year_TS ESS_charge;
-	year_TS ESS_resulting_SoC;
-	year_TS Pre_grid_balance;
-	year_TS Grid_Import;
-	year_TS Grid_Export;
-	year_TS Post_grid_balance;
-	year_TS Pre_flex_import_shortfall;
-	year_TS Pre_Mop_curtailed_export;
+	// TempSum
 	year_TS Actual_import_shortfall;
 	year_TS Actual_curtailed_export;
-	year_TS Actual_high_priority_load;
-	year_TS Actual_low_priority_load;
-	year_TS Heatload;
-	year_TS Scaled_heatload;
-	year_TS Electrical_load_scaled_heat_yield;
 	year_TS Heat_shortfall;
 	year_TS Heat_surplus;
+
+	// Hotel
+	year_TS Hotel_load;
+	year_TS Heatload;
+
+	// PV
+	year_TS PVdcGen;
+	year_TS PVacGen;
+
+	// EV
+	year_TS EV_targetload;
+	year_TS EV_actualload;
+
+	// ESS
+	year_TS ESS_charge;
+	year_TS ESS_discharge;
+	year_TS ESS_resulting_SoC;
+	year_TS ESS_AuxLoad;
+	year_TS ESS_RTL;
+
+	// DataCentre
+	year_TS Data_centre_target_load;
+	year_TS Data_centre_actual_load;
+	year_TS Data_centre_target_heat;
+	year_TS Data_centre_available_hot_heat;
+
+	// Grid
+	year_TS Grid_Import;
+	year_TS Grid_Export;
+
+	// MOP
+	year_TS MOP_load;
+
+	// GasCombustionHeater
+	year_TS GasCH_load;
+	
+	// DHW
+	year_TS DHW_load;
+	year_TS DHW_charging;
+	year_TS DHW_SoC;
+	year_TS DHW_Standby_loss;
+	year_TS DHW_ave_temperature;
+	year_TS DHW_Shortfall;
 
 	float runtime;
 	uint64_t paramIndex;
@@ -82,6 +81,58 @@ struct FullSimulationResult {
 	float scenario_cost_balance;
 	float payback_horizon_years;
 	float scenario_carbon_balance;
+
+	float Baseline_electricity_cost;
+	float Baseline_fuel_cost;
+
+	float Baseline_electricity_carbon;
+	float Baseline_fuel_carbon;
+
+	float Scenario_electricity_cost;
+	float Scenario_fuel_cost;
+	float Scenario_grid_export_cost;
+	float Resulting_EV_charge_revenue;
+	float Resulting_Data_Centre_revenue;
+	float Scenario_avoided_fuel_cost;
+
+	float Scenario_electricity_carbon;
+	float Scenario_fuel_carbon;
+	float Scenario_grid_export_carbon;
+	float Scenario_avoided_fuel_carbon;
+
+	float ESS_PCS_CAPEX;
+	float ESS_PCS_OPEX;
+	float ESS_ENCLOSURE_CAPEX;
+	float ESS_ENCLOSURE_OPEX;
+	float ESS_ENCLOSURE_DISPOSAL;
+
+	float PVpanel_CAPEX;
+	float PVBoP_CAPEX;
+	float PVroof_CAPEX;
+	float PVground_CAPEX;
+	float PV_OPEX;
+
+	float EV_CP_cost;
+	float EV_CP_install;
+
+	float Grid_CAPEX;
+
+	float ASHP_CAPEX;
+};
+
+// A struct containing all of the necessary vectors for cost calculations
+// bridging from V7 to V8
+struct CostVectors {
+	year_TS actual_ev_load_e;
+	year_TS actual_data_centre_load_e;
+	year_TS building_load_e;
+
+	year_TS heatload_h;
+	year_TS heat_shortfall_h;
+
+	year_TS grid_import_e;
+	year_TS grid_export_e;
+	year_TS actual_low_priority_load_e;
 };
 
 
@@ -119,7 +170,7 @@ struct OutputValues {
 	float ScalarHL1; float ASHP_HPower; int ASHP_HSource; float ASHP_RadTemp; float ASHP_HotTemp;
 	float GridImport; float GridExport; float Import_headroom; float Export_headroom; float Min_power_factor;
 	float ESS_charge_power; float ESS_discharge_power; float ESS_capacity;  float ESS_start_SoC;
-	int ESS_charge_mode; int ESS_discharge_mode;
+	int ESS_charge_mode; int ESS_discharge_mode; float DHW_cylinder_volume;
 	float Export_kWh_price;
 	float CAPEX; float annualised; float scenario_cost_balance; float payback_horizon; float scenario_carbon_balance;
 	uint64_t CAPEX_index; uint64_t annualised_index; uint64_t scenario_cost_balance_index; uint64_t payback_horizon_index; uint64_t scenario_carbon_balance_index;
@@ -160,6 +211,7 @@ struct InputValues {
 	float ESS_start_SoC_lower; float ESS_start_SoC_upper; float ESS_start_SoC_step;
 	int ESS_charge_mode_lower; int ESS_charge_mode_upper;
 	int ESS_discharge_mode_lower; int ESS_discharge_mode_upper;
+	float DHW_cylinder_volume_lower; float DHW_cylinder_volume_upper; float DHW_cylinder_volume_step;
 	float Export_kWh_price;
 	float time_budget_min; int target_max_concurrency;
 	float CAPEX_limit; float OPEX_limit;
@@ -176,6 +228,7 @@ struct HistoricalData {
 	year_TS airtemp_data;
 	year_TS importtariff_data;
 	year_TS gridCO2_data;
+	year_TS DHWdemand_data;
 	Eigen::MatrixXf ASHPinputtable;
 	Eigen::MatrixXf ASHPoutputtable;
 };

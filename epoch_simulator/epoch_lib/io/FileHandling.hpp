@@ -16,12 +16,14 @@ std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filenam
 std::vector<std::vector<float>> readCSVAsTable(const std::filesystem::path& filename);
 
 
-void writeResultsToCSV(std::filesystem::path filepath, const std::vector<SimulationResult>& results);
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<ObjectiveResult>& results);
 void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& result);
 
 void writeObjectiveResultHeader(std::ofstream& outFile);
 void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& result);
+
+void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult fullResult);
+void writeCostDataToCSV(std::filesystem::path filepath, FullSimulationResult fullResult);
 
 nlohmann::json inputToJson(const InputValues& data);
 nlohmann::json outputToJson(const OutputValues& data);
@@ -36,45 +38,8 @@ Eigen::VectorXf toEigen(const std::vector<float>& vec);
 Eigen::MatrixXf toEigen(const std::vector<std::vector<float>>& mat);
 
 
-
-constexpr std::array<std::string_view, 31> resultHeader = {
-	"Parameter index",
-	"Calculative execution time (s)",
-
-	"Annualised cost",
-	"Project CAPEX",
-	"Scenario Balance (£)",
-	"Payback horizon (yrs)",
-	"Scenario Carbon Balance (kgC02e)",
-
-	"Scaled RGen_total",
-	"Total_scaled_target_load",
-	"Total load minus Rgen (ESUM)",
-	"ESS_available_discharge_power",
-	"ESS_available_charge_power",
-	"ESS_Rgen_only_charge",
-	"ESS_discharge",
-	"ESS_charge",
-	"ESS_resulting_SoC",
-	"Pre_grid_balance",
-	"Grid Import",
-	"Grid Export",
-	"Post_grid_balance",
-	"Pre_flex_import_shortfall",
-	"Pre_mop_curtailed Export",
-	"Actual import shortfall",
-	"Actual curtailed export",
-	"Actual high priority load",
-	"Actual low priority load",
-	"Heat load",
-	"Scaled Heat load",
-	"Electrical load scaled heat",
-	"Heat shortfall",
-	"Heat surplus",
-};
-
 // The subset of values in the TaskData class that we want to write to the output CSVs
-constexpr std::array<std::string_view, 34> taskDataParamNames = {
+constexpr std::array<std::string_view, 35> taskDataParamNames = {
 	"Fixed_load1_scalar",
 	"Fixed_load2_scalar",
 	"Flex_load_max",
@@ -103,6 +68,7 @@ constexpr std::array<std::string_view, 34> taskDataParamNames = {
 	"ESS_discharge_power",
 	"ESS_capacity",
 	"ESS_start_SoC",
+	"DHW_cylinder_volume",
 	"Export_kWh_price",
 	"time_budget_min",
 	"CAPEX_limit",
