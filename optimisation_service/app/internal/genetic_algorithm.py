@@ -5,7 +5,7 @@ from typing import Any, Never
 
 import numpy as np
 import numpy.typing as npt
-from paretoset import paretoset
+from paretoset import paretoset  # type: ignore
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
 from pymoo.algorithms.soo.nonconvex.ga import GA as Pymoo_GA  # type: ignore
 from pymoo.config import Config  # type: ignore
