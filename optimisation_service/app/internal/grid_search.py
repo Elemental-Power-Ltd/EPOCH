@@ -89,8 +89,7 @@ class GridSearch(Algorithm):
         temp_dir = tempfile.TemporaryDirectory()
 
         output_dir = Path(temp_dir.name, "tmp_outputs")
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
         config_dir = Path(temp_dir.name, "Config")
         Path(temp_dir.name, "Config").mkdir(parents=False, exist_ok=False)
