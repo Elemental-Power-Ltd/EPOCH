@@ -113,7 +113,7 @@ class GridSearch(Algorithm):
         os.remove(Path(problem.input_dir, "inputParameters.json"))
 
         variable_param = list(problem.variable_param().keys())
-        usecols = [item.value if isinstance(item, Enum) else str(item) for item in problem.objectives + variable_param]
+        usecols = [item.value if isinstance(item, Enum) else str(item) for item in _OBJECTIVES + variable_param]
 
         df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32, usecols=usecols)
 
@@ -196,15 +196,17 @@ def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / "inputParameters.json"} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / "EpochConfig.json"} is not a file"
 
-    result = subprocess.run([
-        str(full_path_to_exe),
-        "--input",
-        str(input_dir),
-        "--output",
-        str(output_dir),
-        "--config",
-        str(config_dir),
-    ])
+    result = subprocess.run(
+        [
+            str(full_path_to_exe),
+            "--input",
+            str(input_dir),
+            "--output",
+            str(output_dir),
+            "--config",
+            str(config_dir),
+        ]
+    )
 
     assert result.returncode == 0, result
 

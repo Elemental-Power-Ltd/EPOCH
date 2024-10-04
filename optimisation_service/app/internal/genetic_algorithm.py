@@ -124,16 +124,19 @@ class NSGA2(Algorithm):
         # Moreover, the optimiser only maintains track of optimised objectives.
         # Hence, each solution in the pareto front is reevaluated to gather missing objective values.
         objective_values = []
+        objective_values_for_pf = []
         for sol in solutions:
             simresult = pi.simulate(sol)
             objective_values.append([simresult[objective] for objective in _OBJECTIVES])
+            objective_values_for_pf.append([simresult[objective] for objective in problem.objectives])
         objective_values_arr = np.asarray(objective_values)
+        objective_values_for_pf_arr = np.asarray(objective_values_for_pf)
 
         n_evals = pareto_front.algorithm.evaluator.n_eval
         exec_time = timedelta(seconds=pareto_front.exec_time)
 
         obj_direct = ["max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in problem.objectives]
-        pareto_efficient = paretoset(objective_values_arr, obj_direct, distinct=True)
+        pareto_efficient = paretoset(objective_values_for_pf_arr, obj_direct, distinct=True)
         solutions = solutions[pareto_efficient]
         objective_values_arr = objective_values_arr[pareto_efficient]
 
