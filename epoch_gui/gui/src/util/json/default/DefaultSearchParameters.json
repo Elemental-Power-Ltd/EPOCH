@@ -99,6 +99,5 @@
     "target_max_concurrency": 44,
     "time_budget_min": 5.0,
     "timestep_hours": 0.5,
-    "timewindow": 17520.0
-
+    "timewindow": 8760.0
 }
