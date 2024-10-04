@@ -12,6 +12,7 @@ RUN apk update
 RUN apk add --no-cache g++ cmake make git curl zip unzip tar pkgconfig
 RUN git clone https://github.com/microsoft/vcpkg.git
 WORKDIR /vcpkg
+RUN git checkout c82f74667287d3dc386bce81e44964370c91a289
 RUN ./bootstrap-vcpkg.sh
 ENV VCPKG_ROOT="/vcpkg"
 ENV PATH="$VCPKG_ROOT:$PATH"
