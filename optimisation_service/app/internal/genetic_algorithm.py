@@ -43,14 +43,14 @@ class NSGA2(Algorithm):
 
     def __init__(
         self,
-        pop_size: int = 128,
+        pop_size: int = 2048,
         n_offsprings: int | None = None,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
         prob_mutation: float = 0.9,
         std_scaler: float = 0.2,
         tol: float = 1e-14,
-        period: int | None = 25,
+        period: int | None = 5,
         n_max_gen: int = int(1e14),
         n_max_evals: int = int(1e14),
     ) -> None:
@@ -83,7 +83,7 @@ class NSGA2(Algorithm):
             Max number of evaluations of EPOCH before termination
         """
         if n_offsprings is None:
-            n_offsprings = pop_size
+            n_offsprings = int(pop_size * (3 / 4))
 
         self.algorithm = Pymoo_NSGA2(
             pop_size=pop_size,
