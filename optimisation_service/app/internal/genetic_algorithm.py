@@ -298,13 +298,7 @@ class ProblemInstance(ElementwiseProblem):
         return res
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[np.floating]]) -> None:
-        fractional_parts, _ = np.modf(x)
-        if np.any(fractional_parts != 0):
-            logger.warning(f"Solution contains decimal values: {x}")
         x = self.scale_solutions(x)
-        fractional_parts, _ = np.modf(x)
-        if np.any(fractional_parts != 0):
-            logger.warning(f"Scaled solution contains decimal values: {x}")
         result = self.simulate(x)
 
         out["F"] = [result[objective] * _OBJECTIVES_DIRECTION[objective] for objective in self.objectives]
