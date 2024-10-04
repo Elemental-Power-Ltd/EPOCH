@@ -405,6 +405,8 @@ async def get_import_tariffs(params: DatasetIDWithTime, conn: DatabaseDep) -> li
             method="nearest",
         )
     return [
-        EpochTariffEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), Tariff=val)
+        EpochTariffEntry(
+            Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), Tariff=val / 100
+        )
         for ts, val in zip(df.index, df["unit_cost"], strict=True)
     ]
