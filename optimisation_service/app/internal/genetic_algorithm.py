@@ -116,11 +116,14 @@ class NSGA2(Algorithm):
             Objective values of optimal solutions.
         """
         pi = ProblemInstance(problem)
-
+        logger.debug("NSGA2 optimisation starting.")
         pareto_front = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+        logger.debug("NSGA2 optimisation finished, postprocessing results.")
         # To facilitate the algorithm, the problem parameter values are scaled, with ranges from 0 to n and a stepsize of 1.
         # Hence, resutls need to be scaled back to valid values.
         solutions = pi.scale_solutions(pareto_front.X)
+        if solutions.ndim == 1:
+            solutions = np.expand_dims(solutions, axis=0)
         # Moreover, the optimiser only maintains track of optimised objectives.
         # Hence, each solution in the pareto front is reevaluated to gather missing objective values.
         objective_values = []
