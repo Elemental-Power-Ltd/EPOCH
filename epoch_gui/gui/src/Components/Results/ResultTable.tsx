@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
     Table,
     TableBody,
@@ -11,8 +11,12 @@ import {
     IconButton,
 } from '@mui/material';
 
+import InfoIcon from '@mui/icons-material/Info';
+
 import {Task, OptimisationResult} from "../../State/types";
 import {formatPounds, formatCarbon, formatYears} from "../../util/displayFunctions";
+import SolutionModal from './SolutionModal'; // Import the modal component
+
 interface OptimisationResultsTableProps {
     task: Task;
     results: OptimisationResult[];
@@ -23,11 +27,23 @@ type Order = 'asc' | 'desc';
 const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ task, results }) => {
     const [order, setOrder] = useState<Order>('asc');
     const [orderBy, setOrderBy] = useState<keyof OptimisationResult['objective_values']>('carbon_balance');
+    const [selectedSolution, setSelectedSolution] = useState<{ [key: string]: number } | null>(null);
+    const [modalOpen, setModalOpen] = useState<boolean>(false);
 
     const handleRequestSort = (property: keyof OptimisationResult['objective_values']) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
         setOrderBy(property);
+    };
+
+    const handleShowSolution = (solution: { [key: string]: number }) => {
+        setSelectedSolution(solution);
+        setModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        setSelectedSolution(null);
     };
 
     const sortedResults = results.slice().sort((a, b) => {
@@ -39,6 +55,7 @@ const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ tas
     });
 
     return (
+        <>
         <TableContainer component={Paper}>
             <Table>
                 <TableHead>
@@ -101,10 +118,9 @@ const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ tas
                             <TableCell>{formatPounds(result.objective_values.annualised_cost)}</TableCell>
                             <TableCell>
                                 <IconButton
-                                    onClick={() => console.log(result.solution)}
-                                    color="primary"
+                                        onClick={() => handleShowSolution(result.solution)}                                    color="primary"
                                 >
-                                    Show Solution
+                                    <InfoIcon/>
                                 </IconButton>
                             </TableCell>
                         </TableRow>
@@ -112,6 +128,16 @@ const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ tas
                 </TableBody>
             </Table>
         </TableContainer>
+
+        {selectedSolution && (
+                <SolutionModal
+                    open={modalOpen}
+                    onClose={handleCloseModal}
+                    solution={selectedSolution}
+                />
+        )}
+        </>
+
     );
 };
 
