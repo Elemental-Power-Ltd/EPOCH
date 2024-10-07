@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 
 import {Task, OptimisationResult} from "../../State/types";
-
+import {formatPounds, formatCarbon, formatYears} from "../../util/displayFunctions";
 interface OptimisationResultsTableProps {
     task: Task;
     results: OptimisationResult[];
@@ -94,11 +94,11 @@ const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ tas
                 <TableBody>
                     {sortedResults.map((result) => (
                         <TableRow key={result.result_id}>
-                            <TableCell>{result.objective_values.carbon_balance}</TableCell>
-                            <TableCell>{result.objective_values.cost_balance}</TableCell>
-                            <TableCell>{result.objective_values.capex}</TableCell>
-                            <TableCell>{result.objective_values.payback_horizon}</TableCell>
-                            <TableCell>{result.objective_values.annualised_cost}</TableCell>
+                            <TableCell>{formatCarbon(result.objective_values.carbon_balance)}</TableCell>
+                            <TableCell>{formatPounds(result.objective_values.cost_balance)}</TableCell>
+                            <TableCell>{formatPounds(result.objective_values.capex)}</TableCell>
+                            <TableCell>{formatYears(result.objective_values.payback_horizon)}</TableCell>
+                            <TableCell>{formatPounds(result.objective_values.annualised_cost)}</TableCell>
                             <TableCell>
                                 <IconButton
                                     onClick={() => console.log(result.solution)}
