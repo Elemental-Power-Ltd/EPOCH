@@ -1,6 +1,8 @@
 import React from 'react';
 import {Card, CardContent, Typography, Grid, Container} from '@mui/material';
 
+import {parseISODuration} from "../../util/displayFunctions";
+
 type TaskState = 'queued' | 'running' | 'cancelled';
 
 interface QueueElem {
@@ -14,26 +16,7 @@ interface OptimiserStatus {
     service_uptime: string;
 }
 
-const parseISODuration = (duration: string): string => {
-    const match = duration.match(/PT([\d\.]+)S/);
-    if (!match) return 'Invalid duration';
 
-    const totalSeconds = parseFloat(match[1]);
-    const days = Math.floor(totalSeconds / (3600 * 24));
-    let seconds = totalSeconds % (3600 * 24);
-    const hours = Math.floor(seconds / 3600);
-    seconds %= 3600;
-    const minutes = Math.floor(seconds / 60);
-    seconds %= 60;
-
-    let uptimeString = '';
-    if (days > 0) uptimeString += `${days} day${days > 1 ? 's' : ''}, `;
-    if (hours > 0) uptimeString += `${hours} hour${hours > 1 ? 's' : ''}, `;
-    if (minutes > 0) uptimeString += `${minutes} minute${minutes > 1 ? 's' : ''}, `;
-    uptimeString += `${seconds.toFixed(0)} second${seconds !== 1 ? 's' : ''}`;
-
-    return uptimeString;
-};
 
 
 const QueueElemDisplay: React.FC<{ elem: QueueElem }> = ({elem}) => {

@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 import {Task} from "../../State/types";
+import {parseISODuration} from "../../util/displayFunctions";
 
 interface TaskTableProps {
     tasks: Task[];
@@ -29,7 +30,7 @@ const TaskTable: React.FC<TaskTableProps> = ({tasks, setCurrentTask}) => {
                             <TableCell>{task.task_name || 'Unnamed Task'}</TableCell>
                             <TableCell>{task.site_id}</TableCell>
                             <TableCell>{task.n_evals}</TableCell>
-                            <TableCell>{task.exec_time}</TableCell>
+                            <TableCell>{parseISODuration(task.exec_time)}</TableCell>
                             <TableCell>{task.result_ids.length}</TableCell>
                             <TableCell>
                                 <IconButton color="primary" onClick={()=>setCurrentTask(task)}>
