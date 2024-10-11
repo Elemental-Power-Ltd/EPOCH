@@ -276,9 +276,9 @@ FullSimulationResult Simulator::makeInvalidResult(const TaskData& taskData) cons
 
 	fullSimulationResult.project_CAPEX = std::numeric_limits<float>::max();
 	fullSimulationResult.total_annualised_cost = std::numeric_limits<float>::max();
-	fullSimulationResult.scenario_cost_balance = std::numeric_limits<float>::min();
+	fullSimulationResult.scenario_cost_balance = std::numeric_limits<float>::lowest();
 	fullSimulationResult.payback_horizon_years = std::numeric_limits<float>::max();
-	fullSimulationResult.scenario_carbon_balance = std::numeric_limits<float>::min();
+	fullSimulationResult.scenario_carbon_balance = std::numeric_limits<float>::lowest();
 
 	return fullSimulationResult;
 }
