@@ -1,14 +1,13 @@
-# Use Python 3.12 slim image
-FROM python:latest
+FROM python:3.12-slim-bookworm
 
 # Set working directory in the container
 # WORKDIR /app
 
 # Copy the requirements file into the container
-COPY requirements.txt .
-
+COPY requirements-docker.txt .
+RUN pip install --upgrade pip
 # Install dependencies
-RUN pip install -r requirements.txt
+RUN pip install -r requirements-docker.txt
 
 # Copy the rest of the application code
 COPY . .
