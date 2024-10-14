@@ -76,12 +76,6 @@ class Problem:
                 " Check that the units are correctly in p / kWh and not £ / kWh.",
             )
 
-        if self.parameters["ASHP_HSource"]["step"] != 0:
-            raise ValueError(
-                "Scanning over ASHP_HSource parameters for a site without a hot room.",
-                " Set ASHP_HSource['min'] == ASHP_HSource['max'] == 1.",
-            )
-
     def variable_param(self) -> dict[str, ParamRange]:
         """
         Get parameters which have more than 1 possible value.
