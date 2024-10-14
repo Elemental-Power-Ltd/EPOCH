@@ -25,16 +25,16 @@ public:
 	year_TS Pool_h;
 	year_TS Waste_h;
 
-	void Report(FullSimulationResult& Result) const {
+	void Report(ReportData& reportData) const {
 		//Grid import breach (capacity shortfall): clamp Elec balance above zero
-		Result.Actual_import_shortfall = Elec_e.cwiseMax(0.0f);
+		reportData.Actual_import_shortfall = Elec_e.cwiseMax(0.0f);
 		// Grid export breach (not curtailed): flip Elec and then clamp above zero
-		Result.Actual_curtailed_export = -1.0f * Elec_e;
-		Result.Actual_curtailed_export = Result.Actual_curtailed_export.cwiseMax(0.0f);
+		reportData.Actual_curtailed_export = -1.0f * Elec_e;
+		reportData.Actual_curtailed_export = reportData.Actual_curtailed_export.cwiseMax(0.0f);
 		// Any remaining heat load = a heat shortfall
-		Result.Heat_shortfall = Heat_h + DHW_load_h + Pool_h;
+		reportData.Heat_shortfall = Heat_h + DHW_load_h + Pool_h;
 		// Any surplus heat generated is wasted (conservation of energy checksum)
-		Result.Heat_surplus = Waste_h;
+		reportData.Heat_surplus = Waste_h;
 
 		// TODO - add additional reporting
 	}

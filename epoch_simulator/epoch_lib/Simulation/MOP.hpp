@@ -24,8 +24,8 @@ public:
 		tempSum.Elec_e += mMOP_e;
 	}
 
-	void Report(FullSimulationResult& Result) {
-		Result.MOP_load = mMOP_e;
+	void Report(ReportData& reportData) {
+		reportData.MOP_load = mMOP_e;
 	}
 
 private:

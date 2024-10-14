@@ -32,7 +32,7 @@ public:
         mHeatPump.StepCalc(tempSum, heatPumpBudget_e, t);
     }
 
-    void Report(FullSimulationResult& result) const {
+    void Report(ReportData& reportData) const {
         // NEED TO ADD HEATPUMP RESULTS
         //result.HeatPump_elec_load = mHeatPump.mDHWload_e + mHeatPump.mCHload_e;
         //result.HeatPump_DHWoutput = mHeatPump.mDHWout_h;
@@ -41,7 +41,7 @@ public:
 
 
         // TODO - FIXME
-        // The way that FullSimulationResult is structured, we assume that we always have all of the vectors
+        // The way that ReportData is structured, we assume that we always have all of the vectors
         // The following vectors are specific to a data centre with an ASHP (which we don't have in this case)
         // So we write them as 0 vectors mimicking the length of the other results
         // (consider changing reporting from a struct with fixed vectors to a map of String->year_TS?
@@ -49,12 +49,12 @@ public:
         // EVEN BIGGER HACK
         // assume that heatload has already been written (it has)
         // and use that to determine the size of these vectors
-        int timesteps = result.Heatload.size();
+        int timesteps = reportData.Heatload.size();
 
-        result.Data_centre_target_load = Eigen::VectorXf::Zero(timesteps);
-        result.Data_centre_actual_load = Eigen::VectorXf::Zero(timesteps);
-        result.Data_centre_target_heat = Eigen::VectorXf::Zero(timesteps);
-        result.Data_centre_available_hot_heat = Eigen::VectorXf::Zero(timesteps);
+        reportData.Data_centre_target_load = Eigen::VectorXf::Zero(timesteps);
+        reportData.Data_centre_actual_load = Eigen::VectorXf::Zero(timesteps);
+        reportData.Data_centre_target_heat = Eigen::VectorXf::Zero(timesteps);
+        reportData.Data_centre_available_hot_heat = Eigen::VectorXf::Zero(timesteps);
     }
 
 private:

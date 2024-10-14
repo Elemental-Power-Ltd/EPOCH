@@ -327,7 +327,7 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	outFile << "\n";
 }
 
-void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult fullResult)
+void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& reportData)
 {
 	std::ofstream outFile(filepath);
 
@@ -369,42 +369,42 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, FullSimulationResult f
 	outFile << "\n"; // newline
 
 	// write the values
-	for (int i = 0; i < fullResult.Actual_import_shortfall.size(); i++) {
-		outFile << fullResult.Actual_import_shortfall[i] << ",";
-		outFile << fullResult.Actual_curtailed_export[i] << ",";
-		outFile << fullResult.Heat_shortfall[i] << ",";
-		outFile << fullResult.Heat_surplus[i] << ",";
-		outFile << fullResult.Hotel_load[i] << ",";
-		outFile << fullResult.Heatload[i] << ",";
-		outFile << fullResult.PVdcGen[i] << ",";
-		outFile << fullResult.PVacGen[i] << ",";
-		outFile << fullResult.EV_targetload[i] << ",";
-		outFile << fullResult.EV_actualload[i] << ",";
-		outFile << fullResult.ESS_charge[i] << ",";
-		outFile << fullResult.ESS_discharge[i] << ",";
-		outFile << fullResult.ESS_resulting_SoC[i] << ",";
-		outFile << fullResult.ESS_AuxLoad[i] << ",";
-		outFile << fullResult.ESS_RTL[i] << ",";
-		outFile << fullResult.Data_centre_target_load[i] << ",";
-		outFile << fullResult.Data_centre_actual_load[i] << ",";
-		outFile << fullResult.Data_centre_target_heat[i] << ",";
-		outFile << fullResult.Data_centre_available_hot_heat[i] << ",";
-		outFile << fullResult.Grid_Import[i] << ",";
-		outFile << fullResult.Grid_Export[i] << ",";
-		outFile << fullResult.MOP_load[i] << ",";
-		outFile << fullResult.GasCH_load[i] << ",";
-		outFile << fullResult.DHW_load[i] << ",";
-		outFile << fullResult.DHW_charging[i] << ",";
-		outFile << fullResult.DHW_SoC[i] << ",";
-		outFile << fullResult.DHW_Standby_loss[i] << ",";
-		outFile << fullResult.DHW_ave_temperature[i] << ",";
-		outFile << fullResult.DHW_Shortfall[i];  // no trailing comma
+	for (int i = 0; i < reportData.Actual_import_shortfall.size(); i++) {
+		outFile << reportData.Actual_import_shortfall[i] << ",";
+		outFile << reportData.Actual_curtailed_export[i] << ",";
+		outFile << reportData.Heat_shortfall[i] << ",";
+		outFile << reportData.Heat_surplus[i] << ",";
+		outFile << reportData.Hotel_load[i] << ",";
+		outFile << reportData.Heatload[i] << ",";
+		outFile << reportData.PVdcGen[i] << ",";
+		outFile << reportData.PVacGen[i] << ",";
+		outFile << reportData.EV_targetload[i] << ",";
+		outFile << reportData.EV_actualload[i] << ",";
+		outFile << reportData.ESS_charge[i] << ",";
+		outFile << reportData.ESS_discharge[i] << ",";
+		outFile << reportData.ESS_resulting_SoC[i] << ",";
+		outFile << reportData.ESS_AuxLoad[i] << ",";
+		outFile << reportData.ESS_RTL[i] << ",";
+		outFile << reportData.Data_centre_target_load[i] << ",";
+		outFile << reportData.Data_centre_actual_load[i] << ",";
+		outFile << reportData.Data_centre_target_heat[i] << ",";
+		outFile << reportData.Data_centre_available_hot_heat[i] << ",";
+		outFile << reportData.Grid_Import[i] << ",";
+		outFile << reportData.Grid_Export[i] << ",";
+		outFile << reportData.MOP_load[i] << ",";
+		outFile << reportData.GasCH_load[i] << ",";
+		outFile << reportData.DHW_load[i] << ",";
+		outFile << reportData.DHW_charging[i] << ",";
+		outFile << reportData.DHW_SoC[i] << ",";
+		outFile << reportData.DHW_Standby_loss[i] << ",";
+		outFile << reportData.DHW_ave_temperature[i] << ",";
+		outFile << reportData.DHW_Shortfall[i];  // no trailing comma
 		outFile << "\n";
 	}
 
 }
 
-void writeCostDataToCSV(std::filesystem::path filepath, FullSimulationResult fullResult)
+void writeCostDataToCSV(std::filesystem::path filepath, const ReportData& reportData)
 {
 	std::ofstream outFile(filepath);
 
@@ -459,46 +459,46 @@ void writeCostDataToCSV(std::filesystem::path filepath, FullSimulationResult ful
 
 	// write the values
      //	outFile << fullResult.ESUM[i] << ",";
-	outFile << fullResult.Baseline_electricity_cost << ","; 
-	outFile << fullResult.Baseline_fuel_cost << ",";
+	outFile << reportData.Baseline_electricity_cost << ","; 
+	outFile << reportData.Baseline_fuel_cost << ",";
 
-	outFile << fullResult.Baseline_electricity_carbon << ",";
-	outFile << fullResult.Baseline_fuel_carbon << ",";
+	outFile << reportData.Baseline_electricity_carbon << ",";
+	outFile << reportData.Baseline_fuel_carbon << ",";
 
-	outFile << fullResult.Scenario_electricity_cost << ",";
-	outFile << fullResult.Scenario_fuel_cost << ",";
-	outFile << fullResult.Scenario_grid_export_cost << ",";
+	outFile << reportData.Scenario_electricity_cost << ",";
+	outFile << reportData.Scenario_fuel_cost << ",";
+	outFile << reportData.Scenario_grid_export_cost << ",";
 	
-	outFile << fullResult.Resulting_EV_charge_revenue << ",";
+	outFile << reportData.Resulting_EV_charge_revenue << ",";
 
-	outFile << fullResult.Resulting_Data_Centre_revenue << ",";
+	outFile << reportData.Resulting_Data_Centre_revenue << ",";
 
-	outFile << fullResult.Scenario_avoided_fuel_cost << ",";
+	outFile << reportData.Scenario_avoided_fuel_cost << ",";
 
-	outFile << fullResult.Scenario_electricity_carbon << ",";
-	outFile << fullResult.Scenario_fuel_carbon << ",";
-	outFile << fullResult.Scenario_grid_export_carbon << ",";
-	outFile << fullResult.Scenario_avoided_fuel_carbon << "'";
+	outFile << reportData.Scenario_electricity_carbon << ",";
+	outFile << reportData.Scenario_fuel_carbon << ",";
+	outFile << reportData.Scenario_grid_export_carbon << ",";
+	outFile << reportData.Scenario_avoided_fuel_carbon << "'";
 	
 
-	outFile << fullResult.ESS_PCS_CAPEX << ",";
-	outFile << fullResult.ESS_PCS_OPEX << ",";
-	outFile << fullResult.ESS_ENCLOSURE_CAPEX << ",";
-	outFile << fullResult.ESS_ENCLOSURE_OPEX << ",";
-	outFile << fullResult.ESS_ENCLOSURE_DISPOSAL << ",";
+	outFile << reportData.ESS_PCS_CAPEX << ",";
+	outFile << reportData.ESS_PCS_OPEX << ",";
+	outFile << reportData.ESS_ENCLOSURE_CAPEX << ",";
+	outFile << reportData.ESS_ENCLOSURE_OPEX << ",";
+	outFile << reportData.ESS_ENCLOSURE_DISPOSAL << ",";
 
-	outFile << fullResult.PVpanel_CAPEX << ",";
-	outFile << fullResult.PVBoP_CAPEX << ",";
-	outFile << fullResult.PVroof_CAPEX << ",";
-	outFile << fullResult.PVground_CAPEX << ",";
-	outFile << fullResult.PV_OPEX << ",";
+	outFile << reportData.PVpanel_CAPEX << ",";
+	outFile << reportData.PVBoP_CAPEX << ",";
+	outFile << reportData.PVroof_CAPEX << ",";
+	outFile << reportData.PVground_CAPEX << ",";
+	outFile << reportData.PV_OPEX << ",";
 
-	outFile << fullResult.EV_CP_cost << ",";
-	outFile << fullResult.EV_CP_install << ",";
+	outFile << reportData.EV_CP_cost << ",";
+	outFile << reportData.EV_CP_install << ",";
 
-	outFile << fullResult.Grid_CAPEX << ",";
+	outFile << reportData.Grid_CAPEX << ",";
 
-	outFile << fullResult.ASHP_CAPEX; // no trailing comma
+	outFile << reportData.ASHP_CAPEX; // no trailing comma
 
 	outFile << "\n";
 	
@@ -514,11 +514,11 @@ void writeCostDataToCSV(std::filesystem::path filepath, FullSimulationResult ful
 
 	outFile << "\n";
 
-	outFile << fullResult.total_annualised_cost << ",";
-	outFile << fullResult.project_CAPEX << ",";
-	outFile << fullResult.scenario_cost_balance << ",";
-	outFile << fullResult.payback_horizon_years << ",";
-	outFile << fullResult.scenario_carbon_balance;
+	outFile << reportData.total_annualised_cost << ",";
+	outFile << reportData.project_CAPEX << ",";
+	outFile << reportData.scenario_cost_balance << ",";
+	outFile << reportData.payback_horizon_years << ",";
+	outFile << reportData.scenario_carbon_balance;
 
 	outFile << "\n";
 

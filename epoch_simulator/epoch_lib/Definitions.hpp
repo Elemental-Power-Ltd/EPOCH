@@ -2,6 +2,7 @@
 
 #include <Eigen/Core>
 #include <functional>
+#include <optional>
 #include <string>
 
 #include "Simulation/TaskData.hpp"
@@ -12,18 +13,8 @@ const std::string EPOCH_VERSION = "0.2.2";
 
 using year_TS = Eigen::VectorXf;
 
-struct SimulationResult {
-	float runtime;
-	uint64_t paramIndex;
+struct ReportData {
 
-	float total_annualised_cost;
-	float project_CAPEX;
-	float scenario_cost_balance;
-	float payback_horizon_years;
-	float scenario_carbon_balance;
-};
-
-struct FullSimulationResult {
 	// TempSum
 	year_TS Actual_import_shortfall;
 	year_TS Actual_curtailed_export;
@@ -73,8 +64,7 @@ struct FullSimulationResult {
 	year_TS DHW_ave_temperature;
 	year_TS DHW_Shortfall;
 
-	float runtime;
-	uint64_t paramIndex;
+	// Cost Data
 
 	float total_annualised_cost;
 	float project_CAPEX;
@@ -118,6 +108,19 @@ struct FullSimulationResult {
 	float Grid_CAPEX;
 
 	float ASHP_CAPEX;
+};
+
+struct SimulationResult {
+	float runtime;
+	uint64_t paramIndex;
+
+	float total_annualised_cost;
+	float project_CAPEX;
+	float scenario_cost_balance;
+	float payback_horizon_years;
+	float scenario_carbon_balance;
+
+	std::optional<ReportData> report_data;
 };
 
 // A struct containing all of the necessary vectors for cost calculations

@@ -35,10 +35,10 @@ public:
         return mPVacGen_e;
     }
 
-    void Report(FullSimulationResult &Result) {
+    void Report(ReportData& reportData) {
         // report target load to allow calculation of revenue missed
-        Result.PVdcGen = mPVdcGen_e;
-        Result.PVacGen = mPVacGen_e;
+        reportData.PVdcGen = mPVdcGen_e;
+        reportData.PVacGen = mPVacGen_e;
     }
 
 private:

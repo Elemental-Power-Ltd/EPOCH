@@ -19,7 +19,7 @@ public:
     virtual void AllCalcs(TempSum& tempSum) = 0;
     virtual void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) = 0;
     virtual float getTargetLoad(int timestep) = 0;
-    virtual void Report(FullSimulationResult& result) const = 0;
+    virtual void Report(ReportData& reportData) const = 0;
 };
 
 
@@ -30,7 +30,7 @@ public:
     void AllCalcs(TempSum& tempSum);
     void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t);
     float getTargetLoad(int timestep);
-    void Report(FullSimulationResult& result) const;
+    void Report(ReportData& reportData) const;
 
 private:
     const int mTimesteps;
@@ -49,7 +49,7 @@ public:
     void AllCalcs(TempSum& tempSum);
     void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t);
     float getTargetLoad(int timestep);
-    void Report(FullSimulationResult& result) const;
+    void Report(ReportData& reportData) const;
 
 private:
     HotRoomHeatPump mHeatPump;

@@ -9,8 +9,6 @@
 
 using year_TS = Eigen::VectorXf;
 
-class FullSimulationResult;
-
 class TaskData {
 
 public:

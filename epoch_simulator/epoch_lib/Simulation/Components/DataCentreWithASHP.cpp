@@ -80,12 +80,12 @@ float DataCentreWithASHP::getTargetLoad(int timestep) {
 	return mTargetLoad_e[timestep];
 }
 
-void DataCentreWithASHP::Report(FullSimulationResult& result) const {
-	result.Data_centre_target_load = mTargetLoad_e;
-	result.Data_centre_actual_load = mActualLoad_e;
+void DataCentreWithASHP::Report(ReportData& reportData) const {
+	reportData.Data_centre_target_load = mTargetLoad_e;
+	reportData.Data_centre_actual_load = mActualLoad_e;
 	// TODO - investigate mTargetHeat_h (is it always 0?)
-	result.Data_centre_target_heat = mTargetHeat_h;
-	result.Data_centre_available_hot_heat = mAvailableHotHeat_h;
+	reportData.Data_centre_target_heat = mTargetHeat_h;
+	reportData.Data_centre_available_hot_heat = mAvailableHotHeat_h;
 
 	// TODO report heatpump results
 
