@@ -162,7 +162,7 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 	SimulationResult result;
 
 	result.report_data = ReportData();
-	ReportData reportData = *result.report_data;
+	ReportData& reportData = *result.report_data;
 
 	tempSum.Report(reportData);
 	hotel.Report(reportData);
