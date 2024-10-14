@@ -51,9 +51,7 @@ class DataManager:
         logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
         os.makedirs(self.temp_data_dir)
 
-        if site_data.site_id == "demo_edinburgh":
-            self.copy_input_data(Path("mount_site_data"), self.temp_data_dir)
-        elif site_data.loc == FileLoc.local:
+        if site_data.loc == FileLoc.local:
             self.copy_input_data(site_data.path, self.temp_data_dir)
         elif site_data.loc == FileLoc.remote:
             if site_data.dataset_ids:
