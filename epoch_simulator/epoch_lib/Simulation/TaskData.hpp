@@ -12,7 +12,7 @@ using year_TS = Eigen::VectorXf;
 class TaskData {
 
 public:
-    TaskData(float years_val = 1.0f, float days_val = 365.0f, float hours_val = 8760.0f, float timestep_hours_val = 1.0f, float timewindow_val = 8760.0f,
+    TaskData(float years_val = 1.0f, float days_val = 365.0f, float hours_val = 8760.0f, float timestep_hours_val = 0.5f, float timewindow_val = 8760.0f,
         float Fixed_load1_scalar_val = 1.0f, float Fixed_load2_scalar_val = 3.0f, float Flex_load_max_val = 50.0f, float Mop_load_max_val = 300.0f,
         float ScalarRG1_val = 599.2f, float ScalarRG2_val = 75.6f, float ScalarRG3_val = 60.48f, float ScalarRG4_val = 0.0f, float ScalarHYield_val = 0.75f,
         int s7_EV_CP_number_val = 0, int f22_EV_CP_number_val = 3, int r50_EV_CP_number_val = 0, int u150_EV_CP_number_val = 0, float EV_flex_val = 0.5f,
