@@ -1,8 +1,8 @@
 #include "Bindings.hpp"
 
 #include <format>
-
-#include <pybind11/pybind11.h>
+#include <pybind11/eigen.h>
+#include <pybind11/stl.h>
 
 #include "Simulate_py.hpp"
 #include "../epoch_lib/Simulation/TaskData.hpp"
@@ -15,9 +15,9 @@ PYBIND11_MODULE(epoch_simulator, m) {
 	pybind11::class_<Simulator_py>(m, "Simulator")
 		.def(
 			pybind11::init<const std::string&, const std::string&, const std::string&>(),
-				pybind11::arg("inputDir") = std::string("./InputData"),
-				pybind11::arg("outputDir") = std::string("./OutputData"),
-			 	pybind11::arg("configDir") = std::string("./ConfigData"))
+			pybind11::arg("inputDir") = std::string("./InputData"),
+			pybind11::arg("outputDir") = std::string("./OutputData"),
+			pybind11::arg("configDir") = std::string("./ConfigData"))
 		.def("simulate_scenario", &Simulator_py::simulateScenario,
 			pybind11::arg("taskData"),
 			pybind11::arg("fullReporting") = false);
@@ -64,17 +64,46 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("timewindow", &TaskData::timewindow)
 		.def("__repr__", &taskDataToString);
 
-
 	pybind11::class_<SimulationResult>(m, "SimulationResult")
-		.def_readwrite("carbon_balance", &SimulationResult::scenario_carbon_balance)
-		.def_readwrite("cost_balance", &SimulationResult::scenario_cost_balance)
-		.def_readwrite("capex", &SimulationResult::project_CAPEX)
-		.def_readwrite("payback_horizon", &SimulationResult::payback_horizon_years)
-		.def_readwrite("annualised_cost", &SimulationResult::total_annualised_cost)
+		.def_readonly("carbon_balance", &SimulationResult::scenario_carbon_balance)
+		.def_readonly("cost_balance", &SimulationResult::scenario_cost_balance)
+		.def_readonly("capex", &SimulationResult::project_CAPEX)
+		.def_readonly("payback_horizon", &SimulationResult::payback_horizon_years)
+		.def_readonly("annualised_cost", &SimulationResult::total_annualised_cost)
+		.def_readonly("report_data", &SimulationResult::report_data)
 		.def("__repr__", &resultToString);
+
+	pybind11::class_<ReportData>(m, "ReportData")
+		.def_readonly("Actual_import_shortfall", &ReportData::Actual_import_shortfall)
+		.def_readonly("Actual_curtailed_export", &ReportData::Actual_curtailed_export)
+		.def_readonly("Heat_shortfall", &ReportData::Heat_shortfall)
+		.def_readonly("Heat_surplus", &ReportData::Heat_surplus)
+		.def_readonly("Hotel_load", &ReportData::Hotel_load)
+		.def_readonly("Heatload", &ReportData::Heatload)
+		.def_readonly("PVdcGen", &ReportData::PVdcGen)
+		.def_readonly("PVacGen", &ReportData::PVacGen)
+		.def_readonly("EV_targetload", &ReportData::EV_targetload)
+		.def_readonly("EV_actualload", &ReportData::EV_actualload)
+		.def_readonly("ESS_charge", &ReportData::ESS_charge)
+		.def_readonly("ESS_discharge", &ReportData::ESS_discharge)
+		.def_readonly("ESS_resulting_SoC", &ReportData::ESS_resulting_SoC)
+		.def_readonly("ESS_AuxLoad", &ReportData::ESS_AuxLoad)
+		.def_readonly("ESS_RTL", &ReportData::ESS_RTL)
+		.def_readonly("Data_centre_target_load", &ReportData::Data_centre_target_load)
+		.def_readonly("Data_centre_actual_load", &ReportData::Data_centre_actual_load)
+		.def_readonly("Data_centre_target_heat", &ReportData::Data_centre_target_heat)
+		.def_readonly("Data_centre_available_hot_heat", &ReportData::Data_centre_available_hot_heat)
+		.def_readonly("Grid_Import", &ReportData::Grid_Import)
+		.def_readonly("Grid_Export", &ReportData::Grid_Export)
+		.def_readonly("MOP_load", &ReportData::MOP_load)
+		.def_readonly("GasCH_load", &ReportData::GasCH_load)
+		.def_readonly("DHW_load", &ReportData::DHW_load)
+		.def_readonly("DHW_charging", &ReportData::DHW_charging)
+		.def_readonly("DHW_SoC", &ReportData::DHW_SoC)
+		.def_readonly("DHW_Standby_loss", &ReportData::DHW_Standby_loss)
+		.def_readonly("DHW_ave_temperature", &ReportData::DHW_ave_temperature)
+		.def_readonly("DHW_Shortfall", &ReportData::DHW_Shortfall);
 }
-
-
 
 
 std::string resultToString(const SimulationResult& result)
