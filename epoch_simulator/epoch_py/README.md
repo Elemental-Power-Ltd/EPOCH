@@ -51,17 +51,23 @@ Run a scenario, returning a `Result` object
 
 #### Result
 
-The result class is returned by calls to `simulate_scenario`. It contains the result values for each of the five objectives.
+A  `SimulationResult` is returned by calls to `simulate_scenario`. It contains the result values for each of the five objectives.
 
 This class implements the `__repr__` method so the print method can be used to see the state.
 
+#### Report Data
 
-#### Verbose Results
+When the `simulate_scenario` function is called, setting the flag `fullReporting=True` will return the full time series within the `report_data` field.
 
-Optionally, the flag `fullReporting=True` can be added to `simulate_scenario` in order to write verbose time series information to a CSV in the output directory.
+When `fullReporting` is False (default behaviour) the `report_data` will be set to `None`
+
 
 ```Python
-simulate_scenario(task, fullReporting=True)
+...
+>> result = sim.simulate_scenario(task, fullReporting=True)
+>> assert(result.report_data is not None)
+>> result.report_data.Actual_import_shortfall
+array([ 0.      ,  0.      ,  0.      , ..., 19.077652,  7.701477,
+        7.701477], dtype=float32)
 ```
 
-The CSV will be always be called `FullTimeSeries.csv`
