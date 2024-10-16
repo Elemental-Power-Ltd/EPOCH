@@ -195,6 +195,16 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 
 	myCost.calculateCosts_no_CAPEX(costVectors);
 
+	if (simulationType != SimulationType::FullReporting) {
+		// TEMPORARY HACK
+		// until the costs have been refactored, we are always doing full reporting
+		// this is a lazy way of getting the vectors we need into costVectors
+
+		// in order to preserve the correct appearance of there being no reportData,
+		// we remove the reportData again here
+		result.report_data = std::nullopt;
+	}
+
 	//Data reporting
 
 	if (simulationType == SimulationType::FullReporting) {
