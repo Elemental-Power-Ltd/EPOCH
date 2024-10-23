@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 
-from app.internal.problem import Problem
-from app.internal.result import Result
+from app.internal.problem import PortfolioProblem
+from app.models.result import OptimisationResult
 
 
 class Algorithm(ABC):
     @abstractmethod
-    def run(self, problem: Problem) -> Result:
+    def run(self, problem: PortfolioProblem) -> OptimisationResult:
         """
         Run optimisation.
 

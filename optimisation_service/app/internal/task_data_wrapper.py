@@ -6,7 +6,7 @@ from collections.abc import Generator
 
 import numpy as np
 
-from app.models.problem import ParametersWORange, ParametersWRange
+from app.models.parameters import ParametersWORange, ParametersWRange
 
 from .log import logger
 

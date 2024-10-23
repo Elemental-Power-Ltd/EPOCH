@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from enum import StrEnum
 from typing import Final, TypedDict
 
 from pydantic import BaseModel, Field
@@ -56,35 +55,10 @@ param_range = Field(
 )
 
 
-class Objectives(StrEnum):
-    carbon_balance = "carbon_balance"
-    cost_balance = "cost_balance"
-    capex = "capex"
-    payback_horizon = "payback_horizon"
-    annualised_cost = "annualised_cost"
-
-
 class EndpointParamRange(BaseModel):
     min: int | float
     max: int | float
     step: int | float
-
-
-class ParamRange(TypedDict):
-    min: int | float
-    max: int | float
-    step: int | float
-
-
-OldParameterDict = Mapping[str, list[int | float] | tuple[int | float] | int | float]
-
-
-class Bounds(TypedDict):
-    min: int | float
-    max: int | float
-
-
-ConstraintDict = Mapping[str, Bounds]
 
 
 class EndpointParameterDict(BaseModel):
@@ -128,6 +102,12 @@ class EndpointParameterDict(BaseModel):
     timewindow: float | int
 
 
+class ParamRange(TypedDict):
+    min: int | float
+    max: int | float
+    step: int | float
+
+
 class ParameterDict(TypedDict):
     ASHP_HPower: ParamRange
     ASHP_HSource: ParamRange
@@ -167,3 +147,6 @@ class ParameterDict(TypedDict):
     time_budget_min: int | float
     timestep_hours: int | float
     timewindow: float | int
+
+
+OldParameterDict = Mapping[str, list[int | float] | tuple[int | float] | int | float]
