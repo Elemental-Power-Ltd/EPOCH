@@ -15,8 +15,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from ..dependencies import DatabaseDep
-from ..models.core import ClientID, TaskID
-from ..models.optimisation import Objective, OptimisationResult, OptimisationTaskListEntry, TaskConfig
+from ..models.core import ClientID, ResultID, TaskID
+from ..models.optimisation import Objective, OptimisationResult, OptimisationTaskListEntry, ResultReproConfig, TaskConfig
 
 router = APIRouter()
 
@@ -249,3 +249,36 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
     return task_config
+
+
+@router.post("/get-result-configuration")
+async def get_result_configuration(result_id: ResultID, conn: DatabaseDep) -> ResultReproConfig:
+    """
+    Return the configuration that was used to produce a given result.
+
+    Parameters
+    ----------
+    result_id
+        The result_id for a result in the database that you want to reproduce
+
+    Returns
+    -------
+        All of the configuration data necessary to reproduce this simulation
+    """
+    task_info = await conn.fetchrow(
+        """
+        SELECT task_config.task_id, results.solutions, task_config.input_data
+        FROM optimisation.task_config as task_config
+        INNER JOIN optimisation.results as results
+        ON task_config.task_id = results.task_id
+        WHERE results.results_id = $1
+        """,
+        result_id.result_id,
+    )
+
+    if task_info is None:
+        raise HTTPException(400, f"No task configuration exists for result with id {result_id.result_id}")
+
+    task_id, task_data, input_data = task_info
+
+    return ResultReproConfig(task_id=task_id, task_data=json.loads(task_data), site_data=json.loads(input_data))

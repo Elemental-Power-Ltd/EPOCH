@@ -24,13 +24,16 @@ class Objective(pydantic.BaseModel):
     annualised_cost: float | None = pydantic.Field(default=1.0, description="Cost to run these interventions per year")
 
 
+type SolutionType = dict[str, float | int]
+
+
 class OptimisationResult(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(
         examples=["bb8ce01e-4a73-11ef-9454-0242ac120001"],
         description="Unique ID for this task, often assigned by the optimiser.",
     )
     result_id: pydantic.UUID4
-    solution: dict[str, float | int] = pydantic.Field(
+    solution: SolutionType = pydantic.Field(
         examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
         description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
         + "May not cover all parameters, only the ones we searched over.",
@@ -86,6 +89,7 @@ class RemoteMetaData(pydantic.BaseModel):
         description="Datetime to retrieve data from. Only relevant for remote files."
     )
     duration: DataDuration = pydantic.Field(description="Length of time to retrieve data for. Only relevant for remote files.")
+    dataset_ids: dict[str, pydantic.UUID4] = pydantic.Field(default={}, description="Specific dataset IDs to fetch.")
 
 
 class LocalMetaData(pydantic.BaseModel):
@@ -153,6 +157,12 @@ class TaskConfig(pydantic.BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
+
+
+class ResultReproConfig(pydantic.BaseModel):
+    task_id: pydantic.UUID4
+    task_data: SolutionType
+    site_data: SiteDataEntry
 
 
 class OptimisationTaskListEntry(pydantic.BaseModel):
