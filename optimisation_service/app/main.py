@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routers import epl_queue, optimise
+from .routers import epl_queue, optimise, simulate
 from .routers.epl_queue import IQueue
 from .routers.optimise import process_requests
 
@@ -59,3 +59,4 @@ async def read_main() -> dict[str, str]:
 
 app.include_router(optimise.router)
 app.include_router(epl_queue.router)
+app.include_router(simulate.router)

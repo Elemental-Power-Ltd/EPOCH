@@ -58,3 +58,21 @@ class SiteDataEntries(TypedDict):
 
 
 SiteMetaData = RemoteMetaData | LocalMetaData
+
+
+class DatasetTypeEnum(StrEnum):
+    GasMeterData = "GasMeterData"
+    ElectricityMeterData = "ElectricityMeterData"
+    ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"
+    RenewablesGeneration = "RenewablesGeneration"
+    Weather = "Weather"
+    CarbonIntensity = "CarbonIntensity"
+    HeatingLoad = "HeatingLoad"
+    ASHPData = "ASHPData"
+    ImportTariff = "ImportTariff"
+
+
+class DatasetEntry(BaseModel):
+    dataset_id: UUID4
+    dataset_type: DatasetTypeEnum
+    created_at: AwareDatetime
