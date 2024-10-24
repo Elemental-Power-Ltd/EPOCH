@@ -52,17 +52,17 @@ OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallind
 	// HACK - write the recalled scenario to a CSV for full reporting exploration
 	spdlog::info("Writing Time Series for recalled scenario to file");
 	Simulator tempSim = Simulator();
-	auto fullResult = tempSim.simulateScenarioFull(mHistoricalData, taskData, SimulationType::FullReporting);
+	auto result = tempSim.simulateScenario(mHistoricalData, taskData, SimulationType::FullReporting);
 
 	auto fp = mFileConfig.getOutputDir() / "FullTimeSeries.csv";
 
 	// note: deliberately not try-catching this
 	// this will crash the program if it cannot write to file (ie the csv is open in Excel!)
-	writeTimeSeriesToCSV(fp, fullResult);
+	writeTimeSeriesToCSV(fp, *result.report_data);
 	
 	fp = mFileConfig.getOutputDir() / "ScenarioCostData.csv";
 
-	writeCostDataToCSV(fp, fullResult);
+	writeCostDataToCSV(fp, *result.report_data);
 
 
 

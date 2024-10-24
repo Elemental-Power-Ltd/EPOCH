@@ -38,9 +38,9 @@ public:
 		tempSum.Elec_e = tempSum.Elec_e + Exp_e - Imp_e;
 	}
 
-	void Report(FullSimulationResult& Result) {
-		Result.Grid_Import = Imp_e;
-		Result.Grid_Export = Exp_e;
+	void Report(ReportData& reportData) {
+		reportData.Grid_Import = Imp_e;
+		reportData.Grid_Export = Exp_e;
 	}
 
 	// Can't go direct to Acc values for 'SimulationResult' as Import & Export vectors required for Supplier ToU costs

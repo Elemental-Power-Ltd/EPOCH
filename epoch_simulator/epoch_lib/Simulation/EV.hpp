@@ -44,10 +44,10 @@ public:
         tempSum.Elec_e[t] = tempSum.Elec_e[t] + mActualLoad_e[t];
     }
 
-    void Report(FullSimulationResult & Result) {
+    void Report(ReportData& reportData) {
         // report target load to allow calculation of revenue missed
-        Result.EV_targetload = mTargetLoad_e;
-        Result.EV_actualload = mActualLoad_e;
+        reportData.EV_targetload = mTargetLoad_e;
+        reportData.EV_actualload = mActualLoad_e;
     }
 
 private:

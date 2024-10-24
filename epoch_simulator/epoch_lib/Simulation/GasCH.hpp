@@ -33,8 +33,8 @@ public:
 		//tempSum.Pool_h(Eigen::VectorXf::Zero(mTimesteps);
 	}
 
-	void Report(FullSimulationResult& Result) {
-		Result.GasCH_load = mGasCH_e;
+	void Report(ReportData& reportData) {
+		reportData.GasCH_load = mGasCH_e;
 	}
 
 private:

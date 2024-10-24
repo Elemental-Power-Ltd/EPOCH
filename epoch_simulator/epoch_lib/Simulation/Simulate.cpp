@@ -33,7 +33,7 @@ Simulator::Simulator() {
 
 }
 
-FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const {
+SimulationResult Simulator::simulateScenario(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const {
 	/*CALCULATIVE SECTION - START PROFILING */
 	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
 
@@ -42,11 +42,11 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	myCost.calculate_Project_CAPEX();
 	if (taskData.CAPEX_limit*1000 < myCost.get_project_CAPEX())
 	{
-		auto fullSimulationResult = makeInvalidResult(taskData);
+		auto simulationResult = makeInvalidResult(taskData);
 
 		// but this invalid result can still have a valid CAPEX
-		fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
-		return fullSimulationResult;
+		simulationResult.project_CAPEX = myCost.get_project_CAPEX();
+		return simulationResult;
 	}
 
 	/* INITIALISE classes that support energy sums and object precedence */
@@ -159,78 +159,91 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	grid.AllCalcs(tempSum);
 	GasCH.AllCalcs(tempSum);
 
-	FullSimulationResult fullSimulationResult;
+	SimulationResult result;
 
-	tempSum.Report(fullSimulationResult);
-	hotel.Report(fullSimulationResult);
-	PV1.Report(fullSimulationResult);
-	EV1.Report(fullSimulationResult);
-	ESSmain.Report(fullSimulationResult);
+	result.report_data = ReportData();
+	ReportData& reportData = *result.report_data;
+
+	tempSum.Report(reportData);
+	hotel.Report(reportData);
+	PV1.Report(reportData);
+	EV1.Report(reportData);
+	ESSmain.Report(reportData);
 	if (config.dataCentrePresent()) {
-		dataCentre->Report(fullSimulationResult);
+		dataCentre->Report(reportData);
 	}
 	else {
-		ambientController->Report(fullSimulationResult);
+		ambientController->Report(reportData);
 	}
 	// TODO do HeatPump Reporting
-	grid.Report(fullSimulationResult);
-	MOP.Report(fullSimulationResult);
-	GasCH.Report(fullSimulationResult);
-	hotWaterCylinder.Report(fullSimulationResult);
+	grid.Report(reportData);
+	MOP.Report(reportData);
+	GasCH.Report(reportData);
+	hotWaterCylinder.Report(reportData);
 
 	CostVectors costVectors;
 
-	costVectors.actual_ev_load_e = fullSimulationResult.EV_actualload;
-	costVectors.actual_data_centre_load_e = fullSimulationResult.Data_centre_actual_load;
-	costVectors.building_load_e = fullSimulationResult.Hotel_load;
-	costVectors.heatload_h = fullSimulationResult.Heatload;
-	costVectors.heat_shortfall_h = fullSimulationResult.Heat_shortfall;
-	costVectors.grid_import_e = fullSimulationResult.Grid_Import;
-	costVectors.grid_export_e = fullSimulationResult.Grid_Export;
-	costVectors.actual_low_priority_load_e = fullSimulationResult.MOP_load;
+	costVectors.actual_ev_load_e = reportData.EV_actualload;
+	costVectors.actual_data_centre_load_e = reportData.Data_centre_actual_load;
+	costVectors.building_load_e = reportData.Hotel_load;
+	costVectors.heatload_h = reportData.Heatload;
+	costVectors.heat_shortfall_h = reportData.Heat_shortfall;
+	costVectors.grid_import_e = reportData.Grid_Import;
+	costVectors.grid_export_e = reportData.Grid_Export;
+	costVectors.actual_low_priority_load_e = reportData.MOP_load;
 
 
 	myCost.calculateCosts_no_CAPEX(costVectors);
 
+	if (simulationType != SimulationType::FullReporting) {
+		// TEMPORARY HACK
+		// until the costs have been refactored, we are always doing full reporting
+		// this is a lazy way of getting the vectors we need into costVectors
+
+		// in order to preserve the correct appearance of there being no reportData,
+		// we remove the reportData again here
+		result.report_data = std::nullopt;
+	}
+
 	//Data reporting
 
 	if (simulationType == SimulationType::FullReporting) {
-		//fullSimulationResult.Baseline_electricity_cost = myCost.get_Baseline_elec_cost();
-		//fullSimulationResult.Baseline_fuel_cost = myCost.get_Baseline_fuel_cost();
+		//reportData.Baseline_electricity_cost = myCost.get_Baseline_elec_cost();
+		//reportData.Baseline_fuel_cost = myCost.get_Baseline_fuel_cost();
 
-		//fullSimulationResult.Baseline_electricity_carbon = myCost.get_Baseline_elec_CO2e();
-		//fullSimulationResult.Baseline_fuel_carbon = myCost.get_Baseline_fuel_CO2e();
+		//reportData.Baseline_electricity_carbon = myCost.get_Baseline_elec_CO2e();
+		//reportData.Baseline_fuel_carbon = myCost.get_Baseline_fuel_CO2e();
 
-		//fullSimulationResult.Scenario_electricity_cost = myCost.get_Scenario_import_cost();
-		//fullSimulationResult.Scenario_fuel_cost = myCost.get_Scenario_fuel_cost();
-		//fullSimulationResult.Scenario_grid_export_cost = myCost.get_Scenario_export_cost();
+		//reportData.Scenario_electricity_cost = myCost.get_Scenario_import_cost();
+		//reportData.Scenario_fuel_cost = myCost.get_Scenario_fuel_cost();
+		//reportData.Scenario_grid_export_cost = myCost.get_Scenario_export_cost();
 		//
-		//fullSimulationResult.Scenario_electricity_carbon = myCost.get_Scenario_elec_CO2e();
-		//fullSimulationResult.Scenario_fuel_carbon = myCost.get_Scenario_fuel_CO2e();
-		//fullSimulationResult.Scenario_grid_export_carbon = myCost.get_Scenario_export_CO2e();
-		//fullSimulationResult.Scenario_avoided_fuel_carbon = myCost.get_Scenario_LP_CO2e();
+		//reportData.Scenario_electricity_carbon = myCost.get_Scenario_elec_CO2e();
+		//reportData.Scenario_fuel_carbon = myCost.get_Scenario_fuel_CO2e();
+		//reportData.Scenario_grid_export_carbon = myCost.get_Scenario_export_CO2e();
+		//reportData.Scenario_avoided_fuel_carbon = myCost.get_Scenario_LP_CO2e();
 
-		//fullSimulationResult.Resulting_EV_charge_revenue = myCost.get_Scenario_EV_revenue();
-		//fullSimulationResult.Resulting_Data_Centre_revenue = myCost.get_Scenario_HP_revenue();
-		//fullSimulationResult.Scenario_avoided_fuel_cost = myCost.get_Scenario_LP_revenue();
+		//reportData.Resulting_EV_charge_revenue = myCost.get_Scenario_EV_revenue();
+		//reportData.Resulting_Data_Centre_revenue = myCost.get_Scenario_HP_revenue();
+		//reportData.Scenario_avoided_fuel_cost = myCost.get_Scenario_LP_revenue();
 
-		//fullSimulationResult.ESS_PCS_CAPEX = myCost.get_ESS_PCS_CAPEX();
-		//fullSimulationResult.ESS_PCS_OPEX = myCost.get_ESS_PCS_OPEX();
-		//fullSimulationResult.ESS_ENCLOSURE_CAPEX = myCost.get_ESS_ENCLOSURE_CAPEX();
-		//fullSimulationResult.ESS_ENCLOSURE_OPEX = myCost.get_ESS_ENCLOSURE_OPEX();
-		//fullSimulationResult.ESS_ENCLOSURE_DISPOSAL = myCost.get_ESS_ENCLOSURE_DISPOSAL();
+		//reportData.ESS_PCS_CAPEX = myCost.get_ESS_PCS_CAPEX();
+		//reportData.ESS_PCS_OPEX = myCost.get_ESS_PCS_OPEX();
+		//reportData.ESS_ENCLOSURE_CAPEX = myCost.get_ESS_ENCLOSURE_CAPEX();
+		//reportData.ESS_ENCLOSURE_OPEX = myCost.get_ESS_ENCLOSURE_OPEX();
+		//reportData.ESS_ENCLOSURE_DISPOSAL = myCost.get_ESS_ENCLOSURE_DISPOSAL();
 		//
-		//fullSimulationResult.PVpanel_CAPEX = myCost.get_PVpanel_CAPEX();
-		//fullSimulationResult.PVBoP_CAPEX = myCost.get_PVBoP_CAPEX();
-		//fullSimulationResult.PVroof_CAPEX = myCost.get_PVroof_CAPEX();
-		//fullSimulationResult.PVground_CAPEX = myCost.get_PVground_CAPEX();
-		//fullSimulationResult.PV_OPEX = myCost.get_PV_OPEX();
+		//reportData.PVpanel_CAPEX = myCost.get_PVpanel_CAPEX();
+		//reportData.PVBoP_CAPEX = myCost.get_PVBoP_CAPEX();
+		//reportData.PVroof_CAPEX = myCost.get_PVroof_CAPEX();
+		//reportData.PVground_CAPEX = myCost.get_PVground_CAPEX();
+		//reportData.PV_OPEX = myCost.get_PV_OPEX();
 		//
-		//fullSimulationResult.EV_CP_cost = myCost.get_EV_CP_cost();
-		//fullSimulationResult.EV_CP_install = myCost.get_EV_CP_install();
+		//reportData.EV_CP_cost = myCost.get_EV_CP_cost();
+		//reportData.EV_CP_install = myCost.get_EV_CP_install();
 
-		//fullSimulationResult.Grid_CAPEX = myCost.get_Grid_CAPEX();
-		//fullSimulationResult.ASHP_CAPEX = myCost.get_ASHP_CAPEX();
+		//reportData.Grid_CAPEX = myCost.get_Grid_CAPEX();
+		//reportData.ASHP_CAPEX = myCost.get_ASHP_CAPEX();
 
 		//float mEV_CP_cost;
 		//float mEV_CP_install;
@@ -241,12 +254,12 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	};
 
 	
-	fullSimulationResult.paramIndex = taskData.paramIndex;
-	fullSimulationResult.total_annualised_cost = myCost.get_total_annualised_cost();
-	fullSimulationResult.project_CAPEX = myCost.get_project_CAPEX();
-	fullSimulationResult.scenario_cost_balance = myCost.get_scenario_cost_balance();
-	fullSimulationResult.payback_horizon_years = myCost.get_payback_horizon_years();
-	fullSimulationResult.scenario_carbon_balance = myCost.get_scenario_carbon_balance();
+	result.paramIndex = taskData.paramIndex;
+	result.total_annualised_cost = myCost.get_total_annualised_cost();
+	result.project_CAPEX = myCost.get_project_CAPEX();
+	result.scenario_cost_balance = myCost.get_scenario_cost_balance();
+	result.payback_horizon_years = myCost.get_payback_horizon_years();
+	result.scenario_carbon_balance = myCost.get_scenario_carbon_balance();
 
 	
 	//========================================
@@ -260,18 +273,18 @@ FullSimulationResult Simulator::simulateScenarioFull(const HistoricalData& histo
 	std::chrono::duration<double> elapsed = end - start;
 	float runtime = static_cast<float>(elapsed.count());
 
-	fullSimulationResult.runtime = runtime;
+	result.runtime = runtime;
 
 
-	return fullSimulationResult;
+	return result;
 
 }
 
-FullSimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
+SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
 	// When a scenario is invalid, for now we return the FLT_MAX or FLT_MIN for each objective as appropriate
 
 	// TODO - apply proper fix for 'nullable' results
-	FullSimulationResult fullSimulationResult;
+	SimulationResult fullSimulationResult;
 	fullSimulationResult.paramIndex = taskData.paramIndex;
 
 	fullSimulationResult.project_CAPEX = std::numeric_limits<float>::max();
@@ -283,28 +296,3 @@ FullSimulationResult Simulator::makeInvalidResult(const TaskData& taskData) cons
 	return fullSimulationResult;
 }
 
-SimulationResult Simulator::simulateScenario(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const {
-
-	const FullSimulationResult& fullSimulationResult = simulateScenarioFull(historicalData, taskData, simulationType);
-	SimulationResult simResult{};
-
-	simResult.runtime = fullSimulationResult.runtime;
-	simResult.paramIndex = fullSimulationResult.paramIndex;
-	simResult.total_annualised_cost = fullSimulationResult.total_annualised_cost;
-	simResult.project_CAPEX = fullSimulationResult.project_CAPEX;
-	simResult.scenario_cost_balance = fullSimulationResult.scenario_cost_balance;
-	simResult.payback_horizon_years = fullSimulationResult.payback_horizon_years;
-	simResult.scenario_carbon_balance = fullSimulationResult.scenario_carbon_balance;
-
-	return simResult;
-}
-
-
-year_TS Simulator::calculateRGenTotal(const HistoricalData& historicalData, const TaskData& taskData) const {
-	year_TS RGen1 = historicalData.RGen_data_1 * taskData.ScalarRG1;
-	year_TS RGen2 = historicalData.RGen_data_2 * taskData.ScalarRG2;
-	year_TS RGen3 = historicalData.RGen_data_3 * taskData.ScalarRG3;
-	year_TS RGen4 = historicalData.RGen_data_4 * taskData.ScalarRG4;
-
-	return RGen1 + RGen2 + RGen3 + RGen4;
-}

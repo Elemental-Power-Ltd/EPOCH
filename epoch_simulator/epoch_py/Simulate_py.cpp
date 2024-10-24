@@ -13,7 +13,7 @@ SimulationResult Simulator_py::simulateScenario(const TaskData& taskData, bool f
 	pybind11::gil_scoped_release release;
 
 	if (fullReporting) {
-		FullSimulationResult fullSimulationResult = mSimulator.simulateScenarioFull(mHistoricalData, taskData, SimulationType::FullReporting);
+		SimulationResult simResult = mSimulator.simulateScenario(mHistoricalData, taskData, SimulationType::FullReporting);
 
 		// Temporary Feature:
 		// When we call for fullReporting from Python, write the fullResult to a CSV
@@ -21,18 +21,8 @@ SimulationResult Simulator_py::simulateScenario(const TaskData& taskData, bool f
 
 		// note: deliberately not try-catching this
 		// this will crash the program if it cannot write to file (ie the csv is open in Excel!)
-		writeTimeSeriesToCSV(fp, fullSimulationResult);
+		writeTimeSeriesToCSV(fp, *simResult.report_data);
 
-
-		SimulationResult simResult;
-
-		simResult.runtime = fullSimulationResult.runtime;
-		simResult.paramIndex = fullSimulationResult.paramIndex;
-		simResult.total_annualised_cost = fullSimulationResult.total_annualised_cost;
-		simResult.project_CAPEX = fullSimulationResult.project_CAPEX;
-		simResult.scenario_cost_balance = fullSimulationResult.scenario_cost_balance;
-		simResult.payback_horizon_years = fullSimulationResult.payback_horizon_years;
-		simResult.scenario_carbon_balance = fullSimulationResult.scenario_carbon_balance;
 
 		return simResult;
 	} 

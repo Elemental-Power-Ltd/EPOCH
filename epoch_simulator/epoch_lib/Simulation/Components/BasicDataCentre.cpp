@@ -51,17 +51,17 @@ float BasicDataCentre::getTargetLoad(int timestep) {
 	return mTargetLoad_e[timestep];
 }
 
-void BasicDataCentre::Report(FullSimulationResult& result) const {
-	result.Data_centre_target_load = mTargetLoad_e;
-	result.Data_centre_actual_load = mActualLoad_e;
+void BasicDataCentre::Report(ReportData& reportData) const {
+	reportData.Data_centre_target_load = mTargetLoad_e;
+	reportData.Data_centre_actual_load = mActualLoad_e;
 
 	// TODO - FIXME
-	// The way that FullSimulationResult is structured, we assume that we always have all of the vectors
+	// The way that ReportData is structured, we assume that we always have all of the vectors
 	// The following vectors are specific to a data centre with an ASHP (which we don't have in this case)
 	// So we write them as 0 vectors mimicking the length of the other results
 	// (consider changing reporting from a struct with fixed vectors to a map of String->year_TS?
-	result.Data_centre_target_heat = Eigen::VectorXf::Zero(mTargetLoad_e.size());
-	result.Data_centre_available_hot_heat = Eigen::VectorXf::Zero(mTargetLoad_e.size());
+	reportData.Data_centre_target_heat = Eigen::VectorXf::Zero(mTargetLoad_e.size());
+	reportData.Data_centre_available_hot_heat = Eigen::VectorXf::Zero(mTargetLoad_e.size());
 
 
 }
