@@ -19,15 +19,6 @@ from .population_heuristics import (
 )
 
 
-class LazyDict(dict):
-    def __getitem__(self, item):
-        value = dict.__getitem__(self, item)
-        if callable(value):
-            value = value()
-            dict.__setitem__(self, item, value)
-        return value
-
-
 def generate_initial_population(
     variable_param: dict[str, ParamRange], constant_param: dict[str, float], input_dir: PathLike, pop_size: int
 ) -> npt.NDArray:
@@ -47,28 +38,12 @@ def generate_initial_population(
     pop_size
         number of solutions generated in population.
     """
-    dfs = LazyDict()
-    dfs["heating_df"] = lambda: pd.read_csv(Path(input_dir, "CSVHload.csv"))
-    dfs["ashp_input_df"] = lambda: pd.read_csv(Path(input_dir, "CSVASHPinput.csv"))
-    dfs["ashp_output_df"] = lambda: pd.read_csv(Path(input_dir, "CSVASHPoutput.csv"))
-    dfs["air_temp_df"] = lambda: pd.read_csv(Path(input_dir, "CSVAirtemp.csv"))
-    dfs["elec_df"] = lambda: pd.read_csv(Path(input_dir, "CSVEload.csv"))
-    dfs["solar_df"] = lambda: pd.read_csv(Path(input_dir, "CSVRGen.csv"))
-
-    estimates = LazyDict()
-    estimates["ASHP_HPower"] = lambda: estimate_ashp_hpower(
-        heating_df=dfs["heating_df"],
-        ashp_input_df=dfs["ashp_input_df"],
-        ashp_output_df=dfs["ashp_output_df"],
-        air_temp_df=dfs["air_temp_df"],
-        ashp_mode=constant_param["ASHP_HSource"],
-    )
-    estimates["ESS_capacity"] = lambda: estimate_battery_capacity(elec_df=dfs["elec_df"])
-    estimates["ScalarRG1"] = lambda: estimate_solar_pv(solar_df=dfs["solar_df"], elec_df=dfs["elec_df"])
-    estimates["ESS_charge_power"] = lambda: estimate_battery_charge(
-        solar_df=dfs["solar_df"], solar_scale=estimates["ScalarRG1"]
-    )
-    estimates["ESS_discharge_power"] = lambda: estimate_battery_discharge(elec_df=dfs["elec_df"])
+    heating_df = pd.read_csv(Path(input_dir, "CSVHload.csv"))
+    ashp_input_df = pd.read_csv(Path(input_dir, "CSVASHPinput.csv"))
+    ashp_output_df = pd.read_csv(Path(input_dir, "CSVASHPoutput.csv"))
+    air_temp_df = pd.read_csv(Path(input_dir, "CSVAirtemp.csv"))
+    elec_df = pd.read_csv(Path(input_dir, "CSVEload.csv"))
+    solar_df = pd.read_csv(Path(input_dir, "CSVRGen.csv"))
 
     rng = np.random.default_rng()
 
@@ -84,11 +59,31 @@ def generate_initial_population(
         return round_to_search_space(x, lo, hi, step)
 
     sampler_funcs = defaultdict(lambda: lambda lo, hi, step: clipped_rand(lo, hi, step))
-    sampler_funcs["ASHP_HPower"] = lambda lo, hi, step: clipped_norm(estimates["ASHP_HPower"], lo, hi, step)
-    sampler_funcs["ESS_capacity"] = lambda lo, hi, step: clipped_norm(estimates["ESS_capacity"], lo, hi, step)
-    sampler_funcs["ESS_charge_power"] = lambda lo, hi, step: clipped_norm(estimates["ESS_charge_power"], lo, hi, step)
-    sampler_funcs["ESS_discharge_power"] = lambda lo, hi, step: clipped_norm(estimates["ESS_discharge_power"], lo, hi, step)
-    sampler_funcs["ScalarRG1"] = lambda lo, hi, step: clipped_norm(estimates["ScalarRG1"], lo, hi, step)
+    sampler_funcs["ASHP_HPower"] = lambda lo, hi, step: clipped_norm(
+        estimate_ashp_hpower(
+            heating_df=heating_df,
+            ashp_input_df=ashp_input_df,
+            ashp_output_df=ashp_output_df,
+            air_temp_df=air_temp_df,
+            ashp_mode=constant_param["ASHP_HSource"],
+        ),
+        lo,
+        hi,
+        step,
+    )
+    sampler_funcs["ESS_capacity"] = lambda lo, hi, step: clipped_norm(estimate_battery_capacity(elec_df=elec_df), lo, hi, step)
+    sampler_funcs["ESS_charge_power"] = lambda lo, hi, step: clipped_norm(
+        estimate_battery_charge(solar_df=solar_df, solar_scale=estimate_solar_pv(solar_df=solar_df, elec_df=elec_df)),
+        lo,
+        hi,
+        step,
+    )
+    sampler_funcs["ESS_discharge_power"] = lambda lo, hi, step: clipped_norm(
+        estimate_battery_discharge(elec_df=elec_df), lo, hi, step
+    )
+    sampler_funcs["ScalarRG1"] = lambda lo, hi, step: clipped_norm(
+        estimate_solar_pv(solar_df=solar_df, elec_df=elec_df), lo, hi, step
+    )
 
     pop, lbs, steps = [], np.array([]), np.array([])
     for parameter, param_range in variable_param.items():
