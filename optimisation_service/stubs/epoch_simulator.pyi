@@ -7,7 +7,6 @@ You can't import this file, but it's useful for static analysis.
 """
 import typing
 
-
 class SimulationResult:
     carbon_balance: float
     cost_balance: float
