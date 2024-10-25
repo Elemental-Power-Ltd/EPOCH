@@ -15,10 +15,7 @@ from ..models.core import EndpointResult, TaskWithUUID
 from ..models.simulate import ResultReproConfig
 from ..models.site_data import (
     ASHPResult,
-    DatasetEntry,
-    DatasetTypeEnum,
     FileLoc,
-    LocalMetaData,
     RecordsList,
     RemoteMetaData,
     SiteDataEntries,
@@ -91,15 +88,18 @@ class DataManager:
         latest_ids = await self.fetch_latest_dataset_ids(site_data)
 
         dataset_ids = {}
-        for dataset_type in latest_ids.keys():
+        for dataset_type in latest_ids:
             dataset_ids[dataset_type] = latest_ids[dataset_type]["dataset_id"]
             dataset_ids[dataset_type] = UUID4(latest_ids[dataset_type]["dataset_id"])
 
         site_data.dataset_ids = dataset_ids
 
-    async def fetch_latest_dataset_ids(self, site_id: UUID4) -> dict[DatasetTypeEnum, DatasetEntry]:
+    async def fetch_latest_dataset_ids(self, site_data: RemoteMetaData) -> dict[str, Any]:
+        # At present, /list-latest-datasets only requires a site_id
+        data = {"site_id": site_data.site_id}
+
         async with httpx.AsyncClient() as client:
-            latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=site_id)
+            latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=data)
             return latest_ids
 
     def write_input_data_to_files(self, site_data_entries, destination) -> None:
@@ -214,9 +214,7 @@ class DataManager:
         }
         return site_data
 
-    async def db_post(
-        self, client: httpx.AsyncClient, subdirectory: str, data: RemoteMetaData | LocalMetaData | dict[str, Any]
-    ) -> SiteDataEntries:
+    async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data: Any) -> Any:
         """
         Send a post request to the database api server.
 
