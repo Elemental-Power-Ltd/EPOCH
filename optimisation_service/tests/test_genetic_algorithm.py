@@ -1,48 +1,8 @@
-from pathlib import Path
-from time import perf_counter
-
 import pytest
 
-from app.internal.genetic_algorithm import (
-    NSGA2,
-    GeneticAlgorithm,
-    ProblemInstance,
-)
-from app.internal.problem import Problem, load_problem
-from app.internal.result import Result
-
-
-@pytest.fixture(scope="session")
-def example_problem() -> Problem:
-    return load_problem(name="var-3", save_dir=Path("tests", "data", "benchmarks"))
-
-
-class TestNSGA2:
-    def test_initialisation(self) -> None:
-        """
-        Test default algorithm initialisation.
-        """
-        NSGA2()
-
-    @pytest.mark.slow
-    def test_run(self, example_problem: Problem) -> None:
-        """
-        Test algorithm run.
-        """
-        alg = NSGA2()
-        t0 = perf_counter()
-        alg.run(example_problem)
-        exec_time = perf_counter() - t0
-        assert exec_time < 60
-
-    @pytest.mark.slow
-    def test_res(self, example_problem: Problem) -> None:
-        """
-        Test output of algorithm.
-        """
-        alg = NSGA2()
-        res = alg.run(example_problem)
-        assert isinstance(res, Result)
+from app.internal.genetic_algorithm import GeneticAlgorithm
+from app.internal.problem import PortfolioProblem
+from app.models.result import OptimisationResult
 
 
 class TestGeneticAlgorithm:
@@ -53,29 +13,10 @@ class TestGeneticAlgorithm:
         GeneticAlgorithm()
 
     @pytest.mark.slow
-    def test_run(self, example_problem: Problem) -> None:
-        """
-        Test algorithm run.
-        """
-        alg = GeneticAlgorithm()
-        t0 = perf_counter()
-        alg.run(example_problem)
-        exec_time = perf_counter() - t0
-        assert exec_time < 60
-
-    @pytest.mark.slow
-    def test_res(self, example_problem: Problem) -> None:
+    def test_run(self, default_portfolio_problem: PortfolioProblem) -> None:
         """
         Test output of algorithm.
         """
-        alg = GeneticAlgorithm()
-        res = alg.run(example_problem)
-        assert isinstance(res, Result)
-
-
-class TestProblemInstance:
-    def test_initialisation(self, example_problem: Problem) -> None:
-        """
-        Test initialisation with test problem.
-        """
-        ProblemInstance(example_problem)
+        alg = GeneticAlgorithm(pop_size=256)
+        res = alg.run(default_portfolio_problem)
+        assert isinstance(res, OptimisationResult)
