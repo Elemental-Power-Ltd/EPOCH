@@ -7,18 +7,20 @@ import subprocess
 import tempfile
 import time
 from datetime import timedelta
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
-from paretoset import paretoset  # type: ignore
+
+from app.internal.pareto_front import portfolio_pareto_front
+from app.internal.portfolio_simulator import gen_all_building_combinations
+from app.internal.problem import PortfolioProblem
+from app.models.objectives import _OBJECTIVES
+from app.models.result import BuildingSolution, OptimisationResult
 
 from ..models.algorithms import Algorithm
-from ..models.problem import EndpointParameterDict, OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
-from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
-from .result import Result
+from ..models.parameters import EndpointParameterDict, OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
 
 logger = logging.getLogger("default")
 
@@ -70,7 +72,7 @@ class GridSearch(Algorithm):
         """
         self.keep_degenerate = keep_degenerate
 
-    def run(self, problem: Problem) -> Result:
+    def run(self, portfolio: PortfolioProblem) -> OptimisationResult:
         """
         Run grid search optimisation.
 
@@ -86,49 +88,51 @@ class GridSearch(Algorithm):
         objective_values
             objective_values of optimal solutions.
         """
-        temp_dir = tempfile.TemporaryDirectory()
+        building_solutions = {}
+        for building_name, building in portfolio.buildings.items():
+            temp_dir = tempfile.TemporaryDirectory()
 
-        output_dir = Path(temp_dir.name, "tmp_outputs")
-        os.makedirs(output_dir, exist_ok=True)
+            output_dir = Path(temp_dir.name, "tmp_outputs")
+            os.makedirs(output_dir, exist_ok=True)
 
-        config_dir = Path(temp_dir.name, "Config")
-        Path(temp_dir.name, "Config").mkdir(parents=False, exist_ok=False)
+            config_dir = Path(temp_dir.name, "Config")
+            Path(temp_dir.name, "Config").mkdir(parents=False, exist_ok=False)
 
-        with open(Path(config_dir, "EpochConfig.json"), "w") as f:
-            json.dump(_EPOCH_CONFIG, f)
+            with open(Path(config_dir, "EpochConfig.json"), "w") as f:
+                json.dump(_EPOCH_CONFIG, f)
 
-        with open(Path(problem.input_dir, "inputParameters.json"), "w") as f:
-            json.dump(convert_param(problem.parameters), f)
+            with open(Path(building.input_dir, "inputParameters.json"), "w") as f:
+                json.dump(convert_param(building.parameters), f)
 
-        t0 = time.perf_counter()
-        run_headless(
-            project_path=str(os.environ.get("EPOCH_DIR", "../Epoch")),
-            config_dir=str(config_dir),
-            input_dir=str(problem.input_dir),
-            output_dir=str(output_dir),
-        )
-        exec_time = timedelta(seconds=(time.perf_counter() - t0))
+            t0 = time.perf_counter()
+            run_headless(
+                project_path=str(os.environ.get("EPOCH_DIR", "./Epoch")),
+                config_dir=str(config_dir),
+                input_dir=str(building.input_dir),
+                output_dir=str(output_dir),
+            )
+            exec_time = timedelta(seconds=(time.perf_counter() - t0))
 
-        os.remove(Path(problem.input_dir, "inputParameters.json"))
+            os.remove(Path(building.input_dir, "inputParameters.json"))
 
-        variable_param = list(problem.variable_param().keys())
-        usecols = [item.value if isinstance(item, Enum) else str(item) for item in _OBJECTIVES + variable_param]
+            df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
 
-        df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32, usecols=usecols)
+            solutions = df_res.drop(columns=_OBJECTIVES).to_dict("records")
+            objective_values = df_res[_OBJECTIVES].to_dict("records")
 
-        for constraint, bounds in problem.constraints.items():
-            df_res = df_res[df_res[constraint] >= bounds.get("min", -np.inf)]
-            df_res = df_res[df_res[constraint] <= bounds.get("max", -np.inf)]
+            # TODO: reduce to pareto-front for all CAPEX values
 
-        solutions = df_res[variable_param].to_numpy()
-        obj_direct = ["max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in problem.objectives]
-        pareto_efficient = paretoset(df_res[problem.objectives].to_numpy(), obj_direct, distinct=not self.keep_degenerate)
-        solutions = solutions[pareto_efficient]
-        objective_values = df_res[_OBJECTIVES].to_numpy()[pareto_efficient]
+            building_solutions[building_name] = np.array([BuildingSolution(*sol) for sol in zip(solutions, objective_values)])
 
-        temp_dir.cleanup()
+            temp_dir.cleanup()
 
-        return Result(solutions=solutions, objective_values=objective_values, exec_time=exec_time, n_evals=problem.size())
+        portfolio_sol = gen_all_building_combinations(building_solutions)
+
+        portfolio_sol_pf = portfolio_pareto_front(portfolio_sol, portfolio.objectives)
+
+        # TODO: Apply portfolio constraints
+
+        return OptimisationResult(solutions=portfolio_sol_pf, exec_time=exec_time, n_evals=building.size())
 
 
 def run_headless(
