@@ -15,9 +15,9 @@ public:
         std::filesystem::path outputDir,
         std::filesystem::path configDir
     )
-        : inputDir(inputDir),
-        outputDir(outputDir),
-        configDir(configDir),
+        : mInputDir(inputDir),
+        mOutputDir(outputDir),
+        mConfigDir(configDir),
         eloadFilename("CSVEload.csv"),
         hloadFilename("CSVHload.csv"),
         rgenFilename("CSVRGen.csv"),
@@ -59,9 +59,9 @@ public:
         std::filesystem::path outputJsonFilename,
         std::filesystem::path outputJsonInitFilename
     )
-        : inputDir(inputDir),
-        outputDir(outputDir),
-        configDir(configDir),
+        : mInputDir(inputDir),
+        mOutputDir(outputDir),
+        mConfigDir(configDir),
         eloadFilename(eloadFilename),
         hloadFilename(hloadFilename),
         rgenFilename(rgenFilename),
@@ -85,7 +85,7 @@ public:
         try {
             std::filesystem::create_directories(outputDir);
         }
-        catch (const std::exception& e) {
+        catch (const std::exception&) {
             throw std::runtime_error("Failed to create Output Directory");
         }
     }
@@ -94,75 +94,75 @@ public:
     // These functions return the full paths to the desired file
 
     std::filesystem::path getEloadFilepath() const {
-        return inputDir / eloadFilename;
+        return mInputDir / eloadFilename;
     }
 
     std::filesystem::path getHloadFilepath() const {
-        return inputDir / hloadFilename;
+        return mInputDir / hloadFilename;
     }
 
     std::filesystem::path getRgenFilepath() const {
-        return inputDir / rgenFilename;
+        return mInputDir / rgenFilename;
     }
 
     std::filesystem::path getAirtempFilepath() const {
-        return inputDir / airtempFilename;
+        return mInputDir / airtempFilename;
     }
 
     std::filesystem::path getImporttariffFilepath() const {
-        return inputDir / importtariffFilename;
+        return mInputDir / importtariffFilename;
     }
 
     std::filesystem::path getDHWloadFilepath() const {
-        return inputDir / DHWFilename;
+        return mInputDir / DHWFilename;
     }
 
     std::filesystem::path getGridCO2Filepath() const {
-        return inputDir / gridCO2Filename;
+        return mInputDir / gridCO2Filename;
     }
 
     std::filesystem::path getASHPinputFilepath() const {
-        return inputDir / ASHPinputFilename;
+        return mInputDir / ASHPinputFilename;
     }
 
     std::filesystem::path getASHPoutputFilepath() const {
-        return inputDir / ASHPoutputFilename;
+        return mInputDir / ASHPoutputFilename;
     }
 
     std::filesystem::path getInputJsonFilepath() const {
-        return inputDir / inputParameters;
+        return mInputDir / inputParameters;
     }
 
     std::filesystem::path getOutputCSVFilepath() const {
-        return outputDir / resultsFilename;
+        return mOutputDir / resultsFilename;
     }
 
     std::filesystem::path getOutputJsonFilepath() const {
-        return outputDir / outputJsonFilename;
+        return mOutputDir / outputJsonFilename;
     }
 
     std::filesystem::path getOutputJsonInitFilepath() const {
-        return outputDir / outputJsonInitFilename;
+        return mOutputDir / outputJsonInitFilename;
     }
 
     // for more fine-grained controlled, get the directory
     // and then choose the filename at the call site
     std::filesystem::path getInputDir() const {
-        return inputDir;
+        return mInputDir;
     }
 
     std::filesystem::path getOutputDir() const {
-        return outputDir;
+        return mOutputDir;
     }
 
     std::filesystem::path getConfigDir() const {
-        return configDir;
+        return mConfigDir;
     }
 
 private:
-    std::filesystem::path inputDir;
-    std::filesystem::path outputDir;
-    std::filesystem::path configDir;
+    std::filesystem::path mInputDir;
+    std::filesystem::path mOutputDir;
+    std::filesystem::path mConfigDir;
 
     // inputDir files
     std::filesystem::path eloadFilename;

@@ -39,7 +39,7 @@ public:
 
 	OutputValues runMainOptimisation(nlohmann::json inputJson);
 	OutputValues initialiseOptimisation(nlohmann::json inputJson);
-	OutputValues RecallIndex(nlohmann::json inputJson, uint64_t recallindex);
+	OutputValues RecallIndex(uint64_t recallindex);
 
 private:
 	OutputValues doOptimisation(nlohmann::json inputJson, bool initialisationOnly=false);

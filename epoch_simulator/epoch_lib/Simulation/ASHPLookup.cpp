@@ -27,8 +27,8 @@ HeatpumpValues ASHPLookup::Lookup(float supplyTemp) {
 }
 
 void ASHPLookup::precomputeLookupTable(const HistoricalData& historicalData, const TaskData& taskData, float sendTemp) {
-    mMinAirTemp = std::floor(historicalData.ASHPinputtable(1, 0));
-    mMaxAirTemp = std::ceil(historicalData.ASHPinputtable(historicalData.ASHPinputtable.rows() - 1, 0));
+    mMinAirTemp = static_cast<int>(std::floor(historicalData.ASHPinputtable(1, 0)));
+    mMaxAirTemp = static_cast<int>(std::ceil(historicalData.ASHPinputtable(historicalData.ASHPinputtable.rows() - 1, 0)));
 
     mOffset = -1 * mMinAirTemp;
 
@@ -36,7 +36,9 @@ void ASHPLookup::precomputeLookupTable(const HistoricalData& historicalData, con
     // We scale the values by the modelled ASHP Power per timestep
     float powerScalar = taskData.ASHP_HPower * taskData.timestep_hours;
 
-    for (int airTemp = mMinAirTemp; airTemp <= mMaxAirTemp; airTemp++) {
+    for (int airTempByDegree = mMinAirTemp; airTempByDegree <= mMaxAirTemp; airTempByDegree++) {
+        float airTemp = static_cast<float>(airTempByDegree);
+
         float scaledInput = computeInput(historicalData, sendTemp, airTemp) * powerScalar;
         mInputByDegree.emplace_back(scaledInput);
 
@@ -70,7 +72,7 @@ float ASHPLookup::computeOutput(const HistoricalData& historicalData, float send
 // i.e. the last row that does not exceed the given air temp
 int ASHPLookup::airTempToRowIndex(const HistoricalData& historicalData, float airTemp) const
 {
-    int num_rows = historicalData.ASHPinputtable.rows();
+    int num_rows = static_cast<int>(historicalData.ASHPinputtable.rows());
 
     if (airTemp < historicalData.ASHPinputtable(1, 0)) {
         // default to the lowest possible value
@@ -95,7 +97,7 @@ int ASHPLookup::airTempToRowIndex(const HistoricalData& historicalData, float ai
 // i.e. the last column that does not exceed the given send temp
 int ASHPLookup::sendTempToColIndex(const HistoricalData& historicalData, float sendTemp) const
 {
-    int num_cols = historicalData.ASHPinputtable.cols();
+    int num_cols = static_cast<int>(historicalData.ASHPinputtable.cols());
 
     if (sendTemp < historicalData.ASHPinputtable(0, 1)) {
         // default to the first column

@@ -31,7 +31,7 @@ public:
 
 
 private:
-	int mCapacity;
+	size_t mCapacity;
 	OptimiserConfig mConfig;
 
 	void considerMinimum(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);

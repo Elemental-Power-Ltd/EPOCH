@@ -4,6 +4,19 @@ project(Epoch LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
+# Set strict compiler error/warning settings
+# When using add_compile_options, this must be done before creating any targets
+if(MSVC)
+  add_compile_options(/W4 /WX /wd4100)
+
+else()
+  add_compile_options(-Wall -Wextra -Wpedantic -Werror )
+  # FIXME
+  # These constraints need tightening
+  add_compile_options(-Wno-error=unused-parameter -Wno-error=reorder)
+
+endif()
+
 add_subdirectory("epoch_lib")
 
 if(PYBIND)

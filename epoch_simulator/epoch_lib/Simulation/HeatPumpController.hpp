@@ -49,7 +49,7 @@ public:
         // EVEN BIGGER HACK
         // assume that heatload has already been written (it has)
         // and use that to determine the size of these vectors
-        int timesteps = reportData.Heatload.size();
+        int timesteps = static_cast<int>(reportData.Heatload.size());
 
         reportData.Data_centre_target_load = Eigen::VectorXf::Zero(timesteps);
         reportData.Data_centre_actual_load = Eigen::VectorXf::Zero(timesteps);

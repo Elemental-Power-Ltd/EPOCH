@@ -43,7 +43,7 @@ public:
 		mResidualCapacity = Eigen::VectorXf::Constant(taskData.calculate_timesteps(), 1.0f);// Remaining heatpump capacity
 	}
 
-	const float MaxElec(int timestep) {
+	float MaxElec(int timestep) {
 		// Peak kWh per timestep of ASHP
 
 		float dhwMaxLoad = mASHPperfDHW.Lookup(mAmbientTemperature[timestep]).Load_e;
@@ -258,7 +258,7 @@ private:
 
 	const int mTimesteps;
 	const float mPowerScalar;
-	const int mHotTemp;
+	const float mHotTemp;
 	const bool mHeatpumpSuppliesDHW;
 	const bool mHeatpumpSuppliesCentralHeating;
 	float mHeatPumpMax_h;

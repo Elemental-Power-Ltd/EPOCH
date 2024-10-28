@@ -67,8 +67,6 @@ TaskData TaskGenerator::getTask(uint64_t index) const {
 		//	   (this parameter should be fixed while we iterate through all permutations of those variables)
 		//  2. take modulo of the size
 		uint64_t i = (index / paramRange.cumulativeProduct) % paramRange.values.size();
-		float value = paramRange.values[i];
-
 		paramSlice.emplace_back(paramRange.name, paramRange.values[i]);
 	}
 
@@ -80,7 +78,7 @@ TaskData TaskGenerator::getTask(uint64_t index) const {
 			taskData.set_param_float(paramSlice[i].first, paramSlice[i].second);
 		}
 		else {
-			taskData.set_param_int(paramSlice[i].first, paramSlice[i].second);
+			taskData.set_param_int(paramSlice[i].first, static_cast<int>(paramSlice[i].second));
 		}
 	}
 

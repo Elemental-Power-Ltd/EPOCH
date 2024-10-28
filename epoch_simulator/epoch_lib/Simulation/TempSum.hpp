@@ -10,12 +10,12 @@ class TempSum
 public:
 	TempSum(const TaskData& taskData) :
 		// Initilaise temporary vectors with all values to zero
-		TScount(taskData.calculate_timesteps()),
 		Elec_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// Electricity energy balance
 		Heat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())), // Building heat energy balance
 		DHW_load_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Hot water energy balance
 		Pool_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Pool energy balance
-		Waste_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))   // Waste heat
+		Waste_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Waste heat
+		TScount(taskData.calculate_timesteps())
 	{}
 	// Public data, can be overwritten
 	year_TS Elec_e;

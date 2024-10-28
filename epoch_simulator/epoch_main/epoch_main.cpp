@@ -1,4 +1,3 @@
-#pragma once
 #include "epoch_main.hpp"
 
 #ifdef EPOCH_GUI

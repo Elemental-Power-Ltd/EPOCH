@@ -28,7 +28,7 @@ public:
 
 	// Calculate cylinder energy capacity based on T_setpoint, convert to kWh
 	float calculate_Capacity_h() {
-		mCapacity_h = (rho * mCylinderVolume * c_w * (T_setpoint - T_cold)) / 3600.0; // calculate kWh heat capacity
+		mCapacity_h = (rho * mCylinderVolume * c_w * (T_setpoint - T_cold)) / 3600.0f; // calculate kWh heat capacity
 		return mCapacity_h;
 	}
 
@@ -40,7 +40,7 @@ public:
 
 	void calculate_U() // Just in terms of volume for now, based on reference value of 1.7 W/C - 250 litre Valiant Unistor 1.42 kWh standing loss in 24 hours 
 	{
-		mU = 1.70 * pow((mCylinderVolume / 250), (2.0f / 3.0f));
+		mU = 1.70f * pow((mCylinderVolume / 250), (2.0f / 3.0f));
 		return;
 	}
 
@@ -49,21 +49,21 @@ public:
 	void update_SoC_basic(float E_charge_kWh, float V_draw_kWh, int timestep) {
 
 		// Convert input charging energy from kWh to kJ
-		float Charging_kjoules = E_charge_kWh * 3600.0; // kWh to kJ
+		float Charging_kjoules = E_charge_kWh * 3600.0f; // kWh to kJ
 
 		// Calculate energy lost due to draw-off
-		float Discharging_kjoules = V_draw_kWh * 3600.0; // kWh to kJ
+		float Discharging_kjoules = V_draw_kWh * 3600.0f; // kWh to kJ
 
 		// Update average temperature
-		mT_ave = mCylEnergy_h * 3600.0 / (rho * mCylinderVolume * c_w) + T_cold;
+		mT_ave = mCylEnergy_h * 3600.0f / (rho * mCylinderVolume * c_w) + T_cold;
 
 		// Calculate standby energy losses (convert W to kW, then to kJ)
-		float Standby_loss_kjoules = mU * (mT_ave - T_ambient) * (mTimestep_seconds) / 1000.0; // in kJ
+		float Standby_loss_kjoules = mU * (mT_ave - T_ambient) * (mTimestep_seconds) / 1000.0f; // in kJ
 
 		// Update stored energy
-		mCylEnergy_h += (Charging_kjoules - Discharging_kjoules - Standby_loss_kjoules) / 3600.0; // convert back to kWh
+		mCylEnergy_h += (Charging_kjoules - Discharging_kjoules - Standby_loss_kjoules) / 3600.0f; // convert back to kWh
 
-		mDHW_standby_losses[timestep] = Standby_loss_kjoules / 3600.0; // record tank standby loss for reporting
+		mDHW_standby_losses[timestep] = Standby_loss_kjoules / 3600.0f; // record tank standby loss for reporting
 		mDHW_ave_temperature[timestep] = mT_ave;
 
 		//if (mCylEnergy_h < 0)
@@ -179,12 +179,12 @@ private:
 	float mTimestep_hours;
 
 
-	const float c_w = 4.18;            // Specific heat capacity of water in kJ/kg·°C
-	const float rho = 1.0;             // Density of water in kg/
-	const float T_cold = 10.0;         // Cold water inlet temperature in °C
-	const float T_ambient = 20.0;      // Ambient temperature in °C
+	const float c_w = 4.18f;            // Specific heat capacity of water in kJ/kg·°C
+	const float rho = 1.0f;             // Density of water in kg/
+	const float T_cold = 10.0f;         // Cold water inlet temperature in °C
+	const float T_ambient = 20.0f;      // Ambient temperature in °C
 	// 30 minutes in seconds
-	const float T_setpoint = 60.0;     // Setpoint temperature for hot water in °C
+	const float T_setpoint = 60.0f;     // Setpoint temperature for hot water in °C
 
 
 

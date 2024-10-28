@@ -74,7 +74,7 @@ OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_FLOAT(ScalarRG1), OUT_MEMBER_MAPPING_FLOAT(ScalarRG2), OUT_MEMBER_MAPPING_FLOAT(ScalarRG3), OUT_MEMBER_MAPPING_FLOAT(ScalarRG4), OUT_MEMBER_MAPPING_FLOAT(ScalarHYield),
 	OUT_MEMBER_MAPPING_INT(s7_EV_CP_number), OUT_MEMBER_MAPPING_INT(f22_EV_CP_number), OUT_MEMBER_MAPPING_INT(r50_EV_CP_number), OUT_MEMBER_MAPPING_INT(u150_EV_CP_number), OUT_MEMBER_MAPPING_FLOAT(EV_flex),
 	OUT_MEMBER_MAPPING_FLOAT(GridImport), OUT_MEMBER_MAPPING_FLOAT(GridExport), OUT_MEMBER_MAPPING_FLOAT(Import_headroom), OUT_MEMBER_MAPPING_FLOAT(Export_headroom), OUT_MEMBER_MAPPING_FLOAT(Min_power_factor),
-	OUT_MEMBER_MAPPING_FLOAT(ScalarHL1), OUT_MEMBER_MAPPING_FLOAT(ASHP_HPower), OUT_MEMBER_MAPPING_FLOAT(ASHP_HSource), OUT_MEMBER_MAPPING_FLOAT(ASHP_RadTemp), OUT_MEMBER_MAPPING_FLOAT(ASHP_HotTemp),
+	OUT_MEMBER_MAPPING_FLOAT(ScalarHL1), OUT_MEMBER_MAPPING_FLOAT(ASHP_HPower), OUT_MEMBER_MAPPING_INT(ASHP_HSource), OUT_MEMBER_MAPPING_FLOAT(ASHP_RadTemp), OUT_MEMBER_MAPPING_FLOAT(ASHP_HotTemp),
 	OUT_MEMBER_MAPPING_FLOAT(ESS_charge_power), OUT_MEMBER_MAPPING_FLOAT(ESS_discharge_power), OUT_MEMBER_MAPPING_FLOAT(ESS_capacity), OUT_MEMBER_MAPPING_FLOAT(ESS_start_SoC),
 	OUT_MEMBER_MAPPING_INT(ESS_charge_mode), OUT_MEMBER_MAPPING_INT(ESS_discharge_mode), OUT_MEMBER_MAPPING_FLOAT(DHW_cylinder_volume),
 	OUT_MEMBER_MAPPING_FLOAT(Export_kWh_price),
@@ -88,7 +88,6 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 	std::ifstream file(filename);
 	std::vector<float> columnValues;
 	std::string line;
-	bool columnHasValues = false;
 
 	if (!file.is_open()) {
 		throw FileReadException(filename.filename().string());
@@ -121,7 +120,7 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 		}
 
 		// Convert the value from the specified column to float and store it in the vector
-		int column_1 = column - 1;
+		size_t column_1 = column - 1;
 
 		if (row.size() <= column_1) {
 			spdlog::error("Insufficient columns at line {}", line);
@@ -178,7 +177,7 @@ std::vector<std::vector<float>> readCSVAsTable(const std::filesystem::path& file
 
 		// Parse the line into double values
 		while (std::getline(ss, cell, ',')) {
-			rowData.push_back(std::stod(cell));
+			rowData.push_back(std::stof(cell));
 		}
 
 		table.emplace_back(rowData);
@@ -207,7 +206,7 @@ std::vector<float> readCSVrow(const std::filesystem::path& filename, int row) {
 
 			// Parse the line into double values
 			while (std::getline(ss, cell, ',')) {
-				rowData.push_back(std::stod(cell));
+				rowData.push_back(std::stof(cell));
 			}
 
 			break; // Stop reading after the desired row is found
@@ -416,43 +415,43 @@ void writeCostDataToCSV(std::filesystem::path filepath, const ReportData& report
 	// Write the column headers
 
 	//outFile << "ESUM" << ",";
-	outFile << "Baseline_electricity_cost (£)" << ",";	// no trailing comma
-	outFile << "Baseline_fuel_cost (£)" << ",";
+	outFile << "Baseline_electricity_cost (ï¿½)" << ",";	// no trailing comma
+	outFile << "Baseline_fuel_cost (ï¿½)" << ",";
 	
 	outFile << "Baseline_electricity_carbon (kgCO2)" << ",";
 	outFile << "Baseline_fuel_carbon (kgCO2)" << ",";
 	
-	outFile << "Scenario_electricity_cost (£)" << ",";
-	outFile << "Scenario_fuel_cost (£)" << ",";
-	outFile << "Scenario_grid_export_cost (£)" << ",";
+	outFile << "Scenario_electricity_cost (ï¿½)" << ",";
+	outFile << "Scenario_fuel_cost (ï¿½)" << ",";
+	outFile << "Scenario_grid_export_cost (ï¿½)" << ",";
 
-	outFile << "Resulting_EV_charge_revenue (£)" << ",";
-	outFile << "Resulting_Data_Centre_revenue (£)" << ",";
-	outFile << "Scenario_avoided_fuel_cost (£)" << ",";
+	outFile << "Resulting_EV_charge_revenue (ï¿½)" << ",";
+	outFile << "Resulting_Data_Centre_revenue (ï¿½)" << ",";
+	outFile << "Scenario_avoided_fuel_cost (ï¿½)" << ",";
 
 	outFile << "Scenario_electricity_carbon (kgCO2)" << ",";
 	outFile << "Scenario_fuel_carbon (kgCO2)" << ",";
 	outFile << "Scenario_grid_export_carbon (kgCO2)" << ",";
 	outFile << "Scenario_avoided_fuel_carbon (kgCO2)" << ",";
 
-	outFile << "ESS_PCS_CAPEX (£)" << ",";
-	outFile << "ESS_PCS_OPEX (£)" << ",";
-	outFile << "ESS_ENCLOSURE_CAPEX (£)" << ",";
-	outFile << "ESS_ENCLOSURE_OPEX (£)" << ",";
-	outFile << "ESS_ENCLOSURE_DISPOSAL (£)" << ",";
+	outFile << "ESS_PCS_CAPEX (ï¿½)" << ",";
+	outFile << "ESS_PCS_OPEX (ï¿½)" << ",";
+	outFile << "ESS_ENCLOSURE_CAPEX (ï¿½)" << ",";
+	outFile << "ESS_ENCLOSURE_OPEX (ï¿½)" << ",";
+	outFile << "ESS_ENCLOSURE_DISPOSAL (ï¿½)" << ",";
 
-	outFile << "PVpanel_CAPEX (£)" << ",";
-	outFile << "PVBoP_CAPEX (£)" << ",";
-	outFile << "PVroof_CAPEX (£)" << ",";
-	outFile << "PVground_CAPEX (£)" << ",";
-	outFile << "PV_OPEX (£)" << ",";
+	outFile << "PVpanel_CAPEX (ï¿½)" << ",";
+	outFile << "PVBoP_CAPEX (ï¿½)" << ",";
+	outFile << "PVroof_CAPEX (ï¿½)" << ",";
+	outFile << "PVground_CAPEX (ï¿½)" << ",";
+	outFile << "PV_OPEX (ï¿½)" << ",";
 
-	outFile << "EV_CP_cost (£)" << ",";
-	outFile << "EV_CP_install (£)" << ",";
+	outFile << "EV_CP_cost (ï¿½)" << ",";
+	outFile << "EV_CP_install (ï¿½)" << ",";
 
-	outFile << "Grid_CAPEX (£)" << ",";
+	outFile << "Grid_CAPEX (ï¿½)" << ",";
 
-	outFile << "ASHP_CAPEX (£)";
+	outFile << "ASHP_CAPEX (ï¿½)";
 
 	// no trailing comma
 	outFile << "\n"; // newline
@@ -506,9 +505,9 @@ void writeCostDataToCSV(std::filesystem::path filepath, const ReportData& report
 	//Report the objectives in same file
 
 	//outFile << "ESUM" << ",";
-	outFile << "Total_annualsed_cost (£)" << ",";	// no trailing comma
-	outFile << "Project_CAPEX (£)" << ",";
-	outFile << "Scenario_cost_balance (£)" << ",";
+	outFile << "Total_annualsed_cost (ï¿½)" << ",";	// no trailing comma
+	outFile << "Project_CAPEX (ï¿½)" << ",";
+	outFile << "Scenario_cost_balance (ï¿½)" << ",";
 	outFile << "Payback_horizon" << ",";
 	outFile << "Scenario_carbon_balance (kgCO2)" << ",";
 
@@ -618,7 +617,7 @@ void writeJsonToFile(const nlohmann::json& jsonObj, std::filesystem::path filepa
 		file << jsonObj.dump(4);  // The "4" argument adds pretty-printing with indentation
 		file.close();
 	}
-	catch (const std::exception e) {
+	catch (const std::exception& e) {
 		spdlog::warn("Error: {}", e.what());
 	}
 }
@@ -629,7 +628,7 @@ nlohmann::json readJsonFromFile(std::filesystem::path filepath)
 		std::ifstream f(filepath);
 		return nlohmann::json::parse(f);
 	}
-	catch (const std::exception& e) {
+	catch (const std::exception&) {
 		throw FileReadException(filepath.filename().string());
 	}
 }
@@ -699,7 +698,7 @@ Eigen::VectorXf toEigen(const std::vector<float>& vec)
 {
 	Eigen::VectorXf eig = Eigen::VectorXf(vec.size());
 
-	for (int i = 0; i < vec.size(); i++) {
+	for (size_t i = 0; i < vec.size(); i++) {
 		eig[i] = vec[i];
 	}
 
@@ -709,8 +708,8 @@ Eigen::VectorXf toEigen(const std::vector<float>& vec)
 Eigen::MatrixXf toEigen(const std::vector<std::vector<float>>& mat) {
 	Eigen::MatrixXf eig = Eigen::MatrixXf(mat.size(), mat[0].size());
 
-	for (int i = 0; i < mat.size(); i++) {
-		for (int j = 0; j < mat[0].size(); j++) {
+	for (size_t i = 0; i < mat.size(); i++) {
+		for (size_t j = 0; j < mat[0].size(); j++) {
 			eig(i,j) = mat[i][j];
 		}
 	}

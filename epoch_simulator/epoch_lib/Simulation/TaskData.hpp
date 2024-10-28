@@ -33,7 +33,7 @@ public:
         ESS_charge_mode(ESS_charge_mode_val), ESS_discharge_mode(ESS_discharge_mode_val),
         Export_kWh_price(Export_kWh_price_val),
         time_budget_min(time_budget_min_val), target_max_concurrency(target_max_concurrency_val),
-        CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), paramIndex(paramIndex_val), DHW_cylinder_volume(cylinder_vol),
+        CAPEX_limit(CAPEX_limit_val), OPEX_limit(OPEX_limit_val), DHW_cylinder_volume(cylinder_vol), paramIndex(paramIndex_val),
         // initialize unordered maps to allow setting of member variables using (string) dictionary keys
         param_map_float({ {"years",&years}, { "days",&days }, { "hours",&hours }, { "timestep_hours",&timestep_hours }, { "timewindow",&timewindow },
             { "Fixed_load1_scalar",&Fixed_load1_scalar }, { "Fixed_load2_scalar",&Fixed_load2_scalar }, { "Flex_load_max",&Flex_load_max }, { "Mop_load_max",&Mop_load_max },
@@ -89,9 +89,6 @@ public:
         std::cout << "Parameter " << key << " = " << *(it->second) << std::endl;
     }
 
-    std::unordered_map<std::string, float*> param_map_float;
-    std::unordered_map<std::string, int*> param_map_int;
-
     float years;
     float days;
     float hours;
@@ -133,8 +130,11 @@ public:
     float CAPEX_limit;
     float OPEX_limit;
     float DHW_cylinder_volume;
-    year_TS Elec_e;
 
     uint64_t paramIndex;
+
+    std::unordered_map<std::string, float*> param_map_float;
+    std::unordered_map<std::string, int*> param_map_int;
+
 
 };

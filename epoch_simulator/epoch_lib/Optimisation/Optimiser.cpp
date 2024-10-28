@@ -32,7 +32,7 @@ OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
 	return doOptimisation(inputJson, true);
 }
 
-OutputValues Optimiser::RecallIndex(nlohmann::json inputJson, uint64_t recallindex) {
+OutputValues Optimiser::RecallIndex(uint64_t recallindex) {
 
 	OutputValues output{};
 
@@ -243,13 +243,13 @@ OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisa
 	output.ScalarRG3 = 7.0;
 	output.ScalarRG4 = 8.0;
 	output.ScalarHYield = 9.0;
-	output.s7_EV_CP_number = 26.0;
-	output.f22_EV_CP_number = 27.0;
-	output.r50_EV_CP_number = 28.0;
-	output.u150_EV_CP_number = 29.0;
+	output.s7_EV_CP_number = 26;
+	output.f22_EV_CP_number = 27;
+	output.r50_EV_CP_number = 28;
+	output.u150_EV_CP_number = 29;
 	output.EV_flex = 30.0;
 	output.ScalarHL1 = 10.0;
-	output.ASHP_HSource = 12.0;
+	output.ASHP_HSource = 12;
 	output.ASHP_RadTemp = 13.0;
 	output.ASHP_HotTemp = 14.0;
 	output.GridImport = 15.0;
@@ -296,7 +296,7 @@ void Optimiser::findBestResults(const LeagueTable& leagueTable, OutputValues& ou
 	output.annualised = bestAnnualisedCost.second;
 	output.annualised_index = bestAnnualisedCost.first;
 
-	// Scenario Balance(£)
+	// Scenario Balance(ï¿½)
 	auto bestCostBalance = leagueTable.getBestCostBalance();
 	output.scenario_cost_balance = bestCostBalance.second;
 	output.scenario_cost_balance_index = bestCostBalance.first;
