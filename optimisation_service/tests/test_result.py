@@ -1,62 +1,27 @@
-from datetime import timedelta
-
-import numpy as np
 import pytest
 
-from app.internal.result import Result
+from app.models.result import OptimisationResult
 
 
 class TestResult:
-    def test_good_inputs(self) -> None:
-        """
-        Test we can initialise Result with valid inputs.
-        """
-        solutions = np.array([[0, 1], [2, 0]])
-        fitnesses = np.array([[12, 5.0, 3], [16, 4.0, 2]])
-        n_evals = 200
-        exec_time = timedelta(minutes=1)
-        Result(solutions, fitnesses, n_evals, exec_time)
-
-    def test_bad_sol_fit_dims(self) -> None:
-        """
-        Test we can't set solutions and fitnesses that aren't 2d arrays.
-        """
-        solutions = np.array([2, 0])
-        fitnesses = np.array([12, 5.0, 3])
-        n_evals = 200
-        exec_time = timedelta(minutes=1)
-        with pytest.raises(ValueError):
-            Result(solutions, fitnesses, n_evals, exec_time)
-
-    def test_diff_dim_sizes(self) -> None:
-        """
-        Test we can't set solutions and fitnesses with different first dimension sizes.
-        """
-        solutions = np.array([[2, 0], [1, 0]])
-        fitnesses = np.array([[12, 5.0, 3]])
-        n_evals = 200
-        exec_time = timedelta(minutes=1)
-        with pytest.raises(ValueError):
-            Result(solutions, fitnesses, n_evals, exec_time)
-
-    def test_negative_n_evals(self) -> None:
+    def test_negative_n_evals(self, dummy_optimisation_result: OptimisationResult) -> None:
         """
         Test we can't set negative n_evals.
         """
-        solutions = np.array([[2, 0], [1, 0]])
-        fitnesses = np.array([[12, 5.0, 3]])
-        n_evals = -200
-        exec_time = timedelta(minutes=1)
+        result = dummy_optimisation_result
+        solutions = result.solutions
+        n_evals = -result.n_evals
+        exec_time = result.exec_time
         with pytest.raises(ValueError):
-            Result(solutions, fitnesses, n_evals, exec_time)
+            OptimisationResult(solutions=solutions, n_evals=n_evals, exec_time=exec_time)
 
-    def test_negative_exec_time(self) -> None:
+    def test_negative_exec_time(self, dummy_optimisation_result: OptimisationResult) -> None:
         """
-        Test we can't set negative n_evals.
+        Test we can't set negative exec_time.
         """
-        solutions = np.array([[2, 0], [1, 0]])
-        fitnesses = np.array([[12, 5.0, 3]])
-        n_evals = 200
-        exec_time = -timedelta(minutes=1)
+        result = dummy_optimisation_result
+        solutions = result.solutions
+        n_evals = result.n_evals
+        exec_time = -result.exec_time
         with pytest.raises(ValueError):
-            Result(solutions, fitnesses, n_evals, exec_time)
+            OptimisationResult(solutions=solutions, n_evals=n_evals, exec_time=exec_time)
