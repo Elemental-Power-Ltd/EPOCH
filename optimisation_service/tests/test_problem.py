@@ -1,162 +1,70 @@
-from pathlib import Path
+from os import PathLike
 
 import pytest
 
-from app.internal.problem import Objectives, Problem, load_problem
-from app.models.problem import ConstraintDict, ParameterDict
+from app.internal.problem import Building, Objectives, PortfolioProblem
+from app.models.constraints import ConstraintDict
+from app.models.parameters import ParameterDict
 
 
-@pytest.fixture
-def default_constraints() -> ConstraintDict:
-    return {"carbon_balance": {"min": 0, "max": 1000000}, "capex": {"min": 10}, "cost_balance": {"max": 10000000}}  # type: ignore
-
-
-@pytest.fixture
-def default_parameters() -> ParameterDict:
-    return {
-        "ASHP_HPower": {"min": 70.0, "max": 70.0, "step": 0.0},
-        "ASHP_HSource": {"min": 1, "max": 1, "step": 0},
-        "ASHP_HotTemp": {"min": 43.0, "max": 43.0, "step": 0.0},
-        "ASHP_RadTemp": {"min": 70.0, "max": 70.0, "step": 0.0},
-        "CAPEX_limit": 500.0,
-        "ESS_capacity": {"min": 0, "max": 1000, "step": 100},
-        "ESS_charge_mode": {"min": 1, "max": 1, "step": 0},
-        "ESS_charge_power": {"min": 300, "max": 600, "step": 50},
-        "ESS_discharge_mode": {"min": 1, "max": 1, "step": 0},
-        "ESS_discharge_power": {"min": 400, "max": 800, "step": 50},
-        "ESS_start_SoC": {"min": 0.5, "max": 0.5, "step": 0},
-        "EV_flex": {"min": 0.5, "max": 0.5, "step": 0.0},
-        "Export_headroom": {"min": 0, "max": 0, "step": 0},
-        "Fixed_load1_scalar": {"min": 1, "max": 1, "step": 0},
-        "Fixed_load2_scalar": {"min": 3, "max": 3, "step": 0},
-        "Flex_load_max": {"min": 50, "max": 50, "step": 0},
-        "GridExport": {"min": 95, "max": 95, "step": 0},
-        "GridImport": {"min": 95, "max": 95, "step": 0},
-        "Import_headroom": {"min": 0, "max": 0, "step": 0},
-        "Min_power_factor": {"min": 0.95, "max": 0.95, "step": 0.0},
-        "Mop_load_max": {"min": 300, "max": 300, "step": 0},
-        "OPEX_limit": 20.0,
-        "ScalarHL1": {"min": 1, "max": 1, "step": 0},
-        "ScalarHYield": {"min": 0.75, "max": 0.75, "step": 0.0},
-        "ScalarRG1": {"min": 600, "max": 600, "step": 0},
-        "ScalarRG2": {"min": 100, "max": 100, "step": 0},
-        "ScalarRG3": {"min": 50, "max": 50, "step": 0},
-        "ScalarRG4": {"min": 0, "max": 0, "step": 0},
-        "Export_kWh_price": 5.0,
-        "f22_EV_CP_number": {"min": 3, "max": 3, "step": 0},
-        "r50_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-        "s7_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-        "target_max_concurrency": 44,
-        "time_budget_min": 1.0,
-        "timestep_hours": 1.0,
-        "u150_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-        "DHW_cylinder_volume": {"min": 100, "max": 100, "step": 0},
-        "timewindow": 8760,
-    }
-
-
-class TestProblem:
-    def test_good_inputs(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
+class TestBuilding:
+    def test_good_inputs(self, default_parameters: ParameterDict, default_input_dir: PathLike) -> None:
         """
-        Test that the problem class works with valid input.
+        Test that the building class works with valid input.
         """
-        objectives = [Objectives.carbon_balance]
-        constraints = default_constraints
+        Building(parameters=default_parameters, input_dir=default_input_dir)
+
+    def test_bad_paramter(self, default_parameters: ParameterDict, default_input_dir: PathLike) -> None:
+        """
+        Test that the building class works with valid input.
+        """
         parameters = default_parameters
-        input_dir = Path("data", "test_benchmark", "InputData")
-
-        Problem(objectives, constraints, parameters, input_dir)
-
-    def test_bad_objective(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
-        """
-        Test that we can't set bad objective names.
-        """
-        constraints = default_constraints
-        parameters = default_parameters
-        input_dir = Path("data", "test_benchmark", "InputData")
-
-        objectives = ["amazingness"]
+        parameters["pool_size"] = {"min": "Bangweulu", "max": "Caspian Sea", "step": "cubic metre"}
         with pytest.raises(ValueError):
-            Problem(objectives, constraints, parameters, input_dir)  # type: ignore
+            Building(parameters=parameters, input_dir=default_input_dir)
 
-    def test_bad_constraint_names(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
-        """
-        Test that we can't set constraints with bad objective names.
-        """
-        objectives = [Objectives.carbon_balance]
-        parameters = default_parameters
-        input_dir = Path("data", "test_benchmark", "InputData")
-        constraints = default_constraints
-        constraints["a"] = {"min": 10000}  # type: ignore
-
-        with pytest.raises(ValueError):
-            Problem(objectives, constraints, parameters, input_dir)
-
-    def test_bad_constraint_bound_values(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
-        """
-        Test that we can't set bad constraint bounds, lower bound greater than upper bound.
-        """
-        objectives = [Objectives.carbon_balance]
-        parameters = default_parameters
-        input_dir = Path("data", "test_benchmark", "InputData")
-        constraints = default_constraints
-        constraints["carbon_balance"] = {"min": 10, "max": 0}  # type: ignore
-
-        with pytest.raises(ValueError):
-            Problem(objectives, constraints, parameters, input_dir)
-
-    def test_bad_parameter_bounds(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
+    def test_bad_parameter_bounds(self, default_parameters: ParameterDict, default_input_dir: PathLike) -> None:
         """
         Test that we can't set bad parameter bounds, lower bound greater than upper bound.
         """
-        objectives = [Objectives.carbon_balance]
-        constraints = default_constraints
-        input_dir = Path("data", "test_benchmark", "InputData")
         parameters = default_parameters
-        parameters["ASHP_HPower"] = {"min": 80.0, "max": 70.0, "step": 1.0}  # bad bounds
-
+        parameters["ASHP_HPower"] = {"min": 10, "max": 0, "step": 10}
         with pytest.raises(ValueError):
-            Problem(objectives, constraints, parameters, input_dir)
+            Building(parameters=parameters, input_dir=default_input_dir)
 
-    def test_bad_parameter_stepsize(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
+    def test_bad_parameter_stepsize(self, default_parameters: ParameterDict, default_input_dir: PathLike) -> None:
         """
         Test that we can't set bad parameter stepsize.
         """
-        objectives = [Objectives.carbon_balance]
-        constraints = default_constraints
-        input_dir = Path("data", "test_benchmark", "InputData")
         parameters = default_parameters
-        parameters["ASHP_HPower"] = {"min": 60.0, "max": 70.0, "step": 0.0}
-
+        parameters["ASHP_HPower"] = {"min": 0, "max": 10, "step": 0}
         with pytest.raises(ValueError):
-            Problem(objectives, constraints, parameters, input_dir)
+            Building(parameters=parameters, input_dir=default_input_dir)
 
-    def test_variable_parameters(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
+    def test_size(self, default_parameters: ParameterDict, default_input_dir: PathLike) -> None:
         """
-        Test that the ss_variables method returns the correct search space variables.
+        Test that the size method returns the correct search space size.
         """
-        objectives = [Objectives.carbon_balance]
-        constraints = default_constraints
-        parameters = default_parameters
-        input_dir = Path("data", "test_benchmark", "InputData")
 
-        problem = Problem(objectives, constraints, parameters, input_dir)
+        problem = Building(parameters=default_parameters, input_dir=default_input_dir)
+        assert problem.size() == 3 * 3 * 3
+
+    def test_variable_parameters(self, default_parameters: ParameterDict, default_input_dir: PathLike) -> None:
+        """
+        Test that the variable_param method returns the correct search space variables.
+        """
+        problem = Building(parameters=default_parameters, input_dir=default_input_dir)
         assert problem.variable_param() == {
-            "ESS_capacity": {"min": 0, "max": 1000.0, "step": 100.0},
-            "ESS_charge_power": {"min": 300, "max": 600.0, "step": 50.0},
-            "ESS_discharge_power": {"min": 400, "max": 800.0, "step": 50.0},
+            "ESS_capacity": {"min": 1, "max": 3, "step": 1},
+            "ESS_charge_power": {"min": 1, "max": 3, "step": 1},
+            "ESS_discharge_power": {"min": 1, "max": 3, "step": 1},
         }
 
-    def test_constant_parameters(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
+    def test_constant_parameters(self, default_parameters: ParameterDict, default_input_dir: PathLike) -> None:
         """
         Test that the ss_constants method returns the correct search space constants.
         """
-        objectives = [Objectives.carbon_balance]
-        constraints = default_constraints
-        parameters = default_parameters
-        input_dir = Path("data", "test_benchmark", "InputData")
-
-        problem = Problem(objectives, constraints, parameters, input_dir)
+        problem = Building(parameters=default_parameters, input_dir=default_input_dir)
         assert problem.constant_param() == {
             "ASHP_HPower": 70.0,
             "ASHP_HSource": 1,
@@ -195,85 +103,57 @@ class TestProblem:
             "timewindow": 8760,
         }
 
-    def test_size(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
+
+class TestPortfolioProblem:
+    def test_good_inputs(
+        self, default_objectives: list[Objectives], default_constraints: ConstraintDict, default_buildings: dict[str, Building]
+    ) -> None:
         """
-        Test that the ss_size method returns the correct search space size.
+        Test that the problem class works with valid input.
         """
-        objectives = [Objectives.carbon_balance]
+        PortfolioProblem(objectives=default_objectives, constraints=default_constraints, buildings=default_buildings)
+
+    def test_bad_objective(
+        self, default_objectives: list[Objectives], default_constraints: ConstraintDict, default_buildings: dict[str, Building]
+    ) -> None:
+        """
+        Test that we can't set bad objective names.
+        """
+        objectives = default_objectives
+        objectives.append("amazingness")
+        with pytest.raises(ValueError):
+            PortfolioProblem(objectives=objectives, constraints=default_constraints, buildings=default_buildings)  # type: ignore
+
+    def test_bad_constraint_names(
+        self, default_objectives: list[Objectives], default_constraints: ConstraintDict, default_buildings: dict[str, Building]
+    ) -> None:
+        """
+        Test that we can't set constraints with bad objective names.
+        """
         constraints = default_constraints
-        parameters = default_parameters
-        input_dir = Path("data", "test_benchmark", "InputData")
+        constraints["amazingness"] = {"min": 6000}
+        with pytest.raises(ValueError):
+            PortfolioProblem(objectives=default_objectives, constraints=constraints, buildings=default_buildings)  # type: ignore
 
-        problem = Problem(objectives, constraints, parameters, input_dir)
-        assert problem.size() == 11 * 7 * 9
+    def test_bad_constraint_bound_values(
+        self, default_objectives: list[Objectives], default_constraints: ConstraintDict, default_buildings: dict[str, Building]
+    ) -> None:
+        """
+        Test that we can't set bad constraint bounds, lower bound greater than upper bound.
+        """
+        constraints = default_constraints
+        constraints["capex"] = {"min": 10, "max": 0}  # type: ignore
+        with pytest.raises(ValueError):
+            PortfolioProblem(objectives=default_objectives, constraints=constraints, buildings=default_buildings)
 
-    def test_split_objectives(self, default_constraints: ConstraintDict, default_parameters: ParameterDict) -> None:
+    def test_split_objectives(self, default_portfolio_problem) -> None:
         """
         Test that MOO problems are correctly split into SOO problems.
         """
-        objectives = [Objectives.carbon_balance, Objectives.capex]
-        constraints = default_constraints
-        parameters = default_parameters
-        input_dir = Path("data", "test_benchmark", "InputData")
-
-        problem = Problem(objectives, constraints, parameters, input_dir)
-        problem_a = Problem([Objectives.carbon_balance], constraints, parameters, input_dir)
-        problem_b = Problem([Objectives.capex], constraints, parameters, input_dir)
-
-        assert list(problem.split_objectives()) == [problem_a, problem_b]
-
-
-class TestProblemLoading:
-    def test_load_problem(self, default_constraints: ConstraintDict) -> None:
-        problem_dir = Path("tests", "data", "benchmarks")
-        problem = load_problem("var-3", problem_dir)
-
-        assert problem.objectives == [
-            Objectives.carbon_balance,
-            Objectives.cost_balance,
-            Objectives.capex,
-            Objectives.payback_horizon,
-            Objectives.annualised_cost,
+        problem = default_portfolio_problem
+        objectives = problem.objectives
+        single_problems = [
+            PortfolioProblem(objectives=[objective], constraints=problem.constraints, buildings=problem.buildings)
+            for objective in objectives
         ]
-        assert problem.constraints == default_constraints
-        assert problem.parameters == {
-            "ASHP_HPower": {"min": 70.0, "max": 70.0, "step": 0.0},
-            "ASHP_HSource": {"min": 1, "max": 1, "step": 0},
-            "ASHP_HotTemp": {"min": 43.0, "max": 43.0, "step": 0.0},
-            "ASHP_RadTemp": {"min": 70.0, "max": 70.0, "step": 0.0},
-            "CAPEX_limit": 500.0,
-            "ESS_capacity": {"min": 0, "max": 1000, "step": 100},
-            "ESS_charge_mode": {"min": 1, "max": 1, "step": 0},
-            "ESS_charge_power": {"min": 300, "max": 600, "step": 50},
-            "ESS_discharge_mode": {"min": 1, "max": 1, "step": 0},
-            "ESS_discharge_power": {"min": 400, "max": 800, "step": 50},
-            "ESS_start_SoC": {"min": 0.5, "max": 0.5, "step": 0},
-            "EV_flex": {"min": 0.5, "max": 0.5, "step": 0.0},
-            "Export_headroom": {"min": 0, "max": 0, "step": 0},
-            "Fixed_load1_scalar": {"min": 1, "max": 1, "step": 0},
-            "Fixed_load2_scalar": {"min": 3, "max": 3, "step": 0},
-            "Flex_load_max": {"min": 50, "max": 50, "step": 0},
-            "GridExport": {"min": 95, "max": 95, "step": 0},
-            "GridImport": {"min": 95, "max": 95, "step": 0},
-            "Import_headroom": {"min": 0, "max": 0, "step": 0},
-            "Min_power_factor": {"min": 0.95, "max": 0.95, "step": 0.0},
-            "Mop_load_max": {"min": 300, "max": 300, "step": 0},
-            "OPEX_limit": 20.0,
-            "ScalarHL1": {"min": 1, "max": 1, "step": 0},
-            "ScalarHYield": {"min": 0.75, "max": 0.75, "step": 0.0},
-            "ScalarRG1": {"min": 600, "max": 600, "step": 0},
-            "ScalarRG2": {"min": 100, "max": 100, "step": 0},
-            "ScalarRG3": {"min": 50, "max": 50, "step": 0},
-            "ScalarRG4": {"min": 0, "max": 0, "step": 0},
-            "Export_kWh_price": 5.0,
-            "f22_EV_CP_number": {"min": 3, "max": 3, "step": 0},
-            "r50_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-            "s7_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-            "target_max_concurrency": 44,
-            "time_budget_min": 1.0,
-            "timestep_hours": 1.0,
-            "u150_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-            "DHW_cylinder_volume": {"min": 100, "max": 100, "step": 0},
-            "timewindow": 8760,
-        }
-        assert problem.input_dir == Path("tests", "data", "benchmarks", "var-3", "InputData")
+        assert list(problem.split_objectives()) == single_problems
