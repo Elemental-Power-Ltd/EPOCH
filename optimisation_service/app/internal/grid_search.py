@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from paretoset import paretoset
+from paretoset import paretoset  # type: ignore
 
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.portfolio_simulator import gen_all_building_combinations

@@ -19,7 +19,7 @@ class TestBuilding:
         Test that the building class works with valid input.
         """
         parameters = default_parameters
-        parameters["pool_size"] = {"min": "Bangweulu", "max": "Caspian Sea", "step": "cubic metre"}
+        parameters["pool_size"] = {"min": "Bangweulu", "max": "Caspian Sea", "step": "cubic metre"}  # type: ignore
         with pytest.raises(ValueError):
             Building(parameters=parameters, input_dir=default_input_dir)
 
@@ -120,7 +120,7 @@ class TestPortfolioProblem:
         Test that we can't set bad objective names.
         """
         objectives = default_objectives
-        objectives.append("amazingness")
+        objectives.append("amazingness")  # type: ignore
         with pytest.raises(ValueError):
             PortfolioProblem(objectives=objectives, constraints=default_constraints, buildings=default_buildings)  # type: ignore
 
@@ -131,7 +131,7 @@ class TestPortfolioProblem:
         Test that we can't set constraints with bad objective names.
         """
         constraints = default_constraints
-        constraints["amazingness"] = {"min": 6000}
+        constraints["amazingness"] = {"min": 6000}  # type: ignore
         with pytest.raises(ValueError):
             PortfolioProblem(objectives=default_objectives, constraints=constraints, buildings=default_buildings)  # type: ignore
 

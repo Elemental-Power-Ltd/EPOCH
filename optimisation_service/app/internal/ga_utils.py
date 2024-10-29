@@ -84,7 +84,7 @@ class ProblemInstance(ElementwiseProblem):
     def scale_solution(self, x: npt.NDArray) -> npt.NDArray:
         return x * self.steps + self.lower_bounds
 
-    def split_solution(self, x: npt.NDArray) -> dict[npt.NDArray]:
+    def split_solution(self, x: npt.NDArray) -> dict[str, npt.NDArray]:
         return {building_name: x[start:stop] for building_name, (start, stop) in self.location.items()}
 
     def convert_solution(self, x: npt.NDArray, building_name: str) -> PyTaskData:
@@ -115,7 +115,7 @@ class ProblemInstance(ElementwiseProblem):
                 excess.append(objective_values[objective] - max_value)
         return excess
 
-    def _evaluate(self, x: npt.NDArray, out: dict[str, list[np.floating]]) -> None:
+    def _evaluate(self, x: npt.NDArray, out: dict[str, list[float]]) -> None:
         portfolio_solution = self.simulate_portfolio(x=x)
         out["G"] = self.apply_portfolio_constraints(portfolio_solution.objective_values)
         selected_results = {objective: portfolio_solution.objective_values[objective] for objective in self.objectives}

@@ -101,7 +101,7 @@ class NSGA2(Algorithm):
         non_dom_sol = res.X
         if non_dom_sol.ndim == 1:
             non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
-        portfolio_solutions = np.asarray([pi.simulate_portfolio(sol) for sol in non_dom_sol])
+        portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
         portfolio_solutions_pf = portfolio_pareto_front(
             portfolio_solutions=portfolio_solutions, objectives=portfolio.objectives
         )

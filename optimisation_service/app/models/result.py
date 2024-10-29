@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
-from app.internal.task_data_wrapper import PyTaskData
+from app.internal.task_data_wrapper import PySimulationResult, PyTaskData
 from app.models.objectives import Objectives
 
 ObjectiveValues = dict[Objectives, int | float]
@@ -9,8 +9,8 @@ ObjectiveValues = dict[Objectives, int | float]
 
 @dataclass
 class BuildingSolution:
-    solution: PyTaskData
-    objective_values: ObjectiveValues
+    solution: PyTaskData | dict[str, int | float]
+    objective_values: ObjectiveValues | PySimulationResult
 
 
 @dataclass

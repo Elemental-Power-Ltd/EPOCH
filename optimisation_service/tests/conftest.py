@@ -106,12 +106,10 @@ def temporary_directory(
 
 
 def dummy_building_solution(building: Building, objectives: list[Objectives]) -> BuildingSolution:
-    solution = PyTaskData()
+    solution = PyTaskData(**building.constant_param())
     rng = np.random.default_rng()
     for name, value in building.variable_param().items():
         solution[name] = rng.choice(np.arange(start=value["min"], stop=value["max"], step=value["step"]))
-    for name, value in building.constant_param().items():
-        solution[name] = value
     objective_values = {objective: rng.random() * 100 for objective in objectives}
     return BuildingSolution(solution=solution, objective_values=objective_values)
 

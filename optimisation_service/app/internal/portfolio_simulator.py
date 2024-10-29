@@ -1,11 +1,8 @@
 from itertools import product
 from os import PathLike
 
-import numpy as np
-import numpy.typing as npt
-
 from app.internal.task_data_wrapper import PySimulationResult, PyTaskData, Simulator
-from app.models.objectives import _OBJECTIVES
+from app.models.objectives import _OBJECTIVES, Objectives
 from app.models.result import BuildingSolution, ObjectiveValues, PortfolioSolution
 
 
@@ -26,17 +23,19 @@ class PortfolioSimulator:
         return PortfolioSolution(solution=solution, objective_values=objective_values)  # TODO:Solution doesn't require taskdata
 
 
-def combine_objective_values(objective_values_list: list[ObjectiveValues]):
+def combine_objective_values(
+    objective_values_list: list[PySimulationResult] | list[ObjectiveValues] | list[PySimulationResult | ObjectiveValues],
+):
     combined = {objective: sum(obj_vals[objective] for obj_vals in objective_values_list) for objective in _OBJECTIVES}
-    combined["payback_horizon"] = combined["capex"] / combined["cost_balance"]
+    combined[Objectives.payback_horizon] = combined[Objectives.capex] / combined[Objectives.cost_balance]
     return combined
 
 
-def gen_all_building_combinations(building_solutions_dict: dict[str, list[BuildingSolution]]) -> npt.NDArray[PortfolioSolution]:  # type: ignore
+def gen_all_building_combinations(building_solutions_dict: dict[str, list[BuildingSolution]]) -> list[PortfolioSolution]:  # type: ignore
     building_names = list(building_solutions_dict.keys())
     all_combinations = product(*building_solutions_dict.values())
 
-    portfolio_solutions = np.array([])
+    portfolio_solutions = []
     for combination in all_combinations:
         solution_dict = dict(zip(building_names, combination))
         objective_values = [building.objective_values for building in combination]
@@ -44,6 +43,6 @@ def gen_all_building_combinations(building_solutions_dict: dict[str, list[Buildi
 
         portfolio_solution = PortfolioSolution(solution=solution_dict, objective_values=portfolio_objective_values)
 
-        portfolio_solutions = np.append(portfolio_solutions, portfolio_solution)
+        portfolio_solutions.append(portfolio_solution)
 
     return portfolio_solutions

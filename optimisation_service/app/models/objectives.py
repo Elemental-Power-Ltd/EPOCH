@@ -9,6 +9,12 @@ class Objectives(StrEnum):
     annualised_cost = "annualised_cost"
 
 
-_OBJECTIVES = [objective.value for objective in Objectives]
+_OBJECTIVES = [
+    Objectives.carbon_balance,
+    Objectives.capex,
+    Objectives.cost_balance,
+    Objectives.annualised_cost,
+    Objectives.payback_horizon,
+]
 
 _OBJECTIVES_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "payback_horizon": 1, "annualised_cost": 1}

@@ -18,7 +18,6 @@ from pymoo.termination.robust import RobustTermination  # type: ignore
 
 from app.internal.ga_utils import ProblemInstance
 from app.internal.pareto_front import portfolio_pareto_front
-from app.internal.portfolio_simulator import PortfolioSolution
 from app.internal.problem import PortfolioProblem
 from app.models.algorithms import Algorithm
 from app.models.result import OptimisationResult
@@ -88,7 +87,7 @@ class GeneticAlgorithm(Algorithm):
 
         self.termination_criteria = SingleTermination(tol, period, n_max_gen, n_max_evals)
 
-    def run(self, portfolio: PortfolioProblem) -> PortfolioSolution:
+    def run(self, portfolio: PortfolioProblem) -> OptimisationResult:
         """
         Run GA optimisation.
 
@@ -104,12 +103,12 @@ class GeneticAlgorithm(Algorithm):
         fitness
             Objective values of optimal solutions.
         """
-        portfolio_solutions = np.array([])
+        portfolio_solutions = []
         exec_time, n_evals = 0, 0
         for sub_problem in portfolio.split_objectives():
             pi = ProblemInstance(sub_problem)
             res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
-            portfolio_solutions = np.append(portfolio_solutions, pi.simulate_portfolio(res.X))
+            portfolio_solutions.append(pi.simulate_portfolio(res.X))
 
             assert res.exec_time is not None
             exec_time += res.exec_time

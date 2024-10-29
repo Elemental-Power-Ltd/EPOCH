@@ -1,10 +1,7 @@
-import json
-import os
 from collections.abc import Generator
 from dataclasses import dataclass
 from enum import Enum
 from os import PathLike
-from pathlib import Path
 from typing import Self
 
 import numpy as np
@@ -23,7 +20,7 @@ from app.models.parameters import (
 @dataclass(frozen=True)
 class Building:
     parameters: ParameterDict
-    input_dir: str | PathLike
+    input_dir: PathLike
 
     def __post_init__(self) -> None:
         if set(self.parameters.keys()) != set(PyTaskData()._VALID_KEYS):
@@ -145,38 +142,3 @@ class PortfolioProblem:
         """
         for objective in self.objectives:
             yield PortfolioProblem([objective], self.constraints, self.buildings)  # type: ignore
-
-
-def load_problem(name: str, save_dir: str | os.PathLike) -> PortfolioProblem:
-    """
-    Loads a problem's objectives, constraints and parameters from the folder under its name in the save directory.
-
-    Parameters
-    ----------
-    name
-        Name of the problem to load
-    save_dir
-        Path to the problem's directory
-
-    Returns
-    -------
-    problem instance
-    """
-    problem_path = Path(save_dir, name)
-    assert os.path.isdir(problem_path), "Benchmark does not exist."
-    input_dir = Path(problem_path, "InputData")
-    assert os.path.isdir(input_dir), "Benchmark does not have an InputData folder."
-
-    with open(Path(problem_path, "objectives.json")) as f:
-        objectives = json.load(f)
-    with open(Path(problem_path, "constraints.json")) as f:
-        constraints = json.load(f)
-    with open(Path(problem_path, "parameters.json")) as f:
-        parameters = json.load(f)
-
-    return PortfolioProblem(
-        objectives=objectives,
-        constraints=constraints,
-        parameters=parameters,
-        input_dir=input_dir,
-    )
