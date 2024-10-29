@@ -162,3 +162,16 @@ class TestTariffUtils:
         example_list = ["_C", "_D", "_E", "_F"]
         result = it.region_or_first_available(code, example_list)
         assert result == code.value
+
+
+class TestGetWholesale:
+    @pytest.mark.asyncio
+    async def test_works_with_dates(self) -> None:
+        async with httpx.AsyncClient() as client:
+            df = await it.get_wholesale_costs(
+                datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC),
+                datetime.datetime(year=2024, month=2, day=1, tzinfo=datetime.UTC),
+                client=client,
+            )
+        assert np.all(df["cost"] != 0.0)
+        assert len(df) >= 31 * 2 * 24
