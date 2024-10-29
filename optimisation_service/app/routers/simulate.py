@@ -69,7 +69,7 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
         return FullResult(report_data=report_dict, objectives=objectives)
 
 
-def report_data_to_dict(report_data) -> dict[str, [float]]:
+def report_data_to_dict(report_data) -> dict[str, list[float]]:
     """
     Convert the ReportData type returned as part of a SimulationResult into a more generic dict type.
 
