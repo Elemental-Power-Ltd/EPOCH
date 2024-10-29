@@ -69,7 +69,22 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
         return FullResult(report_data=report_dict, objectives=objectives)
 
 
-def report_data_to_dict(report_data):
+def report_data_to_dict(report_data) -> dict[str, [float]]:
+    """
+    Convert the ReportData type returned as part of a SimulationResult into a more generic dict type.
+
+    This is a convenience method to make the type we provide to the GUI generic (for now).
+
+    Parameters
+    ----------
+    report_data
+        The python bindings for the EPOCH ReportData struct
+
+    Returns
+    -------
+        A dictionary representation of the report_data
+
+    """
     report_dict = {}
     if report_data is not None:
         # Crude method of finding the fields
