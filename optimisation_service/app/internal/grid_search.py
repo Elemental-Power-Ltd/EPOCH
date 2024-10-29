@@ -12,11 +12,12 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from paretoset import paretoset
 
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.portfolio_simulator import gen_all_building_combinations
 from app.internal.problem import PortfolioProblem
-from app.models.objectives import _OBJECTIVES
+from app.models.objectives import _OBJECTIVES, _OBJECTIVES_DIRECTION
 from app.models.result import BuildingSolution, OptimisationResult
 
 from ..models.algorithms import Algorithm
@@ -117,10 +118,19 @@ class GridSearch(Algorithm):
 
             df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
 
+            grouped = df_res.groupby(by=["capex"])
+            optimal_res = []
+            for _, group in grouped:
+                obj_values = group[portfolio.objectives]
+                objective_direct = [
+                    "max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in portfolio.objectives
+                ]
+                pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
+                optimal_res.append(group[pareto_efficient])
+            df_res = pd.concat(optimal_res)
+
             solutions = df_res.drop(columns=_OBJECTIVES).to_dict("records")
             objective_values = df_res[_OBJECTIVES].to_dict("records")
-
-            # TODO: reduce to pareto-front for all CAPEX values
 
             building_solutions[building_name] = np.array([BuildingSolution(*sol) for sol in zip(solutions, objective_values)])
 
