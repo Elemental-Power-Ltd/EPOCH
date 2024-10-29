@@ -43,12 +43,28 @@ class GSPCodeResponse(pydantic.BaseModel):
 
 
 class EpochTariffEntry(EpochEntry):
-    Tariff: float = pydantic.Field(examples=[32.4, 14.6], description="Import costs for this time period in p / kWh")
+    Tariff: float | None = pydantic.Field(examples=[32.4, 14.6], description="Import costs for this time period in £ / kWh")
+    Tariff1: float | None = pydantic.Field(
+        examples=[32.4, 14.6], description="Import costs for this time period in £ / kWh", default=None
+    )
+    Tariff2: float | None = pydantic.Field(
+        examples=[32.4, 14.6], description="Import costs for this time period in £ / kWh", default=None
+    )
+    Tariff3: float | None = pydantic.Field(
+        examples=[32.4, 14.6], description="Import costs for this time period in £ / kWh", default=None
+    )
+
+
+class SyntheticTariffEnum(StrEnum):
+    Agile = "agile"
+    Fixed = "fixed"
+    Overnight = "overnight"
+    Peak = "peak"
 
 
 class TariffRequest(pydantic.BaseModel):
     site_id: site_id_t = site_id_field
-    tariff_name: str = pydantic.Field(
+    tariff_name: SyntheticTariffEnum | str = pydantic.Field(
         examples=["E-1R-AGILE-24-04-03-A", "E-1R-COOP-FIX-12M-24-07-25-B"],
         description="The specific region-containing tariff code for this tariff.",
     )
@@ -71,9 +87,19 @@ class TariffRequest(pydantic.BaseModel):
         assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
         return self
 
+    @pydantic.field_validator("tariff_name", mode="before")
+    @classmethod
+    def check_tariff_type(cls, v: str) -> str | SyntheticTariffEnum:
+        """Check if this tariff is a specific name, or a generic type like 'fixed'."""
+        try:
+            return SyntheticTariffEnum(v)
+        except ValueError:
+            return v
+
 
 class TariffProviderEnum(StrEnum):
     octopus = "octopus"
+    Synthetic = "synthetic"
 
 
 class TariffListEntry(pydantic.BaseModel):

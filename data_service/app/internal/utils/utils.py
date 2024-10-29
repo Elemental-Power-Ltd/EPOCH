@@ -35,7 +35,7 @@ def typename(x: Any) -> str:
     return type(x).__name__
 
 
-def hour_of_year(ts: pd.Timestamp) -> int:
+def hour_of_year(ts: pd.Timestamp) -> float:
     """
     Convert a given timestamp to being the indexed hour of year (starting at 1).
 
@@ -55,7 +55,7 @@ def hour_of_year(ts: pd.Timestamp) -> int:
     """
     soy_ts = pd.Timestamp(year=ts.year, month=1, day=1, hour=0, minute=0, tzinfo=ts.tzinfo)
     # watch out for this off-by-one error!
-    return 1 + (int((ts - soy_ts).total_seconds()) // 3600)
+    return 1 + ((ts - soy_ts).total_seconds() / 3600)
 
 
 def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
@@ -196,9 +196,9 @@ def split_into_sessions[T: (float, int, datetime.datetime, datetime.date, pd.Tim
         return []
 
     if isinstance(arr[0], datetime.datetime | datetime.date | pd.Timestamp):
-        assert isinstance(
-            max_diff, datetime.timedelta | pd.Timedelta
-        ), "Must provide a timedelta difference if working with times"
+        assert isinstance(max_diff, datetime.timedelta | pd.Timedelta), (
+            "Must provide a timedelta difference if working with times"
+        )
     else:
         assert isinstance(max_diff, float | int)
 
@@ -225,9 +225,9 @@ def add_epoch_fields(non_epoch_df: pd.DataFrame) -> pd.DataFrame:
     This may change in future, so the additions are grouped together here.
 
     """
-    assert isinstance(
-        non_epoch_df.index, pd.DatetimeIndex
-    ), f"Dataframes for EPOCH must have a DateTimeIndex but got {type(non_epoch_df.index)}"
+    assert isinstance(non_epoch_df.index, pd.DatetimeIndex), (
+        f"Dataframes for EPOCH must have a DateTimeIndex but got {type(non_epoch_df.index)}"
+    )
 
     non_epoch_df["Date"] = non_epoch_df.index.strftime("%d-%b")
     non_epoch_df["StartTime"] = non_epoch_df.index.strftime("%H:%M")

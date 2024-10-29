@@ -50,13 +50,13 @@ def celsius_to_kelvin(temperature: FloatOrArray) -> FloatOrArray:
         Temperature in Kelvin between 223.15K and 373.15K
     """
     if isinstance(temperature, float | int):
-        assert (
-            -50 <= temperature < 100
-        ), f"{temperature} out of range of likely °C values [-50, 100). Have you already converted it?"
+        assert -50 <= temperature < 100, (
+            f"{temperature} out of range of likely °C values [-50, 100). Have you already converted it?"
+        )
     else:
-        assert np.all(
-            np.logical_and(-50 <= temperature, temperature < 100)
-        ), f"{temperature} out of range of likely °C values [-50, 100). Have you already converted it?"
+        assert np.all(np.logical_and(-50 <= temperature, temperature < 100)), (
+            f"{temperature} out of range of likely °C values [-50, 100). Have you already converted it?"
+        )
     return temperature + 273.15
 
 
@@ -79,13 +79,13 @@ def millibar_to_megapascal(pressure: FloatOrArray) -> FloatOrArray:
         air pressure in MPa between 0.08 and 0.11 MPa
     """
     if isinstance(pressure, float | int):
-        assert (
-            800 < pressure < 1100
-        ), f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
+        assert 800 < pressure < 1100, (
+            f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
+        )
     else:
-        assert np.all(
-            np.logical_and(800 < pressure, pressure < 1100)
-        ), f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
+        assert np.all(np.logical_and(800 < pressure, pressure < 1100)), (
+            f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
+        )
     return pressure / 10000
 
 
@@ -116,23 +116,23 @@ def relative_to_specific_humidity(rel_hum: FloatOrArray, air_temp: FloatOrArray,
         assert 0 <= rel_hum <= 100, f"Relative humidity must be in range [0, 100]. Got {rel_hum}"
     else:
         bad_mask = ~np.logical_and(0.0 <= rel_hum, rel_hum <= 100.0)
-        assert np.all(
-            np.logical_and(0.0 <= rel_hum, rel_hum <= 100.0)
-        ), f"All relative humidities must be in range [0, 100]. Got {rel_hum[bad_mask]}."
+        assert np.all(np.logical_and(0.0 <= rel_hum, rel_hum <= 100.0)), (
+            f"All relative humidities must be in range [0, 100]. Got {rel_hum[bad_mask]}."
+        )
 
     if isinstance(air_temp, float | int):
         assert -50 <= air_temp < 100, f"{air_temp} out of range of likely °C values [-50, 100). Have you already converted it?"
     else:
-        assert np.all(
-            np.logical_and(-50.0 <= air_temp, air_temp < 100.0)
-        ), f"{air_temp} out of range of likely °C values [-50, 100). Have you already converted it?"
+        assert np.all(np.logical_and(-50.0 <= air_temp, air_temp < 100.0)), (
+            f"{air_temp} out of range of likely °C values [-50, 100). Have you already converted it?"
+        )
 
     if isinstance(air_pressure, float | int):
         assert 900 <= air_pressure < 1100, "air pressure must be in the range [900, 1100)"
     else:
-        assert np.all(
-            np.logical_and(900 <= air_pressure, air_pressure < 1100.0)
-        ), f"{air_pressure} out of range of likely values [900, 1100). Is it in the right units?"
+        assert np.all(np.logical_and(900 <= air_pressure, air_pressure < 1100.0)), (
+            f"{air_pressure} out of range of likely values [900, 1100). Is it in the right units?"
+        )
 
     def enhancement_factor(temperature: FloatOrArray, pressure: FloatOrArray) -> FloatOrArray:
         """

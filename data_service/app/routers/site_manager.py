@@ -26,6 +26,8 @@ from .renewables import generate_renewables_generation
 
 router = APIRouter()
 
+MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
+
 
 async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
     """
@@ -324,7 +326,7 @@ async def get_specific_datasets(site_data: DatasetRequest, pool: DatabasePoolDep
 
     site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
     for ds_type, dataset_id in specified_or_latest_ids.items():
-        if ds_type == DatasetTypeEnum.HeatingLoad or ds_type == DatasetTypeEnum.RenewablesGeneration:
+        if ds_type in MULTIPLE_DATASET_ENDPOINTS:
             site_data_ids[ds_type] = MultipleDatasetIDWithTime(
                 dataset_id=[dataset_id],
                 start_ts=site_data.start_ts,
@@ -363,7 +365,7 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) 
 
     site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
     for dataset_name, dataset_metadata in site_data_info.items():
-        if dataset_name == DatasetTypeEnum.HeatingLoad or dataset_name == DatasetTypeEnum.RenewablesGeneration:
+        if dataset_name in MULTIPLE_DATASET_ENDPOINTS:
             site_data_ids[dataset_name] = MultipleDatasetIDWithTime(
                 dataset_id=[dataset_metadata.dataset_id],
                 start_ts=site_data.start_ts,

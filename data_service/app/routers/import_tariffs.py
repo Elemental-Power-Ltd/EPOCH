@@ -8,17 +8,29 @@ import datetime
 import logging
 import uuid
 
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
+from ..internal.import_tariffs import (
+    combine_tariffs,
+    create_day_and_night_tariff,
+    create_fixed_tariff,
+    create_peak_tariff,
+    get_day_and_night_rates,
+    get_fixed_rates,
+    get_octopus_tariff,
+    resample_to_range,
+    tariff_to_new_timestamps,
+)
 from ..internal.utils import hour_of_year
-from ..internal.utils.utils import get_with_fallback
-from ..models.core import DatasetIDWithTime, SiteID, SiteIDWithTime
+from ..models.core import MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.import_tariffs import (
     EpochTariffEntry,
     GSPCodeResponse,
     GSPEnum,
+    SyntheticTariffEnum,
     TariffListEntry,
     TariffMetadata,
     TariffProviderEnum,
@@ -26,7 +38,7 @@ from ..models.import_tariffs import (
 )
 
 router = APIRouter()
-
+logger = logging.getLogger("default")
 # The CarbonIntensity API uses a different region numbering to normal
 # https://carbon-intensity.github.io/api-definitions/#region-list
 
@@ -232,87 +244,80 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
     *tariff_metadata*
         Some useful metadata about the tariff entry in the database
     """
-    BASE_URL = "https://api.octopus.energy/v1/products"
-    dataset_id = uuid.uuid4()
-    url = f"{BASE_URL}/{params.tariff_name}/"
-
-    response = await http_client.get(url)
-    products = response.json()
-    if response.status_code != 200:
-        raise HTTPException(response.json()["detail"])
-
-    product_available_from = datetime.datetime.fromisoformat(products.get("available_from", "1970-01-01T00:00:00Z"))
-    if product_available_from > params.end_ts:
-        raise HTTPException(
-            400,
-            f"Tariff {params.tariff_name} only available from {product_available_from}."
-            + f"This is after your end timestamp of {params.end_ts}.",
-        )
     async with pool.acquire() as conn:
-        region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, conn=conn)).region_code.value
-    region_key = (
-        region_code
-        if region_code in products["single_register_electricity_tariffs"]
-        else next(iter(products["single_register_electricity_tariffs"].keys()))
-    )
-    regional_data = products["single_register_electricity_tariffs"][region_key]
-    tariff_code = get_with_fallback(regional_data, ["varying", "direct_debit_monthly", "prepayment"])["code"]
+        region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, conn=conn)).region_code
 
-    price_url = url + f"electricity-tariffs/{tariff_code}/standard-unit-rates/"
+    if isinstance(params.tariff_name, SyntheticTariffEnum):
+        provider = TariffProviderEnum.Synthetic
+        if params.tariff_name == SyntheticTariffEnum.Agile:
+            logger.info(f"Generating an Agile tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+            underlying_tariff = "AGILE-24-10-01"
+            # Request "None" timestamps to get as much data as we have available.
+            price_df_new = await get_octopus_tariff(
+                underlying_tariff, region_code=region_code, start_ts=None, end_ts=None, client=http_client
+            )
+            # Combine with the previous agile tariff to get enough coverage
+            price_df_old = await get_octopus_tariff(
+                "AGILE-23-12-06", region_code=region_code, start_ts=None, end_ts=None, client=http_client
+            )
+            price_df = combine_tariffs([price_df_old, price_df_new])
+            price_df = resample_to_range(price_df)
+            price_df = tariff_to_new_timestamps(
+                price_df, pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30))
+            )
+        elif params.tariff_name == SyntheticTariffEnum.Peak:
+            logger.info(f"Generating a Peak tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+            underlying_tariff = "LOYAL-FIX-12M-23-12-30"
+            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+            night_cost, day_cost = await get_day_and_night_rates(
+                tariff_name=underlying_tariff, region_code=region_code, client=http_client
+            )
+            price_df = create_peak_tariff(timestamps, day_cost=day_cost, night_cost=night_cost, peak_cost=12.0)
+        elif params.tariff_name == SyntheticTariffEnum.Overnight:
+            logger.info(f"Generating an Overnight tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+            underlying_tariff = "LOYAL-FIX-12M-23-12-30"
+            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+            night_cost, day_cost = await get_day_and_night_rates(
+                tariff_name=underlying_tariff, region_code=region_code, client=http_client
+            )
+            price_df = create_day_and_night_tariff(timestamps, day_cost=day_cost, night_cost=night_cost)
+        elif params.tariff_name == SyntheticTariffEnum.Fixed:
+            logger.info(f"Generating a Fixed tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+            underlying_tariff = "LOYAL-FIX-12M-23-12-30"
+            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+            fixed_cost = await get_fixed_rates(tariff_name=underlying_tariff, region_code=region_code, client=http_client)
+            price_df = create_fixed_tariff(timestamps, fixed_cost=fixed_cost)
+    else:
+        logger.info(
+            f"Generating a tariff with real Octopus data for {params.tariff_name} in {region_code}"
+            + f" between {params.start_ts} and {params.end_ts}"
+        )
+        underlying_tariff = params.tariff_name
+        provider = TariffProviderEnum.octopus
+        price_df = await get_octopus_tariff(params.tariff_name, region_code, params.start_ts, params.end_ts, http_client)
+        price_df = resample_to_range(price_df, freq=pd.Timedelta(minutes=30), start_ts=params.start_ts, end_ts=params.end_ts)
+    dataset_id = uuid.uuid4()
 
-    price_response = await http_client.get(
-        price_url,
-        params={
-            "period_from": params.start_ts.isoformat(),
-            "period_to": params.end_ts.isoformat(),
-        },
-    )
-
-    price_data = price_response.json()
-    price_records = list(price_data["results"])
-    requests_made = 0
-    while price_data.get("next") is not None:
-        requests_made += 1
-        price_response = await http_client.get(price_data["next"])
-        price_data = price_response.json()
-        price_records.extend(price_data["results"])
-
-    price_df = pd.DataFrame.from_records(price_records)
     if price_df.empty:
         raise HTTPException(400, f"Got an empty dataframe for {params.tariff_name}")
-    if "payment_method" in price_df:
-        price_df = price_df.drop(columns=["payment_method"])
-    price_df["valid_from"] = pd.to_datetime(price_df["valid_from"], utc=True, format="ISO8601")
-    price_df["valid_to"] = pd.to_datetime(price_df["valid_to"], utc=True, format="ISO8601")
-    # If we only got one entry in the price dataframe (not unlikely for fixed tariffs), then
-    # we need to fill it out fully as the resampling won't work.
-    # We do the resampling first to make sure that our timestamps are aligned, and then
-    # add a whole new index of the relevant size.
-    # However, Pandas was super fussy about timestamps here (maybe 'UTC' != datetime.UTC? I'm flummoxed)
-    # so we have to go through a whole song and dance to fix it.
-    price_df = price_df.set_index("valid_from").sort_index().resample(pd.Timedelta(minutes=30)).max().ffill()
-    idx_start = min(price_df.index.min().tz_convert(params.start_ts.tzinfo), params.start_ts)
-    idx_end = max(price_df.index.max().tz_convert(params.start_ts.tzinfo), params.end_ts)
 
-    new_index = pd.DatetimeIndex(pd.date_range(idx_start, idx_end, freq=pd.Timedelta(minutes=30), inclusive="both"))
-    price_df = price_df.reindex(new_index).ffill().bfill()
-
-    price_df = price_df[["value_exc_vat"]].rename(columns={"value_exc_vat": "price", "valid_from": "start_ts"})
+    mask = np.logical_and(price_df.index >= params.start_ts, price_df.index < params.end_ts)
+    price_df = price_df[mask]
     price_df["start_ts"] = price_df.index
     price_df["dataset_id"] = dataset_id
     # Note that it doesn't matter that we've got "too  much" tariff data here, as we'll sort it out when we get it.
     async with pool.acquire() as conn:
         async with conn.transaction():
-            metadata = {
-                "dataset_id": dataset_id,
-                "site_id": params.site_id,
-                "created_at": datetime.datetime.now(datetime.UTC),
-                "provider": "octopus",
-                "product_name": params.tariff_name,
-                "tariff_name": tariff_code,
-                "valid_from": products.get("available_from"),
-                "valid_to": products.get("available_to") if products.get("available_to") != "null" else None,
-            }
+            metadata = TariffMetadata(
+                dataset_id=dataset_id,
+                site_id=params.site_id,
+                created_at=datetime.datetime.now(datetime.UTC),
+                provider=provider,
+                product_name=params.tariff_name,
+                tariff_name=underlying_tariff,
+                valid_from=None,
+                valid_to=None,
+            )
             # We insert the dataset ID into metadata, but we must wait to validate the
             # actual data insert until the end
             await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
@@ -337,28 +342,28 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
                         $6,
                         $7,
                         $8)""",
-                metadata["dataset_id"],
-                metadata["site_id"],
-                metadata["created_at"],
-                metadata["provider"],
-                metadata["product_name"],
-                metadata["tariff_name"],
-                pd.to_datetime(metadata["valid_from"], utc=True, format="ISO8601"),
-                pd.to_datetime(metadata["valid_to"], utc=True, format="ISO8601"),
+                metadata.dataset_id,
+                metadata.site_id,
+                metadata.created_at,
+                metadata.provider,
+                metadata.product_name,
+                metadata.tariff_name,
+                metadata.valid_from,
+                metadata.valid_to,
             )
 
             await conn.copy_records_to_table(
                 table_name="electricity",
                 schema_name="tariffs",
-                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["price"], strict=True),
+                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["cost"], strict=True),
                 columns=["dataset_id", "timestamp", "unit_cost"],
             )
 
-    return TariffMetadata(**metadata)
+    return metadata
 
 
 @router.post("/get-import-tariffs", tags=["get", "tariff"])
-async def get_import_tariffs(params: DatasetIDWithTime, conn: DatabaseDep) -> list[EpochTariffEntry]:
+async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabaseDep) -> list[EpochTariffEntry]:
     """
     Get the electricity import tariffs in p / kWh for this dataset.
 
@@ -380,33 +385,63 @@ async def get_import_tariffs(params: DatasetIDWithTime, conn: DatabaseDep) -> li
     *epoch_tariff_entries*
         Tariff entries in an EPOCH friendly format, with HourOfYear and Date splits.
     """
-    res = await conn.fetch(
-        """
-        SELECT
-            timestamp,
-            unit_cost
-        FROM tariffs.electricity
-        WHERE dataset_id = $1
-        AND $2 <= timestamp
-        AND timestamp < $3
-        ORDER BY timestamp ASC""",
-        params.dataset_id,
-        params.start_ts,
-        params.end_ts,
-    )
-    df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
-    df.index = pd.to_datetime(df.index, utc=True)
-    df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
-    # If we get 1970-01-01, that means someone didn't specify the timestamps.
-    # In that case, we don't resample. But if they did, then pad out to the period of interest.
-    if params.start_ts > datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC):
-        df = df.reindex(
-            index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left"),
-            method="nearest",
+    dfs = []
+    for dataset_id in params.dataset_id:
+        res = await conn.fetch(
+            """
+            SELECT
+                timestamp,
+                unit_cost
+            FROM tariffs.electricity
+            WHERE dataset_id = $1
+            AND $2 <= timestamp
+            AND timestamp < $3
+            ORDER BY timestamp ASC""",
+            dataset_id,
+            params.start_ts,
+            params.end_ts,
         )
+        if not res:
+            raise ValueError(f"Could not get a dataset for {dataset_id}.")
+        df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
+        df.index = pd.to_datetime(df.index, utc=True)
+        df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
+        dfs.append(df)
+
+        # If we get 1970-01-01, that means someone didn't specify the timestamps.
+        # In that case, we don't resample. But if they did, then pad out to the period of interest.
+        if params.start_ts > datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC):
+            df = df.reindex(
+                index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left"),
+                method="nearest",
+            )
+
+    if len(dfs) == 1:
+        # Return only a single Tariff entry
+        print(df.head())
+        return [
+            EpochTariffEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), Tariff=val)
+            for ts, val in zip(df.index, df["unit_cost"] / 100, strict=True)
+        ]
+
+    combined_df = pd.DataFrame(index=dfs[0].index, data={f"Tariff{i}": df.unit_cost for i, df in enumerate(dfs)})
+    null_tariff = [None for _ in combined_df.index]
     return [
         EpochTariffEntry(
-            Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), Tariff=val / 100
+            Date=ts.strftime("%d-%b"),
+            HourOfYear=hour_of_year(ts),
+            StartTime=ts.strftime("%H:%M"),
+            Tariff=val0,
+            Tariff1=val1,
+            Tariff2=val2,
+            Tariff3=val3,
         )
-        for ts, val in zip(df.index, df["unit_cost"], strict=True)
+        for ts, val0, val1, val2, val3 in zip(
+            combined_df.index,
+            combined_df["Tariff0"] / 100 if "Tariff0" in combined_df.columns else null_tariff,
+            combined_df["Tariff1"] / 100 if "Tariff1" in combined_df.columns else null_tariff,
+            combined_df["Tariff2"] / 100 if "Tariff2" in combined_df.columns else null_tariff,
+            combined_df["Tariff3"] / 100 if "Tariff3" in combined_df.columns else null_tariff,
+            strict=True,
+        )
     ]
