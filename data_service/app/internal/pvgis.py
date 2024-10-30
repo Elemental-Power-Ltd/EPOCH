@@ -225,12 +225,12 @@ async def get_renewables_ninja_data(
     # for connection pooling. However, if weren't given one we'll have to make one.
     if client is not None:
         req = await client.get(
-            BASE_URL, params=params, headers={"Authorization": f"Token {os.environ["RENEWABLES_NINJA_API_KEY"]}"}
+            BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
         )
     else:
         async with httpx.AsyncClient() as aclient:
             req = await aclient.get(
-                BASE_URL, params=params, headers={"Authorization": f"Token {os.environ["RENEWABLES_NINJA_API_KEY"]}"}
+                BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
             )
 
     try:

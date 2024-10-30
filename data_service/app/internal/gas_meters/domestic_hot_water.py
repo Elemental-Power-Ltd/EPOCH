@@ -78,9 +78,9 @@ def assign_hh_dhw_even(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float) -
     if "timedelta" not in hh_gas_df.columns:
         hh_gas_df["timedelta"] = np.pad(np.ediff1d(hh_gas_df.index.values).astype(np.timedelta64), (0, 1), mode="edge")
 
-    assert pd.api.types.is_timedelta64_dtype(
-        hh_gas_df["timedelta"]
-    ), f"Timedelta must be a timedelta64 type, but got {hh_gas_df["timedelta"].dtype}."
+    assert pd.api.types.is_timedelta64_dtype(hh_gas_df["timedelta"]), (
+        f"Timedelta must be a timedelta64 type, but got {hh_gas_df['timedelta'].dtype}."
+    )
     hh_gas_df["dhw"] = dhw_kwh * hh_gas_df["timedelta"] / pd.Timedelta(days=1)  # type: ignore
     hh_gas_df["heating"] = hh_gas_df["hdd"] * hdd_kwh
     hh_gas_df["predicted"] = hh_gas_df["dhw"] + hh_gas_df["heating"]

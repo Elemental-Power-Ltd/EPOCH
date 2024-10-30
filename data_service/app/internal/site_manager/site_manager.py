@@ -84,7 +84,7 @@ async def fetch_renewables_generation(params: MultipleDatasetIDWithTime, pool: D
     return await get_renewables_generation(params, pool=pool)
 
 
-async def fetch_import_tariffs(params: DatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochTariffEntry]:
+async def fetch_import_tariffs(params: MultipleDatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochTariffEntry]:
     """Wrap get_import_tariffs to get a conn from the pool."""
     async with pool.acquire() as conn:
         return await get_import_tariffs(params, conn=conn)
@@ -121,7 +121,7 @@ async def fetch_all_input_data(
     renewables_generation = site_data_ids[DatasetTypeEnum.RenewablesGeneration]
     assert isinstance(renewables_generation, MultipleDatasetIDWithTime)
     import_tariff = site_data_ids[DatasetTypeEnum.ImportTariff]
-    assert isinstance(import_tariff, DatasetIDWithTime)
+    assert isinstance(import_tariff, MultipleDatasetIDWithTime)
     carbon_intensity = site_data_ids[DatasetTypeEnum.CarbonIntensity]
     assert isinstance(carbon_intensity, DatasetIDWithTime)
     ashp_data = site_data_ids[DatasetTypeEnum.ASHPData]

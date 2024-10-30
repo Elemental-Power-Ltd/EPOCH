@@ -20,7 +20,7 @@ from httpx import ASGITransport, AsyncClient
 from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
 from app.main import app
 
-db_factory = testing.postgresql.PostgresqlFactory()
+db_factory = testing.postgresql.PostgresqlFactory(cache_initialized_db=True)
 
 
 @pytest_asyncio.fixture

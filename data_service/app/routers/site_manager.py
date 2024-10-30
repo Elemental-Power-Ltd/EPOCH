@@ -14,17 +14,19 @@ from ..models.client_data import SiteDataEntries
 from ..models.core import DatasetEntry, DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.electricity_load import ElectricalLoadRequest
 from ..models.heating_load import HeatingLoadRequest
-from ..models.import_tariffs import TariffRequest
+from ..models.import_tariffs import SyntheticTariffEnum, TariffRequest
 from ..models.optimisation import RemoteMetaData
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetRequest
 from .carbon_intensity import generate_grid_co2
 from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
-from .import_tariffs import generate_import_tariffs, select_arbitrary_tariff
+from .import_tariffs import generate_import_tariffs
 from .renewables import generate_renewables_generation
 
 router = APIRouter()
+
+MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
 
 
 async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
@@ -324,7 +326,7 @@ async def get_specific_datasets(site_data: DatasetRequest, pool: DatabasePoolDep
 
     site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
     for ds_type, dataset_id in specified_or_latest_ids.items():
-        if ds_type == DatasetTypeEnum.HeatingLoad or ds_type == DatasetTypeEnum.RenewablesGeneration:
+        if ds_type in MULTIPLE_DATASET_ENDPOINTS:
             site_data_ids[ds_type] = MultipleDatasetIDWithTime(
                 dataset_id=[dataset_id],
                 start_ts=site_data.start_ts,
@@ -363,7 +365,7 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) 
 
     site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
     for dataset_name, dataset_metadata in site_data_info.items():
-        if dataset_name == DatasetTypeEnum.HeatingLoad or dataset_name == DatasetTypeEnum.RenewablesGeneration:
+        if dataset_name in MULTIPLE_DATASET_ENDPOINTS:
             site_data_ids[dataset_name] = MultipleDatasetIDWithTime(
                 dataset_id=[dataset_metadata.dataset_id],
                 start_ts=site_data.start_ts,
@@ -412,7 +414,6 @@ async def generate_all(
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
     heating_load_dataset = datasets[DatasetTypeEnum.GasMeterData]
     elec_meter_dataset = datasets[DatasetTypeEnum.ElectricityMeterData]
-    tariff_name = await select_arbitrary_tariff(params, http_client=http_client)
 
     async with asyncio.TaskGroup() as tg:
         heating_load_response = tg.create_task(
@@ -426,7 +427,12 @@ async def generate_all(
 
         import_tariff_response = tg.create_task(
             generate_import_tariffs(
-                TariffRequest(site_id=params.site_id, tariff_name=tariff_name, start_ts=params.start_ts, end_ts=params.end_ts),
+                TariffRequest(
+                    site_id=params.site_id,
+                    tariff_name=SyntheticTariffEnum.Fixed,
+                    start_ts=params.start_ts,
+                    end_ts=params.end_ts,
+                ),
                 pool=pool,
                 http_client=http_client,
             )
