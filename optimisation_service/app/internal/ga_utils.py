@@ -82,28 +82,107 @@ class ProblemInstance(ElementwiseProblem):
         )
 
     def scale_solution(self, x: npt.NDArray) -> npt.NDArray:
+        """
+        Scale from pymoo parameter values to real values.
+
+        Parameters
+        ----------
+        x
+            One or multiple candidate portfolio solution(s) (array of parameter values).
+
+        Returns
+        -------
+        Scaled candidate portfolio solution(s) (array of parameter values).
+        """
         return x * self.steps + self.lower_bounds
 
     def split_solution(self, x: npt.NDArray) -> dict[str, npt.NDArray]:
+        """
+        Split a candidate portfolio solution into candidate building solutions.
+
+        Parameters
+        ----------
+        x
+            A candidate portfolio solution (array of parameter values).
+
+        Returns
+        -------
+        Dictionary of buildings and candidate solutions (array of parameter values).
+        """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.location.items()}
 
     def convert_solution(self, x: npt.NDArray, building_name: str) -> PyTaskData:
+        """
+        Convert a candidate solution from an array of parameter values to a dictionary of parameter names and values.
+
+        Parameters
+        ----------
+        x
+            A candidate building solution (array of parameter values).
+        building_name
+            The name of the building.
+
+        Returns
+        -------
+        PyTaskData
+            Dictionary of parameter names and values.
+        """
         variable_params = dict(zip(self.variable_params[building_name], x))
         all_param = variable_params | deepcopy(self.constant_params[building_name])
         return PyTaskData(**all_param)
 
     def simulate_portfolio(self, x: npt.NDArray) -> PortfolioSolution:
+        """
+        Simulate a candidate portfolio solution.
+
+        Parameters
+        ----------
+        x
+            A candidate portfolio solution (array of parameter values).
+
+        Returns
+        -------
+        PortfolioSolution
+            The evaluated candidate solution.
+        """
         x = self.scale_solution(x)
         x_dict = self.split_solution(x)
         portfolio_pytd = {name: self.convert_solution(x, name) for name, x in x_dict.items()}
         return self.sim.simulate_portfolio(portfolio_pytd)
 
     def apply_directions(self, objective_values: dict[Objectives, float]) -> dict[Objectives, float]:
+        """
+        Applies objective optimisation direction to objective values.
+        Multiplies objective values of objectives that need to be maximised by -1.
+
+        Parameters
+        ----------
+        objective_values
+            Dictionary of objective names and objective values.
+
+        Returns
+        -------
+        objective_values
+            Dictionary of objective names and objective values with directions applied.
+        """
         for objective in objective_values.keys():
             objective_values[objective] *= _OBJECTIVES_DIRECTION[objective]
         return objective_values
 
-    def apply_portfolio_constraints(self, objective_values: dict[Objectives, float]) -> list[float]:
+    def calculate_infeasibility(self, objective_values: dict[Objectives, float]) -> list[float]:
+        """
+        Calculate the infeasibility of objective values given the problem's portfolio constraints.
+
+        Parameters
+        ----------
+        objective_values
+            Dictionary of objective names and objective values.
+
+        Returns
+        -------
+        excess
+            List of values that indicate by how much the objective values exceed the constraints.
+        """
         excess = []
         for objective, bounds in self.constraints.items():
             min_value = bounds.get("min", None)
@@ -116,8 +195,22 @@ class ProblemInstance(ElementwiseProblem):
         return excess
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[float]]) -> None:
+        """
+        Evaluate a candidate portfolio solution.
+
+        Parameters
+        ----------
+        x
+            A candidate portfolio solution (array of parameter values).
+        out
+            Dictionary provided by pymoo to store infeasibility scores (G) and objective values (F).
+
+        Returns
+        -------
+        None
+        """
         portfolio_solution = self.simulate_portfolio(x=x)
-        out["G"] = self.apply_portfolio_constraints(portfolio_solution.objective_values)
+        out["G"] = self.calculate_infeasibility(portfolio_solution.objective_values)
         selected_results = {objective: portfolio_solution.objective_values[objective] for objective in self.objectives}
         directed_results = self.apply_directions(selected_results)
         out["F"] = list(directed_results.values())

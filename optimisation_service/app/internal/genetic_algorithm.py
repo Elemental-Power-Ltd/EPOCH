@@ -93,15 +93,15 @@ class GeneticAlgorithm(Algorithm):
 
         Parameters
         ----------
-        problem
-            Problem instance to optimise.
+        portfolio
+            Portfolio problem instance to optimise.
 
         Returns
         -------
-        solution
-            Optimal solutions.
-        fitness
-            Objective values of optimal solutions.
+        OptimisationResult
+            solutions: Pareto-front of evaluated candidate portfolio solutions.
+            exec_time: Time taken for optimisation process to conclude.
+            n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
         portfolio_solutions = []
         exec_time, n_evals = 0, 0

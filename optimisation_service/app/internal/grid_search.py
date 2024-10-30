@@ -79,15 +79,15 @@ class GridSearch(Algorithm):
 
         Parameters
         ----------
-        problem
-            Problem instance to optimise.
+        portfolio
+            Portfolio problem instance to optimise.
 
         Returns
         -------
-        solutions
-            Optimal solutions.
-        objective_values
-            objective_values of optimal solutions.
+        OptimisationResult
+            solutions: Pareto-front of evaluated candidate portfolio solutions.
+            exec_time: Time taken for optimisation process to conclude.
+            n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
         building_solutions = {}
         for building_name, building in portfolio.buildings.items():

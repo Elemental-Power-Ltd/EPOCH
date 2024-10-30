@@ -137,8 +137,8 @@ class PortfolioProblem:
 
         Yield
         -------
-        Problem
-            Problem instance with single objectives
+        PortfolioProblem
+            PortfolioProblem instance with single objectives
         """
         for objective in self.objectives:
             yield PortfolioProblem([objective], self.constraints, self.buildings)  # type: ignore
