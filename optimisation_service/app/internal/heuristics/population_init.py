@@ -23,20 +23,28 @@ def generate_initial_population(
     variable_param: dict[str, ParamRange], constant_param: dict[str, float], input_dir: PathLike, pop_size: int
 ) -> npt.NDArray:
     """
-    Generate a population of solutions by estimating parameter values from data.
+    Generate a population of solutions by estimating some parameter values from data.
 
-    Values for individual solutions are sampled from truncated normal distributions which mu is estimated from data.
+    For some parameters, estimates can be generated from the input data.
+    We can then set these as the mu to truncated normal distributions.
+    We then sample these distributions to generate parameter values.
+    For parameters that can't be estimated from the data, parameter values are sampled from a uniform distribution.
 
     Parameters
     ----------
     variable_param
         dictionary of optimisable parameters with corresponding range.
     constant_param
-        dictionary of non-optimisable parameter with their corresponding value.
+        dictionary of non-optimisable parameters with their corresponding value.
     input_dir
         path to folder containing data files.
     pop_size
         number of solutions generated in population.
+
+    Returns
+    -------
+    scaled_pop
+        Generated population, scaled for consumption by pymoo (in range [0, parameter value upper bound])
     """
     heating_df = pd.read_csv(Path(input_dir, "CSVHload.csv"))
     ashp_input_df = pd.read_csv(Path(input_dir, "CSVASHPinput.csv"))
