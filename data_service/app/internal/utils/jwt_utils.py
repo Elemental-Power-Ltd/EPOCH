@@ -2,6 +2,7 @@
 
 import base64
 import datetime
+import hmac
 import json
 from typing import TypedDict
 
@@ -52,6 +53,8 @@ def validate_jwt(jwt_str: str, aud: str | None = None, scope: str | None = None,
     """
     Validate a JWT, throwing if it fails validation.
 
+    Does not currently check the signature of the token.
+
     Parameters
     ----------
     jwt_str
@@ -87,3 +90,62 @@ def validate_jwt(jwt_str: str, aud: str | None = None, scope: str | None = None,
     if at > payload["exp"]:
         raise ValueError(f"Current time {at} is after the token expires {payload['exp']}")
     return True
+
+
+def generate_jwt(
+    aud: str | None = None,
+    exp: datetime.datetime | None = None,
+    nbf: datetime.datetime | None = None,
+    scopes: list[str] | None = None,
+    alg: str | None = "HS256",
+) -> bytes:
+    """
+    Generate a JSON Web Token with a signature.
+
+    This is mostly used for testing the JWT code, but might be useful in future?
+
+    Parameters
+    ----------
+    aud
+        Audience for this token
+    exp
+        Expiry datetime for this token
+    nbf
+        Not BeFore datetime for this token
+    scopes
+        API scopes for which this token is valid
+    alg
+        Signing algorithm for this token
+
+    Returns
+    -------
+    bytes
+        JWT byte string in the form b64(header).b64(payload).b64(signature)
+    """
+    header = {"alg": alg, "typ": "JWT"}
+
+    payload = {
+        "iss": "elementalpower.co.uk",
+        "sub": None,
+        "aud": aud,
+        "exp": exp.timestamp()
+        if exp is not None
+        else datetime.datetime(year=2100, month=1, day=1, tzinfo=datetime.UTC).timestamp(),
+        "nbf": nbf.timestamp() if nbf is not None else datetime.datetime.now(datetime.UTC).timestamp(),
+        "iat": datetime.datetime.now(datetime.UTC),
+        "jti": None,
+        "scopes": scopes if scopes is not None else [],
+    }
+
+    header_encode = base64.b64encode(json.dumps(header).encode("utf-8"))
+    payload_encode = base64.b64encode(json.dumps(payload).encode("utf-8"))
+
+    if alg is None:
+        signature = b""
+    elif alg == "HS256":
+        signature = hmac.new(
+            key=b"elemental-power-secret", msg=header_encode + b"." + payload_encode, digestmod="sha256"
+        ).digest()
+    else:
+        raise AttributeError(f"Alg must be None or 'HS256' but got {alg}")
+    return header_encode + b"." + payload_encode + b"." + signature
