@@ -294,7 +294,17 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
         )
         underlying_tariff = params.tariff_name
         provider = TariffProviderEnum.octopus
+        print("Getting", underlying_tariff)
         price_df = await get_octopus_tariff(params.tariff_name, region_code, params.start_ts, params.end_ts, http_client)
+        if len(price_df) == 1:
+            # We got a fixed tariff!
+            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+            price_df = create_fixed_tariff(timestamps, fixed_cost=max(price_df["cost"]))
+        elif len(price_df) == 2:
+            # We got a varying day / night tariff.
+            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+            price_df = create_day_and_night_tariff(timestamps, day_cost=max(price_df["cost"]), night_cost=min(price_df["cost"]))
+        # Otherwise we got a varying tariff that we can resample.
         price_df = resample_to_range(price_df, freq=pd.Timedelta(minutes=30), start_ts=params.start_ts, end_ts=params.end_ts)
     dataset_id = uuid.uuid4()
 
