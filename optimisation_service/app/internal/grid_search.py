@@ -210,17 +210,15 @@ def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / "inputParameters.json"} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / "EpochConfig.json"} is not a file"
 
-    result = subprocess.run(
-        [
-            str(full_path_to_exe),
-            "--input",
-            str(input_dir),
-            "--output",
-            str(output_dir),
-            "--config",
-            str(config_dir),
-        ]
-    )
+    result = subprocess.run([
+        str(full_path_to_exe),
+        "--input",
+        str(input_dir),
+        "--output",
+        str(output_dir),
+        "--config",
+        str(config_dir),
+    ])
 
     assert result.returncode == 0, result
 
