@@ -10,13 +10,9 @@
 
 namespace fs = std::filesystem;
 
-TEST(EpochTestCase, MatchesKnownOutput) {
+TEST(EpochFullRun, MatchesKnownOutput) {
 	FileConfig fileConfig = FileConfig{
-		"KnownInput", "OutputData", "Config",
-		"CSVEload.csv", "CSVHload.csv", "CSVRGen.csv",
-		"CSVAirtemp.csv", "CSVImporttariff.csv", "CSVGridCO2.csv", 
-		"CSVASHPinput.csv", "CSVASHPoutput.csv", "CSVDHWdemand.csv",
-		"knownInput.json", "TestResults.csv", "TestOutputParameters.json", "TestOuputParametersFromInit.json"
+		"KnownInput", "OutputData", "Config"
 	};
 
 	ConfigHandler configHandler(fileConfig.getConfigDir());
@@ -29,7 +25,7 @@ TEST(EpochTestCase, MatchesKnownOutput) {
 	writeJsonToFile(testJson, fileConfig.getOutputJsonFilepath());
 
 	//// Load the known output
-	fs::path knownOutputFile = fs::path{ "KnownOutput" } / fs::path{ "KnownOutput.json" };
+	fs::path knownOutputFile = fs::path{ "KnownOutput" } / fs::path{ "knownOutput.json" };
 	auto knownJson = readJsonFromFile(knownOutputFile);
 
 	EXPECT_EQ(testJson["CAPEX"], knownJson["CAPEX"]);

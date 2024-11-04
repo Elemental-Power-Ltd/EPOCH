@@ -49,3 +49,4 @@ target_link_libraries(Epoch_lib PRIVATE nlohmann_json::nlohmann_json)
 
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE spdlog::spdlog)
+target_compile_definitions(Epoch_lib PRIVATE SPDLOG_COMPILED_LIB)

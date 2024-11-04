@@ -72,6 +72,17 @@
         "PYBIND": "ON",
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "test-linux",
+      "inherits": "base-linux",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "PYBIND": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -116,6 +127,12 @@
       "displayName": "Python Bindings (Linux)",
       "configurePreset": "python-linux",
       "targets": ["epoch_simulator"]
+    },
+    {
+      "name": "test-linux",
+      "displayName": "Test Suite (Linux)",
+      "configurePreset": "test-linux",
+      "targets": ["epoch_test"]
     }
   ]
 }

@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 
 #include "TaskData.hpp"
+#include "TempSum.hpp"
 #include "../Definitions.hpp"
 
 class BasicPV

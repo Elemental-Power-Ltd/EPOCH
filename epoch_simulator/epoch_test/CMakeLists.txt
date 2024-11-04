@@ -1,7 +1,10 @@
 
-add_executable(epoch_test test.cpp)
+add_executable(epoch_test test_main.cpp test_task_data.cpp test_pv.cpp test_total.cpp)
 
 target_link_libraries(epoch_test PRIVATE Epoch_lib)
+
+find_package(spdlog CONFIG REQUIRED)
+target_link_libraries(epoch_test PRIVATE spdlog::spdlog)
 
 find_package(GTest CONFIG REQUIRED)
 target_link_libraries(epoch_test PRIVATE GTest::gtest_main)

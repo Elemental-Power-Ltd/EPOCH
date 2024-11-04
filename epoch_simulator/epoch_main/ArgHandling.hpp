@@ -1,3 +1,5 @@
+#pragma once
+
 #include <argparse/argparse.hpp>
 #include <spdlog/spdlog.h>
 
