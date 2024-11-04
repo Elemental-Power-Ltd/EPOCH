@@ -2,13 +2,17 @@ from datetime import timedelta
 
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
+from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
 from pymoo.operators.repair.rounding import RoundingRepair  # type: ignore
-from pymoo.operators.sampling.rnd import IntegerRandomSampling  # type: ignore
 from pymoo.optimize import minimize  # type: ignore
+from pymoo.termination.ftol import MultiObjectiveSpaceTermination  # type: ignore
+from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: ignore
+from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
+from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from app.internal.ga_utils import MultiTermination, ProblemInstance
+from app.internal.ga_utils import ProblemInstance, SamplingMethod
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.problem import PortfolioProblem
 from app.models.algorithms import Algorithm
@@ -23,6 +27,7 @@ class NSGA2(Algorithm):
     def __init__(
         self,
         pop_size: int = 2048,
+        sampling: SamplingMethod = SamplingMethod.ESTIMATE,
         n_offsprings: int | None = None,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
@@ -67,7 +72,7 @@ class NSGA2(Algorithm):
         self.algorithm = Pymoo_NSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=IntegerRandomSampling(),
+            sampling=sampling.value(),
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
             eliminate_duplicates=True,
@@ -107,3 +112,20 @@ class NSGA2(Algorithm):
         )
 
         return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals)
+
+
+class MultiTermination(Termination):
+    def __init__(self, tol: float = 1e-6, period: int = 30, n_max_gen: int = 1000, n_max_evals: int = 100000) -> None:
+        super().__init__()
+        self.f = RobustTermination(MultiObjectiveSpaceTermination(tol, only_feas=True), period)
+        self.max_gen = MaximumGenerationTermination(n_max_gen)
+        self.max_evals = MaximumFunctionCallTermination(n_max_evals)
+
+        self.criteria = [self.f, self.max_gen, self.max_evals]
+
+    def _update(self, algorithm: Algorithm) -> float:
+        f_progress = self.f.update(algorithm)
+        max_gen_progess = self.max_gen.update(algorithm)
+        max_evals_progress = self.max_evals.update(algorithm)
+        p = [f_progress, max_gen_progess, max_evals_progress]
+        return max(p)

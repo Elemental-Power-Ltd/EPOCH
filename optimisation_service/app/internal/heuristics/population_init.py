@@ -7,7 +7,7 @@ import numpy.typing as npt
 import pandas as pd
 from scipy.stats import truncnorm
 
-from app.models.problem import ParamRange
+from app.models.parameters import ParamRange
 
 from .population_heuristics import (
     estimate_ashp_hpower,
@@ -19,7 +19,7 @@ from .population_heuristics import (
 )
 
 
-def generate_initial_population(
+def generate_building_initial_population(
     variable_param: dict[str, ParamRange], constant_param: dict[str, float], input_dir: PathLike, pop_size: int
 ) -> npt.NDArray:
     """
@@ -73,7 +73,7 @@ def generate_initial_population(
             ashp_input_df=ashp_input_df,
             ashp_output_df=ashp_output_df,
             air_temp_df=air_temp_df,
-            ashp_mode=constant_param["ASHP_HSource"],
+            ashp_mode=2,
         ),
         lo,
         hi,
