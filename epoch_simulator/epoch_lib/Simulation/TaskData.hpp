@@ -51,7 +51,7 @@ public:
         float Export_kWh_price_val = 5.0f,
         float time_budget_min_val = 1.0f, 
         int target_max_concurrency_val = 44,
-        float CAPEX_limit_val = 1000.0f, 
+        float CAPEX_limit_val = 2000.0f, 
         float OPEX_limit_val = 20.0f, 
         int paramIndex_val = 0, 
         float cylinder_vol = 2500.0f
