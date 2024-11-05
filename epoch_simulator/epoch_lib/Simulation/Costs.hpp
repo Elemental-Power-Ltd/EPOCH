@@ -58,17 +58,19 @@ public:
 		calculate_Grid_CAPEX();
 
 		calculate_ASHP_CAPEX(mTaskData.ASHP_HPower);
-
-		float ESS_CAPEX = mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL;
-		float PV_CAPEX = mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX + mPVground_CAPEX;
-		float EV_CP_CAPEX = mEV_CP_cost + mEV_CP_install;
-		float ASHP_CAPEX = mASHP_CAPEX;
+		calculate_DHW_CAPEX(mTaskData.DHW_cylinder_volume);
+		
 		float Grid_CAPEX = mGrid_CAPEX;
 
-		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
+		float Project_cost = (mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL + mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX 
+			+ mPVground_CAPEX + mEV_CP_cost + mEV_CP_install + mASHP_CAPEX + mDHW_cylinder_CAPEX) * mProject_plan_develop_EPC;
+		
 		float Project_cost_grid = Grid_CAPEX * mProject_plan_develop_Grid;
 
-		mProject_CAPEX = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX + Project_cost + Project_cost_grid);
+		mProject_CAPEX = (mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL + mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX
+			+ mPVground_CAPEX + mEV_CP_cost + mEV_CP_install + mASHP_CAPEX + mDHW_cylinder_CAPEX)
+			+ Project_cost 
+			+ Project_cost_grid;
 	}
 
 	
@@ -195,7 +197,7 @@ public:
 				mESS_PCS_CAPEX = (small_cost * small_thresh) + ((mESS_kW - small_thresh) * mid_cost);
 			}
 			else if (mESS_kW > mid_thresh) {
-				mESS_PCS_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kW - small_thresh - mid_thresh) * large_cost);
+				mESS_PCS_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh-small_thresh)) + ((mESS_kW - mid_thresh) * large_cost);
 			}
 
 			return;
@@ -230,7 +232,7 @@ public:
 				mESS_PCS_OPEX = (small_cost * small_thresh) + ((mESS_kW - small_thresh) * mid_cost);
 			}
 			else if (mESS_kW > mid_thresh) {
-				mESS_PCS_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kW - small_thresh - mid_thresh) * large_cost);
+				mESS_PCS_OPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mESS_kW - mid_thresh) * large_cost);
 			}
 
 			return;
@@ -264,7 +266,7 @@ public:
 				mESS_ENCLOSURE_CAPEX = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
 			}
 			else if (mESS_kWh > mid_thresh) {
-				mESS_ENCLOSURE_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kWh - small_thresh - mid_thresh) * large_cost);
+				mESS_ENCLOSURE_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mESS_kWh - mid_thresh) * large_cost);
 			}
 			
 		}
@@ -296,7 +298,7 @@ public:
 				mESS_ENCLOSURE_OPEX = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
 			}
 			else if (mESS_kWh > mid_thresh) {
-				mESS_ENCLOSURE_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kWh - small_thresh - mid_thresh) * large_cost);
+				mESS_ENCLOSURE_OPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mESS_kWh - mid_thresh) * large_cost);
 			}
 			return;
 		}
@@ -325,7 +327,7 @@ public:
 		} else if (small_thresh <= mESS_kWh && mESS_kWh <= mid_thresh) {
 			mESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + ((mESS_kWh - small_thresh) * mid_cost);
 		} else if (mESS_kWh > mid_thresh) {
-			mESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mESS_kWh - small_thresh - mid_thresh) * large_cost);
+			mESS_ENCLOSURE_DISPOSAL = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mESS_kWh - mid_thresh) * large_cost);
 		}
 
 		return;
@@ -348,7 +350,7 @@ public:
 		} else if (small_thresh <= mPV_kWp_total && mPV_kWp_total <= mid_thresh) {
 			mPVpanel_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
 		} else if (mPV_kWp_total > mid_thresh) {
-			mPVpanel_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
+			mPVpanel_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mPV_kWp_total - mid_thresh) * large_cost);
 		}
 
 		return;
@@ -368,48 +370,53 @@ public:
 		} else if (small_thresh <= mPV_kWp_total && mPV_kWp_total <= mid_thresh) {
 			mPVBoP_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
 		} else if (mPV_kWp_total > mid_thresh) {
-			mPVBoP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
+			mPVBoP_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mPV_kWp_total - mid_thresh) * large_cost);
 		}
 
 		return;
 	}
 
 	void calculate_PVroof_CAPEX() {
+		
+		float fixed = 4250;
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
 		// costs in £ / kWp DC
-		float small_cost = 250.0;
-		float mid_cost = 200.0;
-		float large_cost = 150.0;
+		float small_cost = 850.0;
+		float mid_cost = 750.0;
+		float large_cost = 600.0;
 
-		if (mPV_kWp_roof < small_thresh) {
-			mPVroof_CAPEX = small_cost * mPV_kWp_roof;
+		if (mPV_kWp_roof < small_thresh && mPV_kWp_roof > 0) {
+			mPVroof_CAPEX = (small_cost * mPV_kWp_roof) + fixed;
 		} else if (small_thresh <= mPV_kWp_roof && mPV_kWp_roof <= mid_thresh) {
-			mPVroof_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_roof - small_thresh) * mid_cost);
+			mPVroof_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_roof - small_thresh) * mid_cost) + fixed;
 		} else if (mPV_kWp_roof > mid_thresh) {
-			mPVroof_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_roof - small_thresh - mid_thresh) * large_cost);
-		}
+			mPVroof_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mPV_kWp_roof - mid_thresh) * large_cost) + fixed;
+		} else if (mPV_kWp_roof == 0)
+			mPVroof_CAPEX = 0;
 
 		return;
 	}
 
 	void calculate_PVground_CAPEX() {
+		float fixed = 4250;
 		float small_thresh = 50;
 		float mid_thresh = 1000;
 
 		// costs in £ / kWp DC
-		float small_cost = 150.0; 
-		float mid_cost = 125.0;
-		float large_cost = 100.0;
+		float small_cost = 800.0; 
+		float mid_cost = 600.0;
+		float large_cost = 500.0;
 
-		if (mPV_kWp_ground < small_thresh) {
-			mPVground_CAPEX = small_cost * mPV_kWp_ground;
+		if (mPV_kWp_ground < small_thresh && mPV_kWp_ground > 0) {
+			mPVground_CAPEX = (small_cost * mPV_kWp_ground) + fixed;
 		} else if (small_thresh <= mPV_kWp_ground && mPV_kWp_ground <= mid_thresh) {
-			mPVground_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_ground - small_thresh) * mid_cost);
+			mPVground_CAPEX = (small_cost * small_thresh) + ((mPV_kWp_ground - small_thresh) * mid_cost) + fixed;
 		} else if (mPV_kWp_ground > mid_thresh) {
-			mPVground_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_ground - small_thresh - mid_thresh) * large_cost);
-		}
+			mPVground_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mPV_kWp_ground - mid_thresh) * large_cost) + fixed;
+		} else if (mPV_kWp_ground == 0)
+			mPVground_CAPEX = 0;
 
 		return;
 	}
@@ -428,8 +435,9 @@ public:
 		} else if (small_thresh <= mPV_kWp_total && mPV_kWp_total <= mid_thresh) {
 			mPV_OPEX = (small_cost * small_thresh) + ((mPV_kWp_total - small_thresh) * mid_cost);
 		} else if (mPV_kWp_total > mid_thresh) {
-			mPV_OPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mPV_kWp_total - small_thresh - mid_thresh) * large_cost);
+			mPV_OPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mPV_kWp_total - mid_thresh) * large_cost);
 		}
+
 
 		return;
 	}
@@ -484,7 +492,7 @@ public:
 		} else if (small_thresh <= mkW_Grid && mkW_Grid <= mid_thresh) {
 			mGrid_CAPEX = (small_cost * small_thresh) + ((mkW_Grid - small_thresh) * mid_cost);
 		} else if (mkW_Grid > mid_thresh) {
-			mGrid_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((mkW_Grid - small_thresh - mid_thresh) * large_cost);
+			mGrid_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((mkW_Grid - mid_thresh) * large_cost);
 		}
 
 		return;
@@ -493,24 +501,53 @@ public:
 	// ASHP CAPEX costs
 
 	void calculate_ASHP_CAPEX(float heatpump_power_capacity) {
-		float small_thresh = 10;
+		float fixed = 4000;
+		float small_thresh = 15;
 		float mid_thresh = 100;
 
 		// costs in £ / kW DC
-		float small_cost = 1000.0;
-		float mid_cost = 1000.0;
-		float large_cost = 1000.0;
+		float small_cost = 800.0; // small as fixed costs 
+		float mid_cost = 2500.0; // 2500 mid_cost not a mistake - mid range HP have reverse economies of scale, fixed costs deals with most of CAPEX for small <15 kW systems
+		float large_cost = 1500.0;
 
-		if (heatpump_power_capacity < small_thresh) {
-			mASHP_CAPEX = small_cost * heatpump_power_capacity;
+		if (heatpump_power_capacity < small_thresh && heatpump_power_capacity > 0) {
+			mASHP_CAPEX = (small_cost * heatpump_power_capacity) + fixed;
 		} else if (small_thresh <= heatpump_power_capacity && heatpump_power_capacity <= mid_thresh) {
-			mASHP_CAPEX = (small_cost * small_thresh) + ((heatpump_power_capacity - small_thresh) * mid_cost);
+			mASHP_CAPEX = (small_cost * small_thresh) + ((heatpump_power_capacity - small_thresh) * mid_cost) + fixed;
 		} else if (heatpump_power_capacity > mid_thresh) {
-			mASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * mid_thresh) + ((heatpump_power_capacity - small_thresh - mid_thresh) * large_cost);
+			mASHP_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((heatpump_power_capacity - mid_thresh) * large_cost) + fixed;
 		}
+		else if (heatpump_power_capacity == 0)
+			mASHP_CAPEX = 0;
 
 		return;
 	}
+
+	void calculate_DHW_CAPEX(float DHW_volume) {
+		float fixed = 1000;
+		float small_thresh = 300;
+		float mid_thresh = 800;
+
+		// costs in £ / litre
+		float small_cost = 6.5;
+		float mid_cost = 5.0; 
+		float large_cost = 3.0;
+
+		if (DHW_volume < small_thresh && DHW_volume > 0) {
+			mDHW_cylinder_CAPEX = (small_cost * DHW_volume) + fixed;
+		}
+		else if (small_thresh <= DHW_volume && DHW_volume <= mid_thresh) {
+			mDHW_cylinder_CAPEX = (small_cost * small_thresh) + ((DHW_volume - small_thresh) * mid_cost) + fixed;
+		}
+		else if (DHW_volume > mid_thresh) {
+			mDHW_cylinder_CAPEX = (small_cost * small_thresh) + (mid_cost * (mid_thresh - small_thresh)) + ((DHW_volume - mid_thresh) * large_cost) + fixed;
+		}
+		else if (DHW_volume == 0)
+			mDHW_cylinder_CAPEX = 0;
+
+		return;
+	}
+
 
 	float calculate_ESS_annualised_cost() const {
 		float ESS_annualised_cost = (mESS_PCS_CAPEX + mESS_ENCLOSURE_CAPEX + mESS_ENCLOSURE_DISPOSAL) / mESS_lifetime + mESS_PCS_OPEX + mESS_ENCLOSURE_OPEX;
@@ -838,7 +875,7 @@ public:
 		const TaskData& mTaskData;
 
 		// coefficient applied to local infrastructure CAPEX (decimal, not percentage)
-		const float mProject_plan_develop_EPC = 0.1f; 
+		const float mProject_plan_develop_EPC = 0.0f;  // set to zero for the moment as design and PM included in kit installation costs
 		// coefficient applied to grid infrastructure CAPEX (decimal, not percentage)
 		const float mProject_plan_develop_Grid = 0.1f; 
 
@@ -937,6 +974,7 @@ public:
 		float mGrid_CAPEX;
 
 		float mASHP_CAPEX;
+		float mDHW_cylinder_CAPEX;
 
 		
 };

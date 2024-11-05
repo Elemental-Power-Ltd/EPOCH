@@ -650,10 +650,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hLabel97 = makeLabel(hWnd, hInstance, L"Target Max Concurrency", 360, 880, 100, 50);
 	hTextbox97 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX97, 360, 930, 100, 30, L"44");
 
-	HWND hLabel98 = makeLabel(hWnd, hInstance, L"CAPEX limit, �k", 480, 880, 100, 50);
-	hTextbox98 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX98, 480, 930, 100, 30, L"1000");
+	HWND hLabel98 = makeLabel(hWnd, hInstance, L"CAPEX limit, £k", 480, 880, 100, 50);
+	hTextbox98 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX98, 480, 930, 100, 30, L"2000");
 
-	HWND hLabel99 = makeLabel(hWnd, hInstance, L"OPEX limit, �k", 600, 880, 100, 50);
+	HWND hLabel99 = makeLabel(hWnd, hInstance, L"OPEX limit, £k", 600, 880, 100, 50);
 	hTextbox99 = makeTextBox(hWnd, hInstance, (HMENU)ID_TEXTBOX99, 600, 930, 100, 30, L"100");
 
 	// new GUI row 
@@ -672,13 +672,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hLabelout4 = makeLabel(hWnd, hInstance, L"Total time taken, s", 480, 980, 100, 50);
 	hOutput4 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT4, 480, 1030, 100, 30, L"");
 
-	HWND hLabelout5 = makeLabel(hWnd, hInstance, L"Min CAPEX, �", 600, 980, 100, 50);
+	HWND hLabelout5 = makeLabel(hWnd, hInstance, L"Min CAPEX, £", 600, 980, 100, 50);
 	hOutput5 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT5, 600, 1030, 100, 30, L"");
 
-	HWND hLabelout6 = makeLabel(hWnd, hInstance, L"Min Annualised, �", 720, 980, 100, 50);
+	HWND hLabelout6 = makeLabel(hWnd, hInstance, L"Min Annualised, £", 720, 980, 100, 50);
 	hOutput6 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT6, 720, 1030, 100, 30, L"");
 
-	HWND hLabelout7 = makeLabel(hWnd, hInstance, L"Max Cost balance, �", 840, 980, 100, 50);
+	HWND hLabelout7 = makeLabel(hWnd, hInstance, L"Max Cost balance, £", 840, 980, 100, 50);
 	hOutput7 = makeTextBox(hWnd, hInstance, (HMENU)ID_OUTPUT7, 840, 1030, 100, 30, L"");
 
 	HWND hLabelout8 = makeLabel(hWnd, hInstance, L"Min Breakeven years", 960, 980, 100, 50);
