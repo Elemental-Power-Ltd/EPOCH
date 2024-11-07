@@ -109,8 +109,6 @@ class GeneticAlgorithm(Algorithm):
             pi = ProblemInstance(sub_problem)
             res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
             portfolio_solutions.append(pi.simulate_portfolio(res.X))
-
-            assert res.exec_time is not None
             exec_time += res.exec_time
             n_evals += res.algorithm.evaluator.n_eval
 
