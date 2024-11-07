@@ -16,7 +16,7 @@ class BuildingSolution:
 @dataclass
 class PortfolioSolution:
     solution: dict[str, BuildingSolution]
-    objective_values: ObjectiveValues
+    objective_values: ObjectiveValues | PySimulationResult
 
 
 @dataclass

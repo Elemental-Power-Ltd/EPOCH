@@ -55,7 +55,7 @@ class PortfolioSimulator:
 
 def combine_objective_values(
     objective_values_list: list[PySimulationResult] | list[ObjectiveValues] | list[PySimulationResult | ObjectiveValues],
-) -> list[PySimulationResult] | list[ObjectiveValues] | list[PySimulationResult | ObjectiveValues]:
+) -> PySimulationResult | ObjectiveValues:
     """
     Combine a list of objective values into a single list of objective values.
     Most objectives can be summed, but some require more complex functions.
@@ -70,12 +70,12 @@ def combine_objective_values(
     combined
         Dictionary of objective values.
     """
-    combined = {objective: sum(obj_vals[objective] for obj_vals in objective_values_list) for objective in _OBJECTIVES}
+    combined = {objective: float(sum(obj_vals[objective] for obj_vals in objective_values_list)) for objective in _OBJECTIVES}
     combined[Objectives.payback_horizon] = combined[Objectives.capex] / combined[Objectives.cost_balance]
     return combined
 
 
-def gen_all_building_combinations(building_solutions_dict: dict[str, list[BuildingSolution]]) -> list[PortfolioSolution]:  # type: ignore
+def gen_all_building_combinations(building_solutions_dict: dict[str, list[BuildingSolution]]) -> list[PortfolioSolution]:
     """
     Generate a list of all possible portfolio solutions for a group of buildings and there multiple building solutions.
 
