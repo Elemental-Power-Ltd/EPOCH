@@ -117,7 +117,7 @@ class GridSearch(Algorithm):
 
                 df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
 
-                # To avoid maintaining all solutions from each building, the following only keeps the best solutions for each CAPEX.
+                # Avoid maintaining all solutions from each building by keeping only the best solutions for each CAPEX.
                 if len(portfolio.buildings.keys()) > 1:  # Only required if there is more than 1 building.
                     grouped = df_res.groupby(by=["capex"])
                     optimal_res = []
