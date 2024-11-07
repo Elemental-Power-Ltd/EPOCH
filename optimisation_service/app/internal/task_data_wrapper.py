@@ -41,10 +41,10 @@ class PyTaskData(TaskData):
 
     _INTEGER_KEYS = frozenset(["ESS_charge_mode", "ESS_discharge_mode", "target_max_concurrency"])
 
-    def __init__(self, **kwargs: float | int | np.floating):
+    def __init__(self, **kwargs: float | int | np.floating | np.integer):
         super().__init__()
         for key, value in kwargs.items():
-            assert isinstance(value, float | int | np.floating), f"Can only set numeric values, got {value}"
+            assert isinstance(value, float | int | np.floating | np.integer), f"Can only set numeric values, got {value}"
             self[key] = value
 
     def __setitem__(self, key: str, value: float | int | np.float32) -> None:

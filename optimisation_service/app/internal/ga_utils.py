@@ -47,10 +47,10 @@ class ProblemInstance(ElementwiseProblem):
         input_dirs = {}
         self.constant_params = {}
         self.variable_params = {}
-        self.location = {}
-        self.lower_bounds = np.array([])
-        self.upper_bounds = np.array([])
-        self.steps = np.array([])
+        self.indexes = {}
+        lower_bounds = []
+        upper_bounds = []
+        steps = []
 
         n_var = 0
         for building_name, building in portfolio.buildings.items():
@@ -59,16 +59,20 @@ class ProblemInstance(ElementwiseProblem):
             n_var_building = 0
             for key, value in building.variable_param().items():
                 variable_params_building.append(key)
-                self.lower_bounds = np.append(self.lower_bounds, value["min"])
-                self.upper_bounds = np.append(self.upper_bounds, value["max"])
-                self.steps = np.append(self.steps, value["step"])
+                lower_bounds.append(value["min"])
+                upper_bounds.append(value["max"])
+                steps.append(value["step"])
                 n_var_building += 1
 
-            self.location[building_name] = (n_var, n_var + n_var_building)
+            self.indexes[building_name] = (n_var, n_var + n_var_building)
             self.variable_params[building_name] = deepcopy(variable_params_building)
             self.constant_params[building_name] = deepcopy(building.constant_param())
             input_dirs[building_name] = building.input_dir
             n_var += n_var_building
+
+        self.lower_bounds = np.array(lower_bounds)
+        self.upper_bounds = np.array(upper_bounds)
+        self.steps = np.array(steps)
 
         self.sim = PortfolioSimulator(input_dirs=input_dirs)
 
@@ -108,7 +112,7 @@ class ProblemInstance(ElementwiseProblem):
         -------
         Dictionary of buildings and candidate solutions (array of parameter values).
         """
-        return {building_name: x[start:stop] for building_name, (start, stop) in self.location.items()}
+        return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
     def convert_solution(self, x: npt.NDArray, building_name: str) -> PyTaskData:
         """
