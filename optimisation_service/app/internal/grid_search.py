@@ -118,7 +118,8 @@ class GridSearch(Algorithm):
 
             df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
 
-            if len(portfolio.buildings.keys()) > 1:
+            # To avoid maintaining all solutions from each building, the following only keeps the best solutions for each CAPEX.
+            if len(portfolio.buildings.keys()) > 1:  # Only required if there is more than 1 building.
                 grouped = df_res.groupby(by=["capex"])
                 optimal_res = []
                 for _, group in grouped:
@@ -210,15 +211,17 @@ def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / "inputParameters.json"} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / "EpochConfig.json"} is not a file"
 
-    result = subprocess.run([
-        str(full_path_to_exe),
-        "--input",
-        str(input_dir),
-        "--output",
-        str(output_dir),
-        "--config",
-        str(config_dir),
-    ])
+    result = subprocess.run(
+        [
+            str(full_path_to_exe),
+            "--input",
+            str(input_dir),
+            "--output",
+            str(output_dir),
+            "--config",
+            str(config_dir),
+        ]
+    )
 
     assert result.returncode == 0, result
 
