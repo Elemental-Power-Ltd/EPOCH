@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 
 class Objectives(StrEnum):
@@ -17,4 +17,10 @@ _OBJECTIVES = [
     Objectives.payback_horizon,
 ]
 
-_OBJECTIVES_DIRECTION = {"carbon_balance": -1, "cost_balance": -1, "capex": 1, "payback_horizon": 1, "annualised_cost": 1}
+
+class ObjectivesDirection(IntEnum):
+    carbon_balance = -1
+    cost_balance = -1
+    capex = 1
+    payback_horizon = 1
+    annualised_cost = 1

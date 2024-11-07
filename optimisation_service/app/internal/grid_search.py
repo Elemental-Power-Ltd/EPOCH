@@ -17,7 +17,7 @@ from paretoset import paretoset  # type: ignore
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.portfolio_simulator import gen_all_building_combinations
 from app.internal.problem import PortfolioProblem
-from app.models.objectives import _OBJECTIVES, _OBJECTIVES_DIRECTION
+from app.models.objectives import _OBJECTIVES, ObjectivesDirection
 from app.models.result import BuildingSolution, OptimisationResult
 
 from ..models.algorithms import Algorithm
@@ -124,7 +124,7 @@ class GridSearch(Algorithm):
                     for _, group in grouped:
                         obj_values = group[portfolio.objectives]
                         objective_direct = [
-                            "max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in portfolio.objectives
+                            "max" if ObjectivesDirection[objective] == -1 else "min" for objective in portfolio.objectives
                         ]
                         pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
                         optimal_res.append(group[pareto_efficient])

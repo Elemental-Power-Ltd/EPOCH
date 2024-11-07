@@ -16,7 +16,7 @@ from app.internal.heuristics.population_init import generate_building_initial_po
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
 from app.internal.problem import PortfolioProblem
 from app.internal.task_data_wrapper import PyTaskData
-from app.models.objectives import _OBJECTIVES_DIRECTION, Objectives
+from app.models.objectives import Objectives, ObjectivesDirection
 
 logger = logging.getLogger("default")
 
@@ -165,7 +165,7 @@ class ProblemInstance(ElementwiseProblem):
             Dictionary of objective names and objective values with directions applied.
         """
         for objective in objective_values.keys():
-            objective_values[objective] *= _OBJECTIVES_DIRECTION[objective]
+            objective_values[objective] *= ObjectivesDirection[objective]
         return objective_values
 
     def calculate_infeasibility(self, objective_values: dict[Objectives, float]) -> list[float]:
