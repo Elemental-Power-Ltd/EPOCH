@@ -240,28 +240,9 @@ class SamplingMethod(Enum):
     ESTIMATE = EstimateBasedSampling
 
 
-def mut_simple_int(X: npt.NDArray, xl: npt.NDArray, xu: npt.NDArray, prob: npt.NDArray) -> npt.NDArray:
-    """
-    Mutate integer variables by 1.
-    """
-    n, _ = X.shape
-    assert len(prob) == n
-
-    Xp = np.full(X.shape, np.inf)
-    mut = np.random.random(X.shape) < prob[:, None]
-    mut_pos = (np.random.random(mut.shape) < 0.5) * mut
-    mut_neg = mut * ~mut_pos
-    Xp[:, :] = X
-    Xp += mut_pos.astype(int) + mut_neg.astype(int) * -1
-
-    Xp = repair_random_init(Xp, X, xl, xu)
-
-    return Xp
-
-
 class SimpleIntMutation(Mutation):
     """
-    Mutate integer variables by 1.
+    Pymoo Mutation Operator which randomly mutates parameter values by a single step in the search space.
     """
 
     def __init__(self, **kwargs: Any) -> None:
@@ -270,6 +251,44 @@ class SimpleIntMutation(Mutation):
     def _do(self, problem: ProblemInstance, X: npt.NDArray, **kwargs: Never) -> npt.NDArray:
         X.astype(float)
         prob_var = self.get_prob_var(problem, size=len(X))
-        Xp = mut_simple_int(X, problem.xl, problem.xu, prob_var)
+        Xp = self.mut_simple_int(X, problem.xl, problem.xu, prob_var)
+
+        return Xp
+
+    @staticmethod
+    def mut_simple_int(X: npt.NDArray, xl: npt.NDArray, xu: npt.NDArray, prob: npt.NDArray) -> npt.NDArray:
+        """
+        Randomly adds or substracts 1 from values in X based.
+
+        Parameters
+        ----------
+        X
+            2D array of values.
+        xl
+            1D array of lower bounds, one for each column of X.
+        xu
+            1D array of upper bounds, one for each column of X.
+        prob
+            1D or 2D array of probabilities, one for each row of X.
+
+        Returns
+        -------
+        Xp
+            2D array of values with changed values.
+        """
+        n, _ = X.shape
+        assert len(prob) == n
+
+        Xp = np.full(X.shape, np.inf)
+        print(f"xp: {Xp}")
+        mut = np.random.random(X.shape) < prob[:, None]
+        mut_pos = (np.random.random(mut.shape) < 0.5) * mut
+        print(f"mut_pos: {mut_pos}")
+        mut_neg = mut * ~mut_pos
+        Xp[:, :] = X
+        print(f"mut_neg: {mut_neg}")
+        Xp += mut_pos.astype(int) + mut_neg.astype(int) * -1
+
+        Xp = repair_random_init(Xp, X, xl, xu)
 
         return Xp

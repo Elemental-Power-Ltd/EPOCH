@@ -52,7 +52,7 @@ class NSGA2(Algorithm):
         n_crossover
             number of points to use in crossover
         prob_mutation
-            probability of applying mutation to each child
+            probability of applying mutation to each child (not probability of mutating a parameter!)
         std_scaler
             Scales standard deviation of nomral distribution from which is sampled new parameter values during mutation.
             Base value of std is parameter range
