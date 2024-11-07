@@ -55,7 +55,7 @@ class PortfolioSimulator:
 
 def combine_objective_values(
     objective_values_list: list[PySimulationResult] | list[ObjectiveValues] | list[PySimulationResult | ObjectiveValues],
-):
+) -> list[PySimulationResult] | list[ObjectiveValues] | list[PySimulationResult | ObjectiveValues]:
     """
     Combine a list of objective values into a single list of objective values.
     Most objectives can be summed, but some require more complex functions.
