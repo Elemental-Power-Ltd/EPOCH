@@ -92,11 +92,11 @@ class GridSearch(Algorithm):
         building_solutions = {}
         for building_name, building in portfolio.buildings.items():
             with tempfile.TemporaryDirectory() as temp_dir:
-                output_dir = Path(temp_dir.name, "tmp_outputs")
+                output_dir = Path(temp_dir, "tmp_outputs")
                 os.makedirs(output_dir, exist_ok=True)
 
-                config_dir = Path(temp_dir.name, "Config")
-                Path(temp_dir.name, "Config").mkdir(parents=False, exist_ok=False)
+                config_dir = Path(temp_dir, "Config")
+                Path(temp_dir, "Config").mkdir(parents=False, exist_ok=False)
 
                 with open(Path(config_dir, "EpochConfig.json"), "w") as f:
                     json.dump(_EPOCH_CONFIG, f)
@@ -136,8 +136,6 @@ class GridSearch(Algorithm):
                 building_solutions[building_name] = np.array(
                     [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
                 )
-
-                temp_dir.cleanup()
 
         portfolio_sol = gen_all_building_combinations(building_solutions)
 
