@@ -269,7 +269,7 @@ class SimpleIntMutation(Mutation):
         xu
             1D array of upper bounds, one for each column of X.
         prob
-            1D or 2D array of probabilities, one for each row of X.
+            1D array of probabilities, one for each row of X.
 
         Returns
         -------
