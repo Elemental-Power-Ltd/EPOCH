@@ -91,52 +91,53 @@ class GridSearch(Algorithm):
         """
         building_solutions = {}
         for building_name, building in portfolio.buildings.items():
-            temp_dir = tempfile.TemporaryDirectory()
+            with tempfile.TemporaryDirectory() as temp_dir:
+                output_dir = Path(temp_dir.name, "tmp_outputs")
+                os.makedirs(output_dir, exist_ok=True)
 
-            output_dir = Path(temp_dir.name, "tmp_outputs")
-            os.makedirs(output_dir, exist_ok=True)
+                config_dir = Path(temp_dir.name, "Config")
+                Path(temp_dir.name, "Config").mkdir(parents=False, exist_ok=False)
 
-            config_dir = Path(temp_dir.name, "Config")
-            Path(temp_dir.name, "Config").mkdir(parents=False, exist_ok=False)
+                with open(Path(config_dir, "EpochConfig.json"), "w") as f:
+                    json.dump(_EPOCH_CONFIG, f)
 
-            with open(Path(config_dir, "EpochConfig.json"), "w") as f:
-                json.dump(_EPOCH_CONFIG, f)
+                with open(Path(building.input_dir, "inputParameters.json"), "w") as f:
+                    json.dump(convert_param(building.parameters), f)
 
-            with open(Path(building.input_dir, "inputParameters.json"), "w") as f:
-                json.dump(convert_param(building.parameters), f)
+                t0 = time.perf_counter()
+                run_headless(
+                    project_path=str(os.environ.get("EPOCH_DIR", "./Epoch")),
+                    config_dir=str(config_dir),
+                    input_dir=str(building.input_dir),
+                    output_dir=str(output_dir),
+                )
+                exec_time = timedelta(seconds=(time.perf_counter() - t0))
 
-            t0 = time.perf_counter()
-            run_headless(
-                project_path=str(os.environ.get("EPOCH_DIR", "./Epoch")),
-                config_dir=str(config_dir),
-                input_dir=str(building.input_dir),
-                output_dir=str(output_dir),
-            )
-            exec_time = timedelta(seconds=(time.perf_counter() - t0))
+                os.remove(Path(building.input_dir, "inputParameters.json"))
 
-            os.remove(Path(building.input_dir, "inputParameters.json"))
+                df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
 
-            df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
+                # To avoid maintaining all solutions from each building, the following only keeps the best solutions for each CAPEX.
+                if len(portfolio.buildings.keys()) > 1:  # Only required if there is more than 1 building.
+                    grouped = df_res.groupby(by=["capex"])
+                    optimal_res = []
+                    for _, group in grouped:
+                        obj_values = group[portfolio.objectives]
+                        objective_direct = [
+                            "max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in portfolio.objectives
+                        ]
+                        pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
+                        optimal_res.append(group[pareto_efficient])
+                    df_res = pd.concat(optimal_res)
 
-            # To avoid maintaining all solutions from each building, the following only keeps the best solutions for each CAPEX.
-            if len(portfolio.buildings.keys()) > 1:  # Only required if there is more than 1 building.
-                grouped = df_res.groupby(by=["capex"])
-                optimal_res = []
-                for _, group in grouped:
-                    obj_values = group[portfolio.objectives]
-                    objective_direct = [
-                        "max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in portfolio.objectives
-                    ]
-                    pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
-                    optimal_res.append(group[pareto_efficient])
-                df_res = pd.concat(optimal_res)
+                solutions = df_res.drop(columns=_OBJECTIVES).to_dict("records")
+                objective_values = df_res[_OBJECTIVES].to_dict("records")
 
-            solutions = df_res.drop(columns=_OBJECTIVES).to_dict("records")
-            objective_values = df_res[_OBJECTIVES].to_dict("records")
+                building_solutions[building_name] = np.array(
+                    [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
+                )
 
-            building_solutions[building_name] = np.array([BuildingSolution(*sol) for sol in zip(solutions, objective_values)])
-
-            temp_dir.cleanup()
+                temp_dir.cleanup()
 
         portfolio_sol = gen_all_building_combinations(building_solutions)
 
