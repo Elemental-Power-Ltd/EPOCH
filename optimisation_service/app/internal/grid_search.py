@@ -17,7 +17,7 @@ from paretoset import paretoset  # type: ignore
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.portfolio_simulator import gen_all_building_combinations
 from app.internal.problem import PortfolioProblem
-from app.models.objectives import _OBJECTIVES, ObjectivesDirection
+from app.models.objectives import _OBJECTIVES, Objectives, ObjectivesDirection
 from app.models.result import BuildingSolution, OptimisationResult
 
 from ..models.algorithms import Algorithm
@@ -119,16 +119,7 @@ class GridSearch(Algorithm):
 
                 # Avoid maintaining all solutions from each building by keeping only the best solutions for each CAPEX.
                 if len(portfolio.buildings.keys()) > 1:  # Only required if there is more than 1 building.
-                    grouped = df_res.groupby(by=["capex"])
-                    optimal_res = []
-                    for _, group in grouped:
-                        obj_values = group[portfolio.objectives]
-                        objective_direct = [
-                            "max" if ObjectivesDirection[objective] == -1 else "min" for objective in portfolio.objectives
-                        ]
-                        pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
-                        optimal_res.append(group[pareto_efficient])
-                    df_res = pd.concat(optimal_res)
+                    df_res = pareto_front_but_preserve(df_res, portfolio.objectives, Objectives.capex)
 
                 solutions = df_res.drop(columns=_OBJECTIVES).to_dict("records")
                 objective_values = df_res[_OBJECTIVES].to_dict("records")
@@ -144,6 +135,34 @@ class GridSearch(Algorithm):
         # TODO: Apply portfolio constraints
 
         return OptimisationResult(solutions=portfolio_sol_pf, exec_time=exec_time, n_evals=building.size())
+
+
+def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Objectives], preserved_objective: Objectives) -> pd.DataFrame:
+    """
+    Finds the optimal Pareto front while maintaining at least one solution for each value encountered of the preserved objective.
+
+    Parameters
+    ----------
+    df
+        Pandas dataframe.
+    objectives
+        Objective(s) to optimise for (must be a subset of the dataframe's columns).
+    preserved_objective
+        Objective to preserve values of (must be a column of the dataframe).
+
+    Returns
+    -------
+    df
+        Pandas dataframe of optimal Pareto front.
+    """
+    grouped = df.groupby(by=[preserved_objective])
+    optimal_res = []
+    for _, group in grouped:
+        obj_values = group[objectives]
+        objective_direct = ["max" if ObjectivesDirection[objective] == -1 else "min" for objective in objectives]
+        pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
+        optimal_res.append(group[pareto_efficient])
+    return pd.concat(optimal_res)
 
 
 def run_headless(
