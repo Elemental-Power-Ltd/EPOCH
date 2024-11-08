@@ -41,7 +41,8 @@ class Database:
         assert self.pool is not None, "Could not create database pool"
 
 
-db = Database(os.environ.get("DATABASE_URL", "postgresql://python:elemental@localhost/elementaldb"))
+# When running within a docker network this should be set to postgresql://python:elemental@db/elementaldb
+db = Database(os.environ.get("EP_DATABASE_URL", "postgresql://python:elemental@localhost/elementaldb"))
 http_client = httpx.AsyncClient(timeout=60)
 
 elec_vae_mdl: VAE | None = None
