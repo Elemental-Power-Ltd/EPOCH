@@ -14,7 +14,8 @@ from ..models.site_data import ASHPResult, FileLoc, LocalMetaData, RecordsList, 
 
 logger = logging.getLogger("default")
 
-_DB_URL = os.environ.get("DB_API_URL", "http://localhost:8762")
+# When running within a docker network, this should be set to http://data:8762
+_DB_URL = os.environ.get("EP_DATA_SERVICE_URL", "http://localhost:8762")
 _TEMP_DIR = Path("app", "data", "temp")
 _INPUT_DATA_FILES = [
     "CSVEload.csv",
