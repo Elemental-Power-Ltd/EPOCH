@@ -139,7 +139,7 @@ class GridSearch(Algorithm):
 
 def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Objectives], preserved_objective: Objectives) -> pd.DataFrame:
     """
-    Finds the optimal Pareto front while maintaining at least one solution for each value encountered of the preserved objective.
+    Find the optimal Pareto front while maintaining at least one solution for each value encountered of the preserved objective.
 
     Parameters
     ----------
