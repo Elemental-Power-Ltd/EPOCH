@@ -47,7 +47,7 @@ class PyTaskData(TaskData):
             assert isinstance(value, float | int | np.floating | np.integer), f"Can only set numeric values, got {value}"
             self[key] = value
 
-    def __setitem__(self, key: str, value: float | int | np.float32) -> None:
+    def __setitem__(self, key: str, value: float | int | np.floating | np.integer) -> None:
         if key not in PyTaskData._VALID_KEYS:
             raise KeyError(str(key))
 
@@ -57,7 +57,7 @@ class PyTaskData(TaskData):
             value = np.float32(value)
         self.__setattr__(key, value)
 
-    def __getitem__(self, key: str) -> float | int | np.float32:
+    def __getitem__(self, key: str) -> float | int | np.floating | np.integer:
         try:
             return getattr(self, key)
         except AttributeError:
@@ -66,10 +66,10 @@ class PyTaskData(TaskData):
     def keys(self) -> Generator[str, None, None]:
         yield from PyTaskData._VALID_KEYS
 
-    def values(self) -> Generator[float | int | np.float32, None, None]:
+    def values(self) -> Generator[float | int | np.floating | np.integer, None, None]:
         yield from (self[key] for key in self.keys())
 
-    def items(self) -> Generator[tuple[str, float | int | np.float32], None, None]:
+    def items(self) -> Generator[tuple[str, float | int | np.floating | np.integer], None, None]:
         yield from zip(self.keys(), self.values())
 
     def __iter__(self) -> Generator[str, None, None]:
@@ -80,45 +80,3 @@ class PyTaskData(TaskData):
 
     def __len__(self) -> int:
         return len(list(self.keys()))
-
-
-class PySimulationResult:
-    """
-    Wrap a SimulationResult for python convenience.
-
-    Implements a dict-like API for a SimulationResult.
-    """
-
-    def __init__(self, res: SimulationResult):
-        self.res = res
-
-    def keys(self) -> Generator[str, None, None]:
-        yield from [
-            "carbon_balance",
-            "cost_balance",
-            "capex",
-            "payback_horizon",
-            "annualised_cost",
-        ]
-
-    def values(self) -> Generator[float, None, None]:
-        yield from (getattr(self.res, key) for key in self.keys())
-
-    def items(self) -> Generator[tuple[str, float], None, None]:
-        yield from zip(self.keys(), self.values())
-
-    def __getitem__(self, key: str) -> np.float32:
-        return np.float32(getattr(self.res, key))
-
-    def __iter__(self) -> Generator[str, None, None]:
-        yield from self.keys()
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, PySimulationResult):
-            return all(self[key] == other[key] for key in self.keys())
-        elif isinstance(other, SimulationResult):
-            return all(self[key] == getattr(other, key) for key in self.keys())
-        return False
-
-    def __repr__(self) -> str:
-        return "PySimulationData(" + ",".join(f"{key}={value}" for key, value in self.items()) + ")"

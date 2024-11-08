@@ -1,22 +1,27 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
-from app.internal.task_data_wrapper import PySimulationResult, PyTaskData
-from app.models.objectives import Objectives
+from app.internal.epoch_utils import PyTaskData, SimulationResult
+from app.models.objectives import _OBJECTIVES, ObjectiveValues
 
-ObjectiveValues = dict[Objectives, int | float]
+
+def convert_sim_result(sim_result: SimulationResult) -> ObjectiveValues:
+    objective_values = ObjectiveValues()
+    for objective in _OBJECTIVES:
+        objective_values[objective] = getattr(sim_result, objective)
+    return objective_values
 
 
 @dataclass
 class BuildingSolution:
     solution: PyTaskData | dict[str, int | float]
-    objective_values: ObjectiveValues | PySimulationResult
+    objective_values: ObjectiveValues
 
 
 @dataclass
 class PortfolioSolution:
     solution: dict[str, BuildingSolution]
-    objective_values: ObjectiveValues | PySimulationResult
+    objective_values: ObjectiveValues
 
 
 @dataclass

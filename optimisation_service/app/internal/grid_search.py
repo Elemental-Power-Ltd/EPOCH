@@ -121,12 +121,10 @@ class GridSearch(Algorithm):
                 if len(portfolio.buildings.keys()) > 1:  # Only required if there is more than 1 building.
                     df_res = pareto_front_but_preserve(df_res, portfolio.objectives, Objectives.capex)
 
-                solutions = df_res.drop(columns=_OBJECTIVES).to_dict("records")
-                objective_values = df_res[_OBJECTIVES].to_dict("records")
+                solutions: list[dict] = df_res.drop(columns=_OBJECTIVES).to_dict("records")
+                objective_values: list[dict] = df_res[_OBJECTIVES].to_dict("records")
 
-                building_solutions[building_name] = np.array(
-                    [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
-                )
+                building_solutions[building_name] = [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
 
         portfolio_sol = gen_all_building_combinations(building_solutions)
 

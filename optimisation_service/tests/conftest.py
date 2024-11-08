@@ -7,9 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from app.internal.epoch_utils import PyTaskData
 from app.internal.portfolio_simulator import combine_objective_values
 from app.internal.problem import Building, PortfolioProblem
-from app.internal.task_data_wrapper import PyTaskData
 from app.models.constraints import ConstraintDict
 from app.models.objectives import Objectives
 from app.models.parameters import ParameterDict

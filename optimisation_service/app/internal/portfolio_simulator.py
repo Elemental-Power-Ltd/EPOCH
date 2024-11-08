@@ -1,9 +1,9 @@
 from itertools import product
 from os import PathLike
 
-from app.internal.task_data_wrapper import PySimulationResult, PyTaskData, Simulator
-from app.models.objectives import _OBJECTIVES, Objectives
-from app.models.result import BuildingSolution, ObjectiveValues, PortfolioSolution
+from app.internal.epoch_utils import PyTaskData, Simulator
+from app.models.objectives import _OBJECTIVES, Objectives, ObjectiveValues
+from app.models.result import BuildingSolution, PortfolioSolution, convert_sim_result
 
 
 class PortfolioSimulator:
@@ -46,16 +46,14 @@ class PortfolioSimulator:
         for name in portfolio_tasks.keys():
             task = portfolio_tasks[name]
             sim = self.sims[name]
-            result = PySimulationResult(sim.simulate_scenario(task))
+            result = convert_sim_result(sim.simulate_scenario(task))
             solution[name] = BuildingSolution(solution=task, objective_values=result)  # TODO:Solution doesn't require taskdata
             objective_values_list.append(result)
         objective_values = combine_objective_values(objective_values_list)
         return PortfolioSolution(solution=solution, objective_values=objective_values)  # TODO:Solution doesn't require taskdata
 
 
-def combine_objective_values(
-    objective_values_list: list[PySimulationResult] | list[ObjectiveValues] | list[PySimulationResult | ObjectiveValues],
-) -> PySimulationResult | ObjectiveValues:
+def combine_objective_values(objective_values_list: list[ObjectiveValues]) -> ObjectiveValues:
     """
     Combine a list of objective values into a single list of objective values.
     Most objectives can be summed, but some require more complex functions.
@@ -75,7 +73,9 @@ def combine_objective_values(
     return combined
 
 
-def gen_all_building_combinations(building_solutions_dict: dict[str, list[BuildingSolution]]) -> list[PortfolioSolution]:
+def gen_all_building_combinations(
+    building_solutions_dict: dict[str, list[BuildingSolution]],
+) -> list[PortfolioSolution]:
     """
     Generate a list of all possible portfolio solutions for a group of buildings and there multiple building solutions.
 

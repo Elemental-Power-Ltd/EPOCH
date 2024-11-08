@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from app.internal.task_data_wrapper import Simulator, TaskData
+from app.internal.epoch_utils import Simulator, TaskData
 
 
 @pytest.mark.requires_epoch

@@ -24,3 +24,6 @@ class ObjectivesDirection(IntEnum):
     capex = 1
     payback_horizon = 1
     annualised_cost = 1
+
+
+ObjectiveValues = dict[Objectives, int | float]

@@ -3,6 +3,7 @@ Population heuristics for initialising EPOCH search spaces.
 """
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 
@@ -170,7 +171,7 @@ def estimate_battery_charge(solar_df: pd.DataFrame, solar_scale: float = 1.0, qu
     return np.quantile(solar_output / timedeltas, quantile)
 
 
-def round_to_search_space(x: float, start: float, stop: float, step: float) -> float:
+def round_to_search_space[T: (npt.NDArray, float)](x: T, start: float, stop: float, step: float) -> T:
     """
     Round a given entry to the closest entry in the search space.
 

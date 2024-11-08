@@ -12,11 +12,11 @@ from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 from pymoo.operators.sampling.rnd import IntegerRandomSampling  # type: ignore
 
+from app.internal.epoch_utils import PyTaskData
 from app.internal.heuristics.population_init import generate_building_initial_population
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
 from app.internal.problem import PortfolioProblem
-from app.internal.task_data_wrapper import PyTaskData
-from app.models.objectives import Objectives, ObjectivesDirection
+from app.models.objectives import ObjectivesDirection, ObjectiveValues
 
 logger = logging.getLogger("default")
 
@@ -153,7 +153,7 @@ class ProblemInstance(ElementwiseProblem):
         portfolio_pytd = {name: self.convert_solution(x, name) for name, x in x_dict.items()}
         return self.sim.simulate_portfolio(portfolio_pytd)
 
-    def apply_directions(self, objective_values: dict[Objectives, float]) -> dict[Objectives, float]:
+    def apply_directions(self, objective_values: ObjectiveValues) -> ObjectiveValues:
         """
         Applies objective optimisation direction to objective values.
         Multiplies objective values of objectives that need to be maximised by -1.
@@ -172,7 +172,7 @@ class ProblemInstance(ElementwiseProblem):
             objective_values[objective] *= ObjectivesDirection[objective]
         return objective_values
 
-    def calculate_infeasibility(self, objective_values: dict[Objectives, float]) -> list[float]:
+    def calculate_infeasibility(self, objective_values: ObjectiveValues) -> list[float]:
         """
         Calculate the infeasibility of objective values given the problem's portfolio constraints.
 

@@ -6,7 +6,7 @@ from typing import Self
 
 import numpy as np
 
-from app.internal.task_data_wrapper import PyTaskData
+from app.internal.epoch_utils import PyTaskData
 from app.models.constraints import ConstraintDict
 from app.models.objectives import _OBJECTIVES, Objectives
 from app.models.parameters import (

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
 
@@ -55,18 +56,20 @@ def generate_building_initial_population(
 
     rng = np.random.default_rng()
 
-    def clipped_rand(lo, hi, step):
+    def clipped_rand(lo: float | int, hi: float | int, step: float | int) -> npt.NDArray:
         x = rng.choice(a=np.arange(lo, hi), size=pop_size)
         return round_to_search_space(x, lo, hi, step)
 
-    def clipped_norm(est, lo, hi, step):
+    def clipped_norm(est: float | int, lo: float | int, hi: float | int, step: float | int) -> npt.NDArray:
         sigma = np.abs(hi - lo) / 4
         a = (lo - est) / sigma
         b = (hi - est) / sigma
         x = np.clip(truncnorm.rvs(a=a, b=b, loc=est, scale=sigma, size=pop_size), lo, hi)
         return round_to_search_space(x, lo, hi, step)
 
-    sampler_funcs = defaultdict(lambda: lambda lo, hi, step: clipped_rand(lo, hi, step))
+    sampler_funcs: defaultdict[str, Callable[[float | int, float | int, float | int], npt.NDArray]] = defaultdict(
+        lambda: lambda lo, hi, step: clipped_rand(lo, hi, step)
+    )
     sampler_funcs["ASHP_HPower"] = lambda lo, hi, step: clipped_norm(
         estimate_ashp_hpower(
             heating_df=heating_df,
@@ -93,14 +96,17 @@ def generate_building_initial_population(
         estimate_solar_pv(solar_df=solar_df, elec_df=elec_df), lo, hi, step
     )
 
-    pop, lbs, steps = [], np.array([]), np.array([])
+    pop, lbs, steps = [], [], []
     for parameter, param_range in variable_param.items():
         lo, hi, step = param_range["min"], param_range["max"], param_range["step"]
         generated_values = sampler_funcs[parameter](lo, hi, step)
         pop.append(generated_values)
-        lbs, steps = np.append(lbs, lo), np.append(steps, step)
-    pop = np.array(pop)
-    pop = pop.transpose()
-    scaled_pop = (pop - lbs) / steps
+        lbs.append(lo)
+        steps.append(step)
+    pop_ar = np.array(pop)
+    lbs_ar = np.array(lbs)
+    steps_ar = np.array(steps)
+    pop_ar = pop_ar.transpose()
+    scaled_pop = (pop_ar - lbs_ar) / steps_ar
     # TODO: check CAPEX of values
     return scaled_pop
