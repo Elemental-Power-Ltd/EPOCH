@@ -3,6 +3,7 @@ import logging
 import os
 import pathlib
 import platform
+import shutil
 import subprocess
 import tempfile
 import time
@@ -106,14 +107,11 @@ class GridSearch(Algorithm):
 
                 t0 = time.perf_counter()
                 run_headless(
-                    project_path=str(os.environ.get("EPOCH_DIR", "./Epoch")),
                     config_dir=str(config_dir),
                     input_dir=str(building.input_dir),
                     output_dir=str(output_dir),
                 )
                 exec_time = timedelta(seconds=(time.perf_counter() - t0))
-
-                os.remove(Path(building.input_dir, "inputParameters.json"))
 
                 df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
 
@@ -164,24 +162,21 @@ def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Objectives], pr
 
 
 def run_headless(
-    project_path: os.PathLike | str,
-    input_dir: os.PathLike | str | None = None,
-    output_dir: os.PathLike | str | None = None,
-    config_dir: os.PathLike | str | None = None,
+    input_dir: os.PathLike | str,
+    output_dir: os.PathLike | str,
+    config_dir: os.PathLike | str,
 ) -> dict[str, float]:
     """
     Run the headless version of Epoch as a subprocess
 
     Parameters
     ----------
-    project_path
-        The path to the root of the Epoch repository
     input_dir
-        A directory containing input data for Epoch. Defaults to $project_path$/InputData
+        A directory containing input data for Epoch.
     output_dir
-         The directory to write the output to. Defaults to ./Data/OutputData
+         The directory to write the output to.
     config_dir
-        A directory containing the config file(s) for Epoch. Defaults to $project_path$/Config
+        A directory containing the config file(s) for Epoch.
 
     Returns
     -------
@@ -189,33 +184,7 @@ def run_headless(
     """
     logger.debug("Running run_headless.")
 
-    if platform.system() == "Windows":
-        exe_name = "Epoch.exe"
-    else:
-        exe_name = "Epoch"
-
-    project_path = pathlib.Path(project_path)
-
-    full_path_to_exe = pathlib.Path(exe_name)
-    if not full_path_to_exe.is_file():
-        suffix = pathlib.Path("build", "epoch_main")
-        full_path_to_exe = project_path / suffix / exe_name
-    assert pathlib.Path(full_path_to_exe).exists(), f"Could not find an EPOCH executable at {full_path_to_exe}"
-
-    # input_dir, output_dir and config_dir can all be None
-    # in which case we default to the following:
-    #   input_dir   - the InputData directory in the Epoch root directory
-    #   output_dir  - Data/OutputData within this project
-    #   config_dir  - the Config directory in the Epoch root directory
-
-    if input_dir is None:
-        input_dir = pathlib.Path(project_path) / "InputData"
-
-    if output_dir is None:
-        output_dir = pathlib.Path("Data", "OutputData")
-
-    if config_dir is None:
-        config_dir = pathlib.Path(project_path) / "Config"
+    epoch_path = get_epoch_path()
 
     input_dir, output_dir, config_dir = pathlib.Path(input_dir), pathlib.Path(output_dir), pathlib.Path(config_dir)
     # check these directories exist
@@ -229,7 +198,7 @@ def run_headless(
 
     result = subprocess.run(
         [
-            str(full_path_to_exe),
+            epoch_path,
             "--input",
             str(input_dir),
             "--output",
@@ -255,3 +224,52 @@ def run_headless(
         "time_taken": full_output["time_taken"],
     }
     return minimal_output
+
+
+def get_epoch_path() -> str:
+    """
+    Find the Epoch executable
+
+    This tries a number of options in the following order:
+    1. Epoch is in the system PATH
+    2. There is a release build of Epoch within the EPOCH_DIRECTORY path
+    3. There is a debug build of Epoch within the EPOCH_DIRECTORY path
+
+    Returns
+    -------
+        A valid path to supply to subprocess.run
+    """
+
+    # When using Docker, we expect to find Epoch in the PATH
+    system_path_epoch = shutil.which("Epoch")
+    if system_path_epoch:
+        logger.debug(f"Found Epoch in the PATH - {system_path_epoch}")
+        return "Epoch"
+
+    # Epoch is not in the system PATH, try looking in the build folder of EPOCH_DIR
+    epoch_dir = str(os.environ.get("EPOCH_DIR", "./Epoch"))
+
+    if platform.system() == "Windows":
+        # Windows places Release and Debug builds in separate folders
+        # We prioritise Release builds (we currently only support RelWithDebInfo and Debug)
+        exe_name = "Epoch.exe"
+
+        suffixes = [
+            pathlib.Path("build", "headless", "epoch_main", "RelWithDebInfo"),
+            pathlib.Path("build", "headless", "epoch_main", "Debug"),
+        ]
+    else:
+        # Linux places the executable in build/epoch_main
+        exe_name = "Epoch"
+
+        suffixes = [pathlib.Path("build", "epoch_main")]
+
+    project_path = pathlib.Path(epoch_dir)
+
+    for suffix in suffixes:
+        full_path_to_exe = project_path / suffix / exe_name
+        if os.path.isfile(full_path_to_exe):
+            logger.debug(f"Found Epoch at {full_path_to_exe}")
+            return str(full_path_to_exe)
+
+    raise FileNotFoundError("Failed to find Epoch executable")
