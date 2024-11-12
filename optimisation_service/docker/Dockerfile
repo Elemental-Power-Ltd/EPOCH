@@ -57,6 +57,7 @@ COPY --from=epoch-build /code/Epoch/build/epoch_main/Epoch /code/install/
 # Finally, we can configure our python code!
 # Install all the requirements, watching out for those that cause trouble for Alpine.
 COPY requirements.txt .
+COPY requirements requirements
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY app app
