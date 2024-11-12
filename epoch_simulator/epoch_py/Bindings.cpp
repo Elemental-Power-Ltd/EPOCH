@@ -65,7 +65,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def("__repr__", &taskDataToString);
 
 	pybind11::class_<SimulationResult>(m, "SimulationResult")
-		.def_readonly("carbon_balance", &SimulationResult::scenario_carbon_balance)
+		.def_readonly("carbon_balance_scope_1", &SimulationResult::scenario_carbon_balance_scope_1)
+		.def_readonly("carbon_balance_scope_2", &SimulationResult::scenario_carbon_balance_scope_2)
 		.def_readonly("cost_balance", &SimulationResult::scenario_cost_balance)
 		.def_readonly("capex", &SimulationResult::project_CAPEX)
 		.def_readonly("payback_horizon", &SimulationResult::payback_horizon_years)
@@ -109,9 +110,16 @@ PYBIND11_MODULE(epoch_simulator, m) {
 std::string resultToString(const SimulationResult& result)
 {
 	return std::format(
-		"SimulationResult(carbon_balance: {}, "
-		"cost_balance: {}, capex: {}, payback_horizon: {}, annualised_cost: {})",
-		result.scenario_carbon_balance, 
+		"SimulationResult("
+		"carbon_balance_scope_1: {},"
+		"carbon_balance_scope_2: {},"
+		"cost_balance: {},"
+		"capex: {},"
+		"payback_horizon: {},"
+		"annualised_cost: {}"
+		")",
+		result.scenario_carbon_balance_scope_1, 
+		result.scenario_carbon_balance_scope_2,
 		result.scenario_cost_balance, 
 		result.project_CAPEX, 
 		result.payback_horizon_years, 

@@ -205,61 +205,14 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 		result.report_data = std::nullopt;
 	}
 
-	//Data reporting
-
-	if (simulationType == SimulationType::FullReporting) {
-		//reportData.Baseline_electricity_cost = myCost.get_Baseline_elec_cost();
-		//reportData.Baseline_fuel_cost = myCost.get_Baseline_fuel_cost();
-
-		//reportData.Baseline_electricity_carbon = myCost.get_Baseline_elec_CO2e();
-		//reportData.Baseline_fuel_carbon = myCost.get_Baseline_fuel_CO2e();
-
-		//reportData.Scenario_electricity_cost = myCost.get_Scenario_import_cost();
-		//reportData.Scenario_fuel_cost = myCost.get_Scenario_fuel_cost();
-		//reportData.Scenario_grid_export_cost = myCost.get_Scenario_export_cost();
-		//
-		//reportData.Scenario_electricity_carbon = myCost.get_Scenario_elec_CO2e();
-		//reportData.Scenario_fuel_carbon = myCost.get_Scenario_fuel_CO2e();
-		//reportData.Scenario_grid_export_carbon = myCost.get_Scenario_export_CO2e();
-		//reportData.Scenario_avoided_fuel_carbon = myCost.get_Scenario_LP_CO2e();
-
-		//reportData.Resulting_EV_charge_revenue = myCost.get_Scenario_EV_revenue();
-		//reportData.Resulting_Data_Centre_revenue = myCost.get_Scenario_HP_revenue();
-		//reportData.Scenario_avoided_fuel_cost = myCost.get_Scenario_LP_revenue();
-
-		//reportData.ESS_PCS_CAPEX = myCost.get_ESS_PCS_CAPEX();
-		//reportData.ESS_PCS_OPEX = myCost.get_ESS_PCS_OPEX();
-		//reportData.ESS_ENCLOSURE_CAPEX = myCost.get_ESS_ENCLOSURE_CAPEX();
-		//reportData.ESS_ENCLOSURE_OPEX = myCost.get_ESS_ENCLOSURE_OPEX();
-		//reportData.ESS_ENCLOSURE_DISPOSAL = myCost.get_ESS_ENCLOSURE_DISPOSAL();
-		//
-		//reportData.PVpanel_CAPEX = myCost.get_PVpanel_CAPEX();
-		//reportData.PVBoP_CAPEX = myCost.get_PVBoP_CAPEX();
-		//reportData.PVroof_CAPEX = myCost.get_PVroof_CAPEX();
-		//reportData.PVground_CAPEX = myCost.get_PVground_CAPEX();
-		//reportData.PV_OPEX = myCost.get_PV_OPEX();
-		//
-		//reportData.EV_CP_cost = myCost.get_EV_CP_cost();
-		//reportData.EV_CP_install = myCost.get_EV_CP_install();
-
-		//reportData.Grid_CAPEX = myCost.get_Grid_CAPEX();
-		//reportData.ASHP_CAPEX = myCost.get_ASHP_CAPEX();
-
-		//float mEV_CP_cost;
-		//float mEV_CP_install;
-
-		//float mGrid_CAPEX;
-
-		//float mASHP_CAPEX;
-	};
-
 	
 	result.paramIndex = taskData.paramIndex;
 	result.total_annualised_cost = myCost.get_total_annualised_cost();
 	result.project_CAPEX = myCost.get_project_CAPEX();
 	result.scenario_cost_balance = myCost.get_scenario_cost_balance();
 	result.payback_horizon_years = myCost.get_payback_horizon_years();
-	result.scenario_carbon_balance = myCost.get_scenario_carbon_balance();
+	result.scenario_carbon_balance_scope_1 = myCost.get_scenario_carbon_balance_scope_1();
+	result.scenario_carbon_balance_scope_2 = myCost.get_scenario_carbon_balance_scope_2();
 
 	
 	//========================================
@@ -291,7 +244,7 @@ SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
 	fullSimulationResult.total_annualised_cost = std::numeric_limits<float>::max();
 	fullSimulationResult.scenario_cost_balance = std::numeric_limits<float>::lowest();
 	fullSimulationResult.payback_horizon_years = std::numeric_limits<float>::max();
-	fullSimulationResult.scenario_carbon_balance = std::numeric_limits<float>::lowest();
+	fullSimulationResult.scenario_carbon_balance_scope_1 = std::numeric_limits<float>::lowest();
 
 	return fullSimulationResult;
 }

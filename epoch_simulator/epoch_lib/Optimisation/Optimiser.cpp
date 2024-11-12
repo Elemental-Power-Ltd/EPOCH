@@ -60,11 +60,6 @@ OutputValues Optimiser::RecallIndex(uint64_t recallindex) {
 	// this will crash the program if it cannot write to file (ie the csv is open in Excel!)
 	writeTimeSeriesToCSV(fp, *result.report_data);
 	
-	fp = mFileConfig.getOutputDir() / "ScenarioCostData.csv";
-
-	writeCostDataToCSV(fp, *result.report_data);
-
-
 
 	// END HACK
 

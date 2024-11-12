@@ -263,7 +263,8 @@ void writeObjectiveResultHeader(std::ofstream& outFile) {
 	outFile << "capex" << ",";
 	outFile << "cost_balance" << ",";
 	outFile << "payback_horizon" << ",";
-	outFile << "carbon_balance";
+	outFile << "carbon_balance_scope_1";
+	outFile << "carbon_balance_scope_2";
 
 	// deliberately omit the comma for carbon balance
 	// to allow the loop to have a comma for each entry (before)
@@ -284,7 +285,8 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	outFile << result.project_CAPEX << ",";
 	outFile << result.scenario_cost_balance << ",";
 	outFile << result.payback_horizon_years << ",";
-	outFile << result.scenario_carbon_balance << ",";
+	outFile << result.scenario_carbon_balance_scope_1 << ",";
+	outFile << result.scenario_carbon_balance_scope_2 << ",";
 
 	const TaskData& taskData = result.taskData;
 
@@ -402,127 +404,6 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& repo
 	}
 
 }
-
-void writeCostDataToCSV(std::filesystem::path filepath, const ReportData& reportData)
-{
-	std::ofstream outFile(filepath);
-
-	if (!outFile.is_open()) {
-		spdlog::error("Failed to open the output file!");
-		throw FileReadException(filepath.filename().string());
-	}
-
-	// Write the column headers
-
-	//outFile << "ESUM" << ",";
-	outFile << "Baseline_electricity_cost (�)" << ",";	// no trailing comma
-	outFile << "Baseline_fuel_cost (�)" << ",";
-	
-	outFile << "Baseline_electricity_carbon (kgCO2)" << ",";
-	outFile << "Baseline_fuel_carbon (kgCO2)" << ",";
-	
-	outFile << "Scenario_electricity_cost (�)" << ",";
-	outFile << "Scenario_fuel_cost (�)" << ",";
-	outFile << "Scenario_grid_export_cost (�)" << ",";
-
-	outFile << "Resulting_EV_charge_revenue (�)" << ",";
-	outFile << "Resulting_Data_Centre_revenue (�)" << ",";
-	outFile << "Scenario_avoided_fuel_cost (�)" << ",";
-
-	outFile << "Scenario_electricity_carbon (kgCO2)" << ",";
-	outFile << "Scenario_fuel_carbon (kgCO2)" << ",";
-	outFile << "Scenario_grid_export_carbon (kgCO2)" << ",";
-	outFile << "Scenario_avoided_fuel_carbon (kgCO2)" << ",";
-
-	outFile << "ESS_PCS_CAPEX (�)" << ",";
-	outFile << "ESS_PCS_OPEX (�)" << ",";
-	outFile << "ESS_ENCLOSURE_CAPEX (�)" << ",";
-	outFile << "ESS_ENCLOSURE_OPEX (�)" << ",";
-	outFile << "ESS_ENCLOSURE_DISPOSAL (�)" << ",";
-
-	outFile << "PVpanel_CAPEX (�)" << ",";
-	outFile << "PVBoP_CAPEX (�)" << ",";
-	outFile << "PVroof_CAPEX (�)" << ",";
-	outFile << "PVground_CAPEX (�)" << ",";
-	outFile << "PV_OPEX (�)" << ",";
-
-	outFile << "EV_CP_cost (�)" << ",";
-	outFile << "EV_CP_install (�)" << ",";
-
-	outFile << "Grid_CAPEX (�)" << ",";
-
-	outFile << "ASHP_CAPEX (�)";
-
-	// no trailing comma
-	outFile << "\n"; // newline
-
-	// write the values
-     //	outFile << fullResult.ESUM[i] << ",";
-	outFile << reportData.Baseline_electricity_cost << ","; 
-	outFile << reportData.Baseline_fuel_cost << ",";
-
-	outFile << reportData.Baseline_electricity_carbon << ",";
-	outFile << reportData.Baseline_fuel_carbon << ",";
-
-	outFile << reportData.Scenario_electricity_cost << ",";
-	outFile << reportData.Scenario_fuel_cost << ",";
-	outFile << reportData.Scenario_grid_export_cost << ",";
-	
-	outFile << reportData.Resulting_EV_charge_revenue << ",";
-
-	outFile << reportData.Resulting_Data_Centre_revenue << ",";
-
-	outFile << reportData.Scenario_avoided_fuel_cost << ",";
-
-	outFile << reportData.Scenario_electricity_carbon << ",";
-	outFile << reportData.Scenario_fuel_carbon << ",";
-	outFile << reportData.Scenario_grid_export_carbon << ",";
-	outFile << reportData.Scenario_avoided_fuel_carbon << "'";
-	
-
-	outFile << reportData.ESS_PCS_CAPEX << ",";
-	outFile << reportData.ESS_PCS_OPEX << ",";
-	outFile << reportData.ESS_ENCLOSURE_CAPEX << ",";
-	outFile << reportData.ESS_ENCLOSURE_OPEX << ",";
-	outFile << reportData.ESS_ENCLOSURE_DISPOSAL << ",";
-
-	outFile << reportData.PVpanel_CAPEX << ",";
-	outFile << reportData.PVBoP_CAPEX << ",";
-	outFile << reportData.PVroof_CAPEX << ",";
-	outFile << reportData.PVground_CAPEX << ",";
-	outFile << reportData.PV_OPEX << ",";
-
-	outFile << reportData.EV_CP_cost << ",";
-	outFile << reportData.EV_CP_install << ",";
-
-	outFile << reportData.Grid_CAPEX << ",";
-
-	outFile << reportData.ASHP_CAPEX; // no trailing comma
-
-	outFile << "\n";
-	
-
-	//Report the objectives in same file
-
-	//outFile << "ESUM" << ",";
-	outFile << "Total_annualsed_cost (�)" << ",";	// no trailing comma
-	outFile << "Project_CAPEX (�)" << ",";
-	outFile << "Scenario_cost_balance (�)" << ",";
-	outFile << "Payback_horizon" << ",";
-	outFile << "Scenario_carbon_balance (kgCO2)" << ",";
-
-	outFile << "\n";
-
-	outFile << reportData.total_annualised_cost << ",";
-	outFile << reportData.project_CAPEX << ",";
-	outFile << reportData.scenario_cost_balance << ",";
-	outFile << reportData.payback_horizon_years << ",";
-	outFile << reportData.scenario_carbon_balance;
-
-	outFile << "\n";
-
-}
-
 
 
 // Custom function to convert a struct to a JSON object

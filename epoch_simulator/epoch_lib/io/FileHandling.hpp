@@ -23,7 +23,6 @@ void writeObjectiveResultHeader(std::ofstream& outFile);
 void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& result);
 
 void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& reportData);
-void writeCostDataToCSV(std::filesystem::path filepath, const ReportData& reportData);
 
 nlohmann::json inputToJson(const InputValues& data);
 nlohmann::json outputToJson(const OutputValues& data);

@@ -26,7 +26,7 @@ public:
 		mScenario_elec_CO2e(0.0f),
 		mScenario_fuel_CO2e(0.0f),
 		mScenario_export_CO2e(0.0f),
-		mScenario_carbon_balance(0.0f)
+		mScenario_carbon_balance_scope_1(0.0f)
 	{
 		mESS_kW = std::max(mTaskData.ESS_charge_power, mTaskData.ESS_discharge_power);
 		mESS_kWmin = std::min(mTaskData.ESS_charge_power, mTaskData.ESS_discharge_power);
@@ -35,8 +35,11 @@ public:
 		
 		// the following will need connecting to new task data input
 
-		mPV_kWp_ground = mPV_kWp_total; // need to add types of PV to taskdata to allocated costs.
-		mPV_kWp_roof = 0;
+		//mPV_kWp_ground = mPV_kWp_total; // need to add types of PV to taskdata to allocated costs.
+		//mPV_kWp_roof = 0;
+		mPV_kWp_roof = mPV_kWp_total; // need to add types of PV to taskdata to allocated costs.
+		mPV_kWp_ground = 0; // assume for now ALCHEMAI sites are all roofmount PV
+
 		mkW_Grid = 0; // set Grid upgrade to zero for the moment
 	
 	}
@@ -79,9 +82,7 @@ public:
 		//	This function is an alterntive to calculateCosts() without CAPEX if CAPEX is already calculated earlier in Simulate.cpp
 		// 
 				// need to add a new config parameter here
-		const float IMPORT_FUEL_PRICE = 12.2f;
-		const float BOILER_EFFICIENCY = 0.9f;
-
+		
 		const int s7_EV_CP_number = mTaskData.s7_EV_CP_number;
 		const int f22_EV_CP_number = mTaskData.f22_EV_CP_number;
 		const int r50_EV_CP_number = mTaskData.r50_EV_CP_number;
@@ -122,20 +123,23 @@ public:
 
 		//year_TS baseline_heat_load = hload.getHeatload() + grid.getActualLowPriorityLoad(); // depreciated in V 08 due to simplified baselining
 
-		year_TS baseline_heat_load = costVectors.heatload_h;
+		year_TS baseline_heat_load = costVectors.heatload_h; // includes both baseline space heat and baseline DWH demand.
 
-		year_TS import_fuel_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), IMPORT_FUEL_PRICE) };
+		year_TS import_gas_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mMains_gas_price) }; // need to add baseline fuel type in config
 
-		calculate_baseline_fuel_cost(baseline_heat_load, import_fuel_prices, BOILER_EFFICIENCY);
+		//year_TS import_LPG_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mLPG_cost_price) }; // trigger this instead of line before if fuel config is LPG
+
+		calculate_baseline_fuel_cost(baseline_heat_load, import_gas_prices);
+
+		// calculate_baseline_fuel_cost(baseline_heat_load, import_LPG_prices); // trigger this instead of line before if fuel config is LPG
 
 		calculate_scenario_elec_cost(costVectors.grid_import_e);
-		calculate_scenario_fuel_cost(costVectors.heat_shortfall_h, import_fuel_prices);
+		calculate_scenario_fuel_cost(costVectors.heat_shortfall_h, import_gas_prices);
 		calculate_scenario_export_cost(costVectors.grid_export_e, export_elec_prices);
 
 		calculate_scenario_EV_revenue(costVectors.actual_ev_load_e);
 		calculate_scenario_HP_revenue(costVectors.actual_data_centre_load_e);
 		calculate_scenario_LP_revenue(costVectors.actual_low_priority_load_e);
-
 
 		calculate_scenario_cost_balance(mTotal_annualised_cost);
 
@@ -154,20 +158,24 @@ public:
 
 		calculate_baseline_elec_CO2e(baseline_elec_load);
 
-		calculate_baseline_fuel_CO2e(baseline_heat_load);
+		calculate_baseline_gas_CO2e(baseline_heat_load);
+
+		// calculate_baseline_LPG_CO2e(baseline_heat_load); // trigger this function based on baseline fuel config, if it is LPG
 
 		calculate_scenario_elec_CO2e(costVectors.grid_import_e);
 
-		calculate_scenario_fuel_CO2e(costVectors.heat_shortfall_h);
+		calculate_scenario_gas_CO2e(costVectors.heat_shortfall_h);
+
+		// calculate_scenario_LPG_CO2e(costVectors.heat_shortfall_h); // trigger this function based on scenario fuel config, if it is LPG
 
 		calculate_scenario_export_CO2e(costVectors.grid_export_e);
 
 		calculate_scenario_LP_CO2e(costVectors.actual_low_priority_load_e);
 
-		calculate_scenario_carbon_balance();
+		calculate_scenario_carbon_balance_scope_1();
+
+		calculate_scenario_carbon_balance_scope_2();
 	}
-
-
 
 	//ESS COSTS
 
@@ -574,6 +582,12 @@ public:
 		return ASHP_annualised_cost;
 	}
 
+	float calculate_DHW_annualised_cost ()
+	{
+		float DWH_annualised_cost = mDHW_cylinder_CAPEX / mDHW_lifetime;
+		return DWH_annualised_cost;
+	}
+
 	float calculate_Grid_annualised_cost(float kw_grid_upgrade) const {
 		float Grid_annualised_cost = mGrid_CAPEX/ mGrid_lifetime;
 		return Grid_annualised_cost;
@@ -586,9 +600,11 @@ public:
 		float PV_CAPEX = mPVpanel_CAPEX + mPVBoP_CAPEX + mPVroof_CAPEX + mPVground_CAPEX;
 		float EV_CP_CAPEX = mEV_CP_cost + mEV_CP_install;
 		float ASHP_CAPEX = mASHP_CAPEX;
+		float DHW_CAPEX = mDHW_cylinder_CAPEX;
 		float Grid_CAPEX = mGrid_CAPEX;
 
-		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX) * mProject_plan_develop_EPC;
+
+		float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX + DHW_CAPEX) * mProject_plan_develop_EPC;
 		float Project_cost_grid = Grid_CAPEX * mProject_plan_develop_Grid;
 
 		float Project_annualised_cost = (Project_cost + Project_cost_grid) / mProject_lifetime;
@@ -611,9 +627,11 @@ public:
 
 		float ASHP_annualised_cost = calculate_ASHP_annualised_cost(heatpump_power_capacity);
 
+		float DHW_annualised_cost = calculate_DHW_annualised_cost();
+
 		float Project_annualised_cost = calculate_Project_annualised_cost(ESS_kW, ESS_kWh, PV_kWp_total, s7_EV_CP_number, f22_EV_CP_number, r50_EV_CP_number, u150_EV_CP_number, kw_grid_upgrade, heatpump_power_capacity);
 
-		mTotal_annualised_cost = Project_annualised_cost + ESS_annualised_cost + PV_annualised_cost + EV_CP_annualised_cost + Grid_annualised_cost + ASHP_annualised_cost;
+		mTotal_annualised_cost = Project_annualised_cost + ESS_annualised_cost + PV_annualised_cost + EV_CP_annualised_cost + Grid_annualised_cost + ASHP_annualised_cost + DHW_annualised_cost;
 	}
 
 	// time-dependent scenario costs
@@ -624,10 +642,10 @@ public:
 		mBaseline_elec_cost = mBaseline_elec_cost_TS.sum();
 	};
 
-	void calculate_baseline_fuel_cost(const year_TS& baseline_heat_load, const year_TS& import_fuel_prices, float boiler_efficiency) {
+	void calculate_baseline_fuel_cost(const year_TS& baseline_heat_load, const year_TS& import_fuel_prices) {
 		float baseline_heat_load_sum = baseline_heat_load.sum();
 
-		mBaseline_fuel_cost = (baseline_heat_load_sum * import_fuel_prices[0] / boiler_efficiency) / 100; // this should be changed to divided by boiler efficiency
+		mBaseline_fuel_cost = (baseline_heat_load_sum * import_fuel_prices[0] / mBoiler_efficiency); 
 	};
 
 	void calculate_scenario_elec_cost(const year_TS& grid_import) {
@@ -639,7 +657,7 @@ public:
 	void calculate_scenario_fuel_cost(const year_TS& total_heat_shortfall, const year_TS& import_fuel_prices) {
 		float total_heat_shortfall_sum = total_heat_shortfall.sum();
 
-		mScenario_fuel_cost = (total_heat_shortfall_sum * import_fuel_prices[0] / mBoiler_efficiency) / 100; // this should be changed to divided by boiler efficiency
+		mScenario_fuel_cost = (total_heat_shortfall_sum * import_fuel_prices[0] / mBoiler_efficiency);
 	};
 
 	void calculate_scenario_export_cost(const year_TS& grid_export, const year_TS& export_elec_prices) {
@@ -650,7 +668,7 @@ public:
 	};
 
 	void calculate_scenario_EV_revenue(const year_TS& actual_ev_load) {
-		year_TS mScenario_EV_revenueTS = actual_ev_load.array() * mEV_low_price; // will need to separate out EV charge tariffs later, assume all destination charging for no
+		year_TS mScenario_EV_revenueTS = actual_ev_load.array() * mEV_low_price; // will need to separate out EV charge tariffs later, assume all destination charging for now
 		mScenario_EV_revenue = mScenario_EV_revenueTS.sum();
 	};
 
@@ -661,7 +679,7 @@ public:
 
 	void calculate_scenario_LP_revenue(const year_TS& actual_low_priority_load) {
 		mLP_price = mMains_gas_price/mBoiler_efficiency;
-		year_TS mScenario_LP_revenueTS = actual_low_priority_load.array() * mLP_price; // will need to separate out EV charge tariffs later, assume all destination charging for no
+		year_TS mScenario_LP_revenueTS = actual_low_priority_load.array() * mLP_price; // will need to separate out EV charge tariffs later, assume all destination charging for now
 		mScenario_LP_revenue = mScenario_LP_revenueTS.sum();
 	}
 
@@ -689,11 +707,18 @@ public:
 		mBaseline_elec_CO2e = (baseline_elec_load_sum * mSupplier_electricity_kg_CO2e); 
 	};
 
-	void calculate_baseline_fuel_CO2e(const year_TS& baseline_heat_load) {
+	void calculate_baseline_gas_CO2e(const year_TS& baseline_heat_load) {
+		float baseline_heat_load_sum = baseline_heat_load.sum();
+
+		mBaseline_fuel_CO2e = (baseline_heat_load_sum * mMains_gas_kg_C02e);/// mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
+	};
+
+	void calculate_baseline_LPG_CO2e(const year_TS& baseline_heat_load) {
 		float baseline_heat_load_sum = baseline_heat_load.sum();
 
 		mBaseline_fuel_CO2e = (baseline_heat_load_sum * mLPG_kg_C02e);/// mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
 	};
+
 
 	void calculate_scenario_elec_CO2e(const year_TS& grid_import) {
 		float grid_import_sum = grid_import.sum();
@@ -702,11 +727,18 @@ public:
 		mScenario_elec_CO2e = (grid_import_sum * mSupplier_electricity_kg_CO2e);
 	};
 
-	void calculate_scenario_fuel_CO2e(const year_TS& total_heat_shortfall) {
+	void calculate_scenario_gas_CO2e(const year_TS& total_heat_shortfall) {
+		float total_heat_shortfall_sum = total_heat_shortfall.sum();
+
+		mScenario_fuel_CO2e = (total_heat_shortfall_sum * mMains_gas_kg_C02e);// / mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
+	};
+
+	void calculate_scenario_LPG_CO2e(const year_TS& total_heat_shortfall) {
 		float total_heat_shortfall_sum = total_heat_shortfall.sum();
 
 		mScenario_fuel_CO2e = (total_heat_shortfall_sum * mLPG_kg_C02e);// / mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
 	};
+
 
 	void calculate_scenario_export_CO2e(const year_TS& grid_export) {
 		float grid_export_sum = grid_export.sum();
@@ -716,13 +748,17 @@ public:
 
 	void calculate_scenario_LP_CO2e(const year_TS& actual_low_priority_load) {
 	
-		year_TS mScenario_LP_CO2eTS = actual_low_priority_load.array() * mMains_gas_kg_C02e; // will need to separate out EV charge tariffs later, assume all destination charging for no
+		year_TS mScenario_LP_CO2eTS = actual_low_priority_load.array() * mMains_gas_kg_C02e; // assume the counterfactual of LP heat is gas based heat emissions
 		mScenario_LP_CO2e =  -mScenario_LP_CO2eTS.sum();
 	}
 
 
-	void calculate_scenario_carbon_balance() {
-		mScenario_carbon_balance = (mBaseline_elec_CO2e + mBaseline_fuel_CO2e) - (mScenario_elec_CO2e + mScenario_fuel_CO2e + mScenario_export_CO2e + mScenario_LP_CO2e);
+	void calculate_scenario_carbon_balance_scope_1() {
+		mScenario_carbon_balance_scope_1 = (mBaseline_fuel_CO2e) - (mScenario_fuel_CO2e + mScenario_LP_CO2e); /// mScenario_LP_CO2e is the CO2 saved by not heating LP load via burning gas, so subtract a negative
+	};
+
+	void calculate_scenario_carbon_balance_scope_2() {
+		mScenario_carbon_balance_scope_2 = (mBaseline_elec_CO2e) - (mScenario_elec_CO2e + mScenario_export_CO2e);
 	};
 
 	float get_project_CAPEX() const {
@@ -737,8 +773,12 @@ public:
 		return mPayback_horizon_years;
 	}
 
-	float get_scenario_carbon_balance() const {
-		return mScenario_carbon_balance;
+	float get_scenario_carbon_balance_scope_1() const {
+		return mScenario_carbon_balance_scope_1;
+	}
+
+	float get_scenario_carbon_balance_scope_2() const {
+		return mScenario_carbon_balance_scope_2;
 	}
 
 	float get_total_annualised_cost() const {
@@ -772,7 +812,6 @@ public:
 	float get_Baseline_fuel_CO2e() const {
 		return mBaseline_fuel_CO2e;
 	}
-
 
 	float get_Scenario_import_cost() const {
 		return mScenario_import_cost;
@@ -898,7 +937,7 @@ public:
 		float mEV_low_price = 0.45f; // £/kWh site price for destination EV charging, 22 kW and below
 		float mEV_high_price = 0.79f; //£/kWh site price for high power EV charging, 50 KW and above
 		float mHP_price = 0.50f; // £/kWh site price for data centre compute (hi priority load)
-		float mLP_price ; // assume this is just the equivalent fossil fuel derived heat
+		float mLP_price ; // assume this is just the equivalent lowest cost fossil fuel derived heat
 
 
 		// plant lifetimes in years
@@ -908,6 +947,7 @@ public:
 		const float mEV_CP_lifetime = 15.0f;
 		const float mGrid_lifetime = 25.0f;
 		const float mASHP_lifetime = 10.0f;
+		const float mDHW_lifetime = 12.0f;
 		const float mProject_lifetime = 10.0f;
 
 		// Grid prices are currently part of the config
@@ -934,7 +974,9 @@ public:
 
 		float mScenario_LP_CO2e;
 
-		float mScenario_carbon_balance;
+		float mScenario_carbon_balance_scope_1;
+
+		float mScenario_carbon_balance_scope_2;
 
 		float mScenario_EV_revenue;
 

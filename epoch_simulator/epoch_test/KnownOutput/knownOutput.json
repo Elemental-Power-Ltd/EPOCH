@@ -1,7 +1,7 @@
 {
-  "CAPEX": 1138403.375,
-  "annualised": 70269.4140625,
-  "payback_horizon": 4.109364032745361,
-  "scenario_carbon_balance": 157495.609375,
-  "scenario_cost_balance": 277436.875
+  "CAPEX": 1243695.5,
+  "annualised": 75235.2578125,
+  "payback_horizon": 5.085565567016602,
+  "scenario_carbon_balance": 142715.890625,
+  "scenario_cost_balance": 244848.96875
 }

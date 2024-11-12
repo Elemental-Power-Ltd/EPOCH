@@ -22,7 +22,6 @@ TEST(EpochFullRun, MatchesKnownOutput) {
 	auto inputJson = readJsonFromFile(fileConfig.getInputJsonFilepath());
 	OutputValues testOutput = opt.runMainOptimisation(inputJson);
 	auto testJson = outputToJson(testOutput);
-	writeJsonToFile(testJson, fileConfig.getOutputJsonFilepath());
 
 	//// Load the known output
 	fs::path knownOutputFile = fs::path{ "KnownOutput" } / fs::path{ "knownOutput.json" };
@@ -36,6 +35,6 @@ TEST(EpochFullRun, MatchesKnownOutput) {
 
 	EXPECT_EQ(testJson["payback_horizon"], knownJson["payback_horizon"]);
 
+	// This is the scope 1 emissions
 	EXPECT_EQ(testJson["scenario_carbon_balance"], knownJson["scenario_carbon_balance"]);
-
 }

@@ -33,7 +33,7 @@ void LeagueTable::considerResult(const SimulationResult& r, const TaskData& task
 	considerMaximum(mCostBalance, r.scenario_cost_balance, r.paramIndex);
 
 	// Carbon Balance
-	considerMaximum(mCarbonBalance, r.scenario_carbon_balance, r.paramIndex);
+	considerMaximum(mCarbonBalance, r.scenario_carbon_balance_scope_1, r.paramIndex);
 
 	considerAsWorst(r);
 
@@ -228,7 +228,7 @@ void LeagueTable::considerAsWorst(const SimulationResult& r)
 		r.total_annualised_cost > mWorstAnnualisedCost.first ||
 		r.payback_horizon_years > mWorstPaybackHorizon.first ||
 		r.scenario_cost_balance < mWorstCostBalance.first ||
-		r.scenario_carbon_balance < mWorstCarbonBalance.first
+		r.scenario_carbon_balance_scope_1 < mWorstCarbonBalance.first
 		) {
 		considerAsWorstUnderMutex(r);
 	}
@@ -262,8 +262,8 @@ void LeagueTable::considerAsWorstUnderMutex(const SimulationResult& r)
 	}
 
 	// Carbon Balance
-	if (r.scenario_carbon_balance < mWorstCarbonBalance.first) {
-		mWorstCarbonBalance = { r.scenario_carbon_balance, r.paramIndex };
+	if (r.scenario_carbon_balance_scope_1 < mWorstCarbonBalance.first) {
+		mWorstCarbonBalance = { r.scenario_carbon_balance_scope_1, r.paramIndex };
 	}
 }
 

@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "0.2.2";
+const std::string EPOCH_VERSION = "0.3.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -63,51 +63,6 @@ struct ReportData {
 	year_TS DHW_Standby_loss;
 	year_TS DHW_ave_temperature;
 	year_TS DHW_Shortfall;
-
-	// Cost Data
-
-	float total_annualised_cost;
-	float project_CAPEX;
-	float scenario_cost_balance;
-	float payback_horizon_years;
-	float scenario_carbon_balance;
-
-	float Baseline_electricity_cost;
-	float Baseline_fuel_cost;
-
-	float Baseline_electricity_carbon;
-	float Baseline_fuel_carbon;
-
-	float Scenario_electricity_cost;
-	float Scenario_fuel_cost;
-	float Scenario_grid_export_cost;
-	float Resulting_EV_charge_revenue;
-	float Resulting_Data_Centre_revenue;
-	float Scenario_avoided_fuel_cost;
-
-	float Scenario_electricity_carbon;
-	float Scenario_fuel_carbon;
-	float Scenario_grid_export_carbon;
-	float Scenario_avoided_fuel_carbon;
-
-	float ESS_PCS_CAPEX;
-	float ESS_PCS_OPEX;
-	float ESS_ENCLOSURE_CAPEX;
-	float ESS_ENCLOSURE_OPEX;
-	float ESS_ENCLOSURE_DISPOSAL;
-
-	float PVpanel_CAPEX;
-	float PVBoP_CAPEX;
-	float PVroof_CAPEX;
-	float PVground_CAPEX;
-	float PV_OPEX;
-
-	float EV_CP_cost;
-	float EV_CP_install;
-
-	float Grid_CAPEX;
-
-	float ASHP_CAPEX;
 };
 
 struct SimulationResult {
@@ -118,7 +73,8 @@ struct SimulationResult {
 	float project_CAPEX;
 	float scenario_cost_balance;
 	float payback_horizon_years;
-	float scenario_carbon_balance;
+	float scenario_carbon_balance_scope_1;
+	float scenario_carbon_balance_scope_2;
 
 	std::optional<ReportData> report_data;
 };
@@ -145,7 +101,8 @@ struct ObjectiveResult {
 	float project_CAPEX;
 	float scenario_cost_balance;
 	float payback_horizon_years;
-	float scenario_carbon_balance;
+	float scenario_carbon_balance_scope_1;
+	float scenario_carbon_balance_scope_2;
 
 	TaskData taskData;
 };
@@ -156,7 +113,8 @@ inline ObjectiveResult toObjectiveResult(const SimulationResult& simResult, cons
 		simResult.project_CAPEX,
 		simResult.scenario_cost_balance,
 		simResult.payback_horizon_years,
-		simResult.scenario_carbon_balance,
+		simResult.scenario_carbon_balance_scope_1,
+		simResult.scenario_carbon_balance_scope_2,
 		taskData
 	};
 }
