@@ -58,19 +58,22 @@ public:
 		mT_ave = mCylEnergy_h * 3600.0f / (rho * mCylinderVolume * c_w) + T_cold;
 
 		// Calculate standby energy losses (convert W to kW, then to kJ)
+		// standby loss can be negative in rare circumstances (when the cylinder temperature is less than the ambient temperature)
 		float Standby_loss_kjoules = mU * (mT_ave - T_ambient) * (mTimestep_seconds) / 1000.0f; // in kJ
 
 		// Update stored energy
 		mCylEnergy_h += (Charging_kjoules - Discharging_kjoules - Standby_loss_kjoules) / 3600.0f; // convert back to kWh
 
-		mDHW_standby_losses[timestep] = Standby_loss_kjoules / 3600.0f; // record tank standby loss for reporting
+		// record tank standby loss for reporting
+		mDHW_standby_losses[timestep] = Standby_loss_kjoules / 3600.0f;
 		mDHW_ave_temperature[timestep] = mT_ave;
 
-		//if (mCylEnergy_h < 0)
-		//{
-		//    mDHW_shortfall_e[timestep] = -mCylEnergy_h; // record shortfall in absolute terms
-		//    mCylEnergy_h = 0;
-		//}
+		if (mCylEnergy_h < 0)
+		{
+			// record shortfall in absolute terms
+		    mDHW_shortfall_e[timestep] = -mCylEnergy_h;
+		    mCylEnergy_h = 0;
+		}
 
 		mDHW_SoC_history[timestep] = mCylEnergy_h;
 
@@ -88,24 +91,23 @@ public:
 		intialise_SoC();
 		calculate_U();
 
-		mAverage_tariff = mImport_tariff.mean(); // calculate average tariff as a threshold to charge
+		// calculate average tariff as a threshold to charge
+		mAverage_tariff = mImport_tariff.mean(); 
 
-		update_SoC_basic(0, mDHW_discharging[0], 0);// initialise cylinder at timestep zero
+		// initialise cylinder at timestep zero
+		update_SoC_basic(0, mDHW_discharging[0], 0);
 
-		//mDHW_SoC_history[0] = mCylEnergy_h; // initialise state of charge
+		// We start at t=1 here because we need to look at the previous timestep
+		for (int timestep = 1; timestep < mTimesteps; timestep++) {
 
-		for (int timestep = 1; timestep < mTimesteps; timestep++) // first timestep = 0 for C++ array
-		{
+			float timestep_charge = 0;
 
-			float timestep_charge = 0; // reference the State of charge to see available energy, report shortfall 
 			// determine charge
-
-			float max_charge_energy = mCapacity_h - getCylEnergy(); // assume tank can fully charge electrically in 1 timestep if need be
-			float max_heat_pump_charge_energy = std::min((mCapacity_h - getCylEnergy()), (mHeat_pump_power_h * mTimestep_hours));
+			float max_charge_energy = mCapacity_h - mCylEnergy_h;
+			float max_heat_pump_charge_energy = std::min(max_charge_energy, (mHeat_pump_power_h * mTimestep_hours));
 
 
 			float timestep_renewable_charge = 0; // this is by resitive immersion heating assume 1kWe = 1kWh
-			float timestep_shortfall_charge = 0; // this is by restive immersion heating, electric shower or other instantaneous electric method assume 1kWe = 1kWh
 			float timestep_lowtariff_charge = 0; // to charge from tariff schedule, this can be achieved by heat pump
 
 			if (tempSum.Elec_e[timestep] < 0) // if there is a surplus of renewables, permit DHW charging by immersion and/or charge if there is a requirement for boost// must be after first timestep // can add tariff considertion later 
@@ -113,29 +115,20 @@ public:
 				timestep_renewable_charge = std::min(-tempSum.Elec_e[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
 			}
 
-			if (mImport_tariff[timestep] < mAverage_tariff)
-			{
+			if (mImport_tariff[timestep] <= mAverage_tariff)	{
 				timestep_lowtariff_charge = max_heat_pump_charge_energy - timestep_renewable_charge;
 			}
-			// if there will be insufficient total charge in this timestep to address current demand, top up to what is required and log this as shortfall
-			if (mDHW_SoC_history[timestep - 1] + timestep_renewable_charge + timestep_lowtariff_charge < mDHW_discharging[timestep])
 
-				// this is the minimum to support instantenous charging
-			{
-				timestep_shortfall_charge = std::min(max_charge_energy, (mDHW_discharging[timestep] - timestep_renewable_charge - timestep_lowtariff_charge - mDHW_SoC_history[timestep - 1]));
-				mDHW_shortfall_e[timestep] = timestep_shortfall_charge;
-			}
+			timestep_charge = timestep_renewable_charge + timestep_lowtariff_charge;
 
-			timestep_charge = timestep_renewable_charge + timestep_lowtariff_charge + timestep_shortfall_charge;
+			update_SoC_basic(timestep_charge, mDHW_discharging[timestep], timestep);
 
-			// need to determine heat pump DHW charging load vs immersion 
-			update_SoC_basic(timestep_charge, mDHW_discharging[timestep], timestep); // apply charge & discharge to cylinder & calculate state 
-
-			// log charge applied
-			mDHW_charging[timestep] = timestep_charge; // total heat transfered to cylinder
-			mDHW_diverter_load_e[timestep] = timestep_renewable_charge; // assume renewable energy divert is simple AC heater
-			mDHW_heat_pump_load_h[timestep] = timestep_lowtariff_charge; // assume the low tariff charge is done by heat pump
-
+			// total heat transfered to cylinder
+			mDHW_charging[timestep] = timestep_charge;
+			// assume renewable energy divert is simple AC heater
+			mDHW_diverter_load_e[timestep] = timestep_renewable_charge;
+			// assume the low tariff charge is done by heat pump
+			mDHW_heat_pump_load_h[timestep] = timestep_lowtariff_charge;
 		};
 
 		// update tempSum to apply the electrical loads
@@ -149,25 +142,14 @@ public:
 	}
 
 	void Report(ReportData& reportData) {
+		// TODO - we may need to report the actual discharging from the tank separately from the instantaneous demand
+		//  (mDHW_discharging is just historicalData.DHWdemand_data)
 		reportData.DHW_load = mDHW_discharging;
 		reportData.DHW_charging = mDHW_charging;
 		reportData.DHW_SoC = mDHW_SoC_history;
 		reportData.DHW_Standby_loss = mDHW_standby_losses;
 		reportData.DHW_ave_temperature = mDHW_ave_temperature;
 		reportData.DHW_Shortfall = mDHW_shortfall_e;
-	}
-
-	// Get the current stored energy in the tank in kWh
-	float getCylEnergy() const {
-		return mCylEnergy_h;
-	}
-
-	year_TS getDHW_Charging() const {
-		return mDHW_charging;
-	}
-
-	year_TS getDHW_shortfall() const {
-		return mDHW_shortfall_e;
 	}
 
 

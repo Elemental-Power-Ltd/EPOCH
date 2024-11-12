@@ -105,7 +105,9 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 	// TODO - consider applying battery aux load before considering DHW
 	// something like: ESSmain.ApplyAuxLoad(tempSum);
 
-	hotWaterCylinder.AllCalcs(tempSum);
+	if (taskData.DHW_cylinder_volume > 0) {
+		hotWaterCylinder.AllCalcs(tempSum);
+	}
 
 	if (taskData.ASHP_HSource == 1) {
 		ambientController->AllCalcs(tempSum);
