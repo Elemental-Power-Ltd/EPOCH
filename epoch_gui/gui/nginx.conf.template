@@ -9,7 +9,7 @@ server {
 
     # /api/optimisation/* requests go to the optimisation service on port 8761
     location /api/optimisation/ {
-        proxy_pass http://localhost:8761/;
+        proxy_pass ${EP_OPTIMISATION_SERVICE_URL}/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -21,7 +21,7 @@ server {
 
     # /api/data/* requests go to the data service on port 8762
     location /api/data/ {
-        proxy_pass http://localhost:8762/;
+        proxy_pass ${EP_DATA_SERVICE_URL}/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

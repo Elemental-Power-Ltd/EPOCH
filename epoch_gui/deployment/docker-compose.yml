@@ -1,12 +1,21 @@
 x-shared: &shared
   network_mode: host
-  environment:
-    EXAMPLE_ENV: "FOO"
+#  environment:
+#    EP_OPTIMISATION_SERVICE_URL: "http://optimisation:8761"
+#    EP_DATA_SERVICE_URL: "http://data:8762"
+#    EP_DATABASE_URL: "postgresql://python:elemental@db/elementaldb"
 
 services:
   gui:
     image: epoch-gui:latest
     <<: *shared
+    ports:
+      - "80:80"
+    # We can't start the gui until the data and optimisation services are running
+    # As NGINX is unable to resolve service names if they are not running
+    depends_on:
+      - data
+      - optimisation
 
   optimisation:
     image: ep-optimisation:latest
