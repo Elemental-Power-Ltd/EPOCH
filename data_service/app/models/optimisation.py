@@ -29,8 +29,9 @@ class OptimisationResult(pydantic.BaseModel):
         examples=["bb8ce01e-4a73-11ef-9454-0242ac120001"],
         description="Unique ID for this task, often assigned by the optimiser.",
     )
+    site_id: site_id_t | None = site_id_field
     result_id: pydantic.UUID4
-    solution: dict[str, float | int] = pydantic.Field(
+    solution: dict[str, float | int] | None = pydantic.Field(
         examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
         description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
         + "May not cover all parameters, only the ones we searched over.",
@@ -127,7 +128,7 @@ class TaskConfig(pydantic.BaseModel):
         examples=[Objective(carbon_balance=None, cost_balance=None, capex=1e6, payback_horizon=None, annualised_cost=None)],
         description="Maximal values of the objectives to consider, e.g. reject all solutions with capex > £1,000,000.",
     )
-    search_parameters: dict[str, float | int | SearchSpaceEntry] = pydantic.Field(
+    search_parameters: dict[site_id_t, dict[str, float | int | SearchSpaceEntry]] = pydantic.Field(
         examples=[
             {
                 "Export_headroom": {"min": 0, "max": 0, "step": 0},
@@ -142,12 +143,11 @@ class TaskConfig(pydantic.BaseModel):
         description="The objectives that we're interested in, provided as a list."
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
-    site_data: SiteDataEntry = pydantic.Field(description="Where the data for this calculation are coming from.")
+    site_data: dict[site_id_t, SiteDataEntry] = pydantic.Field(
+        description="Where the data for this calculation are coming from."
+    )
     optimiser: Optimiser = pydantic.Field(
         description="The optimisation algorithm for the backend to use in these calculations."
-    )
-    optimiser_hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
-        default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
     )
     created_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),

@@ -292,6 +292,7 @@ CREATE TABLE optimisation.optimisers (
 
 CREATE TABLE optimisation.results (
     task_id uuid,
+    site_id text,
     solutions jsonb NOT NULL,
     objective_values public.objective_t NOT NULL,
     n_evals integer,
@@ -316,8 +317,7 @@ CREATE TABLE optimisation.task_config (
     input_data jsonb,
     optimiser_type text NOT NULL,
     optimiser_hyperparameters jsonb,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    site_id text
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -730,14 +730,6 @@ ALTER TABLE ONLY optimisation.optimisers
 
 
 --
--- Name: results results_pkey; Type: CONSTRAINT; Schema: optimisation; Owner: -
---
-
-ALTER TABLE ONLY optimisation.results
-    ADD CONSTRAINT results_pkey PRIMARY KEY (results_id);
-
-
---
 -- Name: metadata metadata_pkey; Type: CONSTRAINT; Schema: renewables; Owner: -
 --
 
@@ -980,14 +972,6 @@ ALTER TABLE ONLY heating.synthesised
 
 ALTER TABLE ONLY optimisation.task_config
     ADD CONSTRAINT fk_job_config_optimiser_type_optimiser_name FOREIGN KEY (optimiser_type) REFERENCES optimisation.optimisers(name);
-
-
---
--- Name: task_config fk_task_config_site_info_site_id; Type: FK CONSTRAINT; Schema: optimisation; Owner: -
---
-
-ALTER TABLE ONLY optimisation.task_config
-    ADD CONSTRAINT fk_task_config_site_info_site_id FOREIGN KEY (site_id) REFERENCES client_info.site_info(site_id);
 
 
 --

@@ -7,7 +7,6 @@ Each result is uniquely identified, and belongs to a set of results.
 """
 
 import json
-import uuid
 
 import asyncpg
 import pydantic
@@ -146,7 +145,7 @@ async def add_optimisation_results(
     results_uuids
         Unique database IDs of each set of results in case you want to refer back to them later.
     """
-    results_uuids = [uuid.uuid4() for _ in results_in]
+    results_uuids = [item.result_id for item in results_in]
     try:
         await conn.executemany(
             """
@@ -158,8 +157,9 @@ async def add_optimisation_results(
                 objective_values,
                 n_evals,
                 exec_time,
-                completed_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+                completed_at,
+                site_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
             zip(
                 results_uuids,
                 [item.task_id for item in results_in],
@@ -168,6 +168,7 @@ async def add_optimisation_results(
                 [item.n_evals for item in results_in],
                 [item.exec_time for item in results_in],
                 [item.completed_at for item in results_in],
+                [item.site_id for item in results_in],
                 strict=True,
             ),
         )
@@ -220,8 +221,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
                     input_data,
                     optimiser_type,
                     optimiser_hyperparameters,
-                    created_at,
-                    site_id)
+                    created_at)
                 VALUES (
                 $1,
                 $2,
@@ -232,8 +232,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
                 $7,
                 $8,
                 $9,
-                $10,
-                $11)""",
+                $10)""",
             task_config.task_id,
             task_config.task_name,
             task_config.objective_directions.model_dump(),
@@ -244,7 +243,6 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
             task_config.optimiser.name.value,
             json.dumps(jsonable_encoder(task_config.optimiser.hyperparameters)),
             task_config.created_at,
-            task_config.site_data.site_id,
         )
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
