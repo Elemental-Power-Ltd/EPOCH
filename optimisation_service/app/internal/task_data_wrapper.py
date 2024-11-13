@@ -26,7 +26,7 @@ except ImportError as ex:
 
     class Simulator:  # type: ignore
         def __init__(self, inputDir: str): ...
-        def simulate_scenario(self, task_data: TaskData) -> SimulationResult:
+        def simulate_scenario(self, task_data: TaskData, fullReporting: bool = False) -> SimulationResult:
             raise NotImplementedError()
 
 
