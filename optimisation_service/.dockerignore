@@ -41,6 +41,4 @@ spdlog.DLL
 epoch_simulator.cp312-win_amd64.pyd
 
 # data
-JSONEload.json
-JOSNHload.json
-example_package.json
+./app/data/temp
