@@ -4,4 +4,6 @@ services:
     build:
       context: ".."
       dockerfile: docker/Dockerfile
+    ports:
+      - "8761:8761"
     network_mode: "host"
