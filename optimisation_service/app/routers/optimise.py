@@ -2,15 +2,14 @@ import asyncio
 import datetime
 import json
 import logging
-import typing
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import UUID4
 
-from ..internal.datamanager import DataManager
+from ..internal.datamanager import DataManager, DataManagerDep
 from ..internal.grid_search import convert_param
 from ..internal.problem import _OBJECTIVES, ParameterDict, Problem
 from ..internal.result import Result
@@ -107,9 +106,6 @@ async def process_requests(q: IQueue) -> None:
             logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)
             pass
         q.mark_task_done(task)
-
-
-DataManagerDep = typing.Annotated[DataManager, Depends(DataManager)]
 
 
 @router.post("/submit-task")

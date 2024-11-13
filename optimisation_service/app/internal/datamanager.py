@@ -1,16 +1,26 @@
 import logging
 import os
 import shutil
+import typing
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pandas as pd
+from fastapi import Depends
 from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
 from ..models.core import EndpointResult, TaskWithUUID
-from ..models.site_data import ASHPResult, FileLoc, LocalMetaData, RecordsList, RemoteMetaData, SiteDataEntries, SiteMetaData
+from ..models.simulate import ResultReproConfig
+from ..models.site_data import (
+    ASHPResult,
+    FileLoc,
+    RecordsList,
+    RemoteMetaData,
+    SiteDataEntries,
+    SiteMetaData,
+)
 
 logger = logging.getLogger("default")
 
@@ -52,17 +62,65 @@ class DataManager:
         logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
         os.makedirs(self.temp_data_dir)
 
-        if site_data.loc == FileLoc.local:
+        if site_data.loc == FileLoc.remote:
+            if not site_data.dataset_ids:
+                await self.hydrate_site_with_latest_dataset_ids(site_data)
+
+            site_data_entries = await self.fetch_specific_datasets(site_data)
+
+            self.write_input_data_to_files(site_data_entries, self.temp_data_dir)
+
+        elif site_data.loc == FileLoc.local:
             self.copy_input_data(site_data.path, self.temp_data_dir)
-        elif site_data.loc == FileLoc.remote:
-            if site_data.dataset_ids:
-                site_data_entries = await self.fetch_specific_datasets(site_data)
-            else:
-                site_data_entries = await self.fetch_latest_datasets(site_data)
-            dfs = self.transform_all_input_data(site_data_entries)
-            logger.info(f"Saving site data to {self.temp_data_dir}.")
-            for name, df in dfs.items():
-                df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
+
+    async def hydrate_site_with_latest_dataset_ids(self, site_data: RemoteMetaData) -> None:
+        """
+        Obtain the latest dataset_ids for the given site and place them in the site_data
+
+        This method should be called when site_data has not provided a specific set of IDs
+        Parameters
+        ----------
+        site_data
+
+        Returns
+        -------
+
+        """
+        latest_ids = await self.fetch_latest_dataset_ids(site_data)
+
+        dataset_ids = {}
+        for dataset_type in latest_ids:
+            dataset_ids[dataset_type] = latest_ids[dataset_type]["dataset_id"]
+            dataset_ids[dataset_type] = UUID4(latest_ids[dataset_type]["dataset_id"])
+
+        site_data.dataset_ids = dataset_ids
+
+    async def fetch_latest_dataset_ids(self, site_data: RemoteMetaData) -> dict[str, Any]:
+        # At present, /list-latest-datasets only requires a site_id
+        data = {"site_id": site_data.site_id}
+
+        async with httpx.AsyncClient() as client:
+            latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=data)
+            return latest_ids
+
+    def write_input_data_to_files(self, site_data_entries, destination) -> None:
+        """
+        Write the input data to a target folder
+
+        Parameters
+        ----------
+        site_data_entries
+            Input site data
+        destination
+            Folder to write files to.
+        Returns
+        -------
+
+        """
+        dfs = self.transform_all_input_data(site_data_entries)
+        logger.info(f"Saving site data to {destination}.")
+        for name, df in dfs.items():
+            df.to_csv(Path(destination, f"CSV{name}.csv"), index=False)
 
     def copy_input_data(self, source: str | os.PathLike, destination: str | os.PathLike) -> None:
         """
@@ -157,9 +215,7 @@ class DataManager:
         }
         return site_data
 
-    async def db_post(
-        self, client: httpx.AsyncClient, subdirectory: str, data: RemoteMetaData | LocalMetaData | dict[str, Any]
-    ) -> SiteDataEntries:
+    async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data: Any) -> Any:
         """
         Send a post request to the database api server.
 
@@ -213,6 +269,23 @@ class DataManager:
         logger.info(f"Adding {task.task_id} to database.")
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-task", data=jsonable_encoder(task))
+
+    async def get_result_configuration(self, result_id: UUID4) -> ResultReproConfig:
+        """
+        Get the configuration that was used to generate a result that is stored in the database
+
+        Parameters
+        ----------
+        result_id
+
+        Returns
+        -------
+
+        """
+        async with httpx.AsyncClient() as client:
+            data = await self.db_post(client, subdirectory="/get-result-configuration", data={"result_id": result_id})
+            logger.info("Repro with:", data)
+            return ResultReproConfig.model_validate(data)
 
     def transform_electricity_data(self, eload: RecordsList) -> pd.DataFrame:
         df = pd.DataFrame.from_records(eload)
@@ -270,3 +343,6 @@ class DataManager:
         df = pd.DataFrame.from_records(grid_co2)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "GridCO2"])
         return df
+
+
+DataManagerDep = typing.Annotated[DataManager, Depends(DataManager)]
