@@ -7,14 +7,13 @@ from typing import Any
 import httpx
 import pandas as pd
 from fastapi.encoders import jsonable_encoder
-from pydantic import UUID4
 
 from ..models.core import EndpointResult, TaskWithUUID
 from ..models.site_data import ASHPResult, FileLoc, LocalMetaData, RecordsList, RemoteMetaData, SiteDataEntries, SiteMetaData
 
 logger = logging.getLogger("default")
 
-_DB_URL = os.environ.get("DB_API_URL", "http://localhost:8762")
+_DB_URL = os.environ.get("DB_API_URL", "http://127.0.0.1:8762")
 _TEMP_DIR = Path("app", "data", "temp")
 _INPUT_DATA_FILES = [
     "CSVEload.csv",
@@ -35,7 +34,7 @@ class DataManager:
         self.temp_dir = _TEMP_DIR
         self.input_data_files = _INPUT_DATA_FILES
 
-    async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4) -> None:
+    async def fetch_portfolio_data(self, portfolio: TaskWithUUID) -> None:
         """
         Process task site data.
         Either copy local files to temp dir or fetch and process data from database and save to temp dir.
@@ -47,21 +46,27 @@ class DataManager:
         task_id
             The task id
         """
-        self.temp_data_dir = Path(self.temp_dir, str(task_id))
-        logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
-        os.makedirs(self.temp_data_dir)
+        self.portfolio_dir = Path(self.temp_dir, str(portfolio.task_id))
+        logger.debug(f"Creating temporary directory {self.portfolio_dir}.")
+        os.makedirs(self.portfolio_dir)
+        logger.info(f"Saving site data to {self.portfolio_dir}.")
 
-        if site_data.loc == FileLoc.local:
-            self.copy_input_data(site_data.path, self.temp_data_dir)
-        elif site_data.loc == FileLoc.remote:
-            if site_data.dataset_ids:
-                site_data_entries = await self.fetch_specific_datasets(site_data)
-            else:
-                site_data_entries = await self.fetch_latest_datasets(site_data)
-            dfs = self.transform_all_input_data(site_data_entries)
-            logger.info(f"Saving site data to {self.temp_data_dir}.")
-            for name, df in dfs.items():
-                df.to_csv(Path(self.temp_data_dir, f"CSV{name}.csv"), index=False)
+        # TODO: makes this async
+        self.building_dirs = {}
+        for building in portfolio.buildings:
+            self.building_dirs[building.name] = building_dir = Path(self.portfolio_dir, building.name)
+            os.makedirs(building_dir)
+            site_data = building.site_data
+            if site_data.loc == FileLoc.local:
+                self.copy_input_data(site_data.path, building_dir)
+            elif site_data.loc == FileLoc.remote:
+                if site_data.dataset_ids:
+                    site_data_entries = await self.fetch_specific_datasets(site_data)
+                else:
+                    site_data_entries = await self.fetch_latest_datasets(site_data)
+                dfs = self.transform_all_input_data(site_data_entries)
+                for name, df in dfs.items():
+                    df.to_csv(Path(building_dir, f"CSV{name}.csv"), index=False)
 
     def copy_input_data(self, source: str | os.PathLike, destination: str | os.PathLike) -> None:
         """
@@ -210,8 +215,21 @@ class DataManager:
             Optimisation task.
         """
         logger.info(f"Adding {task.task_id} to database.")
+        search_parameters, site_data = {}, {}
+        for building in task.buildings:
+            search_parameters[building.name] = building.search_parameters
+            site_data[building.name] = building.site_data
+        data = {
+            "task_id": task.task_id,
+            "task_name": task.name,
+            "objectives": task.objectives,
+            "optimiser": task.optimiser,
+            "created_at": task.created_at,
+            "search_parameters": search_parameters,
+            "site_data": site_data,
+        }
         async with httpx.AsyncClient() as client:
-            await self.db_post(client=client, subdirectory="/add-optimisation-task", data=jsonable_encoder(task))
+            await self.db_post(client=client, subdirectory="/add-optimisation-task", data=jsonable_encoder(data))
 
     def transform_electricity_data(self, eload: RecordsList) -> pd.DataFrame:
         df = pd.DataFrame.from_records(eload)

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from pydantic import UUID4
 
-from app.internal.problem import Problem
+from app.internal.problem import PortfolioProblem
 
 from ..internal.datamanager import DataManager
 from .algorithms import Algorithm
@@ -12,5 +12,5 @@ from .algorithms import Algorithm
 class Task:
     task_id: UUID4
     optimiser: Algorithm
-    problem: Problem
+    problem: PortfolioProblem
     data_manager: DataManager

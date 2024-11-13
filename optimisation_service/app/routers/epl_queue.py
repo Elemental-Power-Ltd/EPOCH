@@ -80,7 +80,7 @@ class IQueue(asyncio.Queue):
         logger.info(f"Marking as done {task.task_id}.")
         del self.q[task.task_id]
         if self.remove_directory:
-            shutil.rmtree(task.data_manager.temp_data_dir)
+            shutil.rmtree(task.data_manager.portfolio_dir)
         super().task_done()
 
     def cancel(self, task_id: UUID4) -> None:
