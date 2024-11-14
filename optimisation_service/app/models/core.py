@@ -33,6 +33,10 @@ class EndpointTask(EndpointBuilding):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
+    client_id: str = Field(
+        examples=["demo"],
+        description="The database ID for a client, all lower case, joined by underscores.",
+    )
 
 
 class EndpointPortfolioTask(BaseModel):
@@ -46,6 +50,10 @@ class EndpointPortfolioTask(BaseModel):
         description="The time this Task was created and added to the queue.",
     )
     buildings: list[EndpointBuilding] = Field(description="List of buildings in portfolio.")
+    client_id: str = Field(
+        examples=["demo"],
+        description="The database ID for a client, all lower case, joined by underscores.",
+    )
 
 
 class TaskWithUUID(EndpointPortfolioTask):

@@ -149,6 +149,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
         objectives=endpoint_task.objectives,
         created_at=endpoint_task.created_at,
         buildings=[building],
+        client_id=endpoint_task.client_id,
     )
 
     response = await submit_portfolio(request=request, endpoint_portfolio_task=epp_task, data_manager=data_manager)

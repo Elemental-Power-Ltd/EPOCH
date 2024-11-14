@@ -220,6 +220,7 @@ class DataManager:
             search_parameters[building.name] = building.search_parameters
             site_data[building.name] = building.site_data
         data = {
+            "client_id": task.client_id,
             "task_id": task.task_id,
             "task_name": task.name,
             "objectives": task.objectives,
