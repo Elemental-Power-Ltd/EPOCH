@@ -113,6 +113,10 @@ class Optimiser(pydantic.BaseModel):
 
 class TaskConfig(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
+    client_id: str = pydantic.Field(
+        examples=["demo"],
+        description="The database ID for a client, all lower case, joined by underscores.",
+    )
     task_name: str | None = pydantic.Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
     objective_directions: Objective = pydantic.Field(
         default=Objective(carbon_balance=-1, cost_balance=1, capex=-1, payback_horizon=-1, annualised_cost=-1),
@@ -157,7 +161,6 @@ class TaskConfig(pydantic.BaseModel):
 
 class OptimisationTaskListEntry(pydantic.BaseModel):
     task_id: dataset_id_t
-    site_id: site_id_t = site_id_field
     task_name: str | None
     result_ids: list[pydantic.UUID4]
     n_evals: pydantic.PositiveInt = pydantic.Field(

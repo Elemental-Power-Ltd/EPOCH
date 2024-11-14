@@ -310,6 +310,7 @@ CREATE TABLE optimisation.results (
 CREATE TABLE optimisation.task_config (
     task_id uuid NOT NULL,
     task_name text,
+    client_id text,
     objective_directions public.objective_t NOT NULL,
     constraints_min public.objective_t,
     constraints_max public.objective_t,

@@ -42,6 +42,7 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[O
         """
         SELECT
             task_id,
+            site_id,
             results_id AS result_id,
             solutions,
             objective_values,
@@ -54,6 +55,7 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[O
         OptimisationResult(
             task_id=item["task_id"],
             result_id=item["result_id"],
+            site_id=item["site_id"],
             solution=json.loads(item["solutions"]),
             objective_values=Objective(
                 carbon_balance=item["objective_values"]["carbon_balance"],
@@ -86,19 +88,17 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
         """
         SELECT
             tc.task_id,
-            tc.site_id,
+            tc.client_id,
             tc.task_name,
             MAX(r.n_evals) AS n_evals,
             MAX(r.exec_time) AS exec_time,
             tc.created_at,
             ARRAY_AGG(r.results_id) AS result_id
         FROM optimisation.task_config AS tc
-        INNER JOIN client_info.site_info as sites
-        ON tc.site_id = sites.site_id
         LEFT JOIN
             (SELECT task_id, results_id, n_evals, exec_time FROM optimisation.results) as r
         ON r.task_id = tc.task_id
-        WHERE sites.client_id = $1
+        WHERE tc.client_id = $1
         GROUP BY
             tc.task_id
         ORDER BY tc.created_at ASC
@@ -109,11 +109,10 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
     return [
         OptimisationTaskListEntry(
             task_id=item["task_id"],
-            site_id=item["site_id"],
             task_name=item["task_name"],
             n_evals=item["n_evals"],
             exec_time=item["exec_time"],
-            result_ids=list(item["result_id"]),
+            result_ids=list(set(item["result_id"])),
         )
         for item in res
         if item["result_id"] != [None]
@@ -213,6 +212,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
             INSERT INTO
                 optimisation.task_config (
                     task_id,
+                    client_id,
                     task_name,
                     objective_directions,
                     constraints_min,
@@ -232,8 +232,10 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
                 $7,
                 $8,
                 $9,
-                $10)""",
+                $10,
+                $11)""",
             task_config.task_id,
+            task_config.client_id,
             task_config.task_name,
             task_config.objective_directions.model_dump(),
             task_config.constraints_min,
