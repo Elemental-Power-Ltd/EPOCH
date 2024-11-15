@@ -60,6 +60,32 @@ def celsius_to_kelvin(temperature: FloatOrArray) -> FloatOrArray:
     return temperature + 273.15
 
 
+def kelvin_to_celsius(temperature: FloatOrArray) -> FloatOrArray:
+    """
+    Convert a temperature in Celsius to one in Kelvin.
+
+    This checks that you haven't already converted it, and that it's a reasonable air temperature.
+
+    Parameters
+    ----------
+    temperature
+        Air temperature in celsius between -50°C and 100°C
+
+    Returns
+    -------
+        Temperature in Kelvin between 223.15K and 373.15K
+    """
+    if isinstance(temperature, float | int):
+        assert 0 <= temperature < 373.15, (
+            f"{temperature} out of range of likely K values [0, 373.15]. Have you already converted it?"
+        )
+    else:
+        assert np.all(np.logical_and(0 <= temperature, temperature < 373.15)), (
+            f"{temperature} out of range of likely K values [0, 373.15]. Have you already converted it?"
+        )
+    return temperature - 273.15
+
+
 def millibar_to_megapascal(pressure: FloatOrArray) -> FloatOrArray:
     """
     Convert an air pressure in mbar into one in MPa.
@@ -87,6 +113,35 @@ def millibar_to_megapascal(pressure: FloatOrArray) -> FloatOrArray:
             f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
         )
     return pressure / 10000
+
+
+def pa_to_mbar(pressure: FloatOrArray) -> FloatOrArray:
+    """
+    Convert an air pressure in Pa to one in mbar.
+
+    VisualCrossing provides us with air temperatures in mbar, but
+    for some equations we want it in megapascals.
+    This checks that you haven't already converted it, and that it's
+    a reasonable air pressure (outside this range is very bad news).
+
+    Parameters
+    ----------
+    pressure
+        Air pressure in mbar between 800 and 1100 mbar
+
+    Returns
+    -------
+        air pressure in MPa between 0.08 and 0.11 MPa
+    """
+    if isinstance(pressure, float | int):
+        assert 9e4 < pressure < 1.1e5, (
+            f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
+        )
+    else:
+        assert np.all(np.logical_and(9e4 < pressure, pressure < 1.1e5)), (
+            f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
+        )
+    return pressure / 100
 
 
 def relative_to_specific_humidity(rel_hum: FloatOrArray, air_temp: FloatOrArray, air_pressure: FloatOrArray) -> FloatOrArray:

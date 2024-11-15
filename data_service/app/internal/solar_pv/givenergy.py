@@ -1,13 +1,13 @@
 """Functions for interfacing with the GivEnergy API."""
 
 import datetime
-import os
 import re
 from collections import defaultdict
 
 import httpx
 import pandas as pd
 
+from ...epl_secrets import get_secrets_environment
 from ..utils.jwt_utils import validate_jwt
 from .givenergy_types import FullGivEnergyResponse, GivEnergyDict
 
@@ -110,7 +110,7 @@ def get_givenergy_day(
     if not is_serial_number_valid(serial_number):
         raise ValueError(f"Got invalid serial number {serial_number}.")
 
-    jwt_token = os.environ.get("GIVENERGY_JWT_TOKEN")
+    jwt_token = get_secrets_environment()["GIVENERGY_JWT"]
     if jwt_token is None:
         raise ValueError("Environment variable GIVENERGY_JWT_TOKEN must provided.")
 

@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
+from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, SecretsDep
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
 from ..internal.utils import add_epoch_fields
 from ..models.core import MultipleDatasetIDWithTime, SiteID, dataset_id_t
@@ -55,7 +55,7 @@ async def get_pv_optima(request: Request, site_id: SiteID, conn: DatabaseDep) ->
 
 @router.post("/generate-renewables-generation", tags=["generate", "solar_pv"])
 async def generate_renewables_generation(
-    params: RenewablesRequest, pool: DatabasePoolDep, http_client: HttpClientDep
+    params: RenewablesRequest, pool: DatabasePoolDep, http_client: HttpClientDep, secrets_env: SecretsDep
 ) -> RenewablesMetadata:
     """
     Calculate renewables generation in kW / kWp for this site.

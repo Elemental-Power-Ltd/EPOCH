@@ -2,7 +2,6 @@
 
 import datetime
 import json
-import os
 
 import fastapi
 import httpx
@@ -10,8 +9,9 @@ import numpy as np
 import pandas as pd
 from fastapi import HTTPException
 
+from ..epl_secrets import get_secrets_environment
 from ..models.renewables import PvgisMountingSystemEnum, PVOptimaResult
-from .utils import check_latitude_longitude, load_dotenv
+from .utils import check_latitude_longitude
 
 
 async def get_pvgis_optima(
@@ -167,6 +167,7 @@ async def get_renewables_ninja_data(
     tilt: float | None = None,
     tracking: bool = False,
     client: httpx.AsyncClient | None = None,
+    api_key: str | None = None,
 ) -> pd.DataFrame:
     """
     Request solar PV information from renewables.ninja.
@@ -199,7 +200,9 @@ async def get_renewables_ninja_data(
     -------
         pandas dataframe with timestamp index and column "pv"
     """
-    load_dotenv()
+    if api_key is None:
+        api_key = get_secrets_environment()["RENEWABLES_NINJA_API_KEY"]
+
     BASE_URL = "https://www.renewables.ninja/api/data/pv"
 
     if not check_latitude_longitude(latitude=latitude, longitude=longitude):
@@ -224,21 +227,17 @@ async def get_renewables_ninja_data(
     # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
     # for connection pooling. However, if weren't given one we'll have to make one.
     if client is not None:
-        req = await client.get(
-            BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
-        )
+        req = await client.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
     else:
         async with httpx.AsyncClient() as aclient:
-            req = await aclient.get(
-                BASE_URL, params=params, headers={"Authorization": f"Token {os.environ['RENEWABLES_NINJA_API_KEY']}"}
-            )
+            req = await aclient.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
 
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
             columns={"electricity": "pv"}
         )
     except json.JSONDecodeError as ex:
-        raise fastapi.HTTPException(400, "Decoding renewables.ninja data failed. Try again later.") from ex
+        raise fastapi.HTTPException(400, "Decoding renewables.ninja data failed. Got {req.text} instead of valid JSON.") from ex
     renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
     renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)

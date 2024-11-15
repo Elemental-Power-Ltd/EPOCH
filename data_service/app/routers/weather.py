@@ -9,8 +9,8 @@ We use VisualCrossing as the source of all weather data currently.
 import datetime
 import functools
 import itertools
+import json
 import logging
-import os
 
 import aiometer
 import httpx
@@ -18,8 +18,9 @@ import pandas as pd
 import pydantic
 from fastapi import APIRouter
 
-from ..dependencies import DatabaseDep, HTTPClient, HttpClientDep
-from ..internal.utils import load_dotenv, split_into_sessions
+from ..dependencies import DatabaseDep, HTTPClient, HttpClientDep, SecretsDep
+from ..epl_secrets import get_secrets_environment
+from ..internal.utils import split_into_sessions
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
 
 router = APIRouter()
@@ -30,6 +31,7 @@ async def visual_crossing_request(
     start_ts: datetime.datetime | datetime.date,
     end_ts: datetime.datetime | datetime.date,
     http_client: HTTPClient,
+    api_key: str | None = None,
 ) -> list[dict[str, pydantic.AwareDatetime | float]]:
     """
     Get a weather history as a raw response from VisualCrossing.
@@ -56,7 +58,9 @@ async def visual_crossing_request(
         start_ts = datetime.datetime.combine(start_ts, datetime.time.min, datetime.UTC)
     if isinstance(end_ts, datetime.date):
         end_ts = datetime.datetime.combine(end_ts, datetime.time.min, datetime.UTC)
-    load_dotenv()
+
+    if api_key is None:
+        api_key = get_secrets_environment()["VISUAL_CROSSING_API_KEY"]
 
     desired_columns = [
         "datetimeEpoch",
@@ -81,6 +85,7 @@ async def visual_crossing_request(
     async def get_single_result(
         in_location: str,
         in_client: httpx.AsyncClient,
+        api_key: str,
         ts_pair: tuple[pd.Timestamp, pd.Timestamp] | tuple[datetime.datetime, datetime.datetime],
     ) -> httpx.Response:
         """
@@ -99,7 +104,7 @@ async def visual_crossing_request(
                 + f"/{in_location}/{int(ts_pair[0].timestamp())}/{int(ts_pair[1].timestamp())}"
             ),
             params={
-                "key": os.environ["VISUAL_CROSSING_API_KEY"],
+                "key": api_key,
                 "include": "hours",
                 "unitGroup": "metric",
                 "timezone": "Z",  # We want UTC
@@ -125,13 +130,17 @@ async def visual_crossing_request(
     logger = logging.getLogger("default")
     logger.info(f"Requesting {len(ts_pairs)} batches between {start_ts} and {end_ts} for {location}.")
     async with aiometer.amap(
-        functools.partial(get_single_result, location, http_client),
+        functools.partial(get_single_result, location, http_client, api_key),
         ts_pairs,
         max_at_once=1,
         max_per_second=1,
     ) as results:
         async for req in results:
-            data = [hour for day in req.json()["days"] for hour in day["hours"]]
+            try:
+                raw_json = req.json()
+            except json.decoder.JSONDecodeError as ex:
+                raise ValueError(f"Could not decode JSON from VisualCrossing: `{req.text}`") from ex
+            data = [hour for day in raw_json["days"] for hour in day["hours"]]
             for idx, rec in enumerate(data):
                 data[idx]["timestamp"] = datetime.datetime.fromtimestamp(rec["datetimeEpoch"], datetime.UTC)
                 del data[idx]["datetimeEpoch"]
@@ -146,7 +155,7 @@ async def visual_crossing_request(
 
 @router.post("/get-visual-crossing")
 async def get_visual_crossing(
-    weather_request: WeatherRequest, http_client: HttpClientDep
+    weather_request: WeatherRequest, http_client: HttpClientDep, secrets_env: SecretsDep
 ) -> list[dict[str, pydantic.AwareDatetime | float]]:
     """
     Get the raw data from VisualCrossing for a specific location between two timestamps.
@@ -169,6 +178,7 @@ async def get_visual_crossing(
         start_ts=weather_request.start_ts,
         end_ts=weather_request.end_ts,
         http_client=http_client,
+        api_key=secrets_env["VISUAL_CROSSING_API_KEY"],
     )
 
 
