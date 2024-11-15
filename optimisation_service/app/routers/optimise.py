@@ -2,18 +2,17 @@ import asyncio
 import datetime
 import json
 import logging
-import typing
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import UUID4
 
 from app.internal.problem import Building, PortfolioProblem
 from app.models.result import OptimisationResult
 
-from ..internal.datamanager import DataManager
+from ..internal.datamanager import DataManager, DataManagerDep
 from ..internal.grid_search import convert_param
 from ..internal.problem import ParameterDict
 from ..models.core import (
@@ -71,12 +70,13 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
     logger.info(f"Postprocessing results of {task.task_id}.")
     Optimisation_Results = []
     for portfolio_solution in results.solutions:
-        result_id = uuid.uuid4()
+        portfolio_id = uuid.uuid4()
         for site_id, building_solution in portfolio_solution.solution.items():
             OptRes = EndpointResult(
                 task_id=task.task_id,
                 site_id=site_id,
-                result_id=result_id,  # generate a uuid to refer back to later
+                portfolio_id=portfolio_id,
+                result_id=uuid.uuid4(),  # generate a uuid to refer back to later
                 solution=dict(building_solution.solution.items()),  # type: ignore
                 objective_values=building_solution.objective_values,  # type: ignore
                 n_evals=results.n_evals,
@@ -87,7 +87,8 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
         OptRes = EndpointResult(
             task_id=task.task_id,
             site_id=None,
-            result_id=result_id,  # generate a uuid to refer back to later
+            portfolio_id=portfolio_id,
+            result_id=uuid.uuid4(),  # generate a uuid to refer back to later
             solution=None,  # type: ignore
             objective_values=portfolio_solution.objective_values,  # type: ignore
             n_evals=results.n_evals,
@@ -124,9 +125,6 @@ async def process_requests(q: IQueue) -> None:
             logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)
             pass
         q.mark_task_done(task)
-
-
-DataManagerDep = typing.Annotated[DataManager, Depends(DataManager)]
 
 
 @router.post("/submit-task")

@@ -123,6 +123,7 @@ class EndpointResult(BaseModel):
     )
     site_id: str | None
     result_id: UUID4
+    portfolio_id: UUID4
     solution: OptimisationSolution | None = Field(
         description="Parameter values which defines a solution to the optimisation task."
     )

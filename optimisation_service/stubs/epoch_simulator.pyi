@@ -5,6 +5,7 @@ This works a bit like a C header file; mypy can't see into the pybind library
 to identify the types involve, so we write them out manually here.
 You can't import this file, but it's useful for static analysis.
 """
+import typing
 
 class SimulationResult:
     carbon_balance: float
@@ -12,6 +13,7 @@ class SimulationResult:
     capex: float
     payback_horizon: float
     annualised_cost: float
+    report_data: typing.Any
 
 class TaskData:
     ASHP_HPower: float
@@ -52,4 +54,4 @@ class TaskData:
 
 class Simulator:
     def __init__(self, inputDir: str = ..., outputDir: str = ..., configDir: str = ...): ...
-    def simulate_scenario(self, taskData: TaskData) -> SimulationResult: ...
+    def simulate_scenario(self, taskData: TaskData, fullReporting: bool = False) -> SimulationResult: ...
