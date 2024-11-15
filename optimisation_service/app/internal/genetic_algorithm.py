@@ -16,7 +16,7 @@ from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: i
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from app.internal.ga_utils import ProblemInstance
+from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, SamplingMethod
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.problem import PortfolioProblem
 from app.models.algorithms import Algorithm
@@ -32,6 +32,7 @@ class GeneticAlgorithm(Algorithm):
         self,
         pop_size: int = 128,
         n_offsprings: int | None = None,
+        sampling: SamplingMethod = SamplingMethod.ESTIMATE,
         k_tournament: int = 2,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,
@@ -75,10 +76,15 @@ class GeneticAlgorithm(Algorithm):
         if n_offsprings is None:
             n_offsprings = pop_size // 2
 
+        if sampling == SamplingMethod.ESTIMATE:
+            sampling_cls = EstimateBasedSampling
+        elif sampling == SamplingMethod.RANDOM:
+            sampling_cls = IntegerRandomSampling
+
         self.algorithm = Pymoo_GA(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=IntegerRandomSampling(),
+            sampling=sampling_cls(),
             selection=TournamentSelection(pressure=k_tournament, func_comp=comp_by_cv_and_fitness),
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),

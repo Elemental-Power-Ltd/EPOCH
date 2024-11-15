@@ -6,13 +6,14 @@ from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
 from pymoo.operators.repair.rounding import RoundingRepair  # type: ignore
+from pymoo.operators.sampling.rnd import IntegerRandomSampling
 from pymoo.optimize import minimize  # type: ignore
 from pymoo.termination.ftol import MultiObjectiveSpaceTermination  # type: ignore
 from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: ignore
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from app.internal.ga_utils import ProblemInstance, SamplingMethod
+from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, SamplingMethod
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.problem import PortfolioProblem
 from app.models.algorithms import Algorithm
@@ -69,10 +70,15 @@ class NSGA2(Algorithm):
         if n_offsprings is None:
             n_offsprings = int(pop_size * (3 / 4))
 
+        if sampling == SamplingMethod.ESTIMATE:
+            sampling_cls = EstimateBasedSampling
+        elif sampling == SamplingMethod.RANDOM:
+            sampling_cls = IntegerRandomSampling
+
         self.algorithm = Pymoo_NSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=sampling.value(),
+            sampling=sampling_cls(),
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
             eliminate_duplicates=True,

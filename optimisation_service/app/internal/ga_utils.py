@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Never
 
 import numpy as np
@@ -10,7 +10,6 @@ from pymoo.core.mutation import Mutation  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
-from pymoo.operators.sampling.rnd import IntegerRandomSampling  # type: ignore
 
 from app.internal.epoch_utils import PyTaskData
 from app.internal.heuristics.population_init import generate_building_initial_population
@@ -239,11 +238,6 @@ class EstimateBasedSampling(Sampling):
         return portfolio_pop
 
 
-class SamplingMethod(Enum):
-    RANDOM = IntegerRandomSampling
-    ESTIMATE = EstimateBasedSampling
-
-
 class SimpleIntMutation(Mutation):
     """
     Pymoo Mutation Operator which randomly mutates parameter values by a single step in the search space.
@@ -296,3 +290,8 @@ class SimpleIntMutation(Mutation):
         Xp = repair_random_init(Xp, X, xl, xu)
 
         return Xp
+
+
+class SamplingMethod(StrEnum):
+    RANDOM = "RANDOM"
+    ESTIMATE = "ESTIMATE"

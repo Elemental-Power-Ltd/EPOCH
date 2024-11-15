@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
 
+from app.internal.ga_utils import SamplingMethod
 from app.internal.genetic_algorithm import GeneticAlgorithm
 from app.internal.grid_search import GridSearch
 from app.internal.NSGA2 import NSGA2
@@ -58,6 +59,11 @@ class GABaseHyperParam(BaseModel):
         examples=[1e6, 1e9],
         description="Termination Criterion. Max number of fitness evaluations (Epoch simulations) before termination.",
         default=int(1e14),
+    )
+    sampling: SamplingMethod = Field(
+        examples=["RANDOM", "ESTIMATE"],
+        description="Whether to generate initial population randomly or from estimates.",
+        default="ESTIMATE",
     )
 
 
