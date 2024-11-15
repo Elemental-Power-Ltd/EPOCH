@@ -299,6 +299,7 @@ CREATE TABLE optimisation.results (
     exec_time interval,
     completed_at timestamp with time zone DEFAULT now() NOT NULL,
     results_id uuid NOT NULL,
+    portfolio_id uuid NOT NULL,
     CONSTRAINT results_n_evals_check CHECK ((n_evals > 0))
 );
 
@@ -728,6 +729,14 @@ ALTER TABLE ONLY optimisation.task_config
 
 ALTER TABLE ONLY optimisation.optimisers
     ADD CONSTRAINT optimisers_pkey PRIMARY KEY (name);
+
+
+--
+-- Name: results results_pkey; Type: CONSTRAINT; Schema: optimisation; Owner: -
+--
+
+ALTER TABLE ONLY optimisation.results
+    ADD CONSTRAINT results_pkey PRIMARY KEY (results_id);
 
 
 --
