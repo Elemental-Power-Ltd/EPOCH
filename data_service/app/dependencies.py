@@ -39,7 +39,7 @@ class Database:
         self.dsn = dsn  # might be done
 
         self.host = host
-        if password is None:
+        if password is None and dsn is None:
             self.password = get_secrets_environment()["EP_POSTGRES_PASSWORD"]
         else:
             self.password = password

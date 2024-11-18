@@ -29,7 +29,7 @@ async def fetch_carbon_intensity(
     postcode: str | None,
     timestamps: tuple[pydantic.AwareDatetime, pydantic.AwareDatetime],
     use_regional: bool = True,
-) -> list[dict[str, float | None | datetime.datetime]]:
+) -> list[dict[str, float | datetime.datetime | None]]:
     """
     Fetch a single lot of data from the carbon itensity API.
 
@@ -137,7 +137,7 @@ async def generate_grid_co2(
         logging.warning(f"No postcode found for {params.site_id}, using National data.")
         use_regional = False
 
-    all_data: list[dict[str, float | None | datetime.datetime]] = []
+    all_data: list[dict[str, float | datetime.datetime | None]] = []
 
     time_pairs: list[tuple[pydantic.AwareDatetime, pydantic.AwareDatetime]]
     if params.end_ts - params.start_ts >= pd.Timedelta(days=14):

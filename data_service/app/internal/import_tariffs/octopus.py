@@ -13,8 +13,8 @@ from ...models.import_tariffs import GSPEnum
 async def get_octopus_tariff(
     tariff_name: str,
     region_code: GSPEnum = GSPEnum.C,
-    start_ts: None | datetime.datetime = None,
-    end_ts: None | datetime.datetime = None,
+    start_ts: datetime.datetime | None = None,
+    end_ts: datetime.datetime | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> pd.DataFrame:
     """
