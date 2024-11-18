@@ -29,7 +29,12 @@ class Database:
     """Shared database object that we'll re-use throughout the lifetime of this API."""
 
     def __init__(
-        self, host: str | None = None, user: str = "python", password: str | None = None, dsn: str | None = None
+        self,
+        host: str | None = None,
+        user: str = "python",
+        password: str | None = None,
+        dsn: str | None = None,
+        database: str = "elementaldb",
     ) -> None:
         if dsn is not None and host is not None:
             raise ValueError("Must provide either one of host or dsn, but got both.")
@@ -46,6 +51,7 @@ class Database:
         else:
             self.password = password
         self.user = user
+        self.database = database
 
     async def create_pool(self) -> None:
         """
@@ -54,10 +60,17 @@ class Database:
         For a given endpoint, use `pool.acquire()` to get an entry from this pool
         and speed things up.
         """
-        if self.dsn is not None:
-            self.pool = await asyncpg.create_pool(dsn=self.dsn)
-        else:
-            self.pool = await asyncpg.create_pool(host=self.host, user=self.user, password=self.password)
+        try:
+            if self.dsn is not None:
+                self.pool = await asyncpg.create_pool(dsn=self.dsn)
+            else:
+                self.pool = await asyncpg.create_pool(
+                    host=self.host, user=self.user, password=self.password, database=self.database
+                )
+        except asyncpg.exceptions.ConnectionFailureError as ex:
+            raise RuntimeError(
+                f"Could not connect to postgresql database={self.database}" + f"at host={self.host} with user={self.user}"
+            ) from ex
         assert self.pool is not None, "Could not create database pool"
 
 
