@@ -36,11 +36,13 @@ class Database:
         elif dsn is None and host is None:
             raise ValueError("Must provide either one of host or dsn, but got neither")
 
-        self.dsn = dsn  # might be done
+        self.dsn = dsn  # might be None
 
         self.host = host
-        if password is None and dsn is None:
-            self.password = get_secrets_environment()["EP_POSTGRES_PASSWORD"]
+        if password is None:
+            # If we didn't get a password from the environment, it might be None anyway
+            # (this can sometimes bite us when importing, as we'll do this bit first!)
+            self.password = get_secrets_environment().get("EP_POSTGRES_PASSWORD", None)
         else:
             self.password = password
         self.user = user
