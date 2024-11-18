@@ -40,7 +40,7 @@ async def grid_co2_metadata(
 
 
 @pytest.mark.slow
-class TestCarbonItensity:
+class TestCarbonIntensity:
     @pytest.mark.asyncio
     async def test_generate(self, grid_co2_metadata: pydantic.Json, demo_site_id: str) -> None:
         assert datetime.datetime.fromisoformat(grid_co2_metadata["created_at"]) > datetime.datetime.now(
@@ -84,10 +84,38 @@ class TestFetchCarbonIntensity:
         """Test that we fill in missing data between 2023-10-20T21:30:00Z and 2023-10-22T15:00:00Z."""
         bad_start_ts = datetime.datetime(year=2023, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
         bad_end_ts = datetime.datetime(year=2023, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
-        async with AsyncClient() as client:
+        async with AsyncClient(timeout=60) as client:
             res = await fetch_carbon_intensity(
                 client=client, postcode="SW1A", timestamps=(bad_start_ts, bad_end_ts), use_regional=True
             )
         for first, second in itertools.pairwise(res):
             assert first["end_ts"] == second["start_ts"]
         assert len(res) == 3 * 48, "Not enough results in response"
+
+    @pytest.mark.asyncio
+    async def test_not_use_regional(
+        self,
+    ) -> None:
+        """Test that we fill in missing data between 2023-10-20T21:30:00Z and 2023-10-22T15:00:00Z."""
+        bad_start_ts = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
+        bad_end_ts = datetime.datetime(year=2024, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
+        async with AsyncClient(timeout=60) as client:
+            res = await fetch_carbon_intensity(
+                client=client, postcode=None, timestamps=(bad_start_ts, bad_end_ts), use_regional=False
+            )
+        for first, second in itertools.pairwise(res):
+            assert first["end_ts"] == second["start_ts"]
+
+    @pytest.mark.asyncio
+    async def test_use_regional(
+        self,
+    ) -> None:
+        """Test that we fill in missing data between 2023-10-20T21:30:00Z and 2023-10-22T15:00:00Z."""
+        bad_start_ts = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
+        bad_end_ts = datetime.datetime(year=2024, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
+        async with AsyncClient(timeout=60) as client:
+            res = await fetch_carbon_intensity(
+                client=client, postcode="SW1A 0AA", timestamps=(bad_start_ts, bad_end_ts), use_regional=True
+            )
+        for first, second in itertools.pairwise(res):
+            assert first["end_ts"] == second["start_ts"]

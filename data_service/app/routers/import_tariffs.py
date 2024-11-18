@@ -294,7 +294,6 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
         )
         underlying_tariff = params.tariff_name
         provider = TariffProviderEnum.octopus
-        print("Getting", underlying_tariff)
         price_df = await get_octopus_tariff(params.tariff_name, region_code, params.start_ts, params.end_ts, http_client)
         if len(price_df) == 1:
             # We got a fixed tariff!
@@ -428,7 +427,6 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabaseDe
 
     if len(dfs) == 1:
         # Return only a single Tariff entry
-        print(df.head())
         return [
             EpochTariffEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), Tariff=val)
             for ts, val in zip(df.index, df["unit_cost"] / 100, strict=True)

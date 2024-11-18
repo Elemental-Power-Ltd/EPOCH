@@ -24,6 +24,8 @@ from ..models.renewables import EpochRenewablesEntry, PVOptimaResult, Renewables
 
 router = APIRouter()
 
+logger = logging.getLogger("default")
+
 
 @router.post("/get-pv-optima", tags=["solar_pv", "get"])
 async def get_pv_optima(request: Request, site_id: SiteID, conn: DatabaseDep) -> PVOptimaResult:
@@ -91,7 +93,6 @@ async def generate_renewables_generation(
 
     latitude, longitude = coords
     if params.azimuth is None or params.tilt is None:
-        logger = logging.getLogger("default")
         logger.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
         optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=http_client)
         azimuth, tilt = float(optimal_params.azimuth), float(optimal_params.tilt)

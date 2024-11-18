@@ -730,14 +730,6 @@ ALTER TABLE ONLY optimisation.optimisers
 
 
 --
--- Name: results results_pkey; Type: CONSTRAINT; Schema: optimisation; Owner: -
---
-
-ALTER TABLE ONLY optimisation.results
-    ADD CONSTRAINT results_pkey PRIMARY KEY (results_id);
-
-
---
 -- Name: metadata metadata_pkey; Type: CONSTRAINT; Schema: renewables; Owner: -
 --
 

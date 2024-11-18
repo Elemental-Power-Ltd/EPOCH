@@ -231,13 +231,14 @@ async def get_renewables_ninja_data(
     else:
         async with httpx.AsyncClient() as aclient:
             req = await aclient.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
-
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
             columns={"electricity": "pv"}
         )
     except json.JSONDecodeError as ex:
-        raise fastapi.HTTPException(400, "Decoding renewables.ninja data failed. Got {req.text} instead of valid JSON.") from ex
+        raise fastapi.HTTPException(
+            400, f"Decoding renewables.ninja data failed. Got {req.text} instead of valid JSON."
+        ) from ex
     renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
     renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)

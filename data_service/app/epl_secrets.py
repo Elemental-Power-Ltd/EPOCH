@@ -90,7 +90,9 @@ def load_dotenv(fname: os.PathLike = Path(".env")) -> dict[str, str]:
     return dict(os.environ.items())
 
 
-def get_secrets_environment(overrides: dict[str, str] | None = None) -> SecretDict[str, str]:
+def get_secrets_environment(
+    overrides: dict[str, str] | None = None, default_directory: Path | None = None
+) -> SecretDict[str, str]:
     """
     Get a set of secrets from environment locations, including OS environ and files.
 
@@ -110,35 +112,36 @@ def get_secrets_environment(overrides: dict[str, str] | None = None) -> SecretDi
         visual_crossing_api_key:
             file: visual_crossing_api_key.txt
     """
+    if default_directory is None:
+        default_directory = Path.home() / ".secrets"
     os_environ = dict(copy.deepcopy(os.environ))
 
     dotenv_environ = load_dotenv()
 
     total_environ = os_environ | dotenv_environ
 
-    vc_fpath = Path(total_environ.get("EP_VISUAL_CROSSING_API_KEY_FILE", "~/.secrets/visual_crossing_api_key"))
+    vc_fpath = Path(total_environ.get("EP_VISUAL_CROSSING_API_KEY_FILE", default_directory / "visual_crossing_api_key"))
     try:
         total_environ["VISUAL_CROSSING_API_KEY"] = load_secret_from_file(vc_fpath)
     except FileNotFoundError:
         if "VISUAL_CROSSING_API_KEY" not in total_environ:
             logger.warning(f"Could not find VisualCrossing key in environ, dotenv or {vc_fpath}")
 
-    rn_fpath = Path(total_environ.get("EP_RENEWABLES_NINJA_API_KEY_FILE", "~/.secrets/renewables_ninja_api_key"))
+    rn_fpath = Path(total_environ.get("EP_RENEWABLES_NINJA_API_KEY_FILE", default_directory / "renewables_ninja_api_key"))
     try:
         total_environ["RENEWABLES_NINJA_API_KEY"] = load_secret_from_file(rn_fpath)
     except FileNotFoundError:
         if "RENEWABLES_NINJA_API_KEY" not in total_environ:
-            logger.warning(f"Could not find RenwablesNinja key in environ, dotenv or {rn_fpath}")
+            logger.warning(f"Could not find RenewablesNinja key in environ, dotenv or {rn_fpath}")
 
-    assert total_environ["RENEWABLES_NINJA_API_KEY"] == "af9fef27b50beead4a4b8554c80a3ff200521db6"
-    pg_fpath = Path(total_environ.get("EP_POSTGRES_PASSWORD_FILE", "~/.secrets/ep_postgres_password"))
+    pg_fpath = Path(total_environ.get("EP_POSTGRES_PASSWORD_FILE", default_directory / "ep_postgres_password"))
     try:
         total_environ["EP_POSTGRES_PASSWORD"] = load_secret_from_file(pg_fpath)
     except FileNotFoundError:
         if "EP_POSTGRES_PASSWORD" not in total_environ:
             logger.warning(f"Could not find Postgres key in environ, dotenv or {pg_fpath}")
 
-    ge_fpath = Path(total_environ.get("EP_GIVENERGY_JWT_FILE", "~/.secrets/ep_givenergy_jwt"))
+    ge_fpath = Path(total_environ.get("EP_GIVENERGY_JWT_FILE", default_directory / "ep_givenergy_jwt"))
     try:
         total_environ["EP_GIVENERGY_JWT"] = load_secret_from_file(ge_fpath)
     except FileNotFoundError:
