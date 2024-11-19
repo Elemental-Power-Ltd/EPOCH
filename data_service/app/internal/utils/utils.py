@@ -8,8 +8,6 @@ for the functions that go in here.
 import datetime
 import itertools
 import logging
-import os
-import pathlib
 from collections.abc import Sequence
 from typing import Any
 
@@ -56,42 +54,6 @@ def hour_of_year(ts: pd.Timestamp) -> float:
     soy_ts = pd.Timestamp(year=ts.year, month=1, day=1, hour=0, minute=0, tzinfo=ts.tzinfo)
     # watch out for this off-by-one error!
     return 1 + ((ts - soy_ts).total_seconds() / 3600)
-
-
-def load_dotenv(fname: os.PathLike = pathlib.Path(".env")) -> dict[str, str]:
-    """
-    Load a set of environment variables from an .env file.
-
-    Mutates the environment variables for this python process, and
-    returns them as a dictionary just in case.
-
-    Parameters
-    ----------
-    fname
-        Path to the environment file to load (it's probably ".env")
-
-    Returns
-    -------
-        environment dictionary, with new keys added.
-    """
-    fpath = pathlib.Path(fname).resolve()
-    if not fpath.is_file():
-        file_name = fpath.name
-        for parent in fpath.parents:
-            parent_path = parent.joinpath(file_name)
-            if parent_path.is_file():
-                fpath = parent_path
-                break
-        else:
-            logger.warning(f"Could not find {fname} in the specified location {fpath} or its parents.")
-            return {}
-
-    with open(fpath) as fi:
-        for line in fi:
-            key, value = line.strip().split("=", 1)
-            os.environ[key] = value
-    # turn this into a dict to prevent any trouble with weird types
-    return dict(os.environ.items())
 
 
 def get_with_fallback[T](dictionary: dict[T, Any], keys: list[T]) -> Any:

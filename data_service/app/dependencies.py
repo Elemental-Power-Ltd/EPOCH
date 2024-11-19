@@ -6,6 +6,7 @@ To connect to a database, simply provide the relevant `DatabaseDep` or `HttpClie
 function and FastAPI will figure it out through magic.
 """
 
+import logging
 import os
 import typing
 from collections.abc import AsyncGenerator, AsyncIterator
@@ -18,31 +19,62 @@ import httpx
 import torch
 from fastapi import Depends, FastAPI
 
+from .epl_secrets import SecretDict, get_secrets_environment
 from .internal.elec_meters import VAE
+
+logger = logging.getLogger("default")
 
 
 class Database:
     """Shared database object that we'll re-use throughout the lifetime of this API."""
 
-    def __init__(self, dsn: str) -> None:
-        self.dsn = dsn
-        self.pool: asyncpg.pool.Pool | None = None
+    def __init__(
+        self,
+        host: str | None = None,
+        user: str = "python",
+        password: str | None = None,
+        dsn: str | None = None,
+        database: str = "elementaldb",
+    ) -> None:
+        if dsn is not None and host is not None:
+            raise ValueError("Must provide either one of host or dsn, but got both.")
+        elif dsn is None and host is None:
+            raise ValueError("Must provide either one of host or dsn, but got neither")
+
+        self.dsn = dsn  # might be None
+
+        self.host = host
+        if password is None:
+            # If we didn't get a password from the environment, it might be None anyway
+            # (this can sometimes bite us when importing, as we'll do this bit first!)
+            self.password = get_secrets_environment().get("EP_POSTGRES_PASSWORD", None)
+        else:
+            self.password = password
+        self.user = user
+        self.database = database
 
     async def create_pool(self) -> None:
-        """Create the PostgreSQL connection pool.
+        """
+        Create the PostgreSQL connection pool.
 
         For a given endpoint, use `pool.acquire()` to get an entry from this pool
         and speed things up.
-
-        You can specify the database via the DATABASE_URL environment variable, or it falls back
-        to a locally hosted version of Elemental DB if not.
         """
-        self.pool = await asyncpg.create_pool(dsn=self.dsn)
+        try:
+            if self.dsn is not None:
+                self.pool = await asyncpg.create_pool(dsn=self.dsn)
+            else:
+                self.pool = await asyncpg.create_pool(
+                    host=self.host, user=self.user, password=self.password, database=self.database
+                )
+        except asyncpg.exceptions.ConnectionFailureError as ex:
+            raise RuntimeError(
+                f"Could not connect to postgresql database={self.database}" + f"at host={self.host} with user={self.user}"
+            ) from ex
         assert self.pool is not None, "Could not create database pool"
 
 
-# When running within a docker network this should be set to postgresql://python:elemental@db/elementaldb
-db = Database(os.environ.get("EP_DATABASE_URL", "postgresql://python:elemental@localhost/elementaldb"))
+db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
 http_client = httpx.AsyncClient(timeout=60)
 
 elec_vae_mdl: VAE | None = None
@@ -98,6 +130,12 @@ async def get_vae_model() -> VAE:
     return elec_vae_mdl
 
 
+async def get_secrets_dependency() -> SecretDict:
+    """Get the environment secrets, including API keys, from os environ, .env and files."""
+    return get_secrets_environment()
+
+
+SecretsDep = typing.Annotated[SecretDict, Depends(get_secrets_dependency)]
 DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
 DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]

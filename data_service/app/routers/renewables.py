@@ -16,13 +16,15 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
+from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, SecretsDep
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
 from ..internal.utils import add_epoch_fields
 from ..models.core import MultipleDatasetIDWithTime, SiteID, dataset_id_t
 from ..models.renewables import EpochRenewablesEntry, PVOptimaResult, RenewablesMetadata, RenewablesRequest
 
 router = APIRouter()
+
+logger = logging.getLogger("default")
 
 
 @router.post("/get-pv-optima", tags=["solar_pv", "get"])
@@ -55,7 +57,7 @@ async def get_pv_optima(request: Request, site_id: SiteID, conn: DatabaseDep) ->
 
 @router.post("/generate-renewables-generation", tags=["generate", "solar_pv"])
 async def generate_renewables_generation(
-    params: RenewablesRequest, pool: DatabasePoolDep, http_client: HttpClientDep
+    params: RenewablesRequest, pool: DatabasePoolDep, http_client: HttpClientDep, secrets_env: SecretsDep
 ) -> RenewablesMetadata:
     """
     Calculate renewables generation in kW / kWp for this site.
@@ -91,7 +93,6 @@ async def generate_renewables_generation(
 
     latitude, longitude = coords
     if params.azimuth is None or params.tilt is None:
-        logger = logging.getLogger("default")
         logger.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
         optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=http_client)
         azimuth, tilt = float(optimal_params.azimuth), float(optimal_params.tilt)

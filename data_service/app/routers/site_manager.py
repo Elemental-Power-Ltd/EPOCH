@@ -5,10 +5,11 @@ import datetime
 import logging
 import uuid
 
+import httpx
 import pydantic
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabasePoolDep, HttpClientDep, VaeDep
+from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
 from ..internal.site_manager.site_manager import fetch_all_input_data
 from ..models.client_data import SiteDataEntries
 from ..models.core import DatasetEntry, DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
@@ -338,9 +339,7 @@ async def get_specific_datasets(site_data: DatasetRequest, pool: DatabasePoolDep
                 start_ts=site_data.start_ts,
                 end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
             )
-    all_datasets = await fetch_all_input_data(site_data_ids, pool=pool)
-
-    return all_datasets
+    return await fetch_all_input_data(site_data_ids, pool=pool)
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])
@@ -359,7 +358,7 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) 
     -------
         The site data with full time series for each data source
     """
-    logging.info("Getting latest dataset list")
+    logging.info(f"Getting latest dataset list for {site_data.site_id}")
 
     site_data_info = await list_latest_datasets(SiteID(site_id=site_data.site_id), pool=pool)
 
@@ -378,15 +377,12 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) 
                 end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
             )
 
-    logging.info("Fetching latest datasets")
-    all_datasets = await fetch_all_input_data(site_data_ids, pool=pool)
-
-    return all_datasets
+    return await fetch_all_input_data(site_data_ids, pool=pool)
 
 
 @router.post("/generate-all")
 async def generate_all(
-    params: SiteIDWithTime, pool: DatabasePoolDep, http_client: HttpClientDep, vae: VaeDep
+    params: SiteIDWithTime, pool: DatabasePoolDep, http_client: HttpClientDep, vae: VaeDep, secrets_env: SecretsDep
 ) -> dict[DatasetTypeEnum, DatasetEntry]:
     """
     Run all dataset generation tasks for this site.
@@ -415,48 +411,59 @@ async def generate_all(
     heating_load_dataset = datasets[DatasetTypeEnum.GasMeterData]
     elec_meter_dataset = datasets[DatasetTypeEnum.ElectricityMeterData]
 
-    async with asyncio.TaskGroup() as tg:
-        heating_load_response = tg.create_task(
-            generate_heating_load(
-                HeatingLoadRequest(dataset_id=heating_load_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
-                pool=pool,
-                http_client=http_client,
+    try:
+        async with asyncio.TaskGroup() as tg:
+            heating_load_response = tg.create_task(
+                generate_heating_load(
+                    HeatingLoadRequest(
+                        dataset_id=heating_load_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts
+                    ),
+                    pool=pool,
+                    http_client=http_client,
+                )
             )
-        )
-        grid_co2_response = tg.create_task(generate_grid_co2(params, pool=pool, http_client=http_client))
+            grid_co2_response = tg.create_task(generate_grid_co2(params, pool=pool, http_client=http_client))
 
-        import_tariff_response = tg.create_task(
-            generate_import_tariffs(
-                TariffRequest(
-                    site_id=params.site_id,
-                    tariff_name=SyntheticTariffEnum.Fixed,
-                    start_ts=params.start_ts,
-                    end_ts=params.end_ts,
-                ),
-                pool=pool,
-                http_client=http_client,
+            import_tariff_response = tg.create_task(
+                generate_import_tariffs(
+                    TariffRequest(
+                        site_id=params.site_id,
+                        tariff_name=SyntheticTariffEnum.Fixed,
+                        start_ts=params.start_ts,
+                        end_ts=params.end_ts,
+                    ),
+                    pool=pool,
+                    http_client=http_client,
+                )
             )
-        )
 
-        renewables_response = tg.create_task(
-            generate_renewables_generation(
-                RenewablesRequest(
-                    site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None
-                ),
-                pool=pool,
-                http_client=http_client,
+            renewables_response = tg.create_task(
+                generate_renewables_generation(
+                    RenewablesRequest(
+                        site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None
+                    ),
+                    pool=pool,
+                    http_client=http_client,
+                    secrets_env=secrets_env,
+                )
             )
-        )
 
-        elec_response = tg.create_task(
-            generate_electricity_load(
-                ElectricalLoadRequest(dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
-                pool=pool,
-                http_client=http_client,
-                vae=vae,
+            elec_response = tg.create_task(
+                generate_electricity_load(
+                    ElectricalLoadRequest(
+                        dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts
+                    ),
+                    pool=pool,
+                    http_client=http_client,
+                    vae=vae,
+                )
             )
-        )
-
+    except* ValueError as excgroup:
+        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
+    except* TypeError as excgroup:
+        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
+    except* httpx.ReadTimeout as excgroup:
+        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
     return {
         DatasetTypeEnum.HeatingLoad: DatasetEntry(
             dataset_id=heating_load_response.result().dataset_id,

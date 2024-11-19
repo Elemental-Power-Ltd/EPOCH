@@ -127,19 +127,24 @@ async def fetch_all_input_data(
     ashp_data = site_data_ids[DatasetTypeEnum.ASHPData]
     assert isinstance(ashp_data, DatasetIDWithTime)
 
-    async with asyncio.TaskGroup() as tg:
-        eload_task = tg.create_task(
-            fetch_blended_electricity_load(
-                real_params=electricity_meter_data, synthetic_params=electricity_meter_data_synthetic, pool=pool
+    try:
+        async with asyncio.TaskGroup() as tg:
+            eload_task = tg.create_task(
+                fetch_blended_electricity_load(
+                    real_params=electricity_meter_data, synthetic_params=electricity_meter_data_synthetic, pool=pool
+                )
             )
-        )
-        heat_task = tg.create_task(fetch_heating_load(heating_load, pool))
-        rgen_task = tg.create_task(fetch_renewables_generation(renewables_generation, pool))
-        tariff_task = tg.create_task(fetch_import_tariffs(import_tariff, pool))
-        grid_co2_task = tg.create_task(fetch_grid_co2(carbon_intensity, pool))
+            heat_task = tg.create_task(fetch_heating_load(heating_load, pool))
+            rgen_task = tg.create_task(fetch_renewables_generation(renewables_generation, pool))
+            tariff_task = tg.create_task(fetch_import_tariffs(import_tariff, pool))
+            grid_co2_task = tg.create_task(fetch_grid_co2(carbon_intensity, pool))
 
-        ashp_input_task = tg.create_task(get_ashp_input(ashp_data))
-        ashp_output_task = tg.create_task(get_ashp_output(ashp_data))
+            ashp_input_task = tg.create_task(get_ashp_input(ashp_data))
+            ashp_output_task = tg.create_task(get_ashp_output(ashp_data))
+    except* ValueError as excgroup:
+        raise HTTPException(500, detail=str(list(excgroup.exceptions))) from excgroup
+    except* TypeError as excgroup:
+        raise HTTPException(500, detail=str(list(excgroup.exceptions))) from excgroup
 
     return SiteDataEntries(
         eload=eload_task.result(),

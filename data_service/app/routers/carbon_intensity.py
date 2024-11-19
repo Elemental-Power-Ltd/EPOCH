@@ -26,10 +26,10 @@ router = APIRouter()
 
 async def fetch_carbon_intensity(
     client: HTTPClient,
-    postcode: str,
+    postcode: str | None,
     timestamps: tuple[pydantic.AwareDatetime, pydantic.AwareDatetime],
     use_regional: bool = True,
-) -> list[dict[str, float | None | datetime.datetime]]:
+) -> list[dict[str, float | datetime.datetime | None]]:
     """
     Fetch a single lot of data from the carbon itensity API.
 
@@ -64,13 +64,15 @@ async def fetch_carbon_intensity(
     end_ts_str = fetch_end_ts.isoformat()
 
     if use_regional:
+        if postcode is None:
+            raise HTTPException(400, "Got postcode=None but also use_regional=True, which is invalid.")
         postcode_out = postcode.strip().split(" ")[0]
         ci_url = f"https://api.carbonintensity.org.uk/regional/intensity/{start_ts_str}/{end_ts_str}/postcode/{postcode_out}"
     else:
         ci_url = f"https://api.carbonintensity.org.uk/intensity/{start_ts_str}/{end_ts_str}"
     response = await client.get(ci_url)
     if not response.status_code == 200:
-        raise HTTPException(400, response.text)
+        raise HTTPException(400, f"{ci_url} returned `{response.text}`")
     data = response.json()
     results = []
     subdata = data["data"]
@@ -135,7 +137,7 @@ async def generate_grid_co2(
         logging.warning(f"No postcode found for {params.site_id}, using National data.")
         use_regional = False
 
-    all_data: list[dict[str, float | None | datetime.datetime]] = []
+    all_data: list[dict[str, float | datetime.datetime | None]] = []
 
     time_pairs: list[tuple[pydantic.AwareDatetime, pydantic.AwareDatetime]]
     if params.end_ts - params.start_ts >= pd.Timedelta(days=14):
