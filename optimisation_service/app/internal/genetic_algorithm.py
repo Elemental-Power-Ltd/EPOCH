@@ -16,10 +16,13 @@ from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: i
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, SamplingMethod
+from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance
 from app.internal.pareto_front import portfolio_pareto_front
-from app.internal.problem import PortfolioProblem
 from app.models.algorithms import Algorithm
+from app.models.constraints import ConstraintDict
+from app.models.core import Site
+from app.models.ga_utils import SamplingMethod
+from app.models.objectives import Objectives
 from app.models.result import OptimisationResult
 
 
@@ -93,7 +96,7 @@ class GeneticAlgorithm(Algorithm):
 
         self.termination_criteria = SingleTermination(tol, period, n_max_gen, n_max_evals)
 
-    def run(self, portfolio: PortfolioProblem) -> OptimisationResult:
+    def run(self, objectives: list[Objectives], constraints: ConstraintDict, portfolio: list[Site]) -> OptimisationResult:
         """
         Run GA optimisation.
 
@@ -111,17 +114,15 @@ class GeneticAlgorithm(Algorithm):
         """
         portfolio_solutions = []
         exec_time, n_evals = 0, 0
-        for sub_problem in portfolio.split_objectives():
-            pi = ProblemInstance(sub_problem)
+        for objective in objectives:
+            pi = ProblemInstance([objective], constraints, portfolio)
             res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
             portfolio_solutions.append(pi.simulate_portfolio(res.X))
             exec_time += res.exec_time
             n_evals += res.algorithm.evaluator.n_eval
 
         exec_timedelta = timedelta(seconds=float(exec_time))
-        portfolio_solutions_pf = portfolio_pareto_front(
-            portfolio_solutions=portfolio_solutions, objectives=portfolio.objectives
-        )
+        portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
         return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_timedelta, n_evals=n_evals)
 

@@ -6,17 +6,20 @@ from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
 from pymoo.operators.repair.rounding import RoundingRepair  # type: ignore
-from pymoo.operators.sampling.rnd import IntegerRandomSampling
+from pymoo.operators.sampling.rnd import IntegerRandomSampling  # type: ignore
 from pymoo.optimize import minimize  # type: ignore
 from pymoo.termination.ftol import MultiObjectiveSpaceTermination  # type: ignore
 from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: ignore
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, SamplingMethod
+from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance
 from app.internal.pareto_front import portfolio_pareto_front
-from app.internal.problem import PortfolioProblem
 from app.models.algorithms import Algorithm
+from app.models.constraints import ConstraintDict
+from app.models.core import Site
+from app.models.ga_utils import SamplingMethod
+from app.models.objectives import Objectives
 from app.models.result import OptimisationResult
 
 
@@ -89,7 +92,7 @@ class NSGA2(Algorithm):
 
         self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals)
 
-    def run(self, portfolio: PortfolioProblem) -> OptimisationResult:
+    def run(self, objectives: list[Objectives], constraints: ConstraintDict, portfolio: list[Site]) -> OptimisationResult:
         """
         Run NSGA optimisation.
 
@@ -105,7 +108,7 @@ class NSGA2(Algorithm):
             exec_time: Time taken for optimisation process to conclude.
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
-        pi = ProblemInstance(portfolio)
+        pi = ProblemInstance(objectives, constraints, portfolio)
         res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = timedelta(seconds=res.exec_time)
@@ -113,9 +116,7 @@ class NSGA2(Algorithm):
         if non_dom_sol.ndim == 1:
             non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
         portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
-        portfolio_solutions_pf = portfolio_pareto_front(
-            portfolio_solutions=portfolio_solutions, objectives=portfolio.objectives
-        )
+        portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
         return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals)
 
