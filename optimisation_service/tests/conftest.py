@@ -13,53 +13,53 @@ from app.internal.portfolio_simulator import combine_objective_values
 from app.models.constraints import ConstraintDict
 from app.models.core import Site
 from app.models.objectives import _OBJECTIVES, Objectives
-from app.models.parameters import ParameterDict, ParametersWORange, ParametersWRange, is_variable_paramrange
+from app.models.parameters import ParameterDict, ParametersWORange, ParametersWRange, ParamRange, is_variable_paramrange
 from app.models.result import BuildingSolution, OptimisationResult, PortfolioSolution
-from app.models.site_data import LocalMetaData
+from app.models.site_data import FileLoc, LocalMetaData
 
 
 @pytest.fixture
 def default_parameters() -> ParameterDict:
-    return {
-        "ESS_capacity": {"min": 1, "max": 3, "step": 1},
-        "ESS_charge_power": {"min": 1, "max": 3, "step": 1},
-        "ESS_discharge_power": {"min": 1, "max": 3, "step": 1},
-        "ASHP_HPower": {"min": 10, "max": 10, "step": 0},
-        "ASHP_HSource": {"min": 1, "max": 1, "step": 0},
-        "ASHP_HotTemp": {"min": 43, "max": 43, "step": 0},
-        "ASHP_RadTemp": {"min": 60, "max": 60, "step": 0},
-        "ESS_charge_mode": {"min": 1, "max": 1, "step": 0},
-        "ESS_discharge_mode": {"min": 1, "max": 1, "step": 0},
-        "ESS_start_SoC": {"min": 0, "max": 0, "step": 0},
-        "EV_flex": {"min": 0, "max": 0, "step": 0},
-        "Export_headroom": {"min": 0, "max": 0, "step": 0},
-        "Fixed_load1_scalar": {"min": 1, "max": 1, "step": 0},
-        "Fixed_load2_scalar": {"min": 0, "max": 0, "step": 0},
-        "Flex_load_max": {"min": 0, "max": 0, "step": 0},
-        "GridExport": {"min": 95, "max": 95, "step": 0},
-        "GridImport": {"min": 95, "max": 95, "step": 0},
-        "Import_headroom": {"min": 0, "max": 0, "step": 0},
-        "Min_power_factor": {"min": 0.95, "max": 0.95, "step": 0},
-        "Mop_load_max": {"min": 0, "max": 0, "step": 0},
-        "ScalarHL1": {"min": 1, "max": 1, "step": 0},
-        "ScalarHYield": {"min": 0.75, "max": 0.75, "step": 0},
-        "ScalarRG1": {"min": 0, "max": 0, "step": 0},
-        "ScalarRG2": {"min": 0, "max": 0, "step": 0},
-        "ScalarRG3": {"min": 0, "max": 0, "step": 0},
-        "ScalarRG4": {"min": 0, "max": 0, "step": 0},
-        "f22_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-        "r50_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-        "s7_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-        "u150_EV_CP_number": {"min": 0, "max": 0, "step": 0},
-        "DHW_cylinder_volume": {"min": 0.001, "max": 0.001, "step": 0},
-        "OPEX_limit": 20.0,
-        "Export_kWh_price": 5.0,
-        "target_max_concurrency": 44,
-        "time_budget_min": 1.0,
-        "timestep_hours": 1.0,
-        "CAPEX_limit": 500.0,
-        "timewindow": 8760,
-    }
+    return ParameterDict(
+        ESS_capacity=ParamRange(min=0, max=3, step=1),
+        ESS_charge_power=ParamRange(min=0, max=3, step=1),
+        ESS_discharge_power=ParamRange(min=0, max=3, step=1),
+        ASHP_HPower=ParamRange(min=10, max=10, step=0),
+        ASHP_HSource=ParamRange(min=1, max=1, step=0),
+        ASHP_HotTemp=ParamRange(min=43, max=43, step=0),
+        ASHP_RadTemp=ParamRange(min=60, max=60, step=0),
+        ESS_charge_mode=ParamRange(min=1, max=1, step=0),
+        ESS_discharge_mode=ParamRange(min=1, max=1, step=0),
+        ESS_start_SoC=ParamRange(min=0, max=0, step=0),
+        EV_flex=ParamRange(min=0, max=0, step=0),
+        Export_headroom=ParamRange(min=0, max=0, step=0),
+        Fixed_load1_scalar=ParamRange(min=1, max=1, step=0),
+        Fixed_load2_scalar=ParamRange(min=0, max=0, step=0),
+        Flex_load_max=ParamRange(min=0, max=0, step=0),
+        GridExport=ParamRange(min=60, max=60, step=0),
+        GridImport=ParamRange(min=60, max=60, step=0),
+        Import_headroom=ParamRange(min=0.4, max=0.4, step=0),
+        Min_power_factor=ParamRange(min=0.95, max=0.95, step=0),
+        Mop_load_max=ParamRange(min=0, max=0, step=0),
+        ScalarHL1=ParamRange(min=1, max=1, step=0),
+        ScalarHYield=ParamRange(min=0.75, max=0.75, step=0),
+        ScalarRG1=ParamRange(min=0, max=0, step=0),
+        ScalarRG2=ParamRange(min=0, max=0, step=0),
+        ScalarRG3=ParamRange(min=0, max=0, step=0),
+        ScalarRG4=ParamRange(min=0, max=0, step=0),
+        f22_EV_CP_number=ParamRange(min=3, max=3, step=0),
+        r50_EV_CP_number=ParamRange(min=0, max=0, step=0),
+        s7_EV_CP_number=ParamRange(min=0, max=0, step=0),
+        u150_EV_CP_number=ParamRange(min=0, max=0, step=0),
+        DHW_cylinder_volume=ParamRange(min=100, max=100, step=0),
+        CAPEX_limit=500,
+        Export_kWh_price=5,
+        OPEX_limit=20,
+        target_max_concurrency=44,
+        time_budget_min=5,
+        timestep_hours=1,
+        timewindow=8760,
+    )
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def default_site(default_parameters: ParameterDict, default_input_dir: PathLike)
     site = Site(
         name="test_site",
         search_parameters=default_parameters,
-        site_data=LocalMetaData(loc="local", site_id="demo_edinburgh", path="./tests/data/input_data"),
+        site_data=LocalMetaData(loc=FileLoc.local, site_id="demo_edinburgh", path=Path("tests", "data", "input_data")),
     )
     site._input_dir = default_input_dir
     return site
