@@ -1,22 +1,15 @@
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
 
-from app.internal.genetic_algorithm import NSGA2, GeneticAlgorithm
-from app.internal.grid_search import GridSearch
+from app.models.ga_utils import SamplingMethod
 
 
 class OptimiserStr(StrEnum):
     NSGA2 = "NSGA2"
     GeneticAlgorithm = "GeneticAlgorithm"
     GridSearch = "GridSearch"
-
-
-class OptimiserFunc(Enum):
-    NSGA2 = NSGA2
-    GeneticAlgorithm = GeneticAlgorithm
-    GridSearch = GridSearch
 
 
 class GABaseHyperParam(BaseModel):
@@ -57,6 +50,11 @@ class GABaseHyperParam(BaseModel):
         examples=[1e6, 1e9],
         description="Termination Criterion. Max number of fitness evaluations (Epoch simulations) before termination.",
         default=int(1e14),
+    )
+    sampling: SamplingMethod = Field(
+        examples=["RANDOM", "ESTIMATE"],
+        description="Whether to generate initial population randomly or from estimates.",
+        default=SamplingMethod.RANDOM,
     )
 
 

@@ -2,10 +2,12 @@ from pathlib import Path
 
 import pytest
 
+from app.models.result import convert_sim_result
+
 try:
     from epoch_simulator import Simulator, TaskData
 
-    from app.internal.task_data_wrapper import PySimulationResult, PyTaskData
+    from app.internal.epoch_utils import PyTaskData
 
     HAS_TRUE = True
 except ImportError:
@@ -22,8 +24,8 @@ class TestEpochIntegration:
         new_td = PyTaskData()
         sim = Simulator(inputDir=str(Path("tests", "data", "benchmarks", "var-3", "InputData")))
 
-        old_res = PySimulationResult(sim.simulate_scenario(old_td))
-        new_res = PySimulationResult(sim.simulate_scenario(new_td))
+        old_res = convert_sim_result(sim.simulate_scenario(old_td))
+        new_res = convert_sim_result(sim.simulate_scenario(new_td))
 
         assert new_res == old_res
 
@@ -38,8 +40,8 @@ class TestEpochIntegration:
         new_td["ESS_capacity"] += 10
         sim = Simulator(inputDir=str(Path("tests", "data", "benchmarks", "var-3", "InputData")))
 
-        old_res = PySimulationResult(sim.simulate_scenario(old_td))
-        new_res = PySimulationResult(sim.simulate_scenario(new_td))
+        old_res = convert_sim_result(sim.simulate_scenario(old_td))
+        new_res = convert_sim_result(sim.simulate_scenario(new_td))
 
         assert new_res == old_res
 

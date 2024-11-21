@@ -1,18 +1,18 @@
 import pytest
 
-from app.internal.genetic_algorithm import GeneticAlgorithm
+from app.internal.NSGA2 import NSGA2
 from app.models.constraints import ConstraintDict
 from app.models.core import Site
 from app.models.objectives import Objectives
 from app.models.result import OptimisationResult
 
 
-class TestGeneticAlgorithm:
+class TestNSGA2:
     def test_initialisation(self) -> None:
         """
         Test default algorithm initialisation.
         """
-        GeneticAlgorithm()
+        NSGA2()
 
     @pytest.mark.slow
     def test_run(
@@ -21,6 +21,6 @@ class TestGeneticAlgorithm:
         """
         Test output of algorithm.
         """
-        alg = GeneticAlgorithm(pop_size=256)
+        alg = NSGA2(pop_size=256)
         res = alg.run(default_objectives, default_constraints, default_portfolio)
         assert isinstance(res, OptimisationResult)

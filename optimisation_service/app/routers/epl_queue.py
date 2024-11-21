@@ -7,8 +7,8 @@ from collections import OrderedDict
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import UUID4, PositiveInt
 
-from ..models.epl_queue import QueueElem, QueueStatus, task_state
-from ..models.tasks import Task
+from app.models.core import Task
+from app.models.epl_queue import QueueElem, QueueStatus, TaskWDataManager, task_state
 
 logger = logging.getLogger("default")
 
@@ -35,7 +35,7 @@ class IQueue(asyncio.Queue):
         self.q_len = maxsize
         self.remove_directory = remove_directory
 
-    async def put(self, task: Task) -> None:
+    async def put(self, task_w_datamanager: TaskWDataManager) -> None:
         """
         Add task in queue.
 
@@ -44,11 +44,12 @@ class IQueue(asyncio.Queue):
         task
             Task to add in queue.
         """
+        task, _ = task_w_datamanager
         logger.info(f"Queued {task.task_id}.")
-        await super().put(task)
+        await super().put(task_w_datamanager)
         self.q[task.task_id] = QueueElem(state=task_state.QUEUED, added_at=datetime.datetime.now(datetime.UTC))
 
-    async def get(self) -> Task:
+    async def get(self) -> TaskWDataManager:
         """
         Get next task from queue.
         Skips cancelled tasks.
@@ -59,11 +60,11 @@ class IQueue(asyncio.Queue):
         task
             Next task in queue.
         """
-        task = await super().get()
+        task, data_manager = await super().get()
         assert self.q[task.task_id].state == task_state.QUEUED or self.q[task.task_id].STATE == task_state.CANCELLED
         if self.q[task.task_id].state == task_state.QUEUED:
             self.q[task.task_id].state = task_state.RUNNING
-            return task
+            return task, data_manager
         else:
             self.mark_task_done(task)
             return await self.get()
@@ -80,7 +81,7 @@ class IQueue(asyncio.Queue):
         logger.info(f"Marking as done {task.task_id}.")
         del self.q[task.task_id]
         if self.remove_directory:
-            shutil.rmtree(task.data_manager.temp_data_dir)
+            shutil.rmtree(task._input_dir)
         super().task_done()
 
     def cancel(self, task_id: UUID4) -> None:

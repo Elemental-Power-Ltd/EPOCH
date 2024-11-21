@@ -1,28 +1,12 @@
 import os
-import shutil
-from collections.abc import Generator
-from pathlib import Path
-from time import perf_counter
 
 import pytest
 
 from app.internal.grid_search import GridSearch
-from app.internal.problem import Problem, load_problem
-from app.internal.result import Result
-
-
-@pytest.fixture(scope="module")
-def temporary_directory(
-    tmpdir_factory: pytest.TempdirFactory,
-) -> Generator[os.PathLike, None, None]:
-    my_tmpdir = tmpdir_factory.mktemp("tmp")
-    yield my_tmpdir
-    shutil.rmtree(str(my_tmpdir))
-
-
-@pytest.fixture(scope="session")
-def example_problem() -> Problem:
-    return load_problem(name="var-3", save_dir=Path("tests", "data", "benchmarks"))
+from app.models.constraints import ConstraintDict
+from app.models.core import Site
+from app.models.objectives import Objectives
+from app.models.result import OptimisationResult
 
 
 class TestGridSearch:
@@ -33,21 +17,12 @@ class TestGridSearch:
         GridSearch(keep_degenerate=False)
 
     @pytest.mark.requires_epoch
-    def test_run(self, example_problem: Problem) -> None:
-        """
-        Test algorithm run.
-        """
-        alg = GridSearch(keep_degenerate=False)
-        t0 = perf_counter()
-        alg.run(example_problem)
-        exec_time = perf_counter() - t0
-        assert exec_time < 60
-
-    @pytest.mark.requires_epoch
-    def test_res(self, example_problem: Problem) -> None:
+    def test_run(
+        self, default_objectives: list[Objectives], default_constraints: ConstraintDict, default_portfolio: list[Site]
+    ) -> None:
         """
         Test output of algorithm.
         """
         alg = GridSearch(keep_degenerate=False)
-        res = alg.run(example_problem)
-        assert isinstance(res, Result)
+        res = alg.run(default_objectives, default_constraints, default_portfolio)
+        assert isinstance(res, OptimisationResult)

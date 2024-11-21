@@ -1,42 +1,67 @@
 import datetime
 import logging
 import uuid
+from os import PathLike
 from typing import Annotated
 
-from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt
+from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 
-from .optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
-from .problem import EndpointParameterDict, Objectives
-from .site_data import SiteMetaData
+from app.models.objectives import Objectives
+from app.models.optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
+from app.models.parameters import ParameterDict
+from app.models.site_data import SiteMetaData
 
 logger = logging.getLogger("default")
 
 
-class EndpointTask(BaseModel):
-    task_name: str | None = Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
-    optimiser: NSGA2Optmiser | GAOptimiser | GridSearchOptimiser = Field(description="Optimiser name and hyperparameters.")
-    search_parameters: EndpointParameterDict = Field(
+class Site(BaseModel):
+    name: str = Field(description="Human readable name for a building. Must be unique to portfolio.")
+    search_parameters: ParameterDict = Field(
         description="Search space parameter ranges to optimise over and parameter default values."
-    )
-    objectives: list[Objectives] = Field(
-        examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for."
     )
     site_data: SiteMetaData = Field(
         examples=[{"loc": "local", "site_id": "amcott_house", "path": "./data/InputData"}],
         description="Location to fetch input data from for EPOCH to ingest.",
     )
+    _input_dir: PathLike = PrivateAttr()
+
+
+class EndpointTask(Site):
+    optimiser: NSGA2Optmiser | GAOptimiser | GridSearchOptimiser = Field(description="Optimiser name and hyperparameters.")
+    objectives: list[Objectives] = Field(
+        examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for."
+    )
     created_at: AwareDatetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
+    client_id: str = Field(
+        examples=["demo"],
+        description="The database ID for a client, all lower case, joined by underscores.",
+    )
 
 
-class TaskWithUUID(EndpointTask):
+class Task(BaseModel):
+    name: str = Field(description="Human readable name for a portfolio task, e.g. 'Demonstration v1'.")
+    optimiser: NSGA2Optmiser | GAOptimiser | GridSearchOptimiser = Field(description="Optimiser name and hyperparameters.")
+    objectives: list[Objectives] = Field(
+        examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for."
+    )
+    created_at: AwareDatetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
+        description="The time this Task was created and added to the queue.",
+    )
+    portfolio: list[Site] = Field(description="List of buildings in portfolio.")
+    client_id: str = Field(
+        examples=["demo"],
+        description="The database ID for a client, all lower case, joined by underscores.",
+    )
     task_id: Annotated[UUID4, "String serialised UUID"] = Field(
         default_factory=uuid.uuid4,
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"],
         description="Unique ID (generally a UUIDv4) of an optimisation task.",
     )
+    _input_dir: PathLike = PrivateAttr()
 
 
 class TaskResponse(BaseModel):
@@ -96,8 +121,12 @@ class EndpointResult(BaseModel):
     task_id: UUID4 = Field(
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
     )
+    site_id: str | None
     result_id: UUID4
-    solution: OptimisationSolution = Field(description="Parameter values which defines a solution to the optimisation task.")
+    portfolio_id: UUID4
+    solution: OptimisationSolution | None = Field(
+        description="Parameter values which defines a solution to the optimisation task."
+    )
     objective_values: ObjectiveValues = Field(
         examples=[{"carbon_balance": 9999, "capex": 99999, "cost_balance": 999, "payback_horizon": 9, "annualised_cost": 99}],
         description="Objective values of the solution.",

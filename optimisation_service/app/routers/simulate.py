@@ -8,7 +8,7 @@ import tempfile
 from fastapi import APIRouter, HTTPException
 
 from app.internal.datamanager import DataManagerDep
-from app.internal.task_data_wrapper import PyTaskData, Simulator
+from app.internal.epoch_utils import PyTaskData, Simulator
 from app.models.simulate import FullResult, ReproduceSimulationRequest
 from app.models.site_data import LocalMetaData
 

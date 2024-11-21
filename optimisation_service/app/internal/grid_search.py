@@ -8,25 +8,28 @@ import subprocess
 import tempfile
 import time
 from datetime import timedelta
-from enum import Enum
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
 from paretoset import paretoset  # type: ignore
 
+from app.internal.pareto_front import portfolio_pareto_front
+from app.internal.portfolio_simulator import gen_all_building_combinations
+from app.models.constraints import ConstraintDict
+from app.models.core import Site
+from app.models.objectives import _OBJECTIVES, Objectives, ObjectivesDirection
+from app.models.result import BuildingSolution, OptimisationResult
+
 from ..models.algorithms import Algorithm
-from ..models.problem import EndpointParameterDict, OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
-from .problem import _OBJECTIVES, _OBJECTIVES_DIRECTION, Problem
-from .result import Result
+from ..models.parameters import OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
 
 logger = logging.getLogger("default")
 
 _EPOCH_CONFIG = {"optimiser": {"leagueTableCapacity": 1, "produceExhaustiveOutput": True}}
 
 
-def convert_param(parameters: ParameterDict | EndpointParameterDict | dict[str, Any]) -> OldParameterDict:
+def convert_param(parameters: ParameterDict) -> OldParameterDict:
     """
     Converts dictionary of parameters from dict of dicts to dict of lists.
     ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
@@ -41,14 +44,13 @@ def convert_param(parameters: ParameterDict | EndpointParameterDict | dict[str, 
     ParameterDict
         Dictionary of parameters with values in the format [min, max, step] or int or float.
     """
-    if isinstance(parameters, EndpointParameterDict):
-        parameters = parameters.model_dump()
+    parameter_dict = parameters.model_dump()
     new_dict = {}
     for param_name in ParametersWRange:
-        value = parameters[param_name]  # type: ignore
+        value = parameter_dict[param_name]  # type: ignore
         new_dict[param_name] = [value["min"], value["max"], value["step"]]
     for param_name in ParametersWORange:
-        new_dict[param_name] = parameters[param_name]  # type: ignore
+        new_dict[param_name] = parameter_dict[param_name]  # type: ignore
     return new_dict
 
 
@@ -71,64 +73,102 @@ class GridSearch(Algorithm):
         """
         self.keep_degenerate = keep_degenerate
 
-    def run(self, problem: Problem) -> Result:
+    def run(self, objectives: list[Objectives], constraints: ConstraintDict, portfolio: list[Site]) -> OptimisationResult:
         """
         Run grid search optimisation.
 
         Parameters
         ----------
-        problem
-            Problem instance to optimise.
+        objectives
+            List of metrics to optimise for.
+        portfolio
+            List of buidlings to find optimise scenarios.
+        constraints
+            Constraints to apply to metrics.
 
         Returns
         -------
-        solutions
-            Optimal solutions.
-        objective_values
-            objective_values of optimal solutions.
+        OptimisationResult
+            solutions: Pareto-front of evaluated candidate portfolio solutions.
+            exec_time: Time taken for optimisation process to conclude.
+            n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
-        temp_dir = tempfile.TemporaryDirectory()
+        building_solutions = {}
+        n_evals = 0
+        for building in portfolio:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                output_dir = Path(temp_dir, "tmp_outputs")
+                os.makedirs(output_dir, exist_ok=True)
 
-        output_dir = Path(temp_dir.name, "tmp_outputs")
-        os.makedirs(output_dir, exist_ok=True)
+                config_dir = Path(temp_dir, "Config")
+                Path(temp_dir, "Config").mkdir(parents=False, exist_ok=False)
 
-        config_dir = Path(temp_dir.name, "Config")
-        Path(temp_dir.name, "Config").mkdir(parents=False, exist_ok=False)
+                with open(Path(config_dir, "EpochConfig.json"), "w") as f:
+                    json.dump(_EPOCH_CONFIG, f)
 
-        with open(Path(config_dir, "EpochConfig.json"), "w") as f:
-            json.dump(_EPOCH_CONFIG, f)
+                with open(Path(building._input_dir, "inputParameters.json"), "w") as f:
+                    json.dump(convert_param(building.search_parameters), f)
 
-        with open(Path(problem.input_dir, "inputParameters.json"), "w") as f:
-            json.dump(convert_param(problem.parameters), f)
+                t0 = time.perf_counter()
+                run_headless(
+                    config_dir=str(config_dir),
+                    input_dir=str(building._input_dir),
+                    output_dir=str(output_dir),
+                )
+                exec_time = timedelta(seconds=(time.perf_counter() - t0))
 
-        t0 = time.perf_counter()
-        run_headless(
-            config_dir=str(config_dir),
-            input_dir=str(problem.input_dir),
-            output_dir=str(output_dir),
-        )
-        exec_time = timedelta(seconds=(time.perf_counter() - t0))
+                df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
+                df_res = df_res.drop(columns=["Parameter index"])
 
-        os.remove(Path(problem.input_dir, "inputParameters.json"))
+                n_evals += len(df_res)
 
-        variable_param = list(problem.variable_param().keys())
-        usecols = [item.value if isinstance(item, Enum) else str(item) for item in _OBJECTIVES + variable_param]
+                # Avoid maintaining all solutions from each building by keeping only the best solutions for each CAPEX.
+                if len(portfolio) > 1:  # Only required if there is more than 1 building.
+                    df_res = pareto_front_but_preserve(df_res, objectives, Objectives.capex)
 
-        df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32, usecols=usecols)
+                df_res["timewindow"] = building.search_parameters.timewindow
+                df_res["target_max_concurrency"] = building.search_parameters.target_max_concurrency
+                df_res["timestep_hours"] = building.search_parameters.timestep_hours
+                solutions: list[dict] = df_res.drop(columns=_OBJECTIVES).to_dict("records")
+                objective_values: list[dict] = df_res[_OBJECTIVES].to_dict("records")
 
-        for constraint, bounds in problem.constraints.items():
-            df_res = df_res[df_res[constraint] >= bounds.get("min", -np.inf)]
-            df_res = df_res[df_res[constraint] <= bounds.get("max", -np.inf)]
+                building_solutions[building.name] = [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
 
-        solutions = df_res[variable_param].to_numpy()
-        obj_direct = ["max" if _OBJECTIVES_DIRECTION[objective] == -1 else "min" for objective in problem.objectives]
-        pareto_efficient = paretoset(df_res[problem.objectives].to_numpy(), obj_direct, distinct=not self.keep_degenerate)
-        solutions = solutions[pareto_efficient]
-        objective_values = df_res[_OBJECTIVES].to_numpy()[pareto_efficient]
+        portfolio_sol = gen_all_building_combinations(building_solutions)
 
-        temp_dir.cleanup()
+        portfolio_sol_pf = portfolio_pareto_front(portfolio_sol, objectives)
 
-        return Result(solutions=solutions, objective_values=objective_values, exec_time=exec_time, n_evals=problem.size())
+        # TODO: Apply portfolio constraints
+
+        return OptimisationResult(solutions=portfolio_sol_pf, exec_time=exec_time, n_evals=n_evals)
+
+
+def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Objectives], preserved_objective: Objectives) -> pd.DataFrame:
+    """
+    Find the optimal Pareto front while maintaining at least one solution for each value encountered of the preserved objective.
+
+    Parameters
+    ----------
+    df
+        Pandas dataframe.
+    objectives
+        Objective(s) to optimise for (must be a subset of the dataframe's columns).
+    preserved_objective
+        Objective to preserve values of (must be a column of the dataframe).
+
+    Returns
+    -------
+    df
+        Pandas dataframe of optimal Pareto front.
+    """
+    grouped = df.groupby(by=[preserved_objective])
+    optimal_res = []
+    for _, group in grouped:
+        obj_values = group[objectives]
+        objective_direct = ["max" if ObjectivesDirection[objective] == -1 else "min" for objective in objectives]
+        pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
+        optimal_res.append(group[pareto_efficient])
+    return pd.concat(optimal_res)
 
 
 def run_headless(
@@ -166,15 +206,17 @@ def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / "inputParameters.json"} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / "EpochConfig.json"} is not a file"
 
-    result = subprocess.run([
-        epoch_path,
-        "--input",
-        str(input_dir),
-        "--output",
-        str(output_dir),
-        "--config",
-        str(config_dir),
-    ])
+    result = subprocess.run(
+        [
+            epoch_path,
+            "--input",
+            str(input_dir),
+            "--output",
+            str(output_dir),
+            "--config",
+            str(config_dir),
+        ]
+    )
 
     assert result.returncode == 0, result
 
@@ -224,15 +266,13 @@ def get_epoch_path() -> str:
 
         suffixes = [
             pathlib.Path("build", "headless", "epoch_main", "RelWithDebInfo"),
-            pathlib.Path("build", "headless", "epoch_main", "Debug")
+            pathlib.Path("build", "headless", "epoch_main", "Debug"),
         ]
     else:
         # Linux places the executable in build/epoch_main
         exe_name = "Epoch"
 
-        suffixes = [
-            pathlib.Path("build", "epoch_main")
-        ]
+        suffixes = [pathlib.Path("build", "epoch_main")]
 
     project_path = pathlib.Path(epoch_dir)
 

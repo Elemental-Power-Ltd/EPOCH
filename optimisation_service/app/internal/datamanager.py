@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import shutil
@@ -11,7 +12,9 @@ from fastapi import Depends
 from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
-from ..models.core import EndpointResult, TaskWithUUID
+from app.internal.grid_search import convert_param
+
+from ..models.core import EndpointResult, Task
 from ..models.simulate import ResultReproConfig
 from ..models.site_data import (
     ASHPResult,
@@ -46,7 +49,7 @@ class DataManager:
         self.temp_dir = _TEMP_DIR
         self.input_data_files = _INPUT_DATA_FILES
 
-    async def process_site_data(self, site_data: SiteMetaData, task_id: UUID4) -> None:
+    async def fetch_portfolio_data(self, portfolio: Task) -> None:
         """
         Process task site data.
         Either copy local files to temp dir or fetch and process data from database and save to temp dir.
@@ -58,20 +61,26 @@ class DataManager:
         task_id
             The task id
         """
-        self.temp_data_dir = Path(self.temp_dir, str(task_id))
-        logger.debug(f"Creating temporary directory {self.temp_data_dir}.")
-        os.makedirs(self.temp_data_dir)
+        portfolio._input_dir = Path(self.temp_dir, str(portfolio.task_id))
+        logger.debug(f"Creating temporary directory {portfolio._input_dir}.")
+        os.makedirs(portfolio._input_dir)
+        logger.info(f"Saving site data to {portfolio._input_dir}.")
 
-        if site_data.loc == FileLoc.remote:
-            if not site_data.dataset_ids:
-                await self.hydrate_site_with_latest_dataset_ids(site_data)
+        # TODO: makes this async
+        for building in portfolio.portfolio:
+            building._input_dir = Path(portfolio._input_dir, building.name)
+            os.makedirs(building._input_dir)
+            site_data = building.site_data
+            if site_data.loc == FileLoc.remote:
+                if not site_data.dataset_ids:
+                    await self.hydrate_site_with_latest_dataset_ids(site_data)
 
-            site_data_entries = await self.fetch_specific_datasets(site_data)
+                site_data_entries = await self.fetch_specific_datasets(site_data)
 
-            self.write_input_data_to_files(site_data_entries, self.temp_data_dir)
+                self.write_input_data_to_files(site_data_entries, building._input_dir)
 
-        elif site_data.loc == FileLoc.local:
-            self.copy_input_data(site_data.path, self.temp_data_dir)
+            elif site_data.loc == FileLoc.local:
+                self.copy_input_data(site_data.path, building._input_dir)
 
     async def hydrate_site_with_latest_dataset_ids(self, site_data: RemoteMetaData) -> None:
         """
@@ -91,7 +100,7 @@ class DataManager:
         dataset_ids = {}
         for dataset_type in latest_ids:
             dataset_ids[dataset_type] = latest_ids[dataset_type]["dataset_id"]
-            dataset_ids[dataset_type] = UUID4(latest_ids[dataset_type]["dataset_id"])
+            # dataset_ids[dataset_type] = UUID4(latest_ids[dataset_type]["dataset_id"])
 
         site_data.dataset_ids = dataset_ids
 
@@ -136,6 +145,19 @@ class DataManager:
         logger.debug(f"Copying data from {source} to {destination}.")
         for file in self.input_data_files:
             shutil.copy(Path(source, file), Path(destination, file))
+
+    def save_parameters(self, task: Task) -> None:
+        """
+        Save the parameters of a Task to file for debug.
+
+        Parameters
+        ----------
+        task
+            Task to save parameters for.
+        """
+        for building in task.portfolio:
+            with open(Path(building._input_dir, "inputParameters.json"), "w") as fi:
+                json.dump(convert_param(building.search_parameters), fi)
 
     async def fetch_latest_datasets(self, site_data: SiteMetaData) -> SiteDataEntries:
         """
@@ -257,7 +279,7 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-results", data=jsonable_encoder(results))
 
-    async def transmit_task(self, task: TaskWithUUID) -> None:
+    async def transmit_task(self, task: Task) -> None:
         """
         Transmit optimisation task to database.
 
@@ -267,8 +289,22 @@ class DataManager:
             Optimisation task.
         """
         logger.info(f"Adding {task.task_id} to database.")
+        search_parameters, site_data = {}, {}
+        for building in task.portfolio:
+            search_parameters[building.name] = building.search_parameters
+            site_data[building.name] = building.site_data
+        data = {
+            "client_id": task.client_id,
+            "task_id": task.task_id,
+            "task_name": task.name,
+            "objectives": task.objectives,
+            "optimiser": task.optimiser,
+            "created_at": task.created_at,
+            "search_parameters": search_parameters,
+            "site_data": site_data,
+        }
         async with httpx.AsyncClient() as client:
-            await self.db_post(client=client, subdirectory="/add-optimisation-task", data=jsonable_encoder(task))
+            await self.db_post(client=client, subdirectory="/add-optimisation-task", data=jsonable_encoder(data))
 
     async def get_result_configuration(self, result_id: UUID4) -> ResultReproConfig:
         """
