@@ -58,7 +58,6 @@ class ProblemInstance(ElementwiseProblem):
             variable_params_building = []
             constant_params_building = {}
 
-            n_var_building = 0
             for parameter in ParametersWRange:
                 param_range = getattr(building.search_parameters, parameter)
                 if is_variable_paramrange(param_range):
@@ -66,12 +65,12 @@ class ProblemInstance(ElementwiseProblem):
                     lower_bounds.append(param_range.min)
                     upper_bounds.append(param_range.max)
                     steps.append(param_range.step)
-                    n_var_building += 1
                 else:
                     constant_params_building[parameter] = param_range.min
             for parameter in ParametersWORange:
                 constant_params_building[parameter] = getattr(building.search_parameters, parameter)
 
+            n_var_building = len(variable_params_building)
             self.indexes[building.name] = (n_var, n_var + n_var_building)
             self.variable_params[building.name] = variable_params_building
             self.constant_params[building.name] = constant_params_building

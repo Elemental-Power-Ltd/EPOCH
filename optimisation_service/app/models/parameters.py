@@ -119,6 +119,4 @@ def is_variable_paramrange(param_range: ParamRange) -> bool:
     is_var
         Boolean if value is variable or not.
     """
-    if (param_range.step != 0) and (param_range.min != param_range.max):
-        return True
-    return False
+    return (param_range.step != 0) and (param_range.min != param_range.max)
