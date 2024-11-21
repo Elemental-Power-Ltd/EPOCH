@@ -292,12 +292,14 @@ CREATE TABLE optimisation.optimisers (
 
 CREATE TABLE optimisation.results (
     task_id uuid,
+    site_id text,
     solutions jsonb NOT NULL,
     objective_values public.objective_t NOT NULL,
     n_evals integer,
     exec_time interval,
     completed_at timestamp with time zone DEFAULT now() NOT NULL,
     results_id uuid NOT NULL,
+    portfolio_id uuid NOT NULL,
     CONSTRAINT results_n_evals_check CHECK ((n_evals > 0))
 );
 
@@ -309,6 +311,7 @@ CREATE TABLE optimisation.results (
 CREATE TABLE optimisation.task_config (
     task_id uuid NOT NULL,
     task_name text,
+    client_id text,
     objective_directions public.objective_t NOT NULL,
     constraints_min public.objective_t,
     constraints_max public.objective_t,
@@ -316,8 +319,7 @@ CREATE TABLE optimisation.task_config (
     input_data jsonb,
     optimiser_type text NOT NULL,
     optimiser_hyperparameters jsonb,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    site_id text
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -972,14 +974,6 @@ ALTER TABLE ONLY heating.synthesised
 
 ALTER TABLE ONLY optimisation.task_config
     ADD CONSTRAINT fk_job_config_optimiser_type_optimiser_name FOREIGN KEY (optimiser_type) REFERENCES optimisation.optimisers(name);
-
-
---
--- Name: task_config fk_task_config_site_info_site_id; Type: FK CONSTRAINT; Schema: optimisation; Owner: -
---
-
-ALTER TABLE ONLY optimisation.task_config
-    ADD CONSTRAINT fk_task_config_site_info_site_id FOREIGN KEY (site_id) REFERENCES client_info.site_info(site_id);
 
 
 --

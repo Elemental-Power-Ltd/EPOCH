@@ -24,13 +24,18 @@ class Objective(pydantic.BaseModel):
     annualised_cost: float | None = pydantic.Field(default=1.0, description="Cost to run these interventions per year")
 
 
+type SolutionType = dict[str, float | int]
+
+
 class OptimisationResult(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(
         examples=["bb8ce01e-4a73-11ef-9454-0242ac120001"],
         description="Unique ID for this task, often assigned by the optimiser.",
     )
+    site_id: site_id_t | None = site_id_field
     result_id: pydantic.UUID4
-    solution: dict[str, float | int] = pydantic.Field(
+    portfolio_id: pydantic.UUID4
+    solution: SolutionType | None = pydantic.Field(
         examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
         description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
         + "May not cover all parameters, only the ones we searched over.",
@@ -86,6 +91,7 @@ class RemoteMetaData(pydantic.BaseModel):
         description="Datetime to retrieve data from. Only relevant for remote files."
     )
     duration: DataDuration = pydantic.Field(description="Length of time to retrieve data for. Only relevant for remote files.")
+    dataset_ids: dict[str, pydantic.UUID4] = pydantic.Field(default={}, description="Specific dataset IDs to fetch.")
 
 
 class LocalMetaData(pydantic.BaseModel):
@@ -112,6 +118,10 @@ class Optimiser(pydantic.BaseModel):
 
 class TaskConfig(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
+    client_id: str = pydantic.Field(
+        examples=["demo"],
+        description="The database ID for a client, all lower case, joined by underscores.",
+    )
     task_name: str | None = pydantic.Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
     objective_directions: Objective = pydantic.Field(
         default=Objective(carbon_balance=-1, cost_balance=1, capex=-1, payback_horizon=-1, annualised_cost=-1),
@@ -127,7 +137,7 @@ class TaskConfig(pydantic.BaseModel):
         examples=[Objective(carbon_balance=None, cost_balance=None, capex=1e6, payback_horizon=None, annualised_cost=None)],
         description="Maximal values of the objectives to consider, e.g. reject all solutions with capex > £1,000,000.",
     )
-    search_parameters: dict[str, float | int | SearchSpaceEntry] = pydantic.Field(
+    search_parameters: dict[site_id_t, dict[str, float | int | SearchSpaceEntry]] = pydantic.Field(
         examples=[
             {
                 "Export_headroom": {"min": 0, "max": 0, "step": 0},
@@ -142,12 +152,11 @@ class TaskConfig(pydantic.BaseModel):
         description="The objectives that we're interested in, provided as a list."
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
-    site_data: SiteDataEntry = pydantic.Field(description="Where the data for this calculation are coming from.")
+    site_data: dict[site_id_t, SiteDataEntry] = pydantic.Field(
+        description="Where the data for this calculation are coming from."
+    )
     optimiser: Optimiser = pydantic.Field(
         description="The optimisation algorithm for the backend to use in these calculations."
-    )
-    optimiser_hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
-        default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
     )
     created_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
@@ -155,9 +164,14 @@ class TaskConfig(pydantic.BaseModel):
     )
 
 
+class ResultReproConfig(pydantic.BaseModel):
+    task_id: pydantic.UUID4
+    task_data: SolutionType
+    site_data: SiteDataEntry
+
+
 class OptimisationTaskListEntry(pydantic.BaseModel):
     task_id: dataset_id_t
-    site_id: site_id_t = site_id_field
     task_name: str | None
     result_ids: list[pydantic.UUID4]
     n_evals: pydantic.PositiveInt = pydantic.Field(
