@@ -1,24 +1,15 @@
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
 
-from app.internal.ga_utils import SamplingMethod
-from app.internal.genetic_algorithm import GeneticAlgorithm
-from app.internal.grid_search import GridSearch
-from app.internal.NSGA2 import NSGA2
+from app.models.ga_utils import SamplingMethod
 
 
 class OptimiserStr(StrEnum):
     NSGA2 = "NSGA2"
     GeneticAlgorithm = "GeneticAlgorithm"
     GridSearch = "GridSearch"
-
-
-class OptimiserFunc(Enum):
-    NSGA2 = NSGA2
-    GeneticAlgorithm = GeneticAlgorithm
-    GridSearch = GridSearch
 
 
 class GABaseHyperParam(BaseModel):
@@ -63,7 +54,7 @@ class GABaseHyperParam(BaseModel):
     sampling: SamplingMethod = Field(
         examples=["RANDOM", "ESTIMATE"],
         description="Whether to generate initial population randomly or from estimates.",
-        default="ESTIMATE",
+        default=SamplingMethod.RANDOM,
     )
 
 

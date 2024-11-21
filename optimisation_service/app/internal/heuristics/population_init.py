@@ -8,7 +8,7 @@ import numpy.typing as npt
 import pandas as pd
 from scipy.stats import truncnorm
 
-from app.models.parameters import ParamRange
+from app.models.parameters import ParameterDict, ParametersWRange, is_variable_paramrange
 
 from .population_heuristics import (
     estimate_ashp_hpower,
@@ -20,9 +20,7 @@ from .population_heuristics import (
 )
 
 
-def generate_building_initial_population(
-    variable_param: dict[str, ParamRange], constant_param: dict[str, float], input_dir: PathLike, pop_size: int
-) -> npt.NDArray:
+def generate_building_initial_population(parameters: ParameterDict, input_dir: PathLike, pop_size: int) -> npt.NDArray:
     """
     Generate a population of solutions by estimating some parameter values from data.
 
@@ -33,14 +31,12 @@ def generate_building_initial_population(
 
     Parameters
     ----------
-    variable_param
-        dictionary of optimisable parameters with corresponding range.
-    constant_param
-        dictionary of non-optimisable parameters with their corresponding value.
+    parameters
+        Parameters in problem.
     input_dir
-        path to folder containing data files.
+        Path to folder containing data files.
     pop_size
-        number of solutions generated in population.
+        Number of solutions generated in population.
 
     Returns
     -------
@@ -97,12 +93,14 @@ def generate_building_initial_population(
     )
 
     pop, lbs, steps = [], [], []
-    for parameter, param_range in variable_param.items():
-        lo, hi, step = param_range["min"], param_range["max"], param_range["step"]
-        generated_values = sampler_funcs[parameter](lo, hi, step)
-        pop.append(generated_values)
-        lbs.append(lo)
-        steps.append(step)
+    for parameter in ParametersWRange:
+        param_range = getattr(parameters, parameter)
+        if is_variable_paramrange(param_range):
+            lo, hi, step = param_range.min, param_range.max, param_range.step
+            generated_values = sampler_funcs[parameter](lo, hi, step)
+            pop.append(generated_values)
+            lbs.append(lo)
+            steps.append(step)
     pop_ar = np.array(pop)
     lbs_ar = np.array(lbs)
     steps_ar = np.array(steps)

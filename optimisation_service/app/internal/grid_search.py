@@ -9,7 +9,6 @@ import tempfile
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -17,19 +16,20 @@ from paretoset import paretoset  # type: ignore
 
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.portfolio_simulator import gen_all_building_combinations
-from app.internal.problem import PortfolioProblem
+from app.models.constraints import ConstraintDict
+from app.models.core import Site
 from app.models.objectives import _OBJECTIVES, Objectives, ObjectivesDirection
 from app.models.result import BuildingSolution, OptimisationResult
 
 from ..models.algorithms import Algorithm
-from ..models.parameters import EndpointParameterDict, OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
+from ..models.parameters import OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
 
 logger = logging.getLogger("default")
 
 _EPOCH_CONFIG = {"optimiser": {"leagueTableCapacity": 1, "produceExhaustiveOutput": True}}
 
 
-def convert_param(parameters: ParameterDict | EndpointParameterDict | dict[str, Any]) -> OldParameterDict:
+def convert_param(parameters: ParameterDict) -> OldParameterDict:
     """
     Converts dictionary of parameters from dict of dicts to dict of lists.
     ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
@@ -44,14 +44,13 @@ def convert_param(parameters: ParameterDict | EndpointParameterDict | dict[str, 
     ParameterDict
         Dictionary of parameters with values in the format [min, max, step] or int or float.
     """
-    if isinstance(parameters, EndpointParameterDict):
-        parameters = parameters.model_dump()
+    parameter_dict = parameters.model_dump()
     new_dict = {}
     for param_name in ParametersWRange:
-        value = parameters[param_name]  # type: ignore
+        value = parameter_dict[param_name]  # type: ignore
         new_dict[param_name] = [value["min"], value["max"], value["step"]]
     for param_name in ParametersWORange:
-        new_dict[param_name] = parameters[param_name]  # type: ignore
+        new_dict[param_name] = parameter_dict[param_name]  # type: ignore
     return new_dict
 
 
@@ -74,14 +73,18 @@ class GridSearch(Algorithm):
         """
         self.keep_degenerate = keep_degenerate
 
-    def run(self, portfolio: PortfolioProblem) -> OptimisationResult:
+    def run(self, objectives: list[Objectives], constraints: ConstraintDict, portfolio: list[Site]) -> OptimisationResult:
         """
         Run grid search optimisation.
 
         Parameters
         ----------
+        objectives
+            List of metrics to optimise for.
         portfolio
-            Portfolio problem instance to optimise.
+            List of buidlings to find optimise scenarios.
+        constraints
+            Constraints to apply to metrics.
 
         Returns
         -------
@@ -91,7 +94,8 @@ class GridSearch(Algorithm):
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
         building_solutions = {}
-        for building_name, building in portfolio.buildings.items():
+        n_evals = 0
+        for building in portfolio:
             with tempfile.TemporaryDirectory() as temp_dir:
                 output_dir = Path(temp_dir, "tmp_outputs")
                 os.makedirs(output_dir, exist_ok=True)
@@ -102,35 +106,41 @@ class GridSearch(Algorithm):
                 with open(Path(config_dir, "EpochConfig.json"), "w") as f:
                     json.dump(_EPOCH_CONFIG, f)
 
-                with open(Path(building.input_dir, "inputParameters.json"), "w") as f:
-                    json.dump(convert_param(building.parameters), f)
+                with open(Path(building._input_dir, "inputParameters.json"), "w") as f:
+                    json.dump(convert_param(building.search_parameters), f)
 
                 t0 = time.perf_counter()
                 run_headless(
                     config_dir=str(config_dir),
-                    input_dir=str(building.input_dir),
+                    input_dir=str(building._input_dir),
                     output_dir=str(output_dir),
                 )
                 exec_time = timedelta(seconds=(time.perf_counter() - t0))
 
                 df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
+                df_res = df_res.drop(columns=["Parameter index"])
+
+                n_evals += len(df_res)
 
                 # Avoid maintaining all solutions from each building by keeping only the best solutions for each CAPEX.
-                if len(portfolio.buildings.keys()) > 1:  # Only required if there is more than 1 building.
-                    df_res = pareto_front_but_preserve(df_res, portfolio.objectives, Objectives.capex)
+                if len(portfolio) > 1:  # Only required if there is more than 1 building.
+                    df_res = pareto_front_but_preserve(df_res, objectives, Objectives.capex)
 
+                df_res["timewindow"] = building.search_parameters.timewindow
+                df_res["target_max_concurrency"] = building.search_parameters.target_max_concurrency
+                df_res["timestep_hours"] = building.search_parameters.timestep_hours
                 solutions: list[dict] = df_res.drop(columns=_OBJECTIVES).to_dict("records")
                 objective_values: list[dict] = df_res[_OBJECTIVES].to_dict("records")
 
-                building_solutions[building_name] = [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
+                building_solutions[building.name] = [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
 
         portfolio_sol = gen_all_building_combinations(building_solutions)
 
-        portfolio_sol_pf = portfolio_pareto_front(portfolio_sol, portfolio.objectives)
+        portfolio_sol_pf = portfolio_pareto_front(portfolio_sol, objectives)
 
         # TODO: Apply portfolio constraints
 
-        return OptimisationResult(solutions=portfolio_sol_pf, exec_time=exec_time, n_evals=building.size())
+        return OptimisationResult(solutions=portfolio_sol_pf, exec_time=exec_time, n_evals=n_evals)
 
 
 def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Objectives], preserved_objective: Objectives) -> pd.DataFrame:

@@ -1,6 +1,5 @@
 import logging
 from copy import deepcopy
-from enum import StrEnum
 from typing import Any, Never
 
 import numpy as np
@@ -14,8 +13,10 @@ from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ign
 from app.internal.epoch_utils import PyTaskData
 from app.internal.heuristics.population_init import generate_building_initial_population
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
-from app.internal.problem import PortfolioProblem
-from app.models.objectives import ObjectivesDirection, ObjectiveValues
+from app.models.constraints import ConstraintDict
+from app.models.core import Site
+from app.models.objectives import Objectives, ObjectivesDirection, ObjectiveValues
+from app.models.parameters import ParametersWORange, ParametersWRange, is_variable_paramrange
 
 logger = logging.getLogger("default")
 
@@ -27,7 +28,7 @@ class ProblemInstance(ElementwiseProblem):
     Create Pymoo ProblemInstance from OptimiseProblem instance.
     """
 
-    def __init__(self, portfolio: PortfolioProblem) -> None:
+    def __init__(self, objectives: list[Objectives], constraints: ConstraintDict, portfolio: list[Site]) -> None:
         """
         Define Problem objectives, constraints, parameter search space.
 
@@ -36,10 +37,11 @@ class ProblemInstance(ElementwiseProblem):
         Problem
             Problem to optimise
         """
-        self.buildings = portfolio.buildings
-        self.building_names = portfolio.buildings.keys()
-        self.objectives = portfolio.objectives
-        self.constraints = portfolio.constraints
+        self.buildings = portfolio
+        self.building_names = [building.name for building in portfolio]
+        self.objectives = objectives
+        self.constraints = constraints
+
         n_obj = len(self.objectives)
         n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
 
@@ -52,21 +54,27 @@ class ProblemInstance(ElementwiseProblem):
         steps = []
 
         n_var = 0
-        for building_name, building in portfolio.buildings.items():
+        for building in portfolio:
             variable_params_building = []
+            constant_params_building = {}
 
-            n_var_building = 0
-            for key, value in building.variable_param().items():
-                variable_params_building.append(key)
-                lower_bounds.append(value["min"])
-                upper_bounds.append(value["max"])
-                steps.append(value["step"])
-                n_var_building += 1
+            for parameter in ParametersWRange:
+                param_range = getattr(building.search_parameters, parameter)
+                if is_variable_paramrange(param_range):
+                    variable_params_building.append(parameter)
+                    lower_bounds.append(param_range.min)
+                    upper_bounds.append(param_range.max)
+                    steps.append(param_range.step)
+                else:
+                    constant_params_building[parameter] = param_range.min
+            for parameter in ParametersWORange:
+                constant_params_building[parameter] = getattr(building.search_parameters, parameter)
 
-            self.indexes[building_name] = (n_var, n_var + n_var_building)
-            self.variable_params[building_name] = deepcopy(variable_params_building)
-            self.constant_params[building_name] = deepcopy(building.constant_param())
-            input_dirs[building_name] = building.input_dir
+            n_var_building = len(variable_params_building)
+            self.indexes[building.name] = (n_var, n_var + n_var_building)
+            self.variable_params[building.name] = variable_params_building
+            self.constant_params[building.name] = constant_params_building
+            input_dirs[building.name] = building._input_dir
             n_var += n_var_building
 
         self.lower_bounds = np.array(lower_bounds)
@@ -225,12 +233,11 @@ class EstimateBasedSampling(Sampling):
 
     def _do(self, problem: ProblemInstance, n_samples: int, **kwargs):
         building_pops = []
-        for building in problem.buildings.values():
+        for building in problem.buildings:
             building_pops.append(  # noqa: PERF401
                 generate_building_initial_population(
-                    variable_param=building.variable_param(),
-                    constant_param=building.constant_param(),
-                    input_dir=building.input_dir,
+                    parameters=building.search_parameters,
+                    input_dir=building._input_dir,
                     pop_size=n_samples,
                 )
             )
@@ -290,8 +297,3 @@ class SimpleIntMutation(Mutation):
         Xp = repair_random_init(Xp, X, xl, xu)
 
         return Xp
-
-
-class SamplingMethod(StrEnum):
-    RANDOM = "RANDOM"
-    ESTIMATE = "ESTIMATE"
