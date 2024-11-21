@@ -16,7 +16,7 @@ from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSoluti
 from app.models.constraints import ConstraintDict
 from app.models.core import Site
 from app.models.objectives import Objectives, ObjectivesDirection, ObjectiveValues
-from app.models.parameters import ParametersWRange, is_variable_param
+from app.models.parameters import ParametersWORange, ParametersWRange, is_variable_paramrange
 
 logger = logging.getLogger("default")
 
@@ -59,18 +59,18 @@ class ProblemInstance(ElementwiseProblem):
             constant_params_building = {}
 
             n_var_building = 0
-            for name, value in building.search_parameters.model_dump().items():
-                if is_variable_param(name, value):
-                    variable_params_building.append(name)
-                    lower_bounds.append(value["min"])
-                    upper_bounds.append(value["max"])
-                    steps.append(value["step"])
+            for parameter in ParametersWRange:
+                param_range = getattr(building.search_parameters, parameter)
+                if is_variable_paramrange(param_range):
+                    variable_params_building.append(parameter)
+                    lower_bounds.append(param_range.min)
+                    upper_bounds.append(param_range.max)
+                    steps.append(param_range.step)
                     n_var_building += 1
                 else:
-                    if name in ParametersWRange:
-                        constant_params_building[name] = value["max"]
-                    else:
-                        constant_params_building[name] = value
+                    constant_params_building[parameter] = param_range.min
+            for parameter in ParametersWORange:
+                constant_params_building[parameter] = getattr(building.search_parameters, parameter)
 
             self.indexes[building.name] = (n_var, n_var + n_var_building)
             self.variable_params[building.name] = variable_params_building

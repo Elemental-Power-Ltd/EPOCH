@@ -1,13 +1,13 @@
+import uuid
 from collections import OrderedDict
-from collections.abc import Callable
 
 import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
+from app.internal.datamanager import DataManager
 from app.main import app
-from app.models.core import EndpointTask
-from app.models.tasks import Task
+from app.models.core import Task
 from app.routers.epl_queue import IQueue, task_state
 
 
@@ -18,27 +18,27 @@ class TestQueueEndpoint:
         """
         with TestClient(app) as client:
             response = client.post("/queue-status")
-            assert response.status_code == 200
+            assert response.status_code == 200, response.text
 
     @pytest.mark.slow
-    def test_cancel_task(self, client: TestClient, endpointtask_factory: Callable[[], EndpointTask]) -> None:
+    def test_cancel_task(self, client: TestClient, default_task: Task) -> None:
         """
         Test /cancel-task endpoint.
         """
-        task1 = endpointtask_factory()
-        task2 = endpointtask_factory()
-        _ = client.post("/submit-task", json=jsonable_encoder(task1))
-        response2 = client.post("/submit-task", json=jsonable_encoder(task2))
-        task2_id = response2.json()["task_id"]
-        response = client.post("/cancel-task", params={"task_id": task2_id})
-        assert response.status_code == 200
+        _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
+        default_task.task_id = uuid.uuid4()
+        _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
+        default_task.task_id = uuid.uuid4()
+        _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
+        response = client.post("/cancel-task", params={"task_id": str(default_task.task_id)})
+        assert response.status_code == 200, response.text
 
     def test_clear_queue(self, client: TestClient) -> None:
         """
         Test /clear-queue endpoint.
         """
         response = client.post("/clear-queue")
-        assert response.status_code == 200
+        assert response.status_code == 200, response.text
 
 
 class TestQueue:
@@ -56,65 +56,62 @@ class TestQueue:
             IQueue(maxsize=-5)
 
     @pytest.mark.asyncio
-    async def test_put(self, task_factory: Callable[[], Task]) -> None:
+    async def test_put(self, default_task: Task) -> None:
         """
         Test IQueue put method.
         """
         q = IQueue()
-        await q.put(task_factory())
+        await q.put((default_task, DataManager()))
 
     @pytest.mark.asyncio
-    async def test_get(self, task_factory: Callable[[], Task]) -> None:
+    async def test_get(self, default_task: Task) -> None:
         """
         Test IQueue get method.
         """
         q = IQueue()
-        await q.put(task_factory())
-        task = await q.get()
+        await q.put((default_task, DataManager()))
+        task, _ = await q.get()
         assert isinstance(task, Task)
 
     @pytest.mark.asyncio
-    async def test_mark_task_done(self, task_factory: Callable[[], Task]) -> None:
+    async def test_mark_task_done(self, default_task: Task) -> None:
         """
         Test Iqueue mark_task_done method.
         """
         q = IQueue()
-        task = task_factory()
-        await q.put(task)
-        assert task.task_id in q.q
-        q.mark_task_done(task)
-        assert task.task_id not in q.q
+        await q.put((default_task, DataManager()))
+        assert default_task.task_id in q.q
+        q.mark_task_done(default_task)
+        assert default_task.task_id not in q.q
 
     @pytest.mark.asyncio
-    async def test_cancel_task(self, task_factory: Callable[[], Task]) -> None:
+    async def test_cancel_task(self, default_task: Task) -> None:
         """
         Test IQueue cancel method.
         """
         q = IQueue()
-        task = task_factory()
-        await q.put(task)
-        q.cancel(task.task_id)
-        assert q.q[task.task_id].state == task_state.CANCELLED
+        await q.put((default_task, DataManager()))
+        q.cancel(default_task.task_id)
+        assert q.q[default_task.task_id].state == task_state.CANCELLED
 
     @pytest.mark.asyncio
-    async def test_uncancelled(self, task_factory: Callable[[], Task]) -> None:
+    async def test_uncancelled(self, default_task: Task) -> None:
         """
         Test IQueue uncancelled method.
         """
         q = IQueue()
-        task = task_factory()
         assert q.uncancelled() == OrderedDict()
-        await q.put(task)
+        await q.put((default_task, DataManager()))
         uncancelled = q.uncancelled()
         assert isinstance(uncancelled, OrderedDict)
-        assert task.task_id in uncancelled
+        assert default_task.task_id in uncancelled
 
     @pytest.mark.asyncio
-    async def test_qsize(self, task_factory: Callable[[], Task]) -> None:
+    async def test_qsize(self, default_task: Task) -> None:
         """
         Test IQueue qsize method.
         """
         q = IQueue()
         assert q.qsize() == 0
-        await q.put(task_factory())
+        await q.put((default_task, DataManager()))
         assert q.qsize() == 1

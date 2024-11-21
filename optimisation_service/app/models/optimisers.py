@@ -54,7 +54,7 @@ class GABaseHyperParam(BaseModel):
     sampling: SamplingMethod = Field(
         examples=["RANDOM", "ESTIMATE"],
         description="Whether to generate initial population randomly or from estimates.",
-        default="ESTIMATE",
+        default=SamplingMethod.RANDOM,
     )
 
 

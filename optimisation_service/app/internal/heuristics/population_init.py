@@ -8,7 +8,7 @@ import numpy.typing as npt
 import pandas as pd
 from scipy.stats import truncnorm
 
-from app.models.parameters import ParameterDict, is_variable_param
+from app.models.parameters import ParameterDict, ParametersWRange, is_variable_paramrange
 
 from .population_heuristics import (
     estimate_ashp_hpower,
@@ -93,9 +93,10 @@ def generate_building_initial_population(parameters: ParameterDict, input_dir: P
     )
 
     pop, lbs, steps = [], [], []
-    for parameter, value in parameters.model_dump().items():
-        if is_variable_param(parameter, value):
-            lo, hi, step = value["min"], value["max"], value["step"]
+    for parameter in ParametersWRange:
+        param_range = getattr(parameters, parameter)
+        if is_variable_paramrange(param_range):
+            lo, hi, step = param_range.min, param_range.max, param_range.step
             generated_values = sampler_funcs[parameter](lo, hi, step)
             pop.append(generated_values)
             lbs.append(lo)

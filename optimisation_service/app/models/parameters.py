@@ -105,23 +105,20 @@ class ParameterDict(BaseModel):
 OldParameterDict = Mapping[str, list[int | float] | tuple[int | float] | int | float]
 
 
-def is_variable_param(name: str, value: dict[str, int | float] | int | float) -> bool:
+def is_variable_paramrange(param_range: ParamRange) -> bool:
     """
-    Checks if a parameter is variable or not.
+    Checks if a parameter range is variable or not.
 
     Parameters
     ----------
-    name
-        Name of the parameter.
     value
-        value of the parameter.
+        Param range to evaluate.
 
     Returns
     -------
     is_var
         Boolean if value is variable or not.
     """
-    if name in ParametersWRange:
-        if (value["step"] != 0) and (value["min"] != value["max"]):  # type: ignore
-            return True
+    if (param_range.step != 0) and (param_range.min != param_range.max):
+        return True
     return False
