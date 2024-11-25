@@ -8,7 +8,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from .building_elements import BuildingElement
 from .links import BoilerRadiativeLink
+from .network import HeatNetwork
 
 
 def update_temperatures(graph: nx.Graph) -> nx.Graph:
@@ -35,26 +37,6 @@ def update_temperatures(graph: nx.Graph) -> nx.Graph:
         # Reset the energy changes now we've used them
         graph.nodes[u]["energy_change"] = 0.0
     return graph
-
-
-def property_to_list(graph: nx.Graph, attr: str) -> list[float]:
-    """
-    Extract an attribute held by graph nodes (temperature, energy change) and create a list.
-
-    These lists will be sorted consistently by the names of the nodes.
-
-    Parameters
-    ----------
-    graph
-        Graph with sortable node names and some properties
-    property
-        Name of the property to extract into a list
-
-    Returns
-    -------
-        list of that property from each node, sorted by node names
-    """
-    return [prop for _, prop in sorted(graph.nodes(data=attr), key=lambda t: t[0])]
 
 
 def lerp(ts: pd.Timestamp | datetime.datetime, times: pd.DatetimeIndex, values: pd.Series) -> float:
@@ -84,7 +66,7 @@ def lerp(ts: pd.Timestamp | datetime.datetime, times: pd.DatetimeIndex, values: 
 
 
 def simulate(
-    graph: nx.Graph,
+    graph: HeatNetwork,
     external_df: pd.DataFrame,
     start_time: datetime.datetime,
     end_time: datetime.datetime | None = None,
@@ -122,12 +104,12 @@ def simulate(
     for it in range(iters):
         time = start_time + datetime.timedelta(seconds=dt * it)
         times.append(time)
-        graph.nodes["External"]["temperature"] = lerp(time, external_df.index, external_df["temp"])
-        graph.nodes["Ground"]["temperature"] = lerp(time, external_df.index, external_df["temp"]) - 11.0
-        graph.get_edge_data("Sun", "Roof")["radiative"].power = (
+        graph.nodes[BuildingElement.ExternalAir]["temperature"] = lerp(time, external_df.index, external_df["temp"])
+        graph.nodes[BuildingElement.Ground]["temperature"] = lerp(time, external_df.index, external_df["temp"]) - 11.0
+        graph.get_edge_data(BuildingElement.Sun, BuildingElement.Roof)["radiative"].power = (
             lerp(time, external_df.index, external_df["solarradiation"]) * 50 * 0.33
         )
-        graph.get_edge_data("Sun", "Wall_South")["radiative"].power = (
+        graph.get_edge_data(BuildingElement.Sun, BuildingElement.WallSouth)["radiative"].power = (
             lerp(time, external_df.index, external_df["solarradiation"]) * 10 * 0.25
         )
         for u, v, edge_attrs in graph.edges(data=True):
@@ -138,7 +120,7 @@ def simulate(
                 edge_attrs["convective"].step(u_attrs, v_attrs, dt)
             if edge_attrs.get("radiative") is not None:
                 if isinstance(edge_attrs.get("radiative"), BoilerRadiativeLink):
-                    edge_attrs["radiative"].step(u_attrs, v_attrs, dt, graph.nodes["Air"]["temperature"])
+                    edge_attrs["radiative"].step(u_attrs, v_attrs, dt, graph.nodes[BuildingElement.InternalAir]["temperature"])
                 else:
                     edge_attrs["radiative"].step(u_attrs, v_attrs, dt)
 

@@ -7,14 +7,31 @@ from .heat_capacities import (
     AIR_HEAT_CAPACITY,
     BRICK_HEAT_CAPACITY,
     BRICK_U_VALUE,
+    CONCRETE_HEAT_CAPACITY,
     CONCRETE_U_VALUE,
     GLASS_HEAT_CAPACITY,
+    GLASS_U_VALUE,
     TILE_HEAT_CAPACITY,
 )
-from .links import BoilerRadiativeLink, ConductiveLink, ConvectiveLink, RadiativeLink, ThermalRadiativeLink
+from .links import (
+    BoilerRadiativeLink,
+    ConductiveLink,
+    ConvectiveLink,
+    RadiativeLink,
+    ThermalEdgeAttrDict,
+    ThermalNodeAttrDict,
+    ThermalRadiativeLink,
+)
 
 
-def initialise_outdoors() -> nx.Graph:
+class HeatNetwork(nx.DiGraph):
+    """A Heat Network is a directed graph where nodes are fabric elements and edges are thermal links."""
+
+    node_attr_dict_factory = ThermalNodeAttrDict
+    edge_attr_dict_factory = ThermalEdgeAttrDict
+
+
+def initialise_outdoors() -> HeatNetwork:
     """
     Initialise the outdoors, which will be the base of any future structures.
 
@@ -30,7 +47,7 @@ def initialise_outdoors() -> nx.Graph:
     nx.Graph
         A networkx graph with only nodes representing Ground, Sun and ExternalAir with no thermal links.
     """
-    G = nx.Graph()
+    G = HeatNetwork()
 
     G.add_node(BuildingElement.Ground, thermal_mass=float("inf"), temperature=7, energy_change=0.0)
     G.add_node(BuildingElement.Sun, thermal_mass=float("inf"), temperature=float("inf"), energy_change=0.0)
@@ -40,8 +57,8 @@ def initialise_outdoors() -> nx.Graph:
 
 
 def add_structure_to_graph(
-    G: nx.Graph, wall_area: float, window_area: float, floor_area: float | None = None, roof_area: float | None = None
-) -> nx.Graph:
+    G: HeatNetwork, wall_area: float, window_area: float, floor_area: float | None = None, roof_area: float | None = None
+) -> HeatNetwork:
     """
     Add a structure to an existing graph.
 
@@ -64,6 +81,7 @@ def add_structure_to_graph(
     roof_area
         Area of the roof of this building receiving sunlight. If None, presume the same as the floor area.
     """
+    assert BuildingElement.InternalAir not in G.nodes, "Must not have already added a structure."
     if floor_area is None:
         floor_area = wall_area
 
@@ -99,6 +117,9 @@ def add_structure_to_graph(
     )
     G.add_node(BuildingElement.Roof, thermal_mass=TILE_HEAT_CAPACITY * roof_area, temperature=18.0, energy_change=0.0)
 
+    G.add_node(
+        BuildingElement.Floor, thermal_mass=CONCRETE_HEAT_CAPACITY * floor_area * 0.25, temperature=18.0, energy_change=0.0
+    )
     G.add_node(BuildingElement.InternalGains, thermal_mass=float("inf"), temperature=float("inf"), energy_change=0.0)
 
     for wall in [BuildingElement.WallSouth, BuildingElement.WallEast, BuildingElement.WallNorth, BuildingElement.WallWest]:
@@ -118,13 +139,13 @@ def add_structure_to_graph(
         G.add_edge(
             BuildingElement.InternalAir,
             wall,
-            conductive=ConductiveLink(interface_area=wall_area, heat_transfer=wall_u_value),
+            conductive=ConductiveLink(interface_area=window_area, heat_transfer=GLASS_U_VALUE),
             radiative=None,
         )
         G.add_edge(
             wall,
             BuildingElement.ExternalAir,
-            conductive=ConductiveLink(interface_area=wall_area, heat_transfer=wall_u_value * wall_area),
+            conductive=ConductiveLink(interface_area=window_area, heat_transfer=GLASS_U_VALUE),
         )
 
     G.add_edge(
@@ -166,7 +187,7 @@ def add_structure_to_graph(
     return G
 
 
-def add_heating_system_to_graph(G: nx.Graph, design_flow_temperature: float = 70.0, n_radiators: int = 4) -> nx.Graph:
+def add_heating_system_to_graph(G: HeatNetwork, design_flow_temperature: float = 70.0, n_radiators: int = 4) -> HeatNetwork:
     """
     Include a heating system in this heat network.
 
@@ -189,6 +210,10 @@ def add_heating_system_to_graph(G: nx.Graph, design_flow_temperature: float = 70
     nx.Graph
         Heat network with a heating system included.
     """
+    assert BuildingElement.InternalAir in G.nodes, "Must have already added a structure."
+    assert BuildingElement.HeatingSystem not in G.nodes, "Must not have already added a heating system."
+    assert 20 <= design_flow_temperature <= 100, "Design flow temperature must be between 20°C and 100°C."
+    assert n_radiators > 0, "Number of radiators must be positive."
     HEATING_SYSTEM_HEAT_CAPACITY = 27500 + (
         (9025 + 1494) * 1.2 * n_radiators * 1
     )  # 10x 1kW radiators weighting 19kg with 3.6L of water, plus pipes
@@ -215,4 +240,44 @@ def add_heating_system_to_graph(G: nx.Graph, design_flow_temperature: float = 70
         conductive=None,
         radiative=ThermalRadiativeLink(RADIATOR_SIZE * n_radiators, delta_t=50.0),
     )
+    return G
+
+
+def create_simple_structure(
+    wall_area: float,
+    window_area: float,
+    floor_area: float | None = None,
+    roof_area: float | None = None,
+    design_flow_temperature: float = 70.0,
+    n_radiators: int = 4,
+) -> HeatNetwork:
+    """
+    Create a simple structure of four walls, two windows and a heating system.
+
+    See `add_structure_to_graph` and `add_heating_system_to_graph` for more explanation.
+
+    Parameters
+    ----------
+    wall_area
+        Area in m^2 of each the four walls of this building, presuming they're all the same size (excluding windows!)
+    window_area
+        Area in m^2 of the windows on the North & South walls of the building, presuming they're all one big bit of glass.
+    floor_area
+        Area of the floor of this building in contact with the gound. If None, presume it's the same as one wall for a cube.
+    roof_area
+        Area of the roof of this building receiving sunlight. If None, presume the same as the floor area.
+    design_flow_temperature
+        The temperature of the HeatSource to provide hot water at in °C
+    n_radiators
+        Number of 1kW radiators to join into the mega-emitter.
+
+    Returns
+    -------
+    HeatNetwork
+        Heat Network of this particular simple building
+
+    """
+    G = initialise_outdoors()
+    G = add_structure_to_graph(G, wall_area=wall_area, window_area=window_area, floor_area=floor_area, roof_area=roof_area)
+    G = add_heating_system_to_graph(G, design_flow_temperature=design_flow_temperature, n_radiators=n_radiators)
     return G

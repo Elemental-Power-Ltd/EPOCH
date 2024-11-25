@@ -1,5 +1,15 @@
 """Thermal links between two objects: conductive, radiative, convective."""
 
+from typing import TypedDict
+
+
+class ThermalNodeAttrDict(TypedDict):
+    """Typed dict for a thermal element node which has a temperature, a heat capacity, and an energy change accumulator."""
+
+    temperature: float
+    thermal_mass: float
+    energy_change: float
+
 
 class ConductiveLink:
     """Conductive links represent two bodies in thermal contact with one another."""
@@ -18,7 +28,7 @@ class ConductiveLink:
         self.interface_area = interface_area
         self.heat_transfer = heat_transfer
 
-    def step(self, u_attrs: dict[str, float], v_attrs: dict[str, float], dt: float) -> float:
+    def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
         """
         Pass heat between the two sides of this conductive link.
 
@@ -68,7 +78,7 @@ class RadiativeLink:
         """
         self.power = power
 
-    def step(self, u_attrs: dict[str, float], v_attrs: dict[str, float], dt: float) -> float:
+    def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
         """
         Pass heat between the two sides of this radiative link.
 
@@ -120,7 +130,7 @@ class ThermalRadiativeLink:
         self.power = power
         self.delta_t = delta_t
 
-    def step(self, u_attrs: dict[str, float], v_attrs: dict[str, float], dt: float) -> float:
+    def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
         """
         Pass heat between the two sides of this thermal radiative link.
 
@@ -170,7 +180,9 @@ class BoilerRadiativeLink:
         self.setpoint_temperature = setpoint_temperature
         self.is_on = False
 
-    def step(self, u_attrs: dict[str, float], v_attrs: dict[str, float], dt: float, thermostat_temperature: float) -> float:
+    def step(
+        self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float, thermostat_temperature: float
+    ) -> float:
         """
         Pass heat from the heat source into the heating system, depending on the measured temperature.
 
@@ -227,7 +239,7 @@ class ConvectiveLink:
         """
         self.ach = ach
 
-    def step(self, u_attrs: dict[str, float], v_attrs: dict[str, float], dt: float) -> float:
+    def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
         """
         Pass heat in the form of hot air between the two sides of this convective link.
 
@@ -253,3 +265,11 @@ class ConvectiveLink:
         v_attrs["energy_change"] -= energy_change_j
 
         return energy_change_j
+
+
+class ThermalEdgeAttrDict(TypedDict):
+    """Typed dict for an edge which has conductive, radiative and convective links that might be None."""
+
+    conductive: ConductiveLink | None
+    radiative: RadiativeLink | BoilerRadiativeLink | ThermalRadiativeLink | None
+    convective: ConvectiveLink | None
