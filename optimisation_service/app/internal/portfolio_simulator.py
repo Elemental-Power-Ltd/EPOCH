@@ -1,3 +1,4 @@
+import functools
 from itertools import product
 from os import PathLike
 
@@ -26,6 +27,27 @@ class PortfolioSimulator:
         """
         self.sims = {name: Simulator(inputDir=str(input_dir)) for name, input_dir in input_dirs.items()}
 
+    @functools.lru_cache(maxsize=100000, typed=False)
+    def simulate_scenario(self, site_name: str, **kwargs) -> ObjectiveValues:
+        """
+        Simulate scenario wrapper function to leverage caching of simulation results.
+
+        Parameters
+        ----------
+        site_name
+            Name of site to simulate.
+        kwargs
+            Scenario to Simulate.
+
+        Returns
+        -------
+        ObjectiveValues
+            Metrics of the simulation.
+        """
+        sim = self.sims[site_name]
+        task = PyTaskData(**kwargs)
+        return convert_sim_result(sim.simulate_scenario(task))  # TODO:Solution doesn't require taskdata
+
     def simulate_portfolio(self, portfolio_tasks: dict[str, PyTaskData]) -> PortfolioSolution:
         """
         Simulate a portfolio.
@@ -45,9 +67,8 @@ class PortfolioSimulator:
         objective_values_list = []
         for name in portfolio_tasks.keys():
             task = portfolio_tasks[name]
-            sim = self.sims[name]
-            result = convert_sim_result(sim.simulate_scenario(task))
-            solution[name] = BuildingSolution(solution=task, objective_values=result)  # TODO:Solution doesn't require taskdata
+            result = self.simulate_scenario(name, **dict(task.items()))
+            solution[name] = BuildingSolution(solution=task, objective_values=result)
             objective_values_list.append(result)
         objective_values = combine_objective_values(objective_values_list)
         return PortfolioSolution(solution=solution, objective_values=objective_values)  # TODO:Solution doesn't require taskdata
