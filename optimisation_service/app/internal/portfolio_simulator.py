@@ -27,7 +27,7 @@ class PortfolioSimulator:
         """
         self.sims = {name: Simulator(inputDir=str(input_dir)) for name, input_dir in input_dirs.items()}
 
-    @functools.lru_cache(maxsize=100000, typed=False)
+    @functools.lru_cache(maxsize=100000, typed=False)  # noqa: B019
     def simulate_scenario(self, site_name: str, **kwargs) -> ObjectiveValues:
         """
         Simulate scenario wrapper function to leverage caching of simulation results.
