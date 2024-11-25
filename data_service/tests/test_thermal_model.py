@@ -1,0 +1,181 @@
+"""Tests for the thermal model: static and dynamic heat loss, structure heat networks etc."""
+
+import numpy as np
+import pytest
+
+from app.internal.thermal_model import add_heating_system_to_graph, add_structure_to_graph, initialise_outdoors
+from app.internal.thermal_model.building_elements import BuildingElement
+from app.internal.thermal_model.heat_loss import calculate_maximum_dynamic_heat_loss, calculate_maximum_static_heat_loss
+from app.internal.thermal_model.network import create_simple_structure
+
+
+class TestCreateHeatNetwork:
+    """Test that we create heat networks with the right properties."""
+
+    def test_create_structure_from_nothing(self) -> None:
+        """Test that we can create a structure and that the steps are additive."""
+        G = initialise_outdoors()
+        G2 = add_structure_to_graph(G, 10.0, 1.0, 50.0, 50.0)
+        G3 = add_heating_system_to_graph(G2, 70, 4)
+
+        assert set(G.nodes) <= set(G2.nodes)
+        assert set(G2.nodes) <= set(G3.nodes)
+
+        for required_node in [
+            BuildingElement.WallEast,
+            BuildingElement.WallSouth,
+            BuildingElement.WallNorth,
+            BuildingElement.WallWest,
+            BuildingElement.WindowsSouth,
+            BuildingElement.WindowsNorth,
+            BuildingElement.Floor,
+            BuildingElement.Roof,
+        ]:
+            assert required_node in set(G3.nodes), f"Missing node {required_node}"
+
+    def test_cant_add_two_structure(self) -> None:
+        """Test that we can't add a structure twice."""
+        G = initialise_outdoors()
+        G2 = add_structure_to_graph(G, 10.0, 1.0, 50.0, 50.0)
+        with pytest.raises(AssertionError):
+            add_structure_to_graph(G2, 10.0, 1.0, 50.0, 50.0)
+
+    def test_cant_add_heating_system_without_structure(self) -> None:
+        """Test that a heating system can only be added after a building."""
+        G = initialise_outdoors()
+        with pytest.raises(AssertionError):
+            add_heating_system_to_graph(G, 70, 4)
+
+    def test_cant_add_two_heating_system(self) -> None:
+        """Test that a building can only have one heating system."""
+        G = initialise_outdoors()
+        G2 = add_structure_to_graph(G, 10.0, 1.0, 50.0, 50.0)
+        G3 = add_heating_system_to_graph(G2, 70, 4)
+        with pytest.raises(AssertionError):
+            add_heating_system_to_graph(G3, 70, 4)
+
+
+class TestDynamicHeatLoss:
+    """Test values and physical trends for dynamic heat loss calculations."""
+
+    def test_reasonable(self) -> None:
+        """Test that we get a reasonable value of 4-6kW dynamic heat loss for this building."""
+        G = create_simple_structure(10.0, 1.0, 20.0)
+        heat_loss = calculate_maximum_dynamic_heat_loss(G, internal_temperature=21, external_temperature=-2)
+        assert 4e3 < heat_loss < 6e3
+
+    def test_internal_temperature_range(self) -> None:
+        """Test that warmer indoors leads to a large dynamic heat loss."""
+        G = create_simple_structure(10.0, 1.0, 20.0)
+        heat_losses = [
+            calculate_maximum_dynamic_heat_loss(G, internal_temperature=internal_t, external_temperature=-2)
+            for internal_t in [16, 18, 21, 22, 25]
+        ]
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as internal T increases"
+
+    def test_external_temperature_range(self) -> None:
+        """Test that colder outdoors leads to a larger dynamic heat loss."""
+        G = create_simple_structure(10.0, 1.0, 20.0)
+        heat_losses = [
+            calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=external_t)
+            for external_t in [2, 0, -2, -4]
+        ]
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as external T decreases"
+
+    def test_wall_size_increase(self) -> None:
+        """Test that large buildings lose more dynamic heat."""
+        heat_losses = []
+        for wall_area in [5, 10, 15, 20]:
+            G = create_simple_structure(wall_area, 1.0, 20.0)
+            heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the building gets large"
+
+    def test_window_size_increase(self) -> None:
+        """Test that larger windows lose more heat."""
+        heat_losses = []
+        for window_area in [1, 2, 3, 4, 5]:
+            G = create_simple_structure(10.0, window_area, 20.0)
+            heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the windows get larger"
+
+    def test_roof_size_increase(self) -> None:
+        """Test that larger roofs lose more heat."""
+        heat_losses = []
+        for roof_area in [5, 10, 15, 20]:
+            G = create_simple_structure(10.0, window_area=1.0, roof_area=roof_area)
+            heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the roof gets larger"
+
+    def test_floor_size_increase(self) -> None:
+        """Test that larger floors lose more heat."""
+        heat_losses = []
+        for floor_area in [5, 10, 15, 20]:
+            G = create_simple_structure(10.0, window_area=1.0, roof_area=10.0, floor_area=floor_area)
+            heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the floor gets larger"
+
+
+class TestStaticHeatLoss:
+    """Test values and physical trends for static heat loss calculations."""
+
+    def test_reasonable(self) -> None:
+        """Test that we get a reasonable value of 10-12kW static heat loss for this building."""
+        G = create_simple_structure(10.0, 1.0, 20.0)
+        heat_loss = calculate_maximum_static_heat_loss(G, internal_temperature=21, external_temperature=-2)
+        assert 10e3 < heat_loss < 12e3
+
+    def test_internal_temperature_range(self) -> None:
+        """Test that warmer indoors leads to a large static heat loss."""
+        G = create_simple_structure(10.0, 1.0, 20.0)
+        heat_losses = [
+            calculate_maximum_static_heat_loss(G, internal_temperature=internal_t, external_temperature=-2)
+            for internal_t in [16, 18, 21, 22, 25]
+        ]
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as internal T increases"
+
+    def test_external_temperature_range(self) -> None:
+        """Test that colder outdoors leads to a large static heat loss."""
+        G = create_simple_structure(10.0, 1.0, 20.0)
+        heat_losses = [
+            calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=external_t)
+            for external_t in [2, 0, -2, -4]
+        ]
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as external T decreases"
+
+    def test_wall_size_increase(self) -> None:
+        """Test that large buildings lose more heat."""
+        heat_losses = []
+        for wall_area in [5, 10, 15, 20]:
+            G = create_simple_structure(wall_area, 1.0, 20.0)
+            heat_losses.append(calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the building gets large"
+
+    def test_window_size_increase(self) -> None:
+        """Test that larger windows lose more heat."""
+        heat_losses = []
+        for window_area in [1, 2, 3, 4, 5]:
+            G = create_simple_structure(10.0, window_area, 20.0)
+            heat_losses.append(calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the windows get larger"
+
+    def test_roof_size_increase(self) -> None:
+        """Test that larger roofs lose more heat."""
+        heat_losses = []
+        for roof_area in [5, 10, 15, 20]:
+            G = create_simple_structure(10.0, window_area=1.0, roof_area=roof_area)
+            heat_losses.append(calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the roof gets larger"
+
+    def test_floor_size_increase(self) -> None:
+        """Test that larger floors lose more heat."""
+        heat_losses = []
+        for floor_area in [5, 10, 15, 20]:
+            G = create_simple_structure(10.0, window_area=1.0, roof_area=10.0, floor_area=floor_area)
+            heat_losses.append(calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the floor gets larger"
