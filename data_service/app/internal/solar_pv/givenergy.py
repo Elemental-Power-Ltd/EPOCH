@@ -28,7 +28,7 @@ def is_serial_number_valid(serial_number: str) -> bool:
     -------
     True if serial number is a valid form.
     """
-    match = re.match("[A-Z]{2}[0-9]{4}[A-Z][0-9]{3}", serial_number)
+    match = re.match(r"[A-Z]{2}[0-9]{4}[A-Z][0-9]{3}", serial_number)
     return bool(match)
 
 
