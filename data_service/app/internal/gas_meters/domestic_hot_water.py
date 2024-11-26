@@ -39,7 +39,7 @@ def midday_sin_weights(hh_gas_df: HHDataFrame, gamma: float = 1.0) -> npt.NDArra
     assert isinstance(hh_gas_df.index, pd.DatetimeIndex), "Gas Dataframe must have a `start_ts` index."
     hours = hh_gas_df.index.hour + hh_gas_df.index.minute / 60 + hh_gas_df.index.second / (60 * 60)
 
-    sin_weights = np.maximum(np.sin(2 * np.pi * (hours.to_numpy() - 6) / 24), 0) ** gamma
+    sin_weights: npt.NDArray[np.floating] = np.maximum(np.sin(2 * np.pi * (hours.to_numpy() - 6) / 24), 0) ** gamma
 
     # Normalise the weights such that the weights for each day is 1
     # by dividing by the total number of days

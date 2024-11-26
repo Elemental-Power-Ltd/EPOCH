@@ -55,7 +55,7 @@ def add_covariates(df: pd.DataFrame) -> pd.DataFrame:
     df["contains_NaNs"] = df.isna().any(axis=1)
 
     # ==== ADD COLUMNS FOR DAILY AGGREGATES AND DAY OF WEEK LABELS
-    df["daily_aggs"] = df[~df["contains_NaNs"]].iloc[:, :48].sum(axis=1)  # type: ignore
+    df["daily_aggs"] = df[~df["contains_NaNs"]].iloc[:, :48].sum(axis=1)
     # df['day_of_wk'] = pd.to_datetime(df.index.astype('str')).day_name()
     assert isinstance(df.index, pd.DatetimeIndex)
     df["day_of_wk"] = df.index.day_name()

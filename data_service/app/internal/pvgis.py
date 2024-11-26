@@ -242,5 +242,8 @@ async def get_renewables_ninja_data(
     renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
     renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)
-    within_timestamps_mask = np.logical_and(renewables_df.index >= start_ts, renewables_df.index < end_ts)  # type: ignore
-    return renewables_df[within_timestamps_mask]
+    within_timestamps_mask = np.logical_and(
+        renewables_df.index >= pd.Timestamp(start_ts), renewables_df.index < pd.Timestamp(end_ts)
+    )
+    masked_df: pd.DataFrame = renewables_df[within_timestamps_mask]
+    return masked_df

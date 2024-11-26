@@ -103,7 +103,7 @@ def predict_heating_load(gas_df: MonthlyDataFrame) -> npt.NDArray[np.float32]:
     xs = np.vstack([gas_df["days"], gas_df["hdd"].to_numpy()]).T
     ys = gas_df["consumption"].to_numpy()
     mdl.fit(xs, ys, sample_weight=gas_df["days"].to_numpy())
-    predicted = mdl.predict(xs)
+    predicted: npt.NDArray[np.floating] = mdl.predict(xs)
     return predicted
 
 
@@ -130,7 +130,7 @@ def score_bait_coefficients(x: list[float], gas_df: MonthlyDataFrame, weather_df
     predicted = predict_heating_load(gas_df)
     ys = gas_df["consumption"].to_numpy()
     # aim to minimize the mean squared loss, we want this to be zero
-    return np.sum((predicted - ys) ** 2, dtype=np.float32)
+    return float(np.sum((predicted - ys) ** 2))
 
 
 def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -> HHDataFrame:

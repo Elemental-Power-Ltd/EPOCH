@@ -120,14 +120,16 @@ def tariff_to_new_timestamps(tariff_df: pd.DataFrame, date_range: pd.DatetimeInd
 
     def check_timestamp(ts: pd.Timestamp | datetime.datetime, tariff_df: pd.DataFrame = tariff_df) -> pd.Timestamp:
         if ts in old_tariff_timestamps:
-            return tariff_df.at[ts, "cost"]
+            val: pd.Timestamp = tariff_df.at[ts, "cost"]
+            return val
 
         all_offsets = [
             ts + pd.DateOffset(days=day_offset) for day_offset in [-1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7]
         ] + [ts + pd.DateOffset(years=year_offset) for year_offset in [-1, -2, -3, -4]]
         for new_ts in old_tariff_timestamps:
             if new_ts in tariff_df.index:
-                return tariff_df.at[new_ts, "cost"]
+                val = tariff_df.at[new_ts, "cost"]
+                return val
 
         raise ValueError(f"Could not find an offset for {ts} in {all_offsets} in {tariff_df.index}")
 

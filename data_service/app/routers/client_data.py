@@ -200,4 +200,4 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
     )
     if location is None:
         raise HTTPException(400, f"Site ID `{site_id.site_id}` has no location in the database.")
-    return location
+    return str(location)

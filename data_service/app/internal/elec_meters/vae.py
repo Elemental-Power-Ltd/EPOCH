@@ -151,7 +151,7 @@ class VAE(nn.Module):  # noqa: D101
         # decoded_seq, _ = self.lstm_decoder(lstm_input)
 
         # Generate the final output using a fully connected layer
-        output = self.decoder_fc(decoded_seq)  # Shape: (batch_size, seq_len, input_dim)
+        output: torch.Tensor = self.decoder_fc(decoded_seq)  # Shape: (batch_size, seq_len, input_dim)
         return output
 
     def forward(

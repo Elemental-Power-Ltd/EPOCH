@@ -4,6 +4,7 @@
 from collections.abc import Callable
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 from numpy.testing import assert_array_almost_equal
 
@@ -26,14 +27,15 @@ class TestInputFixtures:
         return 20.0
 
     @pytest.fixture
-    def array_input(self) -> np.ndarray:
+    def array_input(self) -> npt.NDArray[np.floating]:
         """Get an example array input."""
         return np.array([10.0, 20.0, 30.0])
 
     @pytest.fixture(params=["float_input", "array_input"])
-    def float_or_array_input(self, request: pytest.FixtureRequest) -> FloatOrArray:
+    def float_or_array_input(self, request: pytest.FixtureRequest) -> float | npt.NDArray[np.floating]:
         """Get a fixture either as a float or as an array."""
-        return request.getfixturevalue(request.param)
+        val: float | npt.NDArray[np.floating] = request.getfixturevalue(request.param)
+        return val
 
 
 class TestM3ToKWh(TestInputFixtures):

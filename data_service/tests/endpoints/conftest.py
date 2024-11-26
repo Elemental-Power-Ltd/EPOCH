@@ -87,7 +87,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_http_client] = override_get_http_client
 
     async with AsyncClient(
-        transport=ASGITransport(app),  # type: ignore
+        transport=ASGITransport(app),
         base_url="http://localhost",
     ) as client:
         yield client
