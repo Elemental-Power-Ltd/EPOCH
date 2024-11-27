@@ -78,7 +78,7 @@ async def generate_renewables_generation(
         Metadata about the renewables calculation we've put into the database.
     """
     async with pool.acquire() as conn:
-        location, coords = await conn.fetchrow(  # type: ignore
+        result = await conn.fetchrow(
             """
             SELECT
                 location,
@@ -88,6 +88,9 @@ async def generate_renewables_generation(
             LIMIT 1""",
             params.site_id,
         )
+        if result is None:
+            raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
+        location, coords = result
     if location is None or coords is None:
         raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
 

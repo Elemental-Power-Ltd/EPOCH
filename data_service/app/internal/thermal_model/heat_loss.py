@@ -1,5 +1,7 @@
 """Peak Heat Loss calculation methods for comparison with MCS survey."""
 
+from collections import defaultdict
+
 from .building_elements import BuildingElement
 from .integrator import update_temperatures
 from .links import ConductiveLink, ConvectiveLink, RadiativeLink, ThermalNodeAttrDict, ThermalRadiativeLink
@@ -90,7 +92,7 @@ def calculate_maximum_dynamic_heat_loss(
 
 
 def calculate_maximum_static_heat_loss(
-    graph: HeatNetwork, internal_temperature: float = 21.0, external_temperature: float = -2.0
+    graph: HeatNetwork, internal_temperature: float = 21.0, external_temperature: float = -2.0, ground_temperature: float = 11.3
 ) -> float:
     """
     Calculate the maximum static heat loss of the building, which is the loss of the internal air to all fabric components.
@@ -113,7 +115,43 @@ def calculate_maximum_static_heat_loss(
         Maximum static heat loss in Watts of this building on a day where it's `external_temperature` degrees inside
         and `internal_temperature` degrees inside.
     """
-    energy_change = 0.0
+    return sum(
+        calculate_maximum_static_heat_loss_breakdown(
+            graph=graph,
+            internal_temperature=internal_temperature,
+            external_temperature=external_temperature,
+            ground_temperature=ground_temperature,
+        ).values()
+    )
+
+
+def calculate_maximum_static_heat_loss_breakdown(
+    graph: HeatNetwork, internal_temperature: float = 21.0, external_temperature: float = -2.0, ground_temperature: float = 11.3
+) -> dict[tuple[BuildingElement, BuildingElement], float]:
+    """
+    Calculate the maximum static heat loss of the building, which is the loss of the internal air to all fabric components.
+
+    This is a different methodology to the `calculate_maximum_dynamic_heat_loss` and will return slightly different numbers
+    (this one generally overestimates).
+
+    Parameters
+    ----------
+    graph
+        Heat network graph of the building of interest
+    internal_temperature
+        Temperature of the air and fabric elements within the building's thermal envelope
+    external_temperature
+        Temperature of the air and ground on the day of interest (likely the 1% coldest day)
+    floor_temperature
+        Temperature of the ground on the day of interest (most likely the Mean Air Temperature over the year)
+
+    Returns
+    -------
+    float
+        Maximum static heat loss in Watts of this building on a day where it's `external_temperature` degrees inside
+        and `internal_temperature` degrees inside.
+    """
+    component_energy_changes: dict[tuple[BuildingElement, BuildingElement], float] = defaultdict(lambda: 0)
     for v in graph.neighbors(BuildingElement.InternalAir):
         if v in {BuildingElement.InternalGains, BuildingElement.HeatingSystem, BuildingElement.Sun}:
             # Skip these as they don't contribute to heat losses.
@@ -121,6 +159,14 @@ def calculate_maximum_static_heat_loss(
         edge = graph.get_edge_data(BuildingElement.InternalAir, v)
         v_attrs = graph.nodes[v]
         for link in edge.values():
+            if v == BuildingElement.Ground or v == BuildingElement.Floor:
+                # The ground is much warmer than the air as it has a huge thermal mass
+                v_temperature = ground_temperature
+            elif v == BuildingElement.Roof:
+                # Roof space is modelled to be precisely 11°C colder than indoors.
+                v_temperature = internal_temperature - 11.0
+            else:
+                v_temperature = external_temperature
             if isinstance(link, RadiativeLink | ConductiveLink | ConvectiveLink | ThermalRadiativeLink):
                 u_attrs = ThermalNodeAttrDict(
                     temperature=internal_temperature,
@@ -128,8 +174,8 @@ def calculate_maximum_static_heat_loss(
                     energy_change=0.0,
                 )
                 v_attrs = ThermalNodeAttrDict(
-                    temperature=external_temperature, thermal_mass=graph.nodes[v]["thermal_mass"], energy_change=0.0
+                    temperature=v_temperature, thermal_mass=graph.nodes[v]["thermal_mass"], energy_change=0.0
                 )
-                energy_change += link.step(u_attrs, v_attrs, dt=1.0)
+                component_energy_changes[BuildingElement.InternalAir, v] = -link.step(u_attrs, v_attrs, dt=1.0)
 
-    return -energy_change
+    return component_energy_changes

@@ -5,7 +5,7 @@ import datetime
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import scipy.optimize  # type: ignore
+import scipy.optimize
 from sklearn.linear_model import LinearRegression  # type: ignore
 
 from ...models.weather import BaitAndModelCoefs
@@ -169,7 +169,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
         args=(gas_df, weather_df),
         method="Nelder-Mead",
         bounds=[(0, None), (None, 0), (None, None), (0, 1), (13, 20)],
-    )
+    )  # type: ignore
     assert result.success, "Optimisation did not succeed"
     bait_fitted = result.x
     bait_hdd = compute_monthly_hdd(
@@ -257,7 +257,7 @@ def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame, a
             (0.0, 1.0 if apply_bait else 0.0),
             (13, 20),
         ],
-    )
+    )  # type: ignore
     assert result.success, "Optimisation did not succeed"
     bait_fitted = result.x
     bait_hdd = compute_monthly_hdd(

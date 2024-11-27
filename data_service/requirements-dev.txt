@@ -8,5 +8,6 @@ pandas-stubs
 types-requests 
 pandas-stubs 
 joblib-stubs
+scipy-stubs
 mypy
 ruff

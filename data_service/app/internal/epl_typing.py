@@ -11,7 +11,6 @@ from typing import NewType
 
 import pandas as pd
 
-
 ParameterDict = dict[str, list[float] | list[int] | float | int]
 ConstraintDict = Mapping[str, tuple[None, None] | tuple[float, float] | list[float] | list[int] | list[None]]
 HHDataFrame = NewType("HHDataFrame", pd.DataFrame)

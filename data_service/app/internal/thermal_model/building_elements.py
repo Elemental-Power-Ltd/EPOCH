@@ -20,6 +20,8 @@ class BuildingElement(enum.StrEnum):
     ExternalAir = enum.auto()
 
     InternalAir = enum.auto()
+    LoftAir = enum.auto()
+
     WallSouth = enum.auto()
     WallEast = enum.auto()
     WallNorth = enum.auto()
@@ -31,6 +33,7 @@ class BuildingElement(enum.StrEnum):
     WindowsWest = enum.auto()
 
     Floor = enum.auto()
+    Ceiling = enum.auto()
     Roof = enum.auto()
 
     InternalGains = enum.auto()

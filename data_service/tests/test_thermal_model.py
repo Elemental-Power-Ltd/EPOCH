@@ -3,10 +3,22 @@
 import numpy as np
 import pytest
 
-from app.internal.thermal_model import add_heating_system_to_graph, add_structure_to_graph, initialise_outdoors
+from app.internal.thermal_model import HeatNetwork, add_heating_system_to_graph, add_structure_to_graph, initialise_outdoors
 from app.internal.thermal_model.building_elements import BuildingElement
-from app.internal.thermal_model.heat_loss import calculate_maximum_dynamic_heat_loss, calculate_maximum_static_heat_loss
+from app.internal.thermal_model.heat_loss import (
+    calculate_maximum_dynamic_heat_loss,
+    calculate_maximum_static_heat_loss,
+    calculate_maximum_static_heat_loss_breakdown,
+)
 from app.internal.thermal_model.network import create_simple_structure
+
+
+@pytest.fixture
+def test_structure() -> HeatNetwork:
+    """Create a simple cube building to match the MCS calculations."""
+    return create_simple_structure(
+        wall_area=(10 * 5) - 0.25, window_area=1.0, floor_area=10 * 10, roof_area=10 * 10, air_volume=10 * 10 * 5
+    )
 
 
 class TestCreateHeatNetwork:
@@ -15,7 +27,7 @@ class TestCreateHeatNetwork:
     def test_create_structure_from_nothing(self) -> None:
         """Test that we can create a structure and that the steps are additive."""
         G = initialise_outdoors()
-        G2 = add_structure_to_graph(G, 10.0, 1.0, 50.0, 50.0)
+        G2 = add_structure_to_graph(G, wall_area=10 * 5, window_area=1.0, floor_area=10 * 10, roof_area=10 * 10)
         G3 = add_heating_system_to_graph(G2, 70, 4)
 
         assert set(G.nodes) <= set(G2.nodes)
@@ -58,27 +70,25 @@ class TestCreateHeatNetwork:
 class TestDynamicHeatLoss:
     """Test values and physical trends for dynamic heat loss calculations."""
 
-    def test_reasonable(self) -> None:
+    def test_reasonable(self, test_structure: HeatNetwork) -> None:
         """Test that we get a reasonable value of 4-6kW dynamic heat loss for this building."""
-        G = create_simple_structure(10.0, 1.0, 20.0)
-        heat_loss = calculate_maximum_dynamic_heat_loss(G, internal_temperature=21, external_temperature=-2)
-        assert 4e3 < heat_loss < 6e3
+        static_heat_loss = calculate_maximum_static_heat_loss(test_structure, internal_temperature=21, external_temperature=-2)
+        heat_loss = calculate_maximum_dynamic_heat_loss(test_structure, internal_temperature=21, external_temperature=-2)
+        assert 0.75 * static_heat_loss < heat_loss < static_heat_loss
 
-    def test_internal_temperature_range(self) -> None:
+    def test_internal_temperature_range(self, test_structure: HeatNetwork) -> None:
         """Test that warmer indoors leads to a large dynamic heat loss."""
-        G = create_simple_structure(10.0, 1.0, 20.0)
         heat_losses = [
-            calculate_maximum_dynamic_heat_loss(G, internal_temperature=internal_t, external_temperature=-2)
+            calculate_maximum_dynamic_heat_loss(test_structure, internal_temperature=internal_t, external_temperature=-2)
             for internal_t in [16, 18, 21, 22, 25]
         ]
 
         assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as internal T increases"
 
-    def test_external_temperature_range(self) -> None:
+    def test_external_temperature_range(self, test_structure: HeatNetwork) -> None:
         """Test that colder outdoors leads to a larger dynamic heat loss."""
-        G = create_simple_structure(10.0, 1.0, 20.0)
         heat_losses = [
-            calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=external_t)
+            calculate_maximum_dynamic_heat_loss(test_structure, internal_temperature=21.0, external_temperature=external_t)
             for external_t in [2, 0, -2, -4]
         ]
 
@@ -88,7 +98,9 @@ class TestDynamicHeatLoss:
         """Test that large buildings lose more dynamic heat."""
         heat_losses = []
         for wall_area in [5, 10, 15, 20]:
-            G = create_simple_structure(wall_area, 1.0, 20.0)
+            G = create_simple_structure(
+                wall_area=wall_area - 0.25, window_area=1.0, floor_area=10 * 10, roof_area=10 * 10, air_volume=10 * 10 * 5
+            )
             heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
 
         assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the building gets large"
@@ -97,7 +109,13 @@ class TestDynamicHeatLoss:
         """Test that larger windows lose more heat."""
         heat_losses = []
         for window_area in [1, 2, 3, 4, 5]:
-            G = create_simple_structure(10.0, window_area, 20.0)
+            G = create_simple_structure(
+                wall_area=(10 * 5) - 0.25,
+                window_area=window_area,
+                floor_area=10 * 10,
+                roof_area=10 * 10,
+                air_volume=10 * 10 * 5,
+            )
             heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
         assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the windows get larger"
 
@@ -105,7 +123,9 @@ class TestDynamicHeatLoss:
         """Test that larger roofs lose more heat."""
         heat_losses = []
         for roof_area in [5, 10, 15, 20]:
-            G = create_simple_structure(10.0, window_area=1.0, roof_area=roof_area)
+            G = create_simple_structure(
+                wall_area=(10 * 5) - 0.25, window_area=1.0, floor_area=10 * 10, roof_area=roof_area, air_volume=10 * 10 * 5
+            )
             heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
         assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the roof gets larger"
 
@@ -113,7 +133,9 @@ class TestDynamicHeatLoss:
         """Test that larger floors lose more heat."""
         heat_losses = []
         for floor_area in [5, 10, 15, 20]:
-            G = create_simple_structure(10.0, window_area=1.0, roof_area=10.0, floor_area=floor_area)
+            G = create_simple_structure(
+                wall_area=(10 * 5) - 0.25, window_area=1.0, floor_area=floor_area, roof_area=10 * 10, air_volume=10 * 10 * 5
+            )
             heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
         assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the floor gets larger"
 
@@ -121,11 +143,36 @@ class TestDynamicHeatLoss:
 class TestStaticHeatLoss:
     """Test values and physical trends for static heat loss calculations."""
 
-    def test_reasonable(self) -> None:
+    def test_reasonable(self, test_structure: HeatNetwork) -> None:
         """Test that we get a reasonable value of 10-12kW static heat loss for this building."""
-        G = create_simple_structure(10.0, 1.0, 20.0)
-        heat_loss = calculate_maximum_static_heat_loss(G, internal_temperature=21, external_temperature=-2)
-        assert 10e3 < heat_loss < 12e3
+        heat_loss = calculate_maximum_static_heat_loss(test_structure, internal_temperature=21, external_temperature=-2.3)
+        assert heat_loss == pytest.approx(9308.242)
+
+    def test_breakdown_matches_mcs(self, test_structure: HeatNetwork) -> None:
+        """Test that we get a reasonable value of 10-12kW static heat loss for this building."""
+        heat_losses = calculate_maximum_static_heat_loss_breakdown(
+            test_structure, internal_temperature=21, external_temperature=-2.3
+        )
+
+        walls = [BuildingElement.WallEast, BuildingElement.WallNorth, BuildingElement.WallWest, BuildingElement.WallSouth]
+        windows = [
+            BuildingElement.WindowsEast,
+            BuildingElement.WindowsNorth,
+            BuildingElement.WindowsWest,
+            BuildingElement.WindowsSouth,
+        ]
+        assert sum(heat_losses[BuildingElement.InternalAir, wall] for wall in walls) == pytest.approx(2596.55)
+        assert heat_losses[BuildingElement.InternalAir, BuildingElement.Floor] == pytest.approx(494.70)
+        assert heat_losses[BuildingElement.InternalAir, BuildingElement.ExternalAir] == pytest.approx(5766.75)
+        assert heat_losses[BuildingElement.InternalAir, BuildingElement.Roof] == pytest.approx(385.00)
+        assert sum(heat_losses[BuildingElement.InternalAir, window] for window in windows) == pytest.approx(65.24)
+        assert {item[1] for item in heat_losses.keys()} == {
+            *walls,
+            *windows,
+            BuildingElement.Floor,
+            BuildingElement.Roof,
+            BuildingElement.ExternalAir,
+        }
 
     def test_internal_temperature_range(self) -> None:
         """Test that warmer indoors leads to a large static heat loss."""

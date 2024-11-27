@@ -9,8 +9,10 @@ from .heat_capacities import (
     BRICK_U_VALUE,
     CONCRETE_HEAT_CAPACITY,
     CONCRETE_U_VALUE,
+    FLOOR_U_VALUE,
     GLASS_HEAT_CAPACITY,
     GLASS_U_VALUE,
+    ROOF_U_VALUE,
     TILE_HEAT_CAPACITY,
 )
 from .links import (
@@ -57,7 +59,13 @@ def initialise_outdoors() -> HeatNetwork:
 
 
 def add_structure_to_graph(
-    G: HeatNetwork, wall_area: float, window_area: float, floor_area: float | None = None, roof_area: float | None = None
+    G: HeatNetwork,
+    wall_area: float,
+    window_area: float,
+    floor_area: float | None = None,
+    roof_area: float | None = None,
+    air_volume: float | None = None,
+    air_changes_per_hour: float = 1.5,
 ) -> HeatNetwork:
     """
     Add a structure to an existing graph.
@@ -87,9 +95,12 @@ def add_structure_to_graph(
 
     if roof_area is None:
         roof_area = floor_area
+
+    if air_volume is None:
+        air_volume = floor_area * wall_area ** (0.5)
     wall_u_value = BRICK_U_VALUE
     WALL_WIDTH = 0.25  # m
-    G.add_node(BuildingElement.InternalAir, thermal_mass=300 * AIR_HEAT_CAPACITY, temperature=18.0, energy_change=0.0)
+    G.add_node(BuildingElement.InternalAir, thermal_mass=air_volume * AIR_HEAT_CAPACITY, temperature=18.0, energy_change=0.0)
     G.add_node(
         BuildingElement.WallSouth,
         thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_WIDTH,
@@ -135,41 +146,47 @@ def add_structure_to_graph(
             conductive=ConductiveLink(interface_area=wall_area, heat_transfer=wall_u_value * wall_area),
         )
 
-    for wall in [BuildingElement.WindowsSouth, BuildingElement.WindowsNorth]:
+    for window in [BuildingElement.WindowsSouth, BuildingElement.WindowsNorth]:
         G.add_edge(
             BuildingElement.InternalAir,
-            wall,
-            conductive=ConductiveLink(interface_area=window_area, heat_transfer=GLASS_U_VALUE),
+            window,
+            conductive=ConductiveLink(interface_area=window_area / 2.0, heat_transfer=GLASS_U_VALUE),
             radiative=None,
         )
+        print(G.edges[BuildingElement.InternalAir, window])
         G.add_edge(
-            wall,
+            window,
             BuildingElement.ExternalAir,
-            conductive=ConductiveLink(interface_area=window_area, heat_transfer=GLASS_U_VALUE),
+            conductive=ConductiveLink(interface_area=window_area / 2.0, heat_transfer=GLASS_U_VALUE),
         )
 
     G.add_edge(
         BuildingElement.InternalAir,
         BuildingElement.Floor,
-        conductive=ConductiveLink(interface_area=floor_area, heat_transfer=CONCRETE_U_VALUE),
+        conductive=ConductiveLink(interface_area=floor_area, heat_transfer=FLOOR_U_VALUE),
         radiative=None,
     )
     G.add_edge(
         BuildingElement.Floor,
         BuildingElement.Ground,
-        conductive=ConductiveLink(interface_area=floor_area, heat_transfer=CONCRETE_U_VALUE),
+        conductive=ConductiveLink(interface_area=floor_area, heat_transfer=FLOOR_U_VALUE),
         radiative=None,
     )
 
+    # TODO (2024-11-27 MHJB): do we need to treat the loft as a separate air volume?
+    # ideally it doesn't heat the home downwards, and exchanges lots of air with
+    # the outside, so it'd be easier to just have a whole loft volume with a heat capacity
     G.add_edge(
         BuildingElement.InternalAir,
         BuildingElement.Roof,
-        conductive=ConductiveLink(interface_area=roof_area, heat_transfer=CONCRETE_U_VALUE),
+        # This represents ceiling insulation
+        conductive=ConductiveLink(interface_area=roof_area, heat_transfer=ROOF_U_VALUE),
         radiative=None,
     )
     G.add_edge(
         BuildingElement.Roof,
         BuildingElement.ExternalAir,
+        # This is tiles-to-air
         conductive=ConductiveLink(interface_area=roof_area, heat_transfer=CONCRETE_U_VALUE),
         radiative=ThermalRadiativeLink(0, delta_t=20.0),
     )
@@ -182,7 +199,7 @@ def add_structure_to_graph(
         BuildingElement.ExternalAir,
         conductive=None,
         radiative=None,
-        convective=ConvectiveLink(0.25),
+        convective=ConvectiveLink(air_changes_per_hour),
     )
     return G
 
@@ -248,6 +265,7 @@ def create_simple_structure(
     window_area: float,
     floor_area: float | None = None,
     roof_area: float | None = None,
+    air_volume: float | None = None,
     design_flow_temperature: float = 70.0,
     n_radiators: int = 4,
 ) -> HeatNetwork:
@@ -278,6 +296,8 @@ def create_simple_structure(
 
     """
     G = initialise_outdoors()
-    G = add_structure_to_graph(G, wall_area=wall_area, window_area=window_area, floor_area=floor_area, roof_area=roof_area)
+    G = add_structure_to_graph(
+        G, wall_area=wall_area, window_area=window_area, floor_area=floor_area, roof_area=roof_area, air_volume=air_volume
+    )
     G = add_heating_system_to_graph(G, design_flow_temperature=design_flow_temperature, n_radiators=n_radiators)
     return G

@@ -161,13 +161,13 @@ async def generate_grid_co2(
 
     if not all_data:
         raise HTTPException(400, "Failed to get grid CO2 data.")
-    metadata: dict[str, uuid.UUID | datetime.datetime | str | bool] = {
-        "dataset_id": uuid.uuid4(),
-        "created_at": datetime.datetime.now(datetime.UTC),
-        "data_source": "api.carbonintensity.org.uk",
-        "is_regional": use_regional,
-        "site_id": params.site_id,
-    }
+    metadata = CarbonIntensityMetadata(
+        dataset_id=uuid.uuid4(),
+        created_at=datetime.datetime.now(datetime.UTC),
+        data_source="api.carbonintensity.org.uk",
+        is_regional=use_regional,
+        site_id=params.site_id,
+    )
 
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -181,11 +181,11 @@ async def generate_grid_co2(
                         is_regional,
                         site_id)
                 VALUES ($1, $2, $3, $4, $5)""",
-                metadata["dataset_id"],
-                metadata["created_at"],
-                metadata["data_source"],
-                metadata["is_regional"],
-                metadata["site_id"],
+                metadata.dataset_id,
+                metadata.created_at,
+                metadata.data_source,
+                metadata.is_regional,
+                metadata.site_id,
             )
 
             await conn.executemany(
@@ -210,7 +210,7 @@ async def generate_grid_co2(
                         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
                     )""",
                 zip(
-                    [metadata["dataset_id"] for _ in all_data],
+                    [metadata.dataset_id for _ in all_data],
                     [item["start_ts"] for item in all_data],
                     [item["end_ts"] for item in all_data],
                     [item.get("forecast") for item in all_data],
@@ -227,9 +227,7 @@ async def generate_grid_co2(
                     strict=False,
                 ),
             )
-    return CarbonIntensityMetadata(
-        **metadata  # type: ignore
-    )
+    return metadata
 
 
 @router.post("/get-grid-co2", tags=["co2", "get"])

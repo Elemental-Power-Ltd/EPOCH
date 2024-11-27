@@ -28,6 +28,10 @@ class ConductiveLink:
         self.interface_area = interface_area
         self.heat_transfer = heat_transfer
 
+    def __repr__(self) -> str:
+        """Create a string showing the arguments used to create this link."""
+        return f"ConductiveLink(interface_area={self.interface_area}, heat_transfer={self.heat_transfer})"
+
     def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
         """
         Pass heat between the two sides of this conductive link.
@@ -77,6 +81,10 @@ class RadiativeLink:
             Power in W
         """
         self.power = power
+
+    def __repr__(self) -> str:
+        """Create a string showing the arguments used to create this link."""
+        return f"RadiativeLink(power={self.power})"
 
     def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
         """
@@ -130,6 +138,10 @@ class ThermalRadiativeLink:
         self.power = power
         self.delta_t = delta_t
 
+    def __repr__(self) -> str:
+        """Create a string showing the arguments used to create this link."""
+        return f"ThermalRadiativeLink(power={self.power}, delta_t={self.delta_t})"
+
     def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
         """
         Pass heat between the two sides of this thermal radiative link.
@@ -162,7 +174,7 @@ class ThermalRadiativeLink:
 class BoilerRadiativeLink:
     """Energy gains from a thermostat controlled boiler."""
 
-    def __init__(self, power: float, delta_t: float = 50.0, setpoint_temperature: float = 21.0):
+    def __init__(self, power: float, delta_t: float = 50.0, setpoint_temperature: float = 21.0, is_on: bool = False):
         """
         Establish the boiler, which is either On or Off depending on a setpoint temperature.
 
@@ -174,11 +186,20 @@ class BoilerRadiativeLink:
             Temperature difference between source and sink in K at which `power` is emitted.
         setpoint_temperature
             Temperature of ambient air at which this heat source kicks in
+        is_on
+            Hysteresis control flag, whether this boiler was on at the previous timestep.
         """
         self.power = power
         self.delta_t = delta_t
         self.setpoint_temperature = setpoint_temperature
-        self.is_on = False
+        self.is_on = is_on
+
+    def __repr__(self) -> str:
+        """Create a string showing the arguments used to create this link."""
+        return (
+            f"BoilerRadiativeLink(power={self.power}, delta_t={self.delta_t},"
+            + f"setpoint_temperature={self.setpoint_temperature}, is_on={self.is_on})"
+        )
 
     def step(
         self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float, thermostat_temperature: float
@@ -238,6 +259,10 @@ class ConvectiveLink:
             Air changes per hour
         """
         self.ach = ach
+
+    def __repr__(self) -> str:
+        """Create a string showing the arguments used to create this link."""
+        return f"ConvectiveLink(ach={self.ach})"
 
     def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
         """
