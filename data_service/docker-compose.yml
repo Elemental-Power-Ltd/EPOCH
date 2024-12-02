@@ -29,7 +29,9 @@ services:
             condition: service_healthy
       
     environment:
-      - DATABASE_URL=postgresql://python:elemental@db/elementaldb
+      - EP_DATABASE_URL=postgresql://python:elemental@db/elementaldb
+      - EP_DATABASE_HOST=db
+      - EP_POSTGRES_PASSWORD=elemental
     healthcheck:
       test: ["CMD-SHELL", "curl", "-X", "GET", "http://localhost:8762/"]
       interval: 30s
