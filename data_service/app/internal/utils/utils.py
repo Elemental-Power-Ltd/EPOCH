@@ -11,6 +11,7 @@ import logging
 from collections.abc import Sequence
 from typing import Any
 
+import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
@@ -196,3 +197,25 @@ def add_epoch_fields(non_epoch_df: pd.DataFrame) -> pd.DataFrame:
     non_epoch_df["HourOfYear"] = non_epoch_df.index.map(hour_of_year)
 
     return non_epoch_df
+
+
+def symlog[T: (float, npt.NDArray[np.floating])](x: T, c: float = 1.0 / np.log(10.0)) -> T:
+    """
+    Symmetric function with log-like properties.
+
+    This function is useful for graphing, as it means that large negative numbers
+    and large positive numbers can both be represented symmetrically about the y=0 line.
+    This is linear in a small region around x = 0, with a range dictated by the constant `c`.
+
+    Parameters
+    ----------
+    x
+        Array or float to scale
+    c
+        Range of the linear region in the centre
+
+    Returns
+    -------
+    symmetric log scaled value
+    """
+    return np.sign(x) * np.log(1 + np.abs(x / c))

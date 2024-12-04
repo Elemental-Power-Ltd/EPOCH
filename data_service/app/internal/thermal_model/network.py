@@ -143,7 +143,7 @@ def add_structure_to_graph(
         G.add_edge(
             wall,
             BuildingElement.ExternalAir,
-            conductive=ConductiveLink(interface_area=wall_area, heat_transfer=wall_u_value * wall_area),
+            conductive=ConductiveLink(interface_area=wall_area, heat_transfer=wall_u_value),
         )
 
     for window in [BuildingElement.WindowsSouth, BuildingElement.WindowsNorth]:
