@@ -99,4 +99,4 @@ def building_adjusted_internal_temperature(
     blend_diff = blend_hi - blend_lo
     blend = 10.0 * (weather_df["temp"].to_numpy() - blend_mid) / blend_diff
     blend = blend_weight / (1.0 + np.exp(-blend))
-    return (bait * (1.0 - blend)) + (weather_df["temp"].to_numpy() * blend)  # type: ignore
+    return (bait * (1.0 - blend)) + (weather_df["temp"].to_numpy() * blend)

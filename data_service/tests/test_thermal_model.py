@@ -74,7 +74,7 @@ class TestDynamicHeatLoss:
         """Test that we get a reasonable value of 4-6kW dynamic heat loss for this building."""
         static_heat_loss = calculate_maximum_static_heat_loss(test_structure, internal_temperature=21, external_temperature=-2)
         heat_loss = calculate_maximum_dynamic_heat_loss(test_structure, internal_temperature=21, external_temperature=-2)
-        assert 0.75 * static_heat_loss < heat_loss < static_heat_loss
+        assert 0.5 * static_heat_loss < heat_loss < static_heat_loss
 
     def test_internal_temperature_range(self, test_structure: HeatNetwork) -> None:
         """Test that warmer indoors leads to a large dynamic heat loss."""

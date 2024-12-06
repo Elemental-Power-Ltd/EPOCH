@@ -1,8 +1,12 @@
 """Functions for the matrix formulation of temperature flows."""
+
+import datetime
+from collections import defaultdict
+from collections.abc import Mapping
 from typing import NewType
 
 import numpy as np
-import numpy.typing as npt
+import scipy.linalg
 
 from ..utils.conversions import celsius_to_kelvin, kelvin_to_celsius
 from .building_elements import BuildingElement
@@ -12,7 +16,36 @@ from .network import HeatNetwork
 GraphSize = NewType("GraphSize", int)
 
 
-def network_to_temperature_vec(hm: HeatNetwork) -> npt.NDArray[GraphSize, np.float64]:
+def create_node_to_index_map(hm: HeatNetwork) -> Mapping[BuildingElement, int | None]:
+    """
+    Create the node to index mapping for this graph with a consistent ordering.
+
+    The keys of this mapping will be the nodes of the graph, which must be unique.
+    The values of this mapping will be an index into a given array, e.g.
+    the first node in the graph might be at index 0 in any of the arrays we use
+    for thermal modelling.
+
+    Currently sorts nodes alphabetically ascending.
+
+    Parameters
+    ----------
+    hm
+        HeatNetwork with unique keys
+
+    Returns
+    -------
+        node: array index mapping
+    """
+    res: dict[BuildingElement, int | None] = defaultdict(lambda: None)
+    return res | {
+        node: i
+        for i, (node, _) in enumerate(
+            filter(lambda x: np.isfinite(x[1]["temperature"]) and np.isfinite(x[1]["thermal_mass"]), hm.nodes(data=True))
+        )
+    }
+
+
+def network_to_temperature_vec(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
     """
     Generate a temperature vector in Kelvin for this heat network.
 
@@ -30,16 +63,18 @@ def network_to_temperature_vec(hm: HeatNetwork) -> npt.NDArray[GraphSize, np.flo
     -------
         Nx1 vector of temperatures in Kelvin
     """
-    node_to_idx = {node: i for i, node in enumerate(sorted(hm.nodes))}
-    temperature_vec = np.zeros([len(hm)], dtype=np.float64)
+    node_to_idx = create_node_to_index_map(hm)
+    temperature_vec = np.zeros([len(node_to_idx)], dtype=np.float64)
     for node, attrs in hm.nodes(data=True):
         idx = node_to_idx[node]
+        if idx is None:
+            continue
         temperature = attrs["temperature"]
         temperature_vec[idx] = celsius_to_kelvin(temperature) if np.isfinite(temperature) else 1.0
     return temperature_vec
 
 
-def network_to_energy_matrix(hm: HeatNetwork) -> npt.NDArray[GraphSize, GraphSize, np.float64]:
+def network_to_energy_matrix(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize, GraphSize], np.dtype[np.float64]]:
     """
     Create an energy matrix representing the total energy flows across the network.
 
@@ -69,26 +104,22 @@ def network_to_energy_matrix(hm: HeatNetwork) -> npt.NDArray[GraphSize, GraphSiz
     """
     # Make sure that we always associated the same matrix entry with the
     # correct node by using a consistent sort (here, alphabetically by node name)
-    node_to_idx = {node: i for i, node in enumerate(sorted(hm.nodes))}
+    node_to_idx = create_node_to_index_map(hm)
 
     # We use many different matrices for ease of debugging.
     # At the end, we'll group all of these into a single matrix.
     temperature_vec = network_to_temperature_vec(hm)
-    heat_capacity_arr = np.zeros([len(hm), len(hm)], dtype=np.float64)
-    conductive_arr = np.zeros_like(heat_capacity_arr)
-    convective_arr = np.zeros_like(heat_capacity_arr)
-    radiative_arr = np.zeros_like(heat_capacity_arr)
-    additive_radiative_arr = np.zeros_like(heat_capacity_arr)
-    boiler_radiative_arr = np.zeros_like(heat_capacity_arr)
 
-    for node, attrs in hm.nodes(data=True):
-        idx = node_to_idx[node]
-        heat_cap = attrs["thermal_mass"]
-
-        heat_capacity_arr[idx, idx] = heat_cap * temperature_vec[idx] if np.isfinite(heat_cap) else 0.0
+    conductive_arr = np.zeros([len(node_to_idx), len(node_to_idx)], dtype=np.float64)
+    convective_arr = np.zeros_like(conductive_arr)
+    radiative_arr = np.zeros_like(conductive_arr)
+    additive_radiative_arr = np.zeros_like(conductive_arr)
+    boiler_radiative_arr = np.zeros_like(conductive_arr)
 
     for u, v, e_attrs in hm.edges(data=True):
         u_idx, v_idx = node_to_idx[u], node_to_idx[v]
+        if u_idx is None or v_idx is None:
+            continue
         u_attrs = hm.nodes[u]
         v_attrs = hm.nodes[v]
         if isinstance(e_attrs.get("conductive"), ConductiveLink):
@@ -152,9 +183,141 @@ def network_to_energy_matrix(hm: HeatNetwork) -> npt.NDArray[GraphSize, GraphSiz
             )
 
         if isinstance(e_attrs.get("radiative"), RadiativeLink):
-            # These are actually added on at the end as they change the total energy
-            # of the system, but for the ease of doing one matrix multiplication we divide by the temperatures here
-            # !! watch out for the sign convention here !! U loses and V gains (argh)
-            additive_radiative_arr[u_idx, u_idx] += e_attrs["radiative"].power / temperature_vec[u_idx]
-            additive_radiative_arr[v_idx, v_idx] -= e_attrs["radiative"].power / temperature_vec[v_idx]
+            # We don't actually handle the direct energy gains here, as they
+            # should be on the right hand side of the heat balance equation (I think)
+            pass
     return conductive_arr + convective_arr + radiative_arr + additive_radiative_arr + boiler_radiative_arr
+
+
+def network_to_gains_vector(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
+    """
+    Create the vector on the right-hand-size of the heat balance network representing thermal gains in W.
+
+    This includes:
+    - Solar gains
+    - Internal gains
+
+    Note that it does not include the heat capacity vector, which you should get via
+    `network_to_heat_capacity_vector(hm)`.
+
+    Parameters
+    ----------
+    hm
+        HeatNetwork where nodes have temperature in °C and thermal_mass in J / K, and edges representing thermal gains.
+
+    Returns
+    -------
+        Vector with units of W
+    """
+    node_to_idx = create_node_to_index_map(hm)
+    vec = np.zeros([len(node_to_idx)], dtype=np.float64)
+
+    for node in hm.nodes(data=False):
+        idx = node_to_idx[node]
+        if idx is None:
+            continue
+        # Watch out as neighbours may not be symmetric in a directed graph,
+        # i.e. the edge (u, v) means that v is a neighbour of u, but not that u is a neighbour of v.
+        # Your gain edges (solar, internal, heating) should specifically be from heat source to heat sink
+        for neighbour in hm.neighbors(node):
+            edge = hm.edges[node, neighbour]
+            if isinstance(edge.get("radiative"), RadiativeLink):
+                v_idx = node_to_idx[neighbour]
+                vec[idx] += edge["radiative"].power
+                vec[v_idx] -= edge["radiative"].power
+            if isinstance(edge.get("radiative"), BoilerRadiativeLink):
+                # TODO (2024-12-05 MHJB): heating power should come in here?
+                pass
+
+    for u, v, e_attrs in hm.edges(data=True):
+        if BuildingElement.ExternalAir in (u, v):
+            u_attrs, v_attrs = hm.nodes[u], hm.nodes[v]
+
+            # We don't track the energy change for the external air here,
+            # as it has an infinite thermal mass.
+            # So select the index corresponding to the non-External-Air edge
+            idx = node_to_idx[u] if u != BuildingElement.ExternalAir else node_to_idx[v]
+
+            if isinstance(e_attrs.get("convective"), ConvectiveLink):
+                vec[idx] += e_attrs["convective"].step(u_attrs, v_attrs, dt=1.0)
+
+            if isinstance(e_attrs.get("conductive"), ConductiveLink):
+                vec[idx] += e_attrs["conductive"].step(u_attrs, v_attrs, dt=1.0)
+
+            # TODO (2024-12-06 MHJB): other links implemented here?
+
+    return vec
+
+
+def network_to_heat_capacity_vec(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
+    """
+    Create a vector of heat capacities by node.
+
+    This vector may be useful to embed on the diagonal of a larger matrix,
+    as the product of this and the current temperatures will give you the thermal energy
+    of every node in the system.
+
+    Nodes with an infinite heat capacity are overwritten with zero heat capacity, so be careful.
+
+    Parameters
+    ----------
+    hm
+        HeatNetwork where nodes have temperature in °C and thermal_mass in J / K
+
+    Returns
+    -------
+        Vector with units of J / K
+    """
+    node_to_idx = create_node_to_index_map(hm)
+
+    hc_vec = np.zeros([len(node_to_idx)], dtype=np.float64)
+    for node, heat_capacity in hm.nodes(data="thermal_mass"):
+        idx = node_to_idx[node]
+        if idx is None:
+            continue
+        hc_vec[idx] = heat_capacity if np.isfinite(heat_capacity) else 0.0
+    return hc_vec
+
+
+def solve_heat_balance_equation(hm: HeatNetwork, dt: datetime.timedelta) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
+    """
+    Solve the heat balance equation to get a new set of temperatures in Kelvin.
+
+    The heat balance equations are of the form
+    (heat capacity + internal flows * dt) * T_new = (heat capacity * T_old) + external gains * dt
+    such that the balance of internal flows and external gains / losses leads to consistent temperatures.
+
+    Assigning heat flows to either the left hand side (flows matrix) or the right hand side (gains vector)
+    can be difficult.
+    Generally, you only want to include elements in the flows matrix if they have a finite heat capacity or temperature
+    which you are interested in tracking.
+    Elements with :
+        * infinite temperatures (the sun),
+        * non-temperature-varying gains (internal electricals) or
+        * infinite heat capacities (outside air)
+    should be included in the RHS gains vector.
+
+    Parameters
+    ----------
+    hm
+        A HeatNetwork where edges represent thermal links, and nodes have temperatures and heat capacities.
+    dt
+        Timestep over which to accumulate gains and do internal flows.
+
+    Returns
+    -------
+        New temperatures in Kelvin.
+    """
+    dt_seconds = dt.total_seconds()
+
+    # TODO (2024-12-06 MHJB: the heat capacity and energy matrix vectors shouldn't change over time,
+    # so can we keep them between invocations?
+    rhs_vec = (network_to_heat_capacity_vec(hm) * network_to_temperature_vec(hm)) + (network_to_gains_vector(hm) * dt_seconds)
+
+    lhs_matr = np.diag(network_to_heat_capacity_vec(hm)) + (network_to_energy_matrix(hm) * dt_seconds)
+
+    is_sym = scipy.linalg.issymmetric(lhs_matr)
+    if not is_sym:
+        raise ValueError("Matrix is not symmetric")
+    res: np.ndarray[tuple[GraphSize], np.dtype[np.float64]] = scipy.linalg.solve(lhs_matr, rhs_vec, assume_a="sym")  # type: ignore
+    return res

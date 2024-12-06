@@ -153,7 +153,6 @@ def add_structure_to_graph(
             conductive=ConductiveLink(interface_area=window_area / 2.0, heat_transfer=GLASS_U_VALUE),
             radiative=None,
         )
-        print(G.edges[BuildingElement.InternalAir, window])
         G.add_edge(
             window,
             BuildingElement.ExternalAir,

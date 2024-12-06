@@ -65,3 +65,4 @@ asyncio_default_fixture_loop_scope = "function"
 check_untyped_defs = true
 warn_redundant_casts = true
 warn_unreachable = true
+plugins = ["numpy.typing.mypy_plugin"]
