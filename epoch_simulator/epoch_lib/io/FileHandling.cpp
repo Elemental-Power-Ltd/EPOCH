@@ -263,10 +263,10 @@ void writeObjectiveResultHeader(std::ofstream& outFile) {
 	outFile << "capex" << ",";
 	outFile << "cost_balance" << ",";
 	outFile << "payback_horizon" << ",";
-	outFile << "carbon_balance_scope_1";
+	outFile << "carbon_balance_scope_1" << ",";
 	outFile << "carbon_balance_scope_2";
 
-	// deliberately omit the comma for carbon balance
+	// deliberately omit the comma for carbon balance scope 2
 	// to allow the loop to have a comma for each entry (before)
 
 	for (auto paramName: taskDataParamNames) {
