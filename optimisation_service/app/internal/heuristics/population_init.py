@@ -72,7 +72,7 @@ def generate_building_initial_population(parameters: ParameterDict, input_dir: P
             ashp_input_df=ashp_input_df,
             ashp_output_df=ashp_output_df,
             air_temp_df=air_temp_df,
-            ashp_mode=2,
+            ashp_mode=2.0,
         ),
         lo,
         hi,

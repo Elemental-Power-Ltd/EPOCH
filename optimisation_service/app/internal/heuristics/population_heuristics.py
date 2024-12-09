@@ -46,14 +46,14 @@ def estimate_ashp_hpower(
     ashp_input_row = ashp_input_df[str(ashp_mode)].to_numpy()
     ashp_output_row = ashp_output_df[str(ashp_mode)].to_numpy()
 
-    air_temps = air_temp_df["Air-temp"]
+    air_temps = air_temp_df["AirTemp"]
     ashp_inputs = np.interp(air_temps, ashp_input_df.index.to_numpy(), ashp_input_row)
     ashp_outputs = np.interp(air_temps, ashp_output_df.index.to_numpy(), ashp_output_row)
 
     cops = ashp_outputs / ashp_inputs
 
     # We want rating in kW, so if there was a heat load of 1kWh in a 30 minute timestep, that's a 2kW load.
-    hload_times = pd.to_datetime(heating_df["Date"] + " 2024 " + heating_df["Start Time"], utc=True)
+    hload_times = pd.to_datetime(heating_df["Date"] + " 2024 " + heating_df["StartTime"], utc=True)
 
     timedeltas = np.pad(
         [item.to_timedelta64() for item in np.ediff1d(hload_times)], pad_width=(0, 1), mode="wrap"
@@ -108,7 +108,7 @@ def estimate_battery_capacity(elec_df: pd.DataFrame, quantile: float = 0.75) -> 
     -------
     Estimated battery capacity for this site in kWh
     """
-    time_of_day = np.array([float(item[0]) + float(item[1]) / 60 for item in elec_df["Start Time"].str.split(":")])
+    time_of_day = np.array([float(item[0]) + float(item[1]) / 60 for item in elec_df["StartTime"].str.split(":")])
     is_peak = np.logical_and(time_of_day >= 16, time_of_day < 19)
     peak_elec = elec_df[is_peak].groupby("Date").sum()["FixLoad1"]
     return float(np.quantile(peak_elec, quantile))
@@ -133,7 +133,7 @@ def estimate_battery_discharge(elec_df: pd.DataFrame, quantile: float = 1.0) -> 
     -------
     Estimated battery charging rate required in kW
     """
-    elec_times = pd.to_datetime(elec_df["Date"] + " 2024 " + elec_df["Start Time"], utc=True)
+    elec_times = pd.to_datetime(elec_df["Date"] + " 2024 " + elec_df["StartTime"], utc=True)
     timedeltas = np.pad(
         [item.to_timedelta64() for item in np.ediff1d(elec_times)], pad_width=(0, 1), mode="wrap"
     ) / np.timedelta64(1, "h")
@@ -163,7 +163,7 @@ def estimate_battery_charge(solar_df: pd.DataFrame, solar_scale: float = 1.0, qu
     Estimated battery charging rate required in kW
     """
     solar_output = solar_df["RGen1"].to_numpy() * solar_scale
-    solar_times = pd.to_datetime(solar_df["Date"] + " 2024 " + solar_df["Start Time"], utc=True)
+    solar_times = pd.to_datetime(solar_df["Date"] + " 2024 " + solar_df["StartTime"], utc=True)
     # Convert from kWh / timestep into kW (e.g. something that uses 1kWh in 0.5 hours is a 2kW charge)
     timedeltas = np.pad(
         [item.to_timedelta64() for item in np.ediff1d(solar_times)], pad_width=(0, 1), mode="wrap"
