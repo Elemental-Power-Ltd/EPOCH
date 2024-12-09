@@ -218,4 +218,6 @@ def symlog[T: (float, npt.NDArray[np.floating])](x: T, c: float = 1.0 / np.log(1
     -------
     symmetric log scaled value
     """
-    return np.sign(x) * np.log(1.0 + np.abs(x / c))
+    res = np.sign(x) * np.log(1.0 + np.abs(x / c))
+    assert isinstance(res, type(x))
+    return res

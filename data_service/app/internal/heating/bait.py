@@ -14,7 +14,7 @@ def building_adjusted_internal_temperature(
     wind_chill: float = -0.20,
     humidity_discomfort: float = 0.05,
     smoothing: float = 0.5,
-) -> npt.NDArray[np.floating]:
+) -> pd.Series:
     r"""
     Calculate a "building adjusted internal temperature" via Staffell et al's methodology.
 
@@ -99,4 +99,7 @@ def building_adjusted_internal_temperature(
     blend_diff = blend_hi - blend_lo
     blend = 10.0 * (weather_df["temp"].to_numpy() - blend_mid) / blend_diff
     blend = blend_weight / (1.0 + np.exp(-blend))
-    return (bait * (1.0 - blend)) + (weather_df["temp"].to_numpy() * blend)
+
+    res = ((bait * (1.0 - blend)) + (weather_df["temp"].to_numpy() * blend))
+    assert isinstance(res, pd.Series), str(type(res))
+    return res
