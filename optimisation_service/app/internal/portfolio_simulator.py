@@ -1,10 +1,14 @@
 import functools
-from itertools import product
+import logging
 from os import PathLike
+
+import numpy as np
 
 from app.internal.epoch_utils import PyTaskData, Simulator
 from app.models.objectives import _OBJECTIVES, Objectives, ObjectiveValues
 from app.models.result import BuildingSolution, PortfolioSolution, convert_sim_result
+
+logger = logging.getLogger("default")
 
 
 class PortfolioSimulator:
@@ -90,37 +94,12 @@ def combine_objective_values(objective_values_list: list[ObjectiveValues]) -> Ob
         Dictionary of objective values.
     """
     combined = {objective: float(sum(obj_vals[objective] for obj_vals in objective_values_list)) for objective in _OBJECTIVES}
-    combined[Objectives.payback_horizon] = combined[Objectives.capex] / combined[Objectives.cost_balance]
+    if combined[Objectives.cost_balance] > 0:
+        combined[Objectives.payback_horizon] = combined[Objectives.capex] / combined[Objectives.cost_balance]
+    else:
+        combined[Objectives.payback_horizon] = np.finfo(np.float32).max
+    if combined[Objectives.carbon_balance_scope_1] > 0:
+        combined[Objectives.carbon_cost] = combined[Objectives.capex] / combined[Objectives.carbon_balance_scope_1]
+    else:
+        combined[Objectives.carbon_cost] = np.finfo(np.float32).max
     return combined
-
-
-def gen_all_building_combinations(
-    building_solutions_dict: dict[str, list[BuildingSolution]],
-) -> list[PortfolioSolution]:
-    """
-    Generate a list of all possible portfolio solutions for a group of buildings and there multiple building solutions.
-
-    Parameters
-    ----------
-    building_solutions_dict
-        Dictionary of building names and list of building solutions.
-
-    Returns
-    -------
-    portfolio_solutions
-        List of portfolio solutions.
-    """
-    building_names = list(building_solutions_dict.keys())
-    all_combinations = product(*building_solutions_dict.values())
-
-    portfolio_solutions = []
-    for combination in all_combinations:
-        solution_dict = dict(zip(building_names, combination))
-        objective_values = [building.objective_values for building in combination]
-        portfolio_objective_values = combine_objective_values(objective_values)
-
-        portfolio_solution = PortfolioSolution(solution=solution_dict, objective_values=portfolio_objective_values)
-
-        portfolio_solutions.append(portfolio_solution)
-
-    return portfolio_solutions
