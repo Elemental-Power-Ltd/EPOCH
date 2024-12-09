@@ -10,7 +10,6 @@ from pymoo.core.problem import ElementwiseProblem  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
-from app.internal.epoch_utils import PyTaskData
 from app.internal.heuristics.population_init import generate_building_initial_population
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
 from app.models.constraints import ConstraintDict
@@ -121,7 +120,7 @@ class ProblemInstance(ElementwiseProblem):
         """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
-    def convert_solution(self, x: npt.NDArray, building_name: str) -> PyTaskData:
+    def convert_solution(self, x: npt.NDArray, building_name: str) -> dict:
         """
         Convert a candidate solution from an array of parameter values to a dictionary of parameter names and values.
 
@@ -134,12 +133,12 @@ class ProblemInstance(ElementwiseProblem):
 
         Returns
         -------
-        PyTaskData
+        all_param
             Dictionary of parameter names and values.
         """
         variable_params = dict(zip(self.variable_params[building_name], x))
         all_param = variable_params | deepcopy(self.constant_params[building_name])
-        return PyTaskData(**all_param)
+        return all_param
 
     def simulate_portfolio(self, x: npt.NDArray) -> PortfolioSolution:
         """
