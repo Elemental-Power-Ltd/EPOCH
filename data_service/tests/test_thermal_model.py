@@ -1,5 +1,7 @@
 """Tests for the thermal model: static and dynamic heat loss, structure heat networks etc."""
 
+import datetime
+
 import numpy as np
 import pytest
 
@@ -10,6 +12,7 @@ from app.internal.thermal_model.heat_loss import (
     calculate_maximum_static_heat_loss,
     calculate_maximum_static_heat_loss_breakdown,
 )
+from app.internal.thermal_model.matrix import interpolate_heating_power
 from app.internal.thermal_model.network import create_simple_structure
 
 
@@ -226,3 +229,122 @@ class TestStaticHeatLoss:
             G = create_simple_structure(10.0, window_area=1.0, roof_area=10.0, floor_area=floor_area)
             heat_losses.append(calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
         assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the floor gets larger"
+
+
+class TestInterpolateHeatingPower:
+    """Test the matrix time series solution approach from HEM."""
+
+    def test_reasonable(self, test_structure: HeatNetwork) -> None:
+        """Test that we get a reasonable value of 10-12kW static heat loss for this building."""
+        heat_loss = (
+            interpolate_heating_power(
+                test_structure, internal_temperature=21, external_temperature=-2.3, dt=datetime.timedelta(days=1)
+            )
+            / datetime.timedelta(days=1).total_seconds()
+        )
+        assert heat_loss == pytest.approx(4065.4924283576634)
+
+    def test_internal_temperature_range(self) -> None:
+        """Test that warmer indoors leads to a large static heat loss."""
+        G = create_simple_structure(10.0, 1.0, 20.0)
+        heat_losses = [
+            interpolate_heating_power(
+                G, internal_temperature=internal_t, external_temperature=-2.3, dt=datetime.timedelta(days=1)
+            )
+            / datetime.timedelta(days=1).total_seconds()
+            for internal_t in [16, 18, 21, 22, 25]
+        ]
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as internal T increases"
+
+    def test_external_temperature_range(self) -> None:
+        """Test that colder outdoors leads to a large static heat loss."""
+        G = create_simple_structure(10.0, 1.0, 20.0)
+        heat_losses = [
+            interpolate_heating_power(
+                G, internal_temperature=21, external_temperature=external_t, dt=datetime.timedelta(days=1)
+            )
+            / datetime.timedelta(days=1).total_seconds()
+            for external_t in [2, 0, -2, -4]
+        ]
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as external T decreases"
+
+    def test_wall_size_increase(self) -> None:
+        """Test that large buildings lose more heat."""
+        heat_losses = []
+        for wall_area in [5, 10, 15, 20]:
+            G = create_simple_structure(wall_area, 1.0, 20.0)
+            heat_losses.append(
+                interpolate_heating_power(G, internal_temperature=21, external_temperature=-2.3, dt=datetime.timedelta(days=1))
+                / datetime.timedelta(days=1).total_seconds()
+            )
+
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the building gets large"
+
+    def test_window_size_increase(self) -> None:
+        """Test that larger windows lose more heat."""
+        heat_losses = []
+        for window_area in [1, 2, 3, 4, 5]:
+            G = create_simple_structure(10.0, window_area, 20.0)
+            heat_losses.append(
+                interpolate_heating_power(G, internal_temperature=21, external_temperature=-2.3, dt=datetime.timedelta(days=1))
+                / datetime.timedelta(days=1).total_seconds()
+            )
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the windows get larger"
+
+    def test_roof_size_increase(self) -> None:
+        """Test that larger roofs lose more heat."""
+        heat_losses = []
+        for roof_area in [5, 10, 15, 20]:
+            G = create_simple_structure(10.0, window_area=1.0, roof_area=roof_area)
+            heat_losses.append(
+                interpolate_heating_power(G, internal_temperature=21, external_temperature=-2.3, dt=datetime.timedelta(days=1))
+                / datetime.timedelta(days=1).total_seconds()
+            )
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the roof gets larger"
+
+    def test_floor_size_increase(self) -> None:
+        """Test that larger floors lose more heat."""
+        heat_losses = []
+        for floor_area in [5, 10, 15, 20]:
+            G = create_simple_structure(10.0, window_area=1.0, roof_area=10.0, floor_area=floor_area)
+            heat_losses.append(
+                interpolate_heating_power(G, internal_temperature=21, external_temperature=-2.3, dt=datetime.timedelta(days=1))
+                / datetime.timedelta(days=1).total_seconds()
+            )
+        assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the floor gets larger"
+
+    def test_consistent_with_timestep(self, test_structure: HeatNetwork) -> None:
+        """Test that different timesteps lead to reasonably consistent required heating powers."""
+        results = []
+        for dt in [
+            datetime.timedelta(hours=1),
+            datetime.timedelta(hours=12),
+            datetime.timedelta(days=1),
+            datetime.timedelta(days=7),
+            datetime.timedelta(days=31),
+        ]:
+            res = (
+                interpolate_heating_power(test_structure, internal_temperature=21, external_temperature=-2.3, dt=dt)
+                / dt.total_seconds()
+            )
+            results.append(res)
+        assert np.allclose(results, results[0])
+
+    def test_consistent_with_power(self, test_structure: HeatNetwork) -> None:
+        """Test that different max heating powers lead to reasonably consistent required heating powers."""
+        results = []
+        for power in [1e3, 5e3, 1e4, 5e4, 1e5]:
+            res = (
+                interpolate_heating_power(
+                    test_structure,
+                    internal_temperature=21,
+                    external_temperature=-2.3,
+                    dt=datetime.timedelta(days=1),
+                    max_heat_power=power,
+                )
+                / datetime.timedelta(days=1).total_seconds()
+            )
+            results.append(res)
+        assert np.allclose(results, results[0])

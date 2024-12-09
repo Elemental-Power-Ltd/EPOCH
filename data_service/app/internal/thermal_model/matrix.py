@@ -1,5 +1,6 @@
 """Functions for the matrix formulation of temperature flows."""
 
+import copy
 import datetime
 from collections import defaultdict
 from collections.abc import Mapping
@@ -279,7 +280,9 @@ def network_to_heat_capacity_vec(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize]
     return hc_vec
 
 
-def solve_heat_balance_equation(hm: HeatNetwork, dt: datetime.timedelta) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
+def solve_heat_balance_equation(
+    hm: HeatNetwork, dt: datetime.timedelta, heating_power: float = 0.0
+) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
     """
     Solve the heat balance equation to get a new set of temperatures in Kelvin.
 
@@ -303,6 +306,8 @@ def solve_heat_balance_equation(hm: HeatNetwork, dt: datetime.timedelta) -> np.n
         A HeatNetwork where edges represent thermal links, and nodes have temperatures and heat capacities.
     dt
         Timestep over which to accumulate gains and do internal flows.
+    heating_power
+        Power from the heating system in Watts
 
     Returns
     -------
@@ -314,10 +319,72 @@ def solve_heat_balance_equation(hm: HeatNetwork, dt: datetime.timedelta) -> np.n
     # so can we keep them between invocations?
     rhs_vec = (network_to_heat_capacity_vec(hm) * network_to_temperature_vec(hm)) + (network_to_gains_vector(hm) * dt_seconds)
 
+    if heating_power != 0.0:
+        heating_vec = np.zeros_like(rhs_vec)
+        node_to_idx = create_node_to_index_map(hm)
+        # Heating contributions go straight to the internal air, bypassing the heating system
+        # TODO (2024-12-09 MHJB): I don't like this, but solving the system of equations doesn't seem to
+        # correctly distribute the heat
+        heating_vec[node_to_idx[BuildingElement.InternalAir]] += heating_power * dt_seconds
+        rhs_vec += heating_vec
+
     lhs_matr = np.diag(network_to_heat_capacity_vec(hm)) + (network_to_energy_matrix(hm) * dt_seconds)
 
-    is_sym = scipy.linalg.issymmetric(lhs_matr)
-    if not is_sym:
-        raise ValueError("Matrix is not symmetric")
+    assert scipy.linalg.issymmetric(lhs_matr), "Matrix is not symmetric"
+
     res: np.ndarray[tuple[GraphSize], np.dtype[np.float64]] = scipy.linalg.solve(lhs_matr, rhs_vec, assume_a="sym")  # type: ignore
     return res
+
+
+def interpolate_heating_power(
+    hm: HeatNetwork,
+    dt: datetime.timedelta,
+    internal_temperature: float = 21.0,
+    external_temperature: float = -2.0,
+    max_heat_power: float = 1e4,
+) -> float:
+    """
+    Find the heating energy required over a time period in J for a heat network with an ExternalAir component.
+
+    This will find the required heating power by interpolating between the internal temperature at 0 heating power,
+    and the internal temperature at MAX_HEAT_POWER heating power.
+    The heating power required is then the interpolation at `internal_air_temperature` degrees between those two points.
+
+    The heat network's `ExternalAir` temperature will be set to the external air temperature, which should be the
+    mean air temperature over the period of interest.
+
+    Parameters
+    ----------
+    hm
+        HeatNetwork with InternalAir, ExternalAir and fabric nodes. Set the ExternalAir "temperature" parameter to the
+        mean air temperature over the time period of interest.
+    dt
+        Timestep to solve for energy flows over
+    internal_air_temperature
+        Internal air temperature that we want to target with the thermstat
+    external_air_temperature
+        External air temperature during the period of interest, probably the mean air temperature
+    max_heat_power
+        The maximum power of a hypothetical boiler, which should be enough to moderately overheat the building.
+
+    Parameters
+    ----------
+        Heating energy in Joules (note: not power in Watts!) required to keep the given internal temperature
+        over this time period given a specific external temperature. You probably want to turn this into kWh
+        for presentation, or keep it in J for further calculations.
+    """
+    hm_2: HeatNetwork = copy.deepcopy(hm)
+
+    hm_2.nodes[BuildingElement.InternalAir]["temperature"] = internal_temperature
+    hm_2.nodes[BuildingElement.ExternalAir]["temperature"] = external_temperature
+
+    cold_temperatures = solve_heat_balance_equation(hm_2, dt, heating_power=0.0)
+    hot_temperatures = solve_heat_balance_equation(hm_2, dt, heating_power=max_heat_power)
+
+    internal_air_idx = create_node_to_index_map(hm)[BuildingElement.InternalAir]
+    return float(
+        dt.total_seconds()
+        * max_heat_power
+        * (celsius_to_kelvin(internal_temperature) - cold_temperatures[internal_air_idx])
+        / (hot_temperatures[internal_air_idx] - cold_temperatures[internal_air_idx])
+    )

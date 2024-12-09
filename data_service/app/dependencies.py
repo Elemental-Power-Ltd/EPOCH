@@ -83,7 +83,7 @@ DBConnection = asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
 HTTPClient = httpx.AsyncClient
 
 
-async def get_http_client() -> AsyncGenerator[HTTPClient, None]:
+async def get_http_client() -> AsyncGenerator[HTTPClient]:
     """
     Get a shared HTTP client.
 
@@ -93,7 +93,7 @@ async def get_http_client() -> AsyncGenerator[HTTPClient, None]:
     yield http_client
 
 
-async def get_db_conn() -> AsyncGenerator[DBConnection, None]:
+async def get_db_conn() -> AsyncGenerator[DBConnection]:
     """
     Get a connection to the database.
 
@@ -108,7 +108,7 @@ async def get_db_conn() -> AsyncGenerator[DBConnection, None]:
         await db.pool.release(conn)
 
 
-async def get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
+async def get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
     """
     Get access to the database connection pool directly.
 
