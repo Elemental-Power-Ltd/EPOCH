@@ -8,18 +8,18 @@ import subprocess
 import tempfile
 import time
 from datetime import timedelta
+from itertools import islice, product
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from paretoset import paretoset  # type: ignore
 
-from app.internal.pareto_front import portfolio_pareto_front
-from app.internal.portfolio_simulator import gen_all_building_combinations
+from app.internal.portfolio_simulator import combine_objective_values
 from app.models.constraints import ConstraintDict
 from app.models.core import Site
 from app.models.objectives import _OBJECTIVES, Objectives, ObjectivesDirection
-from app.models.result import BuildingSolution, OptimisationResult
+from app.models.result import BuildingSolution, OptimisationResult, PortfolioSolution
 
 from ..models.algorithms import Algorithm
 from ..models.parameters import OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
@@ -119,12 +119,18 @@ class GridSearch(Algorithm):
 
                 df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
                 df_res = df_res.drop(columns=["Parameter index"])
+                df_res[Objectives.carbon_cost] = df_res[Objectives.capex] / df_res[Objectives.carbon_balance_scope_1]
 
                 n_evals += len(df_res)
 
                 # Avoid maintaining all solutions from each building by keeping only the best solutions for each CAPEX.
                 if len(portfolio) > 1:  # Only required if there is more than 1 building.
                     df_res = pareto_front_but_preserve(df_res, objectives, Objectives.capex)
+
+                for objective, bounds in constraints.items():
+                    min_value = bounds.get("min", -np.inf)
+                    max_value = bounds.get("max", np.inf)
+                    df_res = df_res[(df_res[objective] >= min_value) & (df_res[objective] <= max_value)]
 
                 df_res["timewindow"] = building.search_parameters.timewindow
                 df_res["target_max_concurrency"] = building.search_parameters.target_max_concurrency
@@ -134,13 +140,63 @@ class GridSearch(Algorithm):
 
                 building_solutions[building.name] = [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
 
-        portfolio_sol = gen_all_building_combinations(building_solutions)
+        solutions = pareto_optimise(building_solutions, objectives, constraints)
 
-        portfolio_sol_pf = portfolio_pareto_front(portfolio_sol, objectives)
+        return OptimisationResult(solutions=solutions, exec_time=exec_time, n_evals=n_evals)
 
-        # TODO: Apply portfolio constraints
 
-        return OptimisationResult(solutions=portfolio_sol_pf, exec_time=exec_time, n_evals=n_evals)
+def pareto_optimise(
+    building_solutions_dict: dict[str, list[BuildingSolution]], objectives: list[Objectives], constraints: ConstraintDict
+) -> list[PortfolioSolution]:
+    logger.debug(f"Number of Sites: {[len(scenario_list) for scenario_list in building_solutions_dict.values()]}")
+    all_combinations = product(*building_solutions_dict.values())
+    objective_mask = [_OBJECTIVES.index(col) for col in objectives]
+    objective_direct = ["max" if ObjectivesDirection[objective] == -1 else "min" for objective in objectives]
+    pareto_optimal_subsets = []
+    n = 0
+    while True:
+        subset = np.array(list(islice(all_combinations, 50000000)))
+        logger.debug(f"optimising subset {n}.")
+        n += 1
+        if subset.size > 1:
+            subset_costs = []
+            is_feasible = np.ones(len(subset), dtype=bool)
+            for i, combination in enumerate(subset):
+                objective_values = combine_objective_values([building.objective_values for building in combination])
+                for objective, bounds in constraints.items():
+                    min_value = bounds.get("min", None)
+                    max_value = bounds.get("max", None)
+                    is_feasible[i] = not (min_value is not None and objective_values[objective] < min_value)
+                    is_feasible[i] = not (max_value is not None and objective_values[objective] > max_value)
+                if is_feasible[i]:
+                    subset_costs.append(list(objective_values.values()))
+            subset_costs_req = np.array(subset_costs)[:, objective_mask]
+            is_pareto_efficient = paretoset(costs=subset_costs_req, sense=objective_direct, distinct=True)
+            pareto_optimal_subsets.append(subset[is_feasible][is_pareto_efficient])
+        else:
+            break
+    reduced_set = np.vstack(pareto_optimal_subsets)
+    costs = np.array(
+        [
+            list(combine_objective_values([building.objective_values for building in combination]).values())
+            for combination in reduced_set
+        ]
+    )[:, objective_mask]
+    is_pareto_efficient = paretoset(costs=costs, sense=objective_direct, distinct=True)
+    front = reduced_set[is_pareto_efficient].tolist()
+
+    building_names = building_solutions_dict.keys()
+    portfolio_solutions = []
+    for combination in front:
+        solution_dict = dict(zip(building_names, combination))
+        objective_values = [building.objective_values for building in combination]
+        portfolio_objective_values = combine_objective_values(objective_values)
+
+        portfolio_solution = PortfolioSolution(solution=solution_dict, objective_values=portfolio_objective_values)
+
+        portfolio_solutions.append(portfolio_solution)
+
+    return portfolio_solutions
 
 
 def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Objectives], preserved_objective: Objectives) -> pd.DataFrame:
