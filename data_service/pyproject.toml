@@ -41,6 +41,9 @@ select = [
     "RUF", # ruff
     "FAST", # fastAPI
     "D", # pydocstyle
+    #"NPY",
+    #"ICN",
+    #"LOG"
 ]
 ignore = [
     "PD008", # at instead of loc

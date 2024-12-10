@@ -1,7 +1,6 @@
 """Building Adjusted Internal Temperature and feelslike calculations."""
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from ..epl_typing import WeatherDataFrame
@@ -100,6 +99,6 @@ def building_adjusted_internal_temperature(
     blend = 10.0 * (weather_df["temp"].to_numpy() - blend_mid) / blend_diff
     blend = blend_weight / (1.0 + np.exp(-blend))
 
-    res = ((bait * (1.0 - blend)) + (weather_df["temp"].to_numpy() * blend))
+    res = (bait * (1.0 - blend)) + (weather_df["temp"].to_numpy() * blend)
     assert isinstance(res, pd.Series), str(type(res))
     return res

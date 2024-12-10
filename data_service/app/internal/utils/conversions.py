@@ -11,12 +11,13 @@ belong in here.
 Where possible, these functions should work equally well on numpy arrays or on single float values.
 """
 
+import datetime
 from typing import TYPE_CHECKING
 
 import numpy as np
-import numpy.typing as npt
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     import pandas as pd
 
 
@@ -88,6 +89,22 @@ def kelvin_to_celsius[T: (npt.NDArray[np.floating], float, pd.Series)](temperatu
             f"{temperature} out of range of likely K values [0, 373.15]. Have you already converted it?"
         )
     return temperature - 273.15
+
+
+def joule_to_kwh[T: (npt.NDArray[np.floating], float, pd.Series)](joules: T) -> T:
+    """
+    Convert a temperature in Celsius to one in Kelvin.
+
+    Parameters
+    ----------
+    joules
+        Energy in J
+
+    Returns
+    -------
+        Energy in kWh
+    """
+    return joules / (1000 * datetime.timedelta(hours=1).total_seconds())
 
 
 def millibar_to_megapascal[T: (npt.NDArray[np.floating], float, pd.Series)](pressure: T) -> T:

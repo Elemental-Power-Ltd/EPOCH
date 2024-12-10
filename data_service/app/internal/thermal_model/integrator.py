@@ -68,9 +68,9 @@ def lerp(ts: pd.Timestamp | datetime.datetime, times: pd.DatetimeIndex, values: 
 def simulate(
     graph: HeatNetwork,
     external_df: pd.DataFrame,
-    start_time: datetime.datetime,
-    end_time: datetime.datetime | None = None,
-    dt: float = 300.0,
+    start_ts: datetime.datetime,
+    end_ts: datetime.datetime | None = None,
+    dt: datetime.timedelta | None = None,
 ) -> pd.DataFrame:
     """
     Simulate the time series evolution of this heating network.
@@ -96,13 +96,14 @@ def simulate(
     temperatures = defaultdict(list)
     energy_changes = defaultdict(list)
 
-    if end_time is None:
-        end_time = start_time.replace(year=start_time.year + 1)
-
-    iters = int((end_time - start_time).total_seconds() // dt)
+    if end_ts is None:
+        end_ts = start_ts.replace(year=start_ts.year + 1)
+    if dt is None:
+        dt = datetime.timedelta(minutes=5)
+    iters = int((end_ts - start_ts).total_seconds() // dt.total_seconds())
     assert isinstance(external_df.index, pd.DatetimeIndex)
-    for it in range(iters):
-        time = start_time + datetime.timedelta(seconds=dt * it)
+    for _ in range(iters):
+        time = start_ts + dt
         times.append(time)
         graph.nodes[BuildingElement.ExternalAir]["temperature"] = lerp(time, external_df.index, external_df["temp"])
         graph.nodes[BuildingElement.Ground]["temperature"] = lerp(time, external_df.index, external_df["temp"]) - 11.0
