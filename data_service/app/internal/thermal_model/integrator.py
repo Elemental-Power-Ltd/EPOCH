@@ -10,10 +10,11 @@ import pandas as pd
 
 from .building_elements import BuildingElement
 from .links import BoilerRadiativeLink
+from .matrix import create_node_to_index_map, interpolate_heating_power, solve_heat_balance_equation
 from .network import HeatNetwork
 
 
-def update_temperatures(graph: nx.Graph) -> nx.Graph:
+def update_temperatures(graph: HeatNetwork) -> HeatNetwork:
     """
     Update the temperatures of the graph after all the energy changes have happened.
 
@@ -26,7 +27,7 @@ def update_temperatures(graph: nx.Graph) -> nx.Graph:
 
     Returns
     -------
-    nx.Graph
+    HeatNetwork
         Graph from arguments with temperature attributes updated.
     """
     for u, data in sorted(graph.nodes(data=True)):
@@ -34,6 +35,31 @@ def update_temperatures(graph: nx.Graph) -> nx.Graph:
         if not np.isfinite(delta_t):
             delta_t = 0.0
         graph.nodes[u]["temperature"] += delta_t
+        # Reset the energy changes now we've used them
+        graph.nodes[u]["energy_change"] = 0.0
+    return graph
+
+
+def update_temperatures_from_vec(graph: HeatNetwork, vec: npt.NDArray) -> HeatNetwork:
+    """
+    Update the temperatures of the graph after all the energy changes have happened.
+
+    This will reset the energy changes metric, so make sure you've used it before now.
+
+    Parameters
+    ----------
+    graph
+        A networkx graph, where the nodes have attributes `"energy_change"`, `"thermal_mass"` and `"temperature"`.
+
+    Returns
+    -------
+    HeatNetwork
+        Graph from arguments with temperature attributes updated.
+    """
+    node_to_idx = create_node_to_index_map(graph)
+
+    for u, idx in node_to_idx.items():
+        graph.nodes[u]["temperature"] = vec[idx]
         # Reset the energy changes now we've used them
         graph.nodes[u]["energy_change"] = 0.0
     return graph
@@ -90,7 +116,15 @@ def simulate(
     end_time
         Time point to finish the simulation at (may not finish at exactly this time depending on dt)
     dt
-        Timestep in seconds between updates. Should be relatively short ()
+        Timestep between updates. Should be relatively short (of the order of five minutes), and defaults to 5 min.
+
+    Returns
+    -------
+    pd.DataFrame
+        Pandas dataframe with DatetimeIndex of timestamps between start_ts and end_ts, with each timestamp representing
+        the start of a simulated period.
+        Columns are "temperature", representing InternalAir temperature, "energy_change",
+        representing the InternalAir energy change and "heating_usage" representing the energy from the heating system.
     """
     times = []
     temperatures = defaultdict(list)
@@ -138,6 +172,99 @@ def simulate(
 
     df = pd.DataFrame(
         index=times,
-        data={"energy_changes": energy_changes, "temperatures": temperatures},
+        data={
+            "energy_changes": energy_changes[BuildingElement.InternalAir],
+            "temperatures": temperatures[BuildingElement.InternalAir],
+            "heating_usage": energy_changes[BuildingElement.HeatSource],
+        },
+    )
+    return df
+
+
+def simulate_heat_balance(
+    graph: HeatNetwork,
+    external_df: pd.DataFrame,
+    start_ts: datetime.datetime,
+    end_ts: datetime.datetime | None = None,
+    dt: datetime.timedelta | None = None,
+) -> pd.DataFrame:
+    """
+    Simulate the time series evolution of this heating network using the heat balance equations.
+
+    At each step, we'll iterate over the edges of the graph. The nodes on either side will be
+    updated, according to the connections along those edges.
+    We calculate an energy change first, and then turn that into a temperature later on.
+
+    Parameters
+    ----------
+    graph
+        A heat network graph where nodes have temperatures and thermal masses, and edges represent thermal links
+    external_df
+        Dataframe of external weather, with a time series index and columns `temp` and `solarradiation`.
+    start_time
+        Earliest time point to start simulation at
+    end_time
+        Time point to finish the simulation at (may not finish at exactly this time depending on dt)
+    dt
+        Timestep between updates. Should be relatively short (of the order of five minutes), and defaults to 5 min.
+
+    Returns
+    -------
+    pd.DataFrame
+        Pandas dataframe with DatetimeIndex of timestamps between start_ts and end_ts, with each timestamp representing
+        the start of a simulated period.
+        Columns are "temperature", representing InternalAir temperature, "energy_change",
+        representing the InternalAir energy change and "heating_usage" representing the energy from the heating system.
+    """
+    times = []
+    temperatures = defaultdict(list)
+    energy_changes = defaultdict(list)
+
+    if end_ts is None:
+        end_ts = start_ts.replace(year=start_ts.year + 1)
+    if dt is None:
+        dt = datetime.timedelta(minutes=5)
+    iters = int((end_ts - start_ts).total_seconds() // dt.total_seconds())
+    assert isinstance(external_df.index, pd.DatetimeIndex)
+    for _ in range(iters):
+        time = start_ts + dt
+        times.append(time)
+        graph.nodes[BuildingElement.ExternalAir]["temperature"] = lerp(time, external_df.index, external_df["temp"])
+        graph.nodes[BuildingElement.Ground]["temperature"] = lerp(time, external_df.index, external_df["temp"]) - 11.0
+        graph.get_edge_data(BuildingElement.Sun, BuildingElement.Roof)["radiative"].power = (
+            lerp(time, external_df.index, external_df["solarradiation"]) * 50 * 0.33
+        )
+        graph.get_edge_data(BuildingElement.Sun, BuildingElement.WallSouth)["radiative"].power = (
+            lerp(time, external_df.index, external_df["solarradiation"]) * 10 * 0.25
+        )
+
+        heating_power = interpolate_heating_power(
+            graph,
+            dt=dt,
+            internal_temperature=21.0,
+            external_temperature=graph.nodes[BuildingElement.ExternalAir]["temperature"],
+        )
+
+        new_temp_vec = solve_heat_balance_equation(hm=graph, dt=dt, heating_power=heating_power)
+
+        for u, temp in sorted(graph.nodes(data="temperature")):
+            temperatures[u].append(temp)
+
+        for u, energy_change in sorted(graph.nodes(data="energy_change")):
+            energy_changes[u].append(energy_change)
+
+        total_energy_change = sum(item for _, item in graph.nodes(data="energy_change"))
+        assert abs(total_energy_change) < 1e-8, f"Energy change must be < 1e-8, got {total_energy_change}"
+
+        update_temperatures_from_vec(graph, new_temp_vec)
+
+    df = pd.DataFrame(
+        index=times,
+        # TODO (2024-12-11 MHJB): can we get the energy changes from the matrix? should be just the LHS times temperatures
+        data={
+            "energy_changes": [np.nan for _ in temperatures[BuildingElement.InternalAir]],
+            "temperatures": temperatures[BuildingElement.InternalAir],
+            "heating_usage": energy_changes[BuildingElement.HeatSource],
+        },
     )
     return df
