@@ -9,6 +9,7 @@ Older conventions:
 https://files.bregroup.com/bre-co-uk-file-library-copy/filelibrary/accreditation/rdsap_conventions/v3/SAP2005_9-83_Appendix_S_March2010.pdf
 
 """
+
 import datetime
 from enum import StrEnum, auto
 
@@ -151,6 +152,7 @@ def year_to_age_band(construction_date: datetime.datetime, nation: UKCountryEnum
         if construction_date.year <= year:
             return age_band
     raise ValueError(f"Couldn't find age band for {construction_date} in {nation}")
+
 
 def rating_to_band(sap_rating: int) -> RatingBandEnum:
     """

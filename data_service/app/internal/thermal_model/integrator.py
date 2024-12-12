@@ -3,7 +3,6 @@
 import datetime
 from collections import defaultdict
 
-import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
