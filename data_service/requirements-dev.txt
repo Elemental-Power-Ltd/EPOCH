@@ -9,5 +9,6 @@ types-requests
 pandas-stubs 
 joblib-stubs
 scipy-stubs
+types-openpyxl
 mypy
 ruff

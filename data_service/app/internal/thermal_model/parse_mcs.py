@@ -4,7 +4,6 @@ Functions to parse a specific set of MCS room survey spreadsheets.
 These are likely to be fragile, so watch out for the format changing over time.
 """
 
-import json
 import datetime
 import itertools
 import pathlib
@@ -17,6 +16,7 @@ import openpyxl.worksheet
 import openpyxl.worksheet.worksheet
 
 from ..utils.conversions import try_convert_float
+
 
 class MCSRoomMetadata(TypedDict):
     """Room metadata from an MCS survey."""
