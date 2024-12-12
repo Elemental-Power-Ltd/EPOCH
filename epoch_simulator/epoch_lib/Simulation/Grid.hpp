@@ -3,20 +3,20 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
 class Grid
 {
 public:
-	Grid(const HistoricalData& historicalData, const TaskData& taskData) :
+	Grid(const HistoricalData& historicalData, const GridData& gridData, const Building& building) :
 		// Initilaise results data vectors with all values to zero
-		Imp_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())), 			// Grid Import
-		Exp_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),			// Grid Export
-		ImpHeadroom_e(taskData.Import_headroom * taskData.Fixed_load1_scalar * historicalData.hotel_eload_data.maxCoeff()),
+		Imp_e(Eigen::VectorXf::Zero(historicalData.timesteps)),
+		Exp_e(Eigen::VectorXf::Zero(historicalData.timesteps)),
+		ImpHeadroom_e(gridData.import_headroom * building.scalar_electrical_load * historicalData.hotel_eload_data.maxCoeff()),
 		// Following are Import and Export Max kWh per timestep (adjusted for Power Factor & Headroom)
-		ImpMax_e((taskData.GridImport * taskData.Min_power_factor - ImpHeadroom_e) * taskData.timestep_hours),
-		ExpMax_e(taskData.GridExport * taskData.timestep_hours)
+		ImpMax_e((gridData.grid_import * gridData.min_power_factor - ImpHeadroom_e) * historicalData.timestep_hours),
+		ExpMax_e(gridData.grid_export * historicalData.timestep_hours)
 	{}
 
 	float AvailImport() const {

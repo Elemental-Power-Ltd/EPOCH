@@ -6,7 +6,7 @@
 
 #include <spdlog/spdlog.h>
 
-TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisationOnly)
+TaskGenerator::TaskGenerator(const nlohmann::json& inputJson)
 {
 	mParamGrid = makeParamGrid(inputJson);
 
@@ -25,13 +25,6 @@ TaskGenerator::TaskGenerator(const nlohmann::json& inputJson, bool initialisatio
 
 	mTotalScenarios = cumulativeProduct;
 
-	if (initialisationOnly) {
-		mScenarioLimit = std::min(mTotalScenarios, MAX_SCENARIOS_FOR_INITIALISATION);
-	}
-	else {
-		mScenarioLimit = mTotalScenarios;
-	}
-
 	mScenarioCounter = 1;
 
 }
@@ -42,15 +35,17 @@ uint64_t TaskGenerator::totalScenarios() const
 	return mTotalScenarios;
 }
 
-bool TaskGenerator::nextTask(TaskData& taskData)
+bool TaskGenerator::nextTask(TaskWithIndex& taskWithIndex)
 {
-	if (mScenarioCounter > mScenarioLimit) {
+	if (mScenarioCounter > mTotalScenarios) {
 		return false;
 	}
 
 	// mScenarioCounter is atomic
 	// Calling in this way should ensure that getTask is called incrementally with each index in the range
-	taskData = getTask(mScenarioCounter++);
+	uint64_t scenarioIndex = mScenarioCounter++;
+	taskWithIndex.task = getTask(scenarioIndex);
+	taskWithIndex.index = scenarioIndex;
 	return true;
 }
 
@@ -70,20 +65,23 @@ TaskData TaskGenerator::getTask(uint64_t index) const {
 		paramSlice.emplace_back(paramRange.name, paramRange.values[i]);
 	}
 
-	TaskData taskData;
+	TaskData taskData{};
 
-	// Change the taskData parameters to the current set of values in the parameter grid
-	for (size_t i = 0; i < paramSlice.size(); ++i) {
-		if (taskData.param_map_float.find(paramSlice[i].first) != taskData.param_map_float.end()) {
-			taskData.set_param_float(paramSlice[i].first, paramSlice[i].second);
-		}
-		else {
-			taskData.set_param_int(paramSlice[i].first, static_cast<int>(paramSlice[i].second));
-		}
-	}
+	// FIXME - the TaskGenerator logic doesn't currently work with the new TaskData
+	// for now, we simply always return a default (empty) TaskData
+	
+	//// Change the taskData parameters to the current set of values in the parameter grid
+	//for (size_t i = 0; i < paramSlice.size(); ++i) {
+	//	if (taskData.param_map_float.find(paramSlice[i].first) != taskData.param_map_float.end()) {
+	//		taskData.set_param_float(paramSlice[i].first, paramSlice[i].second);
+	//	}
+	//	else {
+	//		taskData.set_param_int(paramSlice[i].first, static_cast<int>(paramSlice[i].second));
+	//	}
+	//}
 
-	// set the 1-based index
-	taskData.paramIndex = index + 1;
+	//// set the 1-based index
+	//taskData.paramIndex = index + 1;
 
 
 	return taskData;

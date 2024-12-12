@@ -3,17 +3,17 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
 class Hotel {
 
 public:
-    Hotel(const HistoricalData& historicalData, const TaskData& taskData) :
-        mTimesteps(taskData.calculate_timesteps()),	// Used in init & functions
+    Hotel(const HistoricalData& historicalData, const Building& buildingData) :
+        mTimesteps(historicalData.timesteps),	// Used in init & functions
         // Initilaise data vectors with all values to zero
-        mTargetLoad_e(historicalData.hotel_eload_data* taskData.Fixed_load1_scalar),
-        mTargetHeat_h(historicalData.heatload_data),
+        mTargetLoad_e(historicalData.hotel_eload_data * buildingData.scalar_electrical_load),
+        mTargetHeat_h(historicalData.heatload_data * buildingData.scalar_heat_load),
         mTargetDHW_h(historicalData.DHWdemand_data)
 
         //TargetPool_h(Eigen::VectorXf::Zero(BattData.TS_max))
@@ -36,7 +36,7 @@ public:
     }
 
 private:
-    const int mTimesteps;
+    const size_t mTimesteps;
 
     year_TS mTargetLoad_e;
     year_TS mTargetHeat_h;

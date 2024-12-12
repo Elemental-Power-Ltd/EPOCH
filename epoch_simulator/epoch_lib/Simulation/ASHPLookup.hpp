@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
 // For the demo, always use the weather compensation mode in column 2
@@ -16,13 +16,13 @@ struct HeatpumpValues {
 class ASHPLookup
 {
 public:
-    ASHPLookup(const HistoricalData& historicalData, const TaskData& taskData, float sendTemperature);
+    ASHPLookup(const HistoricalData& historicalData, const HeatPumpData& hp, float sendTemperature);
 
     HeatpumpValues Lookup(float airTemp);
 
 private:
 
-    void precomputeLookupTable(const HistoricalData& historicalData, const TaskData& taskData, float sendTemp);
+    void precomputeLookupTable(const HistoricalData& historicalData, const HeatPumpData& hp, float sendTemp);
 
     float computeInput(const HistoricalData& historicalData, float sendTemp, float airTemp) const;
     float computeOutput(const HistoricalData& historicalData, float sendTemp, float airTemp) const;

@@ -4,7 +4,7 @@
 #include <Eigen/Dense>
 #include <algorithm>
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 #include "ASHPLookup.hpp"
 #include "TempSum.hpp"
@@ -13,12 +13,12 @@
 class AmbientHeatPump {
 
 public:
-	AmbientHeatPump(const HistoricalData& historicalData, const TaskData& taskData) :
+	AmbientHeatPump(const HistoricalData& historicalData, const HeatPumpData& hp) :
 		// Initialise Persistent Values
 		DHW_OUT_TEMP(60),	// FUTURE: removed when taskData.ASHP_DHWtemp available
-		mASHPperfDHW(historicalData, taskData, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
-		mASHPperfCH(historicalData, taskData, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
-		mTimesteps(taskData.calculate_timesteps()),
+		mASHPperfDHW(historicalData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
+		mASHPperfCH(historicalData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
+		mTimesteps(historicalData.timesteps),
 		mHeatpumpSuppliesDHW(true),	// FUTURE: read value from (new) taskData value or use ASHP_DHWtemp not zero
 		mHeatpumpSuppliesCentralHeating(true),		// FUTURE: read value from (new) taskData value or use ASHP_RadTemp not zero
 		mAmbientTemperature(historicalData.airtemp_data),	// Ambient Temperature
@@ -27,19 +27,19 @@ public:
 		mMaxElec_e(0.0f),
 
 		// Initilaise results data vectors with all values to zero
-		mDHWload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
-		mDHWout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat output
-		mCHload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
-		mCHout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),		// ASHP heat output
-		mFreeHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))	// ASHP heat from ambient
+		mDHWload_e(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP electrical load
+		mDHWout_h(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP heat output
+		mCHload_e(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP electrical load
+		mCHout_h(Eigen::VectorXf::Zero(historicalData.timesteps)),		// ASHP heat output
+		mFreeHeat_h(Eigen::VectorXf::Zero(historicalData.timesteps))	// ASHP heat from ambient
 	{
-		mResidualCapacity = Eigen::VectorXf::Constant(taskData.calculate_timesteps(), 1.0f);// Remaining heatpump capacity
+		mResidualCapacity = Eigen::VectorXf::Constant(historicalData.timesteps, 1.0f);// Remaining heatpump capacity
 	}
 
 	void AllCalcs(TempSum& tempSum) {
 		// Applies fixed precedence: hot water is served before central heating
 
-		for (int t = 0; t < mTimesteps; t++) {
+		for (size_t t = 0; t < mTimesteps; t++) {
 
 			if (mHeatpumpSuppliesDHW == 1) {
 				// Lookup performances for DHW (hot water) output temperature
@@ -195,7 +195,7 @@ private:
 	ASHPLookup mASHPperfDHW;
 	ASHPLookup mASHPperfCH;
 
-	const int mTimesteps;
+	const size_t mTimesteps;
 	const int mHeatpumpSuppliesDHW;
 	const int mHeatpumpSuppliesCentralHeating;
 	float mHeatPumpMax_h;

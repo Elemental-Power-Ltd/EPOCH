@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <mutex>
 #include <vector>
 
@@ -19,14 +20,17 @@ struct ExpandedParamRange {
 	uint64_t cumulativeProduct;
 };
 
-constexpr uint64_t MAX_SCENARIOS_FOR_INITIALISATION = 100;
+struct TaskWithIndex {
+	TaskData task;
+	uint64_t index;
+};
 
 class TaskGenerator {
 public:
-	TaskGenerator(const nlohmann::json& inputJson, bool initialisationOnly);
+	TaskGenerator(const nlohmann::json& inputJson);
 
 	uint64_t totalScenarios() const;
-	bool nextTask(TaskData& taskData);
+	bool nextTask(TaskWithIndex& taskWithIndex);
 	TaskData getTask(uint64_t index) const;
 
 private:
@@ -36,7 +40,6 @@ private:
 
 	std::atomic<uint64_t> mScenarioCounter;
 	uint64_t mTotalScenarios;
-	uint64_t mScenarioLimit;
 	std::vector<ParamRange> mParamGrid;
 	std::vector<ExpandedParamRange> mExpandedParamGrid;
 };

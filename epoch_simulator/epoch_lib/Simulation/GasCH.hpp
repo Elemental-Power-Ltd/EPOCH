@@ -3,14 +3,13 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "TaskData.hpp"
 #include "../Definitions.hpp"
 
 class GasCombustionHeater
 {
 public:
-	GasCombustionHeater(const TaskData& taskData) :
-		mTimesteps(taskData.calculate_timesteps()),	// Used in init & functions
+	GasCombustionHeater(const HistoricalData& historicalData) :
+		mTimesteps(historicalData.timesteps),	// Used in init & functions
 		// FUTURE: Add GasCH power limit in task data
 			// GasCHmax_e(taskData.GasCH_heatpwr * taskData.timestep_hours),
 		// Initilaise results data vector with all values to zero
@@ -38,7 +37,7 @@ public:
 	}
 
 private:
-	const int mTimesteps;
+	const size_t mTimesteps;
 	// const float GasCHmax_e;
 	year_TS mGasCH_e;
 };

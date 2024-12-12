@@ -6,15 +6,15 @@
 #include "ASHPambient.hpp"
 #include "TempSum.hpp"
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
 class AmbientHeatPumpController
 {
 public:
-    AmbientHeatPumpController(const HistoricalData& historicalData, const TaskData& taskData) :
+    AmbientHeatPumpController(const HistoricalData& historicalData, const HeatPumpData& hp) :
         // Initialise Persistent Values
-        mHeatPump(historicalData, taskData)
+        mHeatPump(historicalData, hp)
     {}
 
     void AllCalcs(TempSum& tempSum) {
@@ -33,28 +33,11 @@ public:
     }
 
     void Report(ReportData& reportData) const {
-        // NEED TO ADD HEATPUMP RESULTS
+        // TODO - NEED TO ADD HEATPUMP RESULTS
         //result.HeatPump_elec_load = mHeatPump.mDHWload_e + mHeatPump.mCHload_e;
         //result.HeatPump_DHWoutput = mHeatPump.mDHWout_h;
         //result.HeatPump_CHoutput = mHeatPump.mCHout_h;
         //result.HeatPump_UsedAmbientHeat = mHeatPump.mFreeHeat_h;
-
-
-        // TODO - FIXME
-        // The way that ReportData is structured, we assume that we always have all of the vectors
-        // The following vectors are specific to a data centre with an ASHP (which we don't have in this case)
-        // So we write them as 0 vectors mimicking the length of the other results
-        // (consider changing reporting from a struct with fixed vectors to a map of String->year_TS?
-
-        // EVEN BIGGER HACK
-        // assume that heatload has already been written (it has)
-        // and use that to determine the size of these vectors
-        int timesteps = static_cast<int>(reportData.Heatload.size());
-
-        reportData.Data_centre_target_load = Eigen::VectorXf::Zero(timesteps);
-        reportData.Data_centre_actual_load = Eigen::VectorXf::Zero(timesteps);
-        reportData.Data_centre_target_heat = Eigen::VectorXf::Zero(timesteps);
-        reportData.Data_centre_available_hot_heat = Eigen::VectorXf::Zero(timesteps);
     }
 
 private:

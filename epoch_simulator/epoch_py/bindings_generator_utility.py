@@ -73,6 +73,82 @@ def make_report_data_bindings():
             print(f"\t\t.def_readonly(\"{timeseries_name}\", &ReportData::{timeseries_name})")
             
     
+def find_fields(struct):
+    fields = []
+    
+    lines = struct.split("\n")
+    for line in lines:
+        if "struct" in line:
+            continue
+        
+        words = line.split(" ")
+        if len(words) < 2:
+            continue
+            
+        # 'word' 1 should be the variable name
+        # this might be followed by a semi-colon
+        word = words[1]
+        word = word.rstrip(";")
+        
+        if len(word) == 0:
+            continue
+        
+        fields.append(word)
+    return fields
+
+
+def make_repr_for_fields(field_list, instanceName):
+    print("std::ostringstream oss;")
+    print("oss << \"<CapexBreakdown \" ", end="")
+    
+    print(f"<< \"{field_list[0]}=\" << {instanceName}.{field_list[0]} ")
+    for field in field_list[1:]:
+        print(f"<< \", {field}=\" << {instanceName}.{field}")
+    print(";")
+    print("return oss.str();");
+
+    
+
+def make_readonly_struct_bindings(field_list, classname):
+    print(f"pybind11::class_<{classname}>(m, \"{classname}\")")
+    # not adding indentation because that's easily fixable in VS and then I don't have to worry about tabs vs spaces
+    for field in field_list:
+        print(f".def_readonly(\"{field}\", &{classname}::{field})")
+
+
+
+
+def make_capex_breakdown_bindings():
+    struct = """struct CapexBreakdown {
+	float dhw_capex;
+
+	float ev_charger_cost;
+	float ev_charger_install;
+
+	float grid_capex;
+
+	float heatpump_capex;
+
+	float ess_pcs_capex;
+	float ess_enclosure_capex;
+	float ess_enclosure_disposal;
+
+	float pv_panel_capex;
+	float pv_roof_capex;
+	float pv_ground_capex;
+	float pv_BoP_capex;
+
+	float total_capex;
+    };"""
+    
+    field_list = find_fields(struct)
+    make_readonly_struct_bindings(field_list, "CapexBreakdown")
+    
+    print()
+    make_repr_for_fields(field_list, "breakdown")
+
+
 
 if __name__ == "__main__":
-    make_report_data_bindings()
+    # make_report_data_bindings()
+    make_capex_breakdown_bindings()

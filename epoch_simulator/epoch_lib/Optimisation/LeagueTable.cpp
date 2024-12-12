@@ -18,27 +18,27 @@ LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig, const FileConfi
 	}
 }
 
-void LeagueTable::considerResult(const SimulationResult& r, const TaskData& taskData)
+void LeagueTable::considerResult(const SimulationResult& r, const TaskWithIndex& taskWithIndex)
 {
 	// CAPEX
-	considerMinimum(mCapex, r.project_CAPEX, r.paramIndex);
+	considerMinimum(mCapex, r.project_CAPEX, taskWithIndex.index);
 
 	// Annualised Cost
-	considerMinimum(mAnnualisedCost, r.total_annualised_cost, r.paramIndex);
+	considerMinimum(mAnnualisedCost, r.total_annualised_cost, taskWithIndex.index);
 
 	// Payback Horizon
-	considerMinimum(mPaybackHorizon, r.payback_horizon_years, r.paramIndex);
+	considerMinimum(mPaybackHorizon, r.payback_horizon_years, taskWithIndex.index);
 
 	// Cost Balance
-	considerMaximum(mCostBalance, r.scenario_cost_balance, r.paramIndex);
+	considerMaximum(mCostBalance, r.scenario_cost_balance, taskWithIndex.index);
 
 	// Carbon Balance
-	considerMaximum(mCarbonBalance, r.scenario_carbon_balance_scope_1, r.paramIndex);
+	considerMaximum(mCarbonBalance, r.scenario_carbon_balance_scope_1, taskWithIndex.index);
 
-	considerAsWorst(r);
+	considerAsWorst(r, taskWithIndex.index);
 
 	if (mConfig.produceExhaustiveOutput) {
-		mBufferedCSVWriter->writeResult(toObjectiveResult(r, taskData));
+		mBufferedCSVWriter->writeResult(toObjectiveResult(r, taskWithIndex.task));
 	}
 }
 
@@ -221,8 +221,7 @@ void LeagueTable::considerMaximumUnderMutex(std::multimap<float, uint64_t>& subT
 	}
 }
 
-void LeagueTable::considerAsWorst(const SimulationResult& r)
-{
+void LeagueTable::considerAsWorst(const SimulationResult& r, uint64_t paramIndex) {
 	// if any of the objectives are the worst seen so far, acquire the mutex and check again
 	if (r.project_CAPEX > mWorstCapex.first ||
 		r.total_annualised_cost > mWorstAnnualisedCost.first ||
@@ -230,40 +229,39 @@ void LeagueTable::considerAsWorst(const SimulationResult& r)
 		r.scenario_cost_balance < mWorstCostBalance.first ||
 		r.scenario_carbon_balance_scope_1 < mWorstCarbonBalance.first
 		) {
-		considerAsWorstUnderMutex(r);
+		considerAsWorstUnderMutex(r, paramIndex);
 	}
 }
 
-void LeagueTable::considerAsWorstUnderMutex(const SimulationResult& r)
-{
+void LeagueTable::considerAsWorstUnderMutex(const SimulationResult& r, uint64_t paramIndex) {
 	std::lock_guard<std::mutex> guard(mMutex);
 
 	//////// Minimising objectives ////////
 	// CAPEX
 	if (r.project_CAPEX > mWorstCapex.first) {
-		mWorstCapex = { r.project_CAPEX, r.paramIndex };
+		mWorstCapex = { r.project_CAPEX, paramIndex };
 	}
 
 	// Annualised Cost
 	if (r.total_annualised_cost > mWorstAnnualisedCost.first) {
-		mWorstAnnualisedCost = { r.total_annualised_cost, r.paramIndex };
+		mWorstAnnualisedCost = { r.total_annualised_cost, paramIndex };
 	}
 
 	// Payback Horizon
 	if (r.payback_horizon_years > mWorstPaybackHorizon.first) {
-		mWorstPaybackHorizon = { r.payback_horizon_years, r.paramIndex };
+		mWorstPaybackHorizon = { r.payback_horizon_years, paramIndex };
 	}
 
 
 	//////// Maximising objectives ////////
 	// Cost Balance
 	if (r.scenario_cost_balance < mWorstCostBalance.first) {
-		mWorstCostBalance = { r.scenario_cost_balance, r.paramIndex };
+		mWorstCostBalance = { r.scenario_cost_balance, paramIndex };
 	}
 
 	// Carbon Balance
 	if (r.scenario_carbon_balance_scope_1 < mWorstCarbonBalance.first) {
-		mWorstCarbonBalance = { r.scenario_carbon_balance_scope_1, r.paramIndex };
+		mWorstCarbonBalance = { r.scenario_carbon_balance_scope_1, paramIndex };
 	}
 }
 

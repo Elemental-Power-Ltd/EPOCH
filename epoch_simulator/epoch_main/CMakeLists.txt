@@ -7,26 +7,7 @@ if (${isMultiConfig})
 	set(CMAKE_CONFIGURATION_TYPES "Debug;RelWithDebInfo;" CACHE STRING "" FORCE) 
 endif()
 
-if (BUILD_GUI)
-
-	add_executable(Epoch WIN32
-		"epoch_main.cpp"
-		"epoch_main.hpp"
-		"epoch_main.rc"
-		"resource.h"
-		"GUI/gui.hpp"
-		"GUI/gui.cpp"
-		"framework.h"
-		"targetver.h"
-	)
-
-	target_compile_definitions(Epoch PRIVATE EPOCH_GUI)
-	add_definitions(-DUNICODE -D_UNICODE)
-
-else ()
-	add_executable(Epoch "epoch_main.cpp" "epoch_main.hpp" "ArgHandling.hpp")
-
-endif()
+add_executable(Epoch "epoch_main.cpp" "epoch_main.hpp" "ArgHandling.hpp")
 
 target_link_libraries(Epoch PRIVATE Epoch_lib)
 

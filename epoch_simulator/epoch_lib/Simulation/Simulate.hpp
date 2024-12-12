@@ -6,6 +6,7 @@
 
 #include "../Definitions.hpp"
 #include "TaskData.hpp"
+#include "TempSum.hpp"
 
 
 enum class SimulationType {
@@ -22,4 +23,5 @@ public:
 
 	SimulationResult makeInvalidResult(const TaskData& taskData) const;
 
+	float getFixedAvailableImport(const HistoricalData& historicalData, const TaskData& taskData) const;
 };

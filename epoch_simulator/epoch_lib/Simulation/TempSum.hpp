@@ -3,19 +3,18 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "TaskData.hpp"
+#include "../Definitions.hpp"
 
 class TempSum
 {
 public:
-	TempSum(const TaskData& taskData) :
+	TempSum(const HistoricalData& historicalData) :
 		// Initilaise temporary vectors with all values to zero
-		Elec_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// Electricity energy balance
-		Heat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())), // Building heat energy balance
-		DHW_load_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Hot water energy balance
-		Pool_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Pool energy balance
-		Waste_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),   // Waste heat
-		TScount(taskData.calculate_timesteps())
+		Elec_e(Eigen::VectorXf::Zero(historicalData.timesteps)),	// Electricity energy balance
+		Heat_h(Eigen::VectorXf::Zero(historicalData.timesteps)), // Building heat energy balance
+		DHW_load_h(Eigen::VectorXf::Zero(historicalData.timesteps)),   // Hot water energy balance
+		Pool_h(Eigen::VectorXf::Zero(historicalData.timesteps)),   // Pool energy balance
+		Waste_h(Eigen::VectorXf::Zero(historicalData.timesteps))   // Waste heat
 	{}
 	// Public data, can be overwritten
 	year_TS Elec_e;
@@ -38,7 +37,4 @@ public:
 
 		// TODO - add additional reporting
 	}
-
-private:
-	int TScount;
 };

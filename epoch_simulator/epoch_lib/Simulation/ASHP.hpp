@@ -4,7 +4,7 @@
 #include <Eigen/Dense>
 #include <algorithm>
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 #include "ASHPLookup.hpp"
 #include "TempSum.hpp"
@@ -14,14 +14,14 @@
 class HotRoomHeatPump {
 
 public:
-	HotRoomHeatPump(const HistoricalData& historicalData, const TaskData& taskData) :
+	HotRoomHeatPump(const HistoricalData& historicalData, const HeatPumpData& hp, const DataCentreData& dc) :
 		// Initialise Persistent Values
 		DHW_OUT_TEMP(60),	// FUTURE: removed when taskData.ASHP_DHWtemp available
-		mASHPperfDHW(historicalData, taskData, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
-		mASHPperfCH(historicalData, taskData, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
-		mTimesteps(taskData.calculate_timesteps()),
-		mPowerScalar(taskData.timestep_hours),
-		mHotTemp(taskData.ASHP_HotTemp),
+		mASHPperfDHW(historicalData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
+		mASHPperfCH(historicalData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
+		mTimesteps(historicalData.timesteps),
+		mPowerScalar(historicalData.timestep_hours),
+		mHotTemp(dc.hotroom_temp),
 		mHeatpumpSuppliesDHW(true),	// FUTURE: read value from (new) taskData value or use ASHP_DHWtemp not zero
 		mHeatpumpSuppliesCentralHeating(true),		// FUTURE: read value from (new) taskData value or use ASHP_RadTemp not zero
 		mAmbientTemperature(historicalData.airtemp_data),	// Ambient Temperature
@@ -31,19 +31,19 @@ public:
 		mMaxElec_e(0.0f),
 
 		// Initilaise results data vectors with all values to zero
-		mDHWload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
-		mDHWout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat output
-		mCHload_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP electrical load
-		mCHout_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),		// ASHP heat output
-		mFreeHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),		// ASHP heat from ambient
-		FreeHeatTemp_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),	// ASHP heat: temp value for calcs
-		mUsedHotHeat_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))	// ASHP heat from Hotroom
+		mDHWload_e(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP electrical load
+		mDHWout_h(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP heat output
+		mCHload_e(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP electrical load
+		mCHout_h(Eigen::VectorXf::Zero(historicalData.timesteps)),		// ASHP heat output
+		mFreeHeat_h(Eigen::VectorXf::Zero(historicalData.timesteps)),		// ASHP heat from ambient
+		FreeHeatTemp_h(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP heat: temp value for calcs
+		mUsedHotHeat_h(Eigen::VectorXf::Zero(historicalData.timesteps))	// ASHP heat from Hotroom
 
 	{
-		mResidualCapacity = Eigen::VectorXf::Constant(taskData.calculate_timesteps(), 1.0f);// Remaining heatpump capacity
+		mResidualCapacity = Eigen::VectorXf::Constant(historicalData.timesteps, 1.0f);// Remaining heatpump capacity
 	}
 
-	float MaxElec(int timestep) {
+	float MaxElec(size_t timestep) {
 		// Peak kWh per timestep of ASHP
 
 		float dhwMaxLoad = mASHPperfDHW.Lookup(mAmbientTemperature[timestep]).Load_e;
@@ -59,7 +59,7 @@ public:
 		HeatpumpValues hotRoomDHW = mASHPperfDHW.Lookup(mHotTemp);
 		HeatpumpValues hotRoomCH = mASHPperfCH.Lookup(mHotTemp);
 
-		for (int t = 0; t < mTimesteps; t++) {
+		for (size_t t = 0; t < mTimesteps; t++) {
 			if (mHeatpumpSuppliesDHW) {
 				// Lookup performances for DHW (hot water) output temperature
 				HeatpumpValues ambientDHW = mASHPperfDHW.Lookup(mAmbientTemperature[t]);
@@ -131,7 +131,7 @@ public:
 		tempSum.Heat_h = tempSum.Heat_h - mCHout_h;
 	}
 
-	void StepCalc(TempSum& tempSum, const float AvailHotHeat_h, const float ElecBudget_e, int t) {
+	void StepCalc(TempSum& tempSum, const float AvailHotHeat_h, const float ElecBudget_e, size_t t) {
 		if(ElecBudget_e <= 0) {
 			// No electricty available for the ASHP (balancing object)
 			mDHWout_h[t] = 0.0f;
@@ -256,7 +256,7 @@ private:
 	ASHPLookup mASHPperfDHW;
 	ASHPLookup mASHPperfCH;
 
-	const int mTimesteps;
+	const size_t mTimesteps;
 	const float mPowerScalar;
 	const float mHotTemp;
 	const bool mHeatpumpSuppliesDHW;

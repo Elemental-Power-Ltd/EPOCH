@@ -9,31 +9,36 @@
 class BasicPVTest : public ::testing::Test {
 protected:
     HistoricalData historicalData;
-    TaskData taskData;
+    Renewables renewables;
     TempSum tempsum;
 
-    BasicPVTest() : taskData ( /* years_val = */ 1.0f / 365.0f, 
-        /*days_val*/ 1.0f, 
-        /*hours_val*/ 24.0f, 
-        /*timestep_hours_val*/ 1.0f, 
-        /*timewindow_val*/24.0), historicalData (), tempsum(taskData) {
+    BasicPVTest() : 
+        renewables(),
+        historicalData(),
+        tempsum(historicalData) {
+
+        // FIXME JW - construction for this test is particularly janky
+        //  TempSum cannot be default constructed so we have to create it in the member initializer list
+        //  but the tempsum that gets constructed is nonsense because the HistoricalData hasn't set the timesteps
+        //  so in the main body of the constructor below we remake the historicalData and tempsum
+
         // Set up test data
 
-        taskData.ScalarRG1 = 1.0f;
-        taskData.ScalarRG2 = 1.0f;
-        taskData.ScalarRG3 = 1.0f;
-        taskData.ScalarRG4 = 1.0f;
-        
+        renewables.yield_scalars = { 1.0f, 1.0f, 1.0f, 1.0f };
+
         historicalData = HistoricalData();
+        historicalData.timesteps = 24;
         historicalData.RGen_data_1 = Eigen::VectorXf::Ones(24);
         historicalData.RGen_data_2 = Eigen::VectorXf::Ones(24) * 2;
         historicalData.RGen_data_3 = Eigen::VectorXf::Ones(24) * 3;
         historicalData.RGen_data_4 = Eigen::VectorXf::Ones(24) * 4;
+
+        tempsum = TempSum(historicalData);
     }
 };
 
 TEST_F(BasicPVTest, Initialization) {
-    BasicPV pv(historicalData, taskData);
+    BasicPV pv(historicalData, renewables);
     pv.AllCalcs(tempsum);
     // Check that PV output is initialized correctly
     auto pvOutput = pv.get_PV_AC_out();
@@ -44,7 +49,7 @@ TEST_F(BasicPVTest, Initialization) {
 }
 
 TEST_F(BasicPVTest, AllCalcs) {
-    BasicPV pv(historicalData, taskData);
+    BasicPV pv(historicalData, renewables);
     
     // Set initial electrical demand
     tempsum.Elec_e = Eigen::VectorXf::Constant(24, 15.0f);
@@ -58,7 +63,7 @@ TEST_F(BasicPVTest, AllCalcs) {
 }
 
 TEST_F(BasicPVTest, Report) {
-    BasicPV pv(historicalData, taskData);
+    BasicPV pv(historicalData, renewables);
     ReportData report_data;
 
     pv.AllCalcs(tempsum);   
@@ -80,7 +85,7 @@ TEST_F(BasicPVTest, ZeroGeneration) {
     historicalData.RGen_data_3.setZero();
     historicalData.RGen_data_4.setZero();
     
-    BasicPV pv(historicalData, taskData);
+    BasicPV pv(historicalData, renewables);
     
     auto pvOutput = pv.get_PV_AC_out();
     for (int i = 0; i < 24; ++i) {
@@ -90,12 +95,9 @@ TEST_F(BasicPVTest, ZeroGeneration) {
 
 TEST_F(BasicPVTest, ScalarEffects) {
     // Modify scalars
-    taskData.ScalarRG1 = 2.0f;
-    taskData.ScalarRG2 = 0.5f;
-    taskData.ScalarRG3 = 1.5f;
-    taskData.ScalarRG4 = 0.0f;
-    
-    BasicPV pv(historicalData, taskData);
+    renewables.yield_scalars = { 2.0f, 0.5f, 1.5f, 0.0f };
+
+    BasicPV pv(historicalData, renewables);
     pv.AllCalcs(tempsum);
     auto pvOutput = pv.get_PV_AC_out();
     for (int i = 0; i < 24; ++i) {

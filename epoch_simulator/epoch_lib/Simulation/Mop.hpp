@@ -3,16 +3,16 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
-class MOP
+class Mop
 {
 public:
-	MOP(const TaskData& taskData) :
-		mMOPmax_e(taskData.Mop_load_max * taskData.timestep_hours),
+	Mop(const HistoricalData& historicalData, const MopData& mop) :
+		mMOPmax_e(mop.maximum_load * historicalData.timestep_hours),
 		// Initilaise results data vectors with all values to zero
-		mMOP_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps()))
+		mMOP_e(Eigen::VectorXf::Zero(historicalData.timesteps))
 	{}
 
 	void AllCalcs(TempSum& tempSum) {

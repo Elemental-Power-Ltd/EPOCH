@@ -1,14 +1,14 @@
 #include "DataCentre.hpp"
 
-DataCentreWithASHP::DataCentreWithASHP(const HistoricalData& historicalData, const TaskData& taskData) :
-	DataCentre(historicalData, taskData),
-	mHeatPump(historicalData, taskData),
-	mTimesteps(taskData.calculate_timesteps()),
+DataCentreWithASHP::DataCentreWithASHP(const HistoricalData& historicalData, const DataCentreData& dc, const HeatPumpData& hp):
+	DataCentre(historicalData),
+	mHeatPump(historicalData, hp, dc),
+	mTimesteps(historicalData.timesteps),
 	mOptimisationMode(DataCentreOptimisationMode::Target),
 	// Max kWh per TS
-	mDataCentreMaxLoad_e(taskData.Flex_load_max* taskData.timestep_hours),
+	mDataCentreMaxLoad_e(dc.maximum_load * historicalData.timestep_hours),
 	// Percentage of waste heat captured for ASHP
-	mHeatScalar(taskData.ScalarHYield),
+	mHeatScalar(SCALAR_HEAT_YIELD),
 
 	mTargetLoad_e(Eigen::VectorXf::Zero(mTimesteps)),
 	mActualLoad_e(Eigen::VectorXf::Zero(mTimesteps)),
@@ -44,7 +44,7 @@ void DataCentreWithASHP::AllCalcs(TempSum& tempSum) {
 	tempSum.Elec_e += mActualLoad_e;
 }
 
-void DataCentreWithASHP::StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) {
+void DataCentreWithASHP::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t) {
 	// Switch to Pool, DHW, CH done in HeatPump
 	// mTargetHeat_h[t] = tempSum.Heat_h[t];REMOVED to support DHW & CH
 
@@ -76,7 +76,7 @@ void DataCentreWithASHP::StepCalc(TempSum& tempSum, const float futureEnergy_e, 
 	tempSum.Elec_e[t] += mActualLoad_e[t];
 }
 
-float DataCentreWithASHP::getTargetLoad(int timestep) {
+float DataCentreWithASHP::getTargetLoad(size_t timestep) {
 	return mTargetLoad_e[timestep];
 }
 

@@ -1,29 +1,30 @@
 #include <cmath>
 
+#include "TaskComponents.hpp"
 #include "TempSum.hpp"
 
 class HotWaterCylinder {
 
 public:
 	// Constructor
-	HotWaterCylinder(const HistoricalData& historicalData, const TaskData& taskData) :
+	HotWaterCylinder(const HistoricalData& historicalData, const DomesticHotWater& dhw, const HeatPumpData& heatPumpData) :
 
-		mCylinderVolume(taskData.DHW_cylinder_volume), // cylinder volume n litres
-		mTimesteps(taskData.calculate_timesteps()),
-		mTimestep_seconds(taskData.timestep_hours * 60 * 60),// set up timestep seconds in constructor
-		mTimestep_hours(taskData.timestep_hours),
+		mCylinderVolume(dhw.cylinder_volume), // cylinder volume n litres
+		mTimesteps(historicalData.timesteps),
+		mTimestep_seconds(historicalData.timestep_hours * 60 * 60),// set up timestep seconds in constructor
+		mTimestep_hours(historicalData.timestep_hours),
 		mCapacity_h(calculate_Capacity_h()), // calculate tank energy capacity in constructor
 		mDHW_discharging(historicalData.DHWdemand_data),
 		mCylinderStartSoC_h(calculate_Capacity_h()), // set start SoC to full for now
-		mDHW_charging(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
-		mDHW_shortfall_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
-		mDHW_standby_losses(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
-		mDHW_SoC_history(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
-		mDHW_ave_temperature(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
-		mDHW_diverter_load_e(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
-		mDHW_heat_pump_load_h(Eigen::VectorXf::Zero(taskData.calculate_timesteps())),
+		mDHW_charging(Eigen::VectorXf::Zero(historicalData.timesteps)),
+		mDHW_shortfall_e(Eigen::VectorXf::Zero(historicalData.timesteps)),
+		mDHW_standby_losses(Eigen::VectorXf::Zero(historicalData.timesteps)),
+		mDHW_SoC_history(Eigen::VectorXf::Zero(historicalData.timesteps)),
+		mDHW_ave_temperature(Eigen::VectorXf::Zero(historicalData.timesteps)),
+		mDHW_diverter_load_e(Eigen::VectorXf::Zero(historicalData.timesteps)),
+		mDHW_heat_pump_load_h(Eigen::VectorXf::Zero(historicalData.timesteps)),
 		mImport_tariff(historicalData.importtariff_data),
-		mHeat_pump_power_h(taskData.ASHP_HPower) // will need to calculate energy per timestep
+		mHeat_pump_power_h(heatPumpData.heat_power) // will need to calculate energy per timestep
 	{}
 
 	// Calculate cylinder energy capacity based on T_setpoint, convert to kWh
@@ -46,7 +47,7 @@ public:
 
 
 	// Update the model for one time step
-	void update_SoC_basic(float E_charge_kWh, float V_draw_kWh, int timestep) {
+	void update_SoC_basic(float E_charge_kWh, float V_draw_kWh, size_t timestep) {
 
 		// Convert input charging energy from kWh to kJ
 		float Charging_kjoules = E_charge_kWh * 3600.0f; // kWh to kJ
@@ -98,7 +99,7 @@ public:
 		update_SoC_basic(0, mDHW_discharging[0], 0);
 
 		// We start at t=1 here because we need to look at the previous timestep
-		for (int timestep = 1; timestep < mTimesteps; timestep++) {
+		for (size_t timestep = 1; timestep < mTimesteps; timestep++) {
 
 			float timestep_charge = 0;
 
@@ -156,7 +157,7 @@ public:
 private:
 
 	float mCylinderVolume;
-	const int mTimesteps;
+	const size_t mTimesteps;
 	float mTimestep_seconds;
 	float mTimestep_hours;
 

@@ -5,35 +5,36 @@
 
 #include "../ASHP.hpp"
 #include "../TempSum.hpp"
-#include "../TaskData.hpp"
+#include "../TaskComponents.hpp"
 #include "../../Definitions.hpp"
 
 enum class DataCentreOptimisationMode { Target, Price, Carbon };
+constexpr float SCALAR_HEAT_YIELD = 0.75f;
 
 class DataCentre {
 
 public:
-    DataCentre(const HistoricalData& historicalData, const TaskData& taskData) {};
+    DataCentre(const HistoricalData& historicalData) {};
     virtual ~DataCentre() = default;
 
     virtual void AllCalcs(TempSum& tempSum) = 0;
-    virtual void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) = 0;
-    virtual float getTargetLoad(int timestep) = 0;
+    virtual void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t) = 0;
+    virtual float getTargetLoad(size_t timestep) = 0;
     virtual void Report(ReportData& reportData) const = 0;
 };
 
 
 class BasicDataCentre : public DataCentre {
 public:
-    BasicDataCentre(const HistoricalData& historicalData, const TaskData& taskData);
+    BasicDataCentre(const HistoricalData& historicalData, const DataCentreData& dc);
 
     void AllCalcs(TempSum& tempSum);
-    void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t);
-    float getTargetLoad(int timestep);
+    void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t);
+    float getTargetLoad(size_t timestep);
     void Report(ReportData& reportData) const;
 
 private:
-    const int mTimesteps;
+    const size_t mTimesteps;
     const int mOptimisationMode;
     const float mDataCentreMaxLoad_e;
 
@@ -44,17 +45,17 @@ private:
 
 class DataCentreWithASHP : public DataCentre {
 public:
-    DataCentreWithASHP(const HistoricalData& historicalData, const TaskData& taskData);
+    DataCentreWithASHP(const HistoricalData& historicalData, const DataCentreData& dc, const HeatPumpData& hp);
 
     void AllCalcs(TempSum& tempSum);
-    void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t);
-    float getTargetLoad(int timestep);
+    void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t);
+    float getTargetLoad(size_t timestep);
     void Report(ReportData& reportData) const;
 
 private:
     HotRoomHeatPump mHeatPump;
 
-    const int mTimesteps;
+    const size_t mTimesteps;
     const DataCentreOptimisationMode mOptimisationMode;
     const float mDataCentreMaxLoad_e;
     const float mHeatScalar;

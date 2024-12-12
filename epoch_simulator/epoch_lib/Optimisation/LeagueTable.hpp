@@ -7,6 +7,8 @@
 #include "../io/EpochConfig.hpp"
 #include "../io/FileConfig.hpp"
 #include "../io/BufferedCSVWriter.hpp"
+#include "../Simulation/TaskData.hpp"
+#include "TaskGenerator.hpp"
 
 struct ResultIndices {
 	std::vector<uint64_t> bestIndices;
@@ -18,7 +20,7 @@ class LeagueTable {
 public:
 	LeagueTable(const OptimiserConfig& optimiserConfig, const FileConfig& fileConfig);
 
-	void considerResult(const SimulationResult& r, const TaskData& taskData);
+	void considerResult(const SimulationResult& r, const TaskWithIndex& taskWithIndex);
 
 	std::pair<uint64_t, float> getBestCapex() const;
 	std::pair<uint64_t, float> getBestAnnualisedCost() const;
@@ -40,8 +42,8 @@ private:
 	void considerMinimumUnderMutex(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
 	void considerMaximumUnderMutex(std::multimap<float, uint64_t>& subTable, float value, uint64_t paramIndex);
 
-	void considerAsWorst(const SimulationResult& r);
-	void considerAsWorstUnderMutex(const SimulationResult& r);
+	void considerAsWorst(const SimulationResult& r, uint64_t paramIndex);
+	void considerAsWorstUnderMutex(const SimulationResult& r, uint64_t paramIndex);
 
 	enum class TableOrder { ASCENDING, DESCENDING };
 	std::vector<uint64_t> mapToParamIndices(const std::multimap<float, uint64_t>& subTable, TableOrder order=TableOrder::ASCENDING) const;

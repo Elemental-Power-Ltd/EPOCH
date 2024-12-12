@@ -19,86 +19,96 @@ Optimiser::Optimiser(FileConfig fileConfig, EpochConfig config) :
 {
 }
 
-OutputValues Optimiser::runMainOptimisation(nlohmann::json inputJson)
+
+OutputValues Optimiser::runOptimisation(nlohmann::json inputJson)
 {
 	spdlog::info("Starting Optimisation");
-	return doOptimisation(inputJson);
-}
+	auto clockStart = std::chrono::steady_clock::now();
+	OutputValues output;
+	resetTimeProfiler();
 
+	mTaskGenerator = std::make_unique<TaskGenerator>(inputJson);
 
-OutputValues Optimiser::initialiseOptimisation(nlohmann::json inputJson) {
+	int numWorkers = std::min(determineWorkerCount(), (int)inputJson["target_max_concurrency"]);
 
-	spdlog::info("Running initial optimisation");
-	return doOptimisation(inputJson, true);
-}
+	LeagueTable leagueTable = LeagueTable(mConfig.optimiserConfig, mFileConfig);
 
-OutputValues Optimiser::RecallIndex(uint64_t recallindex) {
+	spdlog::info("Total number of scenarios is: {}", mTaskGenerator->totalScenarios());
 
-	OutputValues output{};
+	std::vector<std::thread> workers;
 
-	if (!mTaskGenerator) {
-		// Neither initOptimisation nor runMainOptimisation has been called previously
-		// there are no tasks to recall
-		throw std::exception();
+	for (int i = 0; i < numWorkers; ++i) {
+		workers.emplace_back([this, &leagueTable]() {
+			TaskWithIndex taskWithIndex{};
+
+			Simulator sim{};
+
+			while (mTaskGenerator->nextTask(taskWithIndex)) {
+				SimulationResult result = sim.simulateScenario(mHistoricalData, taskWithIndex.task);
+				leagueTable.considerResult(result, taskWithIndex);
+				addTimeToProfiler(result.runtime);
+			}
+		});
 	}
 
-	if (recallindex < 1 || recallindex > mTaskGenerator->totalScenarios()) {
-		// check that the paramIndex is within bounds
-		throw std::exception();
+	for (auto& worker : workers) {
+		if (worker.joinable()) {
+			worker.join();
+		}
 	}
 
-	TaskData taskData = mTaskGenerator->getTask(recallindex);
+	spdlog::info("Optimisation completed, processing results...");
 
-	// HACK - write the recalled scenario to a CSV for full reporting exploration
-	spdlog::info("Writing Time Series for recalled scenario to file");
-	Simulator tempSim = Simulator();
-	auto result = tempSim.simulateScenario(mHistoricalData, taskData, SimulationType::FullReporting);
+	//// Retrieve and process results
+	findBestResults(leagueTable, output);
 
-	auto fp = mFileConfig.getOutputDir() / "FullTimeSeries.csv";
+	output.maxVal = mTimeProfile.maxTime;
+	output.minVal = mTimeProfile.minTime;
+	output.meanVal = mTimeProfile.totalTime / mTimeProfile.count;
 
-	// note: deliberately not try-catching this
-	// this will crash the program if it cannot write to file (ie the csv is open in Excel!)
-	writeTimeSeriesToCSV(fp, *result.report_data);
-	
+	std::chrono::duration<double> elapsedTime = std::chrono::steady_clock::now() - clockStart;
+	output.time_taken = static_cast<float>(elapsedTime.count());
 
-	// END HACK
+	spdlog::info("Max: {}s, Min: {}s, Mean: {}s", output.maxVal, output.minVal, output.meanVal);
+	spdlog::info("Total Runtime: {}s", output.time_taken);
 
+	/* DUMMY OUTPUT -- NEEDS REPLACED WITH SENSIBLE OUTPUT */
+	output.Fixed_load1_scalar = 1.0;
+	output.Fixed_load2_scalar = 2.0;
+	output.Flex_load_max = 3.0;
+	output.Mop_load_max = 4.0;
+	output.ScalarRG1 = 5.0;
+	output.ScalarRG2 = 6.0;
+	output.ScalarRG3 = 7.0;
+	output.ScalarRG4 = 8.0;
+	output.ScalarHYield = 9.0;
+	output.s7_EV_CP_number = 26;
+	output.f22_EV_CP_number = 27;
+	output.r50_EV_CP_number = 28;
+	output.u150_EV_CP_number = 29;
+	output.EV_flex = 30.0;
+	output.ScalarHL1 = 10.0;
+	output.ASHP_HSource = 12;
+	output.ASHP_RadTemp = 13.0;
+	output.ASHP_HotTemp = 14.0;
+	output.GridImport = 15.0;
+	output.GridExport = 16.0;
+	output.Import_headroom = 17.0;
+	output.Export_headroom = 18.0;
+	output.Min_power_factor = 19.0;
+	output.ESS_charge_power = 20.0;
+	output.ESS_discharge_power = 21.0;
+	output.ESS_capacity = 22.0;
+	output.ESS_start_SoC = 23.0;
+	output.ESS_charge_mode = 24;
+	output.ESS_discharge_mode = 25;
+	output.DHW_cylinder_volume = 26;
 
-	output.Fixed_load1_scalar = taskData.Fixed_load1_scalar;
-	output.Fixed_load2_scalar = taskData.Fixed_load2_scalar;
-	output.Flex_load_max = taskData.Flex_load_max;
-	output.Mop_load_max = taskData.Mop_load_max;
-	output.ScalarRG1 = taskData.ScalarRG1;
-	output.ScalarRG2 = taskData.ScalarRG2;
-	output.ScalarRG3 = taskData.ScalarRG3;
-	output.ScalarRG4 = taskData.ScalarRG4;
-	output.ScalarHYield = taskData.ScalarHYield;
-	output.s7_EV_CP_number = taskData.s7_EV_CP_number;
-	output.f22_EV_CP_number = taskData.f22_EV_CP_number;
-	output.r50_EV_CP_number = taskData.r50_EV_CP_number;
-	output.u150_EV_CP_number = taskData.u150_EV_CP_number;
-	output.EV_flex = taskData.EV_flex;
-	output.ScalarHL1 = taskData.ScalarHL1;
-	output.ASHP_HPower = taskData.ASHP_HPower;
-	output.ASHP_HSource = taskData.ASHP_HSource;
-	output.ASHP_RadTemp = taskData.ASHP_RadTemp;
-	output.ASHP_HotTemp = taskData.ASHP_HotTemp;
-	output.GridImport = taskData.GridImport;
-	output.GridExport = taskData.GridExport;
-	output.Import_headroom = taskData.Import_headroom;
-	output.Export_headroom = taskData.Export_headroom;
-	output.Min_power_factor = taskData.Min_power_factor;
-	output.ESS_charge_power = taskData.ESS_charge_power;
-	output.ESS_discharge_power = taskData.ESS_discharge_power;
-	output.ESS_capacity = taskData.ESS_capacity;
-	output.ESS_start_SoC = taskData.ESS_start_SoC;
-	output.ESS_charge_mode = taskData.ESS_charge_mode;
-	output.ESS_discharge_mode = taskData.ESS_discharge_mode;
-	output.DHW_cylinder_volume = taskData.DHW_cylinder_volume;
-	output.Export_kWh_price = taskData.Export_kWh_price;
+	writeResultsToCSVs(leagueTable);
 
 	return output;
 }
+
 
 // Write the saved results from the league table to CSV files
 // Currently we write one CSV per objective, each containing the N best entries followed by the single worst entry
@@ -162,107 +172,6 @@ ObjectiveResult Optimiser::reproduceResult(uint64_t paramIndex) const {
 	SimulationResult simResult = sim.simulateScenario(mHistoricalData, taskData, SimulationType::ResultOnly);
 
 	return toObjectiveResult(simResult, taskData);
-}
-
-OutputValues Optimiser::doOptimisation(nlohmann::json inputJson, bool initialisationOnly)
-{
-	auto clockStart = std::chrono::steady_clock::now();
-	OutputValues output;
-	resetTimeProfiler();
-
-	mTaskGenerator = std::make_unique<TaskGenerator>(inputJson, initialisationOnly);
-
-	int numWorkers = std::min(determineWorkerCount(), (int)inputJson["target_max_concurrency"]);
-
-	LeagueTable leagueTable = LeagueTable(mConfig.optimiserConfig, mFileConfig);
-
-	spdlog::info("Total number of scenarios is: {}", mTaskGenerator->totalScenarios());
-
-	std::vector<std::thread> workers;
-
-	for (int i = 0; i < numWorkers; ++i) {
-		workers.emplace_back([this, &leagueTable]() {
-
-			TaskData taskData;
-			Simulator sim{};
-
-			while (mTaskGenerator->nextTask(taskData)) {
-				SimulationResult result = sim.simulateScenario(mHistoricalData, taskData);
-				leagueTable.considerResult(result, taskData);
-				addTimeToProfiler(result.runtime);
-			}
-		});
-	}
-
-	for (auto& worker : workers) {
-		if (worker.joinable()) {
-			worker.join();
-		}
-	}
-
-	spdlog::info("Optimisation completed, processing results...");
-
-	//// Retrieve and process results
-	findBestResults(leagueTable, output);
-
-	output.maxVal = mTimeProfile.maxTime;
-	output.minVal = mTimeProfile.minTime;
-	output.meanVal = mTimeProfile.totalTime / mTimeProfile.count;
-
-	std::chrono::duration<double> elapsedTime = std::chrono::steady_clock::now() - clockStart;
-	output.time_taken = static_cast<float>(elapsedTime.count());
-
-	spdlog::info("Max: {}s, Min: {}s, Mean: {}s", output.maxVal, output.minVal, output.meanVal);
-	spdlog::info("Total Runtime: {}s", output.time_taken);
-
-	if (initialisationOnly) {
-		// Compute the per-scenario estimates
-		float float_numWorkers = float(numWorkers);
-
-		uint64_t totalScenarios = mTaskGenerator->totalScenarios();
-
-		output.num_scenarios = totalScenarios;
-		output.est_seconds = (totalScenarios * output.meanVal) / (float_numWorkers - 1.0f);
-		output.est_hours = (totalScenarios * output.meanVal) / (3600 * (float_numWorkers - 1.0f));
-
-		spdlog::info("Number of scenarios: {} Estimated time: {} hours ({} seconds)", output.num_scenarios, output.est_hours, output.est_seconds);
-	}
-
-	/* DUMMY OUTPUT -- NEEDS REPLACED WITH SENSIBLE OUTPUT */
-	output.Fixed_load1_scalar = 1.0;
-	output.Fixed_load2_scalar = 2.0;
-	output.Flex_load_max = 3.0;
-	output.Mop_load_max = 4.0;
-	output.ScalarRG1 = 5.0;
-	output.ScalarRG2 = 6.0;
-	output.ScalarRG3 = 7.0;
-	output.ScalarRG4 = 8.0;
-	output.ScalarHYield = 9.0;
-	output.s7_EV_CP_number = 26;
-	output.f22_EV_CP_number = 27;
-	output.r50_EV_CP_number = 28;
-	output.u150_EV_CP_number = 29;
-	output.EV_flex = 30.0;
-	output.ScalarHL1 = 10.0;
-	output.ASHP_HSource = 12;
-	output.ASHP_RadTemp = 13.0;
-	output.ASHP_HotTemp = 14.0;
-	output.GridImport = 15.0;
-	output.GridExport = 16.0;
-	output.Import_headroom = 17.0;
-	output.Export_headroom = 18.0;
-	output.Min_power_factor = 19.0;
-	output.ESS_charge_power = 20.0;
-	output.ESS_discharge_power = 21.0;
-	output.ESS_capacity = 22.0;
-	output.ESS_start_SoC = 23.0;
-	output.ESS_charge_mode = 24;
-	output.ESS_discharge_mode = 25;
-	output.DHW_cylinder_volume = 26;
-
-	writeResultsToCSVs(leagueTable);
-
-	return output;
 }
 
 int Optimiser::determineWorkerCount()

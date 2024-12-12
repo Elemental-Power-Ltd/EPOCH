@@ -13,21 +13,26 @@ import epoch_simulator as eps
 
 print(eps.__version__)
 
-task = eps.TaskData()
+# Create a simulator and task
 sim = eps.Simulator()
+task = eps.TaskData()
+
+# Add some components to the task
+task.building = eps.Building()
+task.energy_storage_system = eps.EnergyStorageSystem()
+task.grid = eps.Grid()
 
 for charge_power in range(300, 600, 100):
-  task.ESS_charge_power = charge_power
+  task.energy_storage_system.charge_power = charge_power
 
   for discharge_power in range(300, 600, 100):
-    task.ESS_discharge_power = discharge_power
+    task.energy_storage_system.discharge_power = discharge_power
 
     result = sim.simulate_scenario(task)
     print(result)
 
 ```
 
-The bindings expose 3 classes:
 
 #### TaskData
 
@@ -35,7 +40,7 @@ The TaskData contains the input parameters necessary to run a simulation.
 
 `TaskData()`
 
- Upon instantiation, all of the fields are set to default values - these can be changed as desired.
+A default TaskData contains no components. Components can be added by creating an instance of the relevant type.
 
 This class implements the `__repr__` method so the print method can be used to see the full state.
 

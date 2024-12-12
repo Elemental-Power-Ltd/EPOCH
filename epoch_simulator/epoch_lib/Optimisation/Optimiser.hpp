@@ -29,20 +29,14 @@ struct TimeProfile {
 	uint64_t count;
 };
 
-// Limit initialisation to running only the first 100 scenarios
-const uint64_t INITIALISATION_MAX_SCENARIOS = 100;
-
 
 class Optimiser {
 public:
 	Optimiser(FileConfig fileConfig, EpochConfig config);
 
-	OutputValues runMainOptimisation(nlohmann::json inputJson);
-	OutputValues initialiseOptimisation(nlohmann::json inputJson);
-	OutputValues RecallIndex(uint64_t recallindex);
+	OutputValues runOptimisation(nlohmann::json inputJson);
 
 private:
-	OutputValues doOptimisation(nlohmann::json inputJson, bool initialisationOnly=false);
 	int determineWorkerCount();
 
 	void findBestResults(const LeagueTable& leagueTable, OutputValues& output);

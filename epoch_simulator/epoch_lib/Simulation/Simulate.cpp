@@ -20,27 +20,26 @@
 #include "PV.hpp"
 #include "EV.hpp"
 #include "Grid.hpp"
-#include "MOP.hpp"
+#include "Mop.hpp"
 #include "GasCH.hpp"
-#include "Battery.hpp"
-#include "ESS.hpp"
 #include "ASHP.hpp"
 #include "HeatPumpController.hpp"
 
 #include "Components/DataCentre.hpp"
+#include "Components/ESS/ESS.hpp"
 
 Simulator::Simulator() {
 
 }
 
 SimulationResult Simulator::simulateScenario(const HistoricalData& historicalData, const TaskData& taskData, SimulationType simulationType) const {
-	/*CALCULATIVE SECTION - START PROFILING */
-	auto start = std::chrono::high_resolution_clock::now(); //start runtime clock
+
+	auto start = std::chrono::high_resolution_clock::now();
 
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
 	Costs myCost(historicalData, taskData);
 	myCost.calculate_Project_CAPEX();
-	if (taskData.CAPEX_limit*1000 < myCost.get_project_CAPEX())
+	if (taskData.config.capex_limit < myCost.get_project_CAPEX())
 	{
 		auto simulationResult = makeInvalidResult(taskData);
 
@@ -51,65 +50,75 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 
 	/* INITIALISE classes that support energy sums and object precedence */
 	Config config(taskData);	// flags energy component presence in TaskData & balancing modes
-	TempSum tempSum(taskData);		// class of arrays for running totals (replace ESUM and Heat)
-	
-	// INITIALISE Energy Components
-	Hotel hotel(historicalData, taskData);
-	BasicPV PV1(historicalData, taskData);
-	BasicElectricVehicle EV1(historicalData, taskData);
-	
-	// init ESS object (0= None, 1=basic, 2=hybrid)
-	BasicESS ESSmain(taskData);
+	TempSum tempSum(historicalData);		// class of arrays for running totals (replace ESUM and Heat)
 
+	SimulationResult result{};
+	result.report_data = ReportData();
+	ReportData& reportData = *result.report_data;
+
+	// Run through the pre balancing loop components
+
+	if (taskData.building) {
+		Hotel hotel(historicalData, taskData.building.value());
+		hotel.AllCalcs(tempSum);
+		hotel.Report(reportData);
+	}
+
+	if (taskData.renewables) {
+		BasicPV PV1(historicalData, taskData.renewables.value());
+		PV1.AllCalcs(tempSum);
+		PV1.Report(reportData);
+	}
+
+	if (config.getEVFlag() == EVFlag::NON_BALANCING) {
+		BasicElectricVehicle EV1(historicalData, taskData.electric_vehicles.value());
+		EV1.AllCalcs(tempSum);
+		EV1.Report(reportData);
+	}
+
+	if (taskData.domestic_hot_water && taskData.heat_pump) {
+		HotWaterCylinder hotWaterCylinder{ historicalData, taskData.domestic_hot_water.value(), taskData.heat_pump.value() };
+		hotWaterCylinder.AllCalcs(tempSum);
+		hotWaterCylinder.Report(reportData);
+	}
+
+
+	// Construct components that may be in the balancing loop
+
+	std::unique_ptr<ESS> ESSmain;
+	if (taskData.energy_storage_system) {
+		ESSmain = std::make_unique<BasicESS>(historicalData, taskData.energy_storage_system.value());
+	}
+	else {
+		ESSmain = std::make_unique<NullESS>(historicalData);
+	}
+
+	std::unique_ptr<BasicElectricVehicle> EV1;
+	if (taskData.electric_vehicles) {
+		EV1 = std::make_unique<BasicElectricVehicle>(historicalData, taskData.electric_vehicles.value());
+	}
+
+	// TODO - as we can return an invalid result here, we should do this earlier
 	std::unique_ptr<DataCentre> dataCentre;
 	std::unique_ptr<AmbientHeatPumpController> ambientController;
 
-	if (config.dataCentrePresent() && taskData.ASHP_HSource == 2) {
+	if (taskData.data_centre && taskData.heat_pump && taskData.heat_pump->heat_source == HeatSource::HOTROOM) {
 		// make a DataCentre with a hotroom heatpump
-		dataCentre = std::make_unique<DataCentreWithASHP>(historicalData, taskData);
+		dataCentre = std::make_unique<DataCentreWithASHP>(historicalData, taskData.data_centre.value(), taskData.heat_pump.value());
+
 	}
-	else if (config.dataCentrePresent() && taskData.ASHP_HSource == 1) {
+	else if (taskData.data_centre && taskData.heat_pump && taskData.heat_pump->heat_source == HeatSource::AMBIENT_AIR) {
 		// make a basic data centre (without a heatpump)
-		dataCentre =  std::make_unique<BasicDataCentre>(historicalData, taskData);
-		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData);
+		dataCentre = std::make_unique<BasicDataCentre>(historicalData, taskData.data_centre.value());
+		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData.heat_pump.value());
 	}
-	else if (!config.dataCentrePresent() && taskData.ASHP_HSource == 1) {
-		// no DataCentre, ambient heatpump
-		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData);
+	else if (taskData.heat_pump && !taskData.data_centre) {
+		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData.heat_pump.value());
 	}
-	else {
-		// WARNING - THIS IS AN INVALID STATE
-
-		// return an 'invalid' simulation result
-		return makeInvalidResult(taskData);
-	}
-
-
-	// REMOVE THE 3 FROM GRID WHEN CLEANING OLD CODE
-	Grid grid(historicalData, taskData);
-	MOP MOP(taskData);
-	GasCombustionHeater GasCH(taskData);
 	
-	HotWaterCylinder hotWaterCylinder{ historicalData, taskData };
-
-	// NON-BALANCING LOGIC
-
-	hotel.AllCalcs(tempSum);
-	PV1.AllCalcs(tempSum);
 
 
-	if (config.getEVFlag() == EVFlag::NON_BALANCING) {
-		EV1.AllCalcs(tempSum);
-	}
-
-	// TODO - consider applying battery aux load before considering DHW
-	// something like: ESSmain.ApplyAuxLoad(tempSum);
-
-	if (taskData.DHW_cylinder_volume > 0) {
-		hotWaterCylinder.AllCalcs(tempSum);
-	}
-
-	if (taskData.ASHP_HSource == 1) {
+	if (ambientController) {
 		ambientController->AllCalcs(tempSum);
 	}
 
@@ -120,7 +129,9 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 	// BALANCING LOOP
 
 	float futureEnergy = 0.0f;
-	int timesteps = taskData.calculate_timesteps();
+	size_t timesteps = historicalData.timesteps;
+	const float availableGridImport = getFixedAvailableImport(historicalData, taskData);
+
 
 	auto dcFlag = config.getDataCentreFlag();
 	auto evFlag = config.getEVFlag();
@@ -129,48 +140,54 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 		// This represents the logic in M-VEST v0-7:
 		// EV is curtailed before the Data Centre
 
-		for (int t = 0; t < timesteps; t++) {
-			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch() - dataCentre->getTargetLoad(t);
-			EV1.StepCalc(tempSum, futureEnergy, t);
-			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch();
+		for (size_t t = 0; t < timesteps; t++) {
+			futureEnergy = availableGridImport + ESSmain->AvailDisch() - dataCentre->getTargetLoad(t);
+			EV1->StepCalc(tempSum, futureEnergy, t);
+			futureEnergy = availableGridImport + ESSmain->AvailDisch();
 			dataCentre->StepCalc(tempSum, futureEnergy, t);
-			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
+			ESSmain->StepCalc(tempSum, availableGridImport, t);
 		}
 	}
 	else if (dcFlag != DataCentreFlag::BALANCING && evFlag == EVFlag::BALANCING) {
-		for (int t = 0; t < timesteps; t++) {
-			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch();
-			EV1.StepCalc(tempSum, futureEnergy, t);
-			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
+		for (size_t t = 0; t < timesteps; t++) {
+			futureEnergy = availableGridImport + ESSmain->AvailDisch();
+			EV1->StepCalc(tempSum, futureEnergy, t);
+			ESSmain->StepCalc(tempSum, availableGridImport, t);
 		}
 	}
 	else if (dcFlag == DataCentreFlag::BALANCING && evFlag != EVFlag::BALANCING) {
-		for (int t = 0; t < timesteps; t++) {
-			futureEnergy = grid.AvailImport() + ESSmain.AvailDisch();
+		for (size_t t = 0; t < timesteps; t++) {
+			futureEnergy = availableGridImport + ESSmain->AvailDisch();
 			dataCentre->StepCalc(tempSum, futureEnergy, t);
-			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
+			ESSmain->StepCalc(tempSum, availableGridImport, t);
 		}
 	}
 	else {
-		for (int t = 0; t < timesteps; t++) {
-			ESSmain.StepCalc(tempSum, grid.AvailImport(), t);
+		for (size_t t = 0; t < timesteps; t++) {
+			ESSmain->StepCalc(tempSum, availableGridImport, t);
 		}
 	}
 
-	MOP.AllCalcs(tempSum);
-	grid.AllCalcs(tempSum);
+	// Run through the post balancing loop components
+
+	if (taskData.mop) {
+		Mop mop(historicalData, taskData.mop.value());
+		mop.AllCalcs(tempSum);
+		mop.Report(reportData);
+	}
+
+	if (taskData.grid && taskData.building) {
+		Grid grid(historicalData, taskData.grid.value(), taskData.building.value());
+		grid.AllCalcs(tempSum);
+		grid.Report(reportData);
+	}
+
+	GasCombustionHeater GasCH(historicalData);
 	GasCH.AllCalcs(tempSum);
-
-	SimulationResult result;
-
-	result.report_data = ReportData();
-	ReportData& reportData = *result.report_data;
+	GasCH.Report(reportData);
 
 	tempSum.Report(reportData);
-	hotel.Report(reportData);
-	PV1.Report(reportData);
-	EV1.Report(reportData);
-	ESSmain.Report(reportData);
+	ESSmain->Report(reportData);
 	if (config.dataCentrePresent()) {
 		dataCentre->Report(reportData);
 	}
@@ -178,21 +195,24 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 		ambientController->Report(reportData);
 	}
 	// TODO do HeatPump Reporting
-	grid.Report(reportData);
-	MOP.Report(reportData);
-	GasCH.Report(reportData);
-	hotWaterCylinder.Report(reportData);
 
 	CostVectors costVectors;
 
-	costVectors.actual_ev_load_e = reportData.EV_actualload;
-	costVectors.actual_data_centre_load_e = reportData.Data_centre_actual_load;
-	costVectors.building_load_e = reportData.Hotel_load;
-	costVectors.heatload_h = reportData.Heatload;
-	costVectors.heat_shortfall_h = reportData.Heat_shortfall;
-	costVectors.grid_import_e = reportData.Grid_Import;
-	costVectors.grid_export_e = reportData.Grid_Export;
-	costVectors.actual_low_priority_load_e = reportData.MOP_load;
+	// FIXME
+	// hack on top of a hack
+	// If the components that create these vectors are not present then the vectors in reportData may be empty
+	// we instead need them to be 0 valued but of timestep length
+	costVectors.actual_ev_load_e = reportData.EV_actualload.size() ? reportData.EV_actualload : Eigen::VectorXf::Zero(historicalData.timesteps);
+	costVectors.actual_data_centre_load_e = reportData.Data_centre_actual_load.size() ? reportData.Data_centre_actual_load : Eigen::VectorXf::Zero(historicalData.timesteps);
+	costVectors.building_load_e = reportData.Hotel_load.size() ? reportData.Hotel_load : Eigen::VectorXf::Zero(historicalData.timesteps);
+	costVectors.heatload_h = reportData.Heatload.size() ? reportData.Heatload : Eigen::VectorXf::Zero(historicalData.timesteps);
+	costVectors.heat_shortfall_h = reportData.Heat_shortfall.size() ? reportData.Heat_shortfall : Eigen::VectorXf::Zero(historicalData.timesteps);
+	costVectors.grid_import_e = reportData.Grid_Import.size() ? reportData.Grid_Import : Eigen::VectorXf::Zero(historicalData.timesteps);
+	costVectors.grid_export_e = reportData.Grid_Export.size() ? reportData.Grid_Export : Eigen::VectorXf::Zero(historicalData.timesteps);
+	costVectors.actual_low_priority_load_e = reportData.MOP_load.size() ? reportData.MOP_load : Eigen::VectorXf::Zero(historicalData.timesteps);
+
+	constexpr float fixed_export_price = 5.0f;
+	costVectors.grid_export_prices = Eigen::VectorXf::Constant(historicalData.timesteps, fixed_export_price);
 
 
 	myCost.calculateCosts_no_CAPEX(costVectors);
@@ -206,9 +226,7 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 		// we remove the reportData again here
 		result.report_data = std::nullopt;
 	}
-
 	
-	result.paramIndex = taskData.paramIndex;
 	result.total_annualised_cost = myCost.get_total_annualised_cost();
 	result.project_CAPEX = myCost.get_project_CAPEX();
 	result.scenario_cost_balance = myCost.get_scenario_cost_balance();
@@ -217,12 +235,6 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 	result.scenario_carbon_balance_scope_2 = myCost.get_scenario_carbon_balance_scope_2();
 
 	
-	//========================================
-
-	/*WRITE DATA SECTION - AFTER PROFILING CLOCK STOPPED*/
-
-	//End profiling
-
 	// calculate elaspsed run time
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = end - start;
@@ -239,15 +251,32 @@ SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
 	// When a scenario is invalid, for now we return the FLT_MAX or FLT_MIN for each objective as appropriate
 
 	// TODO - apply proper fix for 'nullable' results
-	SimulationResult fullSimulationResult;
-	fullSimulationResult.paramIndex = taskData.paramIndex;
+	SimulationResult result{};
 
-	fullSimulationResult.project_CAPEX = std::numeric_limits<float>::max();
-	fullSimulationResult.total_annualised_cost = std::numeric_limits<float>::max();
-	fullSimulationResult.scenario_cost_balance = std::numeric_limits<float>::lowest();
-	fullSimulationResult.payback_horizon_years = std::numeric_limits<float>::max();
-	fullSimulationResult.scenario_carbon_balance_scope_1 = std::numeric_limits<float>::lowest();
+	result.project_CAPEX = std::numeric_limits<float>::max();
+	result.total_annualised_cost = std::numeric_limits<float>::max();
+	result.scenario_cost_balance = std::numeric_limits<float>::lowest();
+	result.payback_horizon_years = std::numeric_limits<float>::max();
+	result.scenario_carbon_balance_scope_1 = std::numeric_limits<float>::lowest();
 
-	return fullSimulationResult;
+	return result;
+}
+
+// HACK: the balancing loop needs to know how much is available 
+// to import from the Grid but there may not be a grid.
+// 
+// Because the available import is constant throughout all timesteps when there is a grid
+// we can just construct a grid and immediately throw it away to calculate the import available.
+// 
+// If there is no grid, we instead return 0
+//  
+float Simulator::getFixedAvailableImport(const HistoricalData& historicalData, const TaskData& taskData) const
+{
+	if (taskData.grid && taskData.building) {
+		Grid grid(historicalData, taskData.grid.value(), taskData.building.value());
+		return grid.AvailImport();
+	}
+	// else 0
+	return 0.0f;
 }
 

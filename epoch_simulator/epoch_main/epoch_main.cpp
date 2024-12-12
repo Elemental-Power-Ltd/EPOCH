@@ -1,62 +1,12 @@
 #include "epoch_main.hpp"
-
-#ifdef EPOCH_GUI
-// run with the gui
-
-#define NOMINMAX  // necessary before including windows.h
-#include <windows.h>
-#include "resource.h"
-
-
-#include "../epoch_main/GUI/gui.hpp"
-
-
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-	_In_opt_ HINSTANCE hPrevInstance,
-	_In_ LPWSTR    lpCmdLine,
-	_In_ int       nCmdShow)
-{
-	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
-
-	// Initialize global strings
-	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-	LoadStringW(hInstance, IDC_EPMAIN, szWindowClass, MAX_LOADSTRING);
-	MyRegisterClass(hInstance);
-
-	// Perform application initialization:
-	if (!InitInstance(hInstance, nCmdShow))
-	{
-		return FALSE;
-	}
-
-	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_EPMAIN));
-
-	MSG msg;
-
-	// Main message loop:
-	while (GetMessage(&msg, nullptr, 0, 0))
-	{
-		if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-	}
-
-	return (int)msg.wParam;
-}
-
-#else
-// run the application headlessly
-
 #include <iostream>
 #include <spdlog/spdlog.h>
 
 #include "../epoch_lib/Optimisation/Optimiser.hpp"
+#include "../epoch_lib/Simulation/StandaloneSimulator.hpp"
+#include "../epoch_lib/Simulation/TaskData.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
-#include "../epoch_lib/io/EpochConfig.hpp"
-#include "ArgHandling.hpp"
+#include "../epoch_lib/io/TaskDataJson.hpp"
 
 int main(int argc, char* argv[]) {
 	spdlog::info("Running Epoch version {}", EPOCH_VERSION);
@@ -69,18 +19,27 @@ int main(int argc, char* argv[]) {
 			spdlog::debug("Verbose logging enabled");
 		}
 
-		FileConfig fileConfig{args.inputDir, args.outputDir, args.configDir};
+		FileConfig fileConfig{ args.inputDir, args.outputDir, args.configDir };
 		ConfigHandler configHandler(fileConfig.getConfigDir());
 		const EpochConfig config = configHandler.getConfig();
 
-		auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
+		if (args.commandlineMode == CommandlineMode::INTERACTIVE_CHOICE) {
+			spdlog::info("No mode specified, selecting interactively");
+			args.commandlineMode = getInteractiveChoice();
+		}
 
-		auto optimiser = Optimiser(fileConfig, config);
-		OutputValues output = optimiser.runMainOptimisation(converted_json);
-
-		nlohmann::json jsonObj = outputToJson(output);
-		writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
-
+		switch (args.commandlineMode) {
+		case CommandlineMode::OPTIMISATION:
+			optimise(fileConfig, config);
+			break;
+		case CommandlineMode::SIMULATION:
+			simulate(fileConfig, config);
+			break;
+		default:
+			// (this should be unreachable)
+			spdlog::error("Invalid mode specified");
+			return 1;
+		}
 	}
 	catch (const std::exception& e) {
 		spdlog::error(e.what());
@@ -88,4 +47,59 @@ int main(int argc, char* argv[]) {
 	}
 }
 
-#endif
+CommandlineMode getInteractiveChoice() {
+	while (true) {
+		// Use std::cout instead of spdlog for this as we don't want to pollute any logs
+		std::cout << " ############ EPOCH ############" << std::endl;
+		std::cout << " ## Select a mode to proceed: ##" << std::endl;
+		std::cout << " ## [1] Optimisation          ##" << std::endl;
+		std::cout << " ## [2] Simulation            ##" << std::endl;
+		std::cout << " ###############################" << std::endl;
+		std::cout << " Mode: ";
+
+		std::string input;
+		std::getline(std::cin, input);
+
+		if (input == "1") {
+			return CommandlineMode::OPTIMISATION;
+		}
+		else if (input == "2") {
+			return CommandlineMode::SIMULATION;
+		}
+		else {
+			spdlog::warn("Unrecognised input. Please enter 1 or 2");
+		}
+	}
+}
+
+void optimise(const FileConfig& fileConfig, const EpochConfig& config) {
+	spdlog::info("Loading Optimiser");
+	auto converted_json = readJsonFromFile(fileConfig.getInputJsonFilepath());
+
+	auto optimiser = Optimiser(fileConfig, config);
+	OutputValues output = optimiser.runOptimisation(converted_json);
+
+	nlohmann::json jsonObj = outputToJson(output);
+	writeJsonToFile(jsonObj, fileConfig.getOutputJsonFilepath());
+}
+
+void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
+	spdlog::info("Loading Simulator");
+	auto taskDataJson = readJsonFromFile("./InputData/taskData.json");
+
+	TaskData taskData = taskDataJson.get<TaskData>();
+
+
+	// TODO allow StandaloneSimulator to accept different file locations
+	StandaloneSimualtor simulator{};
+
+	auto result = simulator.simulateScenario(taskData, true);
+
+	// TODO - wrangle with utf and locales to allow the pound sign
+	spdlog::info("Scope 1 emissions: {} kgCO2e / year", result.scenario_carbon_balance_scope_1);
+	spdlog::info("Scope 2 emissions: {} kgCO2e / year", result.scenario_carbon_balance_scope_2);
+	spdlog::info("Capex: {:.2f} pounds", result.project_CAPEX);
+	spdlog::info("Annualised Cost: {:.2f} pounds / year", result.total_annualised_cost);
+	spdlog::info("Cost Balance: {:.2f} pounds / year", result.total_annualised_cost);
+	spdlog::info("Payback Horizon: {} years", result.payback_horizon_years);
+}

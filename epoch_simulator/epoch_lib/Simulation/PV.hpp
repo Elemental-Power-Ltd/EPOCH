@@ -3,25 +3,33 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "TempSum.hpp"
 #include "../Definitions.hpp"
 
 class BasicPV
 {
 public:
-    BasicPV(const HistoricalData& historicalData, const TaskData& taskData) :
-        // Initialise Persistent Values
-        mTimesteps(taskData.calculate_timesteps()),	// Used in init & functions
+    BasicPV(const HistoricalData& historicalData, const Renewables& renewablesData) :
+        mTimesteps(historicalData.timesteps),
         // FUTURE Set PVrect export limit (for clipping)
-        // Initilaise data vectors with all values to zero
+
         mPVdcGen_e(Eigen::VectorXf::Zero(mTimesteps)),
         mPVacGen_e(Eigen::VectorXf::Zero(mTimesteps))
     {
-        mPVdcGen_e = historicalData.RGen_data_1 * taskData.ScalarRG1
-                  + historicalData.RGen_data_2 * taskData.ScalarRG2
-                  + historicalData.RGen_data_3 * taskData.ScalarRG3
-                  + historicalData.RGen_data_4 * taskData.ScalarRG4;
+        // FIXME JW - this currently relies on there being exactly 4 entries
+        //  rework once historicalData is dynamic
+
+        // use a vector that is exactly four long to prevent IOOB errors
+        std::vector<float> exactlyFourScalars(4, 0.0f);
+        for (size_t i = 0; i < 4 && i < renewablesData.yield_scalars.size(); i++) {
+            exactlyFourScalars[i] = renewablesData.yield_scalars[i];
+        }
+
+        mPVdcGen_e = historicalData.RGen_data_1 * exactlyFourScalars[0]
+                  + historicalData.RGen_data_2 * exactlyFourScalars[1]
+                  + historicalData.RGen_data_3 * exactlyFourScalars[2]
+                  + historicalData.RGen_data_4 * exactlyFourScalars[3];
     }
 
     void AllCalcs(TempSum& tempSum) {
@@ -43,7 +51,7 @@ public:
     }
 
 private:
-    const int mTimesteps;
+    const size_t mTimesteps;
 
     year_TS mPVdcGen_e;
     year_TS mPVacGen_e;

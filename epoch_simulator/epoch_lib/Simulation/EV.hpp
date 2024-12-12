@@ -3,21 +3,21 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "TaskData.hpp"
+#include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
 class BasicElectricVehicle
 {
 public:
-    BasicElectricVehicle(const HistoricalData& historicalData, const TaskData& taskData) :
-        mTimesteps(taskData.calculate_timesteps()),
-        mFlexRatio(taskData.EV_flex),
+    BasicElectricVehicle(const HistoricalData& historicalData, const ElectricVehicles& evData) :
+        mTimesteps(historicalData.timesteps),
+        mFlexRatio(evData.flexible_load_ratio),
         mAvailableEnergy_e(0),
         // Initilaise data vectors with all values to zero
         mTargetLoad_e(Eigen::VectorXf::Zero(mTimesteps)),
         mActualLoad_e(Eigen::VectorXf::Zero(mTimesteps))
     {
-        mTargetLoad_e = historicalData.ev_eload_data * taskData.Fixed_load2_scalar;
+        mTargetLoad_e = historicalData.ev_eload_data * evData.scalar_electrical_load;
     }
 
     void AllCalcs(TempSum& tempSum) {
@@ -26,7 +26,7 @@ public:
         tempSum.Elec_e = tempSum.Elec_e + mActualLoad_e;
     }
 
-    void StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) {
+    void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t) {
         if (mTargetLoad_e[t] <= 0) {
             mActualLoad_e[t] = 0.0f;
         } else {
@@ -51,7 +51,7 @@ public:
     }
 
 private:
-    const int mTimesteps;
+    const size_t mTimesteps;
     const float mFlexRatio;
     float mAvailableEnergy_e;
 

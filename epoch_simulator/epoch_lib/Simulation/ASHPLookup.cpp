@@ -1,8 +1,8 @@
 #include "ASHPLookup.hpp"
 
-ASHPLookup::ASHPLookup(const HistoricalData& historicalData, const TaskData& taskData, float sendTemperature)
+ASHPLookup::ASHPLookup(const HistoricalData& historicalData, const HeatPumpData& hp, float sendTemperature)
 {
-    precomputeLookupTable(historicalData, taskData, sendTemperature);
+    precomputeLookupTable(historicalData, hp, sendTemperature);
 }
 
 
@@ -26,7 +26,7 @@ HeatpumpValues ASHPLookup::Lookup(float supplyTemp) {
     return HeatpumpValues{ mOutputByDegree[supplyTempDeg + mOffset], mInputByDegree[supplyTempDeg + mOffset] };
 }
 
-void ASHPLookup::precomputeLookupTable(const HistoricalData& historicalData, const TaskData& taskData, float sendTemp) {
+void ASHPLookup::precomputeLookupTable(const HistoricalData& historicalData, const HeatPumpData& hp, float sendTemp) {
     mMinAirTemp = static_cast<int>(std::floor(historicalData.ASHPinputtable(1, 0)));
     mMaxAirTemp = static_cast<int>(std::ceil(historicalData.ASHPinputtable(historicalData.ASHPinputtable.rows() - 1, 0)));
 
@@ -34,7 +34,7 @@ void ASHPLookup::precomputeLookupTable(const HistoricalData& historicalData, con
 
     // The reference table is assumed to be for a 1KW heatpump
     // We scale the values by the modelled ASHP Power per timestep
-    float powerScalar = taskData.ASHP_HPower * taskData.timestep_hours;
+    float powerScalar = hp.heat_power * historicalData.timestep_hours;
 
     for (int airTempByDegree = mMinAirTemp; airTempByDegree <= mMaxAirTemp; airTempByDegree++) {
         float airTemp = static_cast<float>(airTempByDegree);
@@ -45,7 +45,6 @@ void ASHPLookup::precomputeLookupTable(const HistoricalData& historicalData, con
         float scaledOutput = computeOutput(historicalData, sendTemp, airTemp) * powerScalar;
         mOutputByDegree.emplace_back(scaledOutput);
     }
-
 }
 
 

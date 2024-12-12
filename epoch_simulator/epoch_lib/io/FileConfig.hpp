@@ -29,53 +29,9 @@ public:
         ASHPoutputFilename("CSVASHPoutput.csv"),
       
         inputParameters("inputParameters.json"),
+        taskData("taskData.json"),
         resultsFilename("AllResults.csv"),
-        outputJsonFilename("outputParameters.json"),
-        outputJsonInitFilename("outputParameters_fromInitialise.json")
-    
-    {
-        createOutputDir(outputDir);
-    }
-
-    // Constructor providing full control of all directories and filenames
-    FileConfig(
-        std::filesystem::path inputDir,
-        std::filesystem::path outputDir,
-        std::filesystem::path configDir,
-
-        std::filesystem::path eloadFilename,
-        std::filesystem::path hloadFilename,
-        std::filesystem::path rgenFilename,
-
-        std::filesystem::path airtempFilename,
-        std::filesystem::path importtariffFilename,
-        std::filesystem::path gridCO2Filename,
-        std::filesystem::path DHWFilename,
-        std::filesystem::path ASHPinputFilename,
-        std::filesystem::path ASHPoutputFilename,
-
-        std::filesystem::path inputParameters,
-        std::filesystem::path resultsFilename,
-        std::filesystem::path outputJsonFilename,
-        std::filesystem::path outputJsonInitFilename
-    )
-        : mInputDir(inputDir),
-        mOutputDir(outputDir),
-        mConfigDir(configDir),
-        eloadFilename(eloadFilename),
-        hloadFilename(hloadFilename),
-        rgenFilename(rgenFilename),
-        airtempFilename(airtempFilename),
-        importtariffFilename(importtariffFilename),
-        gridCO2Filename(gridCO2Filename),
-        DHWFilename(DHWFilename),
-        ASHPinputFilename(ASHPinputFilename),
-        ASHPoutputFilename(ASHPoutputFilename),
-
-        inputParameters(inputParameters),
-        resultsFilename(resultsFilename),
-        outputJsonFilename(outputJsonFilename),
-        outputJsonInitFilename(outputJsonInitFilename)
+        outputJsonFilename("outputParameters.json")
     {
         createOutputDir(outputDir);
     }
@@ -133,16 +89,16 @@ public:
         return mInputDir / inputParameters;
     }
 
+    std::filesystem::path getTaskDataFilepath() const {
+        return mInputDir / taskData;
+    }
+
     std::filesystem::path getOutputCSVFilepath() const {
         return mOutputDir / resultsFilename;
     }
 
     std::filesystem::path getOutputJsonFilepath() const {
         return mOutputDir / outputJsonFilename;
-    }
-
-    std::filesystem::path getOutputJsonInitFilepath() const {
-        return mOutputDir / outputJsonInitFilename;
     }
 
     // for more fine-grained controlled, get the directory
@@ -177,13 +133,12 @@ private:
     std::filesystem::path ASHPoutputFilename;
 
     std::filesystem::path inputParameters;
+    std::filesystem::path taskData;
 
     // outputDir files
     std::filesystem::path resultsFilename;
     // The output JSON from runMainOptimisation
     std::filesystem::path outputJsonFilename;
-    // The output JSON from initialiseOptimisation
-    std::filesystem::path outputJsonInitFilename;
 
     // configDir files
 };

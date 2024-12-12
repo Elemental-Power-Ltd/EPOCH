@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "0.3.0";
+const std::string EPOCH_VERSION = "0.4.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -67,7 +67,6 @@ struct ReportData {
 
 struct SimulationResult {
 	float runtime;
-	uint64_t paramIndex;
 
 	float total_annualised_cost;
 	float project_CAPEX;
@@ -92,6 +91,7 @@ struct CostVectors {
 	year_TS grid_import_e;
 	year_TS grid_export_e;
 	year_TS actual_low_priority_load_e;
+	year_TS grid_export_prices;
 };
 
 
@@ -140,45 +140,10 @@ struct OutputValues {
 };
 
 
-struct InputValues {
-	float timestep_hours; float timewindow;
-	float Fixed_load1_scalar_lower; float Fixed_load1_scalar_upper; float Fixed_load1_scalar_step;
-	float Fixed_load2_scalar_lower; float Fixed_load2_scalar_upper; float Fixed_load2_scalar_step;
-	float Flex_load_max_lower; float Flex_load_max_upper; float Flex_load_max_step;
-	float Mop_load_max_lower; float Mop_load_max_upper; float Mop_load_max_step;
-	float ScalarRG1_lower; float ScalarRG1_upper; float ScalarRG1_step;
-	float ScalarRG2_lower; float ScalarRG2_upper; float ScalarRG2_step;
-	float ScalarRG3_lower; float ScalarRG3_upper; float ScalarRG3_step;
-	float ScalarRG4_lower; float ScalarRG4_upper; float ScalarRG4_step;
-	float ScalarHYield_lower; float ScalarHYield_upper; float ScalarHYield_step;
-	int s7_EV_CP_number_lower; int s7_EV_CP_number_upper; int s7_EV_CP_number_step;
-	int f22_EV_CP_number_lower; int f22_EV_CP_number_upper; int f22_EV_CP_number_step;
-	int r50_EV_CP_number_lower; int r50_EV_CP_number_upper; int r50_EV_CP_number_step;
-	int u150_EV_CP_number_lower; int u150_EV_CP_number_upper; int u150_EV_CP_number_step;
-	float EV_flex_lower; float EV_flex_upper; float EV_flex_step;
-	float ScalarHL1_lower; float ScalarHL1_upper; float ScalarHL1_step;
-	float ASHP_HPower_lower; float ASHP_HPower_upper; float ASHP_HPower_step;
-	int ASHP_HSource_lower; int ASHP_HSource_upper; int ASHP_HSource_step;
-	float ASHP_RadTemp_lower; float ASHP_RadTemp_upper; float ASHP_RadTemp_step;
-	float ASHP_HotTemp_lower; float ASHP_HotTemp_upper; float ASHP_HotTemp_step;
-	float GridImport_lower; float GridImport_upper; float GridImport_step;
-	float GridExport_lower; float GridExport_upper; float GridExport_step;
-	float Import_headroom_lower; float Import_headroom_upper; float Import_headroom_step;
-	float Export_headroom_lower; float Export_headroom_upper; float Export_headroom_step;
-	float Min_power_factor_lower; float Min_power_factor_upper; float Min_power_factor_step;
-	float ESS_charge_power_lower; float ESS_charge_power_upper; float ESS_charge_power_step;
-	float ESS_discharge_power_lower; float ESS_discharge_power_upper; float ESS_discharge_power_step;
-	float ESS_capacity_lower; float ESS_capacity_upper; float ESS_capacity_step;
-	float ESS_start_SoC_lower; float ESS_start_SoC_upper; float ESS_start_SoC_step;
-	int ESS_charge_mode_lower; int ESS_charge_mode_upper;
-	int ESS_discharge_mode_lower; int ESS_discharge_mode_upper;
-	float DHW_cylinder_volume_lower; float DHW_cylinder_volume_upper; float DHW_cylinder_volume_step;
-	float Export_kWh_price;
-	float time_budget_min; int target_max_concurrency;
-	float CAPEX_limit; float OPEX_limit;
-};
-
 struct HistoricalData {
+	float timestep_hours = 0.5;
+	size_t timesteps;
+
 	year_TS hotel_eload_data;
 	year_TS ev_eload_data;
 	year_TS heatload_data;
@@ -192,14 +157,6 @@ struct HistoricalData {
 	year_TS DHWdemand_data;
 	Eigen::MatrixXf ASHPinputtable;
 	Eigen::MatrixXf ASHPoutputtable;
-};
-
-
-// Define a struct that represents the mapping between member names and pointers
-struct MemberMapping {
-	const char* name;
-	std::function<float(const InputValues&)> getFloat;
-	std::function<int(const InputValues&)> getInt;
 };
 
 

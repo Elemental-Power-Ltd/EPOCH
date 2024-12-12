@@ -20,7 +20,7 @@ TEST(EpochFullRun, MatchesKnownOutput) {
 
 	// Run the Optimiser on known input
 	auto inputJson = readJsonFromFile(fileConfig.getInputJsonFilepath());
-	OutputValues testOutput = opt.runMainOptimisation(inputJson);
+	OutputValues testOutput = opt.runOptimisation(inputJson);
 	auto testJson = outputToJson(testOutput);
 
 	//// Load the known output

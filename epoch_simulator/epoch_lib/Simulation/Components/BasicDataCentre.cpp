@@ -1,12 +1,12 @@
 #include "DataCentre.hpp"
 
-BasicDataCentre::BasicDataCentre(const HistoricalData& historicalData, const TaskData& taskData) :
-	DataCentre(historicalData, taskData),
-	mTimesteps(taskData.calculate_timesteps()),
+BasicDataCentre::BasicDataCentre(const HistoricalData& historicalData, const DataCentreData& dc) :
+	DataCentre(historicalData),
+	mTimesteps(historicalData.timesteps),
 	// Mode: 1=Target, 2=Price, 3=Carbon
 	mOptimisationMode(1),
 	// Max kWh per TS
-	mDataCentreMaxLoad_e(taskData.Flex_load_max* taskData.timestep_hours),
+	mDataCentreMaxLoad_e(dc.maximum_load * historicalData.timestep_hours),
 
 	mTargetLoad_e(Eigen::VectorXf::Zero(mTimesteps)),
 	mActualLoad_e(Eigen::VectorXf::Zero(mTimesteps))
@@ -30,7 +30,7 @@ void BasicDataCentre::AllCalcs(TempSum& tempSum) {
 
 }
 
-void BasicDataCentre::StepCalc(TempSum& tempSum, const float futureEnergy_e, const int t) {
+void BasicDataCentre::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t) {
 	if (futureEnergy_e <= 0) {
 		mActualLoad_e[t] = 0;
 	}
@@ -47,21 +47,11 @@ void BasicDataCentre::StepCalc(TempSum& tempSum, const float futureEnergy_e, con
 }
 
 
-float BasicDataCentre::getTargetLoad(int timestep) {
+float BasicDataCentre::getTargetLoad(size_t timestep) {
 	return mTargetLoad_e[timestep];
 }
 
 void BasicDataCentre::Report(ReportData& reportData) const {
 	reportData.Data_centre_target_load = mTargetLoad_e;
 	reportData.Data_centre_actual_load = mActualLoad_e;
-
-	// TODO - FIXME
-	// The way that ReportData is structured, we assume that we always have all of the vectors
-	// The following vectors are specific to a data centre with an ASHP (which we don't have in this case)
-	// So we write them as 0 vectors mimicking the length of the other results
-	// (consider changing reporting from a struct with fixed vectors to a map of String->year_TS?
-	reportData.Data_centre_target_heat = Eigen::VectorXf::Zero(mTargetLoad_e.size());
-	reportData.Data_centre_available_hot_heat = Eigen::VectorXf::Zero(mTargetLoad_e.size());
-
-
 }

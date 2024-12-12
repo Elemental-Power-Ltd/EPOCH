@@ -1,0 +1,119 @@
+#include "ESS.hpp"
+
+BasicESS::BasicESS(const HistoricalData& historicalData, const EnergyStorageSystem& essData) :
+    ESS(historicalData),
+    mBattery(historicalData, essData),
+    mESS_mode(essData.battery_mode),
+    mTimesteps(historicalData.timesteps),
+    mThresholdSoC(essData.capacity * 0.5f),
+    mEnergyCalc(0.0f)
+{
+}
+
+void BasicESS::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t)
+{
+    // mESS_mode Consume = 1, Resilient = 2, Threshold = 3, Price = 4, Carbon = 5
+    switch (mESS_mode) {
+    case BatteryMode::CONSUME: // Consume mode
+        if (tempSum.Elec_e[t] >= 0) {  // Surplus Demand, discharge ESS
+            mEnergyCalc = std::min(tempSum.Elec_e[t], mBattery.getAvailableDischarge());
+            mBattery.doDischarge(mEnergyCalc, t);
+            tempSum.Elec_e[t] = tempSum.Elec_e[t] - mEnergyCalc;
+        }
+        else {        // Surplus Generation, charge ESS
+            mEnergyCalc = std::min(-tempSum.Elec_e[t], mBattery.getAvailableCharge());
+            mBattery.doCharge(mEnergyCalc, t);
+            tempSum.Elec_e[t] = tempSum.Elec_e[t] + mEnergyCalc;
+        }
+        break;
+    }
+    // FIXME JW - reintroduce the other modes incrementally
+
+    //case 3: // Threshold mode
+    //    if (mBattery.GetSoC() > mThresholdSoC) {   // High SoC = Consume mode (1)
+    //        if (tempSum.Elec_e[t] >= 0) {   // Surplus Demand, discharge ESS
+    //            mEnergyCalc = std::min(tempSum.Elec_e[t], mBattery.getAvailableDischarge());
+    //            mBattery.doDischarge(mEnergyCalc, t);
+    //            tempSum.Elec_e[t] = tempSum.Elec_e[t] - mEnergyCalc;
+    //        }
+    //        else {            // Surplus Generation, charge ESS
+    //            mEnergyCalc = std::min(-tempSum.Elec_e[t], mBattery.getAvailableCharge());
+    //            mBattery.doCharge(mEnergyCalc, t);
+    //            tempSum.Elec_e[t] = tempSum.Elec_e[t] + mEnergyCalc;
+    //        }
+    //    }
+    //    else {                              // Low SoC = Resilient Mode	
+    //        if ((tempSum.Elec_e[t] - AvailGridImp) >= 0) {		// Grid cannot meet Demand, discharge ESS		
+    //            mEnergyCalc = std::min((tempSum.Elec_e[t] - AvailGridImp), mBattery.getAvailableDischarge());
+    //            mBattery.doDischarge(mEnergyCalc, t);
+    //            tempSum.Elec_e[t] = tempSum.Elec_e[t] - mEnergyCalc;
+    //        }
+    //        else {  // Charge ESS from Grid headroom or surplus Generation		
+    //            mEnergyCalc = std::min(-(tempSum.Elec_e[t] - AvailGridImp), mBattery.getAvailableCharge());
+    //            mBattery.doCharge(mEnergyCalc, t);
+    //            tempSum.Elec_e[t] = tempSum.Elec_e[t] + mEnergyCalc;
+    //        }
+    //    }
+    //    break;
+
+    //case 4: // Price minimisation mode
+    //    // placeholder for lookahead supplier price mode
+    //    // v0-7 lookahead case = dynamic based on volume forecast, omit for now
+    //    break;
+
+    //case 5: // Carbon minimisation mode
+    //    // placholder for lookahead grid carbon mode
+    //    break;
+
+    //default: // Resilient Mode case should be default							
+    //    if ((tempSum.Elec_e[t] - AvailGridImp) >= 0) {		// Grid cannot meet Demand, discharge ESS		
+    //        mEnergyCalc = std::min((tempSum.Elec_e[t] - AvailGridImp), mBattery.getAvailableDischarge());
+    //        mBattery.doDischarge(mEnergyCalc, t);
+    //        tempSum.Elec_e[t] = tempSum.Elec_e[t] - mEnergyCalc;
+    //    }
+    //    else {  // Charge ESS from Grid headroom or surplus Generation		
+    //        mEnergyCalc = std::min(-(tempSum.Elec_e[t] - AvailGridImp), mBattery.getAvailableCharge());
+    //        mBattery.doCharge(mEnergyCalc, t);
+    //        tempSum.Elec_e[t] = tempSum.Elec_e[t] + mEnergyCalc;
+    //    }
+    //}
+
+}
+
+float BasicESS::AvailDisch()
+{
+	return mBattery.getAvailableDischarge();
+}
+
+void BasicESS::Report(ReportData& reportData) const
+{
+    reportData.ESS_charge = mBattery.mHistCharg_e;
+    reportData.ESS_discharge = mBattery.mHistDisch_e;
+    reportData.ESS_resulting_SoC = mBattery.mHistSoC_e;
+
+    // TODO - make a report method in the battery and call that instead
+    reportData.ESS_AuxLoad = mBattery.mHistAux_e;
+    reportData.ESS_RTL = mBattery.mHistRTL_e;
+}
+
+
+NullESS::NullESS(const HistoricalData& historicalData) 
+    : ESS(historicalData)
+{
+}
+
+void NullESS::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t)
+{
+    // Do nothing
+}
+
+float NullESS::AvailDisch()
+{
+    // Null ESS returns 0 available charge
+    return 0.0f;
+}
+
+void NullESS::Report(ReportData& reportData) const
+{
+    // Do nothing
+}

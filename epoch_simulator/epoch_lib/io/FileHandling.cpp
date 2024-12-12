@@ -12,50 +12,7 @@
 
 #include "../Definitions.hpp"
 #include "../Exceptions.hpp"
-
-// Define macros to simplify creating the mapping for each struct member
-#define MEMBER_MAPPING_FLOAT(member) {#member, [](const InputValues& s) -> float { return s.member; }, nullptr}
-#define MEMBER_MAPPING_INT(member) {#member, nullptr, [](const InputValues& s) -> int { return s.member; }}
-
-// Create an array of MemberMapping for the struct members with a common pattern (using only MEMBER_MAPPING... macros)
-MemberMapping memberMappings[] = {
-	MEMBER_MAPPING_FLOAT(timestep_hours), MEMBER_MAPPING_FLOAT(timewindow),
-	MEMBER_MAPPING_FLOAT(Fixed_load1_scalar_lower), MEMBER_MAPPING_FLOAT(Fixed_load1_scalar_upper), MEMBER_MAPPING_FLOAT(Fixed_load1_scalar_step),
-	MEMBER_MAPPING_FLOAT(Fixed_load2_scalar_lower), MEMBER_MAPPING_FLOAT(Fixed_load2_scalar_upper), MEMBER_MAPPING_FLOAT(Fixed_load2_scalar_step),
-	MEMBER_MAPPING_FLOAT(Flex_load_max_lower), MEMBER_MAPPING_FLOAT(Flex_load_max_upper), MEMBER_MAPPING_FLOAT(Flex_load_max_step),
-	MEMBER_MAPPING_FLOAT(Mop_load_max_lower), MEMBER_MAPPING_FLOAT(Mop_load_max_upper), MEMBER_MAPPING_FLOAT(Mop_load_max_step),
-	MEMBER_MAPPING_FLOAT(ScalarRG1_lower), MEMBER_MAPPING_FLOAT(ScalarRG1_upper), MEMBER_MAPPING_FLOAT(ScalarRG1_step),
-	MEMBER_MAPPING_FLOAT(ScalarRG2_lower), MEMBER_MAPPING_FLOAT(ScalarRG2_upper), MEMBER_MAPPING_FLOAT(ScalarRG2_step),
-	MEMBER_MAPPING_FLOAT(ScalarRG3_lower), MEMBER_MAPPING_FLOAT(ScalarRG3_upper), MEMBER_MAPPING_FLOAT(ScalarRG3_step),
-	MEMBER_MAPPING_FLOAT(ScalarRG4_lower), MEMBER_MAPPING_FLOAT(ScalarRG4_upper), MEMBER_MAPPING_FLOAT(ScalarRG4_step),
-	MEMBER_MAPPING_FLOAT(ScalarHYield_lower), MEMBER_MAPPING_FLOAT(ScalarHYield_upper), MEMBER_MAPPING_FLOAT(ScalarHYield_step),
-	MEMBER_MAPPING_INT(s7_EV_CP_number_lower), MEMBER_MAPPING_INT(s7_EV_CP_number_upper), MEMBER_MAPPING_INT(s7_EV_CP_number_step),
-	MEMBER_MAPPING_INT(f22_EV_CP_number_lower), MEMBER_MAPPING_INT(f22_EV_CP_number_upper), MEMBER_MAPPING_INT(f22_EV_CP_number_step),
-	MEMBER_MAPPING_INT(r50_EV_CP_number_lower), MEMBER_MAPPING_INT(r50_EV_CP_number_upper), MEMBER_MAPPING_INT(r50_EV_CP_number_step),
-	MEMBER_MAPPING_INT(u150_EV_CP_number_lower), MEMBER_MAPPING_INT(u150_EV_CP_number_upper),MEMBER_MAPPING_INT(u150_EV_CP_number_step),
-	MEMBER_MAPPING_FLOAT(EV_flex_lower), MEMBER_MAPPING_FLOAT(EV_flex_upper), MEMBER_MAPPING_FLOAT(EV_flex_step),
-	MEMBER_MAPPING_FLOAT(ScalarHL1_lower), MEMBER_MAPPING_FLOAT(ScalarHL1_upper), MEMBER_MAPPING_FLOAT(ScalarHL1_step),
-	MEMBER_MAPPING_FLOAT(ASHP_HPower_lower), MEMBER_MAPPING_FLOAT(ASHP_HPower_upper), MEMBER_MAPPING_FLOAT(ASHP_HPower_step),
-	MEMBER_MAPPING_INT(ASHP_HSource_lower), MEMBER_MAPPING_INT(ASHP_HSource_upper), MEMBER_MAPPING_INT(ASHP_HSource_step),
-	MEMBER_MAPPING_FLOAT(ASHP_RadTemp_lower), MEMBER_MAPPING_FLOAT(ASHP_RadTemp_upper), MEMBER_MAPPING_FLOAT(ASHP_RadTemp_step),
-	MEMBER_MAPPING_FLOAT(ASHP_HotTemp_lower), MEMBER_MAPPING_FLOAT(ASHP_HotTemp_upper), MEMBER_MAPPING_FLOAT(ASHP_HotTemp_step),
-	MEMBER_MAPPING_FLOAT(GridImport_lower), MEMBER_MAPPING_FLOAT(GridImport_upper), MEMBER_MAPPING_FLOAT(GridImport_step),
-	MEMBER_MAPPING_FLOAT(GridExport_lower), MEMBER_MAPPING_FLOAT(GridExport_upper), MEMBER_MAPPING_FLOAT(GridExport_step),
-	MEMBER_MAPPING_FLOAT(Import_headroom_lower), MEMBER_MAPPING_FLOAT(Import_headroom_upper), MEMBER_MAPPING_FLOAT(Import_headroom_step),
-	MEMBER_MAPPING_FLOAT(Export_headroom_lower), MEMBER_MAPPING_FLOAT(Export_headroom_upper), MEMBER_MAPPING_FLOAT(Export_headroom_step),
-	MEMBER_MAPPING_FLOAT(Min_power_factor_lower), MEMBER_MAPPING_FLOAT(Min_power_factor_upper), MEMBER_MAPPING_FLOAT(Min_power_factor_step),
-	MEMBER_MAPPING_FLOAT(ESS_charge_power_lower), MEMBER_MAPPING_FLOAT(ESS_charge_power_upper), MEMBER_MAPPING_FLOAT(ESS_charge_power_step),
-	MEMBER_MAPPING_FLOAT(ESS_discharge_power_lower), MEMBER_MAPPING_FLOAT(ESS_discharge_power_upper), MEMBER_MAPPING_FLOAT(ESS_discharge_power_step),
-	MEMBER_MAPPING_FLOAT(ESS_capacity_lower), MEMBER_MAPPING_FLOAT(ESS_capacity_upper), MEMBER_MAPPING_FLOAT(ESS_capacity_step),
-	MEMBER_MAPPING_FLOAT(ESS_start_SoC_lower), MEMBER_MAPPING_FLOAT(ESS_start_SoC_upper), MEMBER_MAPPING_FLOAT(ESS_start_SoC_step),
-	MEMBER_MAPPING_INT(ESS_charge_mode_lower), MEMBER_MAPPING_INT(ESS_charge_mode_upper),
-	MEMBER_MAPPING_INT(ESS_discharge_mode_lower), MEMBER_MAPPING_INT(ESS_discharge_mode_upper),
-	MEMBER_MAPPING_FLOAT(DHW_cylinder_volume_lower), MEMBER_MAPPING_FLOAT(DHW_cylinder_volume_upper), MEMBER_MAPPING_FLOAT(DHW_cylinder_volume_step),
-	MEMBER_MAPPING_FLOAT(Export_kWh_price),
-	MEMBER_MAPPING_FLOAT(time_budget_min), MEMBER_MAPPING_INT(target_max_concurrency),
-	MEMBER_MAPPING_FLOAT(CAPEX_limit), MEMBER_MAPPING_FLOAT(OPEX_limit)
-};
-
+#include "EnumToString.hpp"
 
 // Define macros to simplify creating the mapping for each struct member
 #define OUT_MEMBER_MAPPING_FLOAT(member) {#member, [](const OutputValues& s) -> float { return s.member; }, nullptr}
@@ -258,29 +215,67 @@ void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& re
 }
 
 void writeObjectiveResultHeader(std::ofstream& outFile) {
-	outFile << "Parameter index" << ",";
 	outFile << "annualised_cost" << ",";
 	outFile << "capex" << ",";
 	outFile << "cost_balance" << ",";
 	outFile << "payback_horizon" << ",";
 	outFile << "carbon_balance_scope_1" << ",";
-	outFile << "carbon_balance_scope_2";
+	outFile << "carbon_balance_scope_2" << ",";
 
-	// deliberately omit the comma for carbon balance scope 2
-	// to allow the loop to have a comma for each entry (before)
+	// building
+	outFile << "building_scalar_heat_load" << ",";
+	outFile << "building_scalar_electrical_load" << ",";
+	outFile << "fabric_intervention_index" << ",";
+	
+	// data centre
+	outFile << "data_centre_maximum_load" << ",";
+	outFile << "hotroom_temp" << ",";
+	
+	// dhw
+	outFile << "dhw_cylinder_volume" << ",";
+	
+	// ev
+	outFile << "ev_flexible_load_ratio" << ",";
+	outFile << "small_chargers" << ",";
+	outFile << "fast_chargers" << ",";
+	outFile << "rapid_chargers" << ",";
+	outFile << "ultra_chargers" << ",";
+	outFile << "ev_scalar_electrical_load" << ",";
 
-	for (auto paramName: taskDataParamNames) {
-		outFile << ",";
-		outFile << paramName;
-	}
-	// no trailing comma
+	// ess
+	outFile << "ess_capacity" << ",";
+	outFile << "ess_charge_power" << ",";
+	outFile << "ess_discharge_power" << ",";
+	outFile << "battery_mode" << ",";
+	outFile << "ess_initial_charge" << ",";
+
+	// grid
+	outFile << "export_headroom" << ",";
+	outFile << "grid_export" << ",";
+	outFile << "grid_import" << ",";
+	outFile << "import_headroon" << ",";
+	outFile << "min_power_factor" << ",";
+	outFile << "tariff_index" << ",";
+
+	// heatpump
+	outFile << "heat_power" << ",";
+	outFile << "heat_source" << ",";
+	outFile << "send_temp" << ",";
+
+	// mop
+	outFile << "mop_maximum_load" << ",";
+
+	// FIXME
+	// skip renewables for now because their arbitrary size makes it hard to know how many columns we want
+	
+	// Config
+	outFile << "capex_limit";  // no trailing comma
+
 	outFile << "\n";
 }
 
 void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& result) {
 	// These must be written in exactly the same order as the header
-	outFile << result.taskData.paramIndex << ",";
-
 	outFile << result.total_annualised_cost << ",";
 	outFile << result.project_CAPEX << ",";
 	outFile << result.scenario_cost_balance << ",";
@@ -290,41 +285,88 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 
 	const TaskData& taskData = result.taskData;
 
-	outFile << taskData.Fixed_load1_scalar << ",";
-	outFile << taskData.Fixed_load2_scalar << ",";
-	outFile << taskData.Flex_load_max << ",";
-	outFile << taskData.Mop_load_max << ",";
-	outFile << taskData.ScalarRG1 << ",";
-	outFile << taskData.ScalarRG2 << ",";
-	outFile << taskData.ScalarRG3 << ",";
-	outFile << taskData.ScalarRG4 << ",";
-	outFile << taskData.ScalarHYield << ",";
-	outFile << taskData.s7_EV_CP_number << ",";
-	outFile << taskData.f22_EV_CP_number << ",";
-	outFile << taskData.r50_EV_CP_number << ",";
-	outFile << taskData.u150_EV_CP_number << ",";
-	outFile << taskData.EV_flex << ",";
-	outFile << taskData.ScalarHL1 << ",";
-	outFile << taskData.ASHP_HPower << ",";
-	outFile << taskData.ASHP_HSource << ",";
-	outFile << taskData.ASHP_RadTemp << ",";
-	outFile << taskData.ASHP_HotTemp << ",";
-	outFile << taskData.GridImport << ",";
-	outFile << taskData.GridExport << ",";
-	outFile << taskData.Import_headroom << ",";
-	outFile << taskData.Export_headroom << ",";
-	outFile << taskData.Min_power_factor << ",";
-	outFile << taskData.ESS_charge_power << ",";
-	outFile << taskData.ESS_discharge_power << ",";
-	outFile << taskData.ESS_capacity << ",";
-	outFile << taskData.ESS_start_SoC << ",";
-	outFile << taskData.DHW_cylinder_volume << ",";
-	outFile << taskData.Export_kWh_price << ",";
-	outFile << taskData.time_budget_min << ",";
-	outFile << taskData.CAPEX_limit << ",";
-	outFile << taskData.OPEX_limit << ",";
-	outFile << taskData.ESS_charge_mode << ",";
-	outFile << taskData.ESS_discharge_mode; // no trailing comma
+	// We chose to write empty columns when the components are not present
+
+	if (taskData.building) {
+		outFile << taskData.building->scalar_heat_load << ",";
+		outFile << taskData.building->scalar_heat_load << ",";
+		outFile << taskData.building->scalar_heat_load << ",";
+	}
+	else {
+		outFile << ",,,";
+	}
+
+	if (taskData.data_centre) {
+		outFile << taskData.data_centre->maximum_load << ",";
+		outFile << taskData.data_centre->hotroom_temp << ",";
+	}
+	else {
+		outFile << ",,";
+	}
+
+	if (taskData.domestic_hot_water) {
+		outFile << taskData.domestic_hot_water->cylinder_volume << ",";
+	}
+	else {
+		outFile << ",";
+	}
+
+	if (taskData.electric_vehicles) {
+		outFile << taskData.electric_vehicles->flexible_load_ratio << ",";
+		outFile << taskData.electric_vehicles->small_chargers << ",";
+		outFile << taskData.electric_vehicles->fast_chargers << ",";
+		outFile << taskData.electric_vehicles->rapid_chargers << ",";
+		outFile << taskData.electric_vehicles->ultra_chargers << ",";
+		outFile << taskData.electric_vehicles->scalar_electrical_load << ",";
+	}
+	else {
+		outFile << ",,,,,,";
+	}
+
+	if (taskData.energy_storage_system) {
+		outFile << taskData.energy_storage_system->capacity << ",";
+		outFile << taskData.energy_storage_system->charge_power << ",";
+		outFile << taskData.energy_storage_system->discharge_power << ",";
+		outFile << enumToString(taskData.energy_storage_system->battery_mode) << ",";
+		outFile << taskData.energy_storage_system->initial_charge << ",";
+	}
+	else {
+		outFile << ",,,,,";
+	}
+
+	if (taskData.grid) {
+		outFile << taskData.grid->export_headroom << ",";
+		outFile << taskData.grid->grid_export << ",";
+		outFile << taskData.grid->grid_import << ",";
+		outFile << taskData.grid->import_headroom << ",";
+		outFile << taskData.grid->min_power_factor << ",";
+		outFile << taskData.grid->tariff_index << ",";
+	}
+	else {
+		outFile << ",,,,,,";
+	}
+
+	if (taskData.heat_pump) {
+		outFile << taskData.heat_pump->heat_power << ",";
+		outFile << enumToString(taskData.heat_pump->heat_source) << ",";
+		outFile << taskData.heat_pump->send_temp << ",";
+	}
+	else {
+		outFile << ",,,";
+	}
+
+	if (taskData.mop) {
+		outFile << taskData.mop->maximum_load << ",";
+	}
+	else {
+		outFile << ",";
+	}
+
+	// FIXME
+	// renewables skipped as dynamic sized
+
+	outFile << taskData.config.capex_limit; // no trailing comma
+	
 	outFile << "\n";
 }
 
@@ -407,25 +449,6 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& repo
 
 
 // Custom function to convert a struct to a JSON object
-nlohmann::json inputToJson(const InputValues& data) {
-
-	size_t Size = std::size(memberMappings);
-
-	nlohmann::json jsonObj;
-	for (size_t i = 0; i < Size; ++i) {
-		const auto& mapping = memberMappings[i];
-		if (mapping.getFloat) {
-			jsonObj[mapping.name] = mapping.getFloat(data);
-		}
-		else if (mapping.getInt) {
-			jsonObj[mapping.name] = mapping.getInt(data);
-		}
-	}
-	return jsonObj;
-}
-
-
-// Custom function to convert a struct to a JSON object
 nlohmann::json outputToJson(const OutputValues& data) {
 
 	size_t Size = std::size(OutMemberMappings);
@@ -478,18 +501,6 @@ nlohmann::json convert_to_ranges(nlohmann::json& j) {
 	}
 
 	return new_json;
-}
-
-nlohmann::json handleJsonConversion(const InputValues& inputValues, std::filesystem::path inputParametersFilepath) {
-	// Aim: to export 'inputvalues' to a json file that can be read e.g. as a Python dict, s.t. other EPL software can use this as an input
-
-	nlohmann::json jsonObj = inputToJson(inputValues);
-	nlohmann::json converted_json = convert_to_ranges(jsonObj);
-
-	writeJsonToFile(converted_json, inputParametersFilepath);
-	spdlog::info("JSON input saved succesfully");
-	return converted_json;
-
 }
 
 void writeJsonToFile(const nlohmann::json& jsonObj, std::filesystem::path filepath) {
@@ -549,6 +560,26 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	std::filesystem::path DHWloadFilepath = fileConfig.getDHWloadFilepath();
 	std::vector<float> DHWload_data = readCSVColumnAndSkipHeader(DHWloadFilepath, 4); // read the column of the CSV data and store in vector data
 
+	// determine and the number of timesteps and check that all of the timeseries are equal in length
+	size_t timesteps = hotel_eload_data.size();
+	if (
+		ev_eload_data.size() != timesteps ||
+		heatload_data.size() != timesteps ||
+		RGen_data_1.size() != timesteps ||
+		RGen_data_2.size() != timesteps ||
+		RGen_data_3.size() != timesteps ||
+		RGen_data_4.size() != timesteps ||
+		airtemp_data.size() != timesteps ||
+		importtariff_data.size() != timesteps ||
+		gridCO2_data.size() != timesteps ||
+		DHWload_data.size() != timesteps
+		) {
+		throw EpochBaseException("Time series differ in length");
+	}
+
+	// FIXME for now the time interval is always 0.5 hours (half an hour)
+	constexpr float TIMESTEP_HOURS = 0.5f;
+
 
 	//read in the ASHP data
 	std::filesystem::path ASHPinputFilepath = fileConfig.getASHPinputFilepath();
@@ -559,19 +590,21 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 
 	
 	return {
-	   toEigen(hotel_eload_data),
-	   toEigen(ev_eload_data),
-	   toEigen(heatload_data),
-	   toEigen(RGen_data_1),
-	   toEigen(RGen_data_2),
-	   toEigen(RGen_data_3),
-	   toEigen(RGen_data_4),
-	   toEigen(airtemp_data),
-	   toEigen(importtariff_data),
-	   toEigen(gridCO2_data),
-	   toEigen(DHWload_data),
-	   toEigen(ASHPinputtable),
-	   toEigen(ASHPoutputtable)
+		TIMESTEP_HOURS,
+		timesteps,
+		toEigen(hotel_eload_data),
+		toEigen(ev_eload_data),
+		toEigen(heatload_data),
+		toEigen(RGen_data_1),
+		toEigen(RGen_data_2),
+		toEigen(RGen_data_3),
+		toEigen(RGen_data_4),
+		toEigen(airtemp_data),
+		toEigen(importtariff_data),
+		toEigen(gridCO2_data),
+		toEigen(DHWload_data),
+		toEigen(ASHPinputtable),
+		toEigen(ASHPoutputtable)
 	};
 }
 
