@@ -28,7 +28,26 @@ The following secrets may be required:
 
 `EP_POSTGRES_PASSWORD` - set as appropriate for your postgres instance. Leave blank for a docker container instance.
 
-`EP_VISUAL_CROSSING_API_KEY`
+`EP_VISUAL_CROSSING_API_KEY` - **keep secret**, we only have a single key as an organization
 
-`EP_RENEWABLES_NINJA_API_KEY`
+`EP_RENEWABLES_NINJA_API_KEY` - per user and free, [create an account](https://renewables.ninja) to generate a key for yourself
 
+
+## Database Configuration
+
+When using `docker-compose.dev.yml` to run postgres through docker, there are a number of files and environment variables that must be mapped to perform first time setup. These are defined in the `db` service section.
+
+### SQL Files
+
+The db volume section maps three files: 
+ - elementaldb_client_info.sql
+ - elementaldb_tables.sql
+ - elementaldb_client_meters.sql
+
+Copies of `elementaldb_client_info.sql` and `elementaldb_tables.sql` can be obtained from the data_elemental repository.
+
+`elementaldb_client_meters.sql` is larger and so we don't check this file into version control. Ask Matt Bailey for a copy.
+
+### Environment settings
+
+The db environment section defines default user/password settings. These can generally be left as is.
