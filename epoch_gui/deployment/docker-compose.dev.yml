@@ -21,6 +21,11 @@ services:
 
   db:
     image: postgres:latest
+    environment:
+      - POSTGRES_USER=python
+      - PG_USER=python
+      - POSTGRES_PASSWORD=elemental
+      - POSTGRES_DB=elementaldb
     <<: *shared-dev
     volumes:
       - ./elementaldb_tables.sql:/docker-entrypoint-initdb.d/01-elementaldb_tables.sql
