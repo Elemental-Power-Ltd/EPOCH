@@ -92,7 +92,7 @@ def default_constraints() -> ConstraintDict:
 
 @pytest.fixture
 def default_objectives() -> list[Objectives]:
-    return [Objectives.carbon_balance, Objectives.cost_balance]
+    return [Objectives.carbon_cost, Objectives.cost_balance]
 
 
 @pytest.fixture(scope="module")
