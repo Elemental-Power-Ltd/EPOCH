@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 
-from app.models.objectives import Objectives
+from app.models.objectives import Objectives, ObjectiveValues
 from app.models.optimisers import GAOptimiser, GridSearchOptimiser, NSGA2Optmiser
 from app.models.parameters import ParameterDict
 from app.models.site_data import SiteMetaData
@@ -109,14 +109,6 @@ class OptimisationSolution(BaseModel):
     timewindow: float | int
 
 
-class ObjectiveValues(BaseModel):
-    carbon_balance: float | int
-    capex: float | int
-    cost_balance: float | int
-    payback_horizon: float | int
-    annualised_cost: float | int
-
-
 class EndpointResult(BaseModel):
     task_id: UUID4 = Field(
         examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of an optimisation task."
@@ -128,7 +120,17 @@ class EndpointResult(BaseModel):
         description="Parameter values which defines a solution to the optimisation task."
     )
     objective_values: ObjectiveValues = Field(
-        examples=[{"carbon_balance": 9999, "capex": 99999, "cost_balance": 999, "payback_horizon": 9, "annualised_cost": 99}],
+        examples=[
+            {
+                "carbon_cost": 9999,
+                "carbon_balance_scope_1": 99,
+                "carbon_balance_scope_2": 99,
+                "capex": 99999,
+                "cost_balance": 999,
+                "payback_horizon": 9,
+                "annualised_cost": 99,
+            }
+        ],
         description="Objective values of the solution.",
     )
     n_evals: PositiveInt = Field(examples=["99"], description="Number of unique simulations performed by the optimiser.")

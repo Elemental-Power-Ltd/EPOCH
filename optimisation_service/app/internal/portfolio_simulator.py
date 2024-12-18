@@ -49,8 +49,11 @@ class PortfolioSimulator:
             Metrics of the simulation.
         """
         sim = self.sims[site_name]
-        task = PyTaskData(**kwargs)
-        return convert_sim_result(sim.simulate_scenario(task))  # TODO:Solution doesn't require taskdata
+        pytd = PyTaskData(**kwargs)
+        res = convert_sim_result(sim.simulate_scenario(pytd))
+        if any(np.isnan(val) for val in res.values()):
+            logger.error(f"Got NaN simulation result {res} for site {site_name} and config {pytd}")
+        return res
 
     def simulate_portfolio(self, portfolio_tasks: dict[str, PyTaskData]) -> PortfolioSolution:
         """
@@ -99,7 +102,9 @@ def combine_objective_values(objective_values_list: list[ObjectiveValues]) -> Ob
     else:
         combined[Objectives.payback_horizon] = np.finfo(np.float32).max
     if combined[Objectives.carbon_balance_scope_1] > 0:
-        combined[Objectives.carbon_cost] = combined[Objectives.capex] / combined[Objectives.carbon_balance_scope_1]
+        combined[Objectives.carbon_cost] = combined[Objectives.capex] / (
+            combined[Objectives.carbon_balance_scope_1] * 15 / 1000
+        )
     else:
         combined[Objectives.carbon_cost] = np.finfo(np.float32).max
     return combined
