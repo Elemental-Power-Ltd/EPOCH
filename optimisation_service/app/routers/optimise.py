@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import subprocess
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
@@ -10,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from app.internal.datamanager import DataManagerDep
 from app.internal.genetic_algorithm import GeneticAlgorithm
-from app.internal.grid_search import GridSearch
+from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2
 from app.models.core import (
     EndpointResult,
@@ -64,6 +65,45 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
         )
         Optimisation_Results.append(OptRes)
     return Optimisation_Results
+
+
+def check_epoch_versions():
+    """
+    Checks the versions of EPOCH's headless exe and EPOCH's python bindings.
+    """
+
+    try:
+        epoch_path = get_epoch_path()
+        result = subprocess.run([epoch_path, "--version"], capture_output=True, text=True)
+        headless_version = result.stdout.splitlines()[-1]
+        has_headless = True
+    except Exception as e:
+        has_headless = False
+        logger.debug(f"Failed to fetch headless version! {e}")
+
+    try:
+        import epoch_simulator
+
+        pybind_version = epoch_simulator.__version__
+        has_bindings = True
+    except Exception as e:
+        has_bindings = False
+        logger.debug(f"Failed to fetch epoch_simulator version! {e}")
+
+    if has_headless and has_bindings:
+        if pybind_version != headless_version:
+            logger.error(f"EPOCH version do not match! Headless: {headless_version}. Pybind: {pybind_version}.")
+        else:
+            logger.info(f"Using EPOCH version {headless_version}.")
+
+    elif has_headless and not has_bindings:
+        logger.warning(f"Failed to fetch headless version! Found epoch_simulator version: {pybind_version}")
+
+    elif not has_headless and has_bindings:
+        logger.warning(f"Failed to fetch epoch_simulator version! Found headless version: {headless_version}")
+
+    else:
+        logger.warning("Failed to fetch both headless and epoch_simulator!")
 
 
 async def process_requests(q: IQueue) -> None:
