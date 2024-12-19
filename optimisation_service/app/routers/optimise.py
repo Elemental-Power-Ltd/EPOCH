@@ -116,6 +116,7 @@ async def process_requests(q: IQueue) -> None:
         Queue to process.
     """
     logger.info("Initialising worker loop.")
+    check_epoch_versions()
     while True:
         logger.info("Awaiting next task from queue.")
         task, data_manager = await q.get()
