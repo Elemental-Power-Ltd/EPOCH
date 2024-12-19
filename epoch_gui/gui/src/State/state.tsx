@@ -20,7 +20,15 @@ import {
 const defaultTaskConfig: TaskConfig = {
     task_name: "",
     optimiser: "GridSearch",
-    objectives: {capex: true, carbon_balance: true, cost_balance: true, payback_horizon: true, annualised_cost: true},
+    objectives: {
+        capex: false,
+        carbon_balance_scope_1: false,
+        carbon_balance_scope_2: false,
+        carbon_cost: false,
+        cost_balance: false,
+        payback_horizon: false,
+        annualised_cost: false
+    },
     client_id: "",
     site_id: "",
     start_date: "2022-01-01 00:00:00+00:00",

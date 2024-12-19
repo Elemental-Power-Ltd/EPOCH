@@ -14,7 +14,7 @@ import {
 import InfoIcon from '@mui/icons-material/Info';
 
 import {Task, OptimisationResult} from "../../State/types";
-import {formatPounds, formatCarbon, formatYears} from "../../util/displayFunctions";
+import {formatPounds, formatCarbon, formatYears, formatCarbonCost} from "../../util/displayFunctions";
 import SolutionModal from './SolutionModal'; // Import the modal component
 
 interface OptimisationResultsTableProps {
@@ -26,7 +26,7 @@ type Order = 'asc' | 'desc';
 
 const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ task, results }) => {
     const [order, setOrder] = useState<Order>('asc');
-    const [orderBy, setOrderBy] = useState<keyof OptimisationResult['objective_values']>('carbon_balance');
+    const [orderBy, setOrderBy] = useState<keyof OptimisationResult['objective_values']>('carbon_balance_scope_1');
     const [selectedSolution, setSelectedSolution] = useState<{ [key: string]: number } | null>(null);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
 
@@ -62,11 +62,29 @@ const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ tas
                     <TableRow>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'carbon_balance'}
-                                direction={orderBy === 'carbon_balance' ? order : 'asc'}
-                                onClick={() => handleRequestSort('carbon_balance')}
+                                active={orderBy === 'carbon_balance_scope_1'}
+                                direction={orderBy === 'carbon_balance_scope_1' ? order : 'asc'}
+                                onClick={() => handleRequestSort('carbon_balance_scope_1')}
                             >
-                                Carbon Balance
+                                Scope 1
+                            </TableSortLabel>
+                        </TableCell>
+                        <TableCell>
+                            <TableSortLabel
+                                active={orderBy === 'carbon_balance_scope_2'}
+                                direction={orderBy === 'carbon_balance_scope_2' ? order : 'asc'}
+                                onClick={() => handleRequestSort('carbon_balance_scope_2')}
+                            >
+                                Scope 2
+                            </TableSortLabel>
+                        </TableCell>
+                        <TableCell>
+                            <TableSortLabel
+                                active={orderBy === 'carbon_cost'}
+                                direction={orderBy === 'carbon_cost' ? order : 'asc'}
+                                onClick={() => handleRequestSort('carbon_cost')}
+                            >
+                                Carbon Cost
                             </TableSortLabel>
                         </TableCell>
                         <TableCell>
@@ -111,7 +129,9 @@ const OptimisationResultsTable: React.FC<OptimisationResultsTableProps> = ({ tas
                 <TableBody>
                     {sortedResults.map((result) => (
                         <TableRow key={result.result_id}>
-                            <TableCell>{formatCarbon(result.objective_values.carbon_balance)}</TableCell>
+                            <TableCell>{formatCarbon(result.objective_values.carbon_balance_scope_1)}</TableCell>
+                            <TableCell>{formatCarbon(result.objective_values.carbon_balance_scope_2)}</TableCell>
+                            <TableCell>{formatCarbonCost(result.objective_values.carbon_cost)}</TableCell>
                             <TableCell>{formatPounds(result.objective_values.cost_balance)}</TableCell>
                             <TableCell>{formatPounds(result.objective_values.capex)}</TableCell>
                             <TableCell>{formatYears(result.objective_values.payback_horizon)}</TableCell>

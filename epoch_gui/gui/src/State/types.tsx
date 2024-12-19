@@ -1,7 +1,9 @@
 
 export interface TaskObjectives {
     capex: boolean;
-    carbon_balance: boolean;
+    carbon_balance_scope_1: boolean;
+    carbon_balance_scope_2: boolean;
+    carbon_cost: boolean;
     cost_balance: boolean;
     payback_horizon: boolean;
     annualised_cost: boolean;
@@ -47,7 +49,9 @@ export interface OptimisationResult {
     exec_time?: string;
 
     objective_values: {
-        carbon_balance: number;
+        carbon_balance_scope_1: number;
+        carbon_balance_scope_2: number;
+        carbon_cost: number;
         cost_balance: number;
         capex: number;
         payback_horizon: number;

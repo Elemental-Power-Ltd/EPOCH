@@ -14,10 +14,15 @@ import TaskConfigForm from "../Components/TaskConfig/TaskConfigForm";
 function RunContainer() {
 
     const state = useEpochStore((state) => state.run);
+    const client_id = useEpochStore((state) => state.global.selectedClient?.client_id);
 
     const onRun = () => {
 
         const payload = {
+            client_id: client_id,
+            // TODO - name must be unique to portfolio so we're just reusing the site_id (but we already set that in site_data)
+            name: state.taskConfig.site_id,
+
             task_name: state.taskConfig.task_name,
             optimiser: {
                 name: state.taskConfig.optimiser,

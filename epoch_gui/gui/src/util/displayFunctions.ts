@@ -12,6 +12,12 @@ export const formatCarbon = (value: number): string => {
     return `${roundedValue.toLocaleString()} kg CO2e`;
 };
 
+export const formatCarbonCost = (value: number): string => {
+    const roundedValue = Math.round(value / 10) * 10;
+    return `${roundedValue.toLocaleString()} £/tonne`;
+};
+
+
 // Display years to 2 decimal places
 export const formatYears = (value: number): string => {
     return `${value.toFixed(2)} years`;

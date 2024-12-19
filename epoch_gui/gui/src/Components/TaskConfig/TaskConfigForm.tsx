@@ -27,7 +27,9 @@ const TaskConfigForm = () => {
 
   const displayNames = {
     "capex": "CAPEX",
-    "carbon_balance": "Carbon Balance",
+    "carbon_balance_scope_1": "Scope 1 Emissions",
+    "carbon_balance_scope_2": "Scope 2 Emissions",
+    "carbon_cost": "Carbon Cost",
     "cost_balance": "Cost Balance",
     "payback_horizon": "Payback Horizon",
     "annualised_cost": "Annualised Cost"
