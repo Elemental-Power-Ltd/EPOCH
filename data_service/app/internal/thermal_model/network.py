@@ -234,7 +234,7 @@ def add_heating_system_to_graph(G: HeatNetwork, design_flow_temperature: float =
         (9025 + 1494) * 1.2 * n_radiators * 1
     )  # 10x 1kW radiators weighting 19kg with 3.6L of water, plus pipes
 
-    RADIATOR_SIZE = 1.0  # m^2
+    RADIATOR_SIZE = 1000  # W
     G.add_node(BuildingElement.HeatSource, thermal_mass=float("inf"), temperature=design_flow_temperature, energy_change=0.0)
     G.add_node(
         BuildingElement.HeatingSystem,

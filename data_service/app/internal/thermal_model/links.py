@@ -162,9 +162,9 @@ class ThermalRadiativeLink:
         energy_change
             Total energy transferred during this step. Positive if transferring from v to u, negative otherwise.
         """
+
         system_delta_t = max(v_attrs["temperature"] - u_attrs["temperature"], -float("inf"))
         energy_change_j = self.power * dt * system_delta_t / self.delta_t
-
         u_attrs["energy_change"] += energy_change_j
         v_attrs["energy_change"] -= energy_change_j
 
@@ -235,13 +235,14 @@ class BoilerRadiativeLink:
         if thermostat_temperature < self.setpoint_temperature - 0.5:
             self.is_on = True
 
+        system_delta_t = 0.0
         if self.is_on:
-            system_delta_t = max(v_attrs["temperature"] - u_attrs["temperature"], 0.0)
+            system_delta_t = max(u_attrs["temperature"] - v_attrs["temperature"], 0.0)
 
             energy_change_j = self.power * dt * system_delta_t / self.delta_t
 
-        u_attrs["energy_change"] += energy_change_j
-        v_attrs["energy_change"] -= energy_change_j
+        u_attrs["energy_change"] -= energy_change_j
+        v_attrs["energy_change"] += energy_change_j
         return energy_change_j
 
 

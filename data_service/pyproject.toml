@@ -43,13 +43,17 @@ select = [
     "D", # pydocstyle
     #"NPY",
     #"ICN",
-    #"LOG"
+    #"LOG",
+    "FURB",
+    "TRY",
+    # "DOC", # docstring contents
 ]
 ignore = [
     "PD008", # at instead of loc
     "PD901", # pandas df variable name
     "PT011", # pytest raises too broad
     "RUF029", # declared async but doesn't use
+    "TRY003", # Avoid specifying long messages outside the exception class
 ]
 
 [tool.ruff.lint.flake8-pytest-style]
