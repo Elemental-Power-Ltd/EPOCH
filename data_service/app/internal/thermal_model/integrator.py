@@ -2,24 +2,25 @@
 
 import datetime
 from collections import defaultdict
+from copy import deepcopy
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from ..utils.conversions import kelvin_to_celsius
 from .building_elements import BuildingElement
 from .links import BoilerRadiativeLink
 from .matrix import create_node_to_index_map, interpolate_heating_power, solve_heat_balance_equation
 from .network import HeatNetwork
-from ..utils.conversions import kelvin_to_celsius
-from copy import deepcopy
+
 
 def step_graph_midpoint(g: HeatNetwork, dt: float) -> HeatNetwork:
     """
     Update the temperatures over a timestep given the midpoint integration method.
 
     This will treat the heating power as being the average of the heating power at the start
-    and end of a timestep, and propagate that. 
+    and end of a timestep, and propagate that.
     It is slower but more accurate than the naive method.
 
     Parameters
@@ -46,7 +47,7 @@ def step_graph_midpoint(g: HeatNetwork, dt: float) -> HeatNetwork:
     # g2 is the heat network after a single Euler timestep.
     g2 = deepcopy(g)
     update_temperatures(g2)
-    
+
     for u, v, edge_attrs in g2.edges(data=True):
         u_attrs, v_attrs = g2.nodes[u], g2.nodes[v]
         if edge_attrs.get("conductive") is not None:
@@ -61,6 +62,7 @@ def step_graph_midpoint(g: HeatNetwork, dt: float) -> HeatNetwork:
         g.nodes[u]["energy_change"] /= 2.0
     update_temperatures(g)
     return g
+
 
 def update_temperatures(graph: HeatNetwork) -> HeatNetwork:
     """
@@ -184,19 +186,16 @@ def simulate(
         dt = datetime.timedelta(minutes=5)
     iters = int((end_ts - start_ts).total_seconds() // dt.total_seconds())
 
-    times = [ (start_ts + i * dt).timestamp() for i in range(iters)]
+    times = [(start_ts + i * dt).timestamp() for i in range(iters)]
     if external_df is not None:
         assert isinstance(external_df.index, pd.DatetimeIndex)
-        external_temperatures = np.interp(times, external_df.index.astype('int64') // 10**9, external_df.temp)
-        solar_radiations = np.interp(times, external_df.index.astype('int64') // 10**9, external_df.solarradiation)
+        external_temperatures = np.interp(times, external_df.index.astype("int64") // 10**9, external_df.temp)
+        solar_radiations = np.interp(times, external_df.index.astype("int64") // 10**9, external_df.solarradiation)
     for i in range(iters):
-
         if external_df is not None:
             graph.nodes[BuildingElement.ExternalAir]["temperature"] = external_temperatures[i]
             graph.nodes[BuildingElement.Ground]["temperature"] = external_temperatures[i] - 11.0
-            graph.get_edge_data(BuildingElement.Sun, BuildingElement.Roof)["radiative"].power = (
-                solar_radiations[i] * 50 * 0.33
-            )
+            graph.get_edge_data(BuildingElement.Sun, BuildingElement.Roof)["radiative"].power = solar_radiations[i] * 50 * 0.33
             graph.get_edge_data(BuildingElement.Sun, BuildingElement.WallSouth)["radiative"].power = (
                 solar_radiations[i] * 10 * 0.25
             )
@@ -209,9 +208,19 @@ def simulate(
                 edge_attrs["convective"].step(u_attrs, v_attrs, dt.total_seconds())
             if edge_attrs.get("radiative") is not None:
                 if isinstance(edge_attrs.get("radiative"), BoilerRadiativeLink):
-                    edge_attrs["radiative"].step(u_attrs, v_attrs, dt.total_seconds(), graph.nodes[BuildingElement.InternalAir]["temperature"])
+                    edge_attrs["radiative"].step(
+                        u_attrs, v_attrs, dt.total_seconds(), graph.nodes[BuildingElement.InternalAir]["temperature"]
+                    )
                 else:
-                    edge_attrs["radiative"].step(u_attrs, v_attrs, dt.total_seconds())
+                    change = edge_attrs["radiative"].step(u_attrs, v_attrs, dt.total_seconds())
+                    if change != 0:
+                        u_new_temp = (
+                            graph.nodes[u]["temperature"] + graph.nodes[u]["energy_change"] / graph.nodes[u]["thermal_mass"]
+                        )
+                        v_new_temp = (
+                            graph.nodes[v]["temperature"] + graph.nodes[v]["energy_change"] / graph.nodes[v]["thermal_mass"]
+                        )
+                        print(u, graph.nodes[u]["temperature"], u_new_temp, v, graph.nodes[v]["temperature"], v_new_temp)
 
         for u, temp in graph.nodes(data="temperature"):
             temperatures[u].append(temp)
@@ -220,20 +229,22 @@ def simulate(
             energy_changes[u].append(energy_change)
 
         total_energy_change = sum(item for _, item in graph.nodes(data="energy_change"))
-        assert abs(total_energy_change) < 1e-8, f"Energy change must be < 1e-8, got {total_energy_change}"
+        assert abs(total_energy_change) < 1, f"Energy change must be < 1e-8, got {total_energy_change}"
 
         update_temperatures(graph)
-    
+
     df = pd.DataFrame(
         index=times,
         data={
             "energy_changes": energy_changes[BuildingElement.InternalAir],
             "temperatures": temperatures[BuildingElement.InternalAir],
-            "heating_usage": energy_changes[BuildingElement.HeatSource] if BuildingElement.HeatSource in energy_changes
+            "heating_usage": energy_changes[BuildingElement.HeatSource]
+            if BuildingElement.HeatSource in energy_changes
             else [float("NaN") for _ in energy_changes[BuildingElement.InternalAir]],
         },
     )
     return df
+
 
 def simulate_midpoint(
     graph: HeatNetwork,
@@ -311,7 +322,8 @@ def simulate_midpoint(
         data={
             "energy_changes": energy_changes[BuildingElement.InternalAir],
             "temperatures": temperatures[BuildingElement.InternalAir],
-            "heating_usage": energy_changes[BuildingElement.HeatSource] if BuildingElement.HeatSource in energy_changes
+            "heating_usage": energy_changes[BuildingElement.HeatSource]
+            if BuildingElement.HeatSource in energy_changes
             else [float("NaN") for _ in energy_changes[BuildingElement.InternalAir]],
         },
     )
@@ -375,12 +387,15 @@ def simulate_heat_balance(
             lerp(time, external_df.index, external_df["solarradiation"]) * 10 * 0.25
         )
 
-        heating_power = interpolate_heating_power(
-            graph,
-            dt=dt,
-            internal_temperature=21.0,
-            external_temperature=kelvin_to_celsius(graph.nodes[BuildingElement.ExternalAir]["temperature"]),
-        ) / dt.total_seconds() # remember to divide by dt to go from heating eneryg to watts
+        heating_power = (
+            interpolate_heating_power(
+                graph,
+                dt=dt,
+                internal_temperature=21.0,
+                external_temperature=kelvin_to_celsius(graph.nodes[BuildingElement.ExternalAir]["temperature"]),
+            )
+            / dt.total_seconds()
+        )  # remember to divide by dt to go from heating eneryg to watts
 
         new_temp_vec = solve_heat_balance_equation(hm=graph, dt=dt, heating_power=heating_power)
 

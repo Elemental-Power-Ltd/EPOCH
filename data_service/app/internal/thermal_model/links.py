@@ -52,11 +52,11 @@ class ConductiveLink:
         energy_change
             Total energy transferred during this step. Positive if transferring from v to u, negative otherwise.
         """
-        temperature_diff = v_attrs["temperature"] - u_attrs["temperature"]
+        temperature_diff = u_attrs["temperature"] - v_attrs["temperature"]
 
         energy_change_j = self.heat_transfer * self.interface_area * temperature_diff * dt
-        u_attrs["energy_change"] += energy_change_j
-        v_attrs["energy_change"] -= energy_change_j
+        u_attrs["energy_change"] -= energy_change_j
+        v_attrs["energy_change"] += energy_change_j
 
         return energy_change_j
 
@@ -90,7 +90,7 @@ class RadiativeLink:
         """
         Pass heat between the two sides of this radiative link.
 
-        Node `u` will gain energy from node `v`.
+        Node `v` will gain energy from node `u`.
 
         Parameters
         ----------
@@ -108,8 +108,8 @@ class RadiativeLink:
         """
         energy_change_j = self.power * dt
 
-        u_attrs["energy_change"] += energy_change_j
-        v_attrs["energy_change"] -= energy_change_j
+        u_attrs["energy_change"] -= energy_change_j
+        v_attrs["energy_change"] += energy_change_j
 
         return energy_change_j
 
@@ -146,7 +146,7 @@ class ThermalRadiativeLink:
         """
         Pass heat between the two sides of this thermal radiative link.
 
-        Node `u` will gain energy from node `v`.
+        Node `v` will gain energy from node `u`.
 
         Parameters
         ----------
@@ -160,13 +160,12 @@ class ThermalRadiativeLink:
         Returns
         -------
         energy_change
-            Total energy transferred during this step. Positive if transferring from v to u, negative otherwise.
+            Total energy transferred during this step. Positive if transferring from u to v, negative otherwise.
         """
-
-        system_delta_t = max(v_attrs["temperature"] - u_attrs["temperature"], -float("inf"))
+        system_delta_t = u_attrs["temperature"] - v_attrs["temperature"]
         energy_change_j = self.power * dt * system_delta_t / self.delta_t
-        u_attrs["energy_change"] += energy_change_j
-        v_attrs["energy_change"] -= energy_change_j
+        u_attrs["energy_change"] -= energy_change_j
+        v_attrs["energy_change"] += energy_change_j
 
         return energy_change_j
 
@@ -287,8 +286,8 @@ class ConvectiveLink:
         temperature_diff = v_attrs["temperature"] - u_attrs["temperature"]
         energy_change_j = air_changes * u_attrs["thermal_mass"] * temperature_diff
 
-        u_attrs["energy_change"] += energy_change_j
-        v_attrs["energy_change"] -= energy_change_j
+        u_attrs["energy_change"] -= energy_change_j
+        v_attrs["energy_change"] += energy_change_j
 
         return energy_change_j
 

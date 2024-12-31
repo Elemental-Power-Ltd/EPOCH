@@ -113,6 +113,7 @@ def parse_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame:
     consumption_df = pd.read_csv(fname, skipinitialspace=True).rename(
         columns={
             "Consumption (kWh)": "consumption",
+            "Consumption (kwh)": "consumption",
             "HH Read (kwh)": "consumption",
             "HH Read (kWh)": "consumption",
             "kWh": "consumption",

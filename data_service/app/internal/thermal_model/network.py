@@ -192,7 +192,7 @@ def add_structure_to_graph(
 
     G.add_edge(BuildingElement.Sun, BuildingElement.Roof, conductive=None, radiative=RadiativeLink(1000))
     G.add_edge(BuildingElement.Sun, BuildingElement.WallSouth, conductive=None, radiative=RadiativeLink(150))
-    G.add_edge(BuildingElement.InternalGains, BuildingElement.InternalAir, conductive=None, radiative=RadiativeLink(1000))
+    G.add_edge(BuildingElement.InternalGains, BuildingElement.InternalAir, conductive=None, radiative=RadiativeLink(power=1000))
     G.add_edge(
         BuildingElement.InternalAir,
         BuildingElement.ExternalAir,
@@ -247,14 +247,14 @@ def add_heating_system_to_graph(G: HeatNetwork, design_flow_temperature: float =
         BuildingElement.HeatSource,
         BuildingElement.HeatingSystem,
         conductive=None,
-        radiative=BoilerRadiativeLink(RADIATOR_SIZE * n_radiators * 5 + 1e4, delta_t=50.0, setpoint_temperature=21.0),
+        radiative=BoilerRadiativeLink(power=RADIATOR_SIZE * n_radiators * 5 + 1e4, delta_t=50.0, setpoint_temperature=21.0),
     )
 
     G.add_edge(
         BuildingElement.HeatingSystem,
         BuildingElement.InternalAir,
         conductive=None,
-        radiative=ThermalRadiativeLink(RADIATOR_SIZE * n_radiators, delta_t=50.0),
+        radiative=ThermalRadiativeLink(power=RADIATOR_SIZE * n_radiators, delta_t=50.0),
     )
     return G
 

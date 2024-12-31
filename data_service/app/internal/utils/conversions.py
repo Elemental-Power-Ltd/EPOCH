@@ -254,6 +254,7 @@ def relative_to_specific_humidity[T: (npt.NDArray[np.floating], float, pd.Series
     val: T = g_per_kg * (rel_hum / 100) * gas_constant_ratio * eqm_mixing_ratio / air_pres_pa
     return val
 
+
 def try_convert_float(maybe_float: str | float | datetime.datetime | None) -> float | None:
     """
     Try to convert a value to a float, returning None otherwise.

@@ -1,21 +1,27 @@
 """Drawn graphs and visualisations of the network."""
 
 from collections import defaultdict
+from typing import Any
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-
 import numpy.typing as npt
 
-from .network import HeatNetwork
+from ..utils.utils import symlog
 from .building_elements import BuildingElement
 from .matrix import create_node_to_index_map
-from ..utils.utils import symlog
+from .network import HeatNetwork
 
-def draw_heat_network(G: nx.Graph, ax: mpl.axes._axes.Axes | None = None,
-                      seed: np.random.RandomState | None = None) -> mpl.axes._axes.Axes:
+
+def draw_heat_network(
+    G: nx.Graph,
+    ax: mpl.axes._axes.Axes | None = None,
+    draw_edge_labels: bool = False,
+    seed: np.random.RandomState | None = None,
+    pos: dict[Any, tuple[float, float]] | None = None,
+) -> mpl.axes._axes.Axes:
     """
     Draw a network representation of this graph.
 
@@ -56,7 +62,9 @@ def draw_heat_network(G: nx.Graph, ax: mpl.axes._axes.Axes | None = None,
         BuildingElement.HeatingSystem: "#e7e3e1",
     }
 
-    pos = nx.spring_layout(G, seed=seed)
+    if pos is None:
+        pos = nx.spring_layout(G, seed=seed)
+
     nx.draw_networkx(
         G,
         ax=ax,
@@ -65,10 +73,23 @@ def draw_heat_network(G: nx.Graph, ax: mpl.axes._axes.Axes | None = None,
         edgecolors=[cmap(norm(item["temperature"])) for _, item in G.nodes(data=True)],
         linewidths=2.0,
     )
+
+    if draw_edge_labels:
+        nx.draw_networkx_edge_labels(
+            G,
+            ax=ax,
+            pos=pos,
+            edge_labels={
+                (u, v): ", ".join(key for key, val in attrs.items() if val is not None) for u, v, attrs in G.edges(data=True)
+            },
+        )
     return ax
 
-def plot_energy_heatmap(arr: npt.NDArray[np.floating], hn: HeatNetwork, ax: mpl.axes._axes.Axes | None = None) -> mpl.axes._axes.Axes:
-    """ 
+
+def plot_energy_heatmap(
+    arr: npt.NDArray[np.floating], hn: HeatNetwork, ax: mpl.axes._axes.Axes | None = None
+) -> mpl.axes._axes.Axes:
+    """
     Create a heatmap showing energy flows.
 
     Red means heat gain depending on temperature of the other node, blue means heat loss depending on temperature.

@@ -9,7 +9,7 @@ import logging
 import os
 from pathlib import Path
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class SecretDict[K, V](dict):
@@ -83,9 +83,13 @@ def load_dotenv(fname: os.PathLike = Path(".env")) -> dict[str, str]:
             return {}
 
     with open(fpath) as fi:
-        for line in fi:
-            key, value = line.strip().split("=", 1)
-            os.environ[key.strip()] = value.strip()
+        for idx, line in enumerate(fi):
+            try:
+                key, value = line.strip().split("=", 1)
+                os.environ[key.strip()] = value.strip()
+            except ValueError:
+                logger.warning(f"Couldn't split line {idx} in {fi} into the form `key=value`.")
+                continue
     # turn this into a dict to prevent any trouble with weird types
     return dict(os.environ.items())
 
