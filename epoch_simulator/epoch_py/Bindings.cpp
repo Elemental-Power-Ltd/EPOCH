@@ -9,6 +9,7 @@
 #include "../epoch_lib/Simulation/TaskData.hpp"
 #include "../epoch_lib/Definitions.hpp"
 #include "../epoch_lib/io/EnumToString.hpp"
+#include "../epoch_lib/io/TaskDataJson.hpp"
 #include "../epoch_lib/Simulation/Costs/CostData.hpp"
 #include "../epoch_lib/Simulation/Costs/Capex.hpp"
 
@@ -38,6 +39,10 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("mop", &TaskData::mop)
 		.def_readwrite("renewables", &TaskData::renewables)
 		.def_readwrite("config", &TaskData::config)
+		.def_static("from_json", [](const std::string& json_str) {
+			nlohmann::json j = nlohmann::json::parse(json_str);
+			return j.get<TaskData>();
+		})
 		.def("__repr__", &taskDataToString);
 
 	pybind11::class_<Building>(m, "Building")

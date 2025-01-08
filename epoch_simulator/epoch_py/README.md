@@ -44,6 +44,8 @@ A default TaskData contains no components. Components can be added by creating a
 
 This class implements the `__repr__` method so the print method can be used to see the full state.
 
+TaskData also contains a static `from_json` method to create an instance from a json string.
+
 #### Simulator
 
 `Simulator()`
