@@ -186,6 +186,14 @@ class DatasetEntry(pydantic.BaseModel):
     dataset_id: dataset_id_t = dataset_id_field
     dataset_type: DatasetTypeEnum
     created_at: pydantic.AwareDatetime
+    start_ts: pydantic.AwareDatetime | None = None
+    end_ts: pydantic.AwareDatetime | None = None
+    num_entries: int | None = None
+    resolution: datetime.timedelta | None = Field(
+        examples=[datetime.timedelta(minutes=30), datetime.timedelta(days=28)],
+        default=None,
+        description="Average time span between entries in this dataset.",
+    )
 
 
 class SiteIdNamePair(pydantic.BaseModel):

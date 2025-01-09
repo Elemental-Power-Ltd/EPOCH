@@ -169,7 +169,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
         args=(gas_df, weather_df),
         method="Nelder-Mead",
         bounds=[(0, None), (None, 0), (None, None), (0, 1), (13, 20)],
-    )
+    )  # type: ignore
     assert result.success, "Optimisation did not succeed"
     bait_fitted = result.x
     bait_hdd = compute_monthly_hdd(
@@ -180,7 +180,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
         humidity_discomfort=bait_fitted[2],
         smoothing=bait_fitted[3],
         thresh=bait_fitted[4],
-    )
+    )  # type: ignore
     gas_df["hdd"] = bait_hdd
 
     mdl = LinearRegression(positive=True, fit_intercept=False)
@@ -257,7 +257,7 @@ def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame, a
             (0.0, 1.0 if apply_bait else 0.0),
             (13, 20),
         ],
-    )
+    )  # type: ignore
     assert result.success, "Optimisation did not succeed"
     bait_fitted = result.x
     bait_hdd = compute_monthly_hdd(
