@@ -72,7 +72,7 @@ class TestGetFixedRates:
     @pytest.mark.asyncio
     async def test_agile_tariff(self) -> None:
         """Test that we don't try to get single costs for agile tariffs."""
-        with pytest.raises(ValueError, match="use `get_octopus_tariff` for agile or varying tariffs."):
+        with pytest.raises(ValueError, match=r"use `get_octopus_tariff` for agile or varying tariffs."):
             async with httpx.AsyncClient() as client:
                 _ = await it.get_fixed_rates("AGILE-FLEX-22-11-25", region_code=GSPEnum.C, client=client)
 
