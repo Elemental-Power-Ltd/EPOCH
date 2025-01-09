@@ -22,6 +22,7 @@ void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& re
 void writeObjectiveResultHeader(std::ofstream& outFile);
 void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& result);
 
+std::string valueOrEmpty(const year_TS& vec, Eigen::Index i);
 void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& reportData);
 
 nlohmann::json outputToJson(const OutputValues& data);

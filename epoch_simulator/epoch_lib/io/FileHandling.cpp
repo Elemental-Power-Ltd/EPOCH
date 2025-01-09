@@ -370,6 +370,15 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	outFile << "\n";
 }
 
+// Utility method for writing cells in a CSV
+// Return the string value if safe, otherwise the empty string
+std::string valueOrEmpty(const year_TS& vec, Eigen::Index i) {
+	if (vec.size() > i) {
+		return std::to_string(vec[i]);
+	}
+	return "";
+}
+
 void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& reportData)
 {
 	std::ofstream outFile(filepath);
@@ -411,40 +420,41 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& repo
 	outFile << "DHW_Shortfall";  // no trailing comma
 	outFile << "\n"; // newline
 
-	// write the values
-	for (int i = 0; i < reportData.Actual_import_shortfall.size(); i++) {
-		outFile << reportData.Actual_import_shortfall[i] << ",";
-		outFile << reportData.Actual_curtailed_export[i] << ",";
-		outFile << reportData.Heat_shortfall[i] << ",";
-		outFile << reportData.Heat_surplus[i] << ",";
-		outFile << reportData.Hotel_load[i] << ",";
-		outFile << reportData.Heatload[i] << ",";
-		outFile << reportData.PVdcGen[i] << ",";
-		outFile << reportData.PVacGen[i] << ",";
-		outFile << reportData.EV_targetload[i] << ",";
-		outFile << reportData.EV_actualload[i] << ",";
-		outFile << reportData.ESS_charge[i] << ",";
-		outFile << reportData.ESS_discharge[i] << ",";
-		outFile << reportData.ESS_resulting_SoC[i] << ",";
-		outFile << reportData.ESS_AuxLoad[i] << ",";
-		outFile << reportData.ESS_RTL[i] << ",";
-		outFile << reportData.Data_centre_target_load[i] << ",";
-		outFile << reportData.Data_centre_actual_load[i] << ",";
-		outFile << reportData.Data_centre_target_heat[i] << ",";
-		outFile << reportData.Data_centre_available_hot_heat[i] << ",";
-		outFile << reportData.Grid_Import[i] << ",";
-		outFile << reportData.Grid_Export[i] << ",";
-		outFile << reportData.MOP_load[i] << ",";
-		outFile << reportData.GasCH_load[i] << ",";
-		outFile << reportData.DHW_load[i] << ",";
-		outFile << reportData.DHW_charging[i] << ",";
-		outFile << reportData.DHW_SoC[i] << ",";
-		outFile << reportData.DHW_Standby_loss[i] << ",";
-		outFile << reportData.DHW_ave_temperature[i] << ",";
-		outFile << reportData.DHW_Shortfall[i];  // no trailing comma
-		outFile << "\n";
-	}
+	// Actual import shortfall is derived from TempSum so should always be present
+	Eigen::Index timesteps = reportData.Actual_import_shortfall.size();
 
+	// Write the values, handling empty vectors
+	for (Eigen::Index i = 0; i < timesteps; ++i) {
+		outFile << valueOrEmpty(reportData.Actual_import_shortfall, i) << ","
+			<< valueOrEmpty(reportData.Actual_curtailed_export, i) << ","
+			<< valueOrEmpty(reportData.Heat_shortfall, i) << ","
+			<< valueOrEmpty(reportData.Heat_surplus, i) << ","
+			<< valueOrEmpty(reportData.Hotel_load, i) << ","
+			<< valueOrEmpty(reportData.Heatload, i) << ","
+			<< valueOrEmpty(reportData.PVdcGen, i) << ","
+			<< valueOrEmpty(reportData.PVacGen, i) << ","
+			<< valueOrEmpty(reportData.EV_targetload, i) << ","
+			<< valueOrEmpty(reportData.EV_actualload, i) << ","
+			<< valueOrEmpty(reportData.ESS_charge, i) << ","
+			<< valueOrEmpty(reportData.ESS_discharge, i) << ","
+			<< valueOrEmpty(reportData.ESS_resulting_SoC, i) << ","
+			<< valueOrEmpty(reportData.ESS_AuxLoad, i) << ","
+			<< valueOrEmpty(reportData.ESS_RTL, i) << ","
+			<< valueOrEmpty(reportData.Data_centre_target_load, i) << ","
+			<< valueOrEmpty(reportData.Data_centre_actual_load, i) << ","
+			<< valueOrEmpty(reportData.Data_centre_target_heat, i) << ","
+			<< valueOrEmpty(reportData.Data_centre_available_hot_heat, i) << ","
+			<< valueOrEmpty(reportData.Grid_Import, i) << ","
+			<< valueOrEmpty(reportData.Grid_Export, i) << ","
+			<< valueOrEmpty(reportData.MOP_load, i) << ","
+			<< valueOrEmpty(reportData.GasCH_load, i) << ","
+			<< valueOrEmpty(reportData.DHW_load, i) << ","
+			<< valueOrEmpty(reportData.DHW_charging, i) << ","
+			<< valueOrEmpty(reportData.DHW_SoC, i) << ","
+			<< valueOrEmpty(reportData.DHW_Standby_loss, i) << ","
+			<< valueOrEmpty(reportData.DHW_ave_temperature, i) << ","
+			<< valueOrEmpty(reportData.DHW_Shortfall, i) << "\n";
+	}
 }
 
 
