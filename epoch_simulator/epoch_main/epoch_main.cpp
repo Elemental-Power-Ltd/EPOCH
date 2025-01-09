@@ -95,6 +95,9 @@ void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 
 	auto result = simulator.simulateScenario(taskData, true);
 
+	auto fp = fileConfig.getOutputDir() / "FullTimeSeries.csv";
+	writeTimeSeriesToCSV(fp, *result.report_data);
+
 	// TODO - wrangle with utf and locales to allow the pound sign
 	spdlog::info("Scope 1 emissions: {} kgCO2e / year", result.scenario_carbon_balance_scope_1);
 	spdlog::info("Scope 2 emissions: {} kgCO2e / year", result.scenario_carbon_balance_scope_2);
