@@ -117,7 +117,7 @@ def assign_hh_dhw_greedy(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float)
         # we use this default argument to please ruff, otherwise we can trip over a late binding
         # for the dataframe
         # https://docs.astral.sh/ruff/rules/function-uses-loop-variable/
-        res = scipy.optimize.minimize_scalar(lambda x, df=day_df: (dhw_kwh - np.sum(np.minimum(x, df.consumption))) ** 2)
+        res = scipy.optimize.minimize_scalar(lambda x, df=day_df: (dhw_kwh - np.sum(np.minimum(x, df.consumption))) ** 2)  # type: ignore
 
         hh_gas_df.loc[day_mask, "dhw"] = np.minimum(hh_gas_df.loc[day_mask, "consumption"], float(res.x))
     hh_gas_df["heating"] = hh_gas_df["consumption"] - hh_gas_df["dhw"]
