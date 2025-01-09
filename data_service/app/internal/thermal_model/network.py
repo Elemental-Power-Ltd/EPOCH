@@ -60,8 +60,9 @@ def initialise_outdoors() -> HeatNetwork:
 
 def add_structure_to_graph(
     G: HeatNetwork,
-    wall_area: float,
+    wall_width: float,
     window_area: float,
+    wall_height: float | None = None,
     floor_area: float | None = None,
     roof_area: float | None = None,
     air_volume: float | None = None,
@@ -80,8 +81,11 @@ def add_structure_to_graph(
     ----------
     G
         Graph from `initialise_outdoors()` to add a structure to
-    wall_area
-        Area in m^2 of each the four walls of this building, presuming they're all the same size (excluding windows!)
+    wall_width
+        Width in m of each the four walls of this building, presuming they're all the same size (excluding windows!).
+    wall_height
+        Height in m of each the four walls of this building, presuming they're all the same size (excluding windows!).
+        If None, presumed to be half the width of the wall.
     window_area
         Area in m^2 of the windows on the North & South walls of the building, presuming they're all one big bit of glass.
     floor_area
@@ -89,6 +93,11 @@ def add_structure_to_graph(
     roof_area
         Area of the roof of this building receiving sunlight. If None, presume the same as the floor area.
     """
+
+    if wall_height is None:
+        wall_height = wall_width / 2.0
+
+    wall_area = (wall_width * wall_height) - window_area
     assert BuildingElement.InternalAir not in G.nodes, "Must not have already added a structure."
     if floor_area is None:
         floor_area = wall_area
@@ -97,25 +106,25 @@ def add_structure_to_graph(
         roof_area = floor_area
 
     if air_volume is None:
-        air_volume = floor_area * wall_area ** (0.5)
+        air_volume = floor_area * wall_width * wall_height
     wall_u_value = BRICK_U_VALUE
-    WALL_WIDTH = 0.25  # m
+    WALL_DEPTH = 0.25  # m
     G.add_node(BuildingElement.InternalAir, thermal_mass=air_volume * AIR_HEAT_CAPACITY, temperature=18.0, energy_change=0.0)
     G.add_node(
         BuildingElement.WallSouth,
-        thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_WIDTH,
+        thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_DEPTH,
         temperature=18.0,
         energy_change=0.0,
     )
     G.add_node(
-        BuildingElement.WallEast, thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_WIDTH, temperature=18.0, energy_change=0.0
+        BuildingElement.WallEast, thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_DEPTH, temperature=18.0, energy_change=0.0
     )
     G.add_node(
-        BuildingElement.WallWest, thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_WIDTH, temperature=18.0, energy_change=0.0
+        BuildingElement.WallWest, thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_DEPTH, temperature=18.0, energy_change=0.0
     )
     G.add_node(
         BuildingElement.WallNorth,
-        thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_WIDTH,
+        thermal_mass=BRICK_HEAT_CAPACITY * wall_area * WALL_DEPTH,
         temperature=18.0,
         energy_change=0.0,
     )
@@ -260,8 +269,9 @@ def add_heating_system_to_graph(G: HeatNetwork, design_flow_temperature: float =
 
 
 def create_simple_structure(
-    wall_area: float,
+    wall_width: float,
     window_area: float,
+    wall_height: float | None = None,
     floor_area: float | None = None,
     roof_area: float | None = None,
     air_volume: float | None = None,
@@ -296,7 +306,7 @@ def create_simple_structure(
     """
     G = initialise_outdoors()
     G = add_structure_to_graph(
-        G, wall_area=wall_area, window_area=window_area, floor_area=floor_area, roof_area=roof_area, air_volume=air_volume
+        G, wall_width=wall_width, wall_height=wall_height, window_area=window_area, floor_area=floor_area, roof_area=roof_area, air_volume=air_volume
     )
     G = add_heating_system_to_graph(G, design_flow_temperature=design_flow_temperature, n_radiators=n_radiators)
     return G

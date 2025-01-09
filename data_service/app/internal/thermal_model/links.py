@@ -283,7 +283,7 @@ class ConvectiveLink:
             Total energy transferred during this step. Positive if transferring from v to u, negative otherwise.
         """
         air_changes = self.ach * dt / 3600.0
-        temperature_diff = v_attrs["temperature"] - u_attrs["temperature"]
+        temperature_diff = u_attrs["temperature"] - v_attrs["temperature"]
         energy_change_j = air_changes * u_attrs["thermal_mass"] * temperature_diff
 
         u_attrs["energy_change"] -= energy_change_j

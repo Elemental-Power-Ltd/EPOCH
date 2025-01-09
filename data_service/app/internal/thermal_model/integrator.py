@@ -147,6 +147,7 @@ def simulate(
     external_df: pd.DataFrame | None = None,
     end_ts: datetime.datetime | None = None,
     dt: datetime.timedelta | None = None,
+    elec_df: pd.DataFrame | None = None
 ) -> pd.DataFrame:
     """
     Simulate the time series evolution of this heating network.
@@ -191,6 +192,10 @@ def simulate(
         assert isinstance(external_df.index, pd.DatetimeIndex)
         external_temperatures = np.interp(times, external_df.index.astype("int64") // 10**9, external_df.temp)
         solar_radiations = np.interp(times, external_df.index.astype("int64") // 10**9, external_df.solarradiation)
+    if elec_df is not None:
+        assert isinstance(elec_df.index, pd.DatetimeIndex)
+        internal_gains = np.interp(times, elec_df.index.astype("int64") // 10**9, elec_df.consumption)
+
     for i in range(iters):
         if external_df is not None:
             graph.nodes[BuildingElement.ExternalAir]["temperature"] = external_temperatures[i]
@@ -199,7 +204,10 @@ def simulate(
             graph.get_edge_data(BuildingElement.Sun, BuildingElement.WallSouth)["radiative"].power = (
                 solar_radiations[i] * 10 * 0.25
             )
-
+        if elec_df is not None:
+            graph.get_edge_data(BuildingElement.InternalGains, BuildingElement.InternalAir)["radiative"].power = (
+                internal_gains[i]
+            )            
         for u, v, edge_attrs in graph.edges(data=True):
             u_attrs, v_attrs = graph.nodes[u], graph.nodes[v]
             if edge_attrs.get("conductive") is not None:
@@ -220,7 +228,7 @@ def simulate(
                         v_new_temp = (
                             graph.nodes[v]["temperature"] + graph.nodes[v]["energy_change"] / graph.nodes[v]["thermal_mass"]
                         )
-                        print(u, graph.nodes[u]["temperature"], u_new_temp, v, graph.nodes[v]["temperature"], v_new_temp)
+                        # print(u, graph.nodes[u]["temperature"], u_new_temp, v, graph.nodes[v]["temperature"], v_new_temp)
 
         for u, temp in graph.nodes(data="temperature"):
             temperatures[u].append(temp)
