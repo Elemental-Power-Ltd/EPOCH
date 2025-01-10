@@ -8,6 +8,7 @@ varies over time as the grid changes.
 import datetime
 import itertools
 import logging
+import typing
 import uuid
 
 import aiometer
@@ -87,7 +88,7 @@ async def fetch_carbon_intensity(
         # Sometimes we get a nested object one deep, especially for regional data
         subdata = subdata["data"]
 
-    seen_keys = set()
+    seen_keys: set[str] = set()
     for item in subdata:
         entry = {
             "start_ts": pd.to_datetime(item["from"]),
@@ -102,7 +103,7 @@ async def fetch_carbon_intensity(
             seen_keys.update(entry.keys())
     seen_keys.remove("start_ts")
     seen_keys.remove("end_ts")
-    results = sorted(results, key=lambda x: x["start_ts"])
+    results = sorted(results, key=lambda x: typing.cast(datetime.datetime, x["start_ts"]))
     if not interpolate:
         return results
 
@@ -111,12 +112,13 @@ async def fetch_carbon_intensity(
     for key in seen_keys:
         xs = (new_times - fetch_start_ts).total_seconds().to_numpy()
         xp = np.asarray([
-            (item["start_ts"] - fetch_start_ts).total_seconds()
+            (typing.cast(datetime.datetime, item["start_ts"]) - fetch_start_ts).total_seconds()
             for item in results
-            if item.get(key) is not None and np.isfinite(item[key])
+            if item.get(key) is not None and np.isfinite(typing.cast(float, item[key]))
         ])
-        yp = np.asarray([item[key] for item in results if item.get(key) is not None and np.isfinite(item[key])])
-        # print(key, xs, xp, yp)
+        yp = np.asarray([
+            item[key] for item in results if item.get(key) is not None and np.isfinite(typing.cast(float, item[key]))
+        ])
         if len(xp) == 0 or len(yp) == 0:
             interpolated_vals = np.full_like(xp, np.nan)
         else:
@@ -313,7 +315,7 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
     carbon_df.index = pd.to_datetime(carbon_df.index)
 
     # TODO (2025-01-09 MHJB): fix this awful pandas repeated interpolation, reindexing and resampling, it's a mess
-    carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().infer_objects(copy=False).interpolate(method="time")
+    carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().infer_objects().interpolate(method="time")
     carbon_df = carbon_df.reindex(
         pd.DatetimeIndex(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left"))
     )
