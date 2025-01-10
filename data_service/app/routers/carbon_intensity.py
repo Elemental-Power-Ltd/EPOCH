@@ -106,7 +106,6 @@ async def fetch_carbon_intensity(
     if not interpolate:
         return results
 
-    print(results[:10])
     new_times = pd.date_range(fetch_start_ts, fetch_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     interpolated_data = {}
     for key in seen_keys:
