@@ -73,6 +73,35 @@ class TestCarbonIntensity:
             == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         ), "Not enough entries in set"
 
+    @pytest.mark.asyncio
+    async def test_check_right_length(
+        self,
+        grid_co2_metadata: pydantic.Json,
+        client: AsyncClient,
+        demo_start_ts: datetime.datetime,
+        demo_end_ts: datetime.datetime,
+        demo_site_id: str,
+    ) -> None:
+        _ = grid_co2_metadata
+        grid_co2_result = (
+            await client.post(
+                "/list-latest-datasets",
+                json={"site_id": demo_site_id},
+            )
+        ).json()
+
+        for item in grid_co2_result.values():
+            if item["dataset_id"] == grid_co2_metadata["dataset_id"]:
+                assert datetime.datetime.fromisoformat(item["start_ts"]) == demo_start_ts
+                assert datetime.datetime.fromisoformat(item["end_ts"]) == demo_end_ts
+                assert (
+                    item["num_entries"]
+                    == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+                )
+                break
+        else:
+            pytest.fail(f"Did not find matching dataset in {grid_co2_result}")
+
 
 class TestFetchCarbonIntensity:
     """Tests for the specific fetching function."""
@@ -86,7 +115,7 @@ class TestFetchCarbonIntensity:
         bad_end_ts = datetime.datetime(year=2023, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
         async with AsyncClient(timeout=60) as client:
             res = await fetch_carbon_intensity(
-                client=client, postcode="SW1A", timestamps=(bad_start_ts, bad_end_ts), use_regional=True
+                client=client, postcode="SW1A", timestamps=(bad_start_ts, bad_end_ts), use_regional=True, interpolate=True
             )
         for first, second in itertools.pairwise(res):
             assert first["end_ts"] == second["start_ts"]

@@ -29,6 +29,7 @@ async def fetch_carbon_intensity(
     postcode: str | None,
     timestamps: tuple[pydantic.AwareDatetime, pydantic.AwareDatetime],
     use_regional: bool = True,
+    interpolate: bool = False,
 ) -> list[dict[str, float | datetime.datetime | None]]:
     """
     Fetch a single lot of data from the carbon itensity API.
@@ -46,6 +47,12 @@ async def fetch_carbon_intensity(
 
     timestamps
         A (start_ts, end_ts) pairing for the time period we want to check. Should be within 14 days of each other.
+
+    use_regional
+        Whether to use regional carbon itensity data or national
+
+    interpolate
+        Whether to interpolate to half hourly gaps in this function (leave False if you do so elsewhere)
 
     Returns
     -------
@@ -74,26 +81,58 @@ async def fetch_carbon_intensity(
     if not response.status_code == 200:
         raise HTTPException(400, f"{ci_url} returned `{response.text}`")
     data = response.json()
-    results = []
+    results: list[dict[str, float | datetime.datetime | None]] = []
     subdata = data["data"]
     if "data" in subdata:
         # Sometimes we get a nested object one deep, especially for regional data
         subdata = subdata["data"]
 
+    seen_keys = set()
     for item in subdata:
         entry = {
             "start_ts": pd.to_datetime(item["from"]),
-            "forecast": item["intensity"].get("forecast"),
-            "actual": item["intensity"].get("actual"),
+            "end_ts": pd.to_datetime(item["to"]),
+            "forecast": item["intensity"].get("forecast", float("NaN")),
+            "actual": item["intensity"].get("actual", float("NaN")),
         }
         for fuel_data in item.get("generationmix", []):
             entry[fuel_data["fuel"]] = fuel_data["perc"] / 100.0
-        results.append(entry)
-    df = pd.DataFrame.from_records(results, index="start_ts").astype(float).resample(pd.Timedelta(minutes=30)).mean().ffill()
-    df["start_ts"] = df.index
-    df["end_ts"] = df["start_ts"] + pd.Timedelta(minutes=30)
-    within_timestamps_mask = np.logical_and(df.index >= timestamps[0], df.index < timestamps[1])
-    return df[within_timestamps_mask].to_dict(orient="records")  # type: ignore
+        if fetch_start_ts <= entry["start_ts"] and entry["end_ts"] <= fetch_end_ts:
+            results.append(entry)
+            seen_keys.update(entry.keys())
+    seen_keys.remove("start_ts")
+    seen_keys.remove("end_ts")
+    results = sorted(results, key=lambda x: x["start_ts"])
+    if not interpolate:
+        return results
+
+    print(results[:10])
+    new_times = pd.date_range(fetch_start_ts, fetch_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
+    interpolated_data = {}
+    for key in seen_keys:
+        xs = (new_times - fetch_start_ts).total_seconds().to_numpy()
+        xp = np.asarray([
+            (item["start_ts"] - fetch_start_ts).total_seconds()
+            for item in results
+            if item.get(key) is not None and np.isfinite(item[key])
+        ])
+        yp = np.asarray([item[key] for item in results if item.get(key) is not None and np.isfinite(item[key])])
+        # print(key, xs, xp, yp)
+        if len(xp) == 0 or len(yp) == 0:
+            interpolated_vals = np.full_like(xp, np.nan)
+        else:
+            interpolated_vals = np.interp(xs, xp, yp)
+        interpolated_data[key] = interpolated_vals
+
+    interpolated_results = [
+        {
+            "start_ts": time,
+            "end_ts": time + pd.Timedelta(minutes=30),
+            **{key: interpolated_data[key][i] for key in seen_keys if len(interpolated_data[key]) > i},
+        }
+        for i, time in enumerate(new_times)
+    ]
+    return interpolated_results
 
 
 @router.post("/generate-grid-co2", tags=["co2", "generate"])
@@ -271,13 +310,11 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
         params.start_ts,
         params.end_ts,
     )
-    carbon_df = pd.DataFrame.from_records(
-        res,
-        index="start_ts",
-        columns=["start_ts", "forecast", "actual"],
-    )
+    carbon_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "forecast", "actual"], coerce_float=True)
     carbon_df.index = pd.to_datetime(carbon_df.index)
-    carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().interpolate(method="time")
+
+    # TODO (2025-01-09 MHJB): fix this awful pandas repeated interpolation, reindexing and resampling, it's a mess
+    carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().infer_objects(copy=False).interpolate(method="time")
     carbon_df = carbon_df.reindex(
         pd.DatetimeIndex(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left"))
     )
