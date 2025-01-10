@@ -115,7 +115,9 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 	else if (taskData.heat_pump && !taskData.data_centre) {
 		ambientController = std::make_unique<AmbientHeatPumpController>(historicalData, taskData.heat_pump.value());
 	}
-	
+	else if (taskData.data_centre && !taskData.heat_pump) {
+		dataCentre = std::make_unique<BasicDataCentre>(historicalData, taskData.data_centre.value());
+	}
 
 
 	if (ambientController) {
