@@ -6,6 +6,7 @@ Ideally put these in their own relevant python files!
 
 # ruff: noqa: D101, D102
 import datetime
+from pathlib import Path
 
 import httpx
 import numpy as np
@@ -14,6 +15,12 @@ import pytest
 
 from app.internal.utils import check_latitude_longitude, split_into_sessions
 from app.internal.utils.bank_holidays import get_bank_holidays
+from app.internal.utils.database_utils import get_migration_files
+
+
+def test_get_migration_files():
+    """Check that we get a single migration file correctly."""
+    assert get_migration_files(Path("./migrations"), end=3) == [Path("./migrations/000002_change_objectives.up.sql").absolute()]
 
 
 class TestGetBankHolidays:
