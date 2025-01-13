@@ -3,7 +3,7 @@
 # ruff: noqa: D101
 import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
 import pydantic
 
@@ -30,7 +30,7 @@ class Objective(pydantic.BaseModel):
     )
 
 
-type SolutionType = dict[str, float | int]
+type SolutionType = dict[str, dict]
 
 
 class OptimisationResult(pydantic.BaseModel):
@@ -42,9 +42,7 @@ class OptimisationResult(pydantic.BaseModel):
     result_id: pydantic.UUID4
     portfolio_id: pydantic.UUID4
     solution: SolutionType | None = pydantic.Field(
-        examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
-        description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
-        + "May not cover all parameters, only the ones we searched over.",
+        description="EPOCH Site Scenario.",
     )
     n_evals: pydantic.PositiveInt | None = None
     exec_time: datetime.timedelta | None = None
@@ -124,6 +122,96 @@ class Optimiser(pydantic.BaseModel):
     )
 
 
+class Building(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    scalar_heat_load: list[Annotated[int, pydantic.Field(ge=0)]]
+    scalar_electrical_load: list[Annotated[int, pydantic.Field(ge=0)]]
+    fabric_intervention_index: list[Annotated[int, pydantic.Field(ge=0)]]
+
+
+class DataCentre(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    maximum_load: list[Annotated[int, pydantic.Field(ge=0)]]
+    hotroom_temp: list[float]
+
+
+class DomesticHotWater(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    cylinder_volume: list[Annotated[int, pydantic.Field(ge=0)]]
+
+
+class ElectricVehicles(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    flexible_load_ratio: list[Annotated[float, pydantic.Field(ge=0.0, le=1.0)]]
+    small_chargers: list[Annotated[int, pydantic.Field(ge=0)]]
+    fast_chargers: list[Annotated[int, pydantic.Field(ge=0)]]
+    rapid_chargers: list[Annotated[int, pydantic.Field(ge=0)]]
+    ultra_chargers: list[Annotated[int, pydantic.Field(ge=0)]]
+    scalar_electrical_load: list[Annotated[int, pydantic.Field(ge=0)]]
+
+
+class BatteryModeEnum(StrEnum):
+    CONSUME = "CONSUME"
+
+
+class EnergyStorageSystem(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    capacity: list[Annotated[float, pydantic.Field(gt=0.0)]]
+    charge_power: list[Annotated[float, pydantic.Field(gt=0.0)]]
+    discharge_power: list[Annotated[float, pydantic.Field(gt=0.0)]]
+    battery_mode: list[BatteryModeEnum]
+    initial_charge: list[Annotated[float, pydantic.Field(ge=0.0)]]
+
+
+class Grid(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    export_headroom: list[Annotated[float, pydantic.Field(ge=0.0, le=1.0)]]
+    grid_export: list[Annotated[int, pydantic.Field(ge=0)]]
+    grid_import: list[Annotated[int, pydantic.Field(ge=0)]]
+    import_headroom: list[Annotated[float, pydantic.Field(ge=0.0, le=1.0)]]
+    min_power_factor: list[Annotated[float, pydantic.Field(ge=0.0, le=1.0)]]
+    tariff_index: list[Annotated[int, pydantic.Field(ge=0)]]
+
+
+class HeatSourceEnum(StrEnum):
+    AMBIENT_AIR = "AMBIENT_AIR"
+    HOTROOM = "HOTROOM"
+
+
+class HeatPump(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    heat_power: list[Annotated[float, pydantic.Field(ge=0.0)]]
+    heat_source: list[HeatSourceEnum]
+    send_temp: list[float]
+
+
+class Mop(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    maximum_load: list[Annotated[int, pydantic.Field(ge=0)]]
+
+
+class Renewables(pydantic.BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    yield_scalars: list[list[Annotated[float, pydantic.Field(ge=0.0)]]]
+
+
+class Config(pydantic.BaseModel):
+    capex_limit: Annotated[float, pydantic.Field(ge=0.0)]
+
+
+class SiteRange(pydantic.BaseModel):
+    building: Building | None = None
+    data_centre: DataCentre | None = None
+    domestic_hot_water: DomesticHotWater | None = None
+    electric_vehicles: ElectricVehicles | None = None
+    energy_storage_system: EnergyStorageSystem | None = None
+    grid: Grid | None = None
+    heat_pump: HeatPump | None = None
+    mop: Mop | None = None
+    renewables: Renewables | None = None
+    config: Config | None = None
+
+
 class TaskConfig(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
     client_id: str = pydantic.Field(
@@ -173,15 +261,8 @@ class TaskConfig(pydantic.BaseModel):
         ],
         description="Maximal values of the objectives to consider, e.g. reject all solutions with capex > £1,000,000.",
     )
-    search_parameters: dict[site_id_t, dict[str, float | int | SearchSpaceEntry]] = pydantic.Field(
-        examples=[
-            {
-                "Export_headroom": {"min": 0, "max": 0, "step": 0},
-                "Export_kWh_price": 5,
-                "Fixed_load1_scalar": {"min": 1, "max": 1, "step": 0},
-            }
-        ],
-        description="EPOCH search space parameters, either as single entries or as a min/max/step arrangement for searchables.",
+    site_range: SiteRange = pydantic.Field(
+        description="EPOCH site range.",
     )
     objectives: list[str] = pydantic.Field(
         default=list(Objective().model_dump().keys()),
