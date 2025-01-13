@@ -59,11 +59,13 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[O
             site_id=item["site_id"],
             solution=json.loads(item["solutions"]),
             objective_values=Objective(
-                carbon_balance=item["objective_values"]["carbon_balance"],
+                carbon_cost=item["objective_values"]["carbon_cost"],
                 cost_balance=item["objective_values"]["cost_balance"],
                 capex=item["objective_values"]["capex"],
                 payback_horizon=item["objective_values"]["payback_horizon"],
                 annualised_cost=item["objective_values"]["annualised_cost"],
+                carbon_balance_scope_1=item["objective_values"]["carbon_balance_scope_1"],
+                carbon_balance_scope_2=item["objective_values"]["carbon_balance_scope_2"],
             ),
             completed_at=item["completed_at"],
         )
