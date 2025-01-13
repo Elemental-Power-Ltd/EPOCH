@@ -112,7 +112,7 @@ async def get_gsp_code(site_id: SiteID, http_client: HttpClientDep, conn: Databa
         raise HTTPException(400, f"Could not find a postcode (and thus GSP code) for {site_id}.")
     inbound_postcode, _ = postcode.split(" ")
     ci_result = await http_client.get(f"https://api.carbonintensity.org.uk/regional/postcode/{inbound_postcode}")
-    if not ci_result.status_code == 200:
+    if not ci_result.status_code == 200 or "data" not in ci_result.json():
         raise HTTPException(400, f"Got error from CarbonIntensity API: {ci_result.status_code}: {ci_result.json()}.")
 
     region_id = ci_result.json()["data"][0]["regionid"]
