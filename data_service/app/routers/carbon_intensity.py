@@ -86,7 +86,7 @@ def interpolate_carbon_intensity(
             if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
         ])
         yp = np.asarray([
-            item[key]
+            item[key]  # type: ignore
             for item in raw_data
             if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
         ])
