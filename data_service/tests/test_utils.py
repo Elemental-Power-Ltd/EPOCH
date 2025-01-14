@@ -12,8 +12,47 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.internal.utils import check_latitude_longitude, split_into_sessions
+from app.internal.utils import check_latitude_longitude, chunk_time_period, split_into_sessions
 from app.internal.utils.bank_holidays import get_bank_holidays
+
+
+class TestChunkTimePeriod:
+    def test_single_year_boundry(self) -> None:
+        """Test that we chunk a time period correctly over a year, if necessary."""
+        start_ts = datetime.datetime(year=2024, month=12, day=30, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2025, month=1, day=2, tzinfo=datetime.UTC)
+        chunks = chunk_time_period(start_ts=start_ts, end_ts=end_ts, freq=datetime.timedelta(days=14), split_years=True)
+
+        year_split = datetime.datetime(year=2025, month=1, day=1, hour=0, minute=0, tzinfo=datetime.UTC)
+        assert chunks == [(start_ts, year_split), (year_split, end_ts)]
+
+    def test_unsplit_not_on_year(self) -> None:
+        """Test that we don't split a short period if it's not necessary."""
+        start_ts = datetime.datetime(year=2024, month=11, day=30, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2024, month=12, day=2, tzinfo=datetime.UTC)
+        chunks = chunk_time_period(start_ts=start_ts, end_ts=end_ts, freq=datetime.timedelta(days=14), split_years=True)
+
+        assert chunks == [(start_ts, end_ts)]
+
+    def test_split_days(self) -> None:
+        """Test that we split a short period into useful days."""
+        start_ts = datetime.datetime(year=2024, month=11, day=30, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2024, month=12, day=2, tzinfo=datetime.UTC)
+        chunks = chunk_time_period(start_ts=start_ts, end_ts=end_ts, freq=datetime.timedelta(days=1), split_years=True)
+
+        assert chunks[0][0] == start_ts
+        assert chunks[-1][1] == end_ts
+        assert len(chunks) == 3
+
+    def test_split_days_over_year(self) -> None:
+        """Test that we split a short period into useful days over a year boundary, with an extra one."""
+        start_ts = datetime.datetime(year=2024, month=12, day=30, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2025, month=1, day=2, tzinfo=datetime.UTC)
+        chunks = chunk_time_period(start_ts=start_ts, end_ts=end_ts, freq=datetime.timedelta(days=1), split_years=True)
+
+        assert chunks[0][0] == start_ts
+        assert chunks[-1][1] == end_ts
+        assert len(chunks) == 5  # extra days for the additional split
 
 
 class TestGetBankHolidays:
