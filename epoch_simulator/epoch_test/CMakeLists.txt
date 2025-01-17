@@ -1,5 +1,5 @@
 
-add_executable(epoch_test test_main.cpp test_task_data.cpp test_pv.cpp test_total.cpp)
+add_executable(epoch_test test_main.cpp test_task_data.cpp test_pv.cpp test_total.cpp test_costs.cpp)
 
 target_link_libraries(epoch_test PRIVATE Epoch_lib)
 
