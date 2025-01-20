@@ -256,7 +256,7 @@ class DataManager:
             Post request response message.
         """
         try:
-            response = await client.post(url=self.db_url + subdirectory, json=jsonable_encoder(data))
+            response = await client.post(url=self.db_url + subdirectory, json=jsonable_encoder(data), timeout=30.0)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
