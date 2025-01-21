@@ -1,3 +1,4 @@
+import json
 import logging
 from copy import deepcopy
 from typing import Any, Never
@@ -10,12 +11,12 @@ from pymoo.core.problem import ElementwiseProblem  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
+from app.internal.epoch_utils import TaskData
 from app.internal.heuristics.population_init import generate_building_initial_population
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
 from app.models.constraints import ConstraintDict
 from app.models.core import Site
 from app.models.objectives import Objectives, ObjectivesDirection, ObjectiveValues
-from app.models.parameters import ParametersWORange, ParametersWRange, is_variable_paramrange
 
 logger = logging.getLogger("default")
 
@@ -36,8 +37,8 @@ class ProblemInstance(ElementwiseProblem):
         Problem
             Problem to optimise
         """
-        self.buildings = portfolio
-        self.building_names = [building.name for building in portfolio]
+        self.sites = portfolio
+        self.site_names = [site.site_data.site_id for site in portfolio]
         self.objectives = objectives
         self.constraints = constraints
 
@@ -45,40 +46,61 @@ class ProblemInstance(ElementwiseProblem):
         n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
 
         input_dirs = {}
-        self.constant_params = {}
-        self.variable_params = {}
+        self.base_attributes: dict[str, dict] = {}
+        self.site_ranges: dict[str, dict] = {}
+        self.variable_attributes: dict[str, list] = {}
         self.indexes = {}
-        lower_bounds = []
-        upper_bounds = []
-        steps = []
+        num_attr_values = []
 
         n_var = 0
-        for building in portfolio:
-            variable_params_building = []
-            constant_params_building = {}
+        for site in portfolio:
+            site_name = site.site_data.site_id
+            self.base_attributes[site_name] = {}
+            self.site_ranges[site_name] = {}
+            num_var_building = 0
+            self.variable_attributes[site_name] = []
 
-            for parameter in ParametersWRange:
-                param_range = getattr(building.search_parameters, parameter)
-                if is_variable_paramrange(param_range):
-                    variable_params_building.append(parameter)
-                    lower_bounds.append(param_range.min)
-                    upper_bounds.append(param_range.max)
-                    steps.append(param_range.step)
-                else:
-                    constant_params_building[parameter] = param_range.min
-            for parameter in ParametersWORange:
-                constant_params_building[parameter] = getattr(building.search_parameters, parameter)
+            for asset_name, asset in site.site_range.model_dump().items():
+                if asset_name == "config":
+                    self.base_attributes[site_name][asset_name] = asset
+                elif asset is not None:
+                    self.site_ranges[site_name][asset_name] = {}
+                    self.base_attributes[site_name][asset_name] = {}
+                    if asset_name == "renewables":
+                        if not asset["COMPONENT_IS_MANDATORY"]:
+                            self.base_attributes[site_name][asset_name]["COMPONENT_IS_MANDATORY"] = None
+                            self.site_ranges[site_name][asset_name]["COMPONENT_IS_MANDATORY"] = [0, 1]
+                            self.variable_attributes[site_name].append((asset_name, "COMPONENT_IS_MANDATORY"))
+                            num_attr_values.append(2)
+                            num_var_building += 1
+                        self.base_attributes[site_name][asset_name]["yield_scalars"] = []
+                        for i, attr_values in enumerate(asset["yield_scalars"]):
+                            self.site_ranges[site_name][asset_name][f"yield_scalars_{i}"] = attr_values
+                            self.variable_attributes[site_name].append((asset_name, f"yield_scalars_{i}"))
+                            num_attr_values.append(len(attr_values))
+                            num_var_building += 1
+                    else:
+                        for attr_name, attr_values in asset.items():
+                            if attr_name == "COMPONENT_IS_MANDATORY":
+                                if not attr_values:
+                                    self.base_attributes[site_name][asset_name]["COMPONENT_IS_MANDATORY"] = None
+                                    self.site_ranges[site_name][asset_name]["COMPONENT_IS_MANDATORY"] = [0, 1]
+                                    self.variable_attributes[site_name].append((asset_name, "COMPONENT_IS_MANDATORY"))
+                                    num_attr_values.append(2)
+                                    num_var_building += 1
+                            elif len(attr_values) > 1:
+                                self.base_attributes[site_name][asset_name][attr_name] = None
+                                self.site_ranges[site_name][asset_name][attr_name] = attr_values
+                                self.variable_attributes[site_name].append((asset_name, attr_name))
+                                num_attr_values.append(len(attr_values))
+                                num_var_building += 1
+                            else:
+                                self.base_attributes[site_name][asset_name][attr_name] = attr_values[0]
 
-            n_var_building = len(variable_params_building)
-            self.indexes[building.name] = (n_var, n_var + n_var_building)
-            self.variable_params[building.name] = variable_params_building
-            self.constant_params[building.name] = constant_params_building
-            input_dirs[building.name] = building._input_dir
-            n_var += n_var_building
-
-        self.lower_bounds = np.array(lower_bounds)
-        self.upper_bounds = np.array(upper_bounds)
-        self.steps = np.array(steps)
+            # All variables are concatenated into a single list for the GA, this tracks each site's index range in that list
+            self.indexes[site_name] = (n_var, n_var + num_var_building)
+            input_dirs[site_name] = site._input_dir
+            n_var += num_var_building
 
         self.sim = PortfolioSimulator(input_dirs=input_dirs)
 
@@ -87,23 +109,8 @@ class ProblemInstance(ElementwiseProblem):
             n_obj=n_obj,
             n_ieq_constr=n_ieq_constr,
             xl=[0] * n_var,
-            xu=(self.upper_bounds - self.lower_bounds) / self.steps,
+            xu=np.array(num_attr_values) - 1,
         )
-
-    def scale_solution(self, x: npt.NDArray) -> npt.NDArray:
-        """
-        Scale from pymoo parameter values to real values.
-
-        Parameters
-        ----------
-        x
-            One or multiple candidate portfolio solution(s) (array of parameter values).
-
-        Returns
-        -------
-        Scaled candidate portfolio solution(s) (array of parameter values).
-        """
-        return x * self.steps + self.lower_bounds
 
     def split_solution(self, x: npt.NDArray) -> dict[str, npt.NDArray]:
         """
@@ -120,25 +127,36 @@ class ProblemInstance(ElementwiseProblem):
         """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
-    def convert_solution(self, x: npt.NDArray, building_name: str) -> dict:
+    def convert_solution(self, x: npt.NDArray, site_name: str) -> TaskData:
         """
-        Convert a candidate solution from an array of parameter values to a dictionary of parameter names and values.
+        Convert a candidate solution from an array of indeces to a site scenario.
 
         Parameters
         ----------
         x
-            A candidate building solution (array of parameter values).
-        building_name
+            A pymoo compatible site solution (array of indeces).
+        site_name
             The name of the building.
 
         Returns
         -------
-        all_param
-            Dictionary of parameter names and values.
+        TaskData
+            A site scenario.
         """
-        variable_params = dict(zip(self.variable_params[building_name], x))
-        all_param = variable_params | deepcopy(self.constant_params[building_name])
-        return all_param
+        site_range = self.site_ranges[site_name]
+        site_scenario = deepcopy(self.base_attributes[site_name])
+        assets_to_pop = []
+        for (asset_name, attr_name), idx in zip(self.variable_attributes[site_name], x):
+            if attr_name == "COMPONENT_IS_MANDATORY":
+                if site_range[asset_name][attr_name][idx] == 0:
+                    assets_to_pop.append(asset_name)
+            elif asset_name == "renewables":
+                site_scenario[asset_name]["yield_scalars"].append(site_range[asset_name][attr_name][idx])
+            else:
+                site_scenario[asset_name][attr_name] = site_range[asset_name][attr_name][idx]
+        for asset in assets_to_pop:
+            site_scenario.pop(asset)
+        return TaskData.from_json(json.dumps(site_scenario))
 
     def simulate_portfolio(self, x: npt.NDArray) -> PortfolioSolution:
         """
@@ -154,7 +172,6 @@ class ProblemInstance(ElementwiseProblem):
         PortfolioSolution
             The evaluated candidate solution.
         """
-        x = self.scale_solution(x)
         x_dict = self.split_solution(x)
         portfolio_pytd = {name: self.convert_solution(x, name) for name, x in x_dict.items()}
         return self.sim.simulate_portfolio(portfolio_pytd)
@@ -231,16 +248,16 @@ class EstimateBasedSampling(Sampling):
     """
 
     def _do(self, problem: ProblemInstance, n_samples: int, **kwargs):
-        building_pops = []
-        for building in problem.buildings:
-            building_pops.append(  # noqa: PERF401
+        site_pops = []
+        for site in problem.sites:
+            site_pops.append(  # noqa: PERF401
                 generate_building_initial_population(
-                    parameters=building.search_parameters,
-                    input_dir=building._input_dir,
+                    site_range=site.site_range,
+                    input_dir=site._input_dir,
                     pop_size=n_samples,
                 )
             )
-        portfolio_pop = np.concatenate(building_pops, axis=1)
+        portfolio_pop = np.concatenate(site_pops, axis=1)
         return portfolio_pop
 
 

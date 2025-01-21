@@ -1,4 +1,4 @@
-HoY,Date,Start Time,RGen1,RGen2,RGen3,RGen4,
+HourOfYear,Date,StartTime,RGen1,RGen2,RGen3,RGen4,
 1,01-Jan,00:00,0,0,0,,
 2,01-Jan,00:30,0,0,0,,
 3,01-Jan,01:00,0,0,0,,

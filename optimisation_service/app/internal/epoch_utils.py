@@ -2,16 +2,13 @@
 Wrappers for Epoch that are more ergonomic for python.
 """
 
-from collections.abc import Generator
-
-import numpy as np
-
-from app.models.parameters import ParametersWORange, ParametersWRange
-
 from .log import logger
 
 try:
     from epoch_simulator import SimulationResult, Simulator, TaskData
+
+    TaskData.__hash__ = lambda td: hash(repr(td))
+    TaskData.__eq__ = lambda td, oth: repr(td) == repr(oth)
 
     HAS_EPOCH = True
 except ImportError as ex:
@@ -30,53 +27,32 @@ except ImportError as ex:
             raise NotImplementedError()
 
 
-class PyTaskData(TaskData):
+def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:
     """
-    Wrap a TaskData for Python convenience.
+    Converts an Epoch TaskData instance into a dictionary representation.
 
-    Implements dict-like access, with string keys.
+    Parameters
+    ----------
+    task_data
+        The TaskData instance to convert.
+
+    Returns
+    -------
+    task_data_dict
+        A dictionary representation of the task_data.
     """
-
-    _VALID_KEYS = frozenset(ParametersWRange + ParametersWORange)
-
-    _INTEGER_KEYS = frozenset(["ESS_charge_mode", "ESS_discharge_mode", "target_max_concurrency"])
-
-    def __init__(self, **kwargs: float | int | np.floating | np.integer):
-        super().__init__()
-        for key, value in kwargs.items():
-            assert isinstance(value, float | int | np.floating | np.integer), f"Can only set numeric values, got {value}"
-            self[key] = value
-
-    def __setitem__(self, key: str, value: float | int | np.floating | np.integer) -> None:
-        if key not in PyTaskData._VALID_KEYS:
-            raise KeyError(str(key))
-
-        if key in PyTaskData._INTEGER_KEYS:
-            value = int(value)
-        else:
-            value = np.float32(value)
-        self.__setattr__(key, value)
-
-    def __getitem__(self, key: str) -> float | int | np.floating | np.integer:
-        try:
-            return getattr(self, key)
-        except AttributeError:
-            raise KeyError(str(key)) from None
-
-    def keys(self) -> Generator[str, None, None]:
-        yield from PyTaskData._VALID_KEYS
-
-    def values(self) -> Generator[float | int | np.floating | np.integer, None, None]:
-        yield from (self[key] for key in self.keys())
-
-    def items(self) -> Generator[tuple[str, float | int | np.floating | np.integer], None, None]:
-        yield from zip(self.keys(), self.values())
-
-    def __iter__(self) -> Generator[str, None, None]:
-        yield from self.keys()
-
-    def __contains__(self, item: str) -> bool:
-        return item in set(self.keys())
-
-    def __len__(self) -> int:
-        return len(list(self.keys()))
+    task_data_dict = {}
+    task_data_fields = [field for field in dir(task_data) if not field.startswith("__") and field != "from_json"]
+    for task_data_field in task_data_fields:
+        asset = getattr(task_data, task_data_field)
+        asset_fields = [field for field in dir(asset) if not field.startswith("__") and field != "from_json"]
+        asset_dict = {}
+        if len(asset_fields) > 0:
+            for asset_field in asset_fields:
+                attr_value = getattr(asset, asset_field)
+                if asset_field in ["heat_source", "battery_mode"]:
+                    asset_dict[asset_field] = attr_value.name
+                else:
+                    asset_dict[asset_field] = attr_value
+            task_data_dict[task_data_field] = asset_dict
+    return task_data_dict

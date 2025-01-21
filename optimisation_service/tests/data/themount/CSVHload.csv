@@ -1,4 +1,4 @@
-HoY,Date,Start Time,HLoad1,HLoad2,HLoad3,HLoad4
+HourOfYear,Date,StartTime,HLoad1,HLoad2,HLoad3,HLoad4
 1,01-Jan,00:00,31.2944921,,,
 2,01-Jan,00:30,31.2944921,,,
 3,01-Jan,01:00,31.39857007,,,

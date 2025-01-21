@@ -1,4 +1,4 @@
-HoY,Date,Start Time,Air-temp
+HourOfYear,Date,StartTime,AirTemp
 1,01-Jan,00:00,9
 2,01-Jan,00:30,9
 3,01-Jan,01:00,9

@@ -31,7 +31,7 @@ class NSGA2(Algorithm):
     def __init__(
         self,
         pop_size: int = 2048,
-        sampling: SamplingMethod = SamplingMethod.ESTIMATE,
+        sampling: SamplingMethod = SamplingMethod.RANDOM,
         n_offsprings: int | None = None,
         prob_crossover: float = 0.9,
         n_crossover: int = 1,

@@ -5,52 +5,88 @@ This works a bit like a C header file; mypy can't see into the pybind library
 to identify the types involve, so we write them out manually here.
 You can't import this file, but it's useful for static analysis.
 """
+
 import typing
+from enum import Enum
 
 class SimulationResult:
-    carbon_balance: float
+    carbon_balance_scope_1: float
+    carbon_balance_scope_2: float
     cost_balance: float
     capex: float
     payback_horizon: float
     annualised_cost: float
     report_data: typing.Any
 
+class Config:
+    capex_limit: float
+
+class Building:
+    scalar_heat_load: str
+    scalar_electrical_load: str
+    fabric_intervention_index: int
+
+class DataCentre:
+    maximum_load: str
+    hotroom_temp: str
+
+class DomesticHotWater:
+    cylinder_volume: str
+
+class ElectricVehicles:
+    flexible_load_ratio: str
+    small_chargers: int
+    fast_chargers: int
+    rapid_chargers: int
+    ultra_chargers: int
+    scalar_electrical_load: str
+
+class BatteryMode(Enum):
+    CONSUME = "CONSUME"
+
+class EnergyStorageSystem:
+    capacity: float
+    charge_power: float
+    discharge_power: float
+    battery_mode: BatteryMode
+    initial_charge: float
+
+class Grid:
+    export_headroom: float
+    grid_export: float
+    grid_import: float
+    import_headroom: float
+    min_power_factor: float
+    tariff_index: int
+
+class HeatSource(Enum):
+    AMBIENT_AIR = "AMBIENT_AIR"
+    HOTROOM = "HOTROOM"
+
+class HeatPump:
+    heat_power: float
+    heat_source: HeatSource
+    send_temp: float
+
+class Mop:
+    maximum_load: float
+
+class Renewables:
+    yield_scalars: list[float]
+
 class TaskData:
-    ASHP_HPower: float
-    ASHP_HSource: float
-    ASHP_HotTemp: float
-    ASHP_RadTemp: float
-    CAPEX_limit: float
-    ESS_capacity: float
-    ESS_charge_mode: int
-    ESS_charge_power: float
-    ESS_discharge_mode: int
-    ESS_discharge_power: float
-    ESS_start_SoC: float
-    EV_flex: float
-    Export_headroom: float
-    Export_kWh_price: float
-    Fixed_load1_scalar: float
-    Fixed_load2_scalar: float
-    Flex_load_max: float
-    GridExport: float
-    GridImport: float
-    Import_headroom: float
-    Min_power_factor: float
-    Mop_load_max: float
-    OPEX_limit: float
-    ScalarHL1: float
-    ScalarHYield: float
-    ScalarRG1: float
-    ScalarRG2: float
-    ScalarRG3: float
-    ScalarRG4: float
-    f22_EV_CP_number: float
-    r50_EV_CP_number: float
-    s7_EV_CP_number: float
-    target_max_concurrency: int
-    time_budget_min: float
-    u150_EV_CP_number: float
+    config: Config
+    building: Building
+    data_centre: DataCentre
+    domestic_hot_water: DomesticHotWater
+    electric_vehicles: ElectricVehicles
+    energy_storage_system: EnergyStorageSystem
+    grid: Grid
+    heat_pump: HeatPump
+    mop: Mop
+    renewables: Renewables
+
+    def from_json(self, json_str: str): ...
 
 class Simulator:
     def __init__(self, inputDir: str = ..., outputDir: str = ..., configDir: str = ...): ...

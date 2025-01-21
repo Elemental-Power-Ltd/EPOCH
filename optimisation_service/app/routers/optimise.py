@@ -10,7 +10,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 
 from app.internal.datamanager import DataManagerDep
-from app.internal.genetic_algorithm import GeneticAlgorithm
+from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2
 from app.models.core import (
@@ -26,7 +26,6 @@ from app.routers.epl_queue import IQueue
 
 class OptimiserFunc(Enum):
     NSGA2 = NSGA2
-    GeneticAlgorithm = GeneticAlgorithm
     GridSearch = GridSearch
 
 
@@ -39,14 +38,14 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
     Optimisation_Results = []
     for portfolio_solution in results.solutions:
         portfolio_id = uuid.uuid4()
-        for site_id, building_solution in portfolio_solution.solution.items():
+        for site_id, site_solution in portfolio_solution.scenario.items():
             OptRes = EndpointResult(
                 task_id=task.task_id,
                 site_id=site_id,
                 portfolio_id=portfolio_id,
                 result_id=uuid.uuid4(),  # generate a uuid to refer back to later
-                solution=dict(building_solution.solution.items()),  # type: ignore
-                objective_values=building_solution.objective_values,  # type: ignore
+                solution=convert_TaskData_to_dictionary(site_solution.scenario),  # type: ignore
+                objective_values=site_solution.objective_values,  # type: ignore
                 n_evals=results.n_evals,
                 exec_time=results.exec_time,
                 completed_at=completed_at,
@@ -149,16 +148,14 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
     Task
         Optimisation task to be added to queue.
     """
-    building = Site(
-        name=endpoint_task.name, search_parameters=endpoint_task.search_parameters, site_data=endpoint_task.site_data
-    )
+    site = Site(name=endpoint_task.site_data.site_id, site_range=endpoint_task.site_range, site_data=endpoint_task.site_data)
 
     epp_task = Task(
         name=endpoint_task.name,
         optimiser=endpoint_task.optimiser,
         objectives=endpoint_task.objectives,
         created_at=endpoint_task.created_at,
-        portfolio=[building],
+        portfolio=[site],
         client_id=endpoint_task.client_id,
     )
 

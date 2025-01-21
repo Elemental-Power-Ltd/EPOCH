@@ -1,4 +1,4 @@
-HoY,Date,Start Time,DHW Load (kWh)
+HourOfYear,Date,StartTime,DHWLoad1
 1,01-Jan,00:00,0
 2,01-Jan,00:30,0
 3,01-Jan,01:00,0

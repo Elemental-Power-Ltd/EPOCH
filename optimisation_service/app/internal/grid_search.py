@@ -19,39 +19,13 @@ from app.internal.portfolio_simulator import combine_objective_values
 from app.models.constraints import ConstraintDict
 from app.models.core import Site
 from app.models.objectives import _OBJECTIVES, Objectives, ObjectivesDirection
-from app.models.result import BuildingSolution, OptimisationResult, PortfolioSolution
+from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
 
 from ..models.algorithms import Algorithm
-from ..models.parameters import OldParameterDict, ParameterDict, ParametersWORange, ParametersWRange
 
 logger = logging.getLogger("default")
 
 _EPOCH_CONFIG = {"optimiser": {"leagueTableCapacity": 1, "produceExhaustiveOutput": True}}
-
-
-def convert_param(parameters: ParameterDict) -> OldParameterDict:
-    """
-    Converts dictionary of parameters from dict of dicts to dict of lists.
-    ex: {"param1":{"min":0, "max":10, "step":1}, "param2":123} -> {"param1":[0, 10, 1], "param2":123}
-
-    Parameters
-    ----------
-    parameters
-        Dictionary of parameters with values in the format {"min":min, "max":max, "step":step} or int or float.
-
-    Returns
-    -------
-    ParameterDict
-        Dictionary of parameters with values in the format [min, max, step] or int or float.
-    """
-    parameter_dict = parameters.model_dump()
-    new_dict = {}
-    for param_name in ParametersWRange:
-        value = parameter_dict[param_name]  # type: ignore
-        new_dict[param_name] = [value["min"], value["max"], value["step"]]
-    for param_name in ParametersWORange:
-        new_dict[param_name] = parameter_dict[param_name]  # type: ignore
-    return new_dict
 
 
 class GridSearch(Algorithm):
@@ -138,7 +112,7 @@ class GridSearch(Algorithm):
                 solutions: list[dict] = df_res.drop(columns=_OBJECTIVES).to_dict("records")
                 objective_values: list[dict] = df_res[_OBJECTIVES].to_dict("records")
 
-                building_solutions[building.name] = [BuildingSolution(*sol) for sol in zip(solutions, objective_values)]
+                building_solutions[building.name] = [SiteSolution(*sol) for sol in zip(solutions, objective_values)]
 
         solutions = pareto_optimise(building_solutions, objectives, constraints)
 
@@ -146,7 +120,7 @@ class GridSearch(Algorithm):
 
 
 def pareto_optimise(
-    building_solutions_dict: dict[str, list[BuildingSolution]], objectives: list[Objectives], constraints: ConstraintDict
+    building_solutions_dict: dict[str, list[SiteSolution]], objectives: list[Objectives], constraints: ConstraintDict
 ) -> list[PortfolioSolution]:
     logger.debug(f"Number of Sites: {[len(scenario_list) for scenario_list in building_solutions_dict.values()]}")
     all_combinations = product(*building_solutions_dict.values())
@@ -192,7 +166,7 @@ def pareto_optimise(
         objective_values = [building.objective_values for building in combination]
         portfolio_objective_values = combine_objective_values(objective_values)
 
-        portfolio_solution = PortfolioSolution(solution=solution_dict, objective_values=portfolio_objective_values)
+        portfolio_solution = PortfolioSolution(scenario=solution_dict, objective_values=portfolio_objective_values)
 
         portfolio_solutions.append(portfolio_solution)
 

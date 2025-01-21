@@ -1,4 +1,4 @@
-HoY,Date,Start Time,Grid CO2e (kg/kWh)
+HourOfYear,Date,StartTime,GridCO2
 1,01-Jan,00:00,0.182
 2,01-Jan,00:30,0.182
 3,01-Jan,01:00,0.182

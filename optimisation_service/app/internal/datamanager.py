@@ -12,8 +12,6 @@ from fastapi import Depends
 from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
-from app.internal.grid_search import convert_param
-
 from ..models.core import EndpointResult, Task
 from ..models.simulate import ResultReproConfig
 from ..models.site_data import (
@@ -67,20 +65,20 @@ class DataManager:
         logger.info(f"Saving site data to {portfolio._input_dir}.")
 
         # TODO: makes this async
-        for building in portfolio.portfolio:
-            building._input_dir = Path(portfolio._input_dir, building.name)
-            os.makedirs(building._input_dir)
-            site_data = building.site_data
+        for site in portfolio.portfolio:
+            site._input_dir = Path(portfolio._input_dir, site.site_data.site_id)
+            os.makedirs(site._input_dir)
+            site_data = site.site_data
             if site_data.loc == FileLoc.remote:
                 if not site_data.dataset_ids:
                     await self.hydrate_site_with_latest_dataset_ids(site_data)
 
                 site_data_entries = await self.fetch_specific_datasets(site_data)
 
-                self.write_input_data_to_files(site_data_entries, building._input_dir)
+                self.write_input_data_to_files(site_data_entries, site._input_dir)
 
             elif site_data.loc == FileLoc.local:
-                self.copy_input_data(site_data.path, building._input_dir)
+                self.copy_input_data(site_data.path, site._input_dir)
 
     async def hydrate_site_with_latest_dataset_ids(self, site_data: RemoteMetaData) -> None:
         """
@@ -155,9 +153,9 @@ class DataManager:
         task
             Task to save parameters for.
         """
-        for building in task.portfolio:
-            with open(Path(building._input_dir, "inputParameters.json"), "w") as fi:
-                json.dump(convert_param(building.search_parameters), fi)
+        for site in task.portfolio:
+            with open(Path(site._input_dir, "inputParameters.json"), "w") as fi:
+                json.dump(site.site_range.model_dump(), fi)
 
     async def fetch_latest_datasets(self, site_data: SiteMetaData) -> SiteDataEntries:
         """
@@ -289,10 +287,10 @@ class DataManager:
             Optimisation task.
         """
         logger.info(f"Adding {task.task_id} to database.")
-        search_parameters, site_data = {}, {}
-        for building in task.portfolio:
-            search_parameters[building.name] = building.search_parameters
-            site_data[building.name] = building.site_data
+        site_range, site_data = {}, {}
+        for site in task.portfolio:
+            site_range[site.site_data.site_id] = site.site_range
+            site_data[site.site_data.site_id] = site.site_data
         data = {
             "client_id": task.client_id,
             "task_id": task.task_id,
@@ -300,7 +298,7 @@ class DataManager:
             "objectives": task.objectives,
             "optimiser": task.optimiser,
             "created_at": task.created_at,
-            "search_parameters": search_parameters,
+            "site_range": site_range,
             "site_data": site_data,
         }
         async with httpx.AsyncClient() as client:

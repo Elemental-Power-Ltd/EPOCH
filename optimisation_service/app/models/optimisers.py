@@ -8,11 +8,10 @@ from app.models.ga_utils import SamplingMethod
 
 class OptimiserStr(StrEnum):
     NSGA2 = "NSGA2"
-    GeneticAlgorithm = "GeneticAlgorithm"
     GridSearch = "GridSearch"
 
 
-class GABaseHyperParam(BaseModel):
+class NSGA2HyperParam(BaseModel):
     pop_size: PositiveInt = Field(examples=[256, 512], description="Size of population.", default=256)
     n_offsprings: PositiveInt = Field(
         examples=[256, 512],
@@ -58,24 +57,13 @@ class GABaseHyperParam(BaseModel):
     )
 
 
-class GeneticAlgorithmHyperParam(GABaseHyperParam):
-    k_tournament: PositiveInt = Field(
-        examples=[2, 4, 8, 16], description="Number of parents taking part in selection tournament.", default=2
-    )
-
-
 class GridSearchHyperParam(BaseModel):
     keep_degenerate: bool = Field(description="Include or exclude degenerate solutions.", default=False)
 
 
 class NSGA2Optmiser(BaseModel):
     name: Literal[OptimiserStr.NSGA2]
-    hyperparameters: GABaseHyperParam
-
-
-class GAOptimiser(BaseModel):
-    name: Literal[OptimiserStr.GeneticAlgorithm]
-    hyperparameters: GeneticAlgorithmHyperParam
+    hyperparameters: NSGA2HyperParam
 
 
 class GridSearchOptimiser(BaseModel):

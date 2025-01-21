@@ -1,6 +1,5 @@
 from pydantic import UUID4, BaseModel
 
-from app.models.core import OptimisationSolution
 from app.models.site_data import SiteMetaData
 
 
@@ -10,7 +9,7 @@ class ReproduceSimulationRequest(BaseModel):
 
 class ResultReproConfig(BaseModel):
     task_id: UUID4
-    task_data: OptimisationSolution
+    task_data: dict
     site_data: SiteMetaData
 
 

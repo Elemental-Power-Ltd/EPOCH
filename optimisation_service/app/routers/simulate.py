@@ -2,13 +2,14 @@
 Endpoints to handle running individual simulations of EPOCH
 """
 
+import json
 import logging
 import tempfile
 
 from fastapi import APIRouter, HTTPException
 
 from app.internal.datamanager import DataManagerDep
-from app.internal.epoch_utils import PyTaskData, Simulator
+from app.internal.epoch_utils import Simulator, TaskData
 from app.models.simulate import FullResult, ReproduceSimulationRequest
 from app.models.site_data import LocalMetaData
 
@@ -52,7 +53,7 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
         data_manager.write_input_data_to_files(dataset_entries, repro_dir)
 
         sim = Simulator(inputDir=repro_dir)
-        pytd = PyTaskData(**repro_config.task_data.model_dump())
+        pytd = TaskData.from_json(json.dumps(repro_config.task_data.model_dump()))
 
         res = sim.simulate_scenario(pytd, fullReporting=True)
 

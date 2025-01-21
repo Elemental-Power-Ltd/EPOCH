@@ -1,26 +1,16 @@
-from collections import defaultdict
-from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from scipy.stats import truncnorm
 
-from app.models.parameters import ParameterDict, ParametersWRange, is_variable_paramrange
+from app.models.site_range import SiteRange
 
-from .population_heuristics import (
-    estimate_ashp_hpower,
-    estimate_battery_capacity,
-    estimate_battery_charge,
-    estimate_battery_discharge,
-    estimate_solar_pv,
-    round_to_search_space,
-)
+from .asset_heuristics import energy_storage_system, heat_pump, renewables
 
 
-def generate_building_initial_population(parameters: ParameterDict, input_dir: PathLike, pop_size: int) -> npt.NDArray:
+def generate_building_initial_population(site_range: SiteRange, input_dir: PathLike, pop_size: int) -> npt.NDArray:
     """
     Generate a population of solutions by estimating some parameter values from data.
 
@@ -31,8 +21,8 @@ def generate_building_initial_population(parameters: ParameterDict, input_dir: P
 
     Parameters
     ----------
-    parameters
-        Parameters in problem.
+    site_range
+        Problem site range.
     input_dir
         Path to folder containing data files.
     pop_size
@@ -40,8 +30,8 @@ def generate_building_initial_population(parameters: ParameterDict, input_dir: P
 
     Returns
     -------
-    scaled_pop
-        Generated population, scaled for consumption by pymoo (in range [0, parameter value upper bound])
+    pop
+        Generated population, prepared for pymoo (in range [0, number of asset values])
     """
     heating_df = pd.read_csv(Path(input_dir, "CSVHload.csv"))
     ashp_input_df = pd.read_csv(Path(input_dir, "CSVASHPinput.csv"))
@@ -52,59 +42,49 @@ def generate_building_initial_population(parameters: ParameterDict, input_dir: P
 
     rng = np.random.default_rng()
 
-    def clipped_rand(lo: float | int, hi: float | int, step: float | int) -> npt.NDArray:
-        x = rng.choice(a=np.arange(lo, hi), size=pop_size)
-        return round_to_search_space(x, lo, hi, step)
+    def normal_choice(est: float | int, attribute_values: list[float | int]) -> npt.NDArray:
+        lo, hi = attribute_values[0], attribute_values[-1]
+        std_dev = np.abs(hi - lo) / 4
+        probabilities = np.exp(-0.5 * ((np.array(attribute_values) - est) / std_dev) ** 2)
+        probabilities /= probabilities.sum()
+        return rng.choice(a=range(len(attribute_values)), size=pop_size, p=probabilities)
 
-    def clipped_norm(est: float | int, lo: float | int, hi: float | int, step: float | int) -> npt.NDArray:
-        sigma = np.abs(hi - lo) / 4
-        a = (lo - est) / sigma
-        b = (hi - est) / sigma
-        x = np.clip(truncnorm.rvs(a=a, b=b, loc=est, scale=sigma, size=pop_size), lo, hi)
-        return round_to_search_space(x, lo, hi, step)
+    estimates: dict[str, dict[str, int | float]] = {}
+    estimates["heat_pump"] = {}
+    estimates["heat_pump"]["heat_power"] = heat_pump.heat_power(
+        heating_df=heating_df,
+        ashp_input_df=ashp_input_df,
+        ashp_output_df=ashp_output_df,
+        air_temp_df=air_temp_df,
+        ashp_mode=2.0,
+    )
+    estimates["energy_storage_system"] = {}
+    estimates["energy_storage_system"]["capacity"] = energy_storage_system.capacity(elec_df=elec_df)
+    estimates["energy_storage_system"]["charge_power"] = energy_storage_system.charge_power(
+        solar_df=solar_df, solar_scale=renewables.yield_scalars(solar_df=solar_df, elec_df=elec_df)
+    )
+    estimates["energy_storage_system"]["discharge_power"] = energy_storage_system.discharge_power(elec_df=elec_df)
+    estimates["renewables"] = {}
+    estimates["renewables"]["yield_scalars"] = renewables.yield_scalars(solar_df=solar_df, elec_df=elec_df)
 
-    sampler_funcs: defaultdict[str, Callable[[float | int, float | int, float | int], npt.NDArray]] = defaultdict(
-        lambda: lambda lo, hi, step: clipped_rand(lo, hi, step)
-    )
-    sampler_funcs["ASHP_HPower"] = lambda lo, hi, step: clipped_norm(
-        estimate_ashp_hpower(
-            heating_df=heating_df,
-            ashp_input_df=ashp_input_df,
-            ashp_output_df=ashp_output_df,
-            air_temp_df=air_temp_df,
-            ashp_mode=2.0,
-        ),
-        lo,
-        hi,
-        step,
-    )
-    sampler_funcs["ESS_capacity"] = lambda lo, hi, step: clipped_norm(estimate_battery_capacity(elec_df=elec_df), lo, hi, step)
-    sampler_funcs["ESS_charge_power"] = lambda lo, hi, step: clipped_norm(
-        estimate_battery_charge(solar_df=solar_df, solar_scale=estimate_solar_pv(solar_df=solar_df, elec_df=elec_df)),
-        lo,
-        hi,
-        step,
-    )
-    sampler_funcs["ESS_discharge_power"] = lambda lo, hi, step: clipped_norm(
-        estimate_battery_discharge(elec_df=elec_df), lo, hi, step
-    )
-    sampler_funcs["ScalarRG1"] = lambda lo, hi, step: clipped_norm(
-        estimate_solar_pv(solar_df=solar_df, elec_df=elec_df), lo, hi, step
-    )
-
-    pop, lbs, steps = [], [], []
-    for parameter in ParametersWRange:
-        param_range = getattr(parameters, parameter)
-        if is_variable_paramrange(param_range):
-            lo, hi, step = param_range.min, param_range.max, param_range.step
-            generated_values = sampler_funcs[parameter](lo, hi, step)
-            pop.append(generated_values)
-            lbs.append(lo)
-            steps.append(step)
-    pop_ar = np.array(pop)
-    lbs_ar = np.array(lbs)
-    steps_ar = np.array(steps)
-    pop_ar = pop_ar.transpose()
-    scaled_pop = (pop_ar - lbs_ar) / steps_ar
+    pop = []
+    for asset_name, asset_range in site_range.model_dump().items():
+        if asset_name == "config":
+            pass
+        else:
+            for attrbute_name, attribute_values in asset_range.items():
+                if attrbute_name == "COMPONENT_IS_MANDATORY":
+                    if not attribute_values:
+                        generated_indeces = rng.choice(a=[0, 1], size=pop_size)
+                elif (
+                    asset_name in estimates.keys()
+                    and attrbute_name in estimates[asset_name].keys()
+                    and len(attribute_values) > 1
+                ):
+                    estimate = estimates[asset_name][attrbute_name]
+                    generated_indeces = normal_choice(estimate, attribute_values)
+                else:
+                    generated_indeces = rng.choice(a=range(len(attribute_values)), size=pop_size)
+        pop.append(generated_indeces)
     # TODO: check CAPEX of values
-    return scaled_pop
+    return np.array(pop).transpose()
