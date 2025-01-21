@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
   TextField,
   MenuItem,
@@ -9,31 +9,16 @@ import {
   FormControlLabel,
   FormGroup,
 } from "@mui/material";
-import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-
 import { useEpochStore } from "../../State/state";
 import { TaskConfig } from "../../State/types";
+import {objectiveNames} from "../../util/displayNames";
 
-dayjs.extend(utc);
+import SiteDataForm from "./SiteDataForm";
 
 const TaskConfigForm = () => {
   const taskConfig = useEpochStore((state) => state.run.taskConfig);
   const setTaskConfig = useEpochStore((state) => state.setTaskConfig);
   const client_sites = useEpochStore((state) => state.global.client_sites);
-
-  const displayNames = {
-    "capex": "CAPEX",
-    "carbon_balance_scope_1": "Scope 1 Emissions",
-    "carbon_balance_scope_2": "Scope 2 Emissions",
-    "carbon_cost": "Carbon Cost",
-    "cost_balance": "Cost Balance",
-    "payback_horizon": "Payback Horizon",
-    "annualised_cost": "Annualised Cost"
-  }
 
 
   const handleChange = (field: keyof TaskConfig, value: any) => {
@@ -46,7 +31,7 @@ const TaskConfigForm = () => {
       ...taskConfig.objectives,
       [name]: checked,
     });
-  }
+  };
 
   return (
     <Container maxWidth="sm">
@@ -63,20 +48,15 @@ const TaskConfigForm = () => {
           </Grid>
 
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              select
-              label="Site"
-              value={taskConfig.site_id}
-              onChange={(e) => handleChange("site_id", e.target.value)}
-              required
-            >
-              {client_sites.map((site) => (
-                <MenuItem value={site.site_id} key={site.site_id}>
-                  {site.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <SiteDataForm
+              siteId={taskConfig.site_id}
+              onSiteChange={(val) => handleChange("site_id", val)}
+              startDate={taskConfig.start_date}
+              onStartDateChange={(val) => handleChange("start_date", val)}
+              timestepMinutes={taskConfig.timestep_minutes}
+              onTimestepChange={(val) => handleChange("timestep_minutes", val)}
+              clientSites={client_sites}
+            />
           </Grid>
 
           <Grid item xs={12}>
@@ -94,32 +74,6 @@ const TaskConfigForm = () => {
             </TextField>
           </Grid>
 
-          <Grid item xs={6}>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DateTimePicker
-                label="Start Date"
-                value={dayjs(taskConfig.start_date).utc()}
-                onChange={(date) =>
-                  handleChange("start_date", date?.utc().toISOString())
-                }
-              />
-            </LocalizationProvider>
-          </Grid>
-
-          <Grid item xs={6}>
-            <TextField
-              fullWidth
-              select
-              label="Timestep"
-              value={taskConfig.timestep_minutes}
-              onChange={(e) => handleChange("timestep_minutes", e.target.value)}
-              required
-            >
-              <MenuItem value={60}>60 Minutes</MenuItem>
-              <MenuItem value={30}>30 Minutes</MenuItem>
-            </TextField>
-          </Grid>
-
           <Grid item xs={12}>
             <FormGroup>
               <FormLabel component="legend" style={{textAlign: 'center', marginBottom: '8px'}}>Objectives</FormLabel>
@@ -134,7 +88,7 @@ const TaskConfigForm = () => {
                                 name={objectiveKey}
                             />
                           }
-                          label={displayNames[objectiveKey]}
+                          label={objectiveNames[objectiveKey]}
                       />
                     </Grid>
                 ))}

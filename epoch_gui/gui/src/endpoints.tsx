@@ -1,4 +1,6 @@
 import {OptimisationResult, Site, Task, Client} from "./State/types";
+import {SimulationResult, SubmitSimulationRequest} from "./Models/Endpoints";
+
 
 export const submitOptimisationJob = async(payload) => {
     try {
@@ -17,6 +19,30 @@ export const submitOptimisationJob = async(payload) => {
         return await response.json();
     } catch (error) {
         console.error("Failed to submit configuration:", error);
+    }
+}
+
+export const submitSimulation = async(request: SubmitSimulationRequest): Promise<ApiResponse<SimulationResult>> => {
+    try {
+        const response = await fetch("/api/optimisation/run-simulation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const data: SimulationResult = await response.json();
+        return {success: true, data};
+    } catch (error) {
+        console.error("Failed to run simulation", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 }
 

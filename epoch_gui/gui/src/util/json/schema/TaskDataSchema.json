@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task Data",
+  "type": "object",
+  "properties": {
+    "building": {
+      "type": "object",
+      "properties": {
+        "scalar_heat_load": {
+          "type": "number",
+          "minimum": 0
+        },
+        "scalar_electrical_load": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fabric_intervention_index": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["scalar_heat_load", "scalar_electrical_load", "fabric_intervention_index"]
+    },
+    "data_centre": {
+      "type": "object",
+      "properties": {
+        "maximum_load": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hotroom_temp": {
+          "type": "number"
+        }
+      },
+      "required": ["maximum_load", "hotroom_temp"]
+    },
+    "domestic_hot_water": {
+      "type": "object",
+      "properties": {
+        "cylinder_volume": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["cylinder_volume"]
+    },
+    "electric_vehicles": {
+      "type": "object",
+      "properties": {
+        "flexible_load_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "small_chargers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fast_chargers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rapid_chargers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ultra_chargers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scalar_electrical_load": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "flexible_load_ratio",
+        "small_chargers",
+        "fast_chargers",
+        "rapid_chargers",
+        "ultra_chargers",
+        "scalar_electrical_load"
+      ]
+    },
+    "energy_storage_system": {
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "charge_power": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "discharge_power": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "battery_mode": {
+          "type": "string",
+          "enum": ["CONSUME"]
+        },
+        "initial_charge": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "capacity",
+        "charge_power",
+        "discharge_power",
+        "battery_mode",
+        "initial_charge"
+      ]
+    },
+    "grid": {
+      "type": "object",
+      "properties": {
+        "export_headroom": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "grid_export": {
+          "type": "number",
+          "minimum": 0
+        },
+        "grid_import": {
+          "type": "number",
+          "minimum": 0
+        },
+        "import_headroom": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "min_power_factor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tariff_index": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "export_headroom",
+        "grid_export",
+        "grid_import",
+        "import_headroom",
+        "min_power_factor",
+        "tariff_index"
+      ]
+    },
+    "heat_pump": {
+      "type": "object",
+      "properties": {
+        "heat_power": {
+          "type": "number",
+          "minimum": 0
+        },
+        "heat_source": {
+          "type": "string",
+          "enum": ["AMBIENT_AIR", "HOTROOM"]
+        },
+        "send_temp": {
+          "type": "number"
+        }
+      },
+      "required": ["heat_power", "heat_source", "send_temp"]
+    },
+    "mop": {
+      "type": "object",
+      "properties": {
+        "maximum_load": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["maximum_load"]
+    },
+    "renewables": {
+      "type": "object",
+      "properties": {
+        "yield_scalars": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "required": ["yield_scalars"]
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "capex_limit": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["capex_limit"]
+    }
+  }
+}

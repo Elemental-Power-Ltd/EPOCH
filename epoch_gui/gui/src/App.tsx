@@ -5,6 +5,7 @@ import {Tab, Tabs, Box, Select, SelectChangeEvent, MenuItem} from '@mui/material
 import RunContainer from "./Containers/Run";
 import ResultsContainer from "./Containers/Results";
 import DatasetGenerationContainer from "./Containers/DatasetGeneration";
+import SimulationContainer from "./Containers/Simulate";
 import NotALogin from "./Components/Login/NotALogin";
 import {useEpochStore} from "./State/state";
 import {listClients, listSites} from "./endpoints";
@@ -74,6 +75,7 @@ function App() {
                         sx={{flexGrow: 1}}
                     >
                         <Tab label="Run"/>
+                        <Tab label="Simulate"/>
                         <Tab label="Results"/>
                         <Tab label="Generate Dataset"/>
                     </Tabs>
@@ -96,8 +98,9 @@ function App() {
             {noClient ? <NotALogin/> :
                 <Box className="content">
                     {selectedTab === 0 && <RunContainer/>}
-                    {selectedTab === 1 && <ResultsContainer/>}
-                    {selectedTab === 2 && <DatasetGenerationContainer/>}
+                    {selectedTab === 1 && <SimulationContainer/>}
+                    {selectedTab === 2 && <ResultsContainer/>}
+                    {selectedTab === 3 && <DatasetGenerationContainer/>}
                 </Box>
             }
         </>

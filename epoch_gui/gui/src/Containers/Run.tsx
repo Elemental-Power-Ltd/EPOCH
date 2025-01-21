@@ -1,5 +1,3 @@
-import "./Run.css"
-
 import AccordionSection from "../util/Widgets/AccordionSection";
 import HyperParamForm from "../Components/HyperParams/OptimiserConfig";
 import SearchForm from "../Components/SearchParameters/SearchForm";
