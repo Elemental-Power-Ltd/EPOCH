@@ -18,9 +18,12 @@ from app.internal.utils.bank_holidays import get_bank_holidays
 from app.internal.utils.database_utils import get_migration_files
 
 
-def test_get_migration_files():
+def test_get_migration_files() -> None:
     """Check that we get a single migration file correctly."""
-    assert get_migration_files(Path("./migrations"), end=3) == [Path("./migrations/000002_change_objectives.up.sql").absolute()]
+    assert get_migration_files(Path("./migrations"), end=3) == [
+        Path("./migrations/000001_initial_schemas.up.sql").absolute(),
+        Path("./migrations/000002_change_objectives.up.sql").absolute(),
+    ]
 
 
 class TestGetBankHolidays:

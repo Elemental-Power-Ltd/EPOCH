@@ -39,17 +39,10 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
     await db.create_pool()
     assert db.pool is not None, "Could not create database pool"
-    conn = await db.pool.acquire()
-    # TODO (2024-08-12 MHJB): there must be a better way...
-    await conn.execute("""CREATE ROLE python""")
-    with open("./elementaldb_tables.sql") as fi:
-        await conn.execute(fi.read())
-    with open("./elementaldb_client_info.sql") as fi:
-        await conn.execute(fi.read())
-
-    for file in get_migration_files(Path("migrations")):
-        with file.open() as fi:
-            await conn.execute(fi.read())
+    # Manually run the migrations in the migration file.
+    async with db.pool.acquire() as conn:
+        for fname in get_migration_files(Path("migrations")):
+            await conn.execute(fname.read_text())
 
     async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
         """
