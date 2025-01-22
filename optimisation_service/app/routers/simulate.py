@@ -10,17 +10,47 @@ from fastapi import APIRouter, HTTPException
 
 from app.internal.datamanager import DataManagerDep
 from app.internal.epoch_utils import Simulator, TaskData
-from app.models.simulate import FullResult, ReproduceSimulationRequest
+from app.models.result import convert_sim_result
+from app.models.simulate import FullResult, ReproduceSimulationRequest, RunSimulationRequest
 from app.models.site_data import LocalMetaData
 
 router = APIRouter()
 logger = logging.getLogger("default")
 
 
+@router.post("/run-simulation")
+async def run_simulation(request: RunSimulationRequest, data_manager: DataManagerDep) -> FullResult:
+    """
+    Run a simulation of a single site in EPOCH with full reporting enabled
+
+
+    Parameters
+    ----------
+    request
+    data_manager
+
+    Returns
+    -------
+
+    """
+    logger.info("Running single simulation")
+
+    if isinstance(request.site_data, LocalMetaData):
+        raise HTTPException(400, detail="Simulation from local data is not supported")
+
+    if not request.site_data.dataset_ids:
+        # we don't have any specific datasets yet, we need to hydrate the site_data with them
+        await data_manager.hydrate_site_with_latest_dataset_ids(request.site_data)
+
+    dataset_entries = await data_manager.fetch_specific_datasets(request.site_data)
+
+    return do_simulation(data_manager, dataset_entries, request.task_data)
+
+
 @router.post("/reproduce-simulation")
 async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager: DataManagerDep) -> FullResult:
     """
-    Re-run a simulation of EPOCH to obtain the verbose reporting
+    Re-run a simulation of EPOCH with full reporting enabled
 
     This method will obtain the configuration settings used in the original Optimisation Run to reproduce the result.
     If the original result was obtained using local data, the result cannot be reproduced and an error will be returned.
@@ -49,23 +79,35 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
 
     dataset_entries = await data_manager.fetch_specific_datasets(repro_config.site_data)
 
+    return do_simulation(data_manager, dataset_entries, repro_config.task_data)
+
+
+def do_simulation(data_manager, dataset_entries, task_data):
+    """
+    Internal function to run a simulation for a given set of site data and taskData
+    Parameters
+    ----------
+    data_manager
+        A data manager to handle IO operations
+    dataset_entries
+        The full timeseries for the site
+    task_data
+        The EPOCH TaskData represented in JSON
+
+    Returns
+    -------
+
+    """
     with tempfile.TemporaryDirectory(prefix="simulate_repro_") as repro_dir:
         data_manager.write_input_data_to_files(dataset_entries, repro_dir)
 
         sim = Simulator(inputDir=repro_dir)
-        pytd = TaskData.from_json(json.dumps(repro_config.task_data.model_dump()))
+        pytd = TaskData.from_json(json.dumps(task_data))
 
         res = sim.simulate_scenario(pytd, fullReporting=True)
 
         report_dict = report_data_to_dict(res.report_data)
-
-        objectives = {
-            "CAPEX": res.capex,
-            "Carbon Balance": res.carbon_balance,
-            "Cost Balance": res.cost_balance,
-            "Payback Horizon": res.payback_horizon,
-            "Annualised Cost": res.annualised_cost,
-        }
+        objectives = convert_sim_result(res)
 
         return FullResult(report_data=report_dict, objectives=objectives)
 
