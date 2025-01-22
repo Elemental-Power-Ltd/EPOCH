@@ -1,8 +1,10 @@
+"""Test that the individual thermal link elements behave reasonably."""
+
+# ruff: noqa: D101, D102, D103
 from collections.abc import Callable
 
 import pytest
 
-# Assuming the ConductiveLink class is in thermal_links.py
 from app.internal.thermal_model.links import (
     ConductiveLink,
     ConvectiveLink,
@@ -23,7 +25,7 @@ def node_attrs_factory() -> Callable[[float], ThermalNodeAttrDict]:
     """Fixture providing a factory function for node attributes."""
 
     def create_attrs(temp: float) -> ThermalNodeAttrDict:
-        return {"temperature": temp, "energy_change": 0.0}
+        return {"temperature": temp, "energy_change": 0.0, "thermal_mass": 100.0}
 
     return create_attrs
 
@@ -41,7 +43,9 @@ class TestConductiveLink:
         expected = "ConductiveLink(interface_area=2.0, heat_transfer=5.0)"
         assert repr(link) == expected
 
-    def test_heat_flow_hot_to_cold(self, basic_link: ConductiveLink, node_attrs_factory: ThermalNodeAttrDict) -> None:
+    def test_heat_flow_hot_to_cold(
+        self, basic_link: ConductiveLink, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]
+    ) -> None:
         """Test heat flows from hot to cold body."""
         hot_attrs = node_attrs_factory(300.0)  # 300K
         cold_attrs = node_attrs_factory(280.0)  # 280K
@@ -59,7 +63,9 @@ class TestConductiveLink:
         # Cold body should gain energy (positive energy_change)
         assert cold_attrs["energy_change"] > 0
 
-    def test_heat_flow_cold_to_hot(self, basic_link: ConductiveLink, node_attrs_factory: ThermalNodeAttrDict) -> None:
+    def test_heat_flow_cold_to_hot(
+        self, basic_link: ConductiveLink, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]
+    ) -> None:
         """Test heat flows from hot to cold body even when positions are swapped."""
         hot_attrs = node_attrs_factory(300.0)
         cold_attrs = node_attrs_factory(280.0)
@@ -77,7 +83,9 @@ class TestConductiveLink:
         # Cold body should gain energy (positive energy_change)
         assert cold_attrs["energy_change"] > 0
 
-    def test_no_heat_flow_equal_temps(self, basic_link, node_attrs_factory: ThermalNodeAttrDict) -> None:
+    def test_no_heat_flow_equal_temps(
+        self, basic_link: ConductiveLink, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]
+    ) -> None:
         """Test that no heat flows when temperatures are equal."""
         temp = 300.0
         attrs1 = node_attrs_factory(temp)
@@ -90,7 +98,9 @@ class TestConductiveLink:
         assert attrs1["energy_change"] == 0.0
         assert attrs2["energy_change"] == 0.0
 
-    def test_energy_flow_proportional_to_dt(self, basic_link, node_attrs_factory: ThermalNodeAttrDict) -> None:
+    def test_energy_flow_proportional_to_dt(
+        self, basic_link: ConductiveLink, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]
+    ) -> None:
         """Test that energy flow scales linearly with time step."""
         hot_attrs = node_attrs_factory(300.0)
         cold_attrs = node_attrs_factory(280.0)
@@ -108,7 +118,7 @@ class TestConductiveLink:
         # Energy transfer should double with double the time
         assert pytest.approx(energy_2s, rel=1e-10) == 2 * energy_1s
 
-    def test_energy_flow_proportional_to_area(self, node_attrs_factory: ThermalNodeAttrDict) -> None:
+    def test_energy_flow_proportional_to_area(self, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]) -> None:
         """Test that energy flow scales linearly with interface area."""
         # Create two links with different areas
         link1 = ConductiveLink(interface_area=1.0, heat_transfer=1.0)
@@ -127,18 +137,18 @@ class TestConductiveLink:
 
 
 class TestRadiativeLink:
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test that RadiativeLink initializes with correct power."""
         link = RadiativeLink(power=100.0)
         assert link.power == 100.0
 
-    def test_repr(self):
+    def test_repr(self) -> None:
         """Test the string representation of RadiativeLink."""
         link = RadiativeLink(power=100.0)
         expected = "RadiativeLink(power=100.0)"
         assert repr(link) == expected
 
-    def test_energy_transfer_direction(self, node_attrs_factory):
+    def test_energy_transfer_direction(self, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]) -> None:
         """Test that energy always flows from u to v regardless of temperature."""
         link = RadiativeLink(power=100.0)
 
@@ -157,7 +167,9 @@ class TestRadiativeLink:
         # Energy conservation
         assert abs(u_attrs["energy_change"]) == abs(v_attrs["energy_change"])
 
-    def test_energy_transfer_independence_from_temperature(self, node_attrs_factory):
+    def test_energy_transfer_independence_from_temperature(
+        self, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]
+    ) -> None:
         """Test that energy transfer is independent of node temperatures."""
         link = RadiativeLink(power=100.0)
         dt = 1.0
@@ -182,7 +194,7 @@ class TestRadiativeLink:
             assert u_attrs["energy_change"] == pytest.approx(-expected_energy)
             assert v_attrs["energy_change"] == pytest.approx(expected_energy)
 
-    def test_energy_transfer_scales_with_time(self, node_attrs_factory):
+    def test_energy_transfer_scales_with_time(self, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]) -> None:
         """Test that energy transfer scales linearly with time step."""
         link = RadiativeLink(power=100.0)
         u_attrs = node_attrs_factory(300.0)
@@ -204,7 +216,7 @@ class TestRadiativeLink:
             assert u_attrs["energy_change"] == pytest.approx(-expected_energy)
             assert v_attrs["energy_change"] == pytest.approx(expected_energy)
 
-    def test_zero_power_transfer(self, node_attrs_factory):
+    def test_zero_power_transfer(self, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]) -> None:
         """Test that zero power results in no energy transfer."""
         link = RadiativeLink(power=0.0)
         u_attrs = node_attrs_factory(300.0)
@@ -217,7 +229,7 @@ class TestRadiativeLink:
         assert u_attrs["energy_change"] == 0.0
         assert v_attrs["energy_change"] == 0.0
 
-    def test_negative_power_transfer(self, node_attrs_factory):
+    def test_negative_power_transfer(self, node_attrs_factory: Callable[[float], ThermalNodeAttrDict]) -> None:
         """Test that negative power reverses the direction of energy flow."""
         link = RadiativeLink(power=-100.0)
         u_attrs = node_attrs_factory(300.0)

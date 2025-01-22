@@ -20,7 +20,7 @@ from app.internal.thermal_model.network import create_simple_structure
 def test_structure() -> HeatNetwork:
     """Create a simple cube building to match the MCS calculations."""
     return create_simple_structure(
-        wall_area=(10 * 5) - 0.25, window_area=1.0, floor_area=10 * 10, roof_area=10 * 10, air_volume=10 * 10 * 5
+        wall_width=10, wall_height=5.0, window_area=1.0, floor_area=10 * 10, roof_area=10 * 10, air_volume=10 * 10 * 5
     )
 
 
@@ -30,7 +30,7 @@ class TestCreateHeatNetwork:
     def test_create_structure_from_nothing(self) -> None:
         """Test that we can create a structure and that the steps are additive."""
         G = initialise_outdoors()
-        G2 = add_structure_to_graph(G, wall_area=10 * 5, window_area=1.0, floor_area=10 * 10, roof_area=10 * 10)
+        G2 = add_structure_to_graph(G, wall_width=10, wall_height=5.0, window_area=1.0, floor_area=10 * 10, roof_area=10 * 10)
         G3 = add_heating_system_to_graph(G2, 70, 4)
 
         assert set(G.nodes) <= set(G2.nodes)
@@ -100,9 +100,14 @@ class TestDynamicHeatLoss:
     def test_wall_size_increase(self) -> None:
         """Test that large buildings lose more dynamic heat."""
         heat_losses = []
-        for wall_area in [5, 10, 15, 20]:
+        for wall_width in [5, 10, 15, 20]:
             G = create_simple_structure(
-                wall_area=wall_area - 0.25, window_area=1.0, floor_area=10 * 10, roof_area=10 * 10, air_volume=10 * 10 * 5
+                wall_width=wall_width,
+                wall_height=5.0,
+                window_area=1.0,
+                floor_area=10 * 10,
+                roof_area=10 * 10,
+                air_volume=10 * 10 * 5,
             )
             heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
 
@@ -113,7 +118,8 @@ class TestDynamicHeatLoss:
         heat_losses = []
         for window_area in [1, 2, 3, 4, 5]:
             G = create_simple_structure(
-                wall_area=(10 * 5) - 0.25,
+                wall_width=10,
+                wall_height=5.0,
                 window_area=window_area,
                 floor_area=10 * 10,
                 roof_area=10 * 10,
@@ -127,7 +133,7 @@ class TestDynamicHeatLoss:
         heat_losses = []
         for roof_area in [5, 10, 15, 20]:
             G = create_simple_structure(
-                wall_area=(10 * 5) - 0.25, window_area=1.0, floor_area=10 * 10, roof_area=roof_area, air_volume=10 * 10 * 5
+                wall_width=10, wall_height=5.0, window_area=1.0, floor_area=10 * 10, roof_area=roof_area, air_volume=10 * 10 * 5
             )
             heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
         assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the roof gets larger"
@@ -137,7 +143,12 @@ class TestDynamicHeatLoss:
         heat_losses = []
         for floor_area in [5, 10, 15, 20]:
             G = create_simple_structure(
-                wall_area=(10 * 5) - 0.25, window_area=1.0, floor_area=floor_area, roof_area=10 * 10, air_volume=10 * 10 * 5
+                wall_width=10,
+                wall_height=5.0,
+                window_area=1.0,
+                floor_area=floor_area,
+                roof_area=10 * 10,
+                air_volume=10 * 10 * 5,
             )
             heat_losses.append(calculate_maximum_dynamic_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
         assert all(np.ediff1d(heat_losses) > 0), "Heat losses must increase as the floor gets larger"

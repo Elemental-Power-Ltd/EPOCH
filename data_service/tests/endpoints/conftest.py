@@ -11,6 +11,7 @@ Otherwise, leave it in the test file.
 
 # ruff: noqa: D101, D102, D103
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import asyncpg
 import pytest_asyncio
@@ -40,9 +41,9 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     conn = await db.pool.acquire()
     # TODO (2024-08-12 MHJB): there must be a better way...
     await conn.execute("""CREATE ROLE python""")
-    with open("./elementaldb_tables.sql") as fi:
+    with Path("./elementaldb_tables.sql").open() as fi:
         await conn.execute(fi.read())
-    with open("./elementaldb_client_info.sql") as fi:
+    with Path("./elementaldb_client_info.sql").open() as fi:
         await conn.execute(fi.read())
 
     async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:

@@ -146,9 +146,10 @@ def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScal
 
         if refresh:
             joblib.dump(scaler, path)
-        return scaler
     except FileNotFoundError as ex:
         raise FileNotFoundError(f"No StandardScaler found at {path}") from ex
+
+    return scaler
 
 
 def load_all_scalers(

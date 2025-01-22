@@ -147,7 +147,7 @@ def simulate(
     external_df: pd.DataFrame | None = None,
     end_ts: datetime.datetime | None = None,
     dt: datetime.timedelta | None = None,
-    elec_df: pd.DataFrame | None = None
+    elec_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
     Simulate the time series evolution of this heating network.
@@ -205,9 +205,9 @@ def simulate(
                 solar_radiations[i] * 10 * 0.25
             )
         if elec_df is not None:
-            graph.get_edge_data(BuildingElement.InternalGains, BuildingElement.InternalAir)["radiative"].power = (
-                internal_gains[i]
-            )            
+            graph.get_edge_data(BuildingElement.InternalGains, BuildingElement.InternalAir)["radiative"].power = internal_gains[
+                i
+            ]
         for u, v, edge_attrs in graph.edges(data=True):
             u_attrs, v_attrs = graph.nodes[u], graph.nodes[v]
             if edge_attrs.get("conductive") is not None:
@@ -220,15 +220,7 @@ def simulate(
                         u_attrs, v_attrs, dt.total_seconds(), graph.nodes[BuildingElement.InternalAir]["temperature"]
                     )
                 else:
-                    change = edge_attrs["radiative"].step(u_attrs, v_attrs, dt.total_seconds())
-                    if change != 0:
-                        u_new_temp = (
-                            graph.nodes[u]["temperature"] + graph.nodes[u]["energy_change"] / graph.nodes[u]["thermal_mass"]
-                        )
-                        v_new_temp = (
-                            graph.nodes[v]["temperature"] + graph.nodes[v]["energy_change"] / graph.nodes[v]["thermal_mass"]
-                        )
-                        # print(u, graph.nodes[u]["temperature"], u_new_temp, v, graph.nodes[v]["temperature"], v_new_temp)
+                    edge_attrs["radiative"].step(u_attrs, v_attrs, dt.total_seconds())
 
         for u, temp in graph.nodes(data="temperature"):
             temperatures[u].append(temp)

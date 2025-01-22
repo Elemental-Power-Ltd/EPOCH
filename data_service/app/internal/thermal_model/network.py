@@ -93,7 +93,6 @@ def add_structure_to_graph(
     roof_area
         Area of the roof of this building receiving sunlight. If None, presume the same as the floor area.
     """
-
     if wall_height is None:
         wall_height = wall_width / 2.0
 
@@ -306,7 +305,13 @@ def create_simple_structure(
     """
     G = initialise_outdoors()
     G = add_structure_to_graph(
-        G, wall_width=wall_width, wall_height=wall_height, window_area=window_area, floor_area=floor_area, roof_area=roof_area, air_volume=air_volume
+        G,
+        wall_width=wall_width,
+        wall_height=wall_height,
+        window_area=window_area,
+        floor_area=floor_area,
+        roof_area=roof_area,
+        air_volume=air_volume,
     )
     G = add_heating_system_to_graph(G, design_flow_temperature=design_flow_temperature, n_radiators=n_radiators)
     return G

@@ -110,11 +110,13 @@ def plot_energy_heatmap(
     node_to_idx = create_node_to_index_map(hn)
 
     if ax is None:
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
     scale = float(np.max(np.abs(symlog(arr))))
     ax.imshow(symlog(arr), cmap="seismic", vmin=-scale, vmax=scale)
-    ax.set_xticks(list(node_to_idx.values()), list(node_to_idx.keys()), rotation=90)
-    ax.set_yticks(list(node_to_idx.values()), list(node_to_idx.keys()))
+    vals = [item for item in node_to_idx.values() if item is not None]
+    keys = [key for key, val in node_to_idx.items() if val is not None]
+    ax.set_xticks(vals, keys, rotation=90)
+    ax.set_yticks(vals, keys)
     ax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
 
     return ax

@@ -7,12 +7,13 @@ This should be used wherever you're handling an API key.
 import copy
 import logging
 import os
+from collections import UserDict
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-class SecretDict[K, V](dict):
+class SecretDict[K, V](UserDict):
     """Secret dict with unprintable keys to avoid logging problems."""
 
     def __repr__(self) -> str:
@@ -50,8 +51,7 @@ def load_secret_from_file(fpath: Path) -> str:
     -------
     stripped string of the contents of the file.
     """
-    with open(fpath) as fi:
-        return fi.read().strip()
+    return fpath.read_text().strip()
 
 
 def load_dotenv(fname: os.PathLike = Path(".env")) -> dict[str, str]:

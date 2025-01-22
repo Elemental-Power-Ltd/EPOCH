@@ -53,6 +53,8 @@ class Database:
         self.user = user
         self.database = database
 
+        self.pool: asyncpg.Pool | None = None
+
     async def create_pool(self) -> None:
         """
         Create the PostgreSQL connection pool.
@@ -60,6 +62,10 @@ class Database:
         For a given endpoint, use `pool.acquire()` to get an entry from this pool
         and speed things up.
         """
+        if self.pool is not None:
+            logger.warning("Pool aready created for DB")
+            return None
+
         try:
             if self.dsn is not None:
                 self.pool = await asyncpg.create_pool(dsn=self.dsn)
