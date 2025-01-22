@@ -580,7 +580,7 @@ ALTER TABLE ONLY tariffs.electricity
 ALTER TABLE ONLY tariffs.metadata
     ADD CONSTRAINT metadata_site_id_fkey FOREIGN KEY (site_id) REFERENCES client_info.site_info(site_id);
 
-CREATE USER python;
+CREATE USER python; -- This will fail in psql, but the rest of the lines should be executed successfully.
 GRANT ALL ON SCHEMA carbon_intensity TO python;
 GRANT ALL ON SCHEMA client_info TO python;
 GRANT ALL ON SCHEMA client_meters TO python;
