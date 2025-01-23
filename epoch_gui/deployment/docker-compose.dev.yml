@@ -20,7 +20,7 @@ services:
     <<: *shared-dev
 
   db:
-    image: postgres:latest
+    image: postgres:16.6
     environment:
       - POSTGRES_USER=python
       - PG_USER=python
