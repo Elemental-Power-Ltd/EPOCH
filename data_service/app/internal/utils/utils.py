@@ -196,3 +196,54 @@ def add_epoch_fields(non_epoch_df: pd.DataFrame) -> pd.DataFrame:
     non_epoch_df["HourOfYear"] = non_epoch_df.index.map(hour_of_year)
 
     return non_epoch_df
+
+
+def chunk_time_period(
+    start_ts: datetime.datetime, end_ts: datetime.datetime, freq: datetime.timedelta, split_years: bool = True
+) -> list[tuple[datetime.datetime, datetime.datetime]]:
+    """
+    Split a start_ts, end_ts time period into chunks of no more than `freq`.
+
+    For some APIs, we'll have to request no more than X days (often 7 or 14).
+    This function will split a single long time period into a set of smaller (start, end) pairs.
+    Sometimes we aren't allowed to request over year boundaries, so we do the splitting there as well.
+
+    Parameters
+    ----------
+    start_ts
+
+    end_ts
+
+    freq
+        Maximum size of chunk to split into.
+    split_years
+        Whether to split something of the form (202X, M, D), (202Y, M, D) into two separate chunks.
+
+    Returns
+    -------
+        List of (start_ts, end_ts) pairs that chunk up the original times
+    """
+    time_pairs: list[tuple[datetime.datetime, datetime.datetime]]
+    if (end_ts - start_ts) >= freq:
+        time_pairs = list(
+            itertools.pairwise([
+                *list(pd.date_range(start_ts, end_ts, freq=freq)),
+                end_ts,
+            ])
+        )
+    else:
+        time_pairs = [(start_ts, end_ts)]
+
+    if not split_years:
+        return time_pairs
+
+    new_time_pairs = []
+    for a, b in time_pairs:
+        if a.year != b.year:
+            split_point = datetime.datetime(year=b.year, month=1, day=1, hour=0, minute=0, tzinfo=b.tzinfo)
+            new_time_pairs.append((a, split_point))
+            new_time_pairs.append((split_point, b))
+        else:
+            new_time_pairs.append((a, b))
+
+    return new_time_pairs
