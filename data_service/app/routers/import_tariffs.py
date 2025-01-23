@@ -399,20 +399,21 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabaseDe
         res = await conn.fetch(
             """
             SELECT
-                timestamp,
+                start_ts,
+                end_ts,
                 unit_cost
             FROM tariffs.electricity
             WHERE dataset_id = $1
-            AND $2 <= timestamp
-            AND timestamp < $3
-            ORDER BY timestamp ASC""",
+            AND $2 <= start_ts
+            AND end_ts <= $3
+            ORDER BY start_ts ASC""",
             dataset_id,
             params.start_ts,
             params.end_ts,
         )
         if not res:
             raise ValueError(f"Could not get a dataset for {dataset_id}.")
-        df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
+        df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "unit_cost"])
         df.index = pd.to_datetime(df.index, utc=True)
         df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
         dfs.append(df)
