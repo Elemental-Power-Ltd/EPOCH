@@ -313,6 +313,7 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
     mask = np.logical_and(price_df.index >= params.start_ts, price_df.index < params.end_ts)
     price_df = price_df[mask]
     price_df["start_ts"] = price_df.index
+    price_df["end_ts"] = price_df.index + pd.Timedelta(minutes=30)
     price_df["dataset_id"] = dataset_id
     # Note that it doesn't matter that we've got "too  much" tariff data here, as we'll sort it out when we get it.
     async with pool.acquire() as conn:
@@ -364,8 +365,8 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             await conn.copy_records_to_table(
                 table_name="electricity",
                 schema_name="tariffs",
-                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["cost"], strict=True),
-                columns=["dataset_id", "start_ts", "unit_cost"],
+                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["end_ts"], price_df["cost"], strict=True),
+                columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
             )
 
     return metadata
