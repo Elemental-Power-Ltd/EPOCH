@@ -364,8 +364,8 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             await conn.copy_records_to_table(
                 table_name="electricity",
                 schema_name="tariffs",
-                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["cost"], strict=True),
-                columns=["dataset_id", "timestamp", "unit_cost"],
+                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["end_ts"], price_df["cost"], strict=True),
+                columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
             )
 
     return metadata
