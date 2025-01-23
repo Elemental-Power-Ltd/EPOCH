@@ -31,6 +31,7 @@ import {validateTaskData} from "../Components/TaskData/validateTaskData";
 import SiteDataForm from "../Components/TaskConfig/SiteDataForm";
 import {useEpochStore} from "../State/state";
 import {TaskConfig} from "../State/types";
+import SimulationResultViewer from "../Components/Results/SimulationResultViewer";
 
 const simulationSteps = [
     "Configure Site",
@@ -282,21 +283,12 @@ const SimulationContainer: FC = () => {
                     </>
                 );
             case 2:
-                // Step 2: View Results
-                if (isLoading) {
-                    return <LoadingSimulatingSummary/>;
-                }
-
-                if (error) {
-                    return <ErroredSimulationSummary error={error}/>;
-                }
-
-                return simulationResult
-                    ? <SimulationSummary result={simulationResult}/>
-                    : <Typography>No simulation results yet.</Typography>
-
-            default:
-                return <div>Unknown step</div>;
+                return (
+                    <SimulationResultViewer
+                        isLoading={isLoading}
+                        error={error}
+                        result={simulationResult}
+                    />);
         }
     };
 

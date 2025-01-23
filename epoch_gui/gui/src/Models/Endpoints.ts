@@ -6,8 +6,12 @@ export interface SubmitSimulationRequest {
     site_data: any;
 }
 
+
+export type ReportDataType = { [key: string]: number[] };
+
+
 export interface SimulationResult {
     objectives: any;
 
-    report_data: any;
+    report_data: ReportDataType | null;
 }
