@@ -243,11 +243,12 @@ class TestOptimisationTaskDatabase:
         assert get_result.status_code == 200, get_result.text
 
         repro_result = await client.post(
-            "/get-result-configuration", content=json.dumps({"result_id": str(sample_task_config.task_id)})
+            "/get-result-configuration",
+            content=json.dumps({"result_id": str(sample_portfolio_optimisation_result.portfolio_id)}),
         )
         assert repro_result.status_code == 200, repro_result.text
         repro_data = repro_result.json()
-        assert repro_data["task_id"] == str(sample_task_config.task_id)
+        assert repro_data["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
 
         assert isinstance(sample_task_config.input_data["demo_london"], RemoteMetaData)
         assert (

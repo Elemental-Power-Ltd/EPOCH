@@ -226,7 +226,7 @@ class TaskConfig(pydantic.BaseModel):
 
 
 class ResultReproConfig(pydantic.BaseModel):
-    task_id: pydantic.UUID4
+    portfolio_id: pydantic.UUID4
     task_data: dict[site_id_t, SolutionType]
     site_data: dict[site_id_t, SiteDataEntry]
 

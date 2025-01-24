@@ -91,7 +91,6 @@ class TestUploadMeterData:
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
         records = json.loads(data.to_json(orient="records"))
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
-        print(upload_result)
         result = await client.post(
             "/get-electricity-load",
             json={

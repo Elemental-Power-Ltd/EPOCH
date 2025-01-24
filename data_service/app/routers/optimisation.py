@@ -329,12 +329,13 @@ async def get_result_configuration(result_id: ResultID, conn: DatabaseDep) -> Re
     task_info = await conn.fetchrow(
         """
         SELECT
-            cr.task_id,
+            cr.portfolio_id,
             cr.scenarios,
             cr.site_ids,
             tc.input_data
         FROM (
             SELECT
+                pr.portfolio_id,
                 pr.task_id,
                 ARRAY_AGG(sr.scenario ORDER BY sr.site_id) AS scenarios,
                 ARRAY_AGG(sr.site_id ORDER BY sr.site_id) AS site_ids
@@ -344,8 +345,8 @@ async def get_result_configuration(result_id: ResultID, conn: DatabaseDep) -> Re
                 optimisation.site_results AS sr
             ON pr.portfolio_id = sr.portfolio_id
             WHERE
-                pr.task_id = $1
-            GROUP BY pr.task_id
+                pr.portfolio_id = $1
+            GROUP BY pr.portfolio_id, pr.task_id
         ) AS cr
         LEFT JOIN
             optimisation.task_config AS tc
@@ -357,9 +358,9 @@ async def get_result_configuration(result_id: ResultID, conn: DatabaseDep) -> Re
     if task_info is None:
         raise HTTPException(400, f"No task configuration exists for result with id {result_id.result_id}")
 
-    task_id, scenarios, site_ids, portfolio_input_data = task_info
+    portfolio_id, scenarios, site_ids, portfolio_input_data = task_info
     return ResultReproConfig(
-        task_id=task_id,
+        portfolio_id=portfolio_id,
         task_data={site_id: json.loads(entry) for site_id, entry in zip(site_ids, scenarios, strict=False)},
         site_data=json.loads(portfolio_input_data),
     )
