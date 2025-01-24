@@ -2,12 +2,13 @@
 
 # ruff: noqa: D101
 import datetime
+import uuid
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
 import pydantic
 
-from .core import dataset_id_t, site_id_field, site_id_t
+from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
 
 
 class Objective(pydantic.BaseModel):
@@ -24,45 +25,95 @@ class Objective(pydantic.BaseModel):
     annualised_cost: float | None = pydantic.Field(default=1.0, description="Cost to run these interventions per year")
 
 
-type SolutionType = dict[str, float | int]
+type SolutionType = dict[str, Any]
 
 
-class OptimisationResult(pydantic.BaseModel):
-    task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(
-        examples=["bb8ce01e-4a73-11ef-9454-0242ac120001"],
-        description="Unique ID for this task, often assigned by the optimiser.",
-    )
-    site_id: site_id_t | None = site_id_field
-    result_id: pydantic.UUID4
+class SiteOptimisationResult(pydantic.BaseModel):
+    """Result for a single site within a portfolio result."""
+
+    site_id: site_id_t
     portfolio_id: pydantic.UUID4
-    solution: SolutionType | None = pydantic.Field(
-        examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
-        description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
-        + "May not cover all parameters, only the ones we searched over.",
+    scenario: SolutionType
+    metric_carbon_balance_scope_1: float | None
+    metric_carbon_balance_scope_2: float | None
+    metric_cost_balance: float | None
+    metric_capex: float | None
+    metric_payback_horizon: float | None
+    metric_annualised_cost: float | None
+
+
+class PortfolioOptimisationResult(pydantic.BaseModel):
+    """Result for a whole portfolio optimisation task, often one entry in the Pareto front."""
+
+    task_id: pydantic.UUID4
+    portfolio_id: pydantic.UUID4
+    metric_carbon_balance_scope_1: float | None
+    metric_carbon_balance_scope_2: float | None
+    metric_cost_balance: float | None
+    metric_capex: float | None
+    metric_payback_horizon: float | None
+    metric_annualised_cost: float | None
+    site_results: list[SiteOptimisationResult] | None = pydantic.Field(default=None)
+
+
+class TaskResult(pydantic.BaseModel):
+    """Result for metadata about an optimisation task."""
+
+    task_id: pydantic.UUID4
+    n_evals: pydantic.PositiveInt
+    exec_time: datetime.timedelta
+    completed_at: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+
+
+class OptimisationResultEntry(pydantic.BaseModel):
+    portfolio: list[PortfolioOptimisationResult] | None = pydantic.Field(
+        default=None, description="List of total portfolio result data"
     )
-    n_evals: pydantic.PositiveInt | None = None
-    exec_time: datetime.timedelta | None = None
-    objective_values: Objective = pydantic.Field(
-        examples=[
-            {
-                "carbon_balance": 280523.3125,
-                "cost_balance": 230754.328125,
-                "capex": 371959.96875,
-                "payback_horizon": 1.6119306087493896,
-                "annualised_cost": 22880.55078125,
-            }
-        ],
-        description="Values of the objectives at this specific point.",
+    sites: list[SiteOptimisationResult] | None = pydantic.Field(
+        default=None, description="List of results within a portfolio for the individual sites."
     )
-    completed_at: pydantic.AwareDatetime = pydantic.Field(
-        default_factory=lambda: datetime.datetime.now(datetime.UTC), description="Time this result was calculated at.."
-    )
+    tasks: list[TaskResult] | None = pydantic.Field(default=None, description="List of task result metadata, e.g. run time")
+
+    @pydantic.field_validator("portfolio", mode="before")
+    @classmethod
+    def check_portfolio_list(
+        cls, v: PortfolioOptimisationResult | list[PortfolioOptimisationResult] | None
+    ) -> list[PortfolioOptimisationResult] | None:
+        """Check if we've got a list of portfolio results, and if we got just one, make it a list."""
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            v = [v]
+        return v
+
+    @pydantic.field_validator("sites", mode="before")
+    @classmethod
+    def check_sites_list(
+        cls, v: SiteOptimisationResult | list[SiteOptimisationResult] | None
+    ) -> list[SiteOptimisationResult] | None:
+        """Check if we've got a list of site results, and if we got just one, make it a list."""
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            v = [v]
+        return v
+
+    @pydantic.field_validator("tasks", mode="before")
+    @classmethod
+    def check_task_list(cls, v: TaskResult | list[TaskResult] | None) -> list[TaskResult] | None:
+        """Check if we've got a list of task results, and if we got just one, make it a list."""
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            v = [v]
+        return v
 
 
 class OptimiserEnum(StrEnum):
     GridSearch = "GridSearch"
     NSGA2 = "NSGA2"
     GeneticAlgorithm = "GeneticAlgorithm"
+    BayesianOptimisation = "BayesianOptimisation"
 
 
 class FileLocationEnum(StrEnum):
@@ -118,31 +169,30 @@ class Optimiser(pydantic.BaseModel):
 
 class TaskConfig(pydantic.BaseModel):
     task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
-    client_id: str = pydantic.Field(
+    client_id: client_id_t = pydantic.Field(
         examples=["demo"],
         description="The database ID for a client, all lower case, joined by underscores.",
     )
     task_name: str | None = pydantic.Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
-    objective_directions: Objective = pydantic.Field(
-        default=Objective(carbon_balance=-1, cost_balance=1, capex=-1, payback_horizon=-1, annualised_cost=-1),
-        description="Whether we are maximising (+1) or minimising (-1) a given objective.",
-    )
-    constraints_min: Objective | None = pydantic.Field(
+    portfolio_constraints: dict[str, dict[str, float]] | None = pydantic.Field(
         default=None,
-        examples=[Objective(carbon_balance=None, cost_balance=1e6, capex=None, payback_horizon=None, annualised_cost=None)],
-        description="Minimal values of the objectives to consider, e.g. reject all solutions with carbon balance < 1000.",
+        examples=[{"capex": {"min": 0, "max": 9999}}],
+        description="Dictionary of metrics with 'max' and 'min' keys for the entire portfolio (e.g. spend no more than £1m).",
     )
-    constraints_max: Objective | None = pydantic.Field(
+    site_constraints: dict[site_id_t, dict[str, dict[str, float]]] | None = pydantic.Field(
         default=None,
-        examples=[Objective(carbon_balance=None, cost_balance=None, capex=1e6, payback_horizon=None, annualised_cost=None)],
-        description="Maximal values of the objectives to consider, e.g. reject all solutions with capex > £1,000,000.",
+        examples=[{"demo_london": {"capex": {"min": 0, "max": 9999}}}],
+        description="Dict of site ids with sub-dicts of metrics with 'max' and 'min' keys for that site "
+        + "(e.g. spend no more than £100k).",
     )
-    search_parameters: dict[site_id_t, dict[str, float | int | SearchSpaceEntry]] = pydantic.Field(
+    portfolio_range: dict[site_id_t, dict[str, float | int | SearchSpaceEntry]] = pydantic.Field(
         examples=[
             {
-                "Export_headroom": {"min": 0, "max": 0, "step": 0},
-                "Export_kWh_price": 5,
-                "Fixed_load1_scalar": {"min": 1, "max": 1, "step": 0},
+                "demo_london": {
+                    "Export_headroom": {"min": 0, "max": 0, "step": 0},
+                    "Export_kWh_price": 5,
+                    "Fixed_load1_scalar": {"min": 1, "max": 1, "step": 0},
+                }
             }
         ],
         description="EPOCH search space parameters, either as single entries or as a min/max/step arrangement for searchables.",
@@ -152,8 +202,19 @@ class TaskConfig(pydantic.BaseModel):
         description="The objectives that we're interested in, provided as a list."
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
-    site_data: dict[site_id_t, SiteDataEntry] = pydantic.Field(
-        description="Where the data for this calculation are coming from."
+    input_data: dict[site_id_t, SiteDataEntry] = pydantic.Field(
+        examples=[
+            {
+                "demo_london": {
+                    "loc": "remote",
+                    "site_id": "demo_london",
+                    "start_ts": "2025-01-01T00:00:00Z",
+                    "duration": "1Y",
+                    "dataset_ids": {"HeatingLoad": uuid.uuid4()},
+                }
+            }
+        ],
+        description="Where the data for this calculation are coming from, per-site",
     )
     optimiser: Optimiser = pydantic.Field(
         description="The optimisation algorithm for the backend to use in these calculations."
@@ -166,17 +227,21 @@ class TaskConfig(pydantic.BaseModel):
 
 class ResultReproConfig(pydantic.BaseModel):
     task_id: pydantic.UUID4
-    task_data: SolutionType
-    site_data: SiteDataEntry
+    task_data: dict[site_id_t, SolutionType]
+    site_data: dict[site_id_t, SiteDataEntry]
 
 
 class OptimisationTaskListEntry(pydantic.BaseModel):
     task_id: dataset_id_t
     task_name: str | None
-    result_ids: list[pydantic.UUID4]
-    n_evals: pydantic.PositiveInt = pydantic.Field(
-        examples=[8832], description="Number of EPOCH evaluations we ran to calculate this."
+    result_ids: list[pydantic.UUID4] | None = pydantic.Field(
+        examples=[None, [uuid.uuid4()]], description="Portfolio IDs for the entries in the Pareto front for this task."
     )
-    exec_time: datetime.timedelta = pydantic.Field(
-        examples=["PT4.297311S"], description="Time it took to calculate this set of results."
+    n_evals: pydantic.PositiveInt | None = pydantic.Field(
+        examples=[8832],
+        description="Number of EPOCH evaluations we ran to calculate this task." + " None if the task didn't complete.",
+    )
+    exec_time: datetime.timedelta | None = pydantic.Field(
+        examples=["PT4.297311S"],
+        description="Time it took to calculate this set of results." + " None if the task didn't complete.",
     )

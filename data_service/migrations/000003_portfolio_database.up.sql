@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS optimisation.portfolio_results (
 CREATE TABLE IF NOT EXISTS optimisation.site_results (
     portfolio_id uuid NOT NULL REFERENCES optimisation.portfolio_results(portfolio_id),
     site_id TEXT NOT NULL REFERENCES client_info.site_info(site_id), -- note that this won't allow for dummy sites
+    scenario JSONB,
     metric_carbon_balance_scope_1 double precision,
     metric_carbon_balance_scope_2 double precision,
     metric_cost_balance double precision,
