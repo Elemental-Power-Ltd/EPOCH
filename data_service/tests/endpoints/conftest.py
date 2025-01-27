@@ -19,6 +19,7 @@ import testing.postgresql  # type: ignore
 from httpx import ASGITransport, AsyncClient
 
 from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
+from app.internal.utils.database_utils import get_migration_files
 from app.main import app
 
 db_factory = testing.postgresql.PostgresqlFactory(cache_initialized_db=True)
@@ -45,6 +46,10 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         await conn.execute(fi.read())
     with Path("./elementaldb_client_info.sql").open() as fi:
         await conn.execute(fi.read())
+
+    for file in get_migration_files(Path("migrations")):
+        with file.open() as fi:
+            await conn.execute(fi.read())
 
     async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
         """

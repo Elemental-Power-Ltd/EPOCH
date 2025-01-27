@@ -75,7 +75,11 @@ class Database:
                 )
         except asyncpg.exceptions.ConnectionFailureError as ex:
             raise RuntimeError(
-                f"Could not connect to postgresql database={self.database}" + f"at host={self.host} with user={self.user}"
+                f"Could not connect to postgresql database={self.database}" + f" at host={self.host} with user={self.user}"
+            ) from ex
+        except ConnectionRefusedError as ex:
+            raise RuntimeError(
+                f"Connection refused to postgresql database={self.database}" + f" at host={self.host} with user={self.user}."
             ) from ex
         assert self.pool is not None, "Could not create database pool"
 

@@ -66,3 +66,27 @@ class TestGenerateAll:
             == len(data_json["import_tariffs"])
             == len(data_json["grid_co2"])
         )
+
+
+class TestListAllDatasets:
+    @pytest.mark.asyncio
+    async def test_has_metadata(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+        _, _ = upload_meter_data
+        list_result = await client.post(
+            "/list-datasets",
+            json={
+                "site_id": "demo_london",
+            },
+        )
+
+        assert list_result.status_code == 200, list_result.text
+
+        list_data = list_result.json()
+        assert len(list_data) == 3
+        print(list_data)
+        for dataset_entry in list_data:
+            if dataset_entry["dataset_type"] == "ASHPData":
+                # skip this one as it's a dummy dataset
+                continue
+            assert dataset_entry["start_ts"] <= dataset_entry["end_ts"], dataset_entry
+            assert dataset_entry["num_entries"] > 1
