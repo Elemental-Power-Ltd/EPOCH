@@ -1,5 +1,9 @@
 """A direct copy of optimisation_elemental app/model/site_range.py."""
-from __future__ import annotations
+
+# ruff: noqa: D101
+
+# TODO (2025-01-27 MHJB): It may be neater to represet these as NonNegativeInt and NonNegativeFloat directly,
+# but haven't done so for now to preserve compatibility
 
 from enum import StrEnum
 from typing import Annotated
