@@ -182,10 +182,10 @@ async def list_import_tariff_datasets(site_id: SiteID, pool: DatabasePoolDep) ->
             SELECT
                 tm.dataset_id,
                 MAX(tm.created_at) AS created_at,
-                MIN(te.timestamp) AS start_ts,
-                MAX(te.timestamp) AS end_ts,
+                MIN(te.start_ts) AS start_ts,
+                MAX(te.end_ts) AS end_ts,
                 COUNT(*) AS num_entries,
-                (MAX(te.timestamp) - MIN(te.timestamp)) / (COUNT(*) - 1) AS resolution
+                (MAX(te.end_ts) - MIN(te.start_ts)) / (COUNT(*) - 1) AS resolution
             FROM tariffs.metadata AS tm
             LEFT JOIN
                 tariffs.electricity AS te

@@ -33,9 +33,9 @@ class TestSyntheticTariffs:
                 "end_ts": demo_end_ts.isoformat(),
             },
         )
-        assert metadata.status_code == 200
+        assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
-        assert result.status_code == 200
+        assert result.status_code == 200, result.text
         assert result.json()[-1]["StartTime"] == "23:30"
         assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() // pd.Timedelta(minutes=30).total_seconds()
         assert len({item["Tariff"] for item in result.json()}) > 10
@@ -53,9 +53,9 @@ class TestSyntheticTariffs:
                 "end_ts": demo_end_ts.isoformat(),
             },
         )
-        assert metadata.status_code == 200
+        assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
-        assert result.status_code == 200
+        assert result.status_code == 200, result.text
         assert result.json()[-1]["StartTime"] == "23:30"
         assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() // pd.Timedelta(minutes=30).total_seconds()
         assert len({item["Tariff"] for item in result.json()}) == 1
@@ -73,9 +73,9 @@ class TestSyntheticTariffs:
                 "end_ts": demo_end_ts.isoformat(),
             },
         )
-        assert metadata.status_code == 200
+        assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
-        assert result.status_code == 200
+        assert result.status_code == 200, result.text
         assert result.json()[-1]["StartTime"] == "23:30"
         assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() // pd.Timedelta(minutes=30).total_seconds()
         assert len({item["Tariff"] for item in result.json()}) == 2
@@ -93,9 +93,9 @@ class TestSyntheticTariffs:
                 "end_ts": demo_end_ts.isoformat(),
             },
         )
-        assert metadata.status_code == 200
+        assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
-        assert result.status_code == 200
+        assert result.status_code == 200, result.text
         assert result.json()[-1]["StartTime"] == "23:30"
         assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() // pd.Timedelta(minutes=30).total_seconds()
         assert len({item["Tariff"] for item in result.json()}) == 3
@@ -106,34 +106,34 @@ class TestImportTariffs:
     async def test_generate_import_tariff(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
-        metadata = (
-            await client.post(
-                "/generate-import-tariffs",
-                json={
-                    "site_id": "demo_london",
-                    "tariff_name": "AGILE-24-04-03",
-                    "start_ts": demo_start_ts.isoformat(),
-                    "end_ts": demo_end_ts.isoformat(),
-                },
-            )
-        ).json()
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "AGILE-24-04-03",
+                "start_ts": demo_start_ts.isoformat(),
+                "end_ts": demo_end_ts.isoformat(),
+            },
+        )
+        assert response.status_code == 200, response.text
+        metadata = response.json()
         assert metadata["site_id"] == "demo_london"
 
     @pytest.mark.asyncio
     async def test_generate_and_get_import_tariff(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
-        metadata = (
-            await client.post(
-                "/generate-import-tariffs",
-                json={
-                    "site_id": "demo_london",
-                    "tariff_name": "AGILE-24-04-03",
-                    "start_ts": demo_start_ts.isoformat(),
-                    "end_ts": demo_end_ts.isoformat(),
-                },
-            )
-        ).json()
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "AGILE-24-04-03",
+                "start_ts": demo_start_ts.isoformat(),
+                "end_ts": demo_end_ts.isoformat(),
+            },
+        )
+        assert response.status_code == 200, response.text
+        metadata = response.json()
         tariff_result = (
             await client.post(
                 "/get-import-tariffs",
@@ -197,7 +197,7 @@ class TestImportTariffs:
                 "end_ts": end_ts.isoformat(),
             },
         )
-        assert metadata.status_code == 200
+        assert metadata.status_code == 200, metadata.text
         tariff_result = (
             await client.post(
                 "/get-import-tariffs",
@@ -217,29 +217,29 @@ class TestImportTariffs:
         end_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
         tariff_uuids = {}
         for tariff_type in ["fixed", "overnight", "peak", "agile"]:
-            metadata = (
-                await client.post(
-                    "/generate-import-tariffs",
-                    json={
-                        "site_id": "demo_london",
-                        "tariff_name": tariff_type,
-                        "start_ts": start_ts.isoformat(),
-                        "end_ts": end_ts.isoformat(),
-                    },
-                )
-            ).json()
-            tariff_uuids[tariff_type] = metadata["dataset_id"]
-
-        tariff_result = (
-            await client.post(
-                "/get-import-tariffs",
+            response = await client.post(
+                "/generate-import-tariffs",
                 json={
-                    "dataset_id": list(tariff_uuids.values()),
+                    "site_id": "demo_london",
+                    "tariff_name": tariff_type,
                     "start_ts": start_ts.isoformat(),
                     "end_ts": end_ts.isoformat(),
                 },
             )
-        ).json()
+            assert response.status_code == 200, response.text
+            metadata = response.json()
+            tariff_uuids[tariff_type] = metadata["dataset_id"]
+
+        tariff_response = await client.post(
+            "/get-import-tariffs",
+            json={
+                "dataset_id": list(tariff_uuids.values()),
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert tariff_response.status_code == 200
+        tariff_result = tariff_response.json()
         # print(tariff_result)
         assert len(tariff_result) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
