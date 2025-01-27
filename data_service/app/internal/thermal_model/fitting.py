@@ -1,6 +1,7 @@
 """Functions for fitting structural and fabric data to a set of gas data."""
 
 import datetime
+from typing import cast
 
 import numpy as np
 import numpy.typing as npt
@@ -95,22 +96,23 @@ def parameters_to_loss(
         # so that we can sensibly fit Gaussians during the Bayesian optimisation.
         worst_energy_loss = np.sum(gas_df["consumption"]) ** 2 * 1.1
         worst_temperature_loss = 50**2 * (end_ts - start_ts).total_seconds() / 300.0
-        return worst_energy_loss + worst_temperature_loss
+        return cast(float, worst_energy_loss + worst_temperature_loss)
     resampled_df = resample_to_gas_df(sim_df, gas_df)
-    energy_loss = float(np.sum(np.power(gas_df["consumption"] - resampled_df, 2.0)))
+    energy_loss = cast(float, np.sum(np.power(gas_df["consumption"] - resampled_df, 2.0)))
 
     # How closely we want the boiler to control the temperatures for the thermal loss.
     setpoint_width = 3.0
-    temperature_loss = float(
+    temperature_loss = cast(
+        float,
         np.sum(
             np.maximum(
                 (sim_df["temperatures"] - (setpoint + setpoint_width)) * (sim_df["temperatures"] - (setpoint - setpoint_width)),
                 0,
             )
-        )
+        ),
     )
 
-    temperature_loss_scale = max(gas_df.consumption) / 100
+    temperature_loss_scale = cast(float, max(gas_df.consumption) / 100.0)
     return energy_loss + temperature_loss_scale * temperature_loss
 
 
@@ -262,4 +264,4 @@ def fit_to_gas_usage(gas_df: pd.DataFrame, weather_df: pd.DataFrame, elec_df: pd
 
     assert opt.max is not None
     assert opt.max["params"] is not None
-    return opt.max["params"]
+    return cast(dict[str, float], opt.max["params"])

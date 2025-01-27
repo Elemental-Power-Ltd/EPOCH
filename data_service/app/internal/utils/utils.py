@@ -166,7 +166,7 @@ def split_into_sessions[T: (float, int, datetime.datetime, datetime.date, pd.Tim
         assert isinstance(max_diff, float | int)
 
     sessions: list[list[T]] = []
-    curr_session: list[T] = [arr[0]]  # type: ignore
+    curr_session: list[T] = [arr[0]]
 
     for first, second in itertools.pairwise(arr):
         if (second - first) <= max_diff:  # pyright: ignore
@@ -221,6 +221,8 @@ def symlog[T: (float, npt.NDArray[np.floating])](x: T, c: float = 1.0 / np.log(1
     res = np.sign(x) * np.log(1.0 + np.abs(x / c))
     assert isinstance(res, type(x))
     return res
+
+
 def chunk_time_period(
     start_ts: datetime.datetime, end_ts: datetime.datetime, freq: datetime.timedelta, split_years: bool = True
 ) -> list[tuple[datetime.datetime, datetime.datetime]]:
@@ -264,8 +266,7 @@ def chunk_time_period(
     for a, b in time_pairs:
         if a.year != b.year:
             split_point = datetime.datetime(year=b.year, month=1, day=1, hour=0, minute=0, tzinfo=b.tzinfo)
-            new_time_pairs.append((a, split_point))
-            new_time_pairs.append((split_point, b))
+            new_time_pairs.extend([(a, split_point), (split_point, b)])
         else:
             new_time_pairs.append((a, b))
 

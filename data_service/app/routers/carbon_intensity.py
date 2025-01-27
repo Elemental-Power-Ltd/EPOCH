@@ -7,6 +7,7 @@ varies over time as the grid changes.
 
 import datetime
 import logging
+import operator
 import typing
 import uuid
 
@@ -240,7 +241,7 @@ async def fetch_carbon_intensity(
 
     # Now we've got the data, we should tidy it up.
     # This involves sorting, filter and interpolate it
-    all_data = sorted(all_data, key=lambda x: x["start_ts"])
+    all_data = sorted(all_data, key=operator.itemgetter("start_ts"))
     new_times = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     all_data = interpolate_carbon_intensity(new_times, all_data)
     return all_data

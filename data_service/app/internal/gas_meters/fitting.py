@@ -180,7 +180,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
         humidity_discomfort=bait_fitted[2],
         smoothing=bait_fitted[3],
         thresh=bait_fitted[4],
-    )  # type: ignore
+    )
     gas_df["hdd"] = bait_hdd
 
     mdl = LinearRegression(positive=True, fit_intercept=False)
