@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS optimisation.portfolio_results (
     metric_cost_balance double precision,
     metric_capex double precision,
     metric_payback_horizon double precision,
-    metric_annualised_cost double precision
+    metric_annualised_cost double precision,
+    metric_carbon_cost double precision
 );
 
 CREATE TABLE IF NOT EXISTS optimisation.site_results (
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS optimisation.site_results (
     metric_capex double precision,
     metric_payback_horizon double precision,
     metric_annualised_cost double precision,
+    metric_carbon_cost double precision,
     PRIMARY KEY(portfolio_id, site_id)
 );
 

@@ -112,7 +112,7 @@ async def get_gsp_code(site_id: SiteID, http_client: HttpClientDep, conn: Databa
         raise HTTPException(400, f"Could not find a postcode (and thus GSP code) for {site_id}.")
     inbound_postcode, _ = postcode.split(" ")
     ci_result = await http_client.get(f"https://api.carbonintensity.org.uk/regional/postcode/{inbound_postcode}")
-    if not ci_result.status_code == 200:
+    if not ci_result.status_code == 200 or "data" not in ci_result.json():
         raise HTTPException(400, f"Got error from CarbonIntensity API: {ci_result.status_code}: {ci_result.json()}.")
 
     region_id = ci_result.json()["data"][0]["regionid"]
@@ -313,6 +313,7 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
     mask = np.logical_and(price_df.index >= params.start_ts, price_df.index < params.end_ts)
     price_df = price_df[mask]
     price_df["start_ts"] = price_df.index
+    price_df["end_ts"] = price_df.index + pd.Timedelta(minutes=30)
     price_df["dataset_id"] = dataset_id
     # Note that it doesn't matter that we've got "too  much" tariff data here, as we'll sort it out when we get it.
     async with pool.acquire() as conn:
@@ -364,8 +365,8 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             await conn.copy_records_to_table(
                 table_name="electricity",
                 schema_name="tariffs",
-                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["cost"], strict=True),
-                columns=["dataset_id", "timestamp", "unit_cost"],
+                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["end_ts"], price_df["cost"], strict=True),
+                columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
             )
 
     return metadata
@@ -399,20 +400,21 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabaseDe
         res = await conn.fetch(
             """
             SELECT
-                timestamp,
+                start_ts,
+                end_ts,
                 unit_cost
             FROM tariffs.electricity
             WHERE dataset_id = $1
-            AND $2 <= timestamp
-            AND timestamp < $3
-            ORDER BY timestamp ASC""",
+            AND $2 <= start_ts
+            AND end_ts <= $3
+            ORDER BY start_ts ASC""",
             dataset_id,
             params.start_ts,
             params.end_ts,
         )
         if not res:
             raise ValueError(f"Could not get a dataset for {dataset_id}.")
-        df = pd.DataFrame.from_records(res, index="timestamp", columns=["timestamp", "unit_cost"])
+        df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "unit_cost"])
         df.index = pd.to_datetime(df.index, utc=True)
         df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
         dfs.append(df)

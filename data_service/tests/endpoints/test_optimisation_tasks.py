@@ -15,11 +15,11 @@ from app.models.optimisation import (
     OptimiserEnum,
     PortfolioOptimisationResult,
     RemoteMetaData,
-    SearchSpaceEntry,
     SiteOptimisationResult,
     TaskConfig,
     TaskResult,
 )
+from app.models.site_range import Grid, SiteRange
 
 
 class TestOptimisationTaskDatabase:
@@ -35,11 +35,17 @@ class TestOptimisationTaskDatabase:
             portfolio_constraints={"capex": {"max": 1e5}},
             site_constraints={"demo_london": {"capex": {"min": 1000, "max": 9999}}},
             portfolio_range={
-                "demo_london": {
-                    "Export_headroom": SearchSpaceEntry(min=0, max=0, step=0),
-                    "Export_kWh_price": 5,
-                    "Fixed_load1_scalar": SearchSpaceEntry(min=1, max=1, step=0),
-                }
+                "demo_london": SiteRange(
+                    grid=Grid(
+                        COMPONENT_IS_MANDATORY=True,
+                        export_headroom=[0],
+                        grid_export=[0],
+                        grid_import=[0],
+                        import_headroom=[0],
+                        min_power_factor=[0],
+                        tariff_index=[0],
+                    )
+                )
             },
             objectives=["capex", "carbon_balance"],
             input_data={
@@ -86,7 +92,7 @@ class TestOptimisationTaskDatabase:
         return SiteOptimisationResult(
             portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
             site_id="demo_london",
-            scenario={"grid": {"foo": 1.0, "bar": 2.0}},
+            scenario={"grid": {"export_headroom": 500}},
             metric_carbon_balance_scope_1=1.0,
             metric_carbon_balance_scope_2=2.0,
             metric_cost_balance=3.0,

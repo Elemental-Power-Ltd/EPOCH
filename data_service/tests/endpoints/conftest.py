@@ -42,7 +42,10 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     # Manually run the migrations in the migration file.
     async with db.pool.acquire() as conn:
         for fname in get_migration_files(Path("migrations")):
-            await conn.execute(fname.read_text())
+            try:
+                await conn.execute(fname.read_text())
+            except asyncpg.PostgresSyntaxError as ex:
+                raise asyncpg.PostgresSyntaxError(f"Postgres syntax error in {fname}: {ex}") from ex
 
     async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
         """

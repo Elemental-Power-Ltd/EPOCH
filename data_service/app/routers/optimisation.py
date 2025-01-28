@@ -87,6 +87,7 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[P
                     metric_payback_horizon=sub_item["metric_payback_horizon"],
                     metric_annualised_cost=sub_item["metric_annualised_cost"],
                     metric_capex=sub_item["metric_capex"],
+                    metric_carbon_cost=sub_item["metric_carbon_cost"],
                 )
                 for sub_item in item["site_results"]
                 if sub_item is not None
@@ -181,6 +182,7 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metric_capex for item in opt_result.portfolio],
                         [item.metric_payback_horizon for item in opt_result.portfolio],
                         [item.metric_annualised_cost for item in opt_result.portfolio],
+                        [item.metric_carbon_cost for item in opt_result.portfolio],
                         strict=True,
                     ),
                     columns=[
@@ -192,6 +194,7 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_capex",
                         "metric_payback_horizon",
                         "metric_annualised_cost",
+                        "metric_carbon_cost",
                     ],
                 )
             except asyncpg.exceptions.ForeignKeyViolationError as ex:
@@ -219,6 +222,7 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metric_capex for item in opt_result.sites],
                         [item.metric_payback_horizon for item in opt_result.sites],
                         [item.metric_annualised_cost for item in opt_result.sites],
+                        [item.metric_carbon_cost for item in opt_result.portfolio],
                         strict=True,
                     ),
                     columns=[
@@ -231,6 +235,7 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_capex",
                         "metric_payback_horizon",
                         "metric_annualised_cost",
+                        "metric_carbon_cost",
                     ],
                 )
             except asyncpg.exceptions.ForeignKeyViolationError as ex:
@@ -309,6 +314,8 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
         )
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
+    except asyncpg.PostgresSyntaxError as ex:
+        raise HTTPException(400, f"TaskID {task_config.task_id} already had a syntax error {ex}") from ex
     return task_config
 
 

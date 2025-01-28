@@ -9,60 +9,92 @@ from typing import Any, Literal
 import pydantic
 
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
+from .site_range import SiteRange
 
-
-class Objective(pydantic.BaseModel):
-    carbon_balance: float | None = pydantic.Field(
-        default=1.0, description="Net kg CO2e over the lifetime of these interventions."
-    )
-    cost_balance: float | None = pydantic.Field(
-        default=1.0, description="Net monetary cost (opex - returns) over the lifetime of these interventions."
-    )
-    capex: float | None = pydantic.Field(default=1.0, description="Upfront CAPEX cost for these interventions.")
-    payback_horizon: float | None = pydantic.Field(
-        default=1.0, description="Years before this intervention pays for itself (if very large, represents no payback ever.)"
-    )
-    annualised_cost: float | None = pydantic.Field(default=1.0, description="Cost to run these interventions per year")
-
-
-type SolutionType = dict[str, Any]
+type SiteScenario = dict[str, Any]
 
 
 class SiteOptimisationResult(pydantic.BaseModel):
     """Result for a single site within a portfolio result."""
 
-    site_id: site_id_t
-    portfolio_id: pydantic.UUID4
-    scenario: SolutionType
-    metric_carbon_balance_scope_1: float | None
-    metric_carbon_balance_scope_2: float | None
-    metric_cost_balance: float | None
-    metric_capex: float | None
-    metric_payback_horizon: float | None
-    metric_annualised_cost: float | None
+    site_id: site_id_t = site_id_field
+    portfolio_id: pydantic.UUID4 = pydantic.Field(
+        description="The portfolio pareto front entry this site is linked to."
+        + " A single site result is uniquely identified by a (portfolio_id, site_id) pair."
+    )
+    scenario: SiteScenario = pydantic.Field(
+        description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
+    )
+    metric_carbon_balance_scope_1: float | None = pydantic.Field(
+        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, 3.14]
+    )
+    metric_carbon_balance_scope_2: float | None = pydantic.Field(
+        description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
+    )
+    metric_carbon_cost: float | None = pydantic.Field(
+        description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
+    )
+    metric_cost_balance: float | None = pydantic.Field(
+        description="Net monetary cost (opex - returns) over the lifetime of these interventions on this site.", default=None
+    )
+    metric_capex: float | None = pydantic.Field(description="Cost to install this scenario on this site.", default=None)
+    metric_payback_horizon: float | None = pydantic.Field(
+        description="Years for this scenario to pay back on this site (if very large, represents no payback ever.)",
+        default=None,
+    )
+    metric_annualised_cost: float | None = pydantic.Field(
+        description="Cost of running this scenario (including amortised deprecation) on this site.", default=None
+    )
 
 
 class PortfolioOptimisationResult(pydantic.BaseModel):
     """Result for a whole portfolio optimisation task, often one entry in the Pareto front."""
 
     task_id: pydantic.UUID4
-    portfolio_id: pydantic.UUID4
-    metric_carbon_balance_scope_1: float | None
-    metric_carbon_balance_scope_2: float | None
-    metric_cost_balance: float | None
-    metric_capex: float | None
-    metric_payback_horizon: float | None
-    metric_annualised_cost: float | None
-    site_results: list[SiteOptimisationResult] | None = pydantic.Field(default=None)
+    portfolio_id: pydantic.UUID4 = pydantic.Field(
+        description="Individual ID representing this entry in the portfolio pareto front,"
+        + " used to link to SiteOptimisationResults."
+    )
+    metric_carbon_balance_scope_1: float | None = pydantic.Field(
+        description="Direct carbon emissions saved by this entire portfolio of scenarios.", default=None, examples=[None, 3.14]
+    )
+    metric_carbon_balance_scope_2: float | None = pydantic.Field(
+        description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
+    )
+    metric_carbon_cost: float | None = pydantic.Field(
+        description="Net change in carbon emissions per year due to this entire portfolio of scenarios.", default=None
+    )
+    metric_cost_balance: float | None = pydantic.Field(
+        description="Net change in annual running cost due to this entire portfolio of scenarios.", default=None
+    )
+    metric_capex: float | None = pydantic.Field(
+        description="Cost to install this scenario on entire portfolio of scenarios.", default=None
+    )
+    metric_payback_horizon: float | None = pydantic.Field(
+        description="Years for these scenarios to pay back across this portfolio.", default=None
+    )
+    metric_annualised_cost: float | None = pydantic.Field(
+        description="Cost of running these scenario (including amortised deprecation) across this portfolio", default=None
+    )
+    site_results: list[SiteOptimisationResult] | None = pydantic.Field(
+        default=None,
+        description="Individual site results for this Portfolio."
+        + " Not provided when requesting a specific portfolio from the DB.",
+    )
 
 
 class TaskResult(pydantic.BaseModel):
     """Result for metadata about an optimisation task."""
 
     task_id: pydantic.UUID4
-    n_evals: pydantic.PositiveInt
-    exec_time: datetime.timedelta
-    completed_at: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    n_evals: pydantic.PositiveInt = pydantic.Field(
+        description="Number of site scenarios evaluated during this task.", examples=[1, 9999]
+    )
+    exec_time: datetime.timedelta = pydantic.Field(description="Wall-clock time this optimisation run took.")
+    completed_at: pydantic.AwareDatetime = pydantic.Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
+        description="The wall-clock time this optimisation run concluded at.",
+    )
 
 
 class OptimisationResultEntry(pydantic.BaseModel):
@@ -121,10 +153,10 @@ class FileLocationEnum(StrEnum):
     remote = "remote"
 
 
-class SearchSpaceEntry(pydantic.BaseModel):
-    min: float | int = pydantic.Field(examples=[10, 100], description="The smallest value, inclusive, to search over.")
-    max: float | int = pydantic.Field(examples=[200, 2000], description="The largest value, inclusive, to search over.")
-    step: float | int = pydantic.Field(examples=[10, 50], description="The steps to take when searching this variable.")
+# class SearchSpaceEntry(pydantic.BaseModel):
+#    min: float | int = pydantic.Field(examples=[10, 100], description="The smallest value, inclusive, to search over.")
+#    max: float | int = pydantic.Field(examples=[200, 2000], description="The largest value, inclusive, to search over.")
+#    step: float | int = pydantic.Field(examples=[10, 50], description="The steps to take when searching this variable.")
 
 
 class DataDuration(StrEnum):
@@ -168,7 +200,7 @@ class Optimiser(pydantic.BaseModel):
 
 
 class TaskConfig(pydantic.BaseModel):
-    task_id: pydantic.UUID4 | pydantic.UUID1 = pydantic.Field(description="Unique ID for this specific task.")
+    task_id: pydantic.UUID4 = pydantic.Field(description="Unique ID for this specific task.")
     client_id: client_id_t = pydantic.Field(
         examples=["demo"],
         description="The database ID for a client, all lower case, joined by underscores.",
@@ -185,7 +217,7 @@ class TaskConfig(pydantic.BaseModel):
         description="Dict of site ids with sub-dicts of metrics with 'max' and 'min' keys for that site "
         + "(e.g. spend no more than £100k).",
     )
-    portfolio_range: dict[site_id_t, dict[str, float | int | SearchSpaceEntry]] = pydantic.Field(
+    portfolio_range: dict[site_id_t, SiteRange] = pydantic.Field(
         examples=[
             {
                 "demo_london": {
@@ -195,10 +227,18 @@ class TaskConfig(pydantic.BaseModel):
                 }
             }
         ],
-        description="EPOCH search space parameters, either as single entries or as a min/max/step arrangement for searchables.",
+        description="EPOCH search space parameters, either as single entries or as a"
+        + " min/max/step arrangement for searchables. Keyed by site ID.",
     )
     objectives: list[str] = pydantic.Field(
-        default=list(Objective().model_dump().keys()),
+        default=[
+            "capex",
+            "carbon_cost",
+            "carbon_balance_scope_1",
+            "carbon_balance_scope_2",
+            "annualised_cost",
+            "payback_horizon",
+        ],
         description="The objectives that we're interested in, provided as a list."
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
@@ -227,7 +267,7 @@ class TaskConfig(pydantic.BaseModel):
 
 class ResultReproConfig(pydantic.BaseModel):
     portfolio_id: pydantic.UUID4
-    task_data: dict[site_id_t, SolutionType]
+    task_data: dict[site_id_t, SiteScenario]
     site_data: dict[site_id_t, SiteDataEntry]
 
 
