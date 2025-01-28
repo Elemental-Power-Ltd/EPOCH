@@ -8,12 +8,10 @@ from typing import Literal
 import pydantic
 
 from .core import dataset_id_t, site_id_field, site_id_t
+from .site_range import SiteRange
 
 
 class Objective(pydantic.BaseModel):
-    carbon_balance: float | None = pydantic.Field(
-        default=1.0, description="Net kg CO2e over the lifetime of these interventions."
-    )
     cost_balance: float | None = pydantic.Field(
         default=1.0, description="Net monetary cost (opex - returns) over the lifetime of these interventions."
     )
@@ -22,9 +20,18 @@ class Objective(pydantic.BaseModel):
         default=1.0, description="Years before this intervention pays for itself (if very large, represents no payback ever.)"
     )
     annualised_cost: float | None = pydantic.Field(default=1.0, description="Cost to run these interventions per year")
+    carbon_balance_scope_1: float | None = pydantic.Field(
+        default=1.0, description="Net kg CO2e over the lifetime of these interventions for scope 1."
+    )
+    carbon_balance_scope_2: float | None = pydantic.Field(
+        default=1.0, description="Net kg CO2e over the lifetime of these interventions for scope 2."
+    )
+    carbon_cost: float | None = pydantic.Field(
+        default=1.0, description="Net £ per t CO2e over the lifetime of these interventions."
+    )
 
 
-type SolutionType = dict[str, float | int]
+type SolutionType = dict[str, dict]
 
 
 class OptimisationResult(pydantic.BaseModel):
@@ -36,20 +43,20 @@ class OptimisationResult(pydantic.BaseModel):
     result_id: pydantic.UUID4
     portfolio_id: pydantic.UUID4
     solution: SolutionType | None = pydantic.Field(
-        examples=[{"ASHP_HPower": 70.0, "ScalarHYield": 0.75, "ScalarRG1": 599.2000122070312}],
-        description="EPOCH parameters e.g. ESS_Capacity=1000 for this specific solution."
-        + "May not cover all parameters, only the ones we searched over.",
+        description="EPOCH Site Scenario.",
     )
     n_evals: pydantic.PositiveInt | None = None
     exec_time: datetime.timedelta | None = None
     objective_values: Objective = pydantic.Field(
         examples=[
             {
-                "carbon_balance": 280523.3125,
+                "carbon_cost": 250.3125,
                 "cost_balance": 230754.328125,
                 "capex": 371959.96875,
                 "payback_horizon": 1.6119306087493896,
                 "annualised_cost": 22880.55078125,
+                "carbon_balance_scope_1": 3453,
+                "carbon_balance_scope_2": 2344,
             }
         ],
         description="Values of the objectives at this specific point.",
@@ -124,28 +131,49 @@ class TaskConfig(pydantic.BaseModel):
     )
     task_name: str | None = pydantic.Field(default=None, description="Human readable name for a job, e.g. 'Mount Hotel v3'.")
     objective_directions: Objective = pydantic.Field(
-        default=Objective(carbon_balance=-1, cost_balance=1, capex=-1, payback_horizon=-1, annualised_cost=-1),
+        default=Objective(
+            carbon_balance_scope_1=-1,
+            carbon_balance_scope_2=-1,
+            carbon_cost=1,
+            cost_balance=1,
+            capex=-1,
+            payback_horizon=-1,
+            annualised_cost=-1,
+        ),
         description="Whether we are maximising (+1) or minimising (-1) a given objective.",
     )
     constraints_min: Objective | None = pydantic.Field(
         default=None,
-        examples=[Objective(carbon_balance=None, cost_balance=1e6, capex=None, payback_horizon=None, annualised_cost=None)],
+        examples=[
+            Objective(
+                carbon_balance_scope_1=None,
+                carbon_balance_scope_2=None,
+                carbon_cost=None,
+                cost_balance=1e6,
+                capex=None,
+                payback_horizon=None,
+                annualised_cost=None,
+            )
+        ],
         description="Minimal values of the objectives to consider, e.g. reject all solutions with carbon balance < 1000.",
     )
     constraints_max: Objective | None = pydantic.Field(
         default=None,
-        examples=[Objective(carbon_balance=None, cost_balance=None, capex=1e6, payback_horizon=None, annualised_cost=None)],
+        examples=[
+            Objective(
+                carbon_balance_scope_1=None,
+                carbon_balance_scope_2=None,
+                carbon_cost=None,
+                cost_balance=1e6,
+                capex=None,
+                payback_horizon=None,
+                annualised_cost=None,
+            )
+        ],
         description="Maximal values of the objectives to consider, e.g. reject all solutions with capex > £1,000,000.",
     )
-    search_parameters: dict[site_id_t, dict[str, float | int | SearchSpaceEntry]] = pydantic.Field(
-        examples=[
-            {
-                "Export_headroom": {"min": 0, "max": 0, "step": 0},
-                "Export_kWh_price": 5,
-                "Fixed_load1_scalar": {"min": 1, "max": 1, "step": 0},
-            }
-        ],
-        description="EPOCH search space parameters, either as single entries or as a min/max/step arrangement for searchables.",
+    site_range: SiteRange = pydantic.Field(
+        description="EPOCH site range.",
     )
     objectives: list[str] = pydantic.Field(
         default=list(Objective().model_dump().keys()),
