@@ -15,8 +15,6 @@ def convert_sim_result(sim_result: SimulationResult) -> ObjectiveValues:
                 objective_values[Objectives.carbon_cost] = sim_result.capex / (sim_result.carbon_balance_scope_1 * 15 / 1000)
             else:
                 objective_values[Objectives.carbon_cost] = np.finfo(np.float32).max
-        elif objective == Objectives.carbon_balance_scope_1:
-            objective_values[objective] = getattr(sim_result, objective) - sim_result.capex * 0.000001
         else:
             objective_values[objective] = getattr(sim_result, objective)
     return objective_values
