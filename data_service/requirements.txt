@@ -19,6 +19,7 @@ anyio==4.7.0
     #   watchfiles
 asyncpg==0.30.0
     # via -r requirements.in
+bayes_opt==2.0.3
 certifi==2024.12.14
     # via
     #   httpcore

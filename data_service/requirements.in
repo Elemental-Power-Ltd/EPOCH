@@ -1,5 +1,6 @@
 aiometer
 asyncpg
+bayes_opt
 fastapi[standard]
 httpx
 matplotlib
