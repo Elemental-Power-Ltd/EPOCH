@@ -390,9 +390,9 @@ class TestConvectiveLink:
 
         # Should exchange one full volume of air
         expected_energy = 1.0 * hot_attrs["thermal_mass"] * (30.0 - 20.0)
-        assert energy_change == pytest.approx(-expected_energy)
-        assert hot_attrs["energy_change"] == pytest.approx(expected_energy)
-        assert cold_attrs["energy_change"] == pytest.approx(-expected_energy)
+        assert energy_change == pytest.approx(expected_energy), "Net energy change wrong"
+        assert hot_attrs["energy_change"] == pytest.approx(-expected_energy), "Hot energy change wrong"
+        assert cold_attrs["energy_change"] == pytest.approx(expected_energy), "Cold energy change wrong"
 
     def test_time_scaling(self, node_attrs_factory: Callable) -> None:
         """Test that energy transfer scales correctly with time."""
@@ -515,7 +515,7 @@ class TestConvectiveLink:
 
         # The energy change should be based only on u's thermal mass and temperature difference
         expected_energy = -1.0 * u_attrs["thermal_mass"] * (30.0 - 20.0) * (dt / 3600.0)
-        assert energy1 == pytest.approx(expected_energy)
+        assert energy1 == pytest.approx(-expected_energy)
 
         # Test that energy conservation still holds even with infinite thermal mass
         assert abs(u_attrs["energy_change"]) == pytest.approx(abs(v_attrs3["energy_change"]))

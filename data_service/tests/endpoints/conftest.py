@@ -47,7 +47,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     with Path("./elementaldb_client_info.sql").open() as fi:
         await conn.execute(fi.read())
 
-    for file in get_migration_files(Path("migrations")):
+    for file in get_migration_files(Path("migrations"), end=999998):
         with file.open() as fi:
             await conn.execute(fi.read())
 

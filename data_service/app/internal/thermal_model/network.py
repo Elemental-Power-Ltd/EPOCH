@@ -268,6 +268,7 @@ def add_heating_system_to_graph(G: HeatNetwork, design_flow_temperature: float =
 
 
 def create_simple_structure(
+        *,
     wall_width: float,
     window_area: float,
     wall_height: float | None = None,
