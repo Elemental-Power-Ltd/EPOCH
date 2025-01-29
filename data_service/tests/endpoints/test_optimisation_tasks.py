@@ -6,6 +6,7 @@ import json
 import uuid
 
 import httpx
+import pydantic
 import pytest
 
 from app.models.optimisation import (
@@ -281,3 +282,8 @@ class TestOptimisationTaskDatabase:
 
         list_result = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
         assert list_result.status_code == 200, list_result.text
+        assert list_result.json()[0]["task_id"] == str(sample_task_config.task_id)
+        assert list_result.json()[0]["n_evals"] == 123
+        assert list_result.json()[0]["exec_time"] == pydantic.TypeAdapter(datetime.timedelta).dump_python(
+            sample_task_result.exec_time, mode="json"
+        )

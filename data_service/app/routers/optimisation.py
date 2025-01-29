@@ -162,10 +162,15 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
         and solutions (EPOCH single run parameter dict e.g. `{ESS_Capacity: 100, ...}`). The solutions
         dictionary will be relatively large, and is stored as a JSONB object in the database.
 
+    Raises
+    ------
+    HTTPException(400)
+        If there's a problem with the task or portfolio results.
+
     Returns
     -------
-    results_uuids
-        Unique database IDs of each set of results in case you want to refer back to them later.
+    200, OK
+        If all was uploaded correctly.
     """
     async with conn.transaction():
         if opt_result.portfolio:
@@ -244,6 +249,19 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                     f"task_id={opt_result.portfolio[0].task_id} does not have an associated task config."
                     + "You should have added it via /add-optimisation-task beforehand.",
                 ) from ex
+        if opt_result.tasks is not None:
+            await conn.copy_records_to_table(
+                table_name="task_results",
+                schema_name="optimisation",
+                records=zip(
+                    [item.task_id for item in opt_result.tasks],
+                    [item.n_evals for item in opt_result.tasks],
+                    [item.exec_time for item in opt_result.tasks],
+                    [item.completed_at for item in opt_result.tasks],
+                    strict=True,
+                ),
+                columns=["task_id", "n_evals", "exec_time", "completed_at"],
+            )
 
 
 @router.post("/add-optimisation-task")
