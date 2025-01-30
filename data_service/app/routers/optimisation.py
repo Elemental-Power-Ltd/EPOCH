@@ -174,6 +174,8 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
     """
     async with conn.transaction():
         if opt_result.portfolio:
+            # Note that we don't add the specific site results here;
+            # those are stored in a separate table.
             try:
                 await conn.copy_records_to_table(
                     schema_name="optimisation",
@@ -209,25 +211,24 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                     + "You should have added it via /add-optimisation-task beforehand.",
                 ) from ex
 
-        if opt_result.sites and opt_result.portfolio:
-            # We can only insert sites if there's at least one portfolio filed here
-            if not all(item.portfolio_id in {item.portfolio_id for item in opt_result.portfolio} for item in opt_result.sites):
-                raise HTTPException(400, "At least one site result has a portfolio ID that you're not currently inserting.")
-            try:
+            for pf in opt_result.portfolio:
+                if not pf.site_results:
+                    # No site results here, so skip it.
+                    continue
                 await conn.copy_records_to_table(
                     schema_name="optimisation",
                     table_name="site_results",
                     records=zip(
-                        [item.site_id for item in opt_result.sites],
-                        [item.portfolio_id for item in opt_result.sites],
-                        [json.dumps(jsonable_encoder(item.scenario)) for item in opt_result.sites],
-                        [item.metric_carbon_balance_scope_1 for item in opt_result.sites],
-                        [item.metric_carbon_balance_scope_2 for item in opt_result.sites],
-                        [item.metric_cost_balance for item in opt_result.sites],
-                        [item.metric_capex for item in opt_result.sites],
-                        [item.metric_payback_horizon for item in opt_result.sites],
-                        [item.metric_annualised_cost for item in opt_result.sites],
-                        [item.metric_carbon_cost for item in opt_result.sites],
+                        [item.site_id for item in pf.site_results],
+                        [item.portfolio_id for item in pf.site_results],
+                        [json.dumps(jsonable_encoder(item.scenario)) for item in pf.site_results],
+                        [item.metric_carbon_balance_scope_1 for item in pf.site_results],
+                        [item.metric_carbon_balance_scope_2 for item in pf.site_results],
+                        [item.metric_cost_balance for item in pf.site_results],
+                        [item.metric_capex for item in pf.site_results],
+                        [item.metric_payback_horizon for item in pf.site_results],
+                        [item.metric_annualised_cost for item in pf.site_results],
+                        [item.metric_carbon_cost for item in pf.site_results],
                         strict=True,
                     ),
                     columns=[
@@ -243,13 +244,8 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_carbon_cost",
                     ],
                 )
-            except asyncpg.exceptions.ForeignKeyViolationError as ex:
-                raise HTTPException(
-                    400,
-                    f"task_id={opt_result.portfolio[0].task_id} does not have an associated task config."
-                    + "You should have added it via /add-optimisation-task beforehand.",
-                ) from ex
-        if opt_result.tasks is not None:
+
+        if opt_result.tasks:
             await conn.copy_records_to_table(
                 table_name="task_results",
                 schema_name="optimisation",

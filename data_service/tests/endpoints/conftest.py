@@ -41,7 +41,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     assert db.pool is not None, "Could not create database pool"
     # Manually run the migrations in the migration file.
     async with db.pool.acquire() as conn:
-        for fname in get_migration_files(Path("migrations")):
+        for fname in get_migration_files(Path("migrations"), end=999998):
             try:
                 await conn.execute(fname.read_text())
             except asyncpg.PostgresSyntaxError as ex:

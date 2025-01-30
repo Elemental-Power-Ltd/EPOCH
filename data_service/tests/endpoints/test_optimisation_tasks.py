@@ -144,7 +144,7 @@ class TestOptimisationTaskDatabase:
 
         opt_result = await client.post(
             "/add-optimisation-results",
-            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result], sites=[]).model_dump_json(),
+            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result]).model_dump_json(),
         )
         assert opt_result.status_code == 200, opt_result.text
 
@@ -161,7 +161,7 @@ class TestOptimisationTaskDatabase:
 
         opt_result = await client.post(
             "/add-optimisation-results",
-            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result], sites=[]).model_dump_json(),
+            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result]).model_dump_json(),
         )
         assert opt_result.status_code == 200, opt_result.text
 
@@ -185,9 +185,8 @@ class TestOptimisationTaskDatabase:
         """Test that we can add a portfolio result with the associated site data bundled."""
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert result.status_code == 200, result.text
-        to_send = OptimisationResultEntry(
-            portfolio=[sample_portfolio_optimisation_result], sites=[sample_site_optimisation_result]
-        )
+        sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
+        to_send = OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result])
         opt_result = await client.post("/add-optimisation-results", content=to_send.model_dump_json())
         assert opt_result.status_code == 200, opt_result.text
 
@@ -202,12 +201,10 @@ class TestOptimisationTaskDatabase:
         """Test that we can get a portfolio result with the associated site data bundled."""
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert result.status_code == 200, result.text
-
+        sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
         opt_result = await client.post(
             "/add-optimisation-results",
-            content=OptimisationResultEntry(
-                portfolio=[sample_portfolio_optimisation_result], sites=[sample_site_optimisation_result]
-            ).model_dump_json(),
+            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result]).model_dump_json(),
         )
         assert opt_result.status_code == 200, opt_result.text
 
@@ -235,12 +232,10 @@ class TestOptimisationTaskDatabase:
         """Test that we can get a reproduction result for a single site in a portfolio."""
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert result.status_code == 200, result.text
-
+        sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
         opt_result = await client.post(
             "/add-optimisation-results",
-            content=OptimisationResultEntry(
-                portfolio=[sample_portfolio_optimisation_result], sites=[sample_site_optimisation_result]
-            ).model_dump_json(),
+            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result]).model_dump_json(),
         )
         assert opt_result.status_code == 200, opt_result.text
 

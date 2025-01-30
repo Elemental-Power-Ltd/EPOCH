@@ -99,10 +99,7 @@ class TaskResult(pydantic.BaseModel):
 
 class OptimisationResultEntry(pydantic.BaseModel):
     portfolio: list[PortfolioOptimisationResult] | None = pydantic.Field(
-        default=None, description="List of total portfolio result data"
-    )
-    sites: list[SiteOptimisationResult] | None = pydantic.Field(
-        default=None, description="List of results within a portfolio for the individual sites."
+        default=None, description="List of total portfolio result data, with associated site results."
     )
     tasks: list[TaskResult] | None = pydantic.Field(default=None, description="List of task result metadata, e.g. run time")
 
@@ -112,18 +109,6 @@ class OptimisationResultEntry(pydantic.BaseModel):
         cls, v: PortfolioOptimisationResult | list[PortfolioOptimisationResult] | None
     ) -> list[PortfolioOptimisationResult] | None:
         """Check if we've got a list of portfolio results, and if we got just one, make it a list."""
-        if v is None:
-            return None
-        if not isinstance(v, list):
-            v = [v]
-        return v
-
-    @pydantic.field_validator("sites", mode="before")
-    @classmethod
-    def check_sites_list(
-        cls, v: SiteOptimisationResult | list[SiteOptimisationResult] | None
-    ) -> list[SiteOptimisationResult] | None:
-        """Check if we've got a list of site results, and if we got just one, make it a list."""
         if v is None:
             return None
         if not isinstance(v, list):
@@ -151,12 +136,6 @@ class OptimiserEnum(StrEnum):
 class FileLocationEnum(StrEnum):
     local = "local"
     remote = "remote"
-
-
-# class SearchSpaceEntry(pydantic.BaseModel):
-#    min: float | int = pydantic.Field(examples=[10, 100], description="The smallest value, inclusive, to search over.")
-#    max: float | int = pydantic.Field(examples=[200, 2000], description="The largest value, inclusive, to search over.")
-#    step: float | int = pydantic.Field(examples=[10, 50], description="The steps to take when searching this variable.")
 
 
 class DataDuration(StrEnum):
