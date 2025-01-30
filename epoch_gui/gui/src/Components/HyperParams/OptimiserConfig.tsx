@@ -37,7 +37,7 @@ const HyperParamForm = () => {
                 />
             }
 
-            {state.taskConfig.optimiser === "GeneticAlgorithm" &&
+            {state.taskConfig.optimiser === "NSGA2" &&
                 <Form
                     schema={GASchema as RJSFSchema}
                     uiSchema={{"ui:submitButtonOptions": {"norender": true}}}

@@ -45,16 +45,9 @@ function OptimisationContainer() {
             return;
         }
 
-        const selected_objectives: Objective[] = Object.keys(state.taskConfig.objectives).filter(
+        const selected_objectives: Objective[] = (Object.keys(state.taskConfig.objectives) as Objective[]).filter(
                 (objective) => state.taskConfig.objectives[objective]
             );
-
-        const produceSiteRange = (builder: ComponentBuilderState): SiteRange => {
-            // first get the components out of the ComponentBuilder
-            const humanFriendlySiteRange = builder.getComponents();
-            // Then expand {min,max,step} into arrays
-            return expandSiteRange(humanFriendlySiteRange);
-        }
 
         const payload: SubmitOptimisationRequest = {
             name: state.taskConfig.task_name,

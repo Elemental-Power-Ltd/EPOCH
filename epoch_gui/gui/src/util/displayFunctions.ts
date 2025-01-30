@@ -5,7 +5,7 @@ const one_trillion = 1000000000000
 
 // Display prices to the nearest £100
 export const formatPounds = (value: number | undefined): string => {
-    if (!Number.isFinite(value) || value > one_trillion ) {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
         return "-"
     }
 
@@ -16,7 +16,7 @@ export const formatPounds = (value: number | undefined): string => {
 
 // Display carbon emissions to the nearest 10kg CO2e
 export const formatCarbon = (value: number | undefined): string => {
-    if (!Number.isFinite(value) || value > one_trillion ) {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
         return "-"
     }
 
@@ -25,7 +25,7 @@ export const formatCarbon = (value: number | undefined): string => {
 };
 
 export const formatCarbonCost = (value: number | undefined): string => {
-    if (!Number.isFinite(value) || value > one_trillion ) {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
         return "-"
     }
 
@@ -37,7 +37,7 @@ export const formatCarbonCost = (value: number | undefined): string => {
 
 // Display years to 2 decimal places
 export const formatYears = (value: number | undefined): string => {
-    if (!Number.isFinite(value) || value > one_trillion ) {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
         return "-"
     }
 
