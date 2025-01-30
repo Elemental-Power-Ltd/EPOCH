@@ -59,11 +59,13 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[O
             site_id=item["site_id"],
             solution=json.loads(item["solutions"]),
             objective_values=Objective(
-                carbon_balance=item["objective_values"]["carbon_balance"],
+                carbon_cost=item["objective_values"]["carbon_cost"],
                 cost_balance=item["objective_values"]["cost_balance"],
                 capex=item["objective_values"]["capex"],
                 payback_horizon=item["objective_values"]["payback_horizon"],
                 annualised_cost=item["objective_values"]["annualised_cost"],
+                carbon_balance_scope_1=item["objective_values"]["carbon_balance_scope_1"],
+                carbon_balance_scope_2=item["objective_values"]["carbon_balance_scope_2"],
             ),
             completed_at=item["completed_at"],
         )
@@ -239,7 +241,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
             task_config.objective_directions.model_dump(),
             task_config.constraints_min,
             task_config.constraints_max,
-            json.dumps(jsonable_encoder(task_config.search_parameters)),  # we have nested pydantic objects in here...
+            json.dumps(jsonable_encoder(task_config.site_range)),  # we have nested pydantic objects in here...
             json.dumps(jsonable_encoder(task_config.site_data)),
             task_config.optimiser.name.value,
             json.dumps(jsonable_encoder(task_config.optimiser.hyperparameters)),

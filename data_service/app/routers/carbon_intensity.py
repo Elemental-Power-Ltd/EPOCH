@@ -223,9 +223,14 @@ async def fetch_carbon_intensity(
         start_ts = datetime.datetime.fromisoformat(start_ts)
     if isinstance(end_ts, str):
         end_ts = datetime.datetime.fromisoformat(end_ts)
-    # There's a bug in the CarbonIntensity API that doesn't wrap around years. Instead,
+
+    # There's a bug in the CarbonIntensity API that doesn't like non-zero seconds, especially not closely spaced ones.
+    # Instead, let's just grab the period 1 day either side and sort it out in the interpolation.
+    rounded_start_ts = pd.Timestamp(start_ts).floor("1h").to_pydatetime()
+    rounded_end_ts = pd.Timestamp(end_ts).ceil("1h").to_pydatetime()
+    # There's another bug in the CarbonIntensity API that doesn't wrap around years. Instead,
     # we have to manually split the years here.
-    time_pairs = chunk_time_period(start_ts, end_ts, pd.Timedelta(days=13), split_years=True)
+    time_pairs = chunk_time_period(rounded_start_ts, rounded_end_ts, pd.Timedelta(days=13), split_years=True)
     all_data: list[CarbonIntensityRawEntry] = []
     async with aiometer.amap(
         lambda ts_pair: fetch_carbon_intensity_batch(client=client, postcode=postcode, timestamps=ts_pair),
