@@ -10,7 +10,7 @@ import pytest
 
 from app.internal.epoch_utils import TaskData
 from app.internal.portfolio_simulator import combine_objective_values
-from app.models.constraints import ConstraintDict
+from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.objectives import _OBJECTIVES, Objectives
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
@@ -119,13 +119,13 @@ def default_portfolio(default_site: Site, default_site_2: Site) -> list[Site]:
 
 
 @pytest.fixture
-def default_constraints() -> ConstraintDict:
+def default_constraints() -> Constraints:
     return {}
 
 
 @pytest.fixture
 def default_objectives() -> list[Objectives]:
-    return [Objectives.carbon_cost, Objectives.cost_balance]
+    return [Objectives.carbon_balance_scope_1, Objectives.cost_balance]
 
 
 @pytest.fixture(scope="module")
@@ -144,9 +144,6 @@ def dummy_site_solution(site: Site) -> SiteSolution:
     for asset_name, asset in site_range.model_dump().items():
         if asset_name == "config":
             site_scenario[asset_name] = asset
-        elif asset["COMPONENT_IS_MANDATORY"]:
-            asset.pop("COMPONENT_IS_MANDATORY")
-            site_scenario[asset_name] = asset
         else:
             site_scenario[asset_name] = {}
             asset.pop("COMPONENT_IS_MANDATORY")
@@ -157,7 +154,6 @@ def dummy_site_solution(site: Site) -> SiteSolution:
                     site_scenario[asset_name][attribute_name] = attribute_values[0]
     scenario = TaskData.from_json(json.dumps(site_scenario))
     objective_values = {objective: rng.random() * 100 for objective in _OBJECTIVES}
-
     return SiteSolution(scenario=scenario, objective_values=objective_values)
 
 

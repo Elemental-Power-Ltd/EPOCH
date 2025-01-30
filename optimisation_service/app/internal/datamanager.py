@@ -12,7 +12,7 @@ from fastapi import Depends
 from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
-from ..models.core import EndpointResult, Task
+from ..models.core import OptimisationResultEntry, Task
 from ..models.simulate import ResultReproConfig
 from ..models.site_data import (
     ASHPResult,
@@ -47,26 +47,28 @@ class DataManager:
         self.temp_dir = _TEMP_DIR
         self.input_data_files = _INPUT_DATA_FILES
 
-    async def fetch_portfolio_data(self, portfolio: Task) -> None:
+    async def fetch_portfolio_data(self, task: Task) -> None:
         """
-        Process task site data.
+        Fetch task site data.
         Either copy local files to temp dir or fetch and process data from database and save to temp dir.
 
         Parameters
         ----------
-        site_data
-            Description of data.
-        task_id
-            The task id
+        task
+            Task to fetch site data for.
+
+        Returns
+        -------
+        None
         """
-        portfolio._input_dir = Path(self.temp_dir, str(portfolio.task_id))
-        logger.debug(f"Creating temporary directory {portfolio._input_dir}.")
-        os.makedirs(portfolio._input_dir)
-        logger.info(f"Saving site data to {portfolio._input_dir}.")
+        task._input_dir = Path(self.temp_dir, str(task.task_id))
+        logger.debug(f"Creating temporary directory {task._input_dir}.")
+        os.makedirs(task._input_dir)
+        logger.info(f"Saving site data to {task._input_dir}.")
 
         # TODO: makes this async
-        for site in portfolio.portfolio:
-            site._input_dir = Path(portfolio._input_dir, site.site_data.site_id)
+        for site in task.portfolio:
+            site._input_dir = Path(task._input_dir, site.site_data.site_id)
             os.makedirs(site._input_dir)
             site_data = site.site_data
             if site_data.loc == FileLoc.remote:
@@ -91,7 +93,7 @@ class DataManager:
 
         Returns
         -------
-
+        None
         """
         latest_ids = await self.fetch_latest_dataset_ids(site_data)
 
@@ -110,19 +112,20 @@ class DataManager:
             latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=data)
             return latest_ids
 
-    def write_input_data_to_files(self, site_data_entries, destination) -> None:
+    def write_input_data_to_files(self, site_data_entries: SiteDataEntries, destination: os.PathLike) -> None:
         """
-        Write the input data to a target folder
+        Write the input data to a target folder.
 
         Parameters
         ----------
         site_data_entries
-            Input site data
+            Input site data.
         destination
             Folder to write files to.
+
         Returns
         -------
-
+        None
         """
         dfs = self.transform_all_input_data(site_data_entries)
         logger.info(f"Saving site data to {destination}.")
@@ -139,6 +142,10 @@ class DataManager:
             Folder to copy files from.
         destination
             Folder to copy files to.
+
+        Returns
+        -------
+        None
         """
         logger.debug(f"Copying data from {source} to {destination}.")
         for file in self.input_data_files:
@@ -264,7 +271,7 @@ class DataManager:
             logger.error(f"Request error while requesting {e.request.url!r}: {e!s}", exc_info=True)
             raise
 
-    async def transmit_results(self, results: list[EndpointResult]) -> None:
+    async def transmit_results(self, results: OptimisationResultEntry) -> None:
         """
         Transmit optimisation results to database.
 
@@ -287,10 +294,10 @@ class DataManager:
             Optimisation task.
         """
         logger.info(f"Adding {task.task_id} to database.")
-        site_range, site_data = {}, {}
+        portfolio_range, input_data = {}, {}
         for site in task.portfolio:
-            site_range[site.site_data.site_id] = site.site_range
-            site_data[site.site_data.site_id] = site.site_data
+            portfolio_range[site.site_data.site_id] = site.site_range
+            input_data[site.site_data.site_id] = site.site_data
         data = {
             "client_id": task.client_id,
             "task_id": task.task_id,
@@ -298,36 +305,65 @@ class DataManager:
             "objectives": task.objectives,
             "optimiser": task.optimiser,
             "created_at": task.created_at,
-            "site_range": site_range,
-            "site_data": site_data,
+            "portfolio_range": portfolio_range,
+            "input_data": input_data,
+            "portfolio_constraints": task.portfolio_constraints,
         }
         async with httpx.AsyncClient() as client:
-            await self.db_post(client=client, subdirectory="/add-optimisation-task", data=jsonable_encoder(data))
+            await self.db_post(client=client, subdirectory="/add-optimisation-task", data=data)
 
-    async def get_result_configuration(self, result_id: UUID4) -> ResultReproConfig:
+    async def get_result_configuration(self, portfolio_id: UUID4) -> ResultReproConfig:
         """
-        Get the configuration that was used to generate a result that is stored in the database
+        Get the configuration that was used to generate a portfolio result that is stored in the database
 
         Parameters
         ----------
-        result_id
+        portfolio_id
+            UUID associated with a portfolio optimisation result.
 
         Returns
         -------
-
+        ResultReproConfig
+            Portfolio configuration
         """
         async with httpx.AsyncClient() as client:
-            data = await self.db_post(client, subdirectory="/get-result-configuration", data={"result_id": result_id})
+            data = await self.db_post(client, subdirectory="/get-result-configuration", data={"result_id": portfolio_id})
             logger.info("Repro with:", data)
             return ResultReproConfig.model_validate(data)
 
     def transform_electricity_data(self, eload: RecordsList) -> pd.DataFrame:
+        """
+        Transform electricity load data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        eload
+            List of electricity load records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of electricity load records.
+        """
         df = pd.DataFrame.from_records(eload)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1"])
         df["FixLoad2"] = 0
         return df
 
     def transform_rgen_data(self, rgen: RecordsList) -> pd.DataFrame:
+        """
+        Transform renewables data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        rgen
+            List of renewables records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of renewables records.
+        """
         df = pd.DataFrame.from_records(rgen)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
         df["RGen2"] = 0
@@ -336,21 +372,73 @@ class DataManager:
         return df
 
     def transform_heat_data(self, heat: RecordsList) -> pd.DataFrame:
+        """
+        Transform heat load data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        heat
+            List of heat load records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of heat load records.
+        """
         df = pd.DataFrame.from_records(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
         return df
 
     def transform_airtemp_data(self, heat: RecordsList) -> pd.DataFrame:
+        """
+        Transform air temperature data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        heat
+            List of air temp records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of air temp records.
+        """
         df = pd.DataFrame.from_records(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "AirTemp"])
         return df
 
     def transform_dhw_data(self, heat: RecordsList) -> pd.DataFrame:
+        """
+        Transform domestic hot water load data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        heat
+            List of domestic hot water load records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of domestic hot water load records.
+        """
         df = pd.DataFrame.from_records(heat)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "DHWLoad1"])
         return df
 
     def transform_ASHP_input_data(self, ashp_input: ASHPResult) -> pd.DataFrame:
+        """
+        Transform ASHP input data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        ashp_input
+            List of ASHP input records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of ASHP input records.
+        """
         df = (
             pd.DataFrame.from_dict(dict(ashp_input), orient="tight")
             .sort_index()
@@ -360,6 +448,19 @@ class DataManager:
         return df
 
     def transform_ASHP_output_data(self, ashp_output: ASHPResult) -> pd.DataFrame:
+        """
+        Transform ASHP output data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        ashp_output
+            List of ASHP output records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of ASHP output records.
+        """
         df = (
             pd.DataFrame.from_dict(dict(ashp_output), orient="tight")
             .sort_index()
@@ -369,11 +470,37 @@ class DataManager:
         return df
 
     def transform_import_tariff_data(self, import_tariffs: RecordsList) -> pd.DataFrame:
+        """
+        Transform import tariff data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        import_tariffs
+            List of import tariff records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of import tariff records.
+        """
         df = pd.DataFrame.from_records(import_tariffs)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
         return df
 
     def transform_grid_CO2_data(self, grid_co2: RecordsList) -> pd.DataFrame:
+        """
+        Transform grid CO2 data from records to a pandas DataFrame.
+
+        Parameters
+        ----------
+        grid_co2
+            List of grid CO2 records.
+
+        Returns
+        -------
+        df
+            Pandas DataFrame of grid CO2 records.
+        """
         df = pd.DataFrame.from_records(grid_co2)
         df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "GridCO2"])
         return df

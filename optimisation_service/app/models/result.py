@@ -1,25 +1,8 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
-import numpy as np
-
-from app.internal.epoch_utils import SimulationResult, TaskData
-from app.models.objectives import _OBJECTIVES, Objectives, ObjectiveValues
-
-
-def convert_sim_result(sim_result: SimulationResult) -> ObjectiveValues:
-    objective_values = ObjectiveValues()
-    for objective in _OBJECTIVES:
-        if objective == Objectives.carbon_cost:
-            if sim_result.carbon_balance_scope_1 > 0:
-                objective_values[Objectives.carbon_cost] = sim_result.capex / (sim_result.carbon_balance_scope_1 * 15 / 1000)
-            else:
-                objective_values[Objectives.carbon_cost] = np.finfo(np.float32).max
-        elif objective == Objectives.carbon_balance_scope_1:
-            objective_values[objective] = getattr(sim_result, objective) - sim_result.capex * 0.000001
-        else:
-            objective_values[objective] = getattr(sim_result, objective)
-    return objective_values
+from app.internal.epoch_utils import TaskData
+from app.models.objectives import ObjectiveValues
 
 
 @dataclass

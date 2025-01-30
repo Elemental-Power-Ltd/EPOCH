@@ -86,7 +86,8 @@ class TaskData:
     mop: Mop
     renewables: Renewables
 
-    def from_json(self, json_str: str): ...
+    @staticmethod
+    def from_json(json_str: str) -> TaskData: ...
 
 class Simulator:
     def __init__(self, inputDir: str = ..., outputDir: str = ..., configDir: str = ...): ...

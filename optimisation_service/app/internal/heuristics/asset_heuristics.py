@@ -21,8 +21,8 @@ class heat_pump:
 
         This will attempt to size a heat pump considering COP to meet the x% highest heat demand of the year.
         The electrical load is (heat load / cop) at each timestep in kW.
-        Generally heat loads are sized for the 99th percentile, i.e. the heat pump must provide adequate heat on the 1% coldest day
-        of the year.
+        Generally heat loads are sized for the 99th percentile, i.e. the heat pump must provide adequate heat on the 1% coldest
+        day of the year.
 
         Parameters
         ----------
@@ -70,7 +70,8 @@ class renewables:
         """
         Estimate the solar PV array size for this site to cover a fraction of daily usage.
 
-        This will size the RGen1 array to cover all electrical demand at x% of sunny timesteps, where x% is chosen by `quantile`.
+        This will size the RGen1 array to cover all electrical demand at x% of sunny timesteps, where x% is chosen by
+        `quantile`.
         A sunny timestep has non-zero solar generation, but this can be very low (e.g. clear winter evenings).
         If quantile is set large this will significantly oversize the solar array as it attempts to cover all electrical usage.
         If quantile is small, the solar array will be closer to being sized for summer afternoons.

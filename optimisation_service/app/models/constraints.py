@@ -1,12 +1,12 @@
 from collections.abc import Mapping
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from app.models.objectives import Objectives
 
 
 class Bounds(TypedDict):
-    min: int | float
-    max: int | float
+    min: NotRequired[int | float]
+    max: NotRequired[int | float]
 
 
-ConstraintDict = Mapping[Objectives, Bounds]
+Constraints = Mapping[Objectives, Bounds]

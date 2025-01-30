@@ -4,9 +4,9 @@ from os import PathLike
 
 import numpy as np
 
-from app.internal.epoch_utils import Simulator, TaskData
+from app.internal.epoch_utils import Simulator, TaskData, convert_sim_result
 from app.models.objectives import _OBJECTIVES, Objectives, ObjectiveValues
-from app.models.result import PortfolioSolution, SiteSolution, convert_sim_result
+from app.models.result import PortfolioSolution, SiteSolution
 
 logger = logging.getLogger("default")
 
@@ -99,14 +99,20 @@ def combine_objective_values(objective_values_list: list[ObjectiveValues]) -> Ob
         Dictionary of objective values.
     """
     combined = {objective: float(sum(obj_vals[objective] for obj_vals in objective_values_list)) for objective in _OBJECTIVES}
-    if combined[Objectives.cost_balance] > 0:
-        combined[Objectives.payback_horizon] = combined[Objectives.capex] / combined[Objectives.cost_balance]
+    if combined[Objectives.capex] > 0:
+        if combined[Objectives.cost_balance] > 0:
+            combined[Objectives.payback_horizon] = combined[Objectives.capex] / combined[Objectives.cost_balance]
+        else:
+            combined[Objectives.payback_horizon] = float(np.finfo(np.float32).max)
+
+        if combined[Objectives.carbon_balance_scope_1] > 0:
+            combined[Objectives.carbon_cost] = combined[Objectives.capex] / (
+                combined[Objectives.carbon_balance_scope_1] * 15 / 1000
+            )
+        else:
+            combined[Objectives.carbon_cost] = float(np.finfo(np.float32).max)
+
     else:
-        combined[Objectives.payback_horizon] = float(np.finfo(np.float32).max)
-    if combined[Objectives.carbon_balance_scope_1] > 0:
-        combined[Objectives.carbon_cost] = combined[Objectives.capex] / (
-            combined[Objectives.carbon_balance_scope_1] * 15 / 1000
-        )
-    else:
-        combined[Objectives.carbon_cost] = float(np.finfo(np.float32).max)
+        combined[Objectives.payback_horizon] = 0
+        combined[Objectives.carbon_cost] = 0
     return combined
