@@ -2,9 +2,8 @@ services:
   db:
     image: postgres:latest
     volumes:
-      - ./elementaldb_tables.sql:/docker-entrypoint-initdb.d/01-elementaldb_tables.sql
-      - ./elementaldb_client_info.sql:/docker-entrypoint-initdb.d/02-elementaldb_client_info.sql
-      - ./elementaldb_client_meters.sql:/docker-entrypoint-initdb.d/03-elementaldb_client_meters.sql
+      - ./migrations:/migrations:ro
+      - ./migrations/copy_up_migrations.sh:/docker-entrypoint-initdb.d/000000-copy-migrations.sh
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=python
