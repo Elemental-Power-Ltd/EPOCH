@@ -227,7 +227,7 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metric_capex for item in opt_result.sites],
                         [item.metric_payback_horizon for item in opt_result.sites],
                         [item.metric_annualised_cost for item in opt_result.sites],
-                        [item.metric_carbon_cost for item in opt_result.portfolio],
+                        [item.metric_carbon_cost for item in opt_result.sites],
                         strict=True,
                     ),
                     columns=[
