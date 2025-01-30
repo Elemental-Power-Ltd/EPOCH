@@ -1,24 +1,33 @@
-import {OptimisationResult, Site, Task, Client} from "./State/types";
-import {SimulationResult, SubmitSimulationRequest} from "./Models/Endpoints";
+import {Site, OptimisationTaskListEntry, Client, PortfolioOptimisationResult} from "./State/types";
+import {
+    SimulationResult,
+    SubmitOptimisationRequest,
+    SubmitOptimisationResponse,
+    SubmitSimulationRequest
+} from "./Models/Endpoints";
 
 
-export const submitOptimisationJob = async(payload) => {
+export const submitOptimisationJob = async(request: SubmitOptimisationRequest): Promise<ApiResponse<SubmitOptimisationResponse>> => {
     try {
-        const response = await fetch("/api/optimisation/submit-task", {
+        const response = await fetch("/api/optimisation/submit-portfolio-task", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(request)
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const error = `HTTP error! Status: ${response.status}`;
+            return {success: false, data: null, error};
         }
 
-        return await response.json();
+        const data: SubmitOptimisationResponse = await response.json();
+        return {success: true, data};
+
     } catch (error) {
         console.error("Failed to submit configuration:", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 }
 
@@ -117,7 +126,7 @@ export const listSites = async (client_id: string): Promise<ApiResponse<Site[]>>
 };
 
 
-export const listOptimisationTasks = async(client_id: string): Promise<Task[]> => {
+export const listOptimisationTasks = async(client_id: string): Promise<OptimisationTaskListEntry[]> => {
     const payload = {client_id: client_id};
 
     try {
@@ -140,7 +149,7 @@ export const listOptimisationTasks = async(client_id: string): Promise<Task[]> =
     }
 }
 
-export const getOptimisationResults = async(task_id: string): Promise<OptimisationResult[]> => {
+export const getOptimisationResults = async(task_id: string): Promise<PortfolioOptimisationResult[]> => {
     const payload = {task_id: task_id};
 
     try {

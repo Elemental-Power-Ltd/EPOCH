@@ -1,18 +1,34 @@
 import { useState } from "react";
-import { ComponentType, ComponentsMap } from "../Models/Core/TaskData";
-import { initialComponents, hardcodedConfig} from "./initialState";
+import { BuilderMode, ComponentType, ComponentsMap } from "../../Models/Core/ComponentBuilder";
+import { getInitialComponentsMap, hardcodedConfig} from "./initialState";
+import TaskDataSchema from "../../util/json/schema/TaskDataSchema.json";
+import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema.json";
+
+
+export interface ComponentBuilderState {
+  componentsState: any;
+  addComponent: (string) => void;
+  removeComponent: (string) => void;
+  updateComponent: (string, any) => void;
+  setComponents: (any) => void;
+  getComponents: () => any;
+  schema: any;
+}
 
 /**
- * This hook provides the logic necessary to modify which components are selected in TaskData
+ * This hook provides the logic necessary to modify which components are selected in either a TaskData or SiteRange.
+ *
  * Default values for each component are set upon initialisation.
- * Add/Removing components simples specifies whether that component should be included or not.
+ * Add/Removing components simply specifies whether that component should be included or not.
  */
-export const useTaskComponentsState = () => {
+export const useComponentBuilderState = (mode: BuilderMode): ComponentBuilderState => {
+  const initialState = getInitialComponentsMap(mode);
+  const schema = (mode === "TaskDataMode") ? TaskDataSchema : SiteRangeSchema;
 
-  const [componentsState, setComponentsState] = useState<ComponentsMap>(initialComponents);
+  const [componentsState, setComponentsState] = useState<ComponentsMap>(initialState);
 
   /**
-   * Add a component to the TaskData.
+   * Mark the named component as present.
    * @param component the name/key of the component
    */
   const addComponent = (component: ComponentType) => {
@@ -23,7 +39,7 @@ export const useTaskComponentsState = () => {
   };
 
     /**
-   * Remove a component from the TaskData.
+   * Mark the named component as not present.
    * @param component the name/key of the component
    */
   const removeComponent = (component: ComponentType) => {
@@ -46,21 +62,21 @@ export const useTaskComponentsState = () => {
   };
 
   /**
-   * Update the data fields of each component with an externally provided TaskData
-   * @param taskData
+   * Update the data fields of each component with an externally provided TaskData/SiteRange
+   * @param components
    */
-  const setTaskData = (taskData: any) => {
+  const setComponents = (components: any) => {
     // FIXME: this currently ignores the config because we are hardcoding at 10m
     setComponentsState(prev => {
       const newComponentsMap = { ...prev };
 
       for (const componentKey in prev) {
-        if (componentKey in taskData) {
+        if (componentKey in components) {
           // set this component as 'selected' and apply the data from taskData
           newComponentsMap[componentKey] = {
             ...newComponentsMap[componentKey],
             selected: true,
-            data: taskData[componentKey]
+            data: components[componentKey]
           };
 
         } else {
@@ -78,20 +94,20 @@ export const useTaskComponentsState = () => {
   /**
    * Extract the TaskData out of the components state
    */
-  const getTaskData = () => {
-    const taskData = {};
+  const getComponents = () => {
+    const data = {};
 
     // Add the data for each 'selected' component
     for (const componentKey in componentsState) {
       if (componentsState[componentKey].selected) {
-        taskData[componentKey] = componentsState[componentKey].data;
+        data[componentKey] = componentsState[componentKey].data;
       }
     }
 
     // Add the config
-    taskData["config"] = hardcodedConfig;
+    data["config"] = hardcodedConfig;
 
-    return taskData;
+    return data;
 
   };
 
@@ -100,7 +116,8 @@ export const useTaskComponentsState = () => {
     addComponent,
     removeComponent,
     updateComponent,
-    setTaskData,
-    getTaskData,
+    setComponents,
+    getComponents,
+    schema
   };
 };

@@ -9,16 +9,15 @@ import {
   FormControlLabel,
   FormGroup,
 } from "@mui/material";
-import { useEpochStore } from "../../State/state";
+import { useEpochStore } from "../../State/Store";
 import { TaskConfig } from "../../State/types";
 import {objectiveNames} from "../../util/displayNames";
 
-import SiteDataForm from "./SiteDataForm";
+import TimeRangeForm from "./TimeRangeForm";
 
 const TaskConfigForm = () => {
-  const taskConfig = useEpochStore((state) => state.run.taskConfig);
+  const taskConfig = useEpochStore((state) => state.optimise.taskConfig);
   const setTaskConfig = useEpochStore((state) => state.setTaskConfig);
-  const client_sites = useEpochStore((state) => state.global.client_sites);
 
 
   const handleChange = (field: keyof TaskConfig, value: any) => {
@@ -48,14 +47,11 @@ const TaskConfigForm = () => {
           </Grid>
 
           <Grid item xs={12}>
-            <SiteDataForm
-              siteId={taskConfig.site_id}
-              onSiteChange={(val) => handleChange("site_id", val)}
+            <TimeRangeForm
               startDate={taskConfig.start_date}
               onStartDateChange={(val) => handleChange("start_date", val)}
               timestepMinutes={taskConfig.timestep_minutes}
               onTimestepChange={(val) => handleChange("timestep_minutes", val)}
-              clientSites={client_sites}
             />
           </Grid>
 
@@ -68,9 +64,8 @@ const TaskConfigForm = () => {
               onChange={(e) => handleChange("optimiser", e.target.value)}
               required
             >
-              <MenuItem value="GridSearch">Grid Search</MenuItem>
-              <MenuItem value="NSGA2">Genetic Algorithm (Multi-Objective)</MenuItem>
-              <MenuItem value="GeneticAlgorithm">Genetic Algorithm (Single-Objective)</MenuItem>
+              <MenuItem value="NSGA2">Genetic Algorithm</MenuItem>
+              <MenuItem disabled value="GridSearch">Grid Search</MenuItem>
             </TextField>
           </Grid>
 

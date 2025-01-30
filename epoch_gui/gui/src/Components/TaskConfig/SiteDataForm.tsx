@@ -5,6 +5,7 @@ import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import TimeRangeForm from "./TimeRangeForm";
 
 dayjs.extend(utc);
 
@@ -29,7 +30,6 @@ const SiteDataForm: React.FC<SiteDataFormProps> = ({
 }) => {
   return (
     <Grid container spacing={2}>
-      {/* Site Select */}
       <Grid item xs={12}>
         <TextField
           fullWidth
@@ -47,34 +47,16 @@ const SiteDataForm: React.FC<SiteDataFormProps> = ({
         </TextField>
       </Grid>
 
-      {/* Start Date */}
-      <Grid item xs={6}>
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DateTimePicker
-            label="Start Date"
-            value={startDate ? dayjs(startDate).utc() : null}
-            onChange={(date) =>
-              onStartDateChange(date?.utc().toISOString() ?? "")
-            }
-          />
-        </LocalizationProvider>
-      </Grid>
-
-      {/* Timestep */}
-      <Grid item xs={6}>
-        <TextField
-          fullWidth
-          select
-          label="Timestep"
-          value={timestepMinutes}
-          onChange={(e) => onTimestepChange(Number(e.target.value))}
-          required
-        >
-          <MenuItem value={60}>60 Minutes</MenuItem>
-          <MenuItem value={30}>30 Minutes</MenuItem>
-        </TextField>
+      <Grid item xs={12}>
+        <TimeRangeForm
+          startDate={startDate}
+          onStartDateChange={onStartDateChange}
+          timestepMinutes={timestepMinutes}
+          onTimestepChange={onTimestepChange}
+        />
       </Grid>
     </Grid>
+
   );
 };
 

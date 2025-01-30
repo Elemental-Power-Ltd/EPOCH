@@ -5,33 +5,18 @@ import {
     Stepper,
     Step,
     StepLabel,
-    Skeleton,
-    Alert,
-    Typography,
 } from "@mui/material";
-
-import FileUploadIcon from "@mui/icons-material/FileUpload";
-import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-
-import {ComponentType} from "../Models/Core/TaskData";
-import TaskComponentSelector from "../Components/TaskData/TaskComponentSelector";
-import {ComponentWidget} from "../Components/TaskData/TaskComponents/ComponentWidget";
-import SimulationSummary, {
-    ErroredSimulationSummary,
-    LoadingSimulatingSummary
-} from "../Components/Results/SimulationSummary";
 
 import {submitSimulation} from "../endpoints";
 import {SubmitSimulationRequest, SimulationResult} from "../Models/Endpoints";
 
-import {useTaskComponentsState} from "../State/useComponentsState";
-import {useTaskDataFileHandlers} from "../Components/TaskData/useTaskDataFileHandlers";
-import {validateTaskData} from "../Components/TaskData/validateTaskData";
+import {useComponentBuilderState} from "../Components/ComponentBuilder/useComponentBuilderState";
+import {validateTaskData} from "../Components/ComponentBuilder/ValidateBuilders";
 import SiteDataForm from "../Components/TaskConfig/SiteDataForm";
-import {useEpochStore} from "../State/state";
-import {TaskConfig} from "../State/types";
+import {useEpochStore} from "../State/Store";
 import SimulationResultViewer from "../Components/Results/SimulationResultViewer";
+import dayjs, {Dayjs} from "dayjs";
+import ComponentBuilderForm from "../Components/ComponentBuilder/ComponentBuilderForm";
 
 const simulationSteps = [
     "Configure Site",
@@ -40,18 +25,6 @@ const simulationSteps = [
 ];
 
 const SimulationContainer: FC = () => {
-    const {
-        componentsState,
-        addComponent,
-        removeComponent,
-        updateComponent,
-        setTaskData,
-        getTaskData
-    } = useTaskComponentsState();
-
-    const {onUpload, onDownload, onCopy} = useTaskDataFileHandlers({
-        setTaskData: setTaskData
-    });
 
     // --------------------------
     // Simulation / Error state
@@ -61,35 +34,26 @@ const SimulationContainer: FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     // --------------------------
-    // TaskConfig / SiteData form
+    // SiteData form
     // --------------------------
 
-    // This uses the same state as the Optimisation Container
-    const taskConfig = useEpochStore((state) => state.run.taskConfig);
-    const setTaskConfig = useEpochStore((state) => state.setTaskConfig);
     const client_sites = useEpochStore((state) => state.global.client_sites);
+    const [siteID, setSiteID] = useState<string>("");
+    const [startDate, setStartDate] = useState<Dayjs|null>(dayjs("2022-01-01T00:00:00Z"));
+    const [timestep, setTimestep] = useState<number>(30);
 
-    const handleChange = (field: keyof TaskConfig, value: any) => {
-        setTaskConfig({[field]: value});
-    };
 
     // --------------------------
     // Stepper State
     // --------------------------
     const [activeStep, setActiveStep] = useState<number>(0);
 
-    // -------------------------
+    // --------------------------
     // TaskData selection state
-    // -------------------------
-
-    const selectedComponents = Object.entries(componentsState)
-        .filter(([_, {selected}]) => selected)
-        .map(([key]) => key as ComponentType);
-
-
-    const handleTaskComponentChange = (component: ComponentType, evt: any) => {
-        updateComponent(component, evt.formData);
-    };
+    // --------------------------
+    const componentBuilderState = useComponentBuilderState("TaskDataMode");
+    // we alias getComponents as getTaskData to make it slightly clearer
+    const getTaskData = componentBuilderState.getComponents;
 
     // --------------------------
     // Simulation Submission
@@ -113,10 +77,10 @@ const SimulationContainer: FC = () => {
         const request: SubmitSimulationRequest = {
             task_data: taskData,
             site_data: {
-                duration: taskConfig.duration,
+                duration: "year",
                 loc: "remote",
-                site_id: taskConfig.site_id,
-                start_ts: taskConfig.start_date
+                site_id: siteID,
+                start_ts: startDate!.toISOString()
             }
         };
 
@@ -151,10 +115,9 @@ const SimulationContainer: FC = () => {
     const canProgress = (): boolean => {
         // to progress to 'Configure Components' the site data must be valid
         if (activeStep === 0) {
-            const {site_id, start_date, duration} = taskConfig;
-            const isSiteIdValid = client_sites.some(site => site.site_id === site_id);
-            const isStartDateValid = Boolean(start_date);
-            const isDurationValid = Boolean(duration);
+            const isSiteIdValid = client_sites.some(site => site.site_id === siteID);
+            const isStartDateValid = Boolean(startDate);
+            const isDurationValid = Boolean(timestep);
 
             const siteDataIsValid: boolean = isSiteIdValid && isStartDateValid && isDurationValid;
             if (!siteDataIsValid) {
@@ -210,78 +173,27 @@ const SimulationContainer: FC = () => {
                 // Step 0: Configure Site
                 return (
                     <SiteDataForm
-                        siteId={taskConfig.site_id}
-                        onSiteChange={(val) => handleChange("site_id", val)}
-                        startDate={taskConfig.start_date}
-                        onStartDateChange={(val) => handleChange("start_date", val)}
-                        timestepMinutes={taskConfig.timestep_minutes}
-                        onTimestepChange={(val) => handleChange("timestep_minutes", val)}
+                        siteId={siteID}
+                        onSiteChange={setSiteID}
+                        startDate={startDate ? startDate.toISOString() : ""}
+                        onStartDateChange={val => (setStartDate(dayjs(val)))}
+                        timestepMinutes={timestep}
+                        onTimestepChange={setTimestep}
                         clientSites={client_sites}
                     />
                 );
             case 1:
                 // Step 1: Configure Components
-                return (
-                    <>
-                        <TaskComponentSelector
-                            componentsState={componentsState}
-                            onAddComponent={addComponent}
-                        />
+                return (<ComponentBuilderForm
+                    mode={"TaskDataMode"}
+                    componentsMap={componentBuilderState.componentsState}
+                    addComponent={componentBuilderState.addComponent}
+                    removeComponent={componentBuilderState.removeComponent}
+                    updateComponent={componentBuilderState.updateComponent}
+                    setComponents={componentBuilderState.setComponents}
+                    getComponents={getTaskData}
+                    />)
 
-                        <div style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "16px",
-                            margin: "1rem 0"
-                        }}>
-                            {selectedComponents.map((component) => (
-                                <ComponentWidget
-                                    key={component}
-                                    componentKey={component}
-                                    displayName={componentsState[component].displayName}
-                                    onRemove={removeComponent}
-                                    data={componentsState[component].data}
-                                    onFormChange={handleTaskComponentChange}
-                                />
-                            ))}
-                        </div>
-
-                        <div style={{marginTop: "1rem", display: "flex", gap: "8px"}}>
-                            <label htmlFor="upload-taskData">
-                                <input
-                                    id="upload-taskData"
-                                    type="file"
-                                    accept=".json"
-                                    onChange={onUpload}
-                                    style={{display: "none"}}
-                                />
-                                <Button
-                                    variant="outlined"
-                                    component="span"
-                                    size="large"
-                                    startIcon={<FileUploadIcon/>}
-                                >
-                                    Upload
-                                </Button>
-                            </label>
-                            <Button
-                                variant="outlined"
-                                startIcon={<FileDownloadIcon/>}
-                                onClick={() => onDownload(getTaskData())}
-                            >
-                                Download
-                            </Button>
-
-                            <Button
-                                variant="outlined"
-                                startIcon={<ContentCopyIcon/>}
-                                onClick={async () => await onCopy(getTaskData())}
-                            >
-                                Copy
-                            </Button>
-                        </div>
-                    </>
-                );
             case 2:
                 return (
                     <SimulationResultViewer

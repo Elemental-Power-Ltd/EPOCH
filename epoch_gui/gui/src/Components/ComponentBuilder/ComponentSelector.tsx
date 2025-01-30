@@ -2,17 +2,16 @@ import React, {FC, useState, useEffect} from "react";
 import {Select, MenuItem, SelectChangeEvent} from "@mui/material";
 import {Button} from "@mui/material";
 
-import {ComponentType, ComponentsMap} from "../../Models/Core/TaskData"
+import {ComponentType, ComponentsMap} from "../../Models/Core/ComponentBuilder"
 
-interface TaskComponentSelectorProps {
+interface ComponentSelectorProps {
     componentsState: ComponentsMap;
     onAddComponent: (component: ComponentType) => void;
 }
 
-const TaskComponentSelector: FC<TaskComponentSelectorProps> = ({
-                                                                   componentsState,
-                                                                   onAddComponent,
-                                                               }) => {
+const ComponentSelector: FC<ComponentSelectorProps> = (
+    {componentsState, onAddComponent,}) => {
+
     const availableComponents = Object.entries(componentsState)
         .filter(([_, {selected}]) => !selected)
         .map(([key]) => key as ComponentType);
@@ -62,4 +61,4 @@ const TaskComponentSelector: FC<TaskComponentSelectorProps> = ({
     );
 };
 
-export default TaskComponentSelector;
+export default ComponentSelector;

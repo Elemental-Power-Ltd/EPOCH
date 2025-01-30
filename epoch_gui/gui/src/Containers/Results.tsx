@@ -3,10 +3,11 @@ import {useEffect, useState} from "react";
 import {OptimiserStatusDisplay} from "../Components/OptimiserQueue/OptimiserQueue"
 import TaskTable from "../Components/Results/TaskTable"
 
-import {useEpochStore} from "../State/state";
+import {useEpochStore} from "../State/Store";
 
 import {getOptimisationResults, getStatus, listOptimisationTasks} from "../endpoints";
-import ResultTable from "../Components/Results/ResultTable";
+import PortfolioResultsTable from "../Components/Results/PortfolioResultsTable";
+import SiteResultsTable from "../Components/Results/SiteResultsTable";
 
 
 function ResultsContainer() {
@@ -67,19 +68,19 @@ function ResultsContainer() {
         }
     }, [state.currentTask])
 
-    const showResults = state.currentTask !== null;
-
     return (
         <div>
             <OptimiserStatusDisplay status={state.optimiserServiceStatus}/>
-            <TaskTable tasks={state.tasks} setCurrentTask={setCurrentTask}/>
-            {
-                showResults &&
-                <div>
-                    RESULTS
-                    <ResultTable task={state.currentTask!} results={state.currentTaskResults}/>
-                </div>
+            <TaskTable tasks={state.tasks} setCurrentTask={setCurrentTask} currentTaskId={state.currentTask?.task_id}/>
+
+            {state.currentTask !== null &&
+                <PortfolioResultsTable task={state.currentTask} results={state.currentTaskResults}/>
             }
+
+            {state.currentPortfolioResult !== null &&
+                <SiteResultsTable results={state.currentPortfolioResult.site_results}/>
+            }
+
         </div>
     )
 }

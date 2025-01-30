@@ -9,22 +9,18 @@ import { Select, SelectChangeEvent, MenuItem, InputLabel } from '@mui/material';
 import GridSchema from '../../util/json/schema/GridConfigSchema.json';
 import GASchema from '../../util/json/schema/GAConfigSchema.json';
 
-import {useEpochStore} from "../../State/state";
+import {useEpochStore} from "../../State/Store";
 
 
 const HyperParamForm = () => {
 
-    const state = useEpochStore((state) => state.run);
+    const state = useEpochStore((state) => state.optimise);
 
-    const { setSite, setOptimiser, setGridConfig, setGAConfig } = useEpochStore(state => ({
-        setSite: state.setSite,
-        setOptimiser: state.setOptimiser,
+    const { setGridConfig, setGAConfig } = useEpochStore(state => ({
         setGridConfig: state.setGridConfig,
         setGAConfig: state.setGAConfig
     }));
 
-    const changeOptimiser = (evt: SelectChangeEvent) => {setOptimiser(evt.target.value);}
-    const changeSite = (evt: SelectChangeEvent) => {setSite(evt.target.value);}
     const changeGridConfig = (evt: any) => {setGridConfig(evt.formData);}
     const changeGAConfig = (evt: any) => {setGAConfig(evt.formData);}
 
@@ -36,7 +32,7 @@ const HyperParamForm = () => {
                     schema={GridSchema as RJSFSchema}
                     uiSchema={{"ui:submitButtonOptions": {"norender": true}}}
                     validator={validator}
-                    formData={state.optimisers.gridSearch}
+                    formData={state.hyperparameters.gridSearch}
                     onChange={changeGridConfig}
                 />
             }
@@ -46,7 +42,7 @@ const HyperParamForm = () => {
                     schema={GASchema as RJSFSchema}
                     uiSchema={{"ui:submitButtonOptions": {"norender": true}}}
                     validator={validator}
-                    formData={state.optimisers.geneticAlgorithm}
+                    formData={state.hyperparameters.geneticAlgorithm}
                     onSubmit={changeGAConfig}
 
                 />

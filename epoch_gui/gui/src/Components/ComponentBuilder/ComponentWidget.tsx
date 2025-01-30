@@ -2,30 +2,31 @@ import React, {FC} from "react";
 import {IconButton} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
-import {ComponentType} from "../../../Models/Core/TaskData";
+import {ComponentType} from "../../Models/Core/ComponentBuilder";
 
 import Form from "@rjsf/mui";
 import validator from '@rjsf/validator-ajv8';
-import TaskDataSchema from "../../../util/json/schema/TaskDataSchema.json";
 import {RJSFSchema} from "@rjsf/utils";
 
 
 interface ComponentWidgetProps {
     componentKey: ComponentType;
     displayName: string;
-    onRemove: (component: ComponentType) => void;
     data: any;
+    schema: any;
+
+    onRemove: (component: ComponentType) => void;
     onFormChange: (component: ComponentType, event: any) => void;
 }
 
 export const ComponentWidget: FC<ComponentWidgetProps> = (
-    {componentKey, displayName, onRemove, data, onFormChange}
+    {componentKey, displayName, data, schema, onRemove, onFormChange}
 ) => (
     <div
         style={{
             flex: "1 1 300px",
-            minWidth: "240px",
-            maxWidth: "400px",
+            minWidth: "400px",
+            maxWidth: "500px",
             border: "1px solid #ccc",
             borderRadius: "4px",
             padding: "16px",
@@ -53,18 +54,29 @@ export const ComponentWidget: FC<ComponentWidgetProps> = (
 
 
         <Form
-            // We only pass in the part of the schema that corresponds to this component
-            // Note: this is technically not correct as it strips out all the metadata and
-            // definition sections of the schema
-            // TODO - it would be more correct to write a function to filter out all the other components each time
-
-            schema={TaskDataSchema["properties"][componentKey] as RJSFSchema}
+            schema={getSingleComponentSchema(schema, componentKey) as RJSFSchema}
             uiSchema={{"ui:submitButtonOptions": {"norender": true}}}
             validator={validator}
-
+            // note: we have to wrap the data up in this form
+            // as the schema expects a top-level property of [componentKey]
             formData={data}
             onChange={evt => onFormChange(componentKey, evt)}
         />
 
     </div>
 );
+
+// We only pass in the part of the schema that corresponds to this component
+// We do this by swapping the top-level properties and required fields for those inside the target component
+const getSingleComponentSchema = (schema: any, componentKey: string) => {
+    return {
+        ...schema,
+        properties: {
+            ...schema.properties[componentKey].properties
+        },
+        required: schema.properties[componentKey].required || [],
+
+        // we also unset the title, purely for display purposes
+        title: undefined
+    };
+}

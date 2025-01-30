@@ -1,30 +1,53 @@
 
+// we don't want to display anything greater than a trillion
+// (likely float max or similar)
+const one_trillion = 1000000000000
+
 // Display prices to the nearest £100
-export const formatPounds = (value: number): string => {
+export const formatPounds = (value: number | undefined): string => {
+    if (!Number.isFinite(value) || value > one_trillion ) {
+        return "-"
+    }
+
     const roundedValue = Math.round(value / 100) * 100;
     return `£${roundedValue.toLocaleString()}`;
 };
 
 
 // Display carbon emissions to the nearest 10kg CO2e
-export const formatCarbon = (value: number): string => {
+export const formatCarbon = (value: number | undefined): string => {
+    if (!Number.isFinite(value) || value > one_trillion ) {
+        return "-"
+    }
+
     const roundedValue = Math.round(value / 10) * 10;
     return `${roundedValue.toLocaleString()} kg CO2e`;
 };
 
-export const formatCarbonCost = (value: number): string => {
+export const formatCarbonCost = (value: number | undefined): string => {
+    if (!Number.isFinite(value) || value > one_trillion ) {
+        return "-"
+    }
+
+
     const roundedValue = Math.round(value / 10) * 10;
     return `${roundedValue.toLocaleString()} £/tonne`;
 };
 
 
 // Display years to 2 decimal places
-export const formatYears = (value: number): string => {
+export const formatYears = (value: number | undefined): string => {
+    if (!Number.isFinite(value) || value > one_trillion ) {
+        return "-"
+    }
+
     return `${value.toFixed(2)} years`;
 };
 
 
-export const parseISODuration = (duration: string): string => {
+export const parseISODuration = (duration: string | null): string => {
+    if (duration === null) return "-";
+
     const match = duration.match(/P(?:T)?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(\.\d+)?)S)?/);
     if (!match) return 'Invalid duration';
 

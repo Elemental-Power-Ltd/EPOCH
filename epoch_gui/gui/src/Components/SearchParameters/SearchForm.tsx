@@ -1,30 +1,33 @@
-import React from 'react';
+import React, {FC} from 'react';
 import Form from '@rjsf/mui';
 import {RJSFSchema} from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
-import InputSchema from '../../util/json/schema/SearchParametersSchema.json';
-import {useEpochStore} from "../../State/state";
+import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema.json";
 
 import {Button, IconButton} from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
+import {SiteRange} from "../../State/types";
 
-const SearchForm = () => {
-    const state = useEpochStore((state) => state.run);
-    const setSearchParameters = useEpochStore((state) => state.setSearchParameters);
+interface SearchFormProps {
+    site_id: string;
+    siteRange: SiteRange
+    updateSiteRange: (site_id: string, siteRange: SiteRange) => void;
+}
 
-    const changeSearchParameters = (evt: any) => {
-        setSearchParameters(evt.formData);
+const SearchForm: FC<SearchFormProps> = ({site_id, siteRange, updateSiteRange}) => {
+    const changeSiteRange = (evt: any) => {
+        updateSiteRange(site_id, evt.formData);
     }
 
     const handleDownload = () => {
-        const jsonData = JSON.stringify(state.searchParameters, null, 2);
+        const jsonData = JSON.stringify(siteRange, null, 2);
         const blob = new Blob([jsonData], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'search_parameters.json';
+        link.download = 'siteRange.json';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -44,10 +47,10 @@ const SearchForm = () => {
                     // TODO - the schema is currently too permissive as there are no required fields at the top level
                     //  so almost any JSON is parsed as valid
 
-                    const validationResult = validator.validateFormData(json, InputSchema as RJSFSchema);
+                    const validationResult = validator.validateFormData(json, SiteRangeSchema as RJSFSchema);
 
                     if (validationResult.errors.length === 0) {
-                        setSearchParameters(json);
+                        updateSiteRange(site_id, json);
                     } else {
                         console.error("Invalid Search Parameters");
                         console.error(validationResult.errors);
@@ -93,14 +96,14 @@ const SearchForm = () => {
             </div>
             <h2>SEARCH</h2>
             <Form
-                schema={InputSchema as RJSFSchema}
+                schema={SiteRangeSchema as RJSFSchema}
                 uiSchema={{
                     "ASHP_HSource": {"ui:widget": "checkboxes"},
                     "ui:submitButtonOptions": {"norender": true}
                 }}
                 validator={validator}
-                formData={state.searchParameters}
-                onChange={changeSearchParameters}
+                formData={siteRange}
+                onChange={changeSiteRange}
             />
         </div>
     );

@@ -2,12 +2,12 @@ import React, {useEffect, useState} from 'react';
 import './App.css';
 import {Tab, Tabs, Box, Select, SelectChangeEvent, MenuItem} from '@mui/material';
 
-import RunContainer from "./Containers/Run";
+import OptimisationContainer from "./Containers/Optimise";
 import ResultsContainer from "./Containers/Results";
 import DatasetGenerationContainer from "./Containers/DatasetGeneration";
 import SimulationContainer from "./Containers/Simulate";
 import NotALogin from "./Components/Login/NotALogin";
-import {useEpochStore} from "./State/state";
+import {useEpochStore} from "./State/Store";
 import {listClients, listSites} from "./endpoints";
 
 function App() {
@@ -74,7 +74,7 @@ function App() {
                         onChange={handleTabChange}
                         sx={{flexGrow: 1}}
                     >
-                        <Tab label="Run"/>
+                        <Tab label="Optimise"/>
                         <Tab label="Simulate"/>
                         <Tab label="Results"/>
                         <Tab label="Generate Dataset"/>
@@ -98,7 +98,7 @@ function App() {
 
             {noClient ? <NotALogin/> :
                 <Box className="content">
-                    {selectedTab === 0 && <RunContainer/>}
+                    {selectedTab === 0 && <OptimisationContainer/>}
                     {selectedTab === 1 && <SimulationContainer/>}
                     {selectedTab === 2 && <ResultsContainer/>}
                     {selectedTab === 3 && <DatasetGenerationContainer/>}

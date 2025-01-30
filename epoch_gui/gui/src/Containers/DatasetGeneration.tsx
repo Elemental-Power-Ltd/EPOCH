@@ -14,7 +14,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, {Dayjs} from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 
-import { useEpochStore } from '../State/state';
+import { useEpochStore } from '../State/Store';
 import { generateAllData, listClients, listSites } from '../endpoints';
 import {Client, Site} from '../State/types'
 
@@ -26,8 +26,8 @@ const DatasetGenerationContainer = () => {
   const sites = useEpochStore((state) => state.global.client_sites);
 
   const [selectedSite, setSelectedSite] = useState('');
-  const [startDate, setStartDate] = useState<Dayjs | null>(dayjs().startOf('day'));
-  const [endDate, setEndDate] = useState<Dayjs | null>(dayjs().endOf('day'));
+  const [startDate, setStartDate] = useState<Dayjs | null>(dayjs("2022-01-01T00:00:00Z"));
+  const [endDate, setEndDate] = useState<Dayjs | null>(dayjs("2023-01-01T00:00:00Z"));
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState<any>(null);
 

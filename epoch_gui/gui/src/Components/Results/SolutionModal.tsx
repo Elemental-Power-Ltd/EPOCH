@@ -15,7 +15,7 @@ import {
 interface SolutionModalProps {
     open: boolean;
     onClose: () => void;
-    solution: { [key: string]: number };
+    solution: { [key: string]: any };
 }
 
 const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, solution }) => {
@@ -31,7 +31,7 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, solution }
                         {Object.entries(solution).map(([key, value]) => (
                             <TableRow key={key}>
                                 <TableCell>{key}</TableCell>
-                                <TableCell>{value}</TableCell>
+                                <TableCell>{JSON.stringify(value)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

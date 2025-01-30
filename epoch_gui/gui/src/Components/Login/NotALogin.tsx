@@ -1,7 +1,7 @@
 import React from 'react';
 import {Select, MenuItem, FormControl, InputLabel} from '@mui/material';
 
-import {useEpochStore} from "../../State/state";
+import {useEpochStore} from "../../State/Store";
 
 const NotALogin = () => {
     const availableClients = useEpochStore((state) => state.global.availableClients);
