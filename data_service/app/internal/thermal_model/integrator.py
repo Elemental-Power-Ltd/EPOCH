@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from ..utils.conversions import kelvin_to_celsius
+from ..utils.conversions import kelvin_to_celsius, mph_to_ms
 from .building_elements import BuildingElement
 from .links import BoilerRadiativeLink
 from .matrix import create_node_to_index_map, interpolate_heating_power, solve_heat_balance_equation
@@ -192,6 +192,7 @@ def simulate(
         assert isinstance(external_df.index, pd.DatetimeIndex)
         external_temperatures = np.interp(times, external_df.index.astype("int64") // 10**9, external_df.temp)
         solar_radiations = np.interp(times, external_df.index.astype("int64") // 10**9, external_df.solarradiation)
+        wind_speeds = np.interp(times, external_df.index.astype("int64") // 10**9, mph_to_ms(external_df.windspeed))
     if elec_df is not None:
         assert isinstance(elec_df.index, pd.DatetimeIndex)
         internal_gains = np.interp(times, elec_df.index.astype("int64") // 10**9, elec_df.consumption)
@@ -213,7 +214,7 @@ def simulate(
             if edge_attrs.get("conductive") is not None:
                 edge_attrs["conductive"].step(u_attrs, v_attrs, dt.total_seconds())
             if edge_attrs.get("convective") is not None:
-                edge_attrs["convective"].step(u_attrs, v_attrs, dt.total_seconds())
+                edge_attrs["convective"].step(u_attrs, v_attrs, dt.total_seconds(), wind_speed=wind_speeds[i])
             if edge_attrs.get("radiative") is not None:
                 if isinstance(edge_attrs.get("radiative"), BoilerRadiativeLink):
                     edge_attrs["radiative"].step(

@@ -20,6 +20,24 @@ if TYPE_CHECKING:
     import numpy.typing as npt
     import pandas as pd
 
+def mph_to_ms[T: (npt.NDArray[np.floating], float, pd.Series)](v: T) -> T:
+    """
+    Convert a speed in miles per hour to one in metres per second.
+
+    This is useful when converting wind speeds from VisualCrossing.
+
+    Parameters
+    ----------
+    v
+        Speed in miles per hour
+    
+    Returns
+    -------
+        Speed in metres per second.
+    """
+    _metres_per_mile = 1609
+    _seconds_per_hour = 60 * 60
+    return v * _metres_per_mile / _seconds_per_hour
 
 def m3_to_kwh[T: (npt.NDArray[np.floating], float, pd.Series)](vol: T, calorific_value: float = 38.0) -> T:
     """

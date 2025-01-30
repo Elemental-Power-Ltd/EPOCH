@@ -248,7 +248,7 @@ class BoilerRadiativeLink:
 # TODO (2024-11-22 MHJB): this is a pretty crude convective link
 class ConvectiveLink:
     """ConvectiveLinks represent air flow between two volumes of air."""
-
+    DEFAULT_WIND_SPEED = 4.0 # m / 
     def __init__(self, ach: float):
         """
         Set up the convective link measured in air changes per hour.
@@ -264,7 +264,8 @@ class ConvectiveLink:
         """Create a string showing the arguments used to create this link."""
         return f"ConvectiveLink(ach={self.ach})"
 
-    def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float) -> float:
+    def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float,
+             wind_speed: float = DEFAULT_WIND_SPEED) -> float:
         """
         Pass heat in the form of hot air between the two sides of this convective link.
 
@@ -276,13 +277,15 @@ class ConvectiveLink:
             Networkx node attributes dictionary with `temperature` and `energy_change` properties.
         dt
             Timestep over which this transfer happens in seconds.
+        wind_speed
+            Wind speed at this moment in meters per second.
 
         Returns
         -------
         energy_change
             Total energy transferred during this step. Positive if transferring from v to u, negative otherwise.
         """
-        air_changes = self.ach * dt / 3600.0
+        air_changes = (wind_speed / self.DEFAULT_WIND_SPEED) * self.ach * dt / 3600.0
         temperature_diff = u_attrs["temperature"] - v_attrs["temperature"]
         energy_change_j = air_changes * u_attrs["thermal_mass"] * temperature_diff
 

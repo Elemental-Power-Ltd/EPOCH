@@ -88,7 +88,7 @@ def calculate_maximum_dynamic_heat_loss(
                 edge_attrs["radiative"].step(u_attrs, v_attrs, dt)
         energy_changes.append(graph.nodes[BuildingElement.InternalAir]["energy_change"])
         update_temperatures(graph)
-    return max(-item / dt for item in energy_changes)
+    return max(item / dt for item in energy_changes)
 
 
 def calculate_maximum_static_heat_loss(
