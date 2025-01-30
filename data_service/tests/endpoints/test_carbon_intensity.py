@@ -46,6 +46,45 @@ async def grid_co2_metadata(
 @pytest.mark.slow
 class TestCarbonIntensity:
     @pytest.mark.asyncio
+    async def test_nonzero_seconds(self, client: AsyncClient, demo_site_id: str) -> None:
+        """
+        Test that we handle a case with nonzero seconds correctly.
+
+        If there are two times too close to one another (same hour?), then the CarbonIntensity API complains.
+        """
+        result = await client.post(
+            "/generate-grid-co2",
+            json={"site_id": demo_site_id, "start_ts": "2022-12-31T00:00:00Z", "end_ts": "2023-01-01T00:00:59Z"},
+        )
+        assert result.status_code == 200, result.text
+
+    @pytest.mark.asyncio
+    async def test_nonzero_minutes(self, client: AsyncClient, demo_site_id: str) -> None:
+        """
+        Test that we handle a case with nonzero minutes correctly.
+
+        If there are two times too close to one another (same hour?), then the CarbonIntensity API complains.
+        """
+        result = await client.post(
+            "/generate-grid-co2",
+            json={"site_id": demo_site_id, "start_ts": "2022-12-31T00:00:00Z", "end_ts": "2023-01-01T00:37:00Z"},
+        )
+        assert result.status_code == 200, result.text
+
+    @pytest.mark.asyncio
+    async def test_nonzero_hours(self, client: AsyncClient, demo_site_id: str) -> None:
+        """
+        Test that we handle a case with nonzero hours correctly.
+
+        If there are two times too close to one another (same hour?), then the CarbonIntensity API complains.
+        """
+        result = await client.post(
+            "/generate-grid-co2",
+            json={"site_id": demo_site_id, "start_ts": "2022-12-31T00:00:00Z", "end_ts": "2023-01-01T13:00:00Z"},
+        )
+        assert result.status_code == 200, result.text
+
+    @pytest.mark.asyncio
     async def test_generate(self, grid_co2_metadata: pydantic.Json, demo_site_id: str) -> None:
         """Test that the generation succeeds and returns some sensible metadata."""
         assert datetime.datetime.fromisoformat(grid_co2_metadata["created_at"]) > datetime.datetime.now(
