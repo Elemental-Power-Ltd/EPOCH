@@ -12,7 +12,7 @@ from enum import StrEnum
 from typing import Annotated, Self
 
 import pydantic
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 dataset_id_t = Annotated[pydantic.UUID4, "String serialised UUID"]
 client_id_t = str
@@ -66,24 +66,24 @@ class FuelEnum(StrEnum):
     oil = "oil"
 
 
-class ResultID(BaseModel):
-    result_id: pydantic.UUID4
+class ResultID(RootModel):
+    root: pydantic.UUID4
 
 
-class TaskID(BaseModel):
-    task_id: pydantic.UUID1 | pydantic.UUID4
+class TaskID(RootModel):
+    root: pydantic.UUID4
 
 
-class DatasetID(BaseModel):
-    dataset_id: dataset_id_t = dataset_id_field
+class DatasetID(RootModel):
+    root: dataset_id_t = dataset_id_field
 
 
-class ClientID(BaseModel):
-    client_id: client_id_t = client_id_field
+class ClientID(RootModel):
+    root: client_id_t = client_id_field
 
 
-class SiteID(BaseModel):
-    site_id: site_id_t = site_id_field
+class SiteID(RootModel):
+    root: site_id_t = site_id_field
 
 
 class EpochEntry(pydantic.BaseModel):

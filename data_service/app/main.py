@@ -22,6 +22,7 @@ from .routers import (
     renewables,
     site_manager,
     weather,
+    thermal_model,
 )
 
 start_time = datetime.datetime.now(tz=datetime.UTC)
@@ -47,6 +48,7 @@ app.include_router(air_source_heat_pump.router)
 app.include_router(import_tariffs.router)
 app.include_router(site_manager.router)
 app.include_router(electricity_load.router)
+app.include_router(thermal_model.router)
 
 
 @app.get("/")

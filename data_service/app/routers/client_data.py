@@ -196,8 +196,8 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
     """
     location = await conn.fetchval(
         """SELECT location FROM client_info.site_info WHERE site_id = $1""",
-        site_id.site_id,
+        site_id,
     )
     if location is None:
-        raise HTTPException(400, f"Site ID `{site_id.site_id}` has no location in the database.")
+        raise HTTPException(400, f"Site ID `{site_id}` has no location in the database.")
     return str(location)

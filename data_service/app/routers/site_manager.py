@@ -60,7 +60,7 @@ async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[Data
                 GROUP BY
                     cm.dataset_id
                 """,
-            site_id.site_id,
+            site_id,
         )
     return [
         DatasetEntry(
@@ -105,7 +105,7 @@ async def list_elec_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[Dat
                 AND site_id = $1
             GROUP BY
                 cm.dataset_id""",
-            site_id.site_id,
+            site_id,
         )
     return [
         DatasetEntry(
@@ -192,7 +192,7 @@ async def list_import_tariff_datasets(site_id: SiteID, pool: DatabasePoolDep) ->
             ON tm.dataset_id = te.dataset_id
             WHERE site_id = $1
             GROUP BY tm.dataset_id""",
-            site_id.site_id,
+            site_id,
         )
     return [
         DatasetEntry(
@@ -233,7 +233,7 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             ON tm.dataset_id = te.dataset_id
             WHERE site_id = $1
             GROUP BY tm.dataset_id""",
-            site_id.site_id,
+            site_id,
         )
     return [
         DatasetEntry(
@@ -276,7 +276,7 @@ async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> 
                 site_id = $1
             GROUP BY
                 cm.dataset_id""",
-            site_id.site_id,
+            site_id,
         )
     return [
         DatasetEntry(
@@ -319,7 +319,7 @@ async def list_carbon_intensity_datasets(site_id: SiteID, pool: DatabasePoolDep)
                 site_id = $1
             GROUP BY
                 cm.dataset_id""",
-            site_id.site_id,
+            site_id,
         )
     return [
         DatasetEntry(

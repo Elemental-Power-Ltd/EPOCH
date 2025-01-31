@@ -248,7 +248,9 @@ class BoilerRadiativeLink:
 # TODO (2024-11-22 MHJB): this is a pretty crude convective link
 class ConvectiveLink:
     """ConvectiveLinks represent air flow between two volumes of air."""
-    DEFAULT_WIND_SPEED = 4.0 # m / 
+
+    DEFAULT_WIND_SPEED = 4.0  # m /
+
     def __init__(self, ach: float):
         """
         Set up the convective link measured in air changes per hour.
@@ -264,8 +266,9 @@ class ConvectiveLink:
         """Create a string showing the arguments used to create this link."""
         return f"ConvectiveLink(ach={self.ach})"
 
-    def step(self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float,
-             wind_speed: float = DEFAULT_WIND_SPEED) -> float:
+    def step(
+        self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float, wind_speed: float = DEFAULT_WIND_SPEED
+    ) -> float:
         """
         Pass heat in the form of hot air between the two sides of this convective link.
 

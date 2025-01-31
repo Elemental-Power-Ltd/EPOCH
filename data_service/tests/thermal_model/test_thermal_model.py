@@ -190,8 +190,7 @@ class TestStaticHeatLoss:
 
     def test_internal_temperature_range(self) -> None:
         """Test that warmer indoors leads to a large static heat loss."""
-        G = create_simple_structure(wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0,
-                                         roof_area=20.0)
+        G = create_simple_structure(wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0, roof_area=20.0)
         heat_losses = [
             calculate_maximum_static_heat_loss(G, internal_temperature=internal_t, external_temperature=-2)
             for internal_t in [16, 18, 21, 22, 25]
@@ -201,8 +200,7 @@ class TestStaticHeatLoss:
 
     def test_external_temperature_range(self) -> None:
         """Test that colder outdoors leads to a large static heat loss."""
-        G = create_simple_structure(wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0,
-                                         roof_area=20.0)
+        G = create_simple_structure(wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0, roof_area=20.0)
         heat_losses = [
             calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=external_t)
             for external_t in [2, 0, -2, -4]
@@ -214,8 +212,9 @@ class TestStaticHeatLoss:
         """Test that large buildings lose more heat."""
         heat_losses = []
         for wall_area in [5, 10, 15, 20]:
-            G = create_simple_structure(wall_height=wall_area, wall_width=10.0, window_area=1.0, floor_area=20.0,
-                                         roof_area=20.0)
+            G = create_simple_structure(
+                wall_height=wall_area, wall_width=10.0, window_area=1.0, floor_area=20.0, roof_area=20.0
+            )
 
             heat_losses.append(calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
 
@@ -225,8 +224,9 @@ class TestStaticHeatLoss:
         """Test that larger windows lose more heat."""
         heat_losses = []
         for window_area in [1, 2, 3, 4, 5]:
-            G = create_simple_structure(wall_height=10.0, wall_width=10.0, window_area=window_area, floor_area=20.0,
-                                         roof_area=20.0)
+            G = create_simple_structure(
+                wall_height=10.0, wall_width=10.0, window_area=window_area, floor_area=20.0, roof_area=20.0
+            )
 
             heat_losses.append(calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
         assert all(np.ediff1d(heat_losses) < 0), "Heat losses must increase as the windows get larger"
@@ -235,7 +235,9 @@ class TestStaticHeatLoss:
         """Test that larger roofs lose more heat."""
         heat_losses = []
         for roof_area in [5, 10, 15, 20]:
-            G = create_simple_structure(wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0, roof_area=roof_area)
+            G = create_simple_structure(
+                wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0, roof_area=roof_area
+            )
             heat_losses.append(calculate_maximum_static_heat_loss(G, internal_temperature=21.0, external_temperature=-2.0))
         assert all(np.ediff1d(heat_losses) < 0), "Heat losses must increase as the roof gets larger"
 
@@ -314,8 +316,9 @@ class TestInterpolateHeatingPower:
         """Test that larger roofs lose more heat."""
         heat_losses = []
         for roof_area in [5, 10, 15, 20]:
-            G = create_simple_structure(wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0,
-                                        roof_area=roof_area)
+            G = create_simple_structure(
+                wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0, roof_area=roof_area
+            )
             heat_losses.append(
                 interpolate_heating_power(G, internal_temperature=21, external_temperature=-2.3, dt=datetime.timedelta(days=1))
                 / datetime.timedelta(days=1).total_seconds()
@@ -326,14 +329,16 @@ class TestInterpolateHeatingPower:
         """Test that larger floors lose more heat."""
         heat_losses = []
         for floor_area in [5, 10, 15, 20]:
-            G = create_simple_structure(wall_height=10.0, wall_width=10.0, window_area=1.0, roof_area=10.0, floor_area=floor_area)
+            G = create_simple_structure(
+                wall_height=10.0, wall_width=10.0, window_area=1.0, roof_area=10.0, floor_area=floor_area
+            )
             heat_losses.append(
                 interpolate_heating_power(G, internal_temperature=21, external_temperature=-2.3, dt=datetime.timedelta(days=1))
                 / datetime.timedelta(days=1).total_seconds()
             )
         assert all(np.ediff1d(heat_losses) < 0), "Heat losses must increase as the floor gets larger"
 
-    #def test_consistent_with_timestep(self, test_structure: HeatNetwork) -> None:
+    # def test_consistent_with_timestep(self, test_structure: HeatNetwork) -> None:
     #    """Test that different timesteps lead to reasonably consistent required heating powers."""
     #    results = []
     #    for dt in [
