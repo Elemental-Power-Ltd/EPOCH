@@ -2,13 +2,17 @@
 Wrappers for Epoch that are more ergonomic for python.
 """
 
+import numpy as np
+
+from app.models.objectives import _OBJECTIVES, Objectives, ObjectiveValues
+
 from .log import logger
 
 try:
     from epoch_simulator import SimulationResult, Simulator, TaskData
 
-    TaskData.__hash__ = lambda td: hash(repr(td))
-    TaskData.__eq__ = lambda td, oth: repr(td) == repr(oth)
+    TaskData.__hash__ = lambda td: hash(repr(td))  # type: ignore
+    TaskData.__eq__ = lambda td, oth: repr(td) == repr(oth)  # type: ignore
 
     HAS_EPOCH = True
 except ImportError as ex:
@@ -19,12 +23,42 @@ except ImportError as ex:
     # we can run tests without EPOCH
     class SimulationResult: ...  # type: ignore
 
-    class TaskData: ...  # type: ignore
+    class TaskData:  # type: ignore
+        @staticmethod
+        def from_json(json_str: str): ...
 
     class Simulator:  # type: ignore
         def __init__(self, inputDir: str): ...
         def simulate_scenario(self, task_data: TaskData, fullReporting: bool = False) -> SimulationResult:
             raise NotImplementedError()
+
+
+def convert_sim_result(sim_result: SimulationResult) -> ObjectiveValues:
+    """
+    Convert an EPOCH SimulationResult into an ObjectiveValues dictionary.
+
+    Parameters
+    ----------
+    sim_result
+        SimulationResult to convert.
+
+    Returns
+    -------
+    ObjectiveValues
+        Dictionary of objective values.
+    """
+    objective_values = ObjectiveValues()
+    for objective in _OBJECTIVES:
+        if objective == Objectives.carbon_cost:
+            if sim_result.carbon_balance_scope_1 > 0:
+                objective_values[Objectives.carbon_cost] = sim_result.capex / (sim_result.carbon_balance_scope_1 * 15 / 1000)
+            elif sim_result.carbon_balance_scope_1 == 0 and sim_result.capex == 0:
+                objective_values[Objectives.carbon_cost] = 0
+            else:
+                objective_values[Objectives.carbon_cost] = np.inf
+        else:
+            objective_values[objective] = getattr(sim_result, objective)
+    return objective_values
 
 
 def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:

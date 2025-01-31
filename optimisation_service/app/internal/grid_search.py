@@ -15,8 +15,9 @@ import numpy as np
 import pandas as pd
 from paretoset import paretoset  # type: ignore
 
+from app.internal.epoch_utils import TaskData
 from app.internal.portfolio_simulator import combine_objective_values
-from app.models.constraints import ConstraintDict
+from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.objectives import _OBJECTIVES, Objectives, ObjectivesDirection
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
@@ -47,7 +48,7 @@ class GridSearch(Algorithm):
         """
         self.keep_degenerate = keep_degenerate
 
-    def run(self, objectives: list[Objectives], constraints: ConstraintDict, portfolio: list[Site]) -> OptimisationResult:
+    def run(self, objectives: list[Objectives], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
         """
         Run grid search optimisation.
 
@@ -67,9 +68,9 @@ class GridSearch(Algorithm):
             exec_time: Time taken for optimisation process to conclude.
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
-        building_solutions = {}
+        site_solutions = {}
         n_evals = 0
-        for building in portfolio:
+        for site in portfolio:
             with tempfile.TemporaryDirectory() as temp_dir:
                 output_dir = Path(temp_dir, "tmp_outputs")
                 os.makedirs(output_dir, exist_ok=True)
@@ -80,13 +81,13 @@ class GridSearch(Algorithm):
                 with open(Path(config_dir, "EpochConfig.json"), "w") as f:
                     json.dump(_EPOCH_CONFIG, f)
 
-                with open(Path(building._input_dir, "inputParameters.json"), "w") as f:
-                    json.dump(convert_param(building.search_parameters), f)
+                with open(Path(site._input_dir, "inputParameters.json"), "w") as f:
+                    json.dump(site.site_range, f)
 
                 t0 = time.perf_counter()
                 run_headless(
                     config_dir=str(config_dir),
-                    input_dir=str(building._input_dir),
+                    input_dir=str(site._input_dir),
                     output_dir=str(output_dir),
                 )
                 exec_time = timedelta(seconds=(time.perf_counter() - t0))
@@ -106,21 +107,19 @@ class GridSearch(Algorithm):
                     max_value = bounds.get("max", np.inf)
                     df_res = df_res[(df_res[objective] >= min_value) & (df_res[objective] <= max_value)]
 
-                df_res["timewindow"] = building.search_parameters.timewindow
-                df_res["target_max_concurrency"] = building.search_parameters.target_max_concurrency
-                df_res["timestep_hours"] = building.search_parameters.timestep_hours
-                solutions: list[dict] = df_res.drop(columns=_OBJECTIVES).to_dict("records")
+                scenarios_list: list[dict] = df_res.drop(columns=_OBJECTIVES).to_dict("records")
+                scenarios = [TaskData.from_json(json.dumps(scenario)) for scenario in scenarios_list]
                 objective_values: list[dict] = df_res[_OBJECTIVES].to_dict("records")
 
-                building_solutions[building.name] = [SiteSolution(*sol) for sol in zip(solutions, objective_values)]
+                site_solutions[site.name] = [SiteSolution(*sol) for sol in zip(scenarios, objective_values)]  # type: ignore
 
-        solutions = pareto_optimise(building_solutions, objectives, constraints)
+        solutions = pareto_optimise(site_solutions, objectives, constraints)
 
         return OptimisationResult(solutions=solutions, exec_time=exec_time, n_evals=n_evals)
 
 
 def pareto_optimise(
-    building_solutions_dict: dict[str, list[SiteSolution]], objectives: list[Objectives], constraints: ConstraintDict
+    building_solutions_dict: dict[str, list[SiteSolution]], objectives: list[Objectives], constraints: Constraints
 ) -> list[PortfolioSolution]:
     logger.debug(f"Number of Sites: {[len(scenario_list) for scenario_list in building_solutions_dict.values()]}")
     all_combinations = product(*building_solutions_dict.values())
@@ -129,7 +128,7 @@ def pareto_optimise(
     pareto_optimal_subsets = []
     n = 0
     while True:
-        subset = np.array(list(islice(all_combinations, 50000000)))
+        subset = np.array(list(islice(all_combinations, 50000000)))  # type: ignore
         logger.debug(f"optimising subset {n}.")
         n += 1
         if subset.size > 1:
@@ -152,19 +151,19 @@ def pareto_optimise(
     reduced_set = np.vstack(pareto_optimal_subsets)
     costs = np.array(
         [
-            list(combine_objective_values([building.objective_values for building in combination]).values())
+            list(combine_objective_values([site.objective_values for site in combination]).values())
             for combination in reduced_set
         ]
     )[:, objective_mask]
     is_pareto_efficient = paretoset(costs=costs, sense=objective_direct, distinct=True)
     front = reduced_set[is_pareto_efficient].tolist()
 
-    building_names = building_solutions_dict.keys()
+    site_names = building_solutions_dict.keys()
     portfolio_solutions = []
     for combination in front:
-        solution_dict = dict(zip(building_names, combination))
-        objective_values = [building.objective_values for building in combination]
-        portfolio_objective_values = combine_objective_values(objective_values)
+        solution_dict = dict(zip(site_names, combination))
+        objective_values = [site.objective_values for site in combination]  # type: ignore
+        portfolio_objective_values = combine_objective_values(objective_values)  # type: ignore
 
         portfolio_solution = PortfolioSolution(scenario=solution_dict, objective_values=portfolio_objective_values)
 

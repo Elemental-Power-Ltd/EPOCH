@@ -4,9 +4,9 @@ from os import PathLike
 
 import numpy as np
 
-from app.internal.epoch_utils import Simulator, TaskData
+from app.internal.epoch_utils import Simulator, TaskData, convert_sim_result
 from app.models.objectives import _OBJECTIVES, Objectives, ObjectiveValues
-from app.models.result import PortfolioSolution, SiteSolution, convert_sim_result
+from app.models.result import PortfolioSolution, SiteSolution
 
 logger = logging.getLogger("default")
 

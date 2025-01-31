@@ -16,7 +16,7 @@ from pymoo.termination.robust import RobustTermination  # type: ignore
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance
 from app.internal.pareto_front import portfolio_pareto_front
 from app.models.algorithms import Algorithm
-from app.models.constraints import ConstraintDict
+from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.ga_utils import SamplingMethod
 from app.models.objectives import Objectives
@@ -92,7 +92,7 @@ class NSGA2(Algorithm):
 
         self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals)
 
-    def run(self, objectives: list[Objectives], constraints: ConstraintDict, portfolio: list[Site]) -> OptimisationResult:
+    def run(self, objectives: list[Objectives], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
         """
         Run NSGA optimisation.
 

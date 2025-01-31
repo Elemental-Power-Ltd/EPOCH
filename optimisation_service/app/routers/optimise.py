@@ -14,12 +14,16 @@ from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2
 from app.models.core import (
-    EndpointResult,
     EndpointTask,
+    OptimisationResultEntry,
+    PortfolioOptimisationResult,
     Site,
+    SiteOptimisationResult,
     Task,
     TaskResponse,
+    TaskResult,
 )
+from app.models.objectives import Objectives
 from app.models.result import OptimisationResult
 from app.routers.epl_queue import IQueue
 
@@ -33,37 +37,45 @@ router = APIRouter()
 logger = logging.getLogger("default")
 
 
-def process_results(task: Task, results: OptimisationResult, completed_at: datetime.datetime) -> list[EndpointResult]:
+def process_results(task: Task, results: OptimisationResult, completed_at: datetime.datetime) -> OptimisationResultEntry:
     logger.info(f"Postprocessing results of {task.task_id}.")
-    Optimisation_Results = []
+    portfolios = []
     for portfolio_solution in results.solutions:
         portfolio_id = uuid.uuid4()
+        site_results = []
         for site_id, site_solution in portfolio_solution.scenario.items():
-            OptRes = EndpointResult(
-                task_id=task.task_id,
-                site_id=site_id,
-                portfolio_id=portfolio_id,
-                result_id=uuid.uuid4(),  # generate a uuid to refer back to later
-                solution=convert_TaskData_to_dictionary(site_solution.scenario),  # type: ignore
-                objective_values=site_solution.objective_values,  # type: ignore
-                n_evals=results.n_evals,
-                exec_time=results.exec_time,
-                completed_at=completed_at,
+            site_results.append(
+                SiteOptimisationResult(
+                    site_id=site_id,
+                    portfolio_id=portfolio_id,
+                    scenario=convert_TaskData_to_dictionary(site_solution.scenario),
+                    metric_carbon_balance_scope_1=site_solution.objective_values[Objectives.carbon_balance_scope_1],
+                    metric_carbon_balance_scope_2=site_solution.objective_values[Objectives.carbon_balance_scope_2],
+                    metric_carbon_cost=site_solution.objective_values[Objectives.carbon_cost],
+                    metric_cost_balance=site_solution.objective_values[Objectives.cost_balance],
+                    metric_capex=site_solution.objective_values[Objectives.capex],
+                    metric_payback_horizon=site_solution.objective_values[Objectives.payback_horizon],
+                    metric_annualised_cost=site_solution.objective_values[Objectives.annualised_cost],
+                )
             )
-            Optimisation_Results.append(OptRes)
-        OptRes = EndpointResult(
-            task_id=task.task_id,
-            site_id=None,
-            portfolio_id=portfolio_id,
-            result_id=uuid.uuid4(),  # generate a uuid to refer back to later
-            solution=None,  # type: ignore
-            objective_values=portfolio_solution.objective_values,  # type: ignore
-            n_evals=results.n_evals,
-            exec_time=results.exec_time,
-            completed_at=completed_at,
+        portfolios.append(
+            PortfolioOptimisationResult(
+                task_id=task.task_id,
+                portfolio_id=portfolio_id,
+                metric_carbon_balance_scope_1=portfolio_solution.objective_values[Objectives.carbon_balance_scope_1],
+                metric_carbon_balance_scope_2=portfolio_solution.objective_values[Objectives.carbon_balance_scope_2],
+                metric_carbon_cost=portfolio_solution.objective_values[Objectives.carbon_cost],
+                metric_cost_balance=portfolio_solution.objective_values[Objectives.cost_balance],
+                metric_capex=portfolio_solution.objective_values[Objectives.capex],
+                metric_payback_horizon=portfolio_solution.objective_values[Objectives.payback_horizon],
+                metric_annualised_cost=portfolio_solution.objective_values[Objectives.annualised_cost],
+                site_results=site_results,
+            )
         )
-        Optimisation_Results.append(OptRes)
-    return Optimisation_Results
+
+    tasks = [TaskResult(task_id=task.task_id, n_evals=results.n_evals, exec_time=results.exec_time, completed_at=completed_at)]
+
+    return OptimisationResultEntry(portfolio=portfolios, tasks=tasks)
 
 
 def check_epoch_versions():
@@ -83,7 +95,7 @@ def check_epoch_versions():
     try:
         import epoch_simulator
 
-        pybind_version = epoch_simulator.__version__
+        pybind_version = epoch_simulator.__version__  # type: ignore
         has_bindings = True
     except Exception as e:
         has_bindings = False
@@ -126,7 +138,11 @@ async def process_requests(q: IQueue) -> None:
             with ThreadPoolExecutor() as executor:
                 results = await loop.run_in_executor(
                     executor,
-                    lambda: optimiser.run(objectives=task.objectives, constraints={}, portfolio=task.portfolio),  # noqa: B023
+                    lambda: optimiser.run(  # noqa: B023
+                        objectives=task.objectives,  # noqa: B023
+                        constraints=task.portfolio_constraints,  # noqa: B023
+                        portfolio=task.portfolio,  # noqa: B023
+                    ),
                 )
             logger.info(f"Finished optimising {task.task_id}.")
             completed_at = datetime.datetime.now(datetime.UTC)
@@ -157,6 +173,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
         created_at=endpoint_task.created_at,
         portfolio=[site],
         client_id=endpoint_task.client_id,
+        portfolio_constraints={},
     )
 
     response = await submit_portfolio(request=request, task=epp_task, data_manager=data_manager)

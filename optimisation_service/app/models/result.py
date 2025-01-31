@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
+<<<<<<< HEAD
 import numpy as np
 
 from app.internal.epoch_utils import SimulationResult, TaskData
@@ -18,6 +19,10 @@ def convert_sim_result(sim_result: SimulationResult) -> ObjectiveValues:
         else:
             objective_values[objective] = getattr(sim_result, objective)
     return objective_values
+=======
+from app.internal.epoch_utils import TaskData
+from app.models.objectives import ObjectiveValues
+>>>>>>> 8ac6f7d5594df344b18d6aad2289ecaa89634e79
 
 
 @dataclass

@@ -12,28 +12,28 @@ class OptimiserStr(StrEnum):
 
 
 class NSGA2HyperParam(BaseModel):
-    pop_size: PositiveInt = Field(examples=[256, 512], description="Size of population.", default=256)
+    pop_size: PositiveInt = Field(examples=[256, 512], description="Size of population.", default=4096)
     n_offsprings: PositiveInt = Field(
         examples=[256, 512],
         description="Number of offsprings to generate through crossover at each generation."
         + "Can be greater or smaller than initial pop_size",
-        default=128,
+        default=2048,
     )
     prob_crossover: PositiveFloat = Field(
-        examples=[0.1, 0.5, 0.9], description="Probability of applying crossover between two parents.", default=0.9
+        examples=[0.2], description="Probability of applying crossover between two parents.", default=0.2
     )
-    n_crossover: PositiveInt = Field(examples=[1, 2, 3], description="Number of crossover points.", default=1)
+    n_crossover: PositiveInt = Field(examples=[1, 2], description="Number of crossover points.", default=2)
     prob_mutation: PositiveFloat = Field(
-        examples=[0.1, 0.5, 0.9], description="Probability of applying mutation to each offspring.", default=0.9
+        examples=[0.8], description="Probability of applying mutation to each offspring.", default=0.8
     )
     std_scaler: PositiveFloat = Field(
         examples=[0.2], description="Scales the standard deviation of the mutation's normal distribution.", default=0.2
     )
     tol: PositiveFloat = Field(
-        examples=[1e-14],
+        examples=[0.0025],
         description="Termination Criterion."
         + "Minimum required improvement of population's best fitness value over a period of generations. Terminates if below.",
-        default=1e-14,
+        default=0.0025,
     )
     period: PositiveInt = Field(
         examples=[25],
@@ -41,9 +41,9 @@ class NSGA2HyperParam(BaseModel):
         default=25,
     )
     n_max_gen: PositiveInt = Field(
-        examples=[128, 256, 512],
+        examples=[1000, 2000],
         description="Termination Criterion. Max number of generations before termination.",
-        default=int(1e14),
+        default=1000,
     )
     n_max_evals: PositiveInt = Field(
         examples=[1e6, 1e9],

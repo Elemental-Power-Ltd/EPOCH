@@ -14,7 +14,7 @@ from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ign
 from app.internal.epoch_utils import TaskData
 from app.internal.heuristics.population_init import generate_building_initial_population
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
-from app.models.constraints import ConstraintDict
+from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.objectives import Objectives, ObjectivesDirection, ObjectiveValues
 
@@ -28,7 +28,7 @@ class ProblemInstance(ElementwiseProblem):
     Create Pymoo ProblemInstance from OptimiseProblem instance.
     """
 
-    def __init__(self, objectives: list[Objectives], constraints: ConstraintDict, portfolio: list[Site]) -> None:
+    def __init__(self, objectives: list[Objectives], constraints: Constraints, portfolio: list[Site]) -> None:
         """
         Define Problem objectives, constraints, parameter search space.
 

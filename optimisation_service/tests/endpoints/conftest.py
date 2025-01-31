@@ -12,10 +12,10 @@ from pandas.core.api import DataFrame as DataFrame
 
 from app.internal.datamanager import DataManager
 from app.main import app
-from app.models.core import EndpointResult, Task
+from app.models.core import OptimisationResultEntry, Task
 from app.models.optimisers import (
-    GridSearchHyperParam,
-    GridSearchOptimiser,
+    NSGA2HyperParam,
+    NSGA2Optmiser,
     OptimiserStr,
 )
 from app.models.site_data import ASHPResult, SiteDataEntries, SiteMetaData
@@ -56,9 +56,9 @@ def client() -> Generator[TestClient, None, None]:
             }
             return site_data
 
-        async def transmit_results(self, results: list[EndpointResult]) -> None:
-            with open(Path(self.temp_dir, f"R_{results[0].task_id}.json"), "w") as f:
-                json.dump(jsonable_encoder(results), f)
+        async def transmit_results(self, result: OptimisationResultEntry) -> None:
+            with open(Path(self.temp_dir, f"R_{result.tasks[0].task_id}.json"), "w") as f:
+                json.dump(jsonable_encoder(result), f)
 
         async def transmit_task(self, task: Task) -> None:
             return None
@@ -70,16 +70,17 @@ def client() -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture
-def default_optimiser() -> GridSearchOptimiser:
-    return GridSearchOptimiser(name=OptimiserStr.GridSearch, hyperparameters=GridSearchHyperParam())
+def default_optimiser() -> NSGA2Optmiser:
+    return NSGA2Optmiser(name=OptimiserStr.NSGA2, hyperparameters=NSGA2HyperParam(pop_size=4096, n_offsprings=2048, period=2))
 
 
 @pytest.fixture
-def default_task(default_objectives, default_optimiser, default_portfolio) -> Task:
+def default_task(default_objectives, default_optimiser, default_portfolio, default_constraints) -> Task:
     return Task(
         name="test",
         optimiser=default_optimiser,
         objectives=default_objectives,
         portfolio=default_portfolio,
         client_id="demo",
+        portfolio_constraints=default_constraints,
     )
