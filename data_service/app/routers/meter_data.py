@@ -140,7 +140,7 @@ async def upload_meter_file(
         In case of parsing error
     """
     try:
-        df: HHDataFrame | MonthlyDataFrame = try_meter_parsing(file.file)
+        df, _ = try_meter_parsing(file.file)
     except NotImplementedError as ex:
         raise HTTPException(400, f"Could not parse {file.filename} due to an unknown format.") from ex
 
