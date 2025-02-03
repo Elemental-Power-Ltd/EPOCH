@@ -503,16 +503,16 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
         parse_horizontal_monthly_only_month,
     ]
 
-    encountered_exceptions = []
+    encountered_exceptions: list[BaseException] = []
     for parser in possible_parsers:
         # Some of the parsers will leave the file seek head at the end of the file.
-        # In that case, move to the
+        # In that case, move to the start.
         if hasattr(fname, "seek"):
             fname.seek(0, 0)
         try:
             parsed_df = parser(fname)
             consumption_mask = ~pd.isna(parsed_df.consumption)
-            return parsed_df[consumption_mask], parser.__name__
+            return parsed_df[consumption_mask], parser.__name__  # type: ignore
         except ValueError as ex:
             encountered_exceptions.append(ex)
             continue
