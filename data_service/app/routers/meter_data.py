@@ -5,6 +5,7 @@ These functions provider wrappers to get it in more sensible formats.
 """
 
 import datetime
+import itertools
 import uuid
 
 import numpy as np
@@ -196,7 +197,8 @@ async def upload_meter_file(
                     $3,
                     $4,
                     $5,
-                    $6)""",
+                    $6,
+                    $7)""",
             metadata["dataset_id"],
             metadata["created_at"],
             metadata["site_id"],
@@ -209,7 +211,13 @@ async def upload_meter_file(
         await conn.copy_records_to_table(
             table_name=table_name,
             schema_name="client_meters",
-            records=df.itertuples(index=False),
+            records=zip(
+                itertools.repeat(metadata["dataset_id"], len(df)),
+                df["start_ts"].dt.to_pydatetime(),
+                df["end_ts"].dt.to_pydatetime(),
+                df["consumption"],
+                strict=True,
+            ),
             columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
