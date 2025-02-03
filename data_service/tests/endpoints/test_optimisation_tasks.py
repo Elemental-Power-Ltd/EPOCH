@@ -1,11 +1,13 @@
 """Integration tests for adding and querying optimisation tasks."""
 
 # ruff: noqa: D101, D102, D103
+import copy
 import datetime
 import json
 import uuid
 
 import httpx
+import numpy as np
 import pydantic
 import pytest
 
@@ -189,6 +191,34 @@ class TestOptimisationTaskDatabase:
         to_send = OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result])
         opt_result = await client.post("/add-optimisation-results", content=to_send.model_dump_json())
         assert opt_result.status_code == 200, opt_result.text
+
+    @pytest.mark.asyncio
+    async def test_site_flt_max(
+        self,
+        sample_task_config: TaskConfig,
+        sample_portfolio_optimisation_result: PortfolioOptimisationResult,
+        sample_site_optimisation_result: SiteOptimisationResult,
+        client: httpx.AsyncClient,
+    ) -> None:
+        """Test that we can add a site with a FLT_MAX result."""
+        result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
+        assert result.status_code == 200, result.text
+
+        sample_site_optimisation_result.metric_cost_balance = float(np.finfo(np.float32).max) + 1.0
+        sample_site_result_2 = copy.deepcopy(sample_site_optimisation_result)
+        sample_site_result_2.site_id = "demo_edinburgh"
+
+        sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result, sample_site_result_2]
+        sample_portfolio_optimisation_result.metric_cost_balance = float(np.finfo(np.float32).max)
+        to_send = OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result])
+        opt_result = await client.post("/add-optimisation-results", content=to_send.model_dump_json())
+        assert opt_result.status_code == 200, opt_result.text
+        get_result = await client.post(
+            "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
+        )
+        assert get_result.status_code == 200, get_result.text
+        assert get_result.json()[0]["metric_cost_balance"] == float(np.finfo(np.float32).max)
+        assert get_result.json()[0]["site_results"][0]["metric_cost_balance"] == float(np.finfo(np.float32).max)
 
     @pytest.mark.asyncio
     async def test_can_get_portfolio_results_one_site(

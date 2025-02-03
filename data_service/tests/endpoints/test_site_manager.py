@@ -67,6 +67,17 @@ class TestGenerateAll:
             == len(data_json["grid_co2"])
         )
 
+    @pytest.mark.asyncio
+    async def test_same_timestamps(self, client: httpx.AsyncClient) -> None:
+        """Check that we fail early if the same timestamps are requested."""
+        data_result = await client.post(
+            "/generate-all",
+            json={"site_id": "bircotes_leisure_centre", "start_ts": "2022-01-01T00:00:00Z", "end_ts": "2022-01-01T00:00:00Z"},
+        )
+        assert data_result.status_code == 422
+        assert "start_ts" in data_result.text
+        assert "end_ts" in data_result.text
+
 
 class TestListAllDatasets:
     @pytest.mark.asyncio
