@@ -461,7 +461,10 @@ async def get_specific_datasets(site_data: DatasetRequest, pool: DatabasePoolDep
                 start_ts=site_data.start_ts,
                 end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
             )
-    return await fetch_all_input_data(site_data_ids, pool=pool)
+    try:
+        return await fetch_all_input_data(site_data_ids, pool=pool)
+    except KeyError as ex:
+        raise HTTPException(400, f"Missing dataset {ex}. Did you run generate-all for this site?") from ex
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])
@@ -499,7 +502,10 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) 
                 end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
             )
 
-    return await fetch_all_input_data(site_data_ids, pool=pool)
+    try:
+        return await fetch_all_input_data(site_data_ids, pool=pool)
+    except KeyError as ex:
+        raise HTTPException(400, f"Missing dataset {ex}. Did you run generate-all for this site?") from ex
 
 
 @router.post("/generate-all")
