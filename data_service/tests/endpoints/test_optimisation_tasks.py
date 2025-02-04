@@ -131,7 +131,7 @@ class TestOptimisationTaskDatabase:
         assert len(listed_tasks) == 1
         assert listed_tasks[0]["task_name"] == "test_task_config"
         assert listed_tasks[0]["task_id"] == str(sample_task_config.task_id)
-        assert listed_tasks[0]["result_ids"] is None, "We should have received no result IDs"
+        assert listed_tasks[0]["n_saved"] == 0, "We should have no portfolio results saved for this task"
 
     @pytest.mark.asyncio
     async def test_can_add_portfolio_results_no_site(
@@ -312,3 +312,33 @@ class TestOptimisationTaskDatabase:
         assert list_result.json()[0]["exec_time"] == pydantic.TypeAdapter(datetime.timedelta).dump_python(
             sample_task_result.exec_time, mode="json"
         )
+
+    @pytest.mark.asyncio
+    async def test_can_add_multiple_portfolio_results(
+            self,
+            sample_task_config: TaskConfig,
+            sample_portfolio_optimisation_result: PortfolioOptimisationResult,
+            client: httpx.AsyncClient,
+    ) -> None:
+        """Test that adding a task with two portfolio results returns a result with two results saved."""
+        task_response = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
+        assert task_response.status_code == 200, task_response.text
+
+        portfolio_result_1 = sample_portfolio_optimisation_result.model_copy(
+            update={"portfolio_id": uuid.uuid4()}
+        )
+        portfolio_result_2 = sample_portfolio_optimisation_result.model_copy(
+            update={"portfolio_id": uuid.uuid4()}
+        )
+
+        opt_result = OptimisationResultEntry(portfolio=[portfolio_result_1, portfolio_result_2])
+        result_response = await client.post("/add-optimisation-results", content=opt_result.model_dump_json())
+        assert result_response.status_code == 200, result_response.text
+
+        list_tasks_response = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
+        assert list_tasks_response.status_code == 200, list_tasks_response.text
+
+        tasks = list_tasks_response.json()
+        # There should be exactly one task with n_saved = 2
+        assert len(tasks) == 1, "There should be exactly one listed task."
+        assert tasks[0]["n_saved"] == 2, f"Expected n_saved to be 2 - got {tasks[0]['n_saved']} instead."

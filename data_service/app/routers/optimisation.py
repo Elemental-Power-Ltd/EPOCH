@@ -119,15 +119,22 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
             tc.task_id,
             tc.client_id,
             tc.task_name,
-            tr.n_evals,
-            tr.exec_time,
-            tc.created_at
+            ANY_VALUE(tr.n_evals)   AS n_evals,
+            COUNT(pr.task_id)       AS n_saved,
+            ANY_VALUE(tr.exec_time) AS exec_time,
+            ANY_VALUE(tc.created_at) AS created_at
         FROM optimisation.task_config AS tc
-        LEFT JOIN
-            optimisation.task_results as tr
-        ON tr.task_id = tc.task_id
-        WHERE client_id = $1
-        ORDER BY tc.created_at ASC
+        LEFT JOIN optimisation.task_results AS tr
+            ON tr.task_id = tc.task_id
+        LEFT JOIN optimisation.portfolio_results AS pr
+            ON tc.task_id = pr.task_id
+        WHERE tc.client_id = $1
+        GROUP BY
+            tc.task_id,
+            tc.client_id,
+            tc.task_name
+        ORDER BY
+            created_at ASC;
         """,
         client_id.client_id,
     )
@@ -137,8 +144,8 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
             task_id=item["task_id"],
             task_name=item["task_name"],
             n_evals=item["n_evals"],
-            exec_time=item["exec_time"],
-            result_ids=None,  # list(set(item["result_id"])),
+            n_saved=item["n_saved"],
+            exec_time=item["exec_time"]
         )
         for item in res
     ]

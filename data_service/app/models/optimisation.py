@@ -253,12 +253,13 @@ class ResultReproConfig(pydantic.BaseModel):
 class OptimisationTaskListEntry(pydantic.BaseModel):
     task_id: dataset_id_t
     task_name: str | None
-    result_ids: list[pydantic.UUID4] | None = pydantic.Field(
-        examples=[None, [uuid.uuid4()]], description="Portfolio IDs for the entries in the Pareto front for this task."
-    )
     n_evals: pydantic.PositiveInt | None = pydantic.Field(
         examples=[8832],
         description="Number of EPOCH evaluations we ran to calculate this task." + " None if the task didn't complete.",
+    )
+    n_saved: pydantic.NonNegativeInt = pydantic.Field(
+        examples=[12, 0],
+        description="The number of portfolio results saved to the database for this task."
     )
     exec_time: datetime.timedelta | None = pydantic.Field(
         examples=["PT4.297311S"],
