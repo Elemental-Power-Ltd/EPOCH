@@ -512,7 +512,8 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
         try:
             parsed_df = parser(fname)
             consumption_mask = ~pd.isna(parsed_df.consumption)
-            return parsed_df[consumption_mask], parser.__name__  # type: ignore
+            # This copy is here in case we want to modify the dataframe later
+            return parsed_df[consumption_mask].copy(), parser.__name__  # type: ignore
         except ValueError as ex:
             encountered_exceptions.append(ex)
             continue
