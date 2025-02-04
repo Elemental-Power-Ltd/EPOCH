@@ -6,9 +6,11 @@ and then later on add the results.
 Each result is uniquely identified, and belongs to a set of results.
 """
 
+import functools
 import json
 
 import asyncpg
+import numpy as np
 from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
@@ -49,12 +51,13 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[P
         SELECT
             pr.task_id,
             pr.portfolio_id,
-            MAX(pr.metric_carbon_balance_scope_1) AS metric_carbon_balance_scope_1,
-            MAX(pr.metric_carbon_balance_scope_2) AS metric_carbon_balance_scope_2,
-            MAX(pr.metric_capex) AS metric_capex,
-            MAX(pr.metric_cost_balance) AS metric_cost_balance,
-            MAX(pr.metric_payback_horizon) AS metric_payback_horizon,
-            MAX(pr.metric_annualised_cost) AS metric_annualised_cost,
+            ANY_VALUE(pr.metric_carbon_balance_scope_1) AS metric_carbon_balance_scope_1,
+            ANY_VALUE(pr.metric_carbon_balance_scope_2) AS metric_carbon_balance_scope_2,
+            ANY_VALUE(pr.metric_capex) AS metric_capex,
+            ANY_VALUE(pr.metric_cost_balance) AS metric_cost_balance,
+            ANY_VALUE(pr.metric_payback_horizon) AS metric_payback_horizon,
+            ANY_VALUE(pr.metric_annualised_cost) AS metric_annualised_cost,
+            ANY_VALUE(pr.metric_carbon_cost) AS metric_carbon_cost,
             ARRAY_AGG(sr.*) AS site_results
         FROM
             optimisation.portfolio_results AS pr
@@ -66,28 +69,38 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[P
         """,
         task_id.task_id,
     )
+
+    # Bind a local NaN to num with the defaults set reasonably, just in case
+    # any have slipped through.
+    nan_to_num = functools.partial(
+        np.nan_to_num,
+        nan=np.finfo(np.float32).max,  # be careful of this one!
+        posinf=np.finfo(np.float32).max,
+        neginf=np.finfo(np.float32).min,
+    )
     return [
         PortfolioOptimisationResult(
             task_id=item["task_id"],
             portfolio_id=item["portfolio_id"],
-            metric_carbon_balance_scope_1=item["metric_carbon_balance_scope_1"],
-            metric_carbon_balance_scope_2=item["metric_carbon_balance_scope_2"],
-            metric_cost_balance=item["metric_cost_balance"],
-            metric_payback_horizon=item["metric_payback_horizon"],
-            metric_annualised_cost=item["metric_annualised_cost"],
-            metric_capex=item["metric_capex"],
+            metric_carbon_balance_scope_1=nan_to_num(item["metric_carbon_balance_scope_1"]),
+            metric_carbon_balance_scope_2=nan_to_num(item["metric_carbon_balance_scope_2"]),
+            metric_cost_balance=nan_to_num(item["metric_cost_balance"]),
+            metric_payback_horizon=nan_to_num(item["metric_payback_horizon"]),
+            metric_annualised_cost=nan_to_num(item["metric_annualised_cost"]),
+            metric_capex=nan_to_num(item["metric_capex"]),
+            metric_carbon_cost=nan_to_num(item["metric_carbon_cost"]),
             site_results=[
                 SiteOptimisationResult(
                     site_id=sub_item["site_id"],
                     portfolio_id=sub_item["portfolio_id"],
                     scenario=json.loads(sub_item["scenario"]),
-                    metric_carbon_balance_scope_1=sub_item["metric_carbon_balance_scope_1"],
-                    metric_carbon_balance_scope_2=sub_item["metric_carbon_balance_scope_2"],
-                    metric_cost_balance=sub_item["metric_cost_balance"],
-                    metric_payback_horizon=sub_item["metric_payback_horizon"],
-                    metric_annualised_cost=sub_item["metric_annualised_cost"],
-                    metric_capex=sub_item["metric_capex"],
-                    metric_carbon_cost=sub_item["metric_carbon_cost"],
+                    metric_carbon_balance_scope_1=nan_to_num(sub_item["metric_carbon_balance_scope_1"]),
+                    metric_carbon_balance_scope_2=nan_to_num(sub_item["metric_carbon_balance_scope_2"]),
+                    metric_cost_balance=nan_to_num(sub_item["metric_cost_balance"]),
+                    metric_payback_horizon=nan_to_num(sub_item["metric_payback_horizon"]),
+                    metric_annualised_cost=nan_to_num(sub_item["metric_annualised_cost"]),
+                    metric_capex=nan_to_num(sub_item["metric_capex"]),
+                    metric_carbon_cost=nan_to_num(sub_item["metric_carbon_cost"]),
                 )
                 for sub_item in item["site_results"]
                 if sub_item is not None

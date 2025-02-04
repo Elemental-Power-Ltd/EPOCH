@@ -62,7 +62,7 @@ class PortfolioOptimisationResult(pydantic.BaseModel):
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
     )
     metric_carbon_cost: float | None = pydantic.Field(
-        description="Net change in carbon emissions per year due to this entire portfolio of scenarios.", default=None
+        description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
     )
     metric_cost_balance: float | None = pydantic.Field(
         description="Net change in annual running cost due to this entire portfolio of scenarios.", default=None

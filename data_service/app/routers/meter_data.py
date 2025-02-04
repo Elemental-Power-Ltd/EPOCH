@@ -177,7 +177,7 @@ async def upload_meter_file(
             400,
             f"Fuel type {fuel_type} is not supported. Please select from ('gas', 'elec')",
         )
-    df["dataset_id"] = metadata["dataset_id"]
+
     df["start_ts"] = df.index
     async with conn.transaction():
         await conn.execute(
