@@ -34,8 +34,8 @@ export interface OptimiseContainer {
 export interface OptimisationTaskListEntry {
     task_id: string;
     task_name?: string;
-    result_ids: string[] | null;
     n_evals: number | null;
+    n_saved: number | null;
     exec_time: string | null;
 }
 

@@ -31,7 +31,7 @@ const TaskTable: React.FC<TaskTableProps> = ({tasks, setCurrentTask, currentTask
                             <TableCell>{task.task_name || 'Unnamed Task'}</TableCell>
                             <TableCell>{task.n_evals || "-"}</TableCell>
                             <TableCell>{parseISODuration(task.exec_time)}</TableCell>
-                            <TableCell>{task.result_ids ? task.result_ids.length : 0}</TableCell>
+                            <TableCell>{task.n_saved ? task.n_saved : 0}</TableCell>
                             <TableCell>
                                 <IconButton color="primary" onClick={()=>setCurrentTask(task)}>
                                     <ArrowForwardIcon/>
