@@ -345,21 +345,17 @@ class TestOptimisationTaskDatabase:
 
     @pytest.mark.asyncio
     async def test_can_add_multiple_portfolio_results(
-            self,
-            sample_task_config: TaskConfig,
-            sample_portfolio_optimisation_result: PortfolioOptimisationResult,
-            client: httpx.AsyncClient,
+        self,
+        sample_task_config: TaskConfig,
+        sample_portfolio_optimisation_result: PortfolioOptimisationResult,
+        client: httpx.AsyncClient,
     ) -> None:
         """Test that adding a task with two portfolio results returns a result with two results saved."""
         task_response = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert task_response.status_code == 200, task_response.text
 
-        portfolio_result_1 = sample_portfolio_optimisation_result.model_copy(
-            update={"portfolio_id": uuid.uuid4()}
-        )
-        portfolio_result_2 = sample_portfolio_optimisation_result.model_copy(
-            update={"portfolio_id": uuid.uuid4()}
-        )
+        portfolio_result_1 = sample_portfolio_optimisation_result.model_copy(update={"portfolio_id": uuid.uuid4()})
+        portfolio_result_2 = sample_portfolio_optimisation_result.model_copy(update={"portfolio_id": uuid.uuid4()})
 
         opt_result = OptimisationResultEntry(portfolio=[portfolio_result_1, portfolio_result_2])
         result_response = await client.post("/add-optimisation-results", content=opt_result.model_dump_json())

@@ -258,8 +258,7 @@ class OptimisationTaskListEntry(pydantic.BaseModel):
         description="Number of EPOCH evaluations we ran to calculate this task." + " None if the task didn't complete.",
     )
     n_saved: pydantic.NonNegativeInt = pydantic.Field(
-        examples=[12, 0],
-        description="The number of portfolio results saved to the database for this task."
+        examples=[12, 0], description="The number of portfolio results saved to the database for this task."
     )
     exec_time: datetime.timedelta | None = pydantic.Field(
         examples=["PT4.297311S"],

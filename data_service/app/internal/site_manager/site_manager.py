@@ -103,6 +103,8 @@ async def fetch_all_input_data(
     """
     Take a list of dataset IDs with a timespan and fetch the data for each one from the database.
 
+    All of those datasets must already exist in the database, ideally after a generate-all run.
+
     Parameters
     ----------
     site_data_ids

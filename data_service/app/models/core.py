@@ -9,7 +9,7 @@ centralise it in here.
 import datetime
 import uuid
 from enum import StrEnum
-from typing import Annotated, Self
+from typing import Annotated, Any, Self
 
 import pydantic
 from pydantic import BaseModel, Field
@@ -193,6 +193,9 @@ class DatasetEntry(pydantic.BaseModel):
         examples=[datetime.timedelta(minutes=30), datetime.timedelta(days=28)],
         default=None,
         description="Average time span between entries in this dataset.",
+    )
+    dataset_subtype: Any | None = Field(
+        description="Subtype of this dataset, e.g. SyntheticTariff types, if available.", default=None
     )
 
 

@@ -11,7 +11,7 @@ from app.models.import_tariffs import EpochTariffEntry
 
 
 class SiteDataEntries(pydantic.BaseModel):
-    eload: list[EpochElectricityEntry]
+    eload: list[EpochElectricityEntry] | None
     heat: list[EpochHeatingEntry]
     rgen: list[EpochRenewablesEntry]
     import_tariffs: list[EpochTariffEntry]
