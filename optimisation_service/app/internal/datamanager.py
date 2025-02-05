@@ -484,7 +484,7 @@ class DataManager:
             Pandas DataFrame of import tariff records.
         """
         df = pd.DataFrame.from_records(import_tariffs)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff"])
+        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff", "Tariff1", "Tariff2", "Tariff3"])
         return df
 
     def transform_grid_CO2_data(self, grid_co2: RecordsList) -> pd.DataFrame:
