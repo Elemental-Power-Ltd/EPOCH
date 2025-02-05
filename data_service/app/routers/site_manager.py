@@ -439,9 +439,9 @@ async def list_latest_datasets(
             if no_entries_yet or is_newer_than_entry:
                 curr_latest_ds[dataset.dataset_type][dataset.dataset_subtype] = dataset  # type: ignore
         elif dataset.dataset_type not in curr_latest_ds or (
-            curr_latest_ds[dataset.dataset_type].created_at < dataset.created_at
-        ):  # type: ignore
-            curr_latest_ds[dataset.dataset_type] = dataset  # type: ignore
+            cast(DatasetEntry, curr_latest_ds[dataset.dataset_type]).created_at < dataset.created_at
+        ):
+            curr_latest_ds[dataset.dataset_type] = dataset
 
     # For the multiple entry, let's just form it into a list in the right order.
 
