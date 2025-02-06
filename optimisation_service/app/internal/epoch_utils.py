@@ -4,7 +4,7 @@ Wrappers for Epoch that are more ergonomic for python.
 
 import numpy as np
 
-from app.models.objectives import _OBJECTIVES, Objectives, ObjectiveValues
+from app.models.objectives import Objectives, ObjectiveValues
 
 from .log import logger
 
@@ -48,16 +48,24 @@ def convert_sim_result(sim_result: SimulationResult) -> ObjectiveValues:
         Dictionary of objective values.
     """
     objective_values = ObjectiveValues()
-    for objective in _OBJECTIVES:
-        if objective == Objectives.carbon_cost:
-            if sim_result.carbon_balance_scope_1 > 0:
-                objective_values[Objectives.carbon_cost] = sim_result.capex / (sim_result.carbon_balance_scope_1 * 15 / 1000)
-            elif sim_result.carbon_balance_scope_1 == 0 and sim_result.capex == 0:
-                objective_values[Objectives.carbon_cost] = 0
-            else:
-                objective_values[Objectives.carbon_cost] = np.inf
+    for objective in [
+        Objectives.annualised_cost,
+        Objectives.capex,
+        Objectives.carbon_balance_scope_1,
+        Objectives.carbon_balance_scope_2,
+        Objectives.cost_balance,
+        Objectives.payback_horizon,
+    ]:
+        objective_values[objective] = getattr(sim_result, objective)
+
+    if sim_result.capex > 0:
+        if sim_result.carbon_balance_scope_1 > 0:
+            objective_values[Objectives.carbon_cost] = sim_result.capex / sim_result.carbon_balance_scope_1
         else:
-            objective_values[objective] = getattr(sim_result, objective)
+            objective_values[Objectives.carbon_cost] = float(np.finfo(np.float32).max)
+    else:
+        objective_values[Objectives.carbon_cost] = 0
+
     return objective_values
 
 
