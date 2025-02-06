@@ -6,8 +6,7 @@ import logging
 import uuid
 from typing import Any, cast
 
-import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
 from ..internal.site_manager.site_manager import fetch_all_input_data, fetch_import_tariffs
@@ -36,6 +35,7 @@ from .renewables import generate_renewables_generation
 router = APIRouter()
 
 MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
+NULL_UUID = uuid.UUID(int=0, version=4)
 
 
 async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
@@ -612,7 +612,12 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) 
 
 @router.post("/generate-all")
 async def generate_all(
-    params: SiteIDWithTime, pool: DatabasePoolDep, http_client: HttpClientDep, vae: VaeDep, secrets_env: SecretsDep
+    params: SiteIDWithTime,
+    pool: DatabasePoolDep,
+    http_client: HttpClientDep,
+    vae: VaeDep,
+    secrets_env: SecretsDep,
+    background_tasks: BackgroundTasks,
 ) -> dict[DatasetTypeEnum, DatasetEntry | list[DatasetEntry]]:
     """
     Run all dataset generation tasks for this site.
@@ -622,15 +627,30 @@ async def generate_all(
     You almost certainly want the timestamps to be 2021 or 2022 so we can use renewables.ninja data, and relatively recent
     tariff data.
 
+    This will run background tasks for each sub item, which can take upwards of 1 minute.
+    For that reason, we'll return an empty set of null data early and chug along in the background.
+    This may block the main thread, so be careful.
+
     Parameters
     ----------
     params
         SiteIDWithTime, including two relatively far back timestamps for Renewables Ninja to use.
+    pool
+        Connection pool to underlying PostgreSQL database
+    http_client
+        Asynchronous HTTP client to use for requests to 3rd party APIs
+    vae
+        ML model for upscaling of electrical data
+    secrets_env
+        Client secrets environment
+    background_tasks
+        Task group to run after returning data
 
     Returns
     -------
     datasets
-        Dataset Type: Dataset Entry mapping, including UUIDs under the 'dataset_id' key that you can retrieve from `get-*`.
+        Dataset Type: Dataset Entry mapping, but with placeholder null UUIDs as the background tasks need to run.
+        Note that this will return immediately, but block this thread until the calculations are done.
     """
     datasets = await list_latest_datasets(SiteID(site_id=params.site_id), pool=pool)
 
@@ -638,151 +658,113 @@ async def generate_all(
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if DatasetTypeEnum.ElectricityMeterData not in datasets:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
+
     heating_load_dataset = datasets[DatasetTypeEnum.GasMeterData]
+    assert isinstance(heating_load_dataset, DatasetEntry)
     elec_meter_dataset = datasets[DatasetTypeEnum.ElectricityMeterData]
+    assert isinstance(elec_meter_dataset, DatasetEntry)
 
-    try:
-        async with asyncio.TaskGroup() as tg:
-            assert isinstance(heating_load_dataset, DatasetEntry)
-            heating_load_response = tg.create_task(
-                generate_heating_load(
-                    HeatingLoadRequest(
-                        dataset_id=heating_load_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                )
-            )
-            grid_co2_response = tg.create_task(generate_grid_co2(params, pool=pool, http_client=http_client))
+    background_tasks.add_task(
+        generate_heating_load,
+        HeatingLoadRequest(dataset_id=heating_load_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
+        pool=pool,
+        http_client=http_client,
+    )
 
-            # We generate four different types of tariff, here done manually to keep track of the
-            # tasks and not lose the handle to the task (which causes mysterious bugs)
-            import_tariff_response_fixed = tg.create_task(
-                generate_import_tariffs(
-                    TariffRequest(
-                        site_id=params.site_id,
-                        tariff_name=SyntheticTariffEnum.Fixed,
-                        start_ts=params.start_ts,
-                        end_ts=params.end_ts,
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                )
-            )
-            import_tariff_response_overnight = tg.create_task(
-                generate_import_tariffs(
-                    TariffRequest(
-                        site_id=params.site_id,
-                        tariff_name=SyntheticTariffEnum.Overnight,
-                        start_ts=params.start_ts,
-                        end_ts=params.end_ts,
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                )
-            )
-            import_tariff_response_agile = tg.create_task(
-                generate_import_tariffs(
-                    TariffRequest(
-                        site_id=params.site_id,
-                        tariff_name=SyntheticTariffEnum.Agile,
-                        start_ts=params.start_ts,
-                        end_ts=params.end_ts,
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                )
-            )
-            import_tariff_response_peak = tg.create_task(
-                generate_import_tariffs(
-                    TariffRequest(
-                        site_id=params.site_id,
-                        tariff_name=SyntheticTariffEnum.Peak,
-                        start_ts=params.start_ts,
-                        end_ts=params.end_ts,
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                )
-            )
-            renewables_response = tg.create_task(
-                generate_renewables_generation(
-                    RenewablesRequest(
-                        site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                    secrets_env=secrets_env,
-                )
-            )
-            assert isinstance(elec_meter_dataset, DatasetEntry)
-            elec_response = tg.create_task(
-                generate_electricity_load(
-                    ElectricalLoadRequest(
-                        dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                    vae=vae,
-                )
-            )
-    except* ValueError as excgroup:
-        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
-    except* TypeError as excgroup:
-        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
-    except* httpx.ReadTimeout as excgroup:
-        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
+    background_tasks.add_task(generate_grid_co2, params, pool=pool, http_client=http_client)
+
+    # We generate four different types of tariff, here done manually to keep track of the
+    # tasks and not lose the handle to the task (which causes mysterious bugs)
+    for tariff_type in SyntheticTariffEnum:
+        background_tasks.add_task(
+            generate_import_tariffs,
+            TariffRequest(
+                site_id=params.site_id,
+                tariff_name=tariff_type,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+            ),
+            pool=pool,
+            http_client=http_client,
+        )
+
+    background_tasks.add_task(
+        generate_renewables_generation,
+        RenewablesRequest(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None),
+        pool=pool,
+        http_client=http_client,
+        secrets_env=secrets_env,
+    )
+
+    background_tasks.add_task(
+        generate_electricity_load,
+        ElectricalLoadRequest(dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
+        pool=pool,
+        http_client=http_client,
+        vae=vae,
+    )
+
+    RESOLUTION = datetime.timedelta(minutes=30)
+    # Return the background tasks immediately with null-ish data.
+    # The UUIDs will have to be collected later (unless we assign them in this function in future?)
     return {
         DatasetTypeEnum.HeatingLoad: DatasetEntry(
-            dataset_id=heating_load_response.result().dataset_id,
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.HeatingLoad,
-            created_at=heating_load_response.result().created_at,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
         DatasetTypeEnum.CarbonIntensity: DatasetEntry(
-            dataset_id=grid_co2_response.result().dataset_id,
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.CarbonIntensity,
-            created_at=grid_co2_response.result().created_at,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
         DatasetTypeEnum.ImportTariff: [
             DatasetEntry(
-                dataset_id=import_tariff_response_fixed.result().dataset_id,
+                dataset_id=NULL_UUID,
                 dataset_type=DatasetTypeEnum.ImportTariff,
-                created_at=import_tariff_response_fixed.result().created_at,
-                dataset_subtype=SyntheticTariffEnum.Fixed,
-            ),
-            DatasetEntry(
-                dataset_id=import_tariff_response_agile.result().dataset_id,
-                dataset_type=DatasetTypeEnum.ImportTariff,
-                created_at=import_tariff_response_agile.result().created_at,
-                dataset_subtype=SyntheticTariffEnum.Agile,
-            ),
-            DatasetEntry(
-                dataset_id=import_tariff_response_overnight.result().dataset_id,
-                dataset_type=DatasetTypeEnum.ImportTariff,
-                created_at=import_tariff_response_overnight.result().created_at,
-                dataset_subtype=SyntheticTariffEnum.Overnight,
-            ),
-            DatasetEntry(
-                dataset_id=import_tariff_response_peak.result().dataset_id,
-                dataset_type=DatasetTypeEnum.ImportTariff,
-                created_at=import_tariff_response_peak.result().created_at,
-                dataset_subtype=SyntheticTariffEnum.Peak,
-            ),
+                created_at=datetime.datetime.now(tz=datetime.UTC),
+                dataset_subtype=tariff_type,
+                resolution=RESOLUTION,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+                num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
+            )
+            for tariff_type in SyntheticTariffEnum
         ],
         DatasetTypeEnum.RenewablesGeneration: DatasetEntry(
-            dataset_id=renewables_response.result().dataset_id,
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.RenewablesGeneration,
-            created_at=renewables_response.result().created_at,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
         DatasetTypeEnum.ElectricityMeterData: datasets[DatasetTypeEnum.ElectricityMeterData],
         DatasetTypeEnum.ElectricityMeterDataSynthesised: DatasetEntry(
-            dataset_id=elec_response.result().dataset_id,
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
-            created_at=elec_response.result().created_at,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
         DatasetTypeEnum.ASHPData: DatasetEntry(
-            dataset_id=uuid.uuid4(),
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.ASHPData,
             created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
     }
