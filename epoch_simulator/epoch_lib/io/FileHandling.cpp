@@ -175,6 +175,56 @@ std::vector<float> readCSVrow(const std::filesystem::path& filename, int row) {
 	return rowData;
 }
 
+/**
+* Count the number of columns based on the number of entries in the header
+*/
+size_t countColumns(const std::filesystem::path& filename) {
+	std::ifstream file(filename);
+	std::string line;
+
+	if (!file.is_open()) {
+		throw FileReadException(filename.filename().string());
+	}
+
+	// Read the header line to determine the number of columns
+	std::getline(file, line);
+	std::stringstream headerStream(line);
+	std::vector<std::string> headers;
+	std::string headerCell;
+
+	while (std::getline(headerStream, headerCell, ',')) {
+		headers.emplace_back(headerCell);
+	}
+
+	return headers.size();
+}
+
+
+
+std::vector<year_TS> readImportTariffs(const std::filesystem::path& filename) {
+	int totalColumns = static_cast<int>(countColumns(filename));
+
+	// the tariffs will always start from the 4th column for now
+	constexpr int START_COLUMN = 4;
+	std::vector<std::vector<float>> columns{};
+
+	// readCSVColumn uses 1-based indexing so we need to run to totalColumns + 1
+	for (int i = START_COLUMN; i < totalColumns + 1; ++i) {
+		auto col = readCSVColumn(filename, i, true);
+		columns.emplace_back(col);
+	}
+
+	std::vector<year_TS> tariffs{};
+	for (const auto& col : columns) {
+		tariffs.emplace_back(toEigen(col));
+	}
+
+	return tariffs;
+}
+
+
+
+
 void printVector(const std::vector<float>& vec) {
 	for (float value : vec) {
 		spdlog::info("vector value {}", value);
@@ -558,10 +608,6 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 	std::filesystem::path airtempFilepath = fileConfig.getAirtempFilepath();
 	std::vector<float> airtemp_data = readCSVColumnAndSkipHeader(airtempFilepath, 4);
 
-	//read in the import tariff data
-	std::filesystem::path importtariffFilepath = fileConfig.getImporttariffFilepath();
-	std::vector<float> importtariff_data = readCSVColumnAndSkipHeader(importtariffFilepath, 4);
-
 	//read in the GridCO2 data
 	std::filesystem::path gridCO2Filepath = fileConfig.getGridCO2Filepath();
 	std::vector<float> gridCO2_data = readCSVColumnAndSkipHeader(gridCO2Filepath, 4);
@@ -580,7 +626,6 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 		RGen_data_3.size() != timesteps ||
 		RGen_data_4.size() != timesteps ||
 		airtemp_data.size() != timesteps ||
-		importtariff_data.size() != timesteps ||
 		gridCO2_data.size() != timesteps ||
 		DHWload_data.size() != timesteps
 		) {
@@ -589,6 +634,20 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 
 	// FIXME for now the time interval is always 0.5 hours (half an hour)
 	constexpr float TIMESTEP_HOURS = 0.5f;
+
+	// read in the import tariffs
+
+	// TODO - make this a function and dynamic length
+	std::filesystem::path importtariffFilepath = fileConfig.getImporttariffFilepath();
+	std::vector<year_TS> tariffs = readImportTariffs(importtariffFilepath);
+	for (const auto& tariff : tariffs) {
+		if (tariff.size() != static_cast<Eigen::Index>(timesteps)) {
+			throw EpochBaseException("Tariffs have the wrong length");
+		}
+	}
+	if (tariffs.size() == 0) {
+		throw EpochBaseException("No tariffs provided");
+	}
 
 
 	//read in the ASHP data
@@ -610,9 +669,9 @@ const HistoricalData readHistoricalData(const FileConfig& fileConfig)
 		toEigen(RGen_data_3),
 		toEigen(RGen_data_4),
 		toEigen(airtemp_data),
-		toEigen(importtariff_data),
 		toEigen(gridCO2_data),
 		toEigen(DHWload_data),
+		tariffs,
 		toEigen(ASHPinputtable),
 		toEigen(ASHPoutputtable)
 	};

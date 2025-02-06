@@ -36,6 +36,10 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 
 	auto start = std::chrono::high_resolution_clock::now();
 
+	if (taskData.grid && taskData.grid->tariff_index >= historicalData.import_tariffs.size()) {
+		return makeInvalidResult(taskData);
+	}
+
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
 	Costs myCost(historicalData, taskData);
 	myCost.calculate_Project_CAPEX();
@@ -77,7 +81,8 @@ SimulationResult Simulator::simulateScenario(const HistoricalData& historicalDat
 	}
 
 	if (taskData.domestic_hot_water && taskData.heat_pump) {
-		HotWaterCylinder hotWaterCylinder{ historicalData, taskData.domestic_hot_water.value(), taskData.heat_pump.value() };
+		size_t tariff_index = taskData.grid ? taskData.grid->tariff_index : 0;
+		HotWaterCylinder hotWaterCylinder{ historicalData, taskData.domestic_hot_water.value(), taskData.heat_pump.value(), tariff_index };
 		hotWaterCylinder.AllCalcs(tempSum);
 		hotWaterCylinder.Report(reportData);
 	}

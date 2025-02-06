@@ -14,7 +14,8 @@ std::vector<float> readCSVColumn(const std::filesystem::path& filename, int colu
 std::vector<float> readCSVColumnAndSkipHeader(const std::filesystem::path& filename, int column);
 std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filename, int column);
 std::vector<std::vector<float>> readCSVAsTable(const std::filesystem::path& filename);
-
+size_t countColumns(const std::filesystem::path& filename);
+std::vector<year_TS> readImportTariffs(const std::filesystem::path& filename);
 
 void writeResultsToCSV(std::filesystem::path filepath, const std::vector<ObjectiveResult>& results);
 void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& result);

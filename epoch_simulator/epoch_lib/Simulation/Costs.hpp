@@ -16,7 +16,8 @@ public:
 		mTimesteps(historicalData.timesteps),
 		mBaseline_elec_cost(0.0f),
 		mBaseline_fuel_cost(0.0f),
-		mImport_prices(historicalData.importtariff_data),
+		mBaselineImportTariff(historicalData.import_tariffs[0]),
+		mScenarioImportTariff(historicalData.import_tariffs[taskData.grid ? taskData.grid->tariff_index : 0]),
 		mScenario_import_cost(0.0f),
 		mScenario_fuel_cost(0.0f),
 		mScenario_export_cost(0.0f),
@@ -174,7 +175,7 @@ public:
 
 	void calculate_baseline_elec_cost(const year_TS& baseline_elec_load) {
 
-		year_TS mBaseline_elec_cost_TS = (baseline_elec_load.array() * mImport_prices.array()); 
+		year_TS mBaseline_elec_cost_TS = (baseline_elec_load.array() * mBaselineImportTariff.array()); 
 		mBaseline_elec_cost = mBaseline_elec_cost_TS.sum();
 	};
 
@@ -186,7 +187,7 @@ public:
 
 	void calculate_scenario_elec_cost(const year_TS& grid_import) {
 
-		year_TS mScenario_import_cost_TS = (grid_import.array() * mImport_prices.array());
+		year_TS mScenario_import_cost_TS = (grid_import.array() * mScenarioImportTariff.array());
 		mScenario_import_cost = mScenario_import_cost_TS.sum(); // just use fixed value for now
 	};
 
@@ -346,7 +347,8 @@ public:
 
 		const float mSupplier_electricity_kg_CO2e = 0.182f; //
 
-		year_TS mImport_prices;
+		year_TS mBaselineImportTariff;
+		year_TS mScenarioImportTariff;
 
 		// site price
 

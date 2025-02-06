@@ -152,9 +152,9 @@ struct HistoricalData {
 	year_TS RGen_data_3;
 	year_TS RGen_data_4;
 	year_TS airtemp_data;
-	year_TS importtariff_data;
 	year_TS gridCO2_data;
 	year_TS DHWdemand_data;
+	std::vector<year_TS> import_tariffs;
 	Eigen::MatrixXf ASHPinputtable;
 	Eigen::MatrixXf ASHPoutputtable;
 };

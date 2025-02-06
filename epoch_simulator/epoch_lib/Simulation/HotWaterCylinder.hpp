@@ -7,7 +7,7 @@ class HotWaterCylinder {
 
 public:
 	// Constructor
-	HotWaterCylinder(const HistoricalData& historicalData, const DomesticHotWater& dhw, const HeatPumpData& heatPumpData) :
+	HotWaterCylinder(const HistoricalData& historicalData, const DomesticHotWater& dhw, const HeatPumpData& heatPumpData, size_t tariff_index) :
 
 		mCylinderVolume(dhw.cylinder_volume), // cylinder volume n litres
 		mTimesteps(historicalData.timesteps),
@@ -23,7 +23,7 @@ public:
 		mDHW_ave_temperature(Eigen::VectorXf::Zero(historicalData.timesteps)),
 		mDHW_diverter_load_e(Eigen::VectorXf::Zero(historicalData.timesteps)),
 		mDHW_heat_pump_load_h(Eigen::VectorXf::Zero(historicalData.timesteps)),
-		mImport_tariff(historicalData.importtariff_data),
+		mImport_tariff(historicalData.import_tariffs[tariff_index]),
 		mHeat_pump_power_h(heatPumpData.heat_power) // will need to calculate energy per timestep
 	{}
 
