@@ -1,6 +1,7 @@
 import React, {useEffect} from 'react';
 import './App.css';
-import {Tab, Tabs, Box, Select, SelectChangeEvent, MenuItem} from '@mui/material';
+import {Tab, Tabs, Box, Select, SelectChangeEvent, MenuItem, useMediaQuery} from '@mui/material';
+import {ThemeProvider, createTheme} from "@mui/material/styles";
 
 import OptimisationContainer from "./Containers/Optimise";
 import ResultsContainer from "./Containers/Results";
@@ -11,8 +12,10 @@ import NotALogin from "./Components/Login/NotALogin";
 import {useEpochStore} from "./State/Store";
 import {listClients, listSites} from "./endpoints";
 import {BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate} from "react-router-dom";
+import {getAppTheme} from "./Colours";
 
 function App() {
+    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
 
     const selectedClient = useEpochStore((state) => state.global.selectedClient);
     const availableClients = useEpochStore((state) => state.global.availableClients);
@@ -63,41 +66,43 @@ function App() {
 
     return (
         <BrowserRouter>
-            <div className="fixed-tabs">
-                <Box display="flex" alignItems="center">
-                    <NavTabs/>
-                    <Select
-                        value={selectedClient ? selectedClient.client_id : ""}
-                        onChange={handleSelectChange}
-                        variant="standard"
-                    >
-                        {availableClients.map((client) =>
-                            <MenuItem key={client.client_id} value={client.client_id}>
-                                {client.name}
-                            </MenuItem>
-                        )}
-                    </Select>
-                </Box>
-            </div>
+            <ThemeProvider theme={getAppTheme(prefersDarkMode)}>
+                <div className="fixed-tabs">
+                    <Box display="flex" alignItems="center">
+                        <NavTabs/>
+                        <Select
+                            value={selectedClient ? selectedClient.client_id : ""}
+                            onChange={handleSelectChange}
+                            variant="standard"
+                        >
+                            {availableClients.map((client) =>
+                                <MenuItem key={client.client_id} value={client.client_id}>
+                                    {client.name}
+                                </MenuItem>
+                            )}
+                        </Select>
+                    </Box>
+                </div>
 
-            <h1>Epoch</h1>
+                <h1>Epoch</h1>
 
 
-            {noClient ? <NotALogin/> :
-                <Box className="content">
-                    <Routes>
-                        <Route path="/" element={<Navigate to="/optimise" replace/>}/>
-                        <Route path="/optimise" element={<OptimisationContainer/>}/>
-                        <Route path="/simulate" element={<SimulationContainer/>}/>
-                        <Route path="/results" element={<ResultsContainer/>}/>
-                        <Route path="/analyse/:portfolio_id?/:site_id?" element={<AnalysisContainer/>}/>
-                        <Route path="/generate-data" element={<DatasetGenerationContainer/>}/>
+                {noClient ? <NotALogin/> :
+                    <Box className="content">
+                        <Routes>
+                            <Route path="/" element={<Navigate to="/optimise" replace/>}/>
+                            <Route path="/optimise" element={<OptimisationContainer/>}/>
+                            <Route path="/simulate" element={<SimulationContainer/>}/>
+                            <Route path="/results" element={<ResultsContainer/>}/>
+                            <Route path="/analyse/:portfolio_id?/:site_id?" element={<AnalysisContainer/>}/>
+                            <Route path="/generate-data" element={<DatasetGenerationContainer/>}/>
 
-                        {/*404*/}
-                        <Route path="*" element={<div>404</div>}/>
-                  </Routes>
-                </Box>
-            }
+                            {/*404*/}
+                            <Route path="*" element={<div>404</div>}/>
+                      </Routes>
+                    </Box>
+                }
+            </ThemeProvider>
         </BrowserRouter>
     );
 }
