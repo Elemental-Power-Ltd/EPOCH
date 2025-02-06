@@ -15,15 +15,24 @@ import InfoIcon from '@mui/icons-material/Info';
 import {Site, SiteOptimisationResult} from "../../State/types";
 import {formatPounds, formatCarbon, formatYears, formatCarbonCost} from "../../util/displayFunctions";
 import SolutionModal from './SolutionModal';
-import {useEpochStore} from "../../State/Store"; // Import the modal component
+import {useEpochStore} from "../../State/Store";
+import {reproduceSimulation} from "../../endpoints";
+import {SimulationResult} from "../../Models/Endpoints";
+import SimulationResultViewer from "./SimulationResultViewer";
 
 interface SiteResultsTableProps {
     results: SiteOptimisationResult[];
 }
 
 const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
-    const [selectedSolution, setSelectedSolution] = useState<{ [key: string]: number } | null>(null);
+    const [selectedResult, setSelectedResult] = useState<SiteOptimisationResult | null>(null);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
+
+    const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
+
+
 
     const sites: Site[] = useEpochStore((state) => state.global.client_sites);
 
@@ -32,14 +41,35 @@ const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
         return site ? site.name : site_id;
     }
 
-    const handleShowSolution = (solution: any) => {
-        setSelectedSolution(solution);
+    const handleShowSolution = async (siteResult: SiteOptimisationResult) => {
+        // Immediately show the solution and open the modal
+        setSelectedResult(siteResult);
         setModalOpen(true);
+
+        await fetchSimulation(siteResult);
     };
+
+    // reproduce the simulation to fetch the detailed results
+    const fetchSimulation = async(siteResult: SiteOptimisationResult) => {
+        setIsLoading(true);
+        setError(null);
+
+        const simResult = await reproduceSimulation({
+            portfolio_id: siteResult.portfolio_id, site_id: siteResult.site_id
+        });
+
+        setIsLoading(false);
+
+        if (simResult.success) {
+            setSimulationResult(simResult.data);
+        } else {
+            setError(simResult.error!);
+        }
+    }
 
     const handleCloseModal = () => {
         setModalOpen(false);
-        setSelectedSolution(null);
+        setSelectedResult(null);
     };
 
     return (
@@ -90,7 +120,7 @@ const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
                             <TableCell>
                                 <IconButton
                                     color="primary"
-                                    onClick={() => handleShowSolution(site_result.scenario)}
+                                    onClick={async () => handleShowSolution(site_result)}
                                 >
                                     <InfoIcon/>
                                 </IconButton>
@@ -101,11 +131,11 @@ const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
             </Table>
         </TableContainer>
 
-        {selectedSolution && (
+        {selectedResult && (
                 <SolutionModal
                     open={modalOpen}
                     onClose={handleCloseModal}
-                    solution={selectedSolution}
+                    siteResult={selectedResult}
                 />
         )}
         </>

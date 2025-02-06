@@ -6,6 +6,11 @@ export interface SubmitSimulationRequest {
     site_data: any;
 }
 
+export interface ReproduceSimulationRequest {
+    portfolio_id: string;
+    site_id: string;
+}
+
 
 export type ReportDataType = { [key: string]: number[] };
 

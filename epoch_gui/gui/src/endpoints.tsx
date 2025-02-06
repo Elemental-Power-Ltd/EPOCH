@@ -1,5 +1,6 @@
 import {Site, OptimisationTaskListEntry, Client, PortfolioOptimisationResult} from "./State/types";
 import {
+    ReproduceSimulationRequest,
     SimulationResult,
     SubmitOptimisationRequest,
     SubmitOptimisationResponse,
@@ -54,6 +55,32 @@ export const submitSimulation = async(request: SubmitSimulationRequest): Promise
         return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 }
+
+export const reproduceSimulation = async(request: ReproduceSimulationRequest): Promise<ApiResponse<SimulationResult>> => {
+    try {
+        const response = await fetch("/api/optimisation/reproduce-simulation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const data: SimulationResult = await response.json();
+        return {success: true, data};
+
+    } catch (error) {
+        console.error("Failed to reproduce simulation", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
 
 export const getStatus = async() => {
     try {

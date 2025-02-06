@@ -1,4 +1,5 @@
 import {ComponentsMap} from "../Models/Core/ComponentBuilder";
+import {SimulationResult} from "../Models/Endpoints";
 
 export interface TaskObjectives {
     capex: boolean;
@@ -93,6 +94,10 @@ export interface Client {
     name: string;
 }
 
+export interface AnalysisContainer {
+    siteResult: SimulationResult | null;
+}
+
 
 interface GlobalState {
     selectedClient: Client | null;
@@ -106,6 +111,7 @@ export interface AppState {
     global: GlobalState
     optimise: OptimiseContainer
     results: ResultsContainer
+    analysis: AnalysisContainer
 
 
     setOptimiser: (optimiser: string) => void;
@@ -132,4 +138,6 @@ export interface AppState {
     setTaskConfig: (config: Partial<TaskConfig>) => void;
 
     setAvailableClients: (clients: Client[]) => void;
+
+    setAnalysisResult: (siteResult: SimulationResult) => void;
 }

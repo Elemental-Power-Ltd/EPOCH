@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect} from 'react';
 import './App.css';
 import {Tab, Tabs, Box, Select, SelectChangeEvent, MenuItem} from '@mui/material';
 
@@ -6,12 +6,13 @@ import OptimisationContainer from "./Containers/Optimise";
 import ResultsContainer from "./Containers/Results";
 import DatasetGenerationContainer from "./Containers/DatasetGeneration";
 import SimulationContainer from "./Containers/Simulate";
+import AnalysisContainer from "./Containers/AnalysisContainer";
 import NotALogin from "./Components/Login/NotALogin";
 import {useEpochStore} from "./State/Store";
 import {listClients, listSites} from "./endpoints";
+import {BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate} from "react-router-dom";
 
 function App() {
-    const [selectedTab, setSelectedTab] = useState(0);
 
     const selectedClient = useEpochStore((state) => state.global.selectedClient);
     const availableClients = useEpochStore((state) => state.global.availableClients);
@@ -51,11 +52,6 @@ function App() {
     }, [selectedClient, setClientSites]);
 
 
-    // Handle tab change
-    const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
-        setSelectedTab(newValue);
-    };
-
     // Handle client selection change
     const handleSelectChange = (event: SelectChangeEvent<string>) => {
         const client = availableClients.find((client) => client.client_id === event.target.value);
@@ -66,19 +62,10 @@ function App() {
     };
 
     return (
-        <>
+        <BrowserRouter>
             <div className="fixed-tabs">
                 <Box display="flex" alignItems="center">
-                    <Tabs
-                        value={selectedTab}
-                        onChange={handleTabChange}
-                        sx={{flexGrow: 1}}
-                    >
-                        <Tab label="Optimise"/>
-                        <Tab label="Simulate"/>
-                        <Tab label="Results"/>
-                        <Tab label="Generate Dataset"/>
-                    </Tabs>
+                    <NavTabs/>
                     <Select
                         value={selectedClient ? selectedClient.client_id : ""}
                         onChange={handleSelectChange}
@@ -98,13 +85,51 @@ function App() {
 
             {noClient ? <NotALogin/> :
                 <Box className="content">
-                    {selectedTab === 0 && <OptimisationContainer/>}
-                    {selectedTab === 1 && <SimulationContainer/>}
-                    {selectedTab === 2 && <ResultsContainer/>}
-                    {selectedTab === 3 && <DatasetGenerationContainer/>}
+                    <Routes>
+                        <Route path="/" element={<Navigate to="/optimise" replace/>}/>
+                        <Route path="/optimise" element={<OptimisationContainer/>}/>
+                        <Route path="/simulate" element={<SimulationContainer/>}/>
+                        <Route path="/results" element={<ResultsContainer/>}/>
+                        <Route path="/analyse/:portfolio_id?/:site_id?" element={<AnalysisContainer/>}/>
+                        <Route path="/generate-data" element={<DatasetGenerationContainer/>}/>
+
+                        {/*404*/}
+                        <Route path="*" element={<div>404</div>}/>
+                  </Routes>
                 </Box>
             }
-        </>
+        </BrowserRouter>
+    );
+}
+
+
+const NavTabs = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const tabsConfig = [
+        {label: 'Optimise', path: '/optimise'},
+        {label: 'Simulate', path: '/simulate'},
+        {label: 'Results', path: '/results'},
+        {label: 'Analyse', path: '/analyse'},
+        {label: 'Generate Dataset', path: '/generate-data'},
+    ];
+
+    // Determine which tab is selected based on the URL
+    const currentTabIndex = tabsConfig.findIndex((tab) =>
+        location.pathname.startsWith(tab.path)
+    );
+
+    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+        navigate(tabsConfig[newValue].path);
+    };
+
+    return (
+        <Tabs value={currentTabIndex} onChange={handleTabChange} sx={{flexGrow: 1}}>
+            {tabsConfig.map((tab) => (
+                <Tab key={tab.path} label={tab.label}/>
+            ))}
+        </Tabs>
     );
 }
 
