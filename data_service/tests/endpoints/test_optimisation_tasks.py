@@ -12,16 +12,15 @@ import pydantic
 import pytest
 
 from app.models.optimisation import (
-    DataDuration,
     OptimisationResultEntry,
     Optimiser,
     OptimiserEnum,
     PortfolioOptimisationResult,
-    RemoteMetaData,
     SiteOptimisationResult,
     TaskConfig,
     TaskResult,
 )
+from app.models.site_manager import RemoteMetaData
 from app.models.site_range import Grid, SiteRange
 
 
@@ -55,8 +54,8 @@ class TestOptimisationTaskDatabase:
                 "demo_london": RemoteMetaData(
                     site_id="demo_london",
                     start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    duration=DataDuration.year,
-                    dataset_ids={"HeatingLoad": uuid.uuid4()},
+                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                    HeatingLoad=uuid.uuid4(),
                 )
             },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
@@ -317,9 +316,9 @@ class TestOptimisationTaskDatabase:
             datetime.datetime.fromisoformat(repro_data["site_data"]["demo_london"]["start_ts"])
             == sample_task_config.input_data["demo_london"].start_ts
         )
-        assert repro_data["site_data"]["demo_london"]["dataset_ids"] == {
-            key: str(val) for key, val in sample_task_config.input_data["demo_london"].dataset_ids.items()
-        }
+        assert repro_data["site_data"]["demo_london"] == json.loads(
+            sample_task_config.input_data["demo_london"].model_dump_json()
+        )
         assert repro_data["task_data"] == {sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario}
 
     @pytest.mark.asyncio

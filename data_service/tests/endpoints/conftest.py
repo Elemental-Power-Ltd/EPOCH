@@ -24,6 +24,8 @@ from app.main import app
 
 db_factory = testing.postgresql.PostgresqlFactory(cache_initialized_db=True)
 
+_http_client = AsyncClient(headers=[("Connection", "close")], timeout=60.0)
+
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
@@ -72,7 +74,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         finally:
             await db.pool.release(conn)
 
-    async def override_get_http_client() -> AsyncGenerator[AsyncClient, None]:
+    def override_get_http_client() -> AsyncClient:
         """
         Override the HTTP client with a functional local http client.
 
@@ -81,8 +83,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         """
         # Use the 'Connection Close' headers to suppress httpx's connection pooling, as
         # it'll helpfully try to reuse a connection between event loops and then fall over.
-        async with AsyncClient(headers=[("Connection", "close")], timeout=60.0) as http_client:
-            yield http_client
+        return _http_client
 
     app.dependency_overrides[get_db_pool] = override_get_db_pool
     app.dependency_overrides[get_db_conn] = override_get_db_conn

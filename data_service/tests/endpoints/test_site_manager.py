@@ -11,6 +11,7 @@ import pytest
 import pytest_asyncio
 
 from app.internal.gas_meters import parse_half_hourly
+from app.models.core import DatasetTypeEnum
 
 
 @pytest_asyncio.fixture
@@ -67,7 +68,8 @@ class TestGetMultipleTariffs:
 
         # Test that we get two datasets, one for fixed and one for agile
         all_datasets_response = await client.post("/list-latest-datasets", json={"site_id": "demo_london"})
-        assert len(all_datasets_response.json()) == 2
+        all_json = all_datasets_response.json()
+        assert sum(int(bool(all_json[key])) for key in DatasetTypeEnum) == 2
 
         get_datasets_response = await client.post(
             "/get-latest-tariffs",
@@ -93,7 +95,7 @@ class TestGenerateAll:
     async def test_all_same_length(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
         _, _ = upload_meter_data
         demo_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
-        demo_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
+        demo_end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
         generate_result = await client.post(
             "/generate-all",
             json={
@@ -104,6 +106,16 @@ class TestGenerateAll:
         )
 
         assert generate_result.status_code == 200, generate_result.text
+        list_result = await client.post(
+            "/list-latest-datasets",
+            json={
+                "site_id": "demo_london",
+                "start_ts": demo_start_ts.isoformat(),
+                "end_ts": demo_end_ts.isoformat(),
+            },
+        )
+        assert list_result.status_code == 200, list_result.text
+        assert list_result.json()["ElectricityMeterDataSynthesised"] is not None
 
         data_result = await client.post(
             "/get-latest-datasets",
@@ -111,7 +123,7 @@ class TestGenerateAll:
                 "loc": "remote",
                 "site_id": "demo_london",
                 "start_ts": demo_start_ts.isoformat(),
-                "duration": "year",
+                "end_ts": demo_end_ts.isoformat(),
             },
         )
         assert data_result.status_code == 200, data_result.text
@@ -148,9 +160,50 @@ class TestGenerateAll:
         assert "end_ts" in data_result.text
 
 
+class TestGetLatestElectricity:
+    @pytest.mark.asyncio
+    async def test_get_blended_latest_elec(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+        """Test that we can generate some electrical data, and then get it via the list- and get- pair."""
+        _, _ = upload_meter_data
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        list_result = await client.post(
+            "/list-latest-datasets",
+            json={
+                "site_id": "demo_london",
+            },
+        )
+        assert list_result.status_code == 200
+        generate_request = await client.post(
+            "/generate-electricity-load",
+            json={
+                "dataset_id": list_result.json()["ElectricityMeterData"]["dataset_id"],
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert generate_request.status_code == 200, generate_request.text
+
+        list_result_with_blend = await client.post(
+            "/list-latest-datasets",
+            json={
+                "site_id": "demo_london",
+            },
+        )
+        assert list_result_with_blend.status_code == 200
+        list_data = list_result_with_blend.json()
+        assert list_data["ElectricityMeterData"] is not None
+        assert list_data["ElectricityMeterDataSynthesised"] is not None
+
+        get_result = await client.post("get-specific-datasets", json=list_data)
+        assert get_result.status_code == 200
+        assert len(get_result.json()["eload"]) == 1536
+
+
 class TestListAllDatasets:
     @pytest.mark.asyncio
     async def test_has_metadata(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+        """Test that we get some metadata from uploaded datasets."""
         _, _ = upload_meter_data
         list_result = await client.post(
             "/list-datasets",
@@ -162,11 +215,51 @@ class TestListAllDatasets:
         assert list_result.status_code == 200, list_result.text
 
         list_data = list_result.json()
-        assert len(list_data) == 3
-        print(list_data)
-        for dataset_entry in list_data:
-            if dataset_entry["dataset_type"] == "ASHPData":
+        assert sum(int(bool(val)) for val in list_data.values()) == 3
+        for dataset_type, dataset_entry in list_data.items():
+            if dataset_type == "ASHPData" or not dataset_entry:
                 # skip this one as it's a dummy dataset
                 continue
-            assert dataset_entry["start_ts"] <= dataset_entry["end_ts"], dataset_entry
-            assert dataset_entry["num_entries"] > 1
+            for subitem in dataset_entry:
+                assert subitem["start_ts"] <= subitem["end_ts"]
+                assert subitem["num_entries"] > 1
+
+    @pytest.mark.asyncio
+    async def test_hand_list_latest_back(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+        """Test that we can hand the result from "list-latest-datasets" back."""
+        _, _ = upload_meter_data
+        list_result = await client.post(
+            "/list-latest-datasets",
+            json={
+                "site_id": "demo_london",
+            },
+        )
+        assert list_result.status_code == 200
+        assert list_result.json()[DatasetTypeEnum.ElectricityMeterData.value]["dataset_id"]
+        get_result = await client.post("/get-specific-datasets", json=list_result.json())
+        assert get_result.status_code == 200
+        data = get_result.json()
+        assert len(data) == 7
+        assert data["eload"] is not None
+        assert len(data["eload"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_hand_back_just_datasets(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+        """Test that we can hand back just the dataset IDs from "list-latest-datasets" back."""
+        _, _ = upload_meter_data
+        list_result = await client.post(
+            "/list-latest-datasets",
+            json={
+                "site_id": "demo_london",
+            },
+        )
+        assert list_result.status_code == 200
+        dataset_id = list_result.json()[DatasetTypeEnum.ElectricityMeterData.value]["dataset_id"]
+        get_result = await client.post(
+            "/get-specific-datasets", json={"site_id": "demo_london", "ElectricityMeterData": dataset_id}
+        )
+        assert get_result.status_code == 200, get_result.text
+        data = get_result.json()
+        assert len(data) == 7
+        assert data["eload"] is not None
+        assert len(data["eload"]) > 0

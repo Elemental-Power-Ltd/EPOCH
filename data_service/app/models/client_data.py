@@ -12,10 +12,10 @@ from app.models.import_tariffs import EpochTariffEntry
 
 class SiteDataEntries(pydantic.BaseModel):
     eload: list[EpochElectricityEntry] | None
-    heat: list[EpochHeatingEntry]
-    rgen: list[EpochRenewablesEntry]
-    import_tariffs: list[EpochTariffEntry]
-    grid_co2: list[EpochCarbonEntry]
+    heat: list[EpochHeatingEntry] | None
+    rgen: list[EpochRenewablesEntry] | None
+    import_tariffs: list[EpochTariffEntry] | None
+    grid_co2: list[EpochCarbonEntry] | None
 
-    ashp_input: ASHPCOPResponse
-    ashp_output: ASHPCOPResponse
+    ashp_input: ASHPCOPResponse | None
+    ashp_output: ASHPCOPResponse | None
