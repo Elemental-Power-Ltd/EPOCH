@@ -4,11 +4,12 @@
 import datetime
 import uuid
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any
 
 import pydantic
 
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
+from .site_manager import SiteDataEntry
 from .site_range import SiteRange
 
 type SiteScenario = dict[str, Any]
@@ -131,44 +132,6 @@ class OptimiserEnum(StrEnum):
     NSGA2 = "NSGA2"
     GeneticAlgorithm = "GeneticAlgorithm"
     BayesianOptimisation = "BayesianOptimisation"
-
-
-class FileLocationEnum(StrEnum):
-    local = "local"
-    remote = "remote"
-
-
-class DataDuration(StrEnum):
-    year = "year"
-
-
-class RemoteMetaData(pydantic.BaseModel):
-    loc: Literal[FileLocationEnum.remote] = pydantic.Field(
-        default=FileLocationEnum.remote,
-        examples=["remote"],
-        description="Where we are getting the data from, either a local file or remote DB.",
-    )
-    site_id: site_id_t = site_id_field
-    start_ts: pydantic.AwareDatetime = pydantic.Field(
-        description="Datetime to retrieve data from. Only relevant for remote files."
-    )
-    duration: DataDuration = pydantic.Field(description="Length of time to retrieve data for. Only relevant for remote files.")
-    dataset_ids: dict[str, pydantic.UUID4] = pydantic.Field(default={}, description="Specific dataset IDs to fetch.")
-
-
-class LocalMetaData(pydantic.BaseModel):
-    loc: Literal[FileLocationEnum.local] = pydantic.Field(
-        default=FileLocationEnum.local,
-        examples=["local"],
-        description="Where we are getting the data from, either a local file or remote DB.",
-    )
-    site_id: site_id_t = site_id_field
-    path: pydantic.FilePath | str = pydantic.Field(
-        examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it."
-    )
-
-
-SiteDataEntry = RemoteMetaData | LocalMetaData
 
 
 class Optimiser(pydantic.BaseModel):

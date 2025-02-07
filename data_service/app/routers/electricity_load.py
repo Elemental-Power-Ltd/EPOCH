@@ -186,13 +186,6 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     *HTTPException(400)*
         If the requested meter dataset is half hourly.
     """
-    if (params.end_ts - params.start_ts) > datetime.timedelta(days=366):
-        raise HTTPException(
-            400,
-            f"Timestamps {params.start_ts.isoformat()} and {params.end_ts.isoformat()}"
-            + "are more than 1 year apart. This would result in duplicate readings.",
-        )
-
     rdgs_fuel_synthetic = await conn.fetchrow(
         """
         SELECT
@@ -262,9 +255,9 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     ]
 
 
-@router.post("/get-blended-electricity-load")
-async def fetch_blended_electricity_load(
-    real_params: DatasetIDWithTime, synthetic_params: DatasetIDWithTime, pool: DatabasePoolDep
+@router.post("/get-blended-electricity-load", tags=["get", "electricity"])
+async def get_blended_electricity_load(
+    real_params: DatasetIDWithTime | None, synthetic_params: DatasetIDWithTime | None, pool: DatabasePoolDep
 ) -> list[EpochElectricityEntry]:
     """
     Fetch a combination of real and synthetic electricity data across a time period.
@@ -287,9 +280,23 @@ async def fetch_blended_electricity_load(
     -------
     List of electricity entries, like the normal endpoints would give, but with synthetic data where required.
     """
+    if real_params is None and synthetic_params is None:
+        raise HTTPException(400, "Got None for both real and synthetic electrical datasets. Are they both missing?")
+    logger = logging.getLogger(__name__)
     async with pool.acquire() as conn:
-        real_data = await get_electricity_load(real_params, conn=conn)
-        synth_data = await get_electricity_load(synthetic_params, conn=conn)
+        if real_params is not None:
+            try:
+                real_data = await get_electricity_load(real_params, conn=conn)
+            except HTTPException as ex:
+                logger.warning(f"Couldn't get electricity load data for {real_params}, returning only synthetic. Due to {ex}")
+                real_data = []
+
+        if synthetic_params is not None:
+            synth_data = await get_electricity_load(synthetic_params, conn=conn)
+        else:
+            # Early return as we've got no synthetic data
+            logger.warning(f"Got no synthetic data, returning only {real_params}")
+            return real_data
 
     # The EPOCH format makes it a bit hard to just zip these together, so
     # assume each entry is uniquely identified by a (Date, StartTime) pair
