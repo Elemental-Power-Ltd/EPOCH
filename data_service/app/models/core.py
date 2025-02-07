@@ -95,10 +95,14 @@ class EpochEntry(pydantic.BaseModel):
 class SiteIDWithTime(BaseModel):
     site_id: site_id_t = Field(examples=["demo_london"])
     start_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-01-01T00:00:00Z"], description="The earliest time (inclusive) to retrieve data for."
+        examples=["2024-01-01T00:00:00Z"],
+        description="The earliest time (inclusive) to retrieve data for.",
+        default=datetime.datetime(year=1970, day=1, month=1, tzinfo=datetime.UTC),
     )
     end_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-05-31T00:00:00Z"], description="The latest time (exclusive) to retrieve data for."
+        examples=["2024-05-31T00:00:00Z"],
+        description="The latest time (exclusive) to retrieve data for.",
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
     )
 
     @pydantic.model_validator(mode="after")

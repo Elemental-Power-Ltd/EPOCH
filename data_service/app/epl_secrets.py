@@ -146,7 +146,9 @@ def get_secrets_environment(
         total_environ["EP_GIVENERGY_JWT"] = load_secret_from_file(ge_fpath)
     except FileNotFoundError:
         if "EP_GIVENERGY_JWT" not in total_environ:
-            logger.warning(f"Could not find GivEnergy JWT in environ, dotenv or {ge_fpath}")
+            pass
+            # We used to warn on this, but it was too noisy.
+            # logger.warning(f"Could not find GivEnergy JWT in environ, dotenv or {ge_fpath}")
 
     if overrides is not None:
         total_environ = total_environ | overrides

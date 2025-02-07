@@ -136,17 +136,14 @@ class TestCarbonIntensity:
             )
         ).json()
 
-        for item in grid_co2_result.values():
-            if item["dataset_id"] == grid_co2_metadata["dataset_id"]:
-                assert datetime.datetime.fromisoformat(item["start_ts"]) == demo_start_ts
-                assert datetime.datetime.fromisoformat(item["end_ts"]) == demo_end_ts
-                assert (
-                    item["num_entries"]
-                    == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-                )  # This will be off-by-one if we haven't interpolated right.
-                break
-        else:
-            pytest.fail(f"Did not find matching dataset in {grid_co2_result}")
+        grid_co2_entry = grid_co2_result["CarbonIntensity"]
+
+        assert datetime.datetime.fromisoformat(grid_co2_entry["start_ts"]) == demo_start_ts
+        assert datetime.datetime.fromisoformat(grid_co2_entry["end_ts"]) == demo_end_ts
+        assert (
+            grid_co2_entry["num_entries"]
+            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        )  # This will be off-by-one if we haven't interpolated right.
 
 
 class TestCarbonIntensityChunking:
@@ -167,7 +164,7 @@ class TestCarbonIntensityChunking:
             json={"site_id": demo_site_id, "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
         )
 
-        grid_co2_metadata = result.json()
+        assert result.status_code == 200
 
         grid_co2_result = (
             await client.post(
@@ -176,16 +173,14 @@ class TestCarbonIntensityChunking:
             )
         ).json()
 
-        for item in grid_co2_result.values():
-            if item["dataset_id"] == grid_co2_metadata["dataset_id"]:
-                assert datetime.datetime.fromisoformat(item["start_ts"]) == start_ts
-                assert datetime.datetime.fromisoformat(item["end_ts"]) == end_ts
-                assert (
-                    item["num_entries"] == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-                )
-                break
-        else:
-            pytest.fail(f"Did not find matching dataset in {grid_co2_result}")
+        grid_co2_entry = grid_co2_result["CarbonIntensity"]
+
+        assert datetime.datetime.fromisoformat(grid_co2_entry["start_ts"]) == start_ts
+        assert datetime.datetime.fromisoformat(grid_co2_entry["end_ts"]) == end_ts
+        assert (
+            grid_co2_entry["num_entries"]
+            == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        )
 
     @pytest.mark.asyncio
     async def test_check_right_length_one_day_into_next_year(
@@ -202,8 +197,7 @@ class TestCarbonIntensityChunking:
             json={"site_id": demo_site_id, "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
         )
 
-        grid_co2_metadata = result.json()
-
+        assert result.status_code == 200
         grid_co2_result = (
             await client.post(
                 "/list-latest-datasets",
@@ -211,16 +205,13 @@ class TestCarbonIntensityChunking:
             )
         ).json()
 
-        for item in grid_co2_result.values():
-            if item["dataset_id"] == grid_co2_metadata["dataset_id"]:
-                assert datetime.datetime.fromisoformat(item["start_ts"]) == start_ts
-                assert datetime.datetime.fromisoformat(item["end_ts"]) == end_ts
-                assert (
-                    item["num_entries"] == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-                )
-                break
-        else:
-            pytest.fail(f"Did not find matching dataset in {grid_co2_result}")
+        grid_co2_entry = grid_co2_result["CarbonIntensity"]
+        assert datetime.datetime.fromisoformat(grid_co2_entry["start_ts"]) == start_ts
+        assert datetime.datetime.fromisoformat(grid_co2_entry["end_ts"]) == end_ts
+        assert (
+            grid_co2_entry["num_entries"]
+            == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        )
 
 
 class TestFetchCarbonIntensity:

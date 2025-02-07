@@ -373,7 +373,7 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
 
 
 @router.post("/get-import-tariffs", tags=["get", "tariff"])
-async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabaseDep) -> list[EpochTariffEntry]:
+async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePoolDep) -> list[EpochTariffEntry]:
     """
     Get the electricity import tariffs in p / kWh for this dataset.
 
