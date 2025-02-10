@@ -39,9 +39,31 @@ function OptimisationContainer() {
 
     const [siteModalOpen, setSiteModalOpen] = useState<boolean>(false);
 
+    const canRun = (): boolean => {
+        if (!client_id) {
+            return false;
+        }
+
+        if (!state.taskConfig.start_date) {
+            return false;
+        }
+
+        // at least one objective must be true
+        if (Object.values(state.taskConfig.objectives).every(value => value === false)) {
+            return false;
+        }
+
+        // Task must contain at least one site
+        if (Object.keys(state.portfolioMap).length === 0) {
+            return false;
+        }
+
+        return true;
+    }
+
     const onRun = () => {
 
-        if (!client_id) {
+        if (!canRun()) {
             return;
         }
 
@@ -62,12 +84,13 @@ function OptimisationContainer() {
                 site_data: {
                     loc: "remote",
                     site_id: site_id,
-                    start_ts: state.taskConfig.start_date,
-                    duration: state.taskConfig.duration
+                    start_ts: state.taskConfig.start_date!.toISOString(),
+                    // an EPOCH year is exactly 8760 hours (irrespective of leap years)
+                    end_ts: state.taskConfig.start_date!.add(8760, "hour").toISOString()
                 }
             })),
             portfolio_constraints: {},
-            client_id: client_id
+            client_id: client_id!
 
         }
 
@@ -121,7 +144,7 @@ function OptimisationContainer() {
             </Button>
             <Button
                 onClick={onRun}
-                disabled={Object.keys(state.portfolioMap).length === 0}
+                disabled={!canRun()}
                 variant="contained"
                 size="large"
             >Run Optimisation</Button>

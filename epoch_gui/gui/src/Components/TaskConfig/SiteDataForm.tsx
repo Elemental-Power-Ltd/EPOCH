@@ -1,9 +1,7 @@
 import React from "react";
 import { Grid, TextField, MenuItem } from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import dayjs from "dayjs";
+import dayjs, {Dayjs} from "dayjs";
+import 'dayjs/locale/en-gb';
 import utc from "dayjs/plugin/utc";
 import TimeRangeForm from "./TimeRangeForm";
 
@@ -12,8 +10,8 @@ dayjs.extend(utc);
 interface SiteDataFormProps {
   siteId: string;
   onSiteChange: (value: string) => void;
-  startDate: string; // or null
-  onStartDateChange: (value: string) => void;
+  startDate: Dayjs | null
+  onStartDateChange: (value: Dayjs | null) => void;
   timestepMinutes: number;
   onTimestepChange: (value: number) => void;
   clientSites: { site_id: string; name: string }[];

@@ -1,9 +1,16 @@
 
+interface SiteMetaData {
+    site_id: string;
+    start_ts: string;
+    end_ts: string;
+    loc: "remote";
+}
+
 
 export interface SubmitSimulationRequest {
     task_data: any;
 
-    site_data: any;
+    site_data: SiteMetaData;
 }
 
 export interface ReproduceSimulationRequest {
@@ -38,7 +45,7 @@ export interface Site {
     // FIXME - remove once optimisation service no longer expects a name
     name: string;
     site_range: any;
-    site_data: any;
+    site_data: SiteMetaData;
 }
 
 export interface OptimiserData {

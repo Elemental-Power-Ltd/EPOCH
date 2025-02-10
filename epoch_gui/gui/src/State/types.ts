@@ -1,5 +1,6 @@
 import {ComponentsMap} from "../Models/Core/ComponentBuilder";
 import {SimulationResult} from "../Models/Endpoints";
+import {Dayjs} from "dayjs";
 
 export interface TaskObjectives {
     capex: boolean;
@@ -17,8 +18,7 @@ export interface TaskConfig {
     optimiser: "NSGA2" | "GridSearch";
     objectives: TaskObjectives;
     client_id: string;
-    start_date: string;
-    duration: "year";
+    start_date: Dayjs | null;
     timestep_minutes: 30 | 60
 }
 
