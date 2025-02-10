@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from app.internal.datamanager import DataManagerDep
 from app.internal.epoch_utils import Simulator, TaskData, convert_sim_result
 from app.models.simulate import FullResult, ReproduceSimulationRequest, RunSimulationRequest
-from app.models.site_data import LocalMetaData
+from app.models.site_data import DatasetTypeEnum, LocalMetaData
 
 router = APIRouter()
 logger = logging.getLogger("default")
@@ -37,9 +37,7 @@ async def run_simulation(request: RunSimulationRequest, data_manager: DataManage
     if isinstance(request.site_data, LocalMetaData):
         raise HTTPException(400, detail="Simulation from local data is not supported")
 
-    if not request.site_data.dataset_ids:
-        # we don't have any specific datasets yet, we need to hydrate the site_data with them
-        await data_manager.hydrate_site_with_latest_dataset_ids(request.site_data)
+    await data_manager.hydrate_site_with_latest_dataset_ids(request.site_data)
 
     dataset_entries = await data_manager.fetch_specific_datasets(request.site_data)
 
@@ -69,14 +67,30 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
 
     repro_config = await data_manager.get_result_configuration(request.portfolio_id)
 
-    if isinstance(repro_config.site_data[request.site_id], LocalMetaData):
-        raise HTTPException(400, detail="Cannot reproduce a result from local data")
+    site_data = repro_config.site_data[request.site_id]
 
+    necessary_datasets = [
+        DatasetTypeEnum.GasMeterData,
+        DatasetTypeEnum.RenewablesGeneration,
+        DatasetTypeEnum.HeatingLoad,
+        DatasetTypeEnum.CarbonIntensity,
+        DatasetTypeEnum.ASHPData,
+        DatasetTypeEnum.ImportTariff,
+    ]
     # Check that the dataset_ids have been saved to the database for this result
-    if not repro_config.site_data[request.site_id].dataset_ids:
-        raise HTTPException(400, detail="Cannot reproduce a result without known dataset IDs")
+    for key in necessary_datasets:
+        if site_data.__getattribute__(key) is None:
+            raise HTTPException(400, detail=f"Cannot reproduce a result without known {key} dataset ID")
+    if (
+        site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterData) is None
+        and site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterDataSynthesised) is None
+    ):
+        raise HTTPException(
+            400,
+            detail="Cannot reproduce a result without known ElectricityMeterData or ElectricityMeterDataSynthesised dataset ID",
+        )
 
-    dataset_entries = await data_manager.fetch_specific_datasets(repro_config.site_data[request.site_id])
+    dataset_entries = await data_manager.fetch_specific_datasets(site_data)
 
     return do_simulation(data_manager, dataset_entries, repro_config.task_data[request.site_id])
 

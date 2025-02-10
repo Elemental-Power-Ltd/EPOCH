@@ -18,7 +18,7 @@ from app.models.optimisers import (
     NSGA2Optmiser,
     OptimiserStr,
 )
-from app.models.site_data import ASHPResult, SiteDataEntries, SiteMetaData
+from app.models.site_data import SiteDataEntries
 
 logger = logging.getLogger("default")
 
@@ -29,17 +29,6 @@ def client() -> Generator[TestClient, None, None]:
         def __init__(self) -> None:
             super().__init__()
             self.temp_dir = Path("tests", "data", "temp")
-
-        async def fetch_latest_datasets(self, site_data: SiteMetaData) -> SiteDataEntries:
-            return {
-                "eload": [],
-                "heat": [],
-                "ashp_input": ASHPResult(index=[], columns=[], data=[]),
-                "ashp_output": ASHPResult(index=[], columns=[], data=[]),
-                "import_tariffs": [],
-                "grid_co2": [],
-                "rgen": [],
-            }
 
         def transform_all_input_data(self, site_data_entries: SiteDataEntries) -> dict[str, DataFrame]:
             sample_data_path = Path("tests", "data", "input_data")

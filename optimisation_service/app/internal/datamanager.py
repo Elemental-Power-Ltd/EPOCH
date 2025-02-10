@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import typing
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
 from ..models.core import OptimisationResultEntry, Task
+from ..models.database import DatasetTypeEnum
 from ..models.simulate import ResultReproConfig
 from ..models.site_data import (
     ASHPResult,
@@ -20,7 +22,6 @@ from ..models.site_data import (
     RecordsList,
     RemoteMetaData,
     SiteDataEntries,
-    SiteMetaData,
 )
 
 logger = logging.getLogger("default")
@@ -72,8 +73,7 @@ class DataManager:
             os.makedirs(site._input_dir)
             site_data = site.site_data
             if site_data.loc == FileLoc.remote:
-                if not site_data.dataset_ids:
-                    await self.hydrate_site_with_latest_dataset_ids(site_data)
+                await self.hydrate_site_with_latest_dataset_ids(site_data)
 
                 site_data_entries = await self.fetch_specific_datasets(site_data)
 
@@ -95,21 +95,21 @@ class DataManager:
         -------
         None
         """
-        latest_ids = await self.fetch_latest_dataset_ids(site_data)
+        datasetlist = await self.fetch_latest_dataset_ids(site_data)
 
-        dataset_ids = {}
-        for dataset_type in latest_ids:
-            dataset_ids[dataset_type] = latest_ids[dataset_type]["dataset_id"]
-            # dataset_ids[dataset_type] = UUID4(latest_ids[dataset_type]["dataset_id"])
-
-        site_data.dataset_ids = dataset_ids
+        for key in DatasetTypeEnum:
+            if not site_data.__getattribute__(key):
+                curr_entries = datasetlist[key]
+                if isinstance(curr_entries, list):
+                    site_data.__setattr__(key, [uuid.UUID(item["dataset_id"]) for item in curr_entries])
+                elif isinstance(curr_entries, dict):
+                    site_data.__setattr__(key, uuid.UUID(curr_entries["dataset_id"]))
+                else:
+                    site_data.__setattr__(key, None)
 
     async def fetch_latest_dataset_ids(self, site_data: RemoteMetaData) -> dict[str, Any]:
-        # At present, /list-latest-datasets only requires a site_id
-        data = {"site_id": site_data.site_id}
-
         async with httpx.AsyncClient() as client:
-            latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=data)
+            latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=site_data)
             return latest_ids
 
     def write_input_data_to_files(self, site_data_entries: SiteDataEntries, destination: os.PathLike) -> None:
@@ -164,24 +164,6 @@ class DataManager:
             with open(Path(site._input_dir, "inputParameters.json"), "w") as fi:
                 json.dump(site.site_range.model_dump(), fi)
 
-    async def fetch_latest_datasets(self, site_data: SiteMetaData) -> SiteDataEntries:
-        """
-        Fetch from the database the datasets relevant to the site data.
-
-        Parameters
-        ----------
-        site_data
-            Description of data.
-
-        Returns
-        -------
-        site_data_entries
-            Dictionary of unprocessed datasets.
-        """
-        async with httpx.AsyncClient() as client:
-            site_data_entries = await self.db_post(client=client, subdirectory="/get-latest-datasets", data=site_data)
-        return site_data_entries
-
     async def fetch_specific_datasets(self, site_data: RemoteMetaData) -> SiteDataEntries:
         """
         Fetch some specificially chosen datasets from the database.
@@ -196,22 +178,12 @@ class DataManager:
         site_data_entries
             Dictionary of unprocessed datasets.
         """
-        logger.info(f"Selecting specific datasets: {site_data.dataset_ids}")
+        logger.info(f"Selecting specific datasets: {site_data}")
         async with httpx.AsyncClient() as client:
             site_data_entries = await self.db_post(
                 client=client,
                 subdirectory="/get-specific-datasets",
-                data={
-                    "site_id": site_data.site_id,
-                    "start_ts": site_data.start_ts,
-                    "HeatingLoad": site_data.dataset_ids.get("HeatingLoad"),
-                    "ASHPData": site_data.dataset_ids.get("ASHPData"),
-                    "CarbonIntensity": site_data.dataset_ids.get("CarbonIntensity"),
-                    "ElectricityMeterData": site_data.dataset_ids.get("ElectricityMeterData"),
-                    "ElectricityMeterDataSynthesised": site_data.dataset_ids.get("ElectricityMeterDataSynthesised"),
-                    "ImportTariff": site_data.dataset_ids.get("ImportTariff"),
-                    "Weather": site_data.dataset_ids.get("Weather"),
-                },
+                data=site_data,
             )
         return site_data_entries
 
