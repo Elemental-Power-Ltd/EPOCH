@@ -236,6 +236,9 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
         res, columns=["start_ts", "end_ts", "consumption_kwh"], coerce_float=["consumption_kwh"], index="start_ts"
     )
     elec_df["start_ts"] = elec_df.index
+    print(params.start_ts, params.end_ts)
+    in_timestamps_mask = np.logical_and(elec_df.start_ts >= params.start_ts, elec_df.end_ts <= params.end_ts)
+    elec_df = elec_df[in_timestamps_mask]
     if elec_df.empty:
         logging.warning(
             f"Got an empty electricity meter dataset for {params.dataset_id} between {params.start_ts} and {params.end_ts}"

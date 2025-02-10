@@ -129,14 +129,12 @@ class TestCarbonIntensity:
     ) -> None:
         """Check that we get data of the correct length, with interpolation performed properly."""
         _ = grid_co2_metadata
-        grid_co2_result = (
-            await client.post(
-                "/list-latest-datasets",
-                json={"site_id": demo_site_id},
-            )
-        ).json()
-
-        grid_co2_entry = grid_co2_result["CarbonIntensity"]
+        grid_co2_result = await client.post(
+            "/list-latest-datasets",
+            json={"site_id": demo_site_id, "start_ts": demo_start_ts.isoformat(), "end_ts": demo_end_ts.isoformat()},
+        )
+        assert grid_co2_result.status_code == 200, grid_co2_result.text
+        grid_co2_entry = grid_co2_result.json()["CarbonIntensity"]
 
         assert datetime.datetime.fromisoformat(grid_co2_entry["start_ts"]) == demo_start_ts
         assert datetime.datetime.fromisoformat(grid_co2_entry["end_ts"]) == demo_end_ts

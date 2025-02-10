@@ -67,13 +67,23 @@ class TestGetMultipleTariffs:
         assert import_tariff_response_agile.result().status_code == 200
 
         # Test that we get two datasets, one for fixed and one for agile
-        all_datasets_response = await client.post("/list-latest-datasets", json={"site_id": "demo_london"})
+        all_datasets_response = await client.post(
+            "/list-latest-datasets",
+            json={"site_id": "demo_london", "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+        )
+        assert all_datasets_response.status_code == 200
         all_json = all_datasets_response.json()
+        print(all_json)
         assert sum(int(bool(all_json[key])) for key in DatasetTypeEnum) == 2
 
         get_datasets_response = await client.post(
             "/get-latest-tariffs",
-            json={"site_id": "demo_london", "start_ts": start_ts.isoformat(), "loc": "remote", "duration": "year"},
+            json={
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "loc": "remote",
+                "end_ts": end_ts.isoformat(),
+            },
         )
         assert get_datasets_response.status_code == 200, get_datasets_response.text
         got_datasets = get_datasets_response.json()
@@ -169,9 +179,7 @@ class TestGetLatestElectricity:
         end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
         list_result = await client.post(
             "/list-latest-datasets",
-            json={
-                "site_id": "demo_london",
-            },
+            json={"site_id": "demo_london", "start_ts": "1970-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"},
         )
         assert list_result.status_code == 200
         generate_request = await client.post(
@@ -188,6 +196,8 @@ class TestGetLatestElectricity:
             "/list-latest-datasets",
             json={
                 "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
             },
         )
         assert list_result_with_blend.status_code == 200
@@ -197,7 +207,7 @@ class TestGetLatestElectricity:
 
         get_result = await client.post("get-specific-datasets", json=list_data)
         assert get_result.status_code == 200
-        assert len(get_result.json()["eload"]) == 1536
+        assert len(get_result.json()["eload"]) == (end_ts - start_ts) / datetime.timedelta(minutes=30)
 
 
 class TestListAllDatasets:
@@ -207,9 +217,7 @@ class TestListAllDatasets:
         _, _ = upload_meter_data
         list_result = await client.post(
             "/list-datasets",
-            json={
-                "site_id": "demo_london",
-            },
+            json={"site_id": "demo_london", "start_ts": "1970-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"},
         )
 
         assert list_result.status_code == 200, list_result.text
@@ -230,9 +238,7 @@ class TestListAllDatasets:
         _, _ = upload_meter_data
         list_result = await client.post(
             "/list-latest-datasets",
-            json={
-                "site_id": "demo_london",
-            },
+            json={"site_id": "demo_london", "start_ts": "1970-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"},
         )
         assert list_result.status_code == 200
         assert list_result.json()[DatasetTypeEnum.ElectricityMeterData.value]["dataset_id"]
@@ -249,9 +255,7 @@ class TestListAllDatasets:
         _, _ = upload_meter_data
         list_result = await client.post(
             "/list-latest-datasets",
-            json={
-                "site_id": "demo_london",
-            },
+            json={"site_id": "demo_london", "start_ts": "1970-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"},
         )
         assert list_result.status_code == 200
         dataset_id = list_result.json()[DatasetTypeEnum.ElectricityMeterData.value]["dataset_id"]

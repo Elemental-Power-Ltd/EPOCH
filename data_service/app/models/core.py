@@ -67,11 +67,11 @@ class FuelEnum(StrEnum):
 
 
 class ResultID(BaseModel):
-    result_id: pydantic.UUID4
+    result_id: dataset_id_t
 
 
 class TaskID(BaseModel):
-    task_id: pydantic.UUID1 | pydantic.UUID4
+    task_id: dataset_id_t
 
 
 class DatasetID(BaseModel):
@@ -92,17 +92,16 @@ class EpochEntry(pydantic.BaseModel):
     HourOfYear: float = epoch_hour_of_year_field
 
 
-class SiteIDWithTime(BaseModel):
-    site_id: site_id_t = Field(examples=["demo_london"])
+class SiteIDWithTime(SiteID):
+    """A model for getting data for a site between two timestamps."""
+
     start_ts: pydantic.AwareDatetime = Field(
         examples=["2024-01-01T00:00:00Z"],
         description="The earliest time (inclusive) to retrieve data for.",
-        default=datetime.datetime(year=1970, day=1, month=1, tzinfo=datetime.UTC),
     )
     end_ts: pydantic.AwareDatetime = Field(
         examples=["2024-05-31T00:00:00Z"],
         description="The latest time (exclusive) to retrieve data for.",
-        default_factory=lambda: datetime.datetime.now(datetime.UTC),
     )
 
     @pydantic.model_validator(mode="after")
