@@ -73,7 +73,7 @@ class RemoteMetaData(pydantic.BaseModel):
     site_id: site_id_t
     start_ts: pydantic.AwareDatetime = pydantic.Field(default=datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC))
     end_ts: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
-    HeatingLoad: dataset_id_t | None = pydantic.Field(default=None)
+    HeatingLoad: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
     ASHPData: dataset_id_t | None = pydantic.Field(default=None)
     CarbonIntensity: dataset_id_t | None = pydantic.Field(default=None)
     ElectricityMeterData: dataset_id_t | None = pydantic.Field(default=None)
@@ -81,7 +81,7 @@ class RemoteMetaData(pydantic.BaseModel):
     ImportTariff: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
     Weather: dataset_id_t | None = pydantic.Field(default=None)
     GasMeterData: dataset_id_t | None = pydantic.Field(default=None)
-    RenewablesGeneration: dataset_id_t | None = pydantic.Field(default=None)
+    RenewablesGeneration: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
 
 
 SiteDataEntry = RemoteMetaData | LocalMetaData
