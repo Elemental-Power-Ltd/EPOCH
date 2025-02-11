@@ -81,11 +81,14 @@ def create_peak_tariff(
     """
     df = pd.DataFrame(index=timestamps, data={"cost": [day_cost for _ in timestamps]})
     utc_times = timestamps.tz_convert(datetime.UTC)
-    if night_cost is not None:
-        is_night_mask = np.logical_and(
-            utc_times.time > datetime.time(hour=0, minute=0), utc_times.time <= datetime.time(hour=7, minute=0)
-        )
-        df.loc[is_night_mask, "cost"] = night_cost
+    cosy_periods = [
+        (datetime.time(hour=4, minute=0), datetime.time(hour=7, minute=0)),
+        (datetime.time(hour=13, minute=0), datetime.time(hour=16, minute=0)),
+        (datetime.time(hour=22, minute=0), datetime.time(hour=23, minute=59, second=59)),
+    ]
+    for start_ts, end_ts in cosy_periods:
+        is_cosy_mask = np.logical_and(start_ts <= utc_times.time, utc_times.time < end_ts)
+        df.loc[is_cosy_mask, "cost"] = night_cost
 
     is_peak_mask = np.logical_and(
         utc_times.time > datetime.time(hour=16, minute=0), utc_times.time <= datetime.time(hour=19, minute=0)

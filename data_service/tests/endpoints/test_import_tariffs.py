@@ -150,6 +150,81 @@ class TestImportTariffs:
         assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
 
     @pytest.mark.asyncio
+    async def test_generate_and_get_agile(
+        self,
+        client: httpx.AsyncClient,
+    ) -> None:
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "agile",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert response.status_code == 200, response.text
+        metadata = response.json()
+        tariff_result = (
+            await client.post(
+                "/get-import-tariffs",
+                json={
+                    "dataset_id": metadata["dataset_id"],
+                    "start_ts": start_ts.isoformat(),
+                    "end_ts": end_ts.isoformat(),
+                },
+            )
+        ).json()
+        assert len(tariff_result) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
+        assert len({item["Tariff"] for item in tariff_result}) > 48
+        assert all(pd.isna(item["Tariff1"]) for item in tariff_result)
+        assert all(pd.isna(item["Tariff2"]) for item in tariff_result)
+        assert all(pd.isna(item["Tariff3"]) for item in tariff_result)
+
+    @pytest.mark.asyncio
+    async def test_generate_and_get_peak(
+        self,
+        client: httpx.AsyncClient,
+    ) -> None:
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "peak",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert response.status_code == 200, response.text
+        metadata = response.json()
+        tariff_result = (
+            await client.post(
+                "/get-import-tariffs",
+                json={
+                    "dataset_id": metadata["dataset_id"],
+                    "start_ts": start_ts.isoformat(),
+                    "end_ts": end_ts.isoformat(),
+                },
+            )
+        ).json()
+        assert len(tariff_result) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
+        unique_costs = {item["Tariff"] for item in tariff_result}
+        assert len(unique_costs) == 3
+
+        lo, mid, hi = sorted(unique_costs)
+        assert hi == pytest.approx(mid * 1.5)
+        assert lo == pytest.approx(mid * 0.49)
+        assert all(pd.isna(item["Tariff1"]) for item in tariff_result)
+        assert all(pd.isna(item["Tariff2"]) for item in tariff_result)
+        assert all(pd.isna(item["Tariff3"]) for item in tariff_result)
+
+    @pytest.mark.asyncio
     async def test_list_import_tariffs(self, client: httpx.AsyncClient) -> None:
         start_ts = datetime.datetime(year=2019, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)

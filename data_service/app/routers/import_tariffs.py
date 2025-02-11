@@ -266,13 +266,16 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
                 price_df, pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30))
             )
         elif params.tariff_name == SyntheticTariffEnum.Peak:
+            # use the FIX prices and the Octopus Cosy pricing structure
+            # https://octopus.energy/smart/cosy-octopus/
             logger.info(f"Generating a Peak tariff in {region_code} between {params.start_ts} and {params.end_ts}")
             underlying_tariff = "LOYAL-FIX-12M-23-12-30"
             timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
             night_cost, day_cost = await get_day_and_night_rates(
                 tariff_name=underlying_tariff, region_code=region_code, client=http_client
             )
-            price_df = create_peak_tariff(timestamps, day_cost=day_cost, night_cost=night_cost, peak_cost=12.0)
+            print(night_cost, day_cost)
+            price_df = create_peak_tariff(timestamps, day_cost=day_cost, night_cost=day_cost * 0.49, peak_cost=day_cost * 0.5)
         elif params.tariff_name == SyntheticTariffEnum.Overnight:
             logger.info(f"Generating an Overnight tariff in {region_code} between {params.start_ts} and {params.end_ts}")
             underlying_tariff = "LOYAL-FIX-12M-23-12-30"
