@@ -3,6 +3,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, {Dayjs} from 'dayjs';
+import 'dayjs/locale/en-gb';
 import {Select, MenuItem, FormControl, InputLabel, Button} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 
@@ -230,7 +231,7 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
                 <div id="datepicker" style={{display: 'flex', alignItems: 'center', gap: '10px'}}
                 >
                     {/* Date Picker for Start Date */}
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={"en-gb"}>
                         <DateTimePicker
                             label="Start Date & Time:"
                             value={selectedStartDatetime}

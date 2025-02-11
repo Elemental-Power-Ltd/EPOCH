@@ -12,6 +12,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, {Dayjs} from 'dayjs';
+import 'dayjs/locale/en-gb';
 import utc from 'dayjs/plugin/utc';
 
 import { useEpochStore } from '../State/Store';
@@ -71,7 +72,7 @@ const DatasetGenerationContainer = () => {
           </TextField>
         </Grid>
         <Grid item xs={6}>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={"en-gb"}>
             <DateTimePicker
               label="Start Date"
               value={startDate}

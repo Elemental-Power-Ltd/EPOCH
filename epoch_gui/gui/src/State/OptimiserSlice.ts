@@ -5,6 +5,7 @@ import {
   TaskConfig,
   OptimiseContainer
 } from "./types"
+import dayjs from "dayjs";
 
 const defaultTaskConfig: TaskConfig = {
   task_name: "",
@@ -19,8 +20,7 @@ const defaultTaskConfig: TaskConfig = {
     annualised_cost: false
   },
   client_id: "",
-  start_date: "2022-01-01 00:00:00+00:00",
-  duration: "year",
+  start_date: dayjs("2022-01-01 00:00:00+00:00"),
   timestep_minutes: 30
 }
 

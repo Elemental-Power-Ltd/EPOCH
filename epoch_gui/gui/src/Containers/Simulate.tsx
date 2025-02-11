@@ -77,10 +77,11 @@ const SimulationContainer: FC = () => {
         const request: SubmitSimulationRequest = {
             task_data: taskData,
             site_data: {
-                duration: "year",
                 loc: "remote",
                 site_id: siteID,
-                start_ts: startDate!.toISOString()
+                start_ts: startDate!.toISOString(),
+                // an EPOCH year is exactly 8760 hours (irrespective of leap years)
+                end_ts: startDate!.add(8760, "hour").toISOString()
             }
         };
 
@@ -175,8 +176,8 @@ const SimulationContainer: FC = () => {
                     <SiteDataForm
                         siteId={siteID}
                         onSiteChange={setSiteID}
-                        startDate={startDate ? startDate.toISOString() : ""}
-                        onStartDateChange={val => (setStartDate(dayjs(val)))}
+                        startDate={startDate}
+                        onStartDateChange={setStartDate}
                         timestepMinutes={timestep}
                         onTimestepChange={setTimestep}
                         clientSites={client_sites}
