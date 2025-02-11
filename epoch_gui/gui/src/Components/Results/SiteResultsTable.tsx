@@ -28,12 +28,6 @@ const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
     const [selectedResult, setSelectedResult] = useState<SiteOptimisationResult | null>(null);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
 
-    const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
-
-
-
     const sites: Site[] = useEpochStore((state) => state.global.client_sites);
 
     const getSiteName = (site_id: string) => {
@@ -45,27 +39,7 @@ const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
         // Immediately show the solution and open the modal
         setSelectedResult(siteResult);
         setModalOpen(true);
-
-        await fetchSimulation(siteResult);
     };
-
-    // reproduce the simulation to fetch the detailed results
-    const fetchSimulation = async(siteResult: SiteOptimisationResult) => {
-        setIsLoading(true);
-        setError(null);
-
-        const simResult = await reproduceSimulation({
-            portfolio_id: siteResult.portfolio_id, site_id: siteResult.site_id
-        });
-
-        setIsLoading(false);
-
-        if (simResult.success) {
-            setSimulationResult(simResult.data);
-        } else {
-            setError(simResult.error!);
-        }
-    }
 
     const handleCloseModal = () => {
         setModalOpen(false);
