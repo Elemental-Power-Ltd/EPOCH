@@ -444,7 +444,12 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
                     ),
                     default=None,
                 )
-                for tariff_type in SyntheticTariffEnum
+                for tariff_type in [
+                    SyntheticTariffEnum.Fixed,
+                    SyntheticTariffEnum.Agile,
+                    SyntheticTariffEnum.Overnight,
+                    SyntheticTariffEnum.Peak,
+                ]
             )
             if item is not None
         ],
