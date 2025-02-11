@@ -119,7 +119,7 @@ def combine_objective_values(objective_values_list: list[ObjectiveValues]) -> Ob
 
         if objective_values[Objectives.carbon_balance_scope_1] > 0:
             objective_values[Objectives.carbon_cost] = objective_values[Objectives.capex] / (
-                objective_values[Objectives.carbon_balance_scope_1] / 1000
+                objective_values[Objectives.carbon_balance_scope_1] * 20 / 1000
             )
         else:
             objective_values[Objectives.carbon_cost] = float(np.finfo(np.float32).max)
