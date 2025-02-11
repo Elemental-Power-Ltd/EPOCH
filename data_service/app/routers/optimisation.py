@@ -158,7 +158,7 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
             task_name=item["task_name"],
             n_evals=item["n_evals"],
             n_saved=item["n_saved"],
-            exec_time=item["exec_time"]
+            exec_time=item["exec_time"],
         )
         for item in res
     ]

@@ -5,29 +5,35 @@ import datetime
 import logging
 import uuid
 
-import httpx
-import pydantic
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
 from ..internal.site_manager.site_manager import fetch_all_input_data
 from ..models.client_data import SiteDataEntries
-from ..models.core import DatasetEntry, DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
+from ..models.core import (
+    DatasetEntry,
+    DatasetIDWithTime,
+    DatasetTypeEnum,
+    MultipleDatasetIDWithTime,
+    SiteID,
+    SiteIDWithTime,
+    dataset_id_t,
+)
 from ..models.electricity_load import ElectricalLoadRequest
 from ..models.heating_load import HeatingLoadRequest
-from ..models.import_tariffs import SyntheticTariffEnum, TariffRequest
-from ..models.optimisation import RemoteMetaData
+from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
-from ..models.site_manager import DatasetRequest
+from ..models.site_manager import DatasetList, RemoteMetaData
 from .carbon_intensity import generate_grid_co2
 from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
-from .import_tariffs import generate_import_tariffs
+from .import_tariffs import generate_import_tariffs, get_import_tariffs
 from .renewables import generate_renewables_generation
 
 router = APIRouter()
 
 MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
+NULL_UUID = uuid.UUID(int=0, version=4)
 
 
 async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
@@ -185,7 +191,9 @@ async def list_import_tariff_datasets(site_id: SiteID, pool: DatabasePoolDep) ->
                 MIN(te.start_ts) AS start_ts,
                 MAX(te.end_ts) AS end_ts,
                 COUNT(*) AS num_entries,
-                (MAX(te.end_ts) - MIN(te.start_ts)) / (COUNT(*) - 1) AS resolution
+                (MAX(te.end_ts) - MIN(te.start_ts)) / (COUNT(*) - 1) AS resolution,
+                ANY_VALUE(provider) AS provider,
+                ANY_VALUE(product_name) AS product_name
             FROM tariffs.metadata AS tm
             LEFT JOIN
                 tariffs.electricity AS te
@@ -203,6 +211,7 @@ async def list_import_tariff_datasets(site_id: SiteID, pool: DatabasePoolDep) ->
             end_ts=item["end_ts"],
             num_entries=item["num_entries"],
             resolution=item["resolution"],
+            dataset_subtype=SyntheticTariffEnum(item["product_name"]) if item["provider"] == "synthetic" else None,
         )
         for item in res
     ]
@@ -349,7 +358,7 @@ async def list_ashp_datasets() -> list[DatasetEntry]:
 
 
 @router.post("/list-datasets", tags=["db", "list"])
-async def list_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[DatasetTypeEnum, list[DatasetEntry]]:
     """
     Get all the datasets associated with a particular site, in the form of a list of UUID strings.
 
@@ -366,6 +375,7 @@ async def list_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetE
     -------
     A list of UUID dataset strings, with the earliest at the start and the latest at the end.
     """
+    logger = logging.getLogger(__name__)
     async with asyncio.TaskGroup() as tg:
         gas_task = tg.create_task(list_gas_datasets(site_id, pool))
         elec_task = tg.create_task(list_elec_datasets(site_id, pool))
@@ -376,25 +386,26 @@ async def list_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetE
         carbon_intensity_task = tg.create_task(list_carbon_intensity_datasets(site_id, pool))
         ashp_task = tg.create_task(list_ashp_datasets())
 
-    res = [
-        *gas_task.result(),
-        *elec_task.result(),
-        *elec_synth_task.result(),
-        *import_tariff_task.result(),
-        *renewables_generation_task.result(),
-        *heating_load_task.result(),
-        *carbon_intensity_task.result(),
-    ]
+    res = {
+        DatasetTypeEnum.GasMeterData: gas_task.result(),
+        DatasetTypeEnum.ElectricityMeterData: elec_task.result(),
+        DatasetTypeEnum.ElectricityMeterDataSynthesised: elec_synth_task.result(),
+        DatasetTypeEnum.ImportTariff: import_tariff_task.result(),
+        DatasetTypeEnum.RenewablesGeneration: renewables_generation_task.result(),
+        DatasetTypeEnum.HeatingLoad: heating_load_task.result(),
+        DatasetTypeEnum.CarbonIntensity: carbon_intensity_task.result(),
+    }
     # If we didn't get any real datasets, then
     # don't insert a dummy ASHP dataset
-    if res:
-        res += ashp_task.result()
-    logging.info(f"Returning {len(res)} datasets for {site_id}")
+    if any(val is not None for val in res.values()):
+        res[DatasetTypeEnum.ASHPData] = ashp_task.result()
+    logger.info(f"Returning {len(res)} datasets for {site_id}")
+
     return res
 
 
 @router.post("/list-latest-datasets", tags=["db", "list"])
-async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> dict[DatasetTypeEnum, DatasetEntry]:
+async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> DatasetList:
     """
     Get the most recent datasets of each type for this site.
 
@@ -405,70 +416,170 @@ async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> dict[D
     Parameters
     ----------
     site_id
-        The ID of the site you are interested in
+        The ID of the site you are interested in, and the timestamps you want to get them between.
 
     Returns
     -------
         A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
     """
-    all_datasets = await list_datasets(site_id, pool)
+    all_datasets = await list_datasets(params, pool)
 
-    latest_ds: dict[DatasetTypeEnum, DatasetEntry] = {}
-    for dataset in all_datasets:
-        if dataset.dataset_type not in latest_ds or (latest_ds[dataset.dataset_type].created_at < dataset.created_at):
-            latest_ds[dataset.dataset_type] = dataset
-    return dict(latest_ds)
+    return DatasetList(
+        site_id=params.site_id,
+        start_ts=params.start_ts,
+        end_ts=params.end_ts,
+        # HeatingLoads are a MultipleDatasetIDWithTime, so wrap them into a list here.
+        HeatingLoad=[max(all_datasets[DatasetTypeEnum.HeatingLoad], key=lambda x: x.created_at)]
+        if all_datasets.get(DatasetTypeEnum.HeatingLoad)
+        else None,
+        ImportTariff=[
+            item
+            for item in (
+                max(
+                    filter(
+                        lambda x: x is not None and x.dataset_subtype == tariff_type, all_datasets[DatasetTypeEnum.ImportTariff]
+                    ),
+                    key=lambda y: (
+                        y.created_at if y is not None else datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC)
+                    ),
+                    default=None,
+                )
+                for tariff_type in SyntheticTariffEnum
+            )
+            if item is not None
+        ],
+        ASHPData=max(all_datasets[DatasetTypeEnum.ASHPData], key=lambda x: x.created_at)
+        if all_datasets.get(DatasetTypeEnum.ASHPData)
+        else None,
+        CarbonIntensity=max(all_datasets[DatasetTypeEnum.CarbonIntensity], key=lambda x: x.created_at)
+        if all_datasets.get(DatasetTypeEnum.CarbonIntensity)
+        else None,
+        ElectricityMeterData=max(all_datasets[DatasetTypeEnum.ElectricityMeterData], key=lambda x: x.created_at)
+        if all_datasets.get(DatasetTypeEnum.ElectricityMeterData)
+        else None,
+        ElectricityMeterDataSynthesised=max(
+            all_datasets[DatasetTypeEnum.ElectricityMeterDataSynthesised], key=lambda x: x.created_at
+        )
+        if all_datasets.get(DatasetTypeEnum.ElectricityMeterDataSynthesised)
+        else None,
+        Weather=max(all_datasets[DatasetTypeEnum.Weather], key=lambda x: x.created_at)
+        if all_datasets.get(DatasetTypeEnum.Weather)
+        else None,
+        GasMeterData=max(all_datasets[DatasetTypeEnum.GasMeterData], key=lambda x: x.created_at)
+        if all_datasets.get(DatasetTypeEnum.GasMeterData)
+        else None,
+        # RenewablesGeneration are a MultipleDatasetIDWithTime, so wrap them into a list here.
+        RenewablesGeneration=[max(all_datasets[DatasetTypeEnum.RenewablesGeneration], key=lambda x: x.created_at)]
+        if all_datasets.get(DatasetTypeEnum.RenewablesGeneration)
+        else None,
+    )
 
 
 @router.post("/get-specific-datasets", tags=["db", "get"])
-async def get_specific_datasets(site_data: DatasetRequest, pool: DatabasePoolDep) -> SiteDataEntries:
+async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
     """
     Get specific datasets with chosen IDs for a given site.
 
-    This endpoint combines a call to /list-latest-datasets with each of the /get endpoints for those datasets.
-    If a dataset isn't specified in the call, then we'll return the latest.
+    If you have not requested a dataset (its entry is None in the DatasetList), then you'll receive None for that dataset.
+    The usual workflow is to call list-latest-datasets yourself, look up each dataset in your own cache, and then
+    request the get-specific-datasets that you require.
 
     Parameters
     ----------
     site_data
         A specification for the required site data; UUIDs of the datasets of each type you wish to request.
+        You can hand back either the DatasetList you received from list-latest-datasets, or a RemoteMetaData of dataset IDs
+        that you have curated yourself.
 
     Returns
     -------
         The site data with full time series for each data source
     """
-    latest_datasets_info = await list_latest_datasets(SiteID(site_id=site_data.site_id), pool=pool)
-
-    specified_or_latest_ids: dict[DatasetTypeEnum, pydantic.UUID4] = {}
-    dumped_site_info = site_data.model_dump()
-    for ds_type in DatasetTypeEnum:
-        if ds_type.value in dumped_site_info and dumped_site_info[ds_type.value] is not None:
-            specified_or_latest_ids[ds_type] = dumped_site_info[ds_type.value]
-        elif ds_type in latest_datasets_info:
-            specified_or_latest_ids[ds_type] = latest_datasets_info[ds_type].dataset_id
-
+    # If we've received a DatasetList with all the metadata about each dataset, we turn it into
+    # a DatasetList here which is just the IDs, which are easier to request.
+    if isinstance(site_data, DatasetList):
+        new_site_data = RemoteMetaData(site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts)
+        for key in DatasetTypeEnum:
+            # Model dump will also dump the sub keys from RemoteMetadata into dicts with a "dataset_id" key
+            # and some other stuff that we throw away.
+            curr_entries = site_data.model_dump()[key]
+            if isinstance(curr_entries, list):
+                curr_id = [item["dataset_id"] for item in curr_entries]
+            elif isinstance(curr_entries, dict):
+                curr_id = curr_entries["dataset_id"]
+            else:
+                curr_id = None
+            new_site_data.__setattr__(key, curr_id)
+        site_data = new_site_data
     site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
-    for ds_type, dataset_id in specified_or_latest_ids.items():
-        if ds_type in MULTIPLE_DATASET_ENDPOINTS:
-            site_data_ids[ds_type] = MultipleDatasetIDWithTime(
-                dataset_id=[dataset_id],
-                start_ts=site_data.start_ts,
-                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
+    for dataset_type in DatasetTypeEnum:
+        site_data_entry: dataset_id_t | list[dataset_id_t] | None = site_data.__getattribute__(dataset_type.value)
+        # We have to handle multiple dataset requests slightly differently to the single dataset requests.
+        if isinstance(site_data_entry, list):
+            # Skip the zero length lists, if any have snuck through
+            if not site_data_entry:
+                continue
+            site_data_ids[dataset_type] = MultipleDatasetIDWithTime(
+                dataset_id=site_data_entry, start_ts=site_data.start_ts, end_ts=site_data.end_ts
+            )
+        elif site_data_entry is not None:
+            site_data_ids[dataset_type] = DatasetIDWithTime(
+                dataset_id=site_data_entry, start_ts=site_data.start_ts, end_ts=site_data.end_ts
             )
         else:
-            site_data_ids[ds_type] = DatasetIDWithTime(
-                dataset_id=dataset_id,
-                start_ts=site_data.start_ts,
-                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-            )
+            # We got no dataset here, so skip it.
+            continue
     try:
         return await fetch_all_input_data(site_data_ids, pool=pool)
     except KeyError as ex:
         raise HTTPException(400, f"Missing dataset {ex}. Did you run generate-all for this site?") from ex
 
 
+@router.post("/get-latest-tariffs", tags=["db", "tariff"])
+async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -> list[EpochTariffEntry]:
+    """
+    Get the latest Import Tariff entries for a given site.
+
+    This will endeavour to get the most recently generated synthetic tariff of each type.
+    If a given tariff type isn't in the database, we skip it.
+    The Fixed tariff is generally at index 0.
+
+    This is most useful as a sub-call as part of another dataset getting function.
+
+    Parameters
+    ----------
+    site_data
+        Metadata about the site to get, including a site ID. All other fields except site_id are ignored.
+    pool
+        Database pool
+
+    Raises
+    ------
+    KeyError
+        if there are no ImportTariffs generated.
+
+    Returns
+    -------
+    list[EpochTariffEntry]
+        List of tariff entries with fields Tariff, Tariff1, Tariff2, etc. filled.
+    """
+    site_data_info = await list_latest_datasets(site_data, pool=pool)
+    if site_data_info.ImportTariff is None:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Requested latest tariffs for {site_data.site_id} but None were available.")
+        return []
+    params = MultipleDatasetIDWithTime(
+        dataset_id=[item.dataset_id for item in site_data_info.ImportTariff]
+        if isinstance(site_data_info.ImportTariff, list)
+        else [site_data_info.ImportTariff.dataset_id],
+        start_ts=site_data.start_ts,
+        end_ts=site_data.end_ts,
+    )
+    return await get_import_tariffs(params, pool)
+
+
 @router.post("/get-latest-datasets", tags=["db", "get"])
-async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
+async def get_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> SiteDataEntries:
     """
     Get the most recent dataset entries of each type for this site.
 
@@ -476,42 +587,32 @@ async def get_latest_datasets(site_data: RemoteMetaData, pool: DatabasePoolDep) 
 
     Parameters
     ----------
-    site_data
-        A specification for the required site data.
+    paramss
+        The site ID you want, and the start / end times for the datasets you want.
 
     Returns
     -------
         The site data with full time series for each data source
     """
-    logging.info(f"Getting latest dataset list for {site_data.site_id}")
-
-    site_data_info = await list_latest_datasets(SiteID(site_id=site_data.site_id), pool=pool)
-
-    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
-    for dataset_name, dataset_metadata in site_data_info.items():
-        if dataset_name in MULTIPLE_DATASET_ENDPOINTS:
-            site_data_ids[dataset_name] = MultipleDatasetIDWithTime(
-                dataset_id=[dataset_metadata.dataset_id],
-                start_ts=site_data.start_ts,
-                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-            )
-        else:
-            site_data_ids[dataset_name] = DatasetIDWithTime(
-                dataset_id=dataset_metadata.dataset_id,
-                start_ts=site_data.start_ts,
-                end_ts=site_data.start_ts + datetime.timedelta(hours=8760),
-            )
+    logger = logging.getLogger(__name__)
+    logger.info(f"Getting latest dataset list for {params.site_id}")
+    site_data = await list_latest_datasets(params, pool=pool)
 
     try:
-        return await fetch_all_input_data(site_data_ids, pool=pool)
+        return await get_specific_datasets(site_data, pool)
     except KeyError as ex:
         raise HTTPException(400, f"Missing dataset {ex}. Did you run generate-all for this site?") from ex
 
 
 @router.post("/generate-all")
 async def generate_all(
-    params: SiteIDWithTime, pool: DatabasePoolDep, http_client: HttpClientDep, vae: VaeDep, secrets_env: SecretsDep
-) -> dict[DatasetTypeEnum, DatasetEntry]:
+    params: SiteIDWithTime,
+    pool: DatabasePoolDep,
+    http_client: HttpClientDep,
+    vae: VaeDep,
+    secrets_env: SecretsDep,
+    background_tasks: BackgroundTasks,
+) -> dict[DatasetTypeEnum, DatasetEntry | list[DatasetEntry]]:
     """
     Run all dataset generation tasks for this site.
 
@@ -520,108 +621,156 @@ async def generate_all(
     You almost certainly want the timestamps to be 2021 or 2022 so we can use renewables.ninja data, and relatively recent
     tariff data.
 
+    This will run background tasks for each sub item, which can take upwards of 1 minute.
+    For that reason, we'll return an empty set of null data early and chug along in the background.
+    This may block the main thread, so be careful.
+
     Parameters
     ----------
     params
         SiteIDWithTime, including two relatively far back timestamps for Renewables Ninja to use.
+    pool
+        Connection pool to underlying PostgreSQL database
+    http_client
+        Asynchronous HTTP client to use for requests to 3rd party APIs
+    vae
+        ML model for upscaling of electrical data
+    secrets_env
+        Client secrets environment
+    background_tasks
+        Task group to run after returning data
 
     Returns
     -------
     datasets
-        Dataset Type: Dataset Entry mapping, including UUIDs under the 'dataset_id' key that you can retrieve from `get-*`.
+        Dataset Type: Dataset Entry mapping, but with placeholder null UUIDs as the background tasks need to run.
+        Note that this will return immediately, but block this thread until the calculations are done.
     """
-    datasets = await list_latest_datasets(SiteID(site_id=params.site_id), pool=pool)
+    # Note that we specifically don't request time-limited datasets here.
+    # This is because we want to resample from the existing dataset pool into new time periods (those specified in the params)
+    datasets = await list_latest_datasets(
+        SiteIDWithTime(
+            site_id=params.site_id,
+            start_ts=datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC),
+            end_ts=datetime.datetime.now(datetime.UTC),
+        ),
+        pool=pool,
+    )
 
-    if DatasetTypeEnum.GasMeterData not in datasets:
+    gas_meter_dataset = datasets.GasMeterData
+    elec_meter_dataset = datasets.ElectricityMeterData
+
+    if gas_meter_dataset is None:
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
-    if DatasetTypeEnum.ElectricityMeterData not in datasets:
+    if elec_meter_dataset is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
-    heating_load_dataset = datasets[DatasetTypeEnum.GasMeterData]
-    elec_meter_dataset = datasets[DatasetTypeEnum.ElectricityMeterData]
+    assert isinstance(gas_meter_dataset, DatasetEntry), (
+        f"Expecting a DatasetEntry for gas_meter_dataset but got {type(gas_meter_dataset)}"
+    )
+    assert isinstance(elec_meter_dataset, DatasetEntry), (
+        f"Expecting a DatasetEntry for elec_meter_dataset but got {type(elec_meter_dataset)}"
+    )
+    background_tasks.add_task(
+        generate_heating_load,
+        HeatingLoadRequest(dataset_id=gas_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
+        pool=pool,
+        http_client=http_client,
+    )
 
-    try:
-        async with asyncio.TaskGroup() as tg:
-            heating_load_response = tg.create_task(
-                generate_heating_load(
-                    HeatingLoadRequest(
-                        dataset_id=heating_load_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                )
-            )
-            grid_co2_response = tg.create_task(generate_grid_co2(params, pool=pool, http_client=http_client))
+    background_tasks.add_task(generate_grid_co2, params, pool=pool, http_client=http_client)
 
-            import_tariff_response = tg.create_task(
-                generate_import_tariffs(
-                    TariffRequest(
-                        site_id=params.site_id,
-                        tariff_name=SyntheticTariffEnum.Fixed,
-                        start_ts=params.start_ts,
-                        end_ts=params.end_ts,
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                )
-            )
+    # We generate four different types of tariff, here done manually to keep track of the
+    # tasks and not lose the handle to the task (which causes mysterious bugs)
+    for tariff_type in SyntheticTariffEnum:
+        background_tasks.add_task(
+            generate_import_tariffs,
+            TariffRequest(
+                site_id=params.site_id,
+                tariff_name=tariff_type,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+            ),
+            pool=pool,
+            http_client=http_client,
+        )
 
-            renewables_response = tg.create_task(
-                generate_renewables_generation(
-                    RenewablesRequest(
-                        site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                    secrets_env=secrets_env,
-                )
-            )
+    background_tasks.add_task(
+        generate_renewables_generation,
+        RenewablesRequest(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None),
+        pool=pool,
+        http_client=http_client,
+        secrets_env=secrets_env,
+    )
 
-            elec_response = tg.create_task(
-                generate_electricity_load(
-                    ElectricalLoadRequest(
-                        dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts
-                    ),
-                    pool=pool,
-                    http_client=http_client,
-                    vae=vae,
-                )
-            )
-    except* ValueError as excgroup:
-        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
-    except* TypeError as excgroup:
-        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
-    except* httpx.ReadTimeout as excgroup:
-        raise HTTPException(500, detail=f"Generate all failed due to {list(excgroup.exceptions)}") from excgroup
+    background_tasks.add_task(
+        generate_electricity_load,
+        ElectricalLoadRequest(dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
+        pool=pool,
+        http_client=http_client,
+        vae=vae,
+    )
+
+    RESOLUTION = datetime.timedelta(minutes=30)
+    # Return the background tasks immediately with null-ish data.
+    # The UUIDs will have to be collected later (unless we assign them in this function in future?)
     return {
         DatasetTypeEnum.HeatingLoad: DatasetEntry(
-            dataset_id=heating_load_response.result().dataset_id,
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.HeatingLoad,
-            created_at=heating_load_response.result().created_at,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
         DatasetTypeEnum.CarbonIntensity: DatasetEntry(
-            dataset_id=grid_co2_response.result().dataset_id,
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.CarbonIntensity,
-            created_at=grid_co2_response.result().created_at,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
-        DatasetTypeEnum.ImportTariff: DatasetEntry(
-            dataset_id=import_tariff_response.result().dataset_id,
-            dataset_type=DatasetTypeEnum.ImportTariff,
-            created_at=import_tariff_response.result().created_at,
-        ),
+        DatasetTypeEnum.ImportTariff: [
+            DatasetEntry(
+                dataset_id=NULL_UUID,
+                dataset_type=DatasetTypeEnum.ImportTariff,
+                created_at=datetime.datetime.now(tz=datetime.UTC),
+                dataset_subtype=tariff_type,
+                resolution=RESOLUTION,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+                num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
+            )
+            for tariff_type in SyntheticTariffEnum
+        ],
         DatasetTypeEnum.RenewablesGeneration: DatasetEntry(
-            dataset_id=renewables_response.result().dataset_id,
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.RenewablesGeneration,
-            created_at=renewables_response.result().created_at,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
-        DatasetTypeEnum.ElectricityMeterData: datasets[DatasetTypeEnum.ElectricityMeterData],
+        DatasetTypeEnum.ElectricityMeterData: elec_meter_dataset,
         DatasetTypeEnum.ElectricityMeterDataSynthesised: DatasetEntry(
-            dataset_id=elec_response.result().dataset_id,
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
-            created_at=elec_response.result().created_at,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
         DatasetTypeEnum.ASHPData: DatasetEntry(
-            dataset_id=uuid.uuid4(),
+            dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.ASHPData,
             created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
     }

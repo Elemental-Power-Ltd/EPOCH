@@ -16,7 +16,7 @@ import pandas as pd
 import pydantic
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HTTPClient, HttpClientDep
+from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.utils import chunk_time_period, hour_of_year
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
@@ -364,7 +364,7 @@ async def generate_grid_co2(
 
 
 @router.post("/get-grid-co2", tags=["co2", "get"])
-async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[EpochCarbonEntry]:
+async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> list[EpochCarbonEntry]:
     """
     Get a specific grid carbon itensity dataset that we generated with `generate-grid-co2`.
 
@@ -378,9 +378,6 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabaseDep) -> list[Epo
 
     Parameters
     ----------
-    *request*
-        Internal FastAPI request object
-
     *params*
         Database ID for a specific grid CO2 set, and the timestamps you're interested in.
 
