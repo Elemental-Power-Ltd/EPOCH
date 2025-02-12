@@ -154,4 +154,4 @@ class TaskResult(BaseModel):
 
 class OptimisationResultEntry(BaseModel):
     portfolio: list[PortfolioOptimisationResult] = Field(description="List of total portfolio result data")
-    tasks: list[TaskResult] = Field(description="List of task result metadata, e.g. run time")
+    tasks: TaskResult = Field(description="Task optimisation result metadata, e.g. run time")

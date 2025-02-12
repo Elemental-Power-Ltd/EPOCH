@@ -73,7 +73,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
             )
         )
 
-    tasks = [TaskResult(task_id=task.task_id, n_evals=results.n_evals, exec_time=results.exec_time, completed_at=completed_at)]
+    tasks = TaskResult(task_id=task.task_id, n_evals=results.n_evals, exec_time=results.exec_time, completed_at=completed_at)
 
     return OptimisationResultEntry(portfolio=portfolios, tasks=tasks)
 
