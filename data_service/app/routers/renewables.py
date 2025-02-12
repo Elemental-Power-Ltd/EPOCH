@@ -214,7 +214,7 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
             )
             if not dataset:
                 raise HTTPException(400, f"No data found for dataset_id={dataset_id!s} between {start_ts} and {end_ts}.")
-            renewables_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "solar_generation"], index="start_ts")
+            renewables_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "solar_generation"], index="start_ts")  # noqa: E501
             renewables_df.index = pd.to_datetime(renewables_df.index)
             return renewables_df
 
