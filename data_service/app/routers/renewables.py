@@ -150,13 +150,15 @@ async def generate_renewables_generation(
                 """INSERT INTO
                         renewables.solar_pv (
                             dataset_id,
-                            timestamp,
+                            start_ts,
+                            end_ts,
                             solar_generation
                         )
                     VALUES (
                         $1,
                         $2,
-                        $3)""",
+                        $3,
+                        $4)""",
                 zip(
                     [metadata.dataset_id for _ in renewables_df.index],
                     renewables_df.index,
@@ -197,21 +199,22 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
             dataset = await conn.fetch(
                 """
                         SELECT
-                            timestamp,
+                            start_ts,
+                            end_ts,
                             solar_generation
                         FROM renewables.solar_pv
                         WHERE
                             dataset_id = $1
-                            AND $2 <= timestamp
-                            AND timestamp < $3
-                        ORDER BY timestamp ASC""",
+                            AND $2 <= start_ts
+                            AND end_ts < $3
+                        ORDER BY start_ts ASC""",
                 dataset_id,
                 start_ts,
                 end_ts,
             )
             if not dataset:
                 raise HTTPException(400, f"No data found for dataset_id={dataset_id!s} between {start_ts} and {end_ts}.")
-            renewables_df = pd.DataFrame.from_records(dataset, columns=["timestamp", "solar_generation"], index="timestamp")
+            renewables_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "solar_generation"], index="start_ts")
             renewables_df.index = pd.to_datetime(renewables_df.index)
             return renewables_df
 
