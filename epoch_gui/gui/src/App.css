@@ -5,15 +5,9 @@
   text-align: center;
 }
 
-
 .card {
   padding: 2em;
 }
-
-.read-the-docs {
-  color: #888;
-}
-
 
 /* Logic to fix the tabs to the top left of the screen */
 .fixed-tabs {
@@ -21,7 +15,6 @@
     top: 0;
     left: 0;
     width: 100%;
-    background-color: white;
     z-index: 1000;
     border-bottom: 1px solid #ddd;
 }
