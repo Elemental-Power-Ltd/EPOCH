@@ -49,7 +49,7 @@ class TestProblemInstance:
                     assert asset_name in td_dict.keys()
 
     def test_apply_directions(self, default_problem_instance: ProblemInstance):
-        metric_values: MetricValues = {metric: 10 for metric in _METRICS}
+        metric_values: MetricValues = dict.fromkeys(_METRICS, 10)
         res = default_problem_instance.apply_directions(deepcopy(metric_values))
         assert res[Metric.annualised_cost] == metric_values[Metric.annualised_cost]
         assert res[Metric.capex] == metric_values[Metric.capex]
@@ -61,7 +61,7 @@ class TestProblemInstance:
 
     def test_calculate_infeasibility(self, default_problem_instance: ProblemInstance):
         constraints = default_problem_instance.constraints
-        metric_values: MetricValues = {metric: 10 for metric in _METRICS}
+        metric_values: MetricValues = dict.fromkeys(_METRICS, 10)
         excess = []
         for metric, bounds in constraints.items():
             min_value = bounds.get("min", None)
