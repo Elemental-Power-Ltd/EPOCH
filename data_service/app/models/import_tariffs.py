@@ -56,8 +56,9 @@ class EpochTariffEntry(EpochEntry):
 
 
 class SyntheticTariffEnum(StrEnum):
-    Agile = "agile"
+    # This ordering matters -- Fixed must be the first entry.
     Fixed = "fixed"
+    Agile = "agile"
     Overnight = "overnight"
     Peak = "peak"
 

@@ -7,6 +7,7 @@ we'll loop over all the parsers to find one that works.
 """
 
 import datetime
+import logging
 import os
 from collections.abc import Callable
 from typing import BinaryIO
@@ -17,6 +18,8 @@ import pandas as pd
 
 from ..epl_typing import HHDataFrame, MonthlyDataFrame
 from ..utils import last_day_of_month, m3_to_kwh
+
+logger = logging.getLogger(__name__)
 
 
 def check_if_readings_not_consumption(df: pd.DataFrame) -> bool:
@@ -470,7 +473,7 @@ def parse_square_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame
     return HHDataFrame(gas_df[["end_ts", "consumption"]])
 
 
-def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame | HHDataFrame:
+def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataFrame, str] | tuple[HHDataFrame, str]:
     """
     Try different parsing functions to get one that works for this file.
 
@@ -481,7 +484,8 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame |
 
     Returns
     -------
-        parsed dataframe with `(start_ts, end_ts, consumption)`
+    result_dataframe, parser
+        parsed dataframe with `(start_ts, end_ts, consumption)`, along with the parser we actually used for this file.
 
     Raises
     ------
@@ -499,15 +503,25 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame |
         parse_horizontal_monthly_only_end_year,
         parse_horizontal_monthly_only_month,
     ]
+
+    encountered_exceptions: list[BaseException] = []
     for parser in possible_parsers:
+        # Some of the parsers will leave the file seek head at the end of the file.
+        # In that case, move to the start.
+        if hasattr(fname, "seek"):
+            fname.seek(0, 0)
         try:
             parsed_df = parser(fname)
             consumption_mask = ~pd.isna(parsed_df.consumption)
-            return parsed_df[consumption_mask], parser.__name__  # type: ignore
-        except ValueError:
+            # This copy is here in case we want to modify the dataframe later
+            return parsed_df[consumption_mask].copy(), parser.__name__  # type: ignore
+        except ValueError as ex:
+            encountered_exceptions.append(ex)
             continue
-        except KeyError:
+        except KeyError as ex:
+            encountered_exceptions.append(ex)
             continue
-        except AssertionError:
+        except AssertionError as ex:
+            encountered_exceptions.append(ex)
             continue
-    raise NotImplementedError("No parser available for this file.")
+    raise NotImplementedError("No parser available for this file.")  # from encountered_exceptions

@@ -24,6 +24,8 @@ from app.main import app
 
 db_factory = testing.postgresql.PostgresqlFactory(cache_initialized_db=True)
 
+_http_client = AsyncClient(headers=[("Connection", "close")], timeout=60.0)
+
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
@@ -39,17 +41,13 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
     await db.create_pool()
     assert db.pool is not None, "Could not create database pool"
-    conn = await db.pool.acquire()
-    # TODO (2024-08-12 MHJB): there must be a better way...
-    await conn.execute("""CREATE ROLE python""")
-    with Path("./elementaldb_tables.sql").open() as fi:
-        await conn.execute(fi.read())
-    with Path("./elementaldb_client_info.sql").open() as fi:
-        await conn.execute(fi.read())
-
-    for file in get_migration_files(Path("migrations"), end=999998):
-        with file.open() as fi:
-            await conn.execute(fi.read())
+    # Manually run the migrations in the migration file.
+    async with db.pool.acquire() as conn:
+        for fname in get_migration_files(Path("migrations"), end=999998):
+            try:
+                await conn.execute(fname.read_text())
+            except asyncpg.PostgresSyntaxError as ex:
+                raise asyncpg.PostgresSyntaxError(f"Postgres syntax error in {fname}: {ex}") from ex
 
     async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
         """
@@ -76,7 +74,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         finally:
             await db.pool.release(conn)
 
-    async def override_get_http_client() -> AsyncGenerator[AsyncClient, None]:
+    def override_get_http_client() -> AsyncClient:
         """
         Override the HTTP client with a functional local http client.
 
@@ -85,8 +83,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         """
         # Use the 'Connection Close' headers to suppress httpx's connection pooling, as
         # it'll helpfully try to reuse a connection between event loops and then fall over.
-        async with AsyncClient(headers=[("Connection", "close")], timeout=60.0) as http_client:
-            yield http_client
+        return _http_client
 
     app.dependency_overrides[get_db_pool] = override_get_db_pool
     app.dependency_overrides[get_db_conn] = override_get_db_conn

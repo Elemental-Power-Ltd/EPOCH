@@ -9,7 +9,7 @@ centralise it in here.
 import datetime
 import uuid
 from enum import StrEnum
-from typing import Annotated, Self
+from typing import Annotated, Any, Self
 
 import pydantic
 from pydantic import BaseModel, Field, RootModel
@@ -66,12 +66,12 @@ class FuelEnum(StrEnum):
     oil = "oil"
 
 
-class ResultID(RootModel):
-    root: pydantic.UUID4
+class ResultID(BaseModel):
+    result_id: dataset_id_t
 
 
-class TaskID(RootModel):
-    root: pydantic.UUID4
+class TaskID(BaseModel):
+    task_id: dataset_id_t
 
 
 class DatasetID(RootModel):
@@ -92,13 +92,16 @@ class EpochEntry(pydantic.BaseModel):
     HourOfYear: float = epoch_hour_of_year_field
 
 
-class SiteIDWithTime(BaseModel):
-    site_id: site_id_t = Field(examples=["demo_london"])
+class SiteIDWithTime(SiteID):
+    """A model for getting data for a site between two timestamps."""
+
     start_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-01-01T00:00:00Z"], description="The earliest time (inclusive) to retrieve data for."
+        examples=["2024-01-01T00:00:00Z"],
+        description="The earliest time (inclusive) to retrieve data for.",
     )
     end_ts: pydantic.AwareDatetime = Field(
-        examples=["2024-05-31T00:00:00Z"], description="The latest time (exclusive) to retrieve data for."
+        examples=["2024-05-31T00:00:00Z"],
+        description="The latest time (exclusive) to retrieve data for.",
     )
 
     @pydantic.model_validator(mode="after")
@@ -193,6 +196,9 @@ class DatasetEntry(pydantic.BaseModel):
         examples=[datetime.timedelta(minutes=30), datetime.timedelta(days=28)],
         default=None,
         description="Average time span between entries in this dataset.",
+    )
+    dataset_subtype: Any | None = Field(
+        description="Subtype of this dataset, e.g. SyntheticTariff types, if available.", default=None
     )
 
 

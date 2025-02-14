@@ -153,7 +153,7 @@ def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScal
 
 
 def load_all_scalers(
-    directory: str | pathlib.Path = pathlib.Path(".", "models", "final"),
+    directory: str | pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = False
 ) -> dict[ScalerTypeEnum, StandardScaler]:
     """
     Load all the scalers found within a specific directory.
@@ -172,8 +172,8 @@ def load_all_scalers(
 
     """
     return {
-        ScalerTypeEnum.Data: load_scaler(pathlib.Path(directory) / "elecVAE_data_scaler.joblib"),
-        ScalerTypeEnum.Aggregate: load_scaler(pathlib.Path(directory) / "elecVAE_aggregate_scaler.joblib"),
-        ScalerTypeEnum.StartTime: load_scaler(pathlib.Path(directory) / "elecVAE_start_time_scaler.joblib"),
-        ScalerTypeEnum.EndTime: load_scaler(pathlib.Path(directory) / "elecVAE_end_time_scaler.joblib"),
+        ScalerTypeEnum.Data: load_scaler(pathlib.Path(directory) / "elecVAE_data_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.Aggregate: load_scaler(pathlib.Path(directory) / "elecVAE_aggregate_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.StartTime: load_scaler(pathlib.Path(directory) / "elecVAE_start_time_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.EndTime: load_scaler(pathlib.Path(directory) / "elecVAE_end_time_scaler.joblib", refresh=refresh),
     }

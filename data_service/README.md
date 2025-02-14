@@ -20,11 +20,6 @@ To do so, run
     docker compose up --build
 ```
 in your terminal or command prompt. 
-Using the Docker Desktop GUI isn't currently supported (mostly as I haven't written instructions for it yet).
-The docker compose script will currently look for two initial SQL files to populate the databases. 
-These are called `elementaldb_tables.sql` for the table structure and schemas, and `elementaldb_client_info.sql` for a set of dummy client info.
-These should be placed in the same directory as your `docker-compose.yml` file, but you can start the service without them.
-If you start the service without them, make sure that you add some client data manually or the foreign key constraints will fail.
 
 By default, the data service will run on port `8762` and the database on port `5432`.
 
@@ -171,10 +166,10 @@ def frobnicate(spam: int, eggs: str | None = None) -> BreakfastResponse:
 ### Async Style
 As we're using FastAPI, you should expect your endpoints and any IO bound functions to be asynchronous.
 Where possible, use `asyncpg` as the database driver and `httpx` as the HTTP request library.
-If you are using these, there is a shared connection pool available in a `request: Request` object that you can pass to your endpoints.
-To get a database connection from the pool, use the `request.state.pgpool` attribute as follows:
+If you are using these, there is a shared connection pool available via the FastAPI dependency injection framework.
+To get a database connection from the pool, use the `DatabaseConnDep` or `DatabasePoolDep` attribute as follows:
 ```
-async with request.state.pgpool.acquire() as conn:
+async with pool.acquire() as conn:
         foo = await conn.execute(...)
 ```
 An `httpx.AsyncClient` is available similarly as `request.state.http_client`.

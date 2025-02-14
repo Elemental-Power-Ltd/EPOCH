@@ -56,10 +56,8 @@ async def get_octopus_tariff(
     if tariff_metadata_resp.status_code != 200:
         raise ValueError(tariff_metadata_resp.text)
     tariff_meta = tariff_metadata_resp.json()
-
     # TODO (2024-10-25 MHJB): What if we don't have a tariff in this region?
     region_meta = tariff_meta["single_register_electricity_tariffs"][region_code.value]
-
     def extract_rates_url(region_meta: dict[str, Any]) -> str:
         for payment_method in "direct_debit_monthly", "varying", "prepayment":
             if payment_method in region_meta:
@@ -79,6 +77,7 @@ async def get_octopus_tariff(
     df = pd.DataFrame.from_records(all_results).rename(
         columns={"valid_from": "start_ts", "valid_to": "end_ts", "value_exc_vat": "cost"}
     )
+    print(df)
     df["start_ts"] = pd.to_datetime(df["start_ts"], utc=True).dt.tz_convert(datetime.UTC)
     df["end_ts"] = pd.to_datetime(df["end_ts"], utc=True).dt.tz_convert(datetime.UTC)
     df = df.drop(columns=["value_inc_vat", "payment_method"]).set_index("start_ts").sort_index()

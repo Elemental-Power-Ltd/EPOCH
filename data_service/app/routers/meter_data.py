@@ -5,6 +5,7 @@ These functions provider wrappers to get it in more sensible formats.
 """
 
 import datetime
+import itertools
 import uuid
 
 import numpy as np
@@ -140,7 +141,7 @@ async def upload_meter_file(
         In case of parsing error
     """
     try:
-        df: HHDataFrame | MonthlyDataFrame = try_meter_parsing(file.file)
+        df, _ = try_meter_parsing(file.file)
     except NotImplementedError as ex:
         raise HTTPException(400, f"Could not parse {file.filename} due to an unknown format.") from ex
 
@@ -176,7 +177,7 @@ async def upload_meter_file(
             400,
             f"Fuel type {fuel_type} is not supported. Please select from ('gas', 'elec')",
         )
-    df["dataset_id"] = metadata["dataset_id"]
+
     df["start_ts"] = df.index
     async with conn.transaction():
         await conn.execute(
@@ -196,7 +197,8 @@ async def upload_meter_file(
                     $3,
                     $4,
                     $5,
-                    $6)""",
+                    $6,
+                    $7)""",
             metadata["dataset_id"],
             metadata["created_at"],
             metadata["site_id"],
@@ -209,7 +211,13 @@ async def upload_meter_file(
         await conn.copy_records_to_table(
             table_name=table_name,
             schema_name="client_meters",
-            records=df.itertuples(index=False),
+            records=zip(
+                itertools.repeat(metadata["dataset_id"], len(df)),
+                df["start_ts"].dt.to_pydatetime(),
+                df["end_ts"].dt.to_pydatetime(),
+                df["consumption"],
+                strict=True,
+            ),
             columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 

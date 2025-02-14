@@ -24,7 +24,8 @@ from .heating_load import HeatingLoadMetadata as HeatingLoadMetadata
 from .import_tariffs import TariffMetadata as TariffMetadata
 from .import_tariffs import TariffRequest as TariffRequest
 from .meter_data import GasDatasetEntry as GasDatasetEntry
-from .optimisation import OptimisationResult as OptimisationResult
+from .optimisation import PortfolioOptimisationResult as PortfolioOptimisationResult
+from .optimisation import SiteOptimisationResult as SiteOptimisationResult
 from .optimisation import TaskConfig as TaskConfig
 from .renewables import EpochRenewablesEntry as EpochRenewablesEntry
 from .renewables import RenewablesMetadata as RenewablesMetadata
