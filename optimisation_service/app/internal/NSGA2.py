@@ -15,11 +15,12 @@ from pymoo.termination.robust import RobustTermination  # type: ignore
 
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance
 from app.internal.pareto_front import portfolio_pareto_front
+from app.internal.portfolio_simulator import simulate_scenario
 from app.models.algorithms import Algorithm
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.ga_utils import SamplingMethod
-from app.models.objectives import Objectives
+from app.models.metrics import Metric
 from app.models.result import OptimisationResult
 
 
@@ -92,7 +93,7 @@ class NSGA2(Algorithm):
 
         self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals)
 
-    def run(self, objectives: list[Objectives], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
+    def run(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
         """
         Run NSGA optimisation.
 
@@ -109,7 +110,8 @@ class NSGA2(Algorithm):
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
         pi = ProblemInstance(objectives, constraints, portfolio)
-        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, verbose=True)
+        simulate_scenario.cache_clear()
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = timedelta(seconds=res.exec_time)
         non_dom_sol = res.X

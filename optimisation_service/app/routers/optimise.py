@@ -23,7 +23,7 @@ from app.models.core import (
     TaskResponse,
     TaskResult,
 )
-from app.models.objectives import Objectives
+from app.models.metrics import Metric
 from app.models.result import OptimisationResult
 from app.routers.epl_queue import IQueue
 
@@ -49,26 +49,26 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     site_id=site_id,
                     portfolio_id=portfolio_id,
                     scenario=convert_TaskData_to_dictionary(site_solution.scenario),
-                    metric_carbon_balance_scope_1=site_solution.objective_values[Objectives.carbon_balance_scope_1],
-                    metric_carbon_balance_scope_2=site_solution.objective_values[Objectives.carbon_balance_scope_2],
-                    metric_carbon_cost=site_solution.objective_values[Objectives.carbon_cost],
-                    metric_cost_balance=site_solution.objective_values[Objectives.cost_balance],
-                    metric_capex=site_solution.objective_values[Objectives.capex],
-                    metric_payback_horizon=site_solution.objective_values[Objectives.payback_horizon],
-                    metric_annualised_cost=site_solution.objective_values[Objectives.annualised_cost],
+                    metric_carbon_balance_scope_1=site_solution.metric_values[Metric.carbon_balance_scope_1],
+                    metric_carbon_balance_scope_2=site_solution.metric_values[Metric.carbon_balance_scope_2],
+                    metric_carbon_cost=site_solution.metric_values[Metric.carbon_cost],
+                    metric_cost_balance=site_solution.metric_values[Metric.cost_balance],
+                    metric_capex=site_solution.metric_values[Metric.capex],
+                    metric_payback_horizon=site_solution.metric_values[Metric.payback_horizon],
+                    metric_annualised_cost=site_solution.metric_values[Metric.annualised_cost],
                 )
             )
         portfolios.append(
             PortfolioOptimisationResult(
                 task_id=task.task_id,
                 portfolio_id=portfolio_id,
-                metric_carbon_balance_scope_1=portfolio_solution.objective_values[Objectives.carbon_balance_scope_1],
-                metric_carbon_balance_scope_2=portfolio_solution.objective_values[Objectives.carbon_balance_scope_2],
-                metric_carbon_cost=portfolio_solution.objective_values[Objectives.carbon_cost],
-                metric_cost_balance=portfolio_solution.objective_values[Objectives.cost_balance],
-                metric_capex=portfolio_solution.objective_values[Objectives.capex],
-                metric_payback_horizon=portfolio_solution.objective_values[Objectives.payback_horizon],
-                metric_annualised_cost=portfolio_solution.objective_values[Objectives.annualised_cost],
+                metric_carbon_balance_scope_1=portfolio_solution.metric_values[Metric.carbon_balance_scope_1],
+                metric_carbon_balance_scope_2=portfolio_solution.metric_values[Metric.carbon_balance_scope_2],
+                metric_carbon_cost=portfolio_solution.metric_values[Metric.carbon_cost],
+                metric_cost_balance=portfolio_solution.metric_values[Metric.cost_balance],
+                metric_capex=portfolio_solution.metric_values[Metric.capex],
+                metric_payback_horizon=portfolio_solution.metric_values[Metric.payback_horizon],
+                metric_annualised_cost=portfolio_solution.metric_values[Metric.annualised_cost],
                 site_results=site_results,
             )
         )
@@ -82,6 +82,8 @@ def check_epoch_versions():
     """
     Checks the versions of EPOCH's headless exe and EPOCH's python bindings.
     """
+    has_headless = False
+    has_bindings = False
 
     try:
         epoch_path = get_epoch_path()
@@ -89,7 +91,6 @@ def check_epoch_versions():
         headless_version = result.stdout.splitlines()[-1]
         has_headless = True
     except Exception as e:
-        has_headless = False
         logger.debug(f"Failed to fetch headless version! {e}")
 
     try:
@@ -98,7 +99,6 @@ def check_epoch_versions():
         pybind_version = epoch_simulator.__version__  # type: ignore
         has_bindings = True
     except Exception as e:
-        has_bindings = False
         logger.debug(f"Failed to fetch epoch_simulator version! {e}")
 
     if has_headless and has_bindings:
@@ -107,10 +107,10 @@ def check_epoch_versions():
         else:
             logger.info(f"Using EPOCH version {headless_version}.")
 
-    elif has_headless and not has_bindings:
+    elif not has_headless and has_bindings:
         logger.warning(f"Failed to fetch headless version! Found epoch_simulator version: {pybind_version}")
 
-    elif not has_headless and has_bindings:
+    elif has_headless and not has_bindings:
         logger.warning(f"Failed to fetch epoch_simulator version! Found headless version: {headless_version}")
 
     else:

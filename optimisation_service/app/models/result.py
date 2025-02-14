@@ -2,19 +2,19 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from app.internal.epoch_utils import TaskData
-from app.models.objectives import ObjectiveValues
+from app.models.metrics import MetricValues
 
 
 @dataclass
 class SiteSolution:
     scenario: TaskData
-    objective_values: ObjectiveValues
+    metric_values: MetricValues
 
 
 @dataclass
 class PortfolioSolution:
     scenario: dict[str, SiteSolution]
-    objective_values: ObjectiveValues
+    metric_values: MetricValues
 
 
 @dataclass

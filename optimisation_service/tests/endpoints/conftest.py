@@ -1,9 +1,7 @@
 import json
-import logging
 from collections.abc import Generator
 from pathlib import Path
 
-import pandas as pd
 import pytest
 import pytest_asyncio
 from fastapi.encoders import jsonable_encoder
@@ -18,35 +16,28 @@ from app.models.optimisers import (
     NSGA2Optmiser,
     OptimiserStr,
 )
-from app.models.site_data import SiteDataEntries
+from app.models.site_data import LocalMetaData, RemoteMetaData
 
-logger = logging.getLogger("default")
+from ..conftest import _DATA_PATH
+
+
+@pytest.fixture(scope="session")
+def result_tmp_path(tmp_path_factory):
+    return tmp_path_factory.mktemp("results")
 
 
 @pytest_asyncio.fixture()
-def client() -> Generator[TestClient, None, None]:
+def client(result_tmp_path: Path) -> Generator[TestClient, None, None]:
     class DataManagerOverride(DataManager):
-        def __init__(self) -> None:
-            super().__init__()
-            self.temp_dir = Path("tests", "data", "temp")
-
-        def transform_all_input_data(self, site_data_entries: SiteDataEntries) -> dict[str, DataFrame]:
-            sample_data_path = Path("tests", "data", "input_data")
-            site_data = {
-                "Eload": pd.read_csv(Path(sample_data_path, "CSVEload.csv")),
-                "Hload": pd.read_csv(Path(sample_data_path, "CSVHload.csv")),
-                "Airtemp": pd.read_csv(Path(sample_data_path, "CSVAirtemp.csv")),
-                "RGen": pd.read_csv(Path(sample_data_path, "CSVRGen.csv")),
-                "ASHPinput": pd.read_csv(Path(sample_data_path, "CSVASHPinput.csv")),
-                "ASHPoutput": pd.read_csv(Path(sample_data_path, "CSVASHPoutput.csv")),
-                "Importtariff": pd.read_csv(Path(sample_data_path, "CSVImporttariff.csv")),
-                "GridCO2": pd.read_csv(Path(sample_data_path, "CSVGridCO2.csv")),
-                "DHWdemand": pd.read_csv(Path(sample_data_path, "CSVDHWdemand.csv")),
-            }
-            return site_data
+        async def fetch_portfolio_data(self, task: Task) -> None:
+            for site in task.portfolio:
+                if isinstance(site.site_data, LocalMetaData):
+                    site._input_dir = site.site_data.path
+                elif isinstance(site.site_data, RemoteMetaData):
+                    site._input_dir = Path(_DATA_PATH, site.name)
 
         async def transmit_results(self, result: OptimisationResultEntry) -> None:
-            with open(Path(self.temp_dir, f"R_{result.tasks[0].task_id}.json"), "w") as f:
+            with open(Path(result_tmp_path, f"{result.tasks.task_id}.json"), "w") as f:
                 json.dump(jsonable_encoder(result), f)
 
         async def transmit_task(self, task: Task) -> None:
@@ -60,7 +51,9 @@ def client() -> Generator[TestClient, None, None]:
 
 @pytest.fixture
 def default_optimiser() -> NSGA2Optmiser:
-    return NSGA2Optmiser(name=OptimiserStr.NSGA2, hyperparameters=NSGA2HyperParam(pop_size=4096, n_offsprings=2048, period=2))
+    return NSGA2Optmiser(
+        name=OptimiserStr.NSGA2, hyperparameters=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=10, period=8)
+    )
 
 
 @pytest.fixture

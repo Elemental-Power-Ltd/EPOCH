@@ -1,0 +1,181 @@
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from app.internal.epoch_utils import Building, Simulator, TaskData
+from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
+from app.internal.portfolio_simulator import PortfolioSimulator, combine_metric_values, simulate_scenario
+from app.models.metrics import _METRICS, Metric, MetricValues
+from app.models.result import PortfolioSolution
+from tests.conftest import _DATA_PATH
+
+
+class TestPortfolioSimulator:
+    def test_init(self) -> None:
+        PortfolioSimulator(
+            input_dirs={
+                "amcott_house": Path(_DATA_PATH, "amcott_house"),
+                "bircotes_leisure_centre": Path(_DATA_PATH, "bircotes_leisure_centre"),
+            }
+        )
+
+    def test_simulate_portfolio(self) -> None:
+        ps = PortfolioSimulator(
+            input_dirs={
+                "amcott_house": Path(_DATA_PATH, "amcott_house"),
+                "bircotes_leisure_centre": Path(_DATA_PATH, "bircotes_leisure_centre"),
+            }
+        )
+        portfolio_scenarios = {"amcott_house": TaskData(), "bircotes_leisure_centre": TaskData()}
+        portfolio_solution = ps.simulate_portfolio(portfolio_scenarios)
+        assert isinstance(portfolio_solution, PortfolioSolution)
+        assert all(site_name in list(portfolio_solution.scenario.keys()) for site_name in portfolio_scenarios.keys())
+        assert all(obj in list(portfolio_solution.metric_values.keys()) for obj in _METRICS)
+
+
+class Test_simulate_scenario:
+    def test_good_inputs(self) -> None:
+        site_name = "amcott_house"
+        sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))
+        site_scenario = TaskData()
+        res = simulate_scenario(sim, site_name, site_scenario)
+        assert all(obj in list(res.keys()) for obj in _METRICS)
+
+    def test_caching(self) -> None:
+        site_name = "amcott_house"
+        sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))
+        building_1 = Building()
+        site_scenario = TaskData()
+        site_scenario.building = building_1
+        site_scenario_1a = site_scenario_1b = site_scenario
+
+        simulate_scenario.cache_clear()
+
+        res_1a = simulate_scenario(sim, site_name, site_scenario_1a)
+        assert simulate_scenario.cache_info().misses == 1
+
+        res_2a = simulate_scenario(sim, site_name, site_scenario_1b)
+        assert res_1a == res_2a
+        assert simulate_scenario.cache_info().hits == 1
+
+        site_scenario_2 = site_scenario
+        site_scenario_2.building.scalar_electrical_load = 2.0
+
+        res_2 = simulate_scenario(sim, site_name, site_scenario_2)
+        assert res_2 != res_1a
+        assert simulate_scenario.cache_info().hits == 1
+        assert simulate_scenario.cache_info().misses == 2
+        assert simulate_scenario.cache_info().currsize == 2
+
+
+class Test_combine_metric_values:
+    def test_good_inputs(self):
+        metric_values: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: 10,
+            Metric.carbon_balance_scope_1: 10,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: 10,
+        }
+        metric_values[Metric.payback_horizon] = calculate_payback_horizon(
+            capex=metric_values[Metric.capex], cost_balance=metric_values[Metric.cost_balance]
+        )
+        metric_values[Metric.carbon_cost] = calculate_carbon_cost(
+            capex=metric_values[Metric.capex], carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
+        )
+        res = combine_metric_values([metric_values])
+        assert res == metric_values
+        res = combine_metric_values([metric_values, metric_values])
+        assert all(obj in list(res.keys()) for obj in _METRICS)
+        assert res[Metric.annualised_cost] == metric_values[Metric.annualised_cost] * 2
+        assert res[Metric.capex] == metric_values[Metric.capex] * 2
+        assert res[Metric.carbon_balance_scope_1] == metric_values[Metric.carbon_balance_scope_1] * 2
+        assert res[Metric.carbon_balance_scope_2] == metric_values[Metric.carbon_balance_scope_2] * 2
+        assert res[Metric.cost_balance] == metric_values[Metric.cost_balance] * 2
+        assert res[Metric.payback_horizon] == calculate_payback_horizon(
+            capex=metric_values[Metric.capex] * 2, cost_balance=metric_values[Metric.cost_balance] * 2
+        )
+        assert res[Metric.carbon_cost] == calculate_carbon_cost(
+            capex=metric_values[Metric.capex] * 2,
+            carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1] * 2,
+        )
+
+    @pytest.mark.parametrize("carbon_balance_scope_1", [0, -10])
+    def test_null_and_negative_carbon_scope_1(self, carbon_balance_scope_1):
+        metric_values_1: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: 10,
+            Metric.carbon_balance_scope_1: carbon_balance_scope_1,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: 10,
+        }
+        metric_values_2: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: 10,
+            Metric.carbon_balance_scope_1: 10,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: 10,
+        }
+        res = combine_metric_values([metric_values_1, metric_values_1])
+        assert res[Metric.carbon_cost] == float(np.finfo(np.float32).max)
+        res = combine_metric_values([metric_values_1, metric_values_2])
+        assert res[Metric.carbon_cost] == calculate_carbon_cost(
+            capex=metric_values_1[Metric.capex] + metric_values_2[Metric.capex],
+            carbon_balance_scope_1=metric_values_1[Metric.carbon_balance_scope_1]
+            + metric_values_2[Metric.carbon_balance_scope_1],
+        )
+
+    @pytest.mark.parametrize("cost_balance", [0, -10])
+    def test_null_and_negative_cost_balance(self, cost_balance):
+        metric_values_1: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: 10,
+            Metric.carbon_balance_scope_1: 10,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: cost_balance,
+        }
+        metric_values_2: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: 10,
+            Metric.carbon_balance_scope_1: 10,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: 10,
+        }
+        res = combine_metric_values([metric_values_1, metric_values_1])
+        assert res[Metric.payback_horizon] == float(np.finfo(np.float32).max)
+        res = combine_metric_values([metric_values_1, metric_values_2])
+        assert res[Metric.payback_horizon] == calculate_payback_horizon(
+            capex=metric_values_1[Metric.capex] + metric_values_2[Metric.capex],
+            cost_balance=metric_values_1[Metric.cost_balance] + metric_values_2[Metric.cost_balance],
+        )
+
+    @pytest.mark.parametrize("capex", [0, -10])
+    def test_null_and_negative_capex(self, capex):
+        metric_values_1: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: capex,
+            Metric.carbon_balance_scope_1: 10,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: 10,
+        }
+        metric_values_2: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: 10,
+            Metric.carbon_balance_scope_1: 10,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: 10,
+        }
+        res = combine_metric_values([metric_values_1, metric_values_1])
+        assert res[Metric.payback_horizon] == 0
+        assert res[Metric.carbon_cost] == 0
+        res = combine_metric_values([metric_values_1, metric_values_2])
+        assert res[Metric.payback_horizon] == calculate_payback_horizon(
+            capex=metric_values_1[Metric.capex] + metric_values_2[Metric.capex],
+            cost_balance=metric_values_1[Metric.cost_balance] + metric_values_2[Metric.cost_balance],
+        )
+        assert res[Metric.carbon_cost] == calculate_carbon_cost(
+            capex=metric_values_1[Metric.capex] + metric_values_2[Metric.capex],
+            carbon_balance_scope_1=metric_values_1[Metric.carbon_balance_scope_1]
+            + metric_values_2[Metric.carbon_balance_scope_1],
+        )

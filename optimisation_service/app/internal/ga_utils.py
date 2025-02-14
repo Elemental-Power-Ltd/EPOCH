@@ -1,6 +1,7 @@
 import json
 import logging
 from copy import deepcopy
+from enum import Enum
 from typing import Any, Never
 
 import numpy as np
@@ -14,9 +15,10 @@ from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ign
 from app.internal.epoch_utils import TaskData
 from app.internal.heuristics.population_init import generate_building_initial_population
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
+from app.internal.site_range import count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
-from app.models.objectives import Objectives, ObjectivesDirection, ObjectiveValues
+from app.models.metrics import Metric, MetricDirection, MetricValues
 
 logger = logging.getLogger("default")
 
@@ -28,7 +30,7 @@ class ProblemInstance(ElementwiseProblem):
     Create Pymoo ProblemInstance from OptimiseProblem instance.
     """
 
-    def __init__(self, objectives: list[Objectives], constraints: Constraints, portfolio: list[Site]) -> None:
+    def __init__(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> None:
         """
         Define Problem objectives, constraints, parameter search space.
 
@@ -37,7 +39,7 @@ class ProblemInstance(ElementwiseProblem):
         Problem
             Problem to optimise
         """
-        self.sites = portfolio
+        self.portfolio = portfolio
         self.site_names = [site.site_data.site_id for site in portfolio]
         self.objectives = objectives
         self.constraints = constraints
@@ -46,61 +48,66 @@ class ProblemInstance(ElementwiseProblem):
         n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
 
         input_dirs = {}
-        self.base_attributes: dict[str, dict] = {}
+        self.default_parameters: dict[str, dict] = {}
         self.site_ranges: dict[str, dict] = {}
-        self.variable_attributes: dict[str, list] = {}
+        self.asset_parameters: dict[str, list] = {}
         self.indexes = {}
         num_attr_values = []
 
         n_var = 0
         for site in portfolio:
-            site_name = site.site_data.site_id
-            self.base_attributes[site_name] = {}
-            self.site_ranges[site_name] = {}
-            num_var_building = 0
-            self.variable_attributes[site_name] = []
+            site_range_dict = site.site_range.model_dump(exclude_none=True)
+            site_defaults = {}
+            site_defaults["config"] = site_range_dict["config"]
+            site_range_dict.pop("config")
 
-            for asset_name, asset in site.site_range.model_dump().items():
-                if asset_name == "config":
-                    self.base_attributes[site_name][asset_name] = asset
-                elif asset is not None:
-                    self.site_ranges[site_name][asset_name] = {}
-                    self.base_attributes[site_name][asset_name] = {}
-                    if asset_name == "renewables":
-                        if not asset["COMPONENT_IS_MANDATORY"]:
-                            self.base_attributes[site_name][asset_name]["COMPONENT_IS_MANDATORY"] = None
-                            self.site_ranges[site_name][asset_name]["COMPONENT_IS_MANDATORY"] = [0, 1]
-                            self.variable_attributes[site_name].append((asset_name, "COMPONENT_IS_MANDATORY"))
-                            num_attr_values.append(2)
-                            num_var_building += 1
-                        self.base_attributes[site_name][asset_name]["yield_scalars"] = []
-                        for i, attr_values in enumerate(asset["yield_scalars"]):
-                            self.site_ranges[site_name][asset_name][f"yield_scalars_{i}"] = attr_values
-                            self.variable_attributes[site_name].append((asset_name, f"yield_scalars_{i}"))
-                            num_attr_values.append(len(attr_values))
-                            num_var_building += 1
+            site_range: dict[str, dict[str, list[int | float | Enum]]] = {}
+            asset_parameters = []
+
+            if "renewables" in site_range_dict.keys():
+                site_defaults["renewables"] = {}
+                site_range["renewables"] = {}
+                if not site_range_dict["renewables"]["COMPONENT_IS_MANDATORY"]:
+                    site_defaults["renewables"]["COMPONENT_IS_MANDATORY"] = None
+                    site_range["renewables"]["COMPONENT_IS_MANDATORY"] = [0, 1]
+                    asset_parameters.append(("renewables", "COMPONENT_IS_MANDATORY"))
+                    num_attr_values.append(2)
+                site_defaults["renewables"]["yield_scalars"] = []
+                for i, attr_values in enumerate(site_range_dict["renewables"]["yield_scalars"]):
+                    site_range["renewables"][f"yield_scalars_{i}"] = attr_values
+                    asset_parameters.append(("renewables", f"yield_scalars_{i}"))
+                    num_attr_values.append(len(attr_values))
+                site_range_dict.pop("renewables")
+
+            for asset_name, asset in site_range_dict.items():
+                site_range[asset_name] = {}
+                site_defaults[asset_name] = {}
+                if not asset["COMPONENT_IS_MANDATORY"]:
+                    site_defaults[asset_name]["COMPONENT_IS_MANDATORY"] = None
+                    site_range[asset_name]["COMPONENT_IS_MANDATORY"] = [0, 1]
+                    asset_parameters.append((asset_name, "COMPONENT_IS_MANDATORY"))
+                    num_attr_values.append(2)
+                asset.pop("COMPONENT_IS_MANDATORY")
+                for attr_name, attr_values in asset.items():
+                    if len(attr_values) > 1:
+                        site_defaults[asset_name][attr_name] = None
+                        site_range[asset_name][attr_name] = attr_values
+                        asset_parameters.append((asset_name, attr_name))
+                        num_attr_values.append(len(attr_values))
                     else:
-                        for attr_name, attr_values in asset.items():
-                            if attr_name == "COMPONENT_IS_MANDATORY":
-                                if not attr_values:
-                                    self.base_attributes[site_name][asset_name]["COMPONENT_IS_MANDATORY"] = None
-                                    self.site_ranges[site_name][asset_name]["COMPONENT_IS_MANDATORY"] = [0, 1]
-                                    self.variable_attributes[site_name].append((asset_name, "COMPONENT_IS_MANDATORY"))
-                                    num_attr_values.append(2)
-                                    num_var_building += 1
-                            elif len(attr_values) > 1:
-                                self.base_attributes[site_name][asset_name][attr_name] = None
-                                self.site_ranges[site_name][asset_name][attr_name] = attr_values
-                                self.variable_attributes[site_name].append((asset_name, attr_name))
-                                num_attr_values.append(len(attr_values))
-                                num_var_building += 1
-                            else:
-                                self.base_attributes[site_name][asset_name][attr_name] = attr_values[0]
+                        site_defaults[asset_name][attr_name] = attr_values[0]
 
+            site_name = site.site_data.site_id
+            self.asset_parameters[site_name] = asset_parameters
+            self.default_parameters[site_name] = site_defaults
+            self.site_ranges[site_name] = site_range
             # All variables are concatenated into a single list for the GA, this tracks each site's index range in that list
-            self.indexes[site_name] = (n_var, n_var + num_var_building)
+            n_parameters_to_optimise = count_parameters_to_optimise(site.site_range)
+            print(n_parameters_to_optimise)
+            self.indexes[site_name] = (n_var, n_var + n_parameters_to_optimise)
+            n_var += n_parameters_to_optimise
+
             input_dirs[site_name] = site._input_dir
-            n_var += num_var_building
 
         self.sim = PortfolioSimulator(input_dirs=input_dirs)
 
@@ -144,9 +151,9 @@ class ProblemInstance(ElementwiseProblem):
             A site scenario.
         """
         site_range = self.site_ranges[site_name]
-        site_scenario = deepcopy(self.base_attributes[site_name])
+        site_scenario = deepcopy(self.default_parameters[site_name])
         assets_to_pop = []
-        for (asset_name, attr_name), idx in zip(self.variable_attributes[site_name], x):
+        for (asset_name, attr_name), idx in zip(self.asset_parameters[site_name], x):
             if attr_name == "COMPONENT_IS_MANDATORY":
                 if site_range[asset_name][attr_name][idx] == 0:
                     assets_to_pop.append(asset_name)
@@ -176,48 +183,48 @@ class ProblemInstance(ElementwiseProblem):
         portfolio_pytd = {name: self.convert_solution(x, name) for name, x in x_dict.items()}
         return self.sim.simulate_portfolio(portfolio_pytd)
 
-    def apply_directions(self, objective_values: ObjectiveValues) -> ObjectiveValues:
+    def apply_directions(self, metric_values: MetricValues) -> MetricValues:
         """
-        Applies objective optimisation direction to objective values.
-        Multiplies objective values of objectives that need to be maximised by -1.
+        Applies metric optimisation direction to metric values.
+        Multiplies metric values of metrics that need to be maximised by -1.
 
         Parameters
         ----------
-        objective_values
-            Dictionary of objective names and objective values.
+        metric_values
+            Dictionary of metric names and metric values.
 
         Returns
         -------
-        objective_values
-            Dictionary of objective names and objective values with directions applied.
+        metric_values
+            Dictionary of metric names and metric values with directions applied.
         """
-        for objective in objective_values.keys():
-            objective_values[objective] *= ObjectivesDirection[objective]
-        return objective_values
+        for metric in metric_values.keys():
+            metric_values[metric] *= MetricDirection[metric]
+        return metric_values
 
-    def calculate_infeasibility(self, objective_values: ObjectiveValues) -> list[float]:
+    def calculate_infeasibility(self, metric_values: MetricValues) -> list[float]:
         """
-        Calculate the infeasibility of objective values given the problem's portfolio constraints.
+        Calculate the infeasibility of metric values given the problem's portfolio constraints.
 
         Parameters
         ----------
-        objective_values
-            Dictionary of objective names and objective values.
+        metric_values
+            Dictionary of metric names and metric values.
 
         Returns
         -------
         excess
-            List of values that indicate by how much the objective values exceed the constraints.
+            List of values that indicate by how much the metric values exceed the constraints.
         """
         excess = []
-        for objective, bounds in self.constraints.items():
+        for metric, bounds in self.constraints.items():
             min_value = bounds.get("min", None)
             max_value = bounds.get("max", None)
 
             if min_value is not None:
-                excess.append(min_value - objective_values[objective])
+                excess.append(min_value - metric_values[metric])
             if max_value is not None:
-                excess.append(objective_values[objective] - max_value)
+                excess.append(metric_values[metric] - max_value)
         return excess
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[float]]) -> None:
@@ -236,8 +243,8 @@ class ProblemInstance(ElementwiseProblem):
         None
         """
         portfolio_solution = self.simulate_portfolio(x=x)
-        out["G"] = self.calculate_infeasibility(portfolio_solution.objective_values)
-        selected_results = {objective: portfolio_solution.objective_values[objective] for objective in self.objectives}
+        out["G"] = self.calculate_infeasibility(portfolio_solution.metric_values)
+        selected_results = {metric: portfolio_solution.metric_values[metric] for metric in self.objectives}
         directed_results = self.apply_directions(selected_results)
         out["F"] = list(directed_results.values())
 
@@ -249,7 +256,7 @@ class EstimateBasedSampling(Sampling):
 
     def _do(self, problem: ProblemInstance, n_samples: int, **kwargs):
         site_pops = []
-        for site in problem.sites:
+        for site in problem.portfolio:
             site_pops.append(  # noqa: PERF401
                 generate_building_initial_population(
                     site_range=site.site_range,

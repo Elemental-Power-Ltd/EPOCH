@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 class Building(BaseModel):
     COMPONENT_IS_MANDATORY: bool
-    scalar_heat_load: list[Annotated[int, Field(ge=0)]]
-    scalar_electrical_load: list[Annotated[int, Field(ge=0)]]
+    scalar_heat_load: list[Annotated[float, Field(ge=0)]]
+    scalar_electrical_load: list[Annotated[float, Field(ge=0)]]
     fabric_intervention_index: list[Annotated[int, Field(ge=0)]]
 
 
