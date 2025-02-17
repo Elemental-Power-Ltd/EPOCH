@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import UUID4, BaseModel
 
-from app.models.objectives import ObjectiveValues
+from app.models.metrics import MetricValues
 from app.models.site_data import RemoteMetaData, SiteMetaData
 
 
@@ -24,7 +24,7 @@ class ResultReproConfig(BaseModel):
 
 
 class FullResult(BaseModel):
-    objectives: ObjectiveValues
+    objectives: MetricValues
     report_data: dict[str, list[float]]
 
     # TODO - this needs other info like the start_date and timestep_hours

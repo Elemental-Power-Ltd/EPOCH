@@ -1,7 +1,7 @@
 from enum import IntEnum, StrEnum
 
 
-class Objectives(StrEnum):
+class Metric(StrEnum):
     carbon_balance_scope_1 = "carbon_balance_scope_1"
     carbon_balance_scope_2 = "carbon_balance_scope_2"
     cost_balance = "cost_balance"
@@ -11,18 +11,23 @@ class Objectives(StrEnum):
     carbon_cost = "carbon_cost"
 
 
-_OBJECTIVES = [
-    Objectives.carbon_balance_scope_1,
-    Objectives.carbon_balance_scope_2,
-    Objectives.capex,
-    Objectives.cost_balance,
-    Objectives.annualised_cost,
-    Objectives.payback_horizon,
-    Objectives.carbon_cost,
+_EPOCH_NATIVE_METRICS = [
+    Metric.carbon_balance_scope_1,
+    Metric.carbon_balance_scope_2,
+    Metric.capex,
+    Metric.cost_balance,
+    Metric.annualised_cost,
+    Metric.payback_horizon,
 ]
 
+_SERVICE_NATIVE_METRICS = [
+    Metric.carbon_cost,
+]
 
-class ObjectivesDirection(IntEnum):
+_METRICS = _EPOCH_NATIVE_METRICS + _SERVICE_NATIVE_METRICS
+
+
+class MetricDirection(IntEnum):
     carbon_balance_scope_1 = -1
     carbon_balance_scope_2 = -1
     cost_balance = -1
@@ -32,4 +37,4 @@ class ObjectivesDirection(IntEnum):
     carbon_cost = 1
 
 
-ObjectiveValues = dict[Objectives, int | float]
+MetricValues = dict[Metric, int | float]

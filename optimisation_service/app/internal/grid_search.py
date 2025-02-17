@@ -16,10 +16,10 @@ import pandas as pd
 from paretoset import paretoset  # type: ignore
 
 from app.internal.epoch_utils import TaskData
-from app.internal.portfolio_simulator import combine_objective_values
+from app.internal.portfolio_simulator import combine_metric_values
 from app.models.constraints import Constraints
 from app.models.core import Site
-from app.models.objectives import _OBJECTIVES, Objectives, ObjectivesDirection
+from app.models.metrics import _METRICS, Metric, MetricDirection
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
 
 from ..models.algorithms import Algorithm
@@ -48,7 +48,7 @@ class GridSearch(Algorithm):
         """
         self.keep_degenerate = keep_degenerate
 
-    def run(self, objectives: list[Objectives], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
+    def run(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
         """
         Run grid search optimisation.
 
@@ -94,22 +94,22 @@ class GridSearch(Algorithm):
 
                 df_res = pd.read_csv(Path(output_dir, "ExhaustiveResults.csv"), encoding="cp1252", dtype=np.float32)
                 df_res = df_res.drop(columns=["Parameter index"])
-                df_res[Objectives.carbon_cost] = df_res[Objectives.capex] / df_res[Objectives.carbon_balance_scope_1]
+                df_res[Metric.carbon_cost] = df_res[Metric.capex] / df_res[Metric.carbon_balance_scope_1]
 
                 n_evals += len(df_res)
 
                 # Avoid maintaining all solutions from each building by keeping only the best solutions for each CAPEX.
                 if len(portfolio) > 1:  # Only required if there is more than 1 building.
-                    df_res = pareto_front_but_preserve(df_res, objectives, Objectives.capex)
+                    df_res = pareto_front_but_preserve(df_res, objectives, Metric.capex)
 
                 for objective, bounds in constraints.items():
                     min_value = bounds.get("min", -np.inf)
                     max_value = bounds.get("max", np.inf)
                     df_res = df_res[(df_res[objective] >= min_value) & (df_res[objective] <= max_value)]
 
-                scenarios_list: list[dict] = df_res.drop(columns=_OBJECTIVES).to_dict("records")
+                scenarios_list: list[dict] = df_res.drop(columns=_METRICS).to_dict("records")
                 scenarios = [TaskData.from_json(json.dumps(scenario)) for scenario in scenarios_list]
-                objective_values: list[dict] = df_res[_OBJECTIVES].to_dict("records")
+                objective_values: list[dict] = df_res[_METRICS].to_dict("records")
 
                 site_solutions[site.name] = [SiteSolution(*sol) for sol in zip(scenarios, objective_values)]  # type: ignore
 
@@ -119,12 +119,12 @@ class GridSearch(Algorithm):
 
 
 def pareto_optimise(
-    building_solutions_dict: dict[str, list[SiteSolution]], objectives: list[Objectives], constraints: Constraints
+    building_solutions_dict: dict[str, list[SiteSolution]], objectives: list[Metric], constraints: Constraints
 ) -> list[PortfolioSolution]:
     logger.debug(f"Number of Sites: {[len(scenario_list) for scenario_list in building_solutions_dict.values()]}")
     all_combinations = product(*building_solutions_dict.values())
-    objective_mask = [_OBJECTIVES.index(col) for col in objectives]
-    objective_direct = ["max" if ObjectivesDirection[objective] == -1 else "min" for objective in objectives]
+    objective_mask = [_METRICS.index(col) for col in objectives]
+    objective_direct = ["max" if MetricDirection[objective] == -1 else "min" for objective in objectives]
     pareto_optimal_subsets = []
     n = 0
     while True:
@@ -135,7 +135,7 @@ def pareto_optimise(
             subset_costs = []
             is_feasible = np.ones(len(subset), dtype=bool)
             for i, combination in enumerate(subset):
-                objective_values = combine_objective_values([building.objective_values for building in combination])
+                objective_values = combine_metric_values([building.objective_values for building in combination])
                 for objective, bounds in constraints.items():
                     min_value = bounds.get("min", None)
                     max_value = bounds.get("max", None)
@@ -150,10 +150,7 @@ def pareto_optimise(
             break
     reduced_set = np.vstack(pareto_optimal_subsets)
     costs = np.array(
-        [
-            list(combine_objective_values([site.objective_values for site in combination]).values())
-            for combination in reduced_set
-        ]
+        [list(combine_metric_values([site.objective_values for site in combination]).values()) for combination in reduced_set]
     )[:, objective_mask]
     is_pareto_efficient = paretoset(costs=costs, sense=objective_direct, distinct=True)
     front = reduced_set[is_pareto_efficient].tolist()
@@ -163,16 +160,16 @@ def pareto_optimise(
     for combination in front:
         solution_dict = dict(zip(site_names, combination))
         objective_values = [site.objective_values for site in combination]  # type: ignore
-        portfolio_objective_values = combine_objective_values(objective_values)  # type: ignore
+        portfolio_objective_values = combine_metric_values(objective_values)  # type: ignore
 
-        portfolio_solution = PortfolioSolution(scenario=solution_dict, objective_values=portfolio_objective_values)
+        portfolio_solution = PortfolioSolution(scenario=solution_dict, metric_values=portfolio_objective_values)
 
         portfolio_solutions.append(portfolio_solution)
 
     return portfolio_solutions
 
 
-def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Objectives], preserved_objective: Objectives) -> pd.DataFrame:
+def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Metric], preserved_objective: Metric) -> pd.DataFrame:
     """
     Find the optimal Pareto front while maintaining at least one solution for each value encountered of the preserved objective.
 
@@ -194,7 +191,7 @@ def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Objectives], pr
     optimal_res = []
     for _, group in grouped:
         obj_values = group[objectives]
-        objective_direct = ["max" if ObjectivesDirection[objective] == -1 else "min" for objective in objectives]
+        objective_direct = ["max" if MetricDirection[objective] == -1 else "min" for objective in objectives]
         pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
         optimal_res.append(group[pareto_efficient])
     return pd.concat(optimal_res)

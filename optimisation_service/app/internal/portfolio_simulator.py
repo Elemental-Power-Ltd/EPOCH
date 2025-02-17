@@ -5,7 +5,8 @@ from os import PathLike
 import numpy as np
 
 from app.internal.epoch_utils import Simulator, TaskData, convert_sim_result
-from app.models.objectives import Objectives, ObjectiveValues
+from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
+from app.models.metrics import Metric, MetricValues
 from app.models.result import PortfolioSolution, SiteSolution
 
 logger = logging.getLogger("default")
@@ -44,22 +45,22 @@ class PortfolioSimulator:
         -------
         PortfolioSolution
             solution: dictionary of buildings names and evaluated candidate building solutions.
-            objective_values: objective values of the portfolio.
+            metric_values: metric values of the portfolio.
         """
         site_scenarios = {}
-        objective_values_list = []
+        metric_values_list = []
         for name in portfolio_scenarios.keys():
             site_scenario = portfolio_scenarios[name]
             sim = self.sims[name]
             result = simulate_scenario(sim, name, site_scenario)
-            site_scenarios[name] = SiteSolution(scenario=site_scenario, objective_values=result)
-            objective_values_list.append(result)
-        objective_values = combine_objective_values(objective_values_list)
-        return PortfolioSolution(scenario=site_scenarios, objective_values=objective_values)
+            site_scenarios[name] = SiteSolution(scenario=site_scenario, metric_values=result)
+            metric_values_list.append(result)
+        metric_values = combine_metric_values(metric_values_list)
+        return PortfolioSolution(scenario=site_scenarios, metric_values=metric_values)
 
 
 @functools.lru_cache(maxsize=100000)
-def simulate_scenario(sim: Simulator, site_name: str, site_scenario: TaskData) -> ObjectiveValues:
+def simulate_scenario(sim: Simulator, site_name: str, site_scenario: TaskData) -> MetricValues:
     """
     Simulate scenario wrapper function to leverage caching of simulation results.
 
@@ -74,7 +75,7 @@ def simulate_scenario(sim: Simulator, site_name: str, site_scenario: TaskData) -
 
     Returns
     -------
-    ObjectiveValues
+    MetricValues
         Metrics of the simulation.
     """
     res = convert_sim_result(sim.simulate_scenario(site_scenario))
@@ -83,48 +84,36 @@ def simulate_scenario(sim: Simulator, site_name: str, site_scenario: TaskData) -
     return res
 
 
-def combine_objective_values(objective_values_list: list[ObjectiveValues]) -> ObjectiveValues:
+def combine_metric_values(metric_values_list: list[MetricValues]) -> MetricValues:
     """
-    Combine a list of objective values into a single list of objective values.
-    Most objectives can be summed, but some require more complex functions.
+    Combine a list of metric values into a single list of metric values.
+    Most metrics can be summed, but some require more complex functions.
 
     Parameters
     ----------
-    objective_values_list
-        List of objective value dictionaries.
+    metric_values_list
+        List of metric value dictionaries.
 
     Returns
     -------
-    objective_values
-        Dictionary of objective values.
+    metric_values
+        Dictionary of metric values.
     """
-    objective_values = ObjectiveValues()
+    metric_values = MetricValues()
 
-    for objective in [
-        Objectives.annualised_cost,
-        Objectives.capex,
-        Objectives.carbon_balance_scope_1,
-        Objectives.carbon_balance_scope_2,
-        Objectives.cost_balance,
+    for metric in [
+        Metric.annualised_cost,
+        Metric.capex,
+        Metric.carbon_balance_scope_1,
+        Metric.carbon_balance_scope_2,
+        Metric.cost_balance,
     ]:
-        objective_values[objective] = sum(obj_vals[objective] for obj_vals in objective_values_list)
+        metric_values[metric] = sum(obj_vals[metric] for obj_vals in metric_values_list)
 
-    if objective_values[Objectives.capex] > 0:
-        if objective_values[Objectives.cost_balance] > 0:
-            objective_values[Objectives.payback_horizon] = (
-                objective_values[Objectives.capex] / objective_values[Objectives.cost_balance]
-            )
-        else:
-            objective_values[Objectives.payback_horizon] = float(np.finfo(np.float32).max)
-
-        if objective_values[Objectives.carbon_balance_scope_1] > 0:
-            objective_values[Objectives.carbon_cost] = objective_values[Objectives.capex] / (
-                objective_values[Objectives.carbon_balance_scope_1] * 20 / 1000
-            )
-        else:
-            objective_values[Objectives.carbon_cost] = float(np.finfo(np.float32).max)
-
-    else:
-        objective_values[Objectives.payback_horizon] = 0
-        objective_values[Objectives.carbon_cost] = 0
-    return objective_values
+    metric_values[Metric.payback_horizon] = calculate_payback_horizon(
+        capex=metric_values[Metric.capex], cost_balance=metric_values[Metric.cost_balance]
+    )
+    metric_values[Metric.carbon_cost] = calculate_carbon_cost(
+        capex=metric_values[Metric.capex], carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
+    )
+    return metric_values

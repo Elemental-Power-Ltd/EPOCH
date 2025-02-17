@@ -13,7 +13,7 @@ from app.routers.optimise import process_results
 
 
 @pytest.mark.requires_epoch
-def test_submit_portfolio_task(client: TestClient, default_task: Task) -> None:
+def test_submit_portfolio_task(client: TestClient, result_tmp_path: Path, default_task: Task) -> None:
     """
     Test /submit-portfolio-task endpoint.
     """
@@ -21,7 +21,7 @@ def test_submit_portfolio_task(client: TestClient, default_task: Task) -> None:
     assert response.status_code == 200, response.text
     while str(default_task.task_id) in client.post("/queue-status").json()["queue"]:
         time.sleep(1)
-    assert os.path.isfile(Path("tests", "data", "temp", f"R_{default_task.task_id}.json"))
+    assert os.path.isfile(Path(result_tmp_path, f"{default_task.task_id}.json"))
 
 
 def test_process_results(default_task: Task, dummy_optimisation_result: OptimisationResult) -> None:

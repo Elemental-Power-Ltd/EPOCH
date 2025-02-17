@@ -22,24 +22,24 @@ class Config:
     capex_limit: float
 
 class Building:
-    scalar_heat_load: str
-    scalar_electrical_load: str
+    scalar_heat_load: float
+    scalar_electrical_load: float
     fabric_intervention_index: int
 
 class DataCentre:
-    maximum_load: str
-    hotroom_temp: str
+    maximum_load: float
+    hotroom_temp: float
 
 class DomesticHotWater:
-    cylinder_volume: str
+    cylinder_volume: float
 
 class ElectricVehicles:
-    flexible_load_ratio: str
+    flexible_load_ratio: float
     small_chargers: int
     fast_chargers: int
     rapid_chargers: int
     ultra_chargers: int
-    scalar_electrical_load: str
+    scalar_electrical_load: float
 
 class BatteryMode(Enum):
     CONSUME = "CONSUME"

@@ -61,6 +61,7 @@ class IQueue(asyncio.Queue):
             Next task in queue.
         """
         task, data_manager = await super().get()
+        logger.info(f"{task.task_id} retrieved from queue.")
         assert self.q[task.task_id].state == task_state.QUEUED or self.q[task.task_id].STATE == task_state.CANCELLED
         if self.q[task.task_id].state == task_state.QUEUED:
             self.q[task.task_id].state = task_state.RUNNING

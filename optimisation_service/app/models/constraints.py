@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import NotRequired, TypedDict
 
-from app.models.objectives import Objectives
+from app.models.metrics import Metric
 
 
 class Bounds(TypedDict):
@@ -9,4 +9,4 @@ class Bounds(TypedDict):
     max: NotRequired[int | float]
 
 
-Constraints = Mapping[Objectives, Bounds]
+Constraints = Mapping[Metric, Bounds]

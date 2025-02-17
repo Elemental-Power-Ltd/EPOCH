@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 
 from app.models.constraints import Constraints
-from app.models.objectives import Objectives
+from app.models.metrics import Metric
 from app.models.optimisers import GridSearchOptimiser, NSGA2Optmiser
 from app.models.site_data import SiteMetaData
 from app.models.site_range import SiteRange
@@ -27,7 +27,7 @@ class Site(BaseModel):
 
 class EndpointTask(Site):
     optimiser: NSGA2Optmiser | GridSearchOptimiser = Field(description="Optimiser name and hyperparameters.")
-    objectives: list[Objectives] = Field(examples=[["carbon_cost"]], description="List of objectives to optimise for.")
+    objectives: list[Metric] = Field(examples=[["carbon_cost"]], description="List of objectives to optimise for.")
     created_at: AwareDatetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
@@ -41,16 +41,14 @@ class EndpointTask(Site):
 class Task(BaseModel):
     name: str = Field(description="Human readable name for a portfolio task, e.g. 'Demonstration v1'.")
     optimiser: NSGA2Optmiser | GridSearchOptimiser = Field(description="Optimiser name and hyperparameters.")
-    objectives: list[Objectives] = Field(
-        examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for."
-    )
+    objectives: list[Metric] = Field(examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for.")
     created_at: AwareDatetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
     portfolio: list[Site] = Field(description="List of buildings in portfolio.")
     portfolio_constraints: Constraints = Field(
-        description="Minimum or maximum bounds to apply on portfolio metrics.", examples=[{Objectives.capex: {"max": 500000}}]
+        description="Minimum or maximum bounds to apply on portfolio metrics.", examples=[{Metric.capex: {"max": 500000}}]
     )
     client_id: str = Field(
         examples=["demo"],
