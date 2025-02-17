@@ -105,7 +105,6 @@ class ProblemInstance(ElementwiseProblem):
             self.site_ranges[site_name] = site_range
             # All variables are concatenated into a single list for the GA, this tracks each site's index range in that list
             n_parameters_to_optimise = count_parameters_to_optimise(site.site_range)
-            print(n_parameters_to_optimise)
             self.indexes[site_name] = (n_var, n_var + n_parameters_to_optimise)
             n_var += n_parameters_to_optimise
 
@@ -310,13 +309,10 @@ class SimpleIntMutation(Mutation):
         assert len(prob) == n
 
         Xp = np.full(X.shape, np.inf)
-        print(f"xp: {Xp}")
         mut = np.random.random(X.shape) < prob[:, None]
         mut_pos = (np.random.random(mut.shape) < 0.5) * mut
-        print(f"mut_pos: {mut_pos}")
         mut_neg = mut * ~mut_pos
         Xp[:, :] = X
-        print(f"mut_neg: {mut_neg}")
         Xp += mut_pos.astype(int) + mut_neg.astype(int) * -1
 
         Xp = repair_random_init(Xp, X, xl, xu)
