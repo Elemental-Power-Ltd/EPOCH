@@ -2,8 +2,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from epoch_simulator import Building, Simulator
 
-from app.internal.epoch_utils import Building, Simulator, TaskData
+from app.internal.epoch_utils import TaskData
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.internal.portfolio_simulator import PortfolioSimulator, combine_metric_values, simulate_scenario
 from app.models.metrics import _METRICS, Metric, MetricValues
@@ -20,7 +21,6 @@ class TestPortfolioSimulator:
             }
         )
 
-    @pytest.mark.requires_epoch
     def test_simulate_portfolio(self) -> None:
         ps = PortfolioSimulator(
             input_dirs={
@@ -36,7 +36,6 @@ class TestPortfolioSimulator:
 
 
 class Test_simulate_scenario:
-    @pytest.mark.requires_epoch
     def test_good_inputs(self) -> None:
         site_name = "amcott_house"
         sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))
@@ -44,7 +43,6 @@ class Test_simulate_scenario:
         res = simulate_scenario(sim, site_name, site_scenario)
         assert all(obj in list(res.keys()) for obj in _METRICS)
 
-    @pytest.mark.requires_epoch
     def test_caching(self) -> None:
         site_name = "amcott_house"
         sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))

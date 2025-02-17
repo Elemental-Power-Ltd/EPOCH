@@ -6,10 +6,11 @@ import json
 import logging
 import tempfile
 
+from epoch_simulator import Simulator
 from fastapi import APIRouter, HTTPException
 
 from app.internal.datamanager import DataManagerDep
-from app.internal.epoch_utils import Simulator, TaskData, convert_sim_result
+from app.internal.epoch_utils import TaskData, convert_sim_result
 from app.models.simulate import FullResult, ReproduceSimulationRequest, RunSimulationRequest
 from app.models.site_data import DatasetTypeEnum, LocalMetaData
 

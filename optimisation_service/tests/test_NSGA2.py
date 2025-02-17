@@ -15,7 +15,6 @@ class TestNSGA2:
         NSGA2()
 
     @pytest.mark.slow
-    @pytest.mark.requires_epoch
     def test_run(
         self, default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]
     ) -> None:

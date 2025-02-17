@@ -3,7 +3,6 @@ import os
 import time
 from pathlib import Path
 
-import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
@@ -12,7 +11,6 @@ from app.models.result import OptimisationResult
 from app.routers.optimise import process_results
 
 
-@pytest.mark.requires_epoch
 def test_submit_portfolio_task(client: TestClient, result_tmp_path: Path, default_task: Task) -> None:
     """
     Test /submit-portfolio-task endpoint.

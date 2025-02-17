@@ -14,7 +14,6 @@ class TestGridSearch:
         """
         GridSearch(keep_degenerate=False)
 
-    @pytest.mark.requires_epoch
     @pytest.mark.skip(reason="Awaiting Grid Search fix.")
     def test_run(
         self, default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]
