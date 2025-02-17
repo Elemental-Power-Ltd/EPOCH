@@ -66,7 +66,7 @@ async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[Data
                 GROUP BY
                     cm.dataset_id
                 """,
-            site_id,
+            site_id.site_id,
         )
     return [
         DatasetEntry(
@@ -111,7 +111,7 @@ async def list_elec_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[Dat
                 AND site_id = $1
             GROUP BY
                 cm.dataset_id""",
-            site_id,
+            site_id.site_id,
         )
     return [
         DatasetEntry(

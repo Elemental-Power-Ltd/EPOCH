@@ -74,16 +74,16 @@ class TaskID(BaseModel):
     task_id: dataset_id_t
 
 
-class DatasetID(RootModel):
-    root: dataset_id_t = dataset_id_field
+class DatasetID(BaseModel):
+    dataset_id: dataset_id_t = dataset_id_field
 
 
-class ClientID(RootModel):
-    root: client_id_t = client_id_field
+class ClientID(BaseModel):
+    client_id: client_id_t = client_id_field
 
 
-class SiteID(RootModel):
-    root: site_id_t = site_id_field
+class SiteID(BaseModel):
+    site_id: site_id_t = site_id_field
 
 
 class EpochEntry(pydantic.BaseModel):
