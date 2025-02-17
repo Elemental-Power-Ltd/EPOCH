@@ -2,7 +2,7 @@ from app.internal.site_range import count_parameters_to_optimise
 from app.models.site_range import Building, Config, HeatPump, HeatSourceEnum, Renewables, SiteRange
 
 
-class Test_count_parameters_to_optimise:
+class TestCountParametersToOptimise:
     def test_COMPONENT_IS_MANDATORY(self):
         building = Building(
             COMPONENT_IS_MANDATORY=True, scalar_heat_load=[1.0], scalar_electrical_load=[1.0], fabric_intervention_index=[0]

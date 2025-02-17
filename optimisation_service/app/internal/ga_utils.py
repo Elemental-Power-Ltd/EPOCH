@@ -64,7 +64,9 @@ class ProblemInstance(ElementwiseProblem):
             site_range: dict[str, dict[str, list[int | float | Enum]]] = {}
             asset_parameters = []
 
-            if "renewables" in site_range_dict.keys():
+            # renewables are handled differently as the yield_scalars is a list of assets (ex: [[100, 200], [200, 300, 400]]).
+            # It needs to be unravelled into independent assets.
+            if "renewables" in site_range_dict:
                 site_defaults["renewables"] = {}
                 site_range["renewables"] = {}
                 if not site_range_dict["renewables"]["COMPONENT_IS_MANDATORY"]:

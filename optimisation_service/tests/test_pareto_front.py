@@ -9,7 +9,7 @@ from app.models.metrics import _METRICS, Metric, MetricDirection
 from .conftest import dummy_portfolio_results
 
 
-class Test_portfolio_pareto_front:
+class TestPortfolioParetoFront:
     @pytest.mark.parametrize(
         "objectives",
         [_METRICS] + [[metric] for metric in _METRICS],
