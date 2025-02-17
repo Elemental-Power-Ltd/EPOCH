@@ -1,11 +1,10 @@
 #pragma once
 
+#include <filesystem>
+
 #include <pybind11/pybind11.h>
 
-
 #include "../epoch_lib/Simulation/Simulate.hpp"
-#include "../epoch_lib/io/FileHandling.hpp"
-#include "../epoch_lib/io/FileConfig.hpp"
 
 
 
@@ -17,13 +16,22 @@
 
 class Simulator_py {
 public:
-	Simulator_py(const std::string& input_dir, const std::string& output_dir, const std::string& config_dir);
+	// We use static factory methods to instantiate the simulator
+	// (It's otherwise hard to distinguish whether a string argument is a filepath or a json string)
 
+	static Simulator_py from_file(const std::filesystem::path& path);
+	static Simulator_py from_json(const std::string& json_str);
+
+	/**
+	* Check if a given TaskData would be valid to run a simulation with the loaded SiteData
+	*/
+	bool isValid(const TaskData& taskData);
 	SimulationResult simulateScenario(const TaskData& taskData, bool fullReporting = false);
 
 private:
-	FileConfig mFileConfig;
-	HistoricalData mHistoricalData;
+	explicit Simulator_py(SiteData&& siteData);
+
+	SiteData mSiteData;
 	Simulator mSimulator;
 };
 

@@ -1,12 +1,12 @@
 #include "DataCentre.hpp"
 
-DataCentreWithASHP::DataCentreWithASHP(const HistoricalData& historicalData, const DataCentreData& dc, const HeatPumpData& hp):
-	DataCentre(historicalData),
-	mHeatPump(historicalData, hp, dc),
-	mTimesteps(historicalData.timesteps),
+DataCentreWithASHP::DataCentreWithASHP(const SiteData& siteData, const DataCentreData& dc, const HeatPumpData& hp):
+	DataCentre(siteData),
+	mHeatPump(siteData, hp, dc),
+	mTimesteps(siteData.timesteps),
 	mOptimisationMode(DataCentreOptimisationMode::Target),
 	// Max kWh per TS
-	mDataCentreMaxLoad_e(dc.maximum_load * historicalData.timestep_hours),
+	mDataCentreMaxLoad_e(dc.maximum_load * siteData.timestep_hours),
 	// Percentage of waste heat captured for ASHP
 	mHeatScalar(SCALAR_HEAT_YIELD),
 

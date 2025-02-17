@@ -1,29 +1,30 @@
 #include <cmath>
 
 #include "TaskComponents.hpp"
+#include "SiteData.hpp"
 #include "TempSum.hpp"
 
 class HotWaterCylinder {
 
 public:
 	// Constructor
-	HotWaterCylinder(const HistoricalData& historicalData, const DomesticHotWater& dhw, const HeatPumpData& heatPumpData, size_t tariff_index) :
+	HotWaterCylinder(const SiteData& siteData, const DomesticHotWater& dhw, const HeatPumpData& heatPumpData, size_t tariff_index) :
 
 		mCylinderVolume(dhw.cylinder_volume), // cylinder volume n litres
-		mTimesteps(historicalData.timesteps),
-		mTimestep_seconds(historicalData.timestep_hours * 60 * 60),// set up timestep seconds in constructor
-		mTimestep_hours(historicalData.timestep_hours),
+		mTimesteps(siteData.timesteps),
+		mTimestep_seconds(std::chrono::duration<float>(siteData.timestep_interval_s).count()),// set up timestep seconds in constructor
+		mTimestep_hours(siteData.timestep_hours),
 		mCapacity_h(calculate_Capacity_h()), // calculate tank energy capacity in constructor
-		mDHW_discharging(historicalData.DHWdemand_data),
+		mDHW_discharging(siteData.dhw_demand),
 		mCylinderStartSoC_h(calculate_Capacity_h()), // set start SoC to full for now
-		mDHW_charging(Eigen::VectorXf::Zero(historicalData.timesteps)),
-		mDHW_shortfall_e(Eigen::VectorXf::Zero(historicalData.timesteps)),
-		mDHW_standby_losses(Eigen::VectorXf::Zero(historicalData.timesteps)),
-		mDHW_SoC_history(Eigen::VectorXf::Zero(historicalData.timesteps)),
-		mDHW_ave_temperature(Eigen::VectorXf::Zero(historicalData.timesteps)),
-		mDHW_diverter_load_e(Eigen::VectorXf::Zero(historicalData.timesteps)),
-		mDHW_heat_pump_load_h(Eigen::VectorXf::Zero(historicalData.timesteps)),
-		mImport_tariff(historicalData.import_tariffs[tariff_index]),
+		mDHW_charging(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_shortfall_e(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_standby_losses(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_SoC_history(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_ave_temperature(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_diverter_load_e(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_heat_pump_load_h(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mImport_tariff(siteData.import_tariffs[tariff_index]),
 		mHeat_pump_power_h(heatPumpData.heat_power) // will need to calculate energy per timestep
 	{}
 

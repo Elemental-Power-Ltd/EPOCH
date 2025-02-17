@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 
 #include "TaskData.hpp"
+#include "SiteData.hpp"
 #include "../Definitions.hpp"
 #include "Costs/Capex.hpp"
 #include "Costs/Opex.hpp"
@@ -11,13 +12,13 @@ class Costs
 {
 public:
 
-	Costs(const HistoricalData& historicalData, const TaskData& taskData):
+	Costs(const SiteData& siteData, const TaskData& taskData):
 		mTaskData(taskData),
-		mTimesteps(historicalData.timesteps),
+		mTimesteps(siteData.timesteps),
 		mBaseline_elec_cost(0.0f),
 		mBaseline_fuel_cost(0.0f),
-		mBaselineImportTariff(historicalData.import_tariffs[0]),
-		mScenarioImportTariff(historicalData.import_tariffs[taskData.grid ? taskData.grid->tariff_index : 0]),
+		mBaselineImportTariff(siteData.import_tariffs[0]),
+		mScenarioImportTariff(siteData.import_tariffs[taskData.grid ? taskData.grid->tariff_index : 0]),
 		mScenario_import_cost(0.0f),
 		mScenario_fuel_cost(0.0f),
 		mScenario_export_cost(0.0f),

@@ -10,26 +10,19 @@
 class BasicPV
 {
 public:
-    BasicPV(const HistoricalData& historicalData, const Renewables& renewablesData) :
-        mTimesteps(historicalData.timesteps),
+    BasicPV(const SiteData& siteData, const Renewables& renewablesData) :
+        mTimesteps(siteData.timesteps),
         // FUTURE Set PVrect export limit (for clipping)
 
         mPVdcGen_e(Eigen::VectorXf::Zero(mTimesteps)),
         mPVacGen_e(Eigen::VectorXf::Zero(mTimesteps))
     {
-        // FIXME JW - this currently relies on there being exactly 4 entries
-        //  rework once historicalData is dynamic
+        // We should have already verified that solar_yields and yield_scalars are the same length
+        assert(siteData.solar_yields.size() == renewablesData.yield_scalars.size());
 
-        // use a vector that is exactly four long to prevent IOOB errors
-        std::vector<float> exactlyFourScalars(4, 0.0f);
-        for (size_t i = 0; i < 4 && i < renewablesData.yield_scalars.size(); i++) {
-            exactlyFourScalars[i] = renewablesData.yield_scalars[i];
+        for (size_t i = 0; i < siteData.solar_yields.size(); i++) {
+            mPVdcGen_e += siteData.solar_yields[i] * renewablesData.yield_scalars[i];
         }
-
-        mPVdcGen_e = historicalData.RGen_data_1 * exactlyFourScalars[0]
-                  + historicalData.RGen_data_2 * exactlyFourScalars[1]
-                  + historicalData.RGen_data_3 * exactlyFourScalars[2]
-                  + historicalData.RGen_data_4 * exactlyFourScalars[3];
     }
 
     void AllCalcs(TempSum& tempSum) {

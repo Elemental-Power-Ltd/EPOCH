@@ -6,15 +6,16 @@
 #include "ASHPambient.hpp"
 #include "TempSum.hpp"
 
+#include "SiteData.hpp"
 #include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
 class AmbientHeatPumpController
 {
 public:
-    AmbientHeatPumpController(const HistoricalData& historicalData, const HeatPumpData& hp) :
+    AmbientHeatPumpController(const SiteData& siteData, const HeatPumpData& hp) :
         // Initialise Persistent Values
-        mHeatPump(historicalData, hp)
+        mHeatPump(siteData, hp)
     {}
 
     void AllCalcs(TempSum& tempSum) {

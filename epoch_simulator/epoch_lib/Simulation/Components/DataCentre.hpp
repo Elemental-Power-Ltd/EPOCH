@@ -5,6 +5,7 @@
 
 #include "../ASHP.hpp"
 #include "../TempSum.hpp"
+#include "../SiteData.hpp"
 #include "../TaskComponents.hpp"
 #include "../../Definitions.hpp"
 
@@ -14,7 +15,7 @@ constexpr float SCALAR_HEAT_YIELD = 0.75f;
 class DataCentre {
 
 public:
-    DataCentre(const HistoricalData& historicalData) {};
+    DataCentre(const SiteData& siteData) {};
     virtual ~DataCentre() = default;
 
     virtual void AllCalcs(TempSum& tempSum) = 0;
@@ -26,7 +27,7 @@ public:
 
 class BasicDataCentre : public DataCentre {
 public:
-    BasicDataCentre(const HistoricalData& historicalData, const DataCentreData& dc);
+    BasicDataCentre(const SiteData& siteData, const DataCentreData& dc);
 
     void AllCalcs(TempSum& tempSum);
     void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t);
@@ -45,7 +46,7 @@ private:
 
 class DataCentreWithASHP : public DataCentre {
 public:
-    DataCentreWithASHP(const HistoricalData& historicalData, const DataCentreData& dc, const HeatPumpData& hp);
+    DataCentreWithASHP(const SiteData& siteData, const DataCentreData& dc, const HeatPumpData& hp);
 
     void AllCalcs(TempSum& tempSum);
     void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t);

@@ -4,7 +4,7 @@
 
 StandaloneSimualtor::StandaloneSimualtor() :
 	mFileConfig{"./InputData", "./OutputData", "./Config"},
-	mHistoricalData{ readHistoricalData(mFileConfig)},
+	mSiteData{ readSiteData(mFileConfig)},
 	mSimulator{}
 {
 }
@@ -15,5 +15,5 @@ SimulationResult StandaloneSimualtor::simulateScenario(const TaskData& taskData,
 		? SimulationType::FullReporting 
 		: SimulationType::ResultOnly;
 
-	return mSimulator.simulateScenario(mHistoricalData, taskData, simulationType);
+	return mSimulator.simulateScenario(mSiteData, taskData, simulationType);
 }

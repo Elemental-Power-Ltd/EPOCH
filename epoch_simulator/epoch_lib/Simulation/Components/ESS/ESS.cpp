@@ -1,10 +1,10 @@
 #include "ESS.hpp"
 
-BasicESS::BasicESS(const HistoricalData& historicalData, const EnergyStorageSystem& essData) :
-    ESS(historicalData),
-    mBattery(historicalData, essData),
+BasicESS::BasicESS(const SiteData& siteData, const EnergyStorageSystem& essData) :
+    ESS(siteData),
+    mBattery(siteData, essData),
     mESS_mode(essData.battery_mode),
-    mTimesteps(historicalData.timesteps),
+    mTimesteps(siteData.timesteps),
     mThresholdSoC(essData.capacity * 0.5f),
     mEnergyCalc(0.0f)
 {
@@ -97,8 +97,8 @@ void BasicESS::Report(ReportData& reportData) const
 }
 
 
-NullESS::NullESS(const HistoricalData& historicalData) 
-    : ESS(historicalData)
+NullESS::NullESS(const SiteData& siteData) 
+    : ESS(siteData)
 {
 }
 

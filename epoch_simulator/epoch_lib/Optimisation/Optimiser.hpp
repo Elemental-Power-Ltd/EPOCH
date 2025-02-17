@@ -13,6 +13,7 @@
 #include "../Definitions.hpp"
 #include "LeagueTable.hpp"
 #include "TaskGenerator.hpp"
+#include "../Simulation/SiteData.hpp"
 
 
 struct paramRange {
@@ -52,6 +53,6 @@ private:
 	const EpochConfig mConfig;
 	TimeProfile mTimeProfile;
 	std::unique_ptr<TaskGenerator> mTaskGenerator;
-	const HistoricalData mHistoricalData;
+	const SiteData mSiteData;
 };
 

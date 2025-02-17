@@ -3,16 +3,17 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
+#include "SiteData.hpp"
 #include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
 class Mop
 {
 public:
-	Mop(const HistoricalData& historicalData, const MopData& mop) :
-		mMOPmax_e(mop.maximum_load * historicalData.timestep_hours),
+	Mop(const SiteData& siteData, const MopData& mop) :
+		mMOPmax_e(mop.maximum_load * siteData.timestep_hours),
 		// Initilaise results data vectors with all values to zero
-		mMOP_e(Eigen::VectorXf::Zero(historicalData.timesteps))
+		mMOP_e(Eigen::VectorXf::Zero(siteData.timesteps))
 	{}
 
 	void AllCalcs(TempSum& tempSum) {

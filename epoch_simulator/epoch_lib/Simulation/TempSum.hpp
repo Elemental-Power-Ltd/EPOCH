@@ -3,18 +3,19 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "../Definitions.hpp"
+#include "SiteData.hpp"
+
 
 class TempSum
 {
 public:
-	TempSum(const HistoricalData& historicalData) :
+	TempSum(const SiteData& siteData) :
 		// Initilaise temporary vectors with all values to zero
-		Elec_e(Eigen::VectorXf::Zero(historicalData.timesteps)),	// Electricity energy balance
-		Heat_h(Eigen::VectorXf::Zero(historicalData.timesteps)), // Building heat energy balance
-		DHW_load_h(Eigen::VectorXf::Zero(historicalData.timesteps)),   // Hot water energy balance
-		Pool_h(Eigen::VectorXf::Zero(historicalData.timesteps)),   // Pool energy balance
-		Waste_h(Eigen::VectorXf::Zero(historicalData.timesteps))   // Waste heat
+		Elec_e(Eigen::VectorXf::Zero(siteData.timesteps)),	// Electricity energy balance
+		Heat_h(Eigen::VectorXf::Zero(siteData.timesteps)), // Building heat energy balance
+		DHW_load_h(Eigen::VectorXf::Zero(siteData.timesteps)),   // Hot water energy balance
+		Pool_h(Eigen::VectorXf::Zero(siteData.timesteps)),   // Pool energy balance
+		Waste_h(Eigen::VectorXf::Zero(siteData.timesteps))   // Waste heat
 	{}
 	// Public data, can be overwritten
 	year_TS Elec_e;

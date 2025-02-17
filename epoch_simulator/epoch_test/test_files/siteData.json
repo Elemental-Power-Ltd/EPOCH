@@ -1,0 +1,44 @@
+{
+  "start_ts": "2022-01-01T00:00:00.000Z",
+  "end_ts": "2023-01-01T00:00:00.000Z",
+  "timestep_interval_s": 1800,
+  "building_eload": [ 1, 2, 3, 4 ],
+  "building_hload": [ 1, 2, 3, 4 ],
+  "ev_eload": [ 1, 2, 3, 4 ],
+  "dhw_demand": [ 1, 2, 3, 4 ],
+  "air_temperature": [ 1, 2, 3, 4 ],
+  "grid_co2": [ 1, 2, 3, 4 ],
+
+  "solar_yields": [
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ]
+  ],
+
+  "import_tariffs": [
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ]
+  ],
+
+  "fabric_interventions": [
+    {
+      "cost": 10000,
+      "reduced_hload": [ 1, 2, 3, 4 ]
+    },
+    {
+      "cost": 250000,
+      "reduced_hload": [ 1, 2, 3, 4 ]
+    }
+  ],
+
+  "ashp_input_table": [
+    [ 3, 4 ],
+    [ 5, 6 ]
+  ],
+  "ashp_output_table": [
+    [ 3, 4 ],
+    [ 5, 6 ]
+  ]
+}

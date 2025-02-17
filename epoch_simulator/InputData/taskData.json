@@ -43,7 +43,7 @@
     "maximum_load": 300.0
   },
   "renewables": {
-    "yield_scalars": [ 599.2, 75.6, 60.48, 0.0 ]
+    "yield_scalars": [ 599.2, 75.6, 60.48]
   },
   "config": {
     "capex_limit": 2500000.0

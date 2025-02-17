@@ -1,12 +1,12 @@
 #include "DataCentre.hpp"
 
-BasicDataCentre::BasicDataCentre(const HistoricalData& historicalData, const DataCentreData& dc) :
-	DataCentre(historicalData),
-	mTimesteps(historicalData.timesteps),
+BasicDataCentre::BasicDataCentre(const SiteData& siteData, const DataCentreData& dc) :
+	DataCentre(siteData),
+	mTimesteps(siteData.timesteps),
 	// Mode: 1=Target, 2=Price, 3=Carbon
 	mOptimisationMode(1),
 	// Max kWh per TS
-	mDataCentreMaxLoad_e(dc.maximum_load * historicalData.timestep_hours),
+	mDataCentreMaxLoad_e(dc.maximum_load * siteData.timestep_hours),
 
 	mTargetLoad_e(Eigen::VectorXf::Zero(mTimesteps)),
 	mActualLoad_e(Eigen::VectorXf::Zero(mTimesteps))

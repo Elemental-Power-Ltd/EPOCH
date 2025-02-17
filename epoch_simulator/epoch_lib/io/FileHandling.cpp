@@ -1,18 +1,22 @@
 #include "FileHandling.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <regex>
-#include <string>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
+#include <date/date.h>
 #include <spdlog/spdlog.h>
 
 #include "../Definitions.hpp"
 #include "../Exceptions.hpp"
 #include "EnumToString.hpp"
+#include "SiteDataJson.hpp"
 
 // Define macros to simplify creating the mapping for each struct member
 #define OUT_MEMBER_MAPPING_FLOAT(member) {#member, [](const OutputValues& s) -> float { return s.member; }, nullptr}
@@ -40,189 +44,6 @@ OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_UINT64(scenario_index),
 	OUT_MEMBER_MAPPING_UINT64(num_scenarios), OUT_MEMBER_MAPPING_FLOAT(est_hours), OUT_MEMBER_MAPPING_FLOAT(est_seconds)
 };
-
-std::vector<float> readCSVColumn(const std::filesystem::path& filename, int column, bool skipHeader) {
-	std::ifstream file(filename);
-	std::vector<float> columnValues;
-	std::string line;
-
-	if (!file.is_open()) {
-		throw FileReadException(filename.filename().string());
-	}
-
-	if (skipHeader) {
-		// Ignore the first line
-		std::getline(file, line);
-	}
-
-	while (std::getline(file, line)) {
-
-		// Check if the line contains only commas (and possibly whitespaces), which indicates the end of the file
-		if (std::all_of(line.begin(), line.end(), [](char c) { return c == ',' || std::isspace(c); })) {
-			break;
-		}
-
-		std::stringstream ss(line);
-		std::string cell;
-		std::vector<std::string> row;
-
-		// Parse each cell in the row
-		while (std::getline(ss, cell, ',')) {
-			row.emplace_back(cell);
-		}
-
-		// If the row ends with a comma, add an empty string to the row (signifying an empty column)
-		if (line.back() == ',') {
-			row.emplace_back("");
-		}
-
-		// Convert the value from the specified column to float and store it in the vector
-		size_t column_1 = column - 1;
-
-		if (row.size() <= column_1) {
-			spdlog::error("Insufficient columns at line {}", line);
-			throw FileReadException(filename.filename().string());
-		}
-
-		if (row[column_1] == "") {
-			// treat missing values as 0
-			columnValues.emplace_back(0.0f);
-		}
-		else {
-			try {
-				float val = std::stof(row[column_1]);
-				columnValues.emplace_back(val);
-			}
-			catch (const std::exception& e) {
-				spdlog::error("Failed to parse float in line {} ({})", line, e.what());
-				throw FileReadException(filename.filename().string());
-			}
-		}
-	}
-
-	return columnValues;
-}
-
-// Read a column from a CSV file, ignoring the first entry
-std::vector<float> readCSVColumnAndSkipHeader(const std::filesystem::path& filename, int column)
-{
-	return readCSVColumn(filename, column, true);
-}
-
-// Read a column from a CSV file, including the first entry
-std::vector<float> readCSVColumnWithoutSkip(const std::filesystem::path& filename, int column)
-{
-	return readCSVColumn(filename, column, false);
-}
-
-std::vector<std::vector<float>> readCSVAsTable(const std::filesystem::path& filename) {
-	std::vector<std::vector<float>> table{};
-
-	std::ifstream file(filename);
-	std::string line;
-
-	// Check if the file is open
-	if (!file.is_open()) {
-		throw FileReadException(filename.filename().string());
-	}
-
-	// Read file line by line
-	while (std::getline(file, line)) {
-		std::vector<float> rowData;
-		std::stringstream ss(line);
-		std::string cell;
-
-		// Parse the line into double values
-		while (std::getline(ss, cell, ',')) {
-			rowData.push_back(std::stof(cell));
-		}
-
-		table.emplace_back(rowData);
-	}
-	file.close();
-	return table;
-}
-
-// Function to read a specific row from a CSV file
-std::vector<float> readCSVrow(const std::filesystem::path& filename, int row) {
-	std::ifstream file(filename);
-	std::vector<float> rowData;
-	std::string line;
-	int currentRow = 0;
-
-	// Check if the file is open
-	if (!file.is_open()) {
-		throw FileReadException(filename.filename().string());
-	}
-
-	// Read file line by line
-	while (std::getline(file, line)) {
-		if (currentRow == row) {
-			std::stringstream ss(line);
-			std::string cell;
-
-			// Parse the line into double values
-			while (std::getline(ss, cell, ',')) {
-				rowData.push_back(std::stof(cell));
-			}
-
-			break; // Stop reading after the desired row is found
-		}
-		currentRow++;
-	}
-
-	file.close();
-	return rowData;
-}
-
-/**
-* Count the number of columns based on the number of entries in the header
-*/
-size_t countColumns(const std::filesystem::path& filename) {
-	std::ifstream file(filename);
-	std::string line;
-
-	if (!file.is_open()) {
-		throw FileReadException(filename.filename().string());
-	}
-
-	// Read the header line to determine the number of columns
-	std::getline(file, line);
-	std::stringstream headerStream(line);
-	std::vector<std::string> headers;
-	std::string headerCell;
-
-	while (std::getline(headerStream, headerCell, ',')) {
-		headers.emplace_back(headerCell);
-	}
-
-	return headers.size();
-}
-
-
-
-std::vector<year_TS> readImportTariffs(const std::filesystem::path& filename) {
-	int totalColumns = static_cast<int>(countColumns(filename));
-
-	// the tariffs will always start from the 4th column for now
-	constexpr int START_COLUMN = 4;
-	std::vector<std::vector<float>> columns{};
-
-	// readCSVColumn uses 1-based indexing so we need to run to totalColumns + 1
-	for (int i = START_COLUMN; i < totalColumns + 1; ++i) {
-		auto col = readCSVColumn(filename, i, true);
-		columns.emplace_back(col);
-	}
-
-	std::vector<year_TS> tariffs{};
-	for (const auto& col : columns) {
-		tariffs.emplace_back(toEigen(col));
-	}
-
-	return tariffs;
-}
-
-
 
 
 void printVector(const std::vector<float>& vec) {
@@ -585,97 +406,23 @@ nlohmann::json readJsonFromFile(std::filesystem::path filepath)
 	}
 }
 
-const HistoricalData readHistoricalData(const FileConfig& fileConfig)
-{
-	std::filesystem::path eloadFilepath = fileConfig.getEloadFilepath();
-
-	//read the electric load data
-	std::vector<float> hotel_eload_data = readCSVColumnAndSkipHeader(eloadFilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> ev_eload_data = readCSVColumnAndSkipHeader(eloadFilepath, 5); // read the column of the CSV data and store in vector data
-
-	//read the heat load data
-	std::filesystem::path hloadFilepath = fileConfig.getHloadFilepath();
-	std::vector<float> heatload_data = readCSVColumnAndSkipHeader(hloadFilepath, 4); // read the column of the CSV data and store in vector data
-	
-	//read the renewable generation data
-	std::filesystem::path rgenFilepath = fileConfig.getRgenFilepath();
-	std::vector<float> RGen_data_1 = readCSVColumnAndSkipHeader(rgenFilepath, 4); // read the column of the CSV data and store in vector data
-	std::vector<float> RGen_data_2 = readCSVColumnAndSkipHeader(rgenFilepath, 5);
-	std::vector<float> RGen_data_3 = readCSVColumnAndSkipHeader(rgenFilepath, 6);
-	std::vector<float> RGen_data_4 = readCSVColumnAndSkipHeader(rgenFilepath, 7);
-
-	//read in the air temperature data
-	std::filesystem::path airtempFilepath = fileConfig.getAirtempFilepath();
-	std::vector<float> airtemp_data = readCSVColumnAndSkipHeader(airtempFilepath, 4);
-
-	//read in the GridCO2 data
-	std::filesystem::path gridCO2Filepath = fileConfig.getGridCO2Filepath();
-	std::vector<float> gridCO2_data = readCSVColumnAndSkipHeader(gridCO2Filepath, 4);
-
-	//read in the DWH demand data
-	std::filesystem::path DHWloadFilepath = fileConfig.getDHWloadFilepath();
-	std::vector<float> DHWload_data = readCSVColumnAndSkipHeader(DHWloadFilepath, 4); // read the column of the CSV data and store in vector data
-
-	// determine and the number of timesteps and check that all of the timeseries are equal in length
-	size_t timesteps = hotel_eload_data.size();
-	if (
-		ev_eload_data.size() != timesteps ||
-		heatload_data.size() != timesteps ||
-		RGen_data_1.size() != timesteps ||
-		RGen_data_2.size() != timesteps ||
-		RGen_data_3.size() != timesteps ||
-		RGen_data_4.size() != timesteps ||
-		airtemp_data.size() != timesteps ||
-		gridCO2_data.size() != timesteps ||
-		DHWload_data.size() != timesteps
-		) {
-		throw EpochBaseException("Time series differ in length");
-	}
-
-	// FIXME for now the time interval is always 0.5 hours (half an hour)
-	constexpr float TIMESTEP_HOURS = 0.5f;
-
-	// read in the import tariffs
-
-	// TODO - make this a function and dynamic length
-	std::filesystem::path importtariffFilepath = fileConfig.getImporttariffFilepath();
-	std::vector<year_TS> tariffs = readImportTariffs(importtariffFilepath);
-	for (const auto& tariff : tariffs) {
-		if (tariff.size() != static_cast<Eigen::Index>(timesteps)) {
-			throw EpochBaseException("Tariffs have the wrong length");
-		}
-	}
-	if (tariffs.size() == 0) {
-		throw EpochBaseException("No tariffs provided");
-	}
-
-
-	//read in the ASHP data
-	std::filesystem::path ASHPinputFilepath = fileConfig.getASHPinputFilepath();
-	std::vector<std::vector<float>> ASHPinputtable = readCSVAsTable(ASHPinputFilepath);
-
-	std::filesystem::path ASHPoutputFilepath = fileConfig.getASHPoutputFilepath();
-	std::vector<std::vector<float>> ASHPoutputtable = readCSVAsTable(ASHPoutputFilepath);
-
-	
-	return {
-		TIMESTEP_HOURS,
-		timesteps,
-		toEigen(hotel_eload_data),
-		toEigen(ev_eload_data),
-		toEigen(heatload_data),
-		toEigen(RGen_data_1),
-		toEigen(RGen_data_2),
-		toEigen(RGen_data_3),
-		toEigen(RGen_data_4),
-		toEigen(airtemp_data),
-		toEigen(gridCO2_data),
-		toEigen(DHWload_data),
-		tariffs,
-		toEigen(ASHPinputtable),
-		toEigen(ASHPoutputtable)
-	};
+/**
+* read a SiteData.json file from the path specified within a FileConfig
+*/
+const SiteData readSiteData(const FileConfig& fileConfig) {
+	auto p = fileConfig.getSiteDataFilepath();
+	return readSiteData(p);
 }
+
+/**
+* read a SiteData.json file from a directly specified filepath
+*/
+const SiteData readSiteData(const std::filesystem::path& siteDataPath) {
+	auto j = readJsonFromFile(siteDataPath);
+	SiteData sd = j.get<SiteData>();
+	return sd;
+}
+
 
 Eigen::VectorXf toEigen(const std::vector<float>& vec)
 {
@@ -689,6 +436,11 @@ Eigen::VectorXf toEigen(const std::vector<float>& vec)
 }
 
 Eigen::MatrixXf toEigen(const std::vector<std::vector<float>>& mat) {
+	if (mat.size() == 0) {
+		// empty matrix
+		return {};
+	}
+
 	Eigen::MatrixXf eig = Eigen::MatrixXf(mat.size(), mat[0].size());
 
 	for (size_t i = 0; i < mat.size(); i++) {
@@ -700,4 +452,36 @@ Eigen::MatrixXf toEigen(const std::vector<std::vector<float>>& mat) {
 	return eig;
 }
 
+std::vector<float> toStdVec(const Eigen::VectorXf& vec) {
+	return std::vector<float>(vec.data(), vec.data() + vec.size());
+}
 
+
+std::vector<std::vector<float>> toStdVecOfVec(const Eigen::MatrixXf& mat) {
+	std::vector<std::vector<float>> result(static_cast<size_t>(mat.rows()));
+	for (size_t i = 0; i < static_cast<size_t>(mat.rows()); ++i) {
+		result[i].resize(static_cast<size_t>(mat.cols()));
+		for (size_t j = 0; j < static_cast<size_t>(mat.cols()); ++j) {
+			result[i][j] = mat(static_cast<Eigen::Index>(i), static_cast<Eigen::Index>(j));
+		}
+	}
+	return result;
+}
+
+std::string toIso8601(const std::chrono::system_clock::time_point& tp) {
+	return date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(tp));
+}
+
+std::chrono::system_clock::time_point fromIso8601(const std::string& isoStr) {
+	std::istringstream iss(isoStr);
+	date::sys_time<std::chrono::milliseconds> tp;
+
+	date::from_stream(iss, "%FT%TZ", tp);
+
+	if (iss.fail()) {
+		throw std::runtime_error("Failed to parse ISO 8601 string");
+	}
+
+	//automatically converted to system_clock::time_point on return
+	return tp;
+}

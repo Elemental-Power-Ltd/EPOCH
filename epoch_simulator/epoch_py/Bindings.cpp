@@ -3,6 +3,7 @@
 #include <format>
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl/filesystem.h>
 #include <sstream>
 
 #include "Simulate_py.hpp"
@@ -18,14 +19,12 @@ PYBIND11_MODULE(epoch_simulator, m) {
 	m.attr("__version__") = EPOCH_VERSION;
 
 	pybind11::class_<Simulator_py>(m, "Simulator")
-		.def(
-			pybind11::init<const std::string&, const std::string&, const std::string&>(),
-			pybind11::arg("inputDir") = std::string("./InputData"),
-			pybind11::arg("outputDir") = std::string("./OutputData"),
-			pybind11::arg("configDir") = std::string("./ConfigData"))
+		.def_static("from_file", &Simulator_py::from_file, pybind11::arg("filepath"))
+		.def_static("from_json", &Simulator_py::from_json, pybind11::arg("json_str"))
 		.def("simulate_scenario", &Simulator_py::simulateScenario,
 			pybind11::arg("taskData"),
-			pybind11::arg("fullReporting") = false);
+			pybind11::arg("fullReporting") = false)
+		.def("is_valid", &Simulator_py::isValid, pybind11::arg("taskData"));
 
 	pybind11::class_<TaskData>(m, "TaskData")
 		.def(pybind11::init<>())

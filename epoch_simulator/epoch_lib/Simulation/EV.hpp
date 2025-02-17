@@ -4,20 +4,21 @@
 #include <Eigen/Dense>
 
 #include "TaskComponents.hpp"
+#include "SiteData.hpp"
 #include "../Definitions.hpp"
 
 class BasicElectricVehicle
 {
 public:
-    BasicElectricVehicle(const HistoricalData& historicalData, const ElectricVehicles& evData) :
-        mTimesteps(historicalData.timesteps),
+    BasicElectricVehicle(const SiteData& siteData, const ElectricVehicles& evData) :
+        mTimesteps(siteData.timesteps),
         mFlexRatio(evData.flexible_load_ratio),
         mAvailableEnergy_e(0),
         // Initilaise data vectors with all values to zero
         mTargetLoad_e(Eigen::VectorXf::Zero(mTimesteps)),
         mActualLoad_e(Eigen::VectorXf::Zero(mTimesteps))
     {
-        mTargetLoad_e = historicalData.ev_eload_data * evData.scalar_electrical_load;
+        mTargetLoad_e = siteData.ev_eload * evData.scalar_electrical_load;
     }
 
     void AllCalcs(TempSum& tempSum) {

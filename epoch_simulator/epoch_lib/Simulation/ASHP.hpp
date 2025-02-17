@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 #include <algorithm>
 
+#include "SiteData.hpp"
 #include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 #include "ASHPLookup.hpp"
@@ -14,33 +15,33 @@
 class HotRoomHeatPump {
 
 public:
-	HotRoomHeatPump(const HistoricalData& historicalData, const HeatPumpData& hp, const DataCentreData& dc) :
+	HotRoomHeatPump(const SiteData& siteData, const HeatPumpData& hp, const DataCentreData& dc) :
 		// Initialise Persistent Values
 		DHW_OUT_TEMP(60),	// FUTURE: removed when taskData.ASHP_DHWtemp available
-		mASHPperfDHW(historicalData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
-		mASHPperfCH(historicalData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
-		mTimesteps(historicalData.timesteps),
-		mPowerScalar(historicalData.timestep_hours),
+		mASHPperfDHW(siteData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
+		mASHPperfCH(siteData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
+		mTimesteps(siteData.timesteps),
+		mPowerScalar(siteData.timestep_hours),
 		mHotTemp(dc.hotroom_temp),
 		mHeatpumpSuppliesDHW(true),	// FUTURE: read value from (new) taskData value or use ASHP_DHWtemp not zero
 		mHeatpumpSuppliesCentralHeating(true),		// FUTURE: read value from (new) taskData value or use ASHP_RadTemp not zero
-		mAmbientTemperature(historicalData.airtemp_data),	// Ambient Temperature
+		mAmbientTemperature(siteData.air_temperature),	// Ambient Temperature
 		mHeatPumpMax_h(1.0f),
 		mHeatPumpMax_e(1.0f),
 		mAvailHotHeatTemp_h(0.0f),
 		mMaxElec_e(0.0f),
 
 		// Initilaise results data vectors with all values to zero
-		mDHWload_e(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP electrical load
-		mDHWout_h(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP heat output
-		mCHload_e(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP electrical load
-		mCHout_h(Eigen::VectorXf::Zero(historicalData.timesteps)),		// ASHP heat output
-		mFreeHeat_h(Eigen::VectorXf::Zero(historicalData.timesteps)),		// ASHP heat from ambient
-		FreeHeatTemp_h(Eigen::VectorXf::Zero(historicalData.timesteps)),	// ASHP heat: temp value for calcs
-		mUsedHotHeat_h(Eigen::VectorXf::Zero(historicalData.timesteps))	// ASHP heat from Hotroom
+		mDHWload_e(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP electrical load
+		mDHWout_h(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP heat output
+		mCHload_e(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP electrical load
+		mCHout_h(Eigen::VectorXf::Zero(siteData.timesteps)),		// ASHP heat output
+		mFreeHeat_h(Eigen::VectorXf::Zero(siteData.timesteps)),		// ASHP heat from ambient
+		FreeHeatTemp_h(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP heat: temp value for calcs
+		mUsedHotHeat_h(Eigen::VectorXf::Zero(siteData.timesteps))	// ASHP heat from Hotroom
 
 	{
-		mResidualCapacity = Eigen::VectorXf::Constant(historicalData.timesteps, 1.0f);// Remaining heatpump capacity
+		mResidualCapacity = Eigen::VectorXf::Constant(siteData.timesteps, 1.0f);// Remaining heatpump capacity
 	}
 
 	float MaxElec(size_t timestep) {

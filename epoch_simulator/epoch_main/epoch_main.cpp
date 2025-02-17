@@ -7,6 +7,7 @@
 #include "../epoch_lib/Simulation/TaskData.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
 #include "../epoch_lib/io/TaskDataJson.hpp"
+#include "../epoch_lib/io/SiteDataJson.hpp"
 
 int main(int argc, char* argv[]) {
 	spdlog::info("Running Epoch version {}", EPOCH_VERSION);

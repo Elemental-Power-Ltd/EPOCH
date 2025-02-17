@@ -140,26 +140,6 @@ struct OutputValues {
 };
 
 
-struct HistoricalData {
-	float timestep_hours = 0.5;
-	size_t timesteps;
-
-	year_TS hotel_eload_data;
-	year_TS ev_eload_data;
-	year_TS heatload_data;
-	year_TS RGen_data_1;
-	year_TS RGen_data_2;
-	year_TS RGen_data_3;
-	year_TS RGen_data_4;
-	year_TS airtemp_data;
-	year_TS gridCO2_data;
-	year_TS DHWdemand_data;
-	std::vector<year_TS> import_tariffs;
-	Eigen::MatrixXf ASHPinputtable;
-	Eigen::MatrixXf ASHPoutputtable;
-};
-
-
 struct OutMemberMapping {
 	const char* name;
 	std::function<float(const OutputValues&)> getFloat;

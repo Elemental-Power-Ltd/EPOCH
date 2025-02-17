@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SiteData.hpp"
 #include "TaskComponents.hpp"
 #include "../Definitions.hpp"
 
@@ -16,19 +17,19 @@ struct HeatpumpValues {
 class ASHPLookup
 {
 public:
-    ASHPLookup(const HistoricalData& historicalData, const HeatPumpData& hp, float sendTemperature);
+    ASHPLookup(const SiteData& siteData, const HeatPumpData& hp, float sendTemperature);
 
     HeatpumpValues Lookup(float airTemp);
 
 private:
 
-    void precomputeLookupTable(const HistoricalData& historicalData, const HeatPumpData& hp, float sendTemp);
+    void precomputeLookupTable(const SiteData& siteData, const HeatPumpData& hp, float sendTemp);
 
-    float computeInput(const HistoricalData& historicalData, float sendTemp, float airTemp) const;
-    float computeOutput(const HistoricalData& historicalData, float sendTemp, float airTemp) const;
+    float computeInput(const SiteData& siteData, float sendTemp, float airTemp) const;
+    float computeOutput(const SiteData& siteData, float sendTemp, float airTemp) const;
 
-    int airTempToRowIndex(const HistoricalData& historicalData, float airTemp) const;
-    int sendTempToColIndex(const HistoricalData& historicalData, float sendTemp) const;
+    int airTempToRowIndex(const SiteData& siteData, float airTemp) const;
+    int sendTempToColIndex(const SiteData& siteData, float sendTemp) const;
 
     std::vector<float> mInputByDegree;
     std::vector<float> mOutputByDegree;

@@ -4,17 +4,18 @@
 #include <Eigen/Dense>
 
 #include "TaskComponents.hpp"
+#include "SiteData.hpp"
 #include "../Definitions.hpp"
 
 class Hotel {
 
 public:
-    Hotel(const HistoricalData& historicalData, const Building& buildingData) :
-        mTimesteps(historicalData.timesteps),	// Used in init & functions
+    Hotel(const SiteData& siteData, const Building& buildingData) :
+        mTimesteps(siteData.timesteps),	// Used in init & functions
         // Initilaise data vectors with all values to zero
-        mTargetLoad_e(historicalData.hotel_eload_data * buildingData.scalar_electrical_load),
-        mTargetHeat_h(historicalData.heatload_data * buildingData.scalar_heat_load),
-        mTargetDHW_h(historicalData.DHWdemand_data)
+        mTargetLoad_e(siteData.building_eload * buildingData.scalar_electrical_load),
+        mTargetHeat_h(siteData.building_hload * buildingData.scalar_heat_load),
+        mTargetDHW_h(siteData.dhw_demand)
 
         //TargetPool_h(Eigen::VectorXf::Zero(BattData.TS_max))
     {

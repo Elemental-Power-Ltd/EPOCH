@@ -15,7 +15,7 @@
 Optimiser::Optimiser(FileConfig fileConfig, EpochConfig config) :
 	mFileConfig(fileConfig),
 	mConfig(config),
-	mHistoricalData(readHistoricalData(mFileConfig))
+	mSiteData(readSiteData(mFileConfig))
 {
 }
 
@@ -44,7 +44,7 @@ OutputValues Optimiser::runOptimisation(nlohmann::json inputJson)
 			Simulator sim{};
 
 			while (mTaskGenerator->nextTask(taskWithIndex)) {
-				SimulationResult result = sim.simulateScenario(mHistoricalData, taskWithIndex.task);
+				SimulationResult result = sim.simulateScenario(mSiteData, taskWithIndex.task);
 				leagueTable.considerResult(result, taskWithIndex);
 				addTimeToProfiler(result.runtime);
 			}
@@ -169,7 +169,7 @@ ObjectiveResult Optimiser::reproduceResult(uint64_t paramIndex) const {
 
 	Simulator sim{};
 
-	SimulationResult simResult = sim.simulateScenario(mHistoricalData, taskData, SimulationType::ResultOnly);
+	SimulationResult simResult = sim.simulateScenario(mSiteData, taskData, SimulationType::ResultOnly);
 
 	return toObjectiveResult(simResult, taskData);
 }

@@ -5,13 +5,14 @@
 #include <algorithm>
 
 #include "../../TaskComponents.hpp"
+#include "../../SiteData.hpp"
 #include "../../../Definitions.hpp"
 #include "../../TempSum.hpp"
 #include "Battery.hpp"
 
 class ESS {
 public:
-    ESS(const HistoricalData& historicalData) {};
+    ESS(const SiteData& siteData) {};
     virtual ~ESS() = default;
 
     virtual void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t) = 0;
@@ -22,7 +23,7 @@ public:
 
 class BasicESS : public ESS {
 public:
-    BasicESS(const HistoricalData& historicalData, const EnergyStorageSystem& essData);
+    BasicESS(const SiteData& siteData, const EnergyStorageSystem& essData);
 
     void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t);
     float AvailDisch();
@@ -42,7 +43,7 @@ private:
 // The methods do nothing and return 0 so it appears to the code as if there is an unusable battery present
 class NullESS : public ESS {
 public:
-    NullESS(const HistoricalData& historicalData);
+    NullESS(const SiteData& siteData);
 
     void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t);
     float AvailDisch();

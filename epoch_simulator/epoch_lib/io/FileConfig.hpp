@@ -18,18 +18,10 @@ public:
         : mInputDir(inputDir),
         mOutputDir(outputDir),
         mConfigDir(configDir),
-        eloadFilename("CSVEload.csv"),
-        hloadFilename("CSVHload.csv"),
-        rgenFilename("CSVRGen.csv"),
-        airtempFilename("CSVAirtemp.csv"),
-        importtariffFilename("CSVImporttariff.csv"),
-        gridCO2Filename("CSVGridCO2.csv"),
-        DHWFilename("CSVDHWdemand.csv"),
-        ASHPinputFilename("CSVASHPinput.csv"),
-        ASHPoutputFilename("CSVASHPoutput.csv"),
       
         inputParameters("inputParameters.json"),
         taskData("taskData.json"),
+        siteData("siteData.json"),
         resultsFilename("AllResults.csv"),
         outputJsonFilename("outputParameters.json")
     {
@@ -49,44 +41,12 @@ public:
     // all files will be in one of the InputData, OutputData or ConfigData directories
     // These functions return the full paths to the desired file
 
-    std::filesystem::path getEloadFilepath() const {
-        return mInputDir / eloadFilename;
-    }
-
-    std::filesystem::path getHloadFilepath() const {
-        return mInputDir / hloadFilename;
-    }
-
-    std::filesystem::path getRgenFilepath() const {
-        return mInputDir / rgenFilename;
-    }
-
-    std::filesystem::path getAirtempFilepath() const {
-        return mInputDir / airtempFilename;
-    }
-
-    std::filesystem::path getImporttariffFilepath() const {
-        return mInputDir / importtariffFilename;
-    }
-
-    std::filesystem::path getDHWloadFilepath() const {
-        return mInputDir / DHWFilename;
-    }
-
-    std::filesystem::path getGridCO2Filepath() const {
-        return mInputDir / gridCO2Filename;
-    }
-
-    std::filesystem::path getASHPinputFilepath() const {
-        return mInputDir / ASHPinputFilename;
-    }
-
-    std::filesystem::path getASHPoutputFilepath() const {
-        return mInputDir / ASHPoutputFilename;
-    }
-
     std::filesystem::path getInputJsonFilepath() const {
         return mInputDir / inputParameters;
+    }
+
+    std::filesystem::path getSiteDataFilepath() const {
+        return mInputDir / siteData;
     }
 
     std::filesystem::path getTaskDataFilepath() const {
@@ -121,19 +81,9 @@ private:
     std::filesystem::path mConfigDir;
 
     // inputDir files
-    std::filesystem::path eloadFilename;
-    std::filesystem::path hloadFilename;
-    std::filesystem::path rgenFilename;
-
-    std::filesystem::path airtempFilename;
-    std::filesystem::path importtariffFilename;
-    std::filesystem::path gridCO2Filename;
-    std::filesystem::path DHWFilename;
-    std::filesystem::path ASHPinputFilename;
-    std::filesystem::path ASHPoutputFilename;
-
     std::filesystem::path inputParameters;
     std::filesystem::path taskData;
+    std::filesystem::path siteData;
 
     // outputDir files
     std::filesystem::path resultsFilename;

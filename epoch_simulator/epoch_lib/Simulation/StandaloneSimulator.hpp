@@ -2,6 +2,7 @@
 
 #include "Simulate.hpp"
 #include "TaskData.hpp"
+#include "SiteData.hpp"
 #include "../io/FileConfig.hpp"
 
 // This class is a thin wrapper around the Simulator class
@@ -15,6 +16,6 @@ public:
 
 private:
 	FileConfig mFileConfig;
-	HistoricalData mHistoricalData;
+	SiteData mSiteData;
 	Simulator mSimulator;
 };

@@ -20,6 +20,8 @@ add_library(Epoch_lib STATIC
 	"io/BufferedCSVWriter.cpp"
 	"io/BufferedCSVWriter.hpp"
 	"io/TaskDataJson.hpp"
+	"io/SiteDataJson.hpp"
+	"io/SiteDataJson.cpp"
 
 	"Simulation/ASHP.hpp"
 	"Simulation/ASHPambient.hpp"
@@ -44,6 +46,7 @@ add_library(Epoch_lib STATIC
 	"Simulation/StandaloneSimulator.hpp"
 	"Simulation/TaskComponents.hpp"
 	"Simulation/TaskData.hpp"
+	"Simulation/SiteData.hpp"
 	"Simulation/Components/ESS/ESS.cpp"
 	"Simulation/Costs/Capex.cpp"
 	"Simulation/Costs/Opex.cpp"
