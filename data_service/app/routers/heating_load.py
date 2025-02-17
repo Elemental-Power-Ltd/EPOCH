@@ -141,7 +141,7 @@ async def generate_heating_load(
             f"Got an empty dataset for {location} between {params.start_ts} and {params.end_ts}",
         )
 
-    is_monthly = (gas_df["end_ts"] - gas_df["start_ts"]).mean() > pd.Timedelta(days=7) # type: ignore
+    is_monthly = (gas_df["end_ts"] - gas_df["start_ts"]).mean() > pd.Timedelta(days=7)  # type: ignore
     if is_monthly:
         gas_df = MonthlyDataFrame(gas_df)
         gas_df["days"] = (gas_df["end_ts"] - gas_df["start_ts"]).dt.total_seconds() / pd.Timedelta(days=1).total_seconds()
