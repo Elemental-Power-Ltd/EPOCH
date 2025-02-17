@@ -20,6 +20,7 @@ class TestPortfolioSimulator:
             }
         )
 
+    @pytest.mark.requires_epoch
     def test_simulate_portfolio(self) -> None:
         ps = PortfolioSimulator(
             input_dirs={
