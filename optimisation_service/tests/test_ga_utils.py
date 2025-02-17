@@ -23,6 +23,7 @@ class TestProblemInstance:
         res = default_problem_instance.split_solution(x)
         assert [x == y for x, y in zip(splits, res)]
 
+    @pytest.mark.requires_epoch
     @pytest.mark.parametrize("x_value", [0, 1])
     def test_convert_solution(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
         for site in default_problem_instance.portfolio:
@@ -35,6 +36,7 @@ class TestProblemInstance:
                 else:
                     assert asset_name in td_dict.keys()
 
+    @pytest.mark.requires_epoch
     @pytest.mark.parametrize("x_value", [0, 1])
     def test_simulate_portfolio(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
         portfolio = default_problem_instance.portfolio

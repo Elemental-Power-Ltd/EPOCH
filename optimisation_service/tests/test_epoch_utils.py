@@ -1,7 +1,10 @@
 from pathlib import Path
 
+import pytest
+
 from app.internal.epoch_utils import (
     Building,
+    Config,
     DataCentre,
     DomesticHotWater,
     EnergyStorageSystem,
@@ -18,6 +21,7 @@ from app.models.metrics import _EPOCH_NATIVE_METRICS, _SERVICE_NATIVE_METRICS
 from .conftest import _DATA_PATH
 
 
+@pytest.mark.requires_epoch
 def test_convert_sim_result() -> None:
     td = TaskData()
     td.building = Building()
@@ -40,8 +44,10 @@ def test_convert_sim_result() -> None:
         assert metric in res
 
 
+@pytest.mark.requires_epoch
 def test_convert_TaskData_to_dictionary() -> None:
     td = TaskData()
+    td.config = Config()
     td.building = Building()
     td.grid = Grid()
     td.renewables = Renewables()

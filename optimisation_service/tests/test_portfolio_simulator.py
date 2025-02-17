@@ -35,6 +35,7 @@ class TestPortfolioSimulator:
 
 
 class Test_simulate_scenario:
+    @pytest.mark.requires_epoch
     def test_good_inputs(self) -> None:
         site_name = "amcott_house"
         sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))
@@ -42,6 +43,7 @@ class Test_simulate_scenario:
         res = simulate_scenario(sim, site_name, site_scenario)
         assert all(obj in list(res.keys()) for obj in _METRICS)
 
+    @pytest.mark.requires_epoch
     def test_caching(self) -> None:
         site_name = "amcott_house"
         sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))
