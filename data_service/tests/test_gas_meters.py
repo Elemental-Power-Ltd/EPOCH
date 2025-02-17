@@ -19,7 +19,11 @@ def gas_df() -> HHDataFrame:
     consumption = rng.uniform(1, 100, size=len(timestamps))
     hdd = rng.uniform(1, 20, size=len(timestamps))
 
-    return HHDataFrame(pd.DataFrame({"consumption": consumption, "hdd": hdd}, index=timestamps))
+    return HHDataFrame(
+        pd.DataFrame(
+            {"consumption": consumption, "hdd": hdd, "end_ts": timestamps + pd.Timedelta(minutes=30)}, index=timestamps
+        )
+    )
 
 
 @pytest.fixture
@@ -66,6 +70,7 @@ class TestHHGasToMonthly:
     def test_output_data(self, gas_df: HHDataFrame) -> None:
         """Test if the output dataframe contains valid data."""
         monthly_gas_df = hh_gas_to_monthly(gas_df)
+        print(monthly_gas_df.head())
         assert pytest.approx(monthly_gas_df["consumption"].sum()) == gas_df["consumption"].sum()
         assert pytest.approx(monthly_gas_df["days"].sum()) == len(gas_df) / 48
 

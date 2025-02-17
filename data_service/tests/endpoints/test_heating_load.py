@@ -43,8 +43,8 @@ class TestHeatingLoad:
 
         assert generated_metadata.json()["site_id"] == "demo_london"
         assert generated_metadata.json()["params"]["solar_gain"] >= 0
-        assert 0 <= generated_metadata.json()["params"]["r2_score"] < 1.0
-        assert 0 <= generated_metadata.json()["params"]["smoothing"] < 1.0
+        assert 0.8 <= generated_metadata.json()["params"]["r2_score"] < 1.0
+        assert 0 <= generated_metadata.json()["params"]["smoothing"] <= 1.0
         assert generated_metadata.json()["params"]["heating_kwh"] > 0
 
     @pytest.mark.asyncio

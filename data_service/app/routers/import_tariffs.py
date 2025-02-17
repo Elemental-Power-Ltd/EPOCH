@@ -274,7 +274,6 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             night_cost, day_cost = await get_day_and_night_rates(
                 tariff_name=underlying_tariff, region_code=region_code, client=http_client
             )
-            print(night_cost, day_cost)
             price_df = create_peak_tariff(timestamps, day_cost=day_cost, night_cost=day_cost * 0.49, peak_cost=day_cost * 0.5)
         elif params.tariff_name == SyntheticTariffEnum.Overnight:
             logger.info(f"Generating an Overnight tariff in {region_code} between {params.start_ts} and {params.end_ts}")
