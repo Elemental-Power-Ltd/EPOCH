@@ -73,7 +73,6 @@ class TestGetMultipleTariffs:
         )
         assert all_datasets_response.status_code == 200
         all_json = all_datasets_response.json()
-        print(all_json)
         assert sum(int(bool(all_json[key])) for key in DatasetTypeEnum) == 2
 
         get_datasets_response = await client.post(
