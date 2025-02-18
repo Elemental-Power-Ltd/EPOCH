@@ -42,7 +42,9 @@ PYBIND11_MODULE(epoch_simulator, m) {
 			nlohmann::json j = nlohmann::json::parse(json_str);
 			return j.get<TaskData>();
 		})
-		.def("__repr__", &taskDataToString);
+		.def("__repr__", &taskDataToString)
+		.def("__hash__", [](const TaskData& self){ return std::hash<TaskData>{}(self);})
+		.def("__eq__", &TaskData::operator==);
 
 	pybind11::class_<Building>(m, "Building")
 		.def(pybind11::init<>())

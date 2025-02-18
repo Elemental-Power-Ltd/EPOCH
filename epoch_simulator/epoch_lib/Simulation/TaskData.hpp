@@ -16,5 +16,38 @@ struct TaskData {
 	std::optional<MopData> mop;
 	std::optional<Renewables> renewables;
 	TaskConfig config;
+
+	bool operator==(const TaskData& other) const { 
+		return (
+			building == other.building &&
+			data_centre == other.data_centre &&
+			domestic_hot_water == other.domestic_hot_water &&
+			electric_vehicles == other.electric_vehicles &&
+			energy_storage_system == other.energy_storage_system &&
+			grid == other.grid &&
+			heat_pump == other.heat_pump &&
+			mop == other.mop &&
+			renewables == other.renewables);
+		}
 };
 
+template<>
+struct std::hash<TaskData>
+{
+    std::size_t operator()(const TaskData& td) const noexcept
+    {
+        std::size_t h = 0;
+		hash_combine(
+			h, 
+			td.building,
+			td.data_centre, 
+			td.domestic_hot_water, 
+			td.electric_vehicles,
+			td.energy_storage_system,
+			td.grid,
+			td.heat_pump,
+			td.mop,
+			td.renewables);
+        return h;
+    }
+};
