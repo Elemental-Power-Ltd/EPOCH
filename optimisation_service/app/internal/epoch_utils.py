@@ -25,15 +25,15 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
     ObjectiveValues
         Dictionary of objective values.
     """
-    objective_values = MetricValues()
-    for objective in _EPOCH_NATIVE_METRICS:
-        objective_values[objective] = getattr(sim_result, objective)
+    metric_values = MetricValues()
+    for metric in _EPOCH_NATIVE_METRICS:
+        metric_values[metric] = getattr(sim_result, metric)
 
-    objective_values[Metric.carbon_cost] = calculate_carbon_cost(
-        capex=objective_values[Metric.capex], carbon_balance_scope_1=objective_values[Metric.carbon_balance_scope_1]
+    metric_values[Metric.carbon_cost] = calculate_carbon_cost(
+        capex=metric_values[Metric.capex], carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
     )
 
-    return objective_values
+    return metric_values
 
 
 def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:

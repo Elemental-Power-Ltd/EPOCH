@@ -35,7 +35,7 @@ class TestPortfolioSimulator:
         assert all(obj in list(portfolio_solution.metric_values.keys()) for obj in _METRICS)
 
 
-class Test_simulate_scenario:
+class TestSimulateScenario:
     def test_good_inputs(self) -> None:
         site_name = "amcott_house"
         sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))
@@ -70,7 +70,7 @@ class Test_simulate_scenario:
         assert simulate_scenario.cache_info().currsize == 2
 
 
-class Test_combine_metric_values:
+class TestCombineMetricValues:
     def test_good_inputs(self):
         metric_values: MetricValues = {
             Metric.annualised_cost: 10,

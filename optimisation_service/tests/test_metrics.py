@@ -4,7 +4,7 @@ import pytest
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 
 
-class Test_calculate_carbon_cost:
+class TestCalculateCarbonCost:
     def test_good_inputs(self):
         res = calculate_carbon_cost(capex=10, carbon_balance_scope_1=10)
         assert res == 10 / (10 * 20 / 1000)
@@ -20,7 +20,7 @@ class Test_calculate_carbon_cost:
         assert res == 0
 
 
-class Test_calculate_calculate_payback_horizon:
+class TestCalculateCalculatePaybackHorizon:
     def test_good_inputs(self):
         res = calculate_payback_horizon(capex=10, cost_balance=10)
         assert res == 10 / 10

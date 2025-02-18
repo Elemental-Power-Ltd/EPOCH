@@ -13,6 +13,7 @@ from app.internal.datamanager import DataManagerDep
 from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2
+from app.internal.portfolio_simulator import simulate_scenario
 from app.models.core import (
     EndpointTask,
     OptimisationResultEntry,
@@ -151,6 +152,7 @@ async def process_requests(q: IQueue) -> None:
         except Exception:
             logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)
             pass
+        simulate_scenario.cache_clear()
         q.mark_task_done(task)
 
 
