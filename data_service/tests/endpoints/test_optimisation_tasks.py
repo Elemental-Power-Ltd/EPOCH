@@ -21,7 +21,6 @@ from app.models.optimisation import (
     TaskResult,
 )
 from app.models.site_manager import RemoteMetaData
-from app.models.site_range import Grid, SiteRange
 
 
 class TestOptimisationTaskDatabase:
@@ -37,17 +36,17 @@ class TestOptimisationTaskDatabase:
             portfolio_constraints={"capex": {"max": 1e5}},
             site_constraints={"demo_london": {"capex": {"min": 1000, "max": 9999}}},
             portfolio_range={
-                "demo_london": SiteRange(
-                    grid=Grid(
-                        COMPONENT_IS_MANDATORY=True,
-                        export_headroom=[0],
-                        grid_export=[0],
-                        grid_import=[0],
-                        import_headroom=[0],
-                        min_power_factor=[0],
-                        tariff_index=[0],
-                    )
-                )
+                "demo_london": {
+                    "grid": {
+                        "COMPONENT_IS_MANDATORY": True,
+                        "export_headroom": [0],
+                        "grid_export": [0],
+                        "grid_import": [0],
+                        "import_headroom": [0],
+                        "min_power_factor": [0],
+                        "tariff_index": [0],
+                    }
+                }
             },
             objectives=["capex", "carbon_balance"],
             input_data={
