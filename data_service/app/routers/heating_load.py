@@ -7,7 +7,6 @@ These generally use a combination of gas meters and external weather to perform 
 import asyncio
 import datetime
 import json
-import logging
 import uuid
 
 import numpy as np
@@ -105,7 +104,6 @@ async def generate_heating_load(
             SELECT
                 location,
                 s.site_id,
-                m.reading_type,
                 m.fuel_type
             FROM client_meters.metadata AS m
             LEFT JOIN client_info.site_info AS s
@@ -117,7 +115,7 @@ async def generate_heating_load(
         if res is None:
             raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
 
-        location, site_id, reading_type, fuel_type = res
+        location, site_id, fuel_type = res
         if location is None:
             raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
 
@@ -142,15 +140,13 @@ async def generate_heating_load(
             400,
             f"Got an empty dataset for {location} between {params.start_ts} and {params.end_ts}",
         )
-    if reading_type == "halfhourly":
-        logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location} so resampling.")
-        gas_df = hh_gas_to_monthly(HHDataFrame(gas_df))
-    elif reading_type in {"automatic", "manual"}:
-        logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location}.")
+
+    is_monthly = (gas_df["end_ts"] - gas_df["start_ts"]).mean() > pd.Timedelta(days=7)  # type: ignore
+    if is_monthly:
         gas_df = MonthlyDataFrame(gas_df)
         gas_df["days"] = (gas_df["end_ts"] - gas_df["start_ts"]).dt.total_seconds() / pd.Timedelta(days=1).total_seconds()
     else:
-        raise HTTPException(400, f"Unknown reading type {reading_type} for this dataset.")
+        gas_df = hh_gas_to_monthly(HHDataFrame(gas_df))
 
     if gas_df.shape[0] < 3:
         raise HTTPException(400, f"Dataset covered too little time: {gas_df.index.min()} to {gas_df.index.max()}")

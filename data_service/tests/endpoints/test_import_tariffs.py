@@ -315,7 +315,6 @@ class TestImportTariffs:
         )
         assert tariff_response.status_code == 200
         tariff_result = tariff_response.json()
-        # print(tariff_result)
         assert len(tariff_result) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
         assert all(not pd.isna(item["Tariff1"]) for item in tariff_result)

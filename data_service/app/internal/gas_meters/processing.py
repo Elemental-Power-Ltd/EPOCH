@@ -41,9 +41,9 @@ def fill_in_half_hourly(gas_df: HHDataFrame) -> HHDataFrame:
 
 def hh_gas_to_monthly(hh_gas_df: HHDataFrame) -> MonthlyDataFrame:
     """
-    Resample a half hourly gas dataframe to monthly for further analysis.
+    Resample a half hourly gas dataframe to weekly for further analysis.
 
-    We often want a monthly gas dataframe for regression purposes, as the half hourly
+    We often want a weekly gas dataframe for regression purposes, as the half hourly
     data can be too noisy. This does all the bookkeeping, including finding start
     and end periods and how long they are.
     Note that the returned start_ts and end_ts periods are not necessarily the same
@@ -61,15 +61,16 @@ def hh_gas_to_monthly(hh_gas_df: HHDataFrame) -> MonthlyDataFrame:
     """
     if "start_ts" not in hh_gas_df.columns:
         hh_gas_df["start_ts"] = hh_gas_df.index
-    monthly_gas_df = MonthlyDataFrame(hh_gas_df.resample(pd.tseries.offsets.MonthBegin()).sum(numeric_only=True))
 
-    # Select the end dates as either the end of the month, or the last reading we took
+    freq = pd.Timedelta(days=7)
+    monthly_gas_df = MonthlyDataFrame(hh_gas_df.resample(freq).sum(numeric_only=True))
+
+    # Select the end dates as either the end of the week, or the last reading we took
     # Similarly for start dates.
-    # TODO (2024-06-25 MHJB): make this work also for periods with missing data (split into sub-months?)
-    end_dates = hh_gas_df[["consumption"]].resample(pd.tseries.offsets.MonthEnd()).sum().index + pd.Timedelta(days=1)
+    end_dates = hh_gas_df[["consumption"]].resample(freq).sum().index + freq
     min_dates, max_dates = (
-        hh_gas_df.resample(pd.tseries.offsets.MonthBegin()).min()["start_ts"],
-        hh_gas_df.resample(pd.tseries.offsets.MonthBegin()).max()["start_ts"] + pd.Timedelta(minutes=30),
+        hh_gas_df.resample(freq).min()["start_ts"],
+        hh_gas_df.resample(freq).max()["end_ts"],
     )
     monthly_gas_df["start_ts"] = np.maximum(monthly_gas_df.index, min_dates)
     monthly_gas_df["end_ts"] = np.minimum(end_dates, max_dates)

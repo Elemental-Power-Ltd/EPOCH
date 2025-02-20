@@ -128,8 +128,7 @@ def tariff_to_new_timestamps(tariff_df: pd.DataFrame, date_range: pd.DatetimeInd
         ]
         for new_ts in all_offsets:
             if new_ts in tariff_df.index:
-                val = tariff_df.at[new_ts, "cost"]
-                return val
+                return tariff_df.at[new_ts, "cost"]
 
         raise ValueError(f"Could not find an offset for {ts} in {all_offsets} in {tariff_df.index}")
 

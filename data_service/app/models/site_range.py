@@ -41,6 +41,7 @@ class ElectricVehicles(BaseModel):
 
 class BatteryModeEnum(StrEnum):
     CONSUME = "CONSUME"
+    CONSUME_PLUS = "CONSUME_PLUS"
 
 
 class EnergyStorageSystem(BaseModel):
