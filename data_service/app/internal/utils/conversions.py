@@ -36,9 +36,9 @@ def mph_to_ms[T: (npt.NDArray[np.floating], float, pd.Series)](v: T) -> T:
     -------
         Speed in metres per second.
     """
-    _metres_per_mile = 1609
-    _seconds_per_hour = 60 * 60
-    return v * _metres_per_mile / _seconds_per_hour
+    METRES_PER_MILE = 1609
+    SECONDS_PER_HOUR = 60 * 60
+    return v * METRES_PER_MILE / SECONDS_PER_HOUR
 
 
 def m3_to_kwh[T: (npt.NDArray[np.floating], float, pd.Series)](vol: T, calorific_value: float = 38.0) -> T:

@@ -2,6 +2,7 @@
 
 # ruff: noqa: D101
 import datetime
+import math
 import uuid
 from enum import StrEnum
 from typing import Any
@@ -27,7 +28,7 @@ class SiteOptimisationResult(pydantic.BaseModel):
         description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
     )
     metric_carbon_balance_scope_1: float | None = pydantic.Field(
-        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, 3.14]
+        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, math.pi]
     )
     metric_carbon_balance_scope_2: float | None = pydantic.Field(
         description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
@@ -57,7 +58,9 @@ class PortfolioOptimisationResult(pydantic.BaseModel):
         + " used to link to SiteOptimisationResults."
     )
     metric_carbon_balance_scope_1: float | None = pydantic.Field(
-        description="Direct carbon emissions saved by this entire portfolio of scenarios.", default=None, examples=[None, 3.14]
+        description="Direct carbon emissions saved by this entire portfolio of scenarios.",
+        default=None,
+        examples=[None, math.pi],
     )
     metric_carbon_balance_scope_2: float | None = pydantic.Field(
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None

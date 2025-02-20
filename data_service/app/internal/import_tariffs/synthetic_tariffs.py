@@ -91,7 +91,7 @@ def create_peak_tariff(
         df.loc[is_cosy_mask, "cost"] = night_cost
 
     is_peak_mask = np.logical_and(
-        datetime.time(hour=16, minute=0) <=utc_times.time, utc_times.time < datetime.time(hour=19, minute=0)
+        datetime.time(hour=16, minute=0) <= utc_times.time, utc_times.time < datetime.time(hour=19, minute=0)
     )
     df.loc[is_peak_mask, "cost"] += peak_cost
     return df

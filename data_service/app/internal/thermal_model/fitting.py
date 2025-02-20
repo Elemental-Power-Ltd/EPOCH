@@ -216,7 +216,9 @@ def simulate_parameters(
     return sim_df
 
 
-def fit_to_gas_usage(gas_df: pd.DataFrame, weather_df: pd.DataFrame, elec_df: pd.DataFrame | None = None) -> dict[str, float]:
+def fit_to_gas_usage(
+    gas_df: pd.DataFrame, weather_df: pd.DataFrame, elec_df: pd.DataFrame | None = None, n_iter: int = 300
+) -> dict[str, float]:
     """
     Fit some building parameters to a gas consumption pattern.
 
@@ -260,7 +262,7 @@ def fit_to_gas_usage(gas_df: pd.DataFrame, weather_df: pd.DataFrame, elec_df: pd
         ),
         pbounds=pbounds,
     )
-    opt.maximize(init_points=50, n_iter=300)
+    opt.maximize(init_points=int(np.ceil(n_iter / 10)), n_iter=n_iter)
 
     assert opt.max is not None
     assert opt.max["params"] is not None

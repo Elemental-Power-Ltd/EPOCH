@@ -21,8 +21,8 @@ from .routers import (
     optimisation,
     renewables,
     site_manager,
-    weather,
     thermal_model,
+    weather,
 )
 
 start_time = datetime.datetime.now(tz=datetime.UTC)

@@ -244,7 +244,9 @@ async def get_meter_data(dataset_id: DatasetID, conn: DatabaseDep) -> list[GasDa
     list of records in the form `[{"start_ts": ..., "end_ts": ..., "consumption": ...}, ...]`
     """
     # TODO (2024-08-05 MHJB): make this return an EPOCH oriented object
-    fuel_type = await conn.fetchval("""SELECT fuel_type FROM client_meters.metadata WHERE dataset_id = $1""", dataset_id)
+    fuel_type = await conn.fetchval(
+        """SELECT fuel_type FROM client_meters.metadata WHERE dataset_id = $1""", dataset_id.dataset_id
+    )
     if not fuel_type:
         raise HTTPException(400, f"Dataset {dataset_id} not found in meter datasets. Could it be an ID for another type?")
     table_name = "gas_meters" if fuel_type == "gas" else "electricity_meters"
@@ -257,7 +259,7 @@ async def get_meter_data(dataset_id: DatasetID, conn: DatabaseDep) -> list[GasDa
         FROM client_meters.{table_name}
         WHERE dataset_id = $1
         ORDER BY start_ts ASC""",
-        dataset_id,
+        dataset_id.dataset_id,
     )
     if not res:
         raise HTTPException(400, f"Got an empty meter dataset for {dataset_id}.")

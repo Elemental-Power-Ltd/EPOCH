@@ -10,11 +10,10 @@ import logging
 import os
 import typing
 from collections.abc import AsyncGenerator, AsyncIterator
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Never
-
-from concurrent.futures import ProcessPoolExecutor
 
 import asyncpg
 import httpx
@@ -146,9 +145,14 @@ async def get_secrets_dependency() -> SecretDict:
     """Get the environment secrets, including API keys, from os environ, .env and files."""
     return get_secrets_environment()
 
+
 _PROCESS_POOL = ProcessPoolExecutor()
+
+
 async def get_process_pool() -> ProcessPoolExecutor:
+    """Dependency Injection for background process pools."""
     return _PROCESS_POOL
+
 
 SecretsDep = typing.Annotated[SecretDict, Depends(get_secrets_dependency)]
 DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
@@ -156,6 +160,7 @@ DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
 VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
 ProcessPoolDep = typing.Annotated[ProcessPoolExecutor, Depends(get_process_pool)]
+
 
 def find_model_path(base_dir: Path = Path(".")) -> Path:
     """

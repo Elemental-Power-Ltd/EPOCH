@@ -12,7 +12,7 @@ from enum import StrEnum
 from typing import Annotated, Any, Self
 
 import pydantic
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field
 
 dataset_id_t = Annotated[pydantic.UUID4, "String serialised UUID"]
 client_id_t = str
