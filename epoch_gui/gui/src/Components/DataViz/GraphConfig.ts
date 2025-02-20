@@ -19,11 +19,18 @@ export const color_map = {
     'MOP_load': '#81bf7a',  // Green -- 'Pool or U-Poly'
     'Grid_Export': '#a4a6a5', // Grey -- 'GridImp'
     'Actual_curtailed_export': '#ff0000', // Red 'Curtailed Export'
-    'DHW_load': '#ffA500' // Orange 'DHW load' (and tank discharge)
+    'DHW_load': '#ffA500', // Orange 'DHW load' (and tank discharge)
+
+    // ASHP data
+    'ASHP_elec_load': '#9FC131',
+    'ASHP_DHW_output': '#DBF227',
+    'ASHP_CH_output': '#D6D58E',
+    'ASHP_free_heat': '#005C53',
+    'ASHP_used_hotroom_heat': '#042940',
 }
 
 export const default_positive_stackbars = ['ESS_RTL', 'ESS_AuxLoad', 'Hotel_load', 'EV_actualload', 'Data_centre_actual_load',
-    'ESS_charge', 'MOP_load', 'Grid_Export', 'Actual_curtailed_export', 'DHW_load', 'DHW_charging']
+    'ESS_charge', 'MOP_load', 'Grid_Export', 'Actual_curtailed_export', 'DHW_load', 'DHW_charging', 'ASHP_elec_load',]
 
 export const default_negative_stackbars = ['Grid_Import','PVacGen','ESS_discharge']
 
