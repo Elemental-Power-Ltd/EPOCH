@@ -1,0 +1,36 @@
+{
+  "building": {
+    "scalar_heat_load": 1.0,
+    "scalar_electrical_load": 1.0,
+    "fabric_intervention_index": 0
+  },
+  "domestic_hot_water": {
+    "cylinder_volume": 2500.0
+  },
+  "energy_storage_system": {
+    "capacity": 800.0,
+    "charge_power": 300.0,
+    "discharge_power": 300.0,
+    "battery_mode": "CONSUME",
+    "initial_charge": 0.0
+  },
+  "grid": {
+    "export_headroom": 0.0,
+    "grid_export": 100.0,
+    "grid_import": 140.0,
+    "import_headroom": 0.4,
+    "min_power_factor": 0.95,
+    "tariff_index": 0
+  },
+  "heat_pump": {
+    "heat_power": 70.0,
+    "heat_source": "AMBIENT_AIR",
+    "send_temp": 70.0
+  },
+  "renewables": {
+    "yield_scalars": [ 599.2, 75.6, 60.48]
+  },
+  "config": {
+    "capex_limit": 2500000.0
+  }
+}

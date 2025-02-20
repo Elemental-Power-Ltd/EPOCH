@@ -17,6 +17,7 @@
 #include "../Exceptions.hpp"
 #include "EnumToString.hpp"
 #include "SiteDataJson.hpp"
+#include "TaskDataJson.hpp"
 
 // Define macros to simplify creating the mapping for each struct member
 #define OUT_MEMBER_MAPPING_FLOAT(member) {#member, [](const OutputValues& s) -> float { return s.member; }, nullptr}
@@ -423,6 +424,14 @@ const SiteData readSiteData(const std::filesystem::path& siteDataPath) {
 	return sd;
 }
 
+/**
+* read a TaskData.json file from a directly specified filepath
+*/
+const TaskData readTaskData(const std::filesystem::path& taskDataPath) {
+	auto j = readJsonFromFile(taskDataPath);
+	TaskData td = j.get<TaskData>();
+	return td;
+}
 
 Eigen::VectorXf toEigen(const std::vector<float>& vec)
 {

@@ -1,40 +1,88 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
-#include <fstream>
+#include <memory>
 
-#include "../epoch_lib/io/FileConfig.hpp"
-#include "../epoch_lib/Optimisation/Optimiser.hpp"
+#include "../epoch_lib/Simulation/Simulate.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
-#include "../epoch_lib/io/EpochConfig.hpp"
 
 namespace fs = std::filesystem;
 
-TEST(EpochFullRun, MatchesKnownOutput) {
-	FileConfig fileConfig = FileConfig{
-		"KnownInput", "OutputData", "Config"
-	};
+/**
+* These tests run a single simulation of EPOCH to compare against a previously computed result.
+* It is not expected that these tests will always stay the same 
+* as updates to the internal model will change the results
+* 
+* Instead, these results should provide a warning against unintended changes to the underlying logic.
+*/
+class EpochSimulationRun : public ::testing::Test {
+protected:
+	// put SiteData into a unique_ptr and use a test fixture so we only have to read it once
+	static std::unique_ptr<SiteData> mountSiteData;
 
-	ConfigHandler configHandler(fileConfig.getConfigDir());
-	Optimiser opt = Optimiser(fileConfig, configHandler.getConfig());
+	static void SetUpTestSuite() {
+		fs::path path{ "./test_files/siteData_MountHotel.json" };
+		mountSiteData = std::make_unique<SiteData>(readSiteData(path));
+	}
+};
 
-	// Run the Optimiser on known input
-	auto inputJson = readJsonFromFile(fileConfig.getInputJsonFilepath());
-	OutputValues testOutput = opt.runOptimisation(inputJson);
-	auto testJson = outputToJson(testOutput);
+std::unique_ptr<SiteData> EpochSimulationRun::mountSiteData = nullptr;
 
-	//// Load the known output
-	fs::path knownOutputFile = fs::path{ "KnownOutput" } / fs::path{ "knownOutput.json" };
-	auto knownJson = readJsonFromFile(knownOutputFile);
+TEST_F(EpochSimulationRun, EmptyTaskData) {
+	/**
+	* Test against a (near) empty TaskData
+	* That is one with a Building, Grid (and config) but no new components to be installed
+	*/
 
-	EXPECT_EQ(testJson["CAPEX"], knownJson["CAPEX"]);
+	TaskData task = readTaskData(fs::path{"./test_files/taskData_empty.json" });
 
-	EXPECT_EQ(testJson["annualised"], knownJson["annualised"]);
+	auto sim = Simulator();
 
-	EXPECT_EQ(testJson["scenario_cost_balance"], knownJson["scenario_cost_balance"]);
+	auto result = sim.simulateScenario(*mountSiteData, task);
 
-	EXPECT_EQ(testJson["payback_horizon"], knownJson["payback_horizon"]);
+	// We haven't installed anything, so we expect all of the results to be 0
+	EXPECT_FLOAT_EQ(result.project_CAPEX, 0);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 0);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, 0);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 0);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, 0);
+	EXPECT_FLOAT_EQ(result.total_annualised_cost, 0);
+}
 
-	// This is the scope 1 emissions
-	EXPECT_EQ(testJson["scenario_carbon_balance"], knownJson["scenario_carbon_balance"]);
+TEST_F(EpochSimulationRun, CommonTaskData) {
+	/**
+	* Test with a TaskData containing all of the common components for a scenario
+	* (Building, Grid, Solar Panels, ASHP, ESS, DHW)
+	* but none of the unusual ones
+	*/
+	TaskData task = readTaskData(fs::path{ "./test_files/taskData_common.json" });
+
+	auto sim = Simulator();
+
+	auto result = sim.simulateScenario(*mountSiteData, task);
+
+	EXPECT_FLOAT_EQ(result.project_CAPEX, 1238945.4f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 85420.227f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, 73841.875f);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 14127.625f);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, 87.696648f);
+	EXPECT_FLOAT_EQ(result.total_annualised_cost, 74830.258f);
+}
+
+TEST_F(EpochSimulationRun, FullTaskData) {
+	/**
+	* Test with a TaskData containing every component
+	*/
+	TaskData task = readTaskData(fs::path{ "./test_files/taskData_full.json" });
+
+	auto sim = Simulator();
+
+	auto result = sim.simulateScenario(*mountSiteData, task);
+
+	EXPECT_FLOAT_EQ(result.project_CAPEX, 1249445.4f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 135397.08f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, -8940.9922f);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 181001.09f);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, 6.9029713f);
+	EXPECT_FLOAT_EQ(result.total_annualised_cost, 75530.258f);
 }

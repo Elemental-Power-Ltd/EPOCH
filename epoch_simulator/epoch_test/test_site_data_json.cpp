@@ -121,7 +121,7 @@ TEST(SiteDataTest, RoundTrip)
 TEST(SiteDataTest, FromFile)
 {
     // This file contains {1,2,3,4} for each timeseries
-    auto p = std::filesystem::path("./test_files/siteData.json");
+    auto p = std::filesystem::path("./test_files/siteData_1234.json");
 
     auto sd = readSiteData(p);
 

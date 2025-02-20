@@ -86,10 +86,9 @@ void optimise(const FileConfig& fileConfig, const EpochConfig& config) {
 
 void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 	spdlog::info("Loading Simulator");
-	auto taskDataJson = readJsonFromFile("./InputData/taskData.json");
 
-	TaskData taskData = taskDataJson.get<TaskData>();
-
+	std::filesystem::path taskDataPath{ "./InputData/taskData.json" };
+	TaskData taskData = readTaskData(taskDataPath);
 
 	// TODO allow StandaloneSimulator to accept different file locations
 	StandaloneSimualtor simulator{};

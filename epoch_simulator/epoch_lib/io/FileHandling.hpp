@@ -27,6 +27,7 @@ nlohmann::json readJsonFromFile(std::filesystem::path filepath);
 
 const SiteData readSiteData(const FileConfig& fileConfig);
 const SiteData readSiteData(const std::filesystem::path& siteDataPath);
+const TaskData readTaskData(const std::filesystem::path& taskDataPath);
 
 Eigen::VectorXf toEigen(const std::vector<float>& vec);
 Eigen::MatrixXf toEigen(const std::vector<std::vector<float>>& mat);
