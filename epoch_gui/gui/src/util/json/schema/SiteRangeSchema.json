@@ -162,7 +162,7 @@
           "items": {
             "type": "string",
             "enum": [
-              "CONSUME"
+              "CONSUME", "CONSUME_PLUS"
             ]
           }
         },

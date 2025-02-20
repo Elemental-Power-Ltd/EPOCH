@@ -99,7 +99,7 @@
         },
         "battery_mode": {
           "type": "string",
-          "enum": ["CONSUME"]
+          "enum": ["CONSUME", "CONSUME_PLUS"]
         },
         "initial_charge": {
           "type": "number",

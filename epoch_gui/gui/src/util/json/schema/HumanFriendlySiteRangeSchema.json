@@ -63,7 +63,7 @@
         "discharge_power": {"$ref": "#/definitions/paramRangeFloat"},
         "battery_mode": {
           "type": "array",
-          "items": {"type": "string", "enum": ["CONSUME"]}
+          "items": {"type": "string", "enum": ["CONSUME", "CONSUME_PLUS"]}
         },
         "initial_charge": {"$ref": "#/definitions/paramRangeFloat"}
       },
