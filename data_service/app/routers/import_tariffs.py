@@ -393,7 +393,7 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
 
     Returns
     -------
-    *epoch_tariff_entry*
+    EpochTariffEntry
         Tariff entries in an EPOCH friendly format.
     """
     dfs = []
