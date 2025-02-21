@@ -155,6 +155,6 @@ def get_secrets_environment(
             # logger.warning(f"Could not find GivEnergy JWT in environ, dotenv or {ge_fpath}")
 
     if overrides is not None:
-        total_environ = total_environ | overrides
+        total_environ |= overrides
 
     return SecretDict(total_environ)

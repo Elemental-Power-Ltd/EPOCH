@@ -3,11 +3,11 @@
 import datetime
 import json
 import uuid
+from collections.abc import Awaitable
 
 import httpx
 import pytest
 
-from typing import Awaitable
 from app.internal.gas_meters import parse_half_hourly
 
 

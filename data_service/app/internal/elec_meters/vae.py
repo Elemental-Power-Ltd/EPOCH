@@ -1,7 +1,7 @@
 """Model definition for a variational autoencoder for time series data."""
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class VAE(nn.Module):  # noqa: D101

@@ -50,7 +50,7 @@ def draw_heat_network(
     cmap = plt.get_cmap("coolwarm")
     norm = mpl.colors.Normalize(vmin=15, vmax=21, clip=True)
     COLOUR_DICT: dict[BuildingElement, str] = defaultdict(lambda: "#4376b1")
-    COLOUR_DICT = COLOUR_DICT | {
+    COLOUR_DICT |= {
         BuildingElement.WallEast: "#ba7950",
         BuildingElement.WallWest: "#ba7950",
         BuildingElement.WallSouth: "#ba7950",

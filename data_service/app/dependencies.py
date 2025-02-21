@@ -69,6 +69,7 @@ class Database:
 
         try:
             if self.dsn is not None:
+                # Use this for the local tests, where the DSN is provided by the testing framework
                 self.pool = await asyncpg.create_pool(dsn=self.dsn)
             else:
                 self.pool = await asyncpg.create_pool(

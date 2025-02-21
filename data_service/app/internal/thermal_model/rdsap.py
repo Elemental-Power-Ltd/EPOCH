@@ -355,7 +355,7 @@ def estimate_interior_area(
         internal_perimeter = external_perimeter - 8.0 * wall_width
         return external_area - wall_width * internal_perimeter - wall_width**2
 
-    if building_type == BuildingTypeEnum.SemiDetached or building_type == BuildingTypeEnum.EndTerrace:
+    if building_type in {BuildingTypeEnum.SemiDetached, BuildingTypeEnum.EndTerrace}:
         if external_perimeter**2 > 8.0 * external_area:
             internal_perimeter = external_perimeter - 8.0 * wall_width
             a = 0.5 * (external_perimeter - np.sqrt(external_perimeter**2 - 8 * external_area))
@@ -443,7 +443,7 @@ def estimate_window_area(
             return 0.1435 * total_floor_area + 0.403
         raise ValueError(f"Invalid building age band for window size estimation {building_age_band}")
 
-    if building_type == BuildingTypeEnum.Flat or building_type == BuildingTypeEnum.Maisonette:
+    if building_type in {BuildingTypeEnum.Flat, BuildingTypeEnum.Maisonette}:
         return estimate_window_area_flat(total_floor_area, building_age_band)
 
     return estimate_window_area_detached(total_floor_area, building_age_band)

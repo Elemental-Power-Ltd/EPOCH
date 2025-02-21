@@ -55,7 +55,7 @@ async def get_pvgis_optima(
         if client is not None:
             res = await client.get(base_url, params=params)
         else:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient() as client:  # noqa: PLR1704
                 res = await client.get(base_url, params=params)
     except httpx.TimeoutException as ex:
         raise HTTPException(400, f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
@@ -144,7 +144,7 @@ async def get_pvgis_data(
     if client is not None:
         req = await client.get(base_url, params=params)
     else:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient() as client:  # noqa: PLR1704
             req = await client.get(base_url, params=params)
 
     try:

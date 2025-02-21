@@ -5,8 +5,8 @@ import pathlib
 import fastdtw  # type: ignore
 import pandas as pd
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 from torch.utils.data import Dataset
 
 from ..utils.bank_holidays import get_bank_holidays_sync

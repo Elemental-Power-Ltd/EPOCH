@@ -35,7 +35,7 @@ class TestApplySavings:
         coefs = copy.deepcopy(default_coefs)
         mutated = apply_fabric_interventions(coefs, [InterventionEnum.Loft])
         assert mutated != coefs
-        assert coefs == coefs
+        assert coefs == default_coefs
 
     def test_can_apply_many_in_sequence(self, default_coefs: BaitAndModelCoefs) -> None:
         """Test that we can apply multiple interventions after one another."""

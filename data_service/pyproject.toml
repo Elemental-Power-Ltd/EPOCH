@@ -41,6 +41,7 @@ select = [
     "RUF", # ruff
     "FAST", # fastAPI
     "D", # pydocstyle
+    "PLR",
     #"NPY",
     #"ICN",
     #"LOG",
@@ -54,6 +55,14 @@ ignore = [
     "PT011", # pytest raises too broad
     "RUF029", # declared async but doesn't use
     "TRY003", # Avoid specifying long messages outside the exception class
+    "PLR2004", # magic value used in comparison
+    "PLR6301", # could be a function, class method, ... (complains about tests)
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0913",  # too many arguments
+    "PLR0914", # too many local variables
+    "PLR0915", # too many statements
+    "PLR0917", # too many positional arguments
 ]
 
 [tool.ruff.lint.flake8-pytest-style]

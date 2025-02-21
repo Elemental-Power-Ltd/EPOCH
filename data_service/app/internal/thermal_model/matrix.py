@@ -231,7 +231,7 @@ def network_to_gains_vector(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], np.
                 pass
 
     for u, v, e_attrs in hm.edges(data=True):
-        if BuildingElement.ExternalAir in (u, v):
+        if BuildingElement.ExternalAir in {u, v}:
             u_attrs, v_attrs = hm.nodes[u], hm.nodes[v]
 
             # We don't track the energy change for the external air here,

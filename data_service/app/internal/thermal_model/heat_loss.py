@@ -159,7 +159,7 @@ def calculate_maximum_static_heat_loss_breakdown(
         edge = graph.get_edge_data(BuildingElement.InternalAir, v)
         v_attrs = graph.nodes[v]
         for link in edge.values():
-            if v == BuildingElement.Ground or v == BuildingElement.Floor:
+            if v in {BuildingElement.Ground, BuildingElement.Floor}:
                 # The ground is much warmer than the air as it has a huge thermal mass
                 v_temperature = ground_temperature
             elif v == BuildingElement.Roof:
