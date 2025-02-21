@@ -541,7 +541,7 @@ async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: D
 
 
 @router.post("/get-latest-tariffs", tags=["db", "tariff"])
-async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -> list[EpochTariffEntry]:
+async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -> EpochTariffEntry:
     """
     Get the latest Import Tariff entries for a given site.
 
@@ -565,14 +565,14 @@ async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -
 
     Returns
     -------
-    list[EpochTariffEntry]
-        List of tariff entries with fields Tariff, Tariff1, Tariff2, etc. filled.
+    EpochTariffEntry
+        Tariff entries in an EPOCH friendly format.
     """
     site_data_info = await list_latest_datasets(site_data, pool=pool)
     if site_data_info.ImportTariff is None:
         logger = logging.getLogger(__name__)
         logger.warning(f"Requested latest tariffs for {site_data.site_id} but None were available.")
-        return []
+        return EpochTariffEntry(timestamps=[], data=[])
     params = MultipleDatasetIDWithTime(
         dataset_id=[item.dataset_id for item in site_data_info.ImportTariff]
         if isinstance(site_data_info.ImportTariff, list)
@@ -669,12 +669,12 @@ async def generate_all(
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
-    assert isinstance(gas_meter_dataset, DatasetEntry), (
-        f"Expecting a DatasetEntry for gas_meter_dataset but got {type(gas_meter_dataset)}"
-    )
-    assert isinstance(elec_meter_dataset, DatasetEntry), (
-        f"Expecting a DatasetEntry for elec_meter_dataset but got {type(elec_meter_dataset)}"
-    )
+    assert isinstance(
+        gas_meter_dataset, DatasetEntry
+    ), f"Expecting a DatasetEntry for gas_meter_dataset but got {type(gas_meter_dataset)}"
+    assert isinstance(
+        elec_meter_dataset, DatasetEntry
+    ), f"Expecting a DatasetEntry for elec_meter_dataset but got {type(elec_meter_dataset)}"
     background_tasks.add_task(
         generate_heating_load,
         HeatingLoadRequest(dataset_id=gas_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),

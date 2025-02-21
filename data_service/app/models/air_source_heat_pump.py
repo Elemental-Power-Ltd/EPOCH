@@ -5,18 +5,17 @@ import pydantic
 
 # ruff: noqa: D101
 class ASHPCOPResponse(pydantic.BaseModel):
-    index: list[float] = pydantic.Field(
-        examples=[[-15.0, -10.0, -7.0, -2.0, 2.0, 7.0, 12.0, 15.0, 20.0, 25.0, 30.0, 35.0, 43.0]],
-        description="Ambient air temperatures in °C for COP lookup.",
-    )
-    columns: list[float] = pydantic.Field(
-        examples=[[[25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 65.0, 70.0]]],
-        description="Output (send) hot water temperature in °C for COP lookup.",
-    )
     data: list[list[float]] = pydantic.Field(
-        examples=[[[4.91, 5.23], [4.2, 4.7]]], description="COP (output heat: input elec) ratios at these temperatures."
+        examples=[
+            [
+                [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 40.0, 50.0, 60.0, 70.0],
+                [-15.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.99, 1.0, 1.0, 1.0],
+                [-10.0, 1.0, 1.0, 1.0, 0.99, 0.99, 1.0, 0.96, 0.99, 1.0, 0.96],
+            ]
+        ],
+        description="""
+        Row major ASHP lookup table.
+        First element of each row should be the row's index: Output (send) hot water temperature in °C for COP lookup.
+        First row should be column headers: the Ambient air temperatures in °C for COP lookup.
+        """,
     )
-    index_names: list[str] = pydantic.Field(
-        examples=[["temperature"]], description="Name of the index to use in reconstructing a dataframe."
-    )
-    column_names: list[None] = pydantic.Field(description="Empty field.")

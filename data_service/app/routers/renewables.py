@@ -12,13 +12,11 @@ import logging
 import uuid
 
 import httpx
-import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, SecretsDep
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
-from ..internal.utils import add_epoch_fields
 from ..models.core import MultipleDatasetIDWithTime, SiteID, dataset_id_t
 from ..models.renewables import EpochRenewablesEntry, PVOptimaResult, RenewablesMetadata, RenewablesRequest
 
@@ -171,7 +169,7 @@ async def generate_renewables_generation(
 
 
 @router.post("/get-renewables-generation", tags=["get", "solar_pv"])
-async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochRenewablesEntry]:
+async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: DatabasePoolDep) -> EpochRenewablesEntry:
     """
     Get a pre-generated dataset of renewables generation load.
 
@@ -218,7 +216,11 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
             renewables_df = pd.DataFrame.from_records(
                 dataset, columns=["start_ts", "end_ts", "solar_generation"], index="start_ts"
             )
-            renewables_df.index = pd.to_datetime(renewables_df.index)
+            renewables_df = renewables_df.reindex(
+                index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
+            )
+            renewables_df["solar_generation"] = renewables_df["solar_generation"].interpolate(method="time").ffill().bfill()
+
             return renewables_df
 
     try:
@@ -229,25 +231,7 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
             ]
     except ExceptionGroup as ex:
         raise ex.exceptions[0] from ex
-    total_df = pd.DataFrame(
-        index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
-    )
-    for i, df in enumerate(all_dfs, 1):  # Careful of off-by-one!
-        total_df[f"RGen{i}"] = df.result()["solar_generation"]
 
-    within_timestamps_mask = np.logical_and(params.start_ts <= total_df.index, total_df.index < params.end_ts)
-    total_df = total_df[within_timestamps_mask].interpolate(method="time").ffill().bfill()
-    total_df = add_epoch_fields(total_df)
-    total_df = total_df.dropna()
-    return [
-        EpochRenewablesEntry(
-            Date=item["Date"],
-            StartTime=item["StartTime"],
-            HourOfYear=item["HourOfYear"],
-            RGen1=item["RGen1"],
-            RGen2=item["RGen2"] if "RGen2" in item else None,
-            RGen3=item["RGen3"] if "RGen3" in item else None,
-            RGen4=item["RGen4"] if "RGen4" in item else None,
-        )
-        for item in total_df.to_dict(orient="records")
-    ]
+    return EpochRenewablesEntry(
+        timestamps=all_dfs[0].result().index.tolist(), data=[df.result()["solar_generation"].to_list() for df in all_dfs]
+    )

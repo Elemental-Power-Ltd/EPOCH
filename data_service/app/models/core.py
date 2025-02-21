@@ -87,9 +87,7 @@ class SiteID(BaseModel):
 
 
 class EpochEntry(pydantic.BaseModel):
-    Date: str = epoch_date_field
-    StartTime: str = epoch_start_time_field
-    HourOfYear: float = epoch_hour_of_year_field
+    timestamps: list[pydantic.AwareDatetime]
 
 
 class SiteIDWithTime(SiteID):

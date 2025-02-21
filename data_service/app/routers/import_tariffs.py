@@ -24,7 +24,6 @@ from ..internal.import_tariffs import (
     resample_to_range,
     tariff_to_new_timestamps,
 )
-from ..internal.utils import hour_of_year
 from ..models.core import MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.import_tariffs import (
     EpochTariffEntry,
@@ -375,7 +374,7 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
 
 
 @router.post("/get-import-tariffs", tags=["get", "tariff"])
-async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePoolDep) -> list[EpochTariffEntry]:
+async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePoolDep) -> EpochTariffEntry:
     """
     Get the electricity import tariffs in p / kWh for this dataset.
 
@@ -394,8 +393,8 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
 
     Returns
     -------
-    *epoch_tariff_entries*
-        Tariff entries in an EPOCH friendly format, with HourOfYear and Date splits.
+    *epoch_tariff_entry*
+        Tariff entries in an EPOCH friendly format.
     """
     dfs = []
     for dataset_id in params.dataset_id:
@@ -429,31 +428,4 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
                 method="nearest",
             )
 
-    if len(dfs) == 1:
-        # Return only a single Tariff entry
-        return [
-            EpochTariffEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), Tariff=val)
-            for ts, val in zip(df.index, df["unit_cost"] / 100, strict=True)
-        ]
-
-    combined_df = pd.DataFrame(index=dfs[0].index, data={f"Tariff{i}": df.unit_cost for i, df in enumerate(dfs)})
-    null_tariff = [None for _ in combined_df.index]
-    return [
-        EpochTariffEntry(
-            Date=ts.strftime("%d-%b"),
-            HourOfYear=hour_of_year(ts),
-            StartTime=ts.strftime("%H:%M"),
-            Tariff=val0,
-            Tariff1=val1,
-            Tariff2=val2,
-            Tariff3=val3,
-        )
-        for ts, val0, val1, val2, val3 in zip(
-            combined_df.index,
-            combined_df["Tariff0"] / 100 if "Tariff0" in combined_df.columns else null_tariff,
-            combined_df["Tariff1"] / 100 if "Tariff1" in combined_df.columns else null_tariff,
-            combined_df["Tariff2"] / 100 if "Tariff2" in combined_df.columns else null_tariff,
-            combined_df["Tariff3"] / 100 if "Tariff3" in combined_df.columns else null_tariff,
-            strict=True,
-        )
-    ]
+    return EpochTariffEntry(timestamps=dfs[0].index.tolist(), data=[(df["unit_cost"] / 100).to_list() for df in dfs])
