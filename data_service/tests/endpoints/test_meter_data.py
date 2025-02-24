@@ -82,7 +82,7 @@ class TestUploadMeterData:
             )
         ).json()
         assert len(result["data"]) > 100
-        assert any(result["data"] > 0)
+        assert any(value > 0 for value in result["data"])
 
     @pytest.mark.asyncio
     async def test_upload_and_get_electricity_load_non_hh(self, client: httpx.AsyncClient) -> None:

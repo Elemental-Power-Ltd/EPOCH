@@ -175,7 +175,7 @@ class TestImportTariffs:
         expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
         assert len(tariff_result["timestamps"]) == expected_len
         assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
-        assert all(not pd.isna(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
 
     @pytest.mark.asyncio
     async def test_generate_and_get_agile(
@@ -208,7 +208,7 @@ class TestImportTariffs:
         expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert len(tariff_result["timestamps"]) == expected_len
         assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
-        assert all(not pd.isna(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
         assert all(len(set(data)) > 48 for data in tariff_result["data"])
 
     @pytest.mark.asyncio
@@ -243,7 +243,7 @@ class TestImportTariffs:
         expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert len(tariff_result["timestamps"]) == expected_len
         assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
-        assert all(not pd.isna(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
         assert all(len(set(data)) == 3 for data in tariff_result["data"])
 
         for data in tariff_result["data"]:
@@ -314,7 +314,7 @@ class TestImportTariffs:
         expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert len(tariff_result["timestamps"]) == expected_len
         assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
-        assert all(not pd.isna(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
 
     @pytest.mark.asyncio
     async def test_get_one_of_each(self, client: httpx.AsyncClient) -> None:
@@ -348,4 +348,4 @@ class TestImportTariffs:
         expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         assert len(tariff_result["timestamps"]) == expected_len
         assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
-        assert all(not pd.isna(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])

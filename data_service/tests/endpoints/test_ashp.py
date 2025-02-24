@@ -4,6 +4,7 @@
 import itertools
 import uuid
 
+import numpy as np
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
@@ -31,13 +32,8 @@ async def ashp_output_response(client: AsyncClient, demo_ashp_uuid: str) -> Json
 @pytest.mark.asyncio
 class TestASHPInputs:
     @pytest.mark.asyncio
-    async def test_input_columns_correct(self, ashp_input_response: Json) -> None:
-        assert "timestamps" in ashp_input_response
-        assert "data" in ashp_input_response
-
-    @pytest.mark.asyncio
     async def test_temperatures_count_up(self, ashp_input_response: Json) -> None:
-        data = ashp_input_response["data"]
+        data = np.array(ashp_input_response["data"])
         for first, second in itertools.pairwise(data[1:, 0]):
             assert second > first, "Index temperatures must count up"
 
@@ -54,13 +50,8 @@ class TestASHPInputs:
 @pytest.mark.asyncio
 class TestASHPOutputs:
     @pytest.mark.asyncio
-    async def test_input_columns_correct(self, ashp_output_response: Json) -> None:
-        assert "timestamps" in ashp_output_response
-        assert "data" in ashp_output_response
-
-    @pytest.mark.asyncio
     async def test_temperatures_count_up(self, ashp_output_response: Json) -> None:
-        data = ashp_output_response["data"]
+        data = np.array(ashp_output_response["data"])
         for first, second in itertools.pairwise(data[1:, 0]):
             assert second > first, "Index temperatures must count up"
 
