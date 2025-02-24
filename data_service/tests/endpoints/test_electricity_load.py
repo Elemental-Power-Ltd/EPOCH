@@ -90,11 +90,15 @@ class TestUploadMeterData:
             },
         )
         assert get_result.status_code == 200, get_result.json()
-        assert get_result.json()[-1]["StartTime"] == "23:30"
-        assert get_result.json()[0]["Date"] == demo_start_ts.strftime("%d-%b")
-        assert get_result.json()[-1]["Date"] == (demo_end_ts - pd.Timedelta(minutes=30)).strftime("%d-%b")
+        timestamps = get_result.json()["timestamps"]
+        first_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert first_ts.strftime("%H:%M") == "23:30"
+        assert first_ts.strftime("%d-%b") == (demo_end_ts - pd.Timedelta(minutes=30)).strftime("%d-%b")
+        last_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert last_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
         expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
-        assert len(get_result.json()) == expected_len
+        assert len(get_result.json()["timestamps"]) == expected_len
+        assert len(get_result.json()["timestamps"]) == len(get_result.json()["data"])
 
 
 class TestGetBlendedData:

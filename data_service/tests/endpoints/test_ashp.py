@@ -32,16 +32,16 @@ async def ashp_output_response(client: AsyncClient, demo_ashp_uuid: str) -> Json
 class TestASHPInputs:
     @pytest.mark.asyncio
     async def test_input_columns_correct(self, ashp_input_response: Json) -> None:
-        assert "index" in ashp_input_response
-        assert "columns" in ashp_input_response
+        assert "timestamps" in ashp_input_response
         assert "data" in ashp_input_response
 
     @pytest.mark.asyncio
     async def test_temperatures_count_up(self, ashp_input_response: Json) -> None:
-        for first, second in itertools.pairwise(ashp_input_response["index"]):
+        data = ashp_input_response["data"]
+        for first, second in itertools.pairwise(data[1:, 0]):
             assert second > first, "Index temperatures must count up"
 
-        for first, second in itertools.pairwise(ashp_input_response["columns"]):
+        for first, second in itertools.pairwise(data[0, 1:]):
             assert second > first, "Column temperatures must count up"
 
     # @pytest.mark.asyncio
@@ -55,16 +55,16 @@ class TestASHPInputs:
 class TestASHPOutputs:
     @pytest.mark.asyncio
     async def test_input_columns_correct(self, ashp_output_response: Json) -> None:
-        assert "index" in ashp_output_response
-        assert "columns" in ashp_output_response
+        assert "timestamps" in ashp_output_response
         assert "data" in ashp_output_response
 
     @pytest.mark.asyncio
     async def test_temperatures_count_up(self, ashp_output_response: Json) -> None:
-        for first, second in itertools.pairwise(ashp_output_response["index"]):
+        data = ashp_output_response["data"]
+        for first, second in itertools.pairwise(data[1:, 0]):
             assert second > first, "Index temperatures must count up"
 
-        for first, second in itertools.pairwise(ashp_output_response["columns"]):
+        for first, second in itertools.pairwise(data[0, 1:]):
             assert second > first, "Column temperatures must count up"
 
     # @pytest.mark.asyncio
