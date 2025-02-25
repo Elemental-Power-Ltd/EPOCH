@@ -20,7 +20,7 @@ from ..models.core import (
     dataset_id_t,
 )
 from ..models.electricity_load import ElectricalLoadRequest
-from ..models.heating_load import HeatingLoadRequest
+from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetList, RemoteMetaData
@@ -276,7 +276,8 @@ async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> 
                 MIN(em.start_ts) AS start_ts,
                 MAX(em.end_ts) AS end_ts,
                 COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution
+                AVG(end_ts - start_ts) AS resolution,
+                ANY_VALUE(interventions) AS interventions
             FROM heating.metadata AS cm
             LEFT JOIN
                 heating.synthesised AS em
@@ -296,6 +297,7 @@ async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> 
             end_ts=item["end_ts"],
             num_entries=item["num_entries"],
             resolution=item["resolution"],
+            dataset_subtype=[InterventionEnum(subtype) for subtype in item["interventions"]] if item["interventions"] else None,
         )
         for item in res
     ]
@@ -424,35 +426,65 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
     """
     all_datasets = await list_datasets(params, pool)
 
+    def created_at_or_epoch(ts: datetime.datetime | None) -> datetime.datetime:
+        """Return the created_at date or the EPOCH."""
+        if ts is None:
+            return datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC)
+        return ts.created_at
+    
+    def subtype_contains(ds: DatasetEntry | None, subtype: InterventionEnum | SyntheticTariffEnum | None) -> bool:
+        if ds is None:
+            return False
+        
+        if ds.dataset_subtype == subtype:
+            return True
+        
+        if hasattr(ds.dataset_subtype, "__contains__") and subtype in ds.dataset_subtype:
+            return True
+        
+        return False
+    
+    heating_loads = [
+        item
+        for item in (
+            max(
+                filter(
+                    lambda ds: subtype_contains(ds, intervention_subtype),
+                    all_datasets[DatasetTypeEnum.HeatingLoad],
+                ),
+                key=created_at_or_epoch,
+                default=None,
+            )
+            for intervention_subtype in [None, InterventionEnum.Loft, InterventionEnum.DoubleGlazing, InterventionEnum.Cladding]
+        )
+        if item is not None
+    ]
+
+    import_tariffs = [
+        item
+        for item in (
+            max(
+                filter(
+                    lambda ds: subtype_contains(ds, tariff_type), all_datasets[DatasetTypeEnum.ImportTariff]
+                ),
+                key=created_at_or_epoch,
+                default=None,
+            )
+            for tariff_type in [
+                SyntheticTariffEnum.Fixed,
+                SyntheticTariffEnum.Agile,
+                SyntheticTariffEnum.Overnight,
+                SyntheticTariffEnum.Peak,
+            ]
+        )
+        if item is not None
+    ]
     return DatasetList(
         site_id=params.site_id,
         start_ts=params.start_ts,
         end_ts=params.end_ts,
-        # HeatingLoads are a MultipleDatasetIDWithTime, so wrap them into a list here.
-        HeatingLoad=[max(all_datasets[DatasetTypeEnum.HeatingLoad], key=lambda x: x.created_at)]
-        if all_datasets.get(DatasetTypeEnum.HeatingLoad)
-        else None,
-        ImportTariff=[
-            item
-            for item in (
-                max(
-                    filter(
-                        lambda x: x is not None and x.dataset_subtype == tariff_type, all_datasets[DatasetTypeEnum.ImportTariff]
-                    ),
-                    key=lambda y: (
-                        y.created_at if y is not None else datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC)
-                    ),
-                    default=None,
-                )
-                for tariff_type in [
-                    SyntheticTariffEnum.Fixed,
-                    SyntheticTariffEnum.Agile,
-                    SyntheticTariffEnum.Overnight,
-                    SyntheticTariffEnum.Peak,
-                ]
-            )
-            if item is not None
-        ],
+        HeatingLoad=heating_loads,
+        ImportTariff=import_tariffs,
         ASHPData=max(all_datasets[DatasetTypeEnum.ASHPData], key=lambda x: x.created_at)
         if all_datasets.get(DatasetTypeEnum.ASHPData)
         else None,
@@ -669,18 +701,22 @@ async def generate_all(
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
-    assert isinstance(
-        gas_meter_dataset, DatasetEntry
-    ), f"Expecting a DatasetEntry for gas_meter_dataset but got {type(gas_meter_dataset)}"
-    assert isinstance(
-        elec_meter_dataset, DatasetEntry
-    ), f"Expecting a DatasetEntry for elec_meter_dataset but got {type(elec_meter_dataset)}"
-    background_tasks.add_task(
-        generate_heating_load,
-        HeatingLoadRequest(dataset_id=gas_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
-        pool=pool,
-        http_client=http_client,
+    assert isinstance(gas_meter_dataset, DatasetEntry), (
+        f"Expecting a DatasetEntry for gas_meter_dataset but got {type(gas_meter_dataset)}"
     )
+    assert isinstance(elec_meter_dataset, DatasetEntry), (
+        f"Expecting a DatasetEntry for elec_meter_dataset but got {type(elec_meter_dataset)}"
+    )
+
+    POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
+    for interventions in POTENTIAL_INTERVENTIONS:
+        background_tasks.add_task(
+            generate_heating_load,
+            HeatingLoadRequest(dataset_id=gas_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts,
+                               interventions=interventions),
+            pool=pool,
+            http_client=http_client,
+        )
 
     background_tasks.add_task(generate_grid_co2, params, pool=pool, http_client=http_client)
 
@@ -719,7 +755,7 @@ async def generate_all(
     # Return the background tasks immediately with null-ish data.
     # The UUIDs will have to be collected later (unless we assign them in this function in future?)
     return {
-        DatasetTypeEnum.HeatingLoad: DatasetEntry(
+        DatasetTypeEnum.HeatingLoad: [DatasetEntry(
             dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.HeatingLoad,
             created_at=datetime.datetime.now(tz=datetime.UTC),
@@ -727,7 +763,8 @@ async def generate_all(
             start_ts=params.start_ts,
             end_ts=params.end_ts,
             num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
-        ),
+            dataset_subtype=intervention
+        ) for intervention in POTENTIAL_INTERVENTIONS],
         DatasetTypeEnum.CarbonIntensity: DatasetEntry(
             dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.CarbonIntensity,

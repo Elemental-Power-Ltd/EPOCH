@@ -168,6 +168,15 @@ class TestGenerateAll:
         assert all(item == tariff_data["data"][0][0] for item in tariff_data["data"][0]), "First entry must be fixed tariff"
         assert tariff_data["data"][0] != tariff_data["data"][1], "Tariffs must be different"
 
+        # Check that we got multiple heat loads here, this should be an array of {"cost": ..., "reduced_hload": ...} dicts
+        heatload_data = data_json["heat"]["data"]
+        assert len(heatload_data) == 4
+        assert len({item["cost"] for item in heatload_data}) == 4
+
+        for idx in range(1, 4):
+            assert heatload_data[0]["reduced_hload"] != heatload_data[idx]["reduced_hload"], "heatload_data must be different"
+
+
     @pytest.mark.asyncio
     async def test_same_timestamps(self, client: httpx.AsyncClient) -> None:
         """Check that we fail early if the same timestamps are requested."""
@@ -223,6 +232,12 @@ class TestGetLatestElectricity:
             == (end_ts - start_ts) / datetime.timedelta(minutes=30)
         )
 
+class TestGetMultipleHeatLoads:
+    
+    @pytest.mark.asyncio
+    async def test_create_and_get_heatloads(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+        _, _ = upload_meter_data
+        
 
 class TestListAllDatasets:
     @pytest.mark.asyncio
