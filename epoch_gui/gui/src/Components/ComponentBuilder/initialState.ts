@@ -12,7 +12,7 @@ export const getInitialComponentsMap = (mode: BuilderMode): ComponentsMap => {
     const map: ComponentsMap = {
         building: {
             displayName: "Building",
-            selected: false,
+            selected: true,
             data: defaultData["building"]
         },
         data_centre: {
@@ -37,7 +37,7 @@ export const getInitialComponentsMap = (mode: BuilderMode): ComponentsMap => {
         },
         grid: {
             displayName: "Grid",
-            selected: false,
+            selected: true,
             data: defaultData["grid"]
         },
         heat_pump: {

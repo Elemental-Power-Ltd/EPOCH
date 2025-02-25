@@ -1,12 +1,15 @@
 import validator from "@rjsf/validator-ajv8";
 import TaskDataSchema from "../../util/json/schema/TaskDataSchema.json";
 import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema.json"
-import {RJSFSchema} from "@rjsf/utils";
+import {RJSFSchema, RJSFValidationError} from "@rjsf/utils";
 
 
 export interface ValidationResult {
   valid: boolean;
   result: any;
+
+  // any errors within a result parsed into strings for semi-human-readable display
+  stringErrors: string[];
 }
 
 export const validateTaskData = (taskData: any): ValidationResult => {
@@ -15,6 +18,7 @@ export const validateTaskData = (taskData: any): ValidationResult => {
         return {
             valid: result.errors.length === 0,
             result: result,
+            stringErrors: errorsToStrings(result.errors)
         };
     };
 
@@ -30,5 +34,16 @@ export const validateSiteRange = (siteRange: any): ValidationResult => {
     return {
         valid: result.errors.length === 0,
         result: result,
+        stringErrors: errorsToStrings(result.errors)
     };
+}
+
+/**
+ * convert errors to strings
+ * @param errors a list of errors as (semi) human-readable strings
+ */
+const errorsToStrings = (errors: RJSFValidationError[]): string[] => {
+    return errors.map(error => (
+        `${error.property} ${error.message}`
+    ));
 }

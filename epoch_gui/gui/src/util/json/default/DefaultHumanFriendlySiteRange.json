@@ -52,7 +52,10 @@
   },
   "renewables": {
     "COMPONENT_IS_MANDATORY": true,
-    "yield_scalars": [[400, 500, 600], [50, 75, 100], [0], [0]]
+    "yield_scalars": [
+      {"min":  400, "max":  600, "step":  100},
+      {"min":  50, "max":  100, "step":  25}
+    ]
   },
   "config": {"capex_limit":  100000000}
 }

@@ -1,63 +1,56 @@
-import React, {FC, useState, useEffect} from "react";
+import React, {FC, useState, useEffect, Component} from "react";
 import {Select, MenuItem, SelectChangeEvent} from "@mui/material";
-import {Button} from "@mui/material";
+import { Button, Box } from "@mui/material";
 
 import {ComponentType, ComponentsMap} from "../../Models/Core/ComponentBuilder"
+
+import {getComponentInfo} from "./ComponentDisplayInfo";
 
 interface ComponentSelectorProps {
     componentsState: ComponentsMap;
     onAddComponent: (component: ComponentType) => void;
+    onRemoveComponent: (component: ComponentType) => void;
 }
 
 const ComponentSelector: FC<ComponentSelectorProps> = (
-    {componentsState, onAddComponent,}) => {
+    {componentsState, onAddComponent, onRemoveComponent}) => {
 
-    const availableComponents = Object.entries(componentsState)
-        .filter(([_, {selected}]) => !selected)
-        .map(([key]) => key as ComponentType);
+    const componentTypes = Object.keys(componentsState) as ComponentType[];
 
-    const [selectedValue, setSelectedValue] = useState<ComponentType | "">(
-        availableComponents[0] || ""
-    );
-
-    // If the currently selected component is no longer available,
-    // reset it to the first available component or an empty string.
-    useEffect(() => {
-        if (selectedValue && !availableComponents.includes(selectedValue)) {
-            setSelectedValue(availableComponents[0] || "");
+    const onToggle = (type: ComponentType) => {
+        if (componentsState[type].selected) {
+            onRemoveComponent(type);
+        } else {
+            onAddComponent(type);
         }
-    }, [availableComponents, selectedValue]);
-
-    const noMoreComponents = availableComponents.length === 0;
-
-    const handleSelectChange = (e: SelectChangeEvent<ComponentType | "">) => {
-        setSelectedValue(e.target.value as ComponentType);
-    };
-
-    const handleAddClick = () => {
-        if (selectedValue && typeof selectedValue === "string") {
-            onAddComponent(selectedValue as ComponentType);
-        }
-    };
+    }
 
     return (
-        <div>
-            <Select
-                label="Component"
-                value={selectedValue}
-                onChange={handleSelectChange}
-                disabled={noMoreComponents}
-            >
-                {availableComponents.map((component) => (
-                    <MenuItem key={component} value={component}>
-                        {componentsState[component].displayName}
-                    </MenuItem>
-                ))}
-            </Select>
-            <Button onClick={handleAddClick} disabled={noMoreComponents}>
-                Add Component
-            </Button>
-        </div>
+        <Box display="flex" flexWrap="wrap" justifyContent="center" align-items="center" gap={2}>
+            {componentTypes.map((type) => {
+                const {displayName, icon} = getComponentInfo(type);
+                const isSelected = componentsState[type].selected;
+
+                return (
+                    <Button
+                        key={type}
+                        variant={isSelected ? "contained" : "outlined"}
+                        color={isSelected ? "primary" : "inherit"}
+                        onClick={() => onToggle(type)}
+                        startIcon={icon}
+                        sx={{
+                            minWidth: 120,
+                            textTransform: "none",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                        }}
+                    >
+                        {displayName}
+                    </Button>
+                );
+            })}
+        </Box>
     );
 };
 

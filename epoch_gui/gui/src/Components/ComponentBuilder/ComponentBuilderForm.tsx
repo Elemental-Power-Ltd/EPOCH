@@ -61,13 +61,14 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
             <ComponentSelector
                 componentsState={componentsMap}
                 onAddComponent={addComponent}
+                onRemoveComponent={removeComponent}
             />
 
             <div style={{
-                display: "flex",
-                flexWrap: "wrap",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
                 gap: "16px",
-                margin: "1rem 0"
+                margin: "1rem 0",
             }}>
                 {selectedComponents.map((component) => (
                     <ComponentWidget

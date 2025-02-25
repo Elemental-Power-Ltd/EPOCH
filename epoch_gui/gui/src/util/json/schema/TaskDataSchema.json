@@ -5,17 +5,21 @@
   "properties": {
     "building": {
       "type": "object",
+      "title": "Building",
       "properties": {
         "scalar_heat_load": {
           "type": "number",
+          "title": "Scalar Heat Load",
           "minimum": 0
         },
         "scalar_electrical_load": {
           "type": "number",
+          "title": "Scalar Electrical Load",
           "minimum": 0
         },
         "fabric_intervention_index": {
           "type": "integer",
+          "title": "Fabric Intervention Index",
           "minimum": 0
         }
       },
@@ -23,22 +27,27 @@
     },
     "data_centre": {
       "type": "object",
+      "title": "Data Centre",
       "properties": {
         "maximum_load": {
           "type": "number",
+          "title": "Maximum Load",
           "minimum": 0
         },
         "hotroom_temp": {
-          "type": "number"
+          "type": "number",
+          "title": "Hotroom Temperature"
         }
       },
       "required": ["maximum_load", "hotroom_temp"]
     },
     "domestic_hot_water": {
       "type": "object",
+      "title": "Domestic Hot Water",
       "properties": {
         "cylinder_volume": {
           "type": "number",
+          "title": "Cylinder Volume",
           "minimum": 0
         }
       },
@@ -46,30 +55,37 @@
     },
     "electric_vehicles": {
       "type": "object",
+      "title": "EV Chargers",
       "properties": {
         "flexible_load_ratio": {
           "type": "number",
           "minimum": 0,
+          "title": "Flexible Load Ratio",
           "maximum": 1
         },
         "small_chargers": {
           "type": "integer",
+          "title": "Small Chargers",
           "minimum": 0
         },
         "fast_chargers": {
           "type": "integer",
+          "title": "Fast Chargers",
           "minimum": 0
         },
         "rapid_chargers": {
           "type": "integer",
+          "title": "Rapid Chargers",
           "minimum": 0
         },
         "ultra_chargers": {
           "type": "integer",
+          "title": "Ultra Chargers",
           "minimum": 0
         },
         "scalar_electrical_load": {
           "type": "number",
+          "title": "Scalar Electrical Load",
           "minimum": 0
         }
       },
@@ -84,25 +100,31 @@
     },
     "energy_storage_system": {
       "type": "object",
+      "title": "Energy Storage System",
       "properties": {
         "capacity": {
           "type": "number",
+          "title": "Capacity",
           "exclusiveMinimum": 0
         },
         "charge_power": {
           "type": "number",
+          "title": "Charge Power",
           "exclusiveMinimum": 0
         },
         "discharge_power": {
           "type": "number",
+          "title": "Discharge Power",
           "exclusiveMinimum": 0
         },
         "battery_mode": {
           "type": "string",
+          "title": "Battery Mode",
           "enum": ["CONSUME", "CONSUME_PLUS"]
         },
         "initial_charge": {
           "type": "number",
+          "title": "Initial Charge",
           "minimum": 0
         }
       },
@@ -116,32 +138,39 @@
     },
     "grid": {
       "type": "object",
+      "title": "Grid",
       "properties": {
         "export_headroom": {
           "type": "number",
+          "title": "Export Headroom",
           "minimum": 0,
           "maximum": 1
         },
         "grid_export": {
           "type": "number",
+          "title": "Grid Export",
           "minimum": 0
         },
         "grid_import": {
           "type": "number",
+          "title": "Grid Import",
           "minimum": 0
         },
         "import_headroom": {
           "type": "number",
+          "title": "Import Headroom",
           "minimum": 0,
           "maximum": 1
         },
         "min_power_factor": {
           "type": "number",
+          "title": "Minimum Power Factor",
           "minimum": 0,
           "maximum": 1
         },
         "tariff_index": {
           "type": "integer",
+          "title": "Tariff Index",
           "minimum": 0
         }
       },
@@ -156,26 +185,32 @@
     },
     "heat_pump": {
       "type": "object",
+      "title": "Heat Pump",
       "properties": {
         "heat_power": {
           "type": "number",
+          "title": "Heat Power",
           "minimum": 0
         },
         "heat_source": {
           "type": "string",
+          "title": "Heat Source",
           "enum": ["AMBIENT_AIR", "HOTROOM"]
         },
         "send_temp": {
-          "type": "number"
+          "type": "number",
+          "title": "Send Temperature"
         }
       },
       "required": ["heat_power", "heat_source", "send_temp"]
     },
     "mop": {
       "type": "object",
+      "title": "Mop",
       "properties": {
         "maximum_load": {
           "type": "number",
+          "title": "Maximum Load",
           "minimum": 0
         }
       },
@@ -183,9 +218,11 @@
     },
     "renewables": {
       "type": "object",
+      "title": "Renewables",
       "properties": {
         "yield_scalars": {
           "type": "array",
+          "title": "Yield Scalars",
           "items": {
             "type": "number",
             "minimum": 0
@@ -196,9 +233,11 @@
     },
     "config": {
       "type": "object",
+      "title": "Config",
       "properties": {
         "capex_limit": {
           "type": "number",
+          "title": "CAPEX Limit",
           "minimum": 0
         }
       },

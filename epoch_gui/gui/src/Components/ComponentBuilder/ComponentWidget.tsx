@@ -24,8 +24,6 @@ export const ComponentWidget: FC<ComponentWidgetProps> = (
 ) => (
     <div
         style={{
-            flex: "1 1 300px",
-            minWidth: "400px",
             maxWidth: "500px",
             border: "1px solid #ccc",
             borderRadius: "4px",

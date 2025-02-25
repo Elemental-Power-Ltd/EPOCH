@@ -206,7 +206,7 @@ const SimulationContainer: FC = () => {
     };
 
     return (
-        <div style={{maxWidth: 900, margin: "0 auto"}}>
+        <div style={{margin: "0 auto"}}>
             <Stepper activeStep={activeStep} style={{marginBottom: "2rem"}}>
                 {simulationSteps.map((label) => (
                     <Step key={label}>
