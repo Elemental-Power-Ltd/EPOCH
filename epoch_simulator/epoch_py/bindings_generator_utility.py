@@ -12,54 +12,62 @@ def make_report_data_bindings():
     report_data_string = """
     struct ReportData {
 
-    // TempSum
-    year_TS Actual_import_shortfall;
-    year_TS Actual_curtailed_export;
-    year_TS Heat_shortfall;
-    year_TS Heat_surplus;
+	// TempSum
+	year_TS Actual_import_shortfall;
+	year_TS Actual_curtailed_export;
+	year_TS Heat_shortfall;
+	year_TS Heat_surplus;
 
-    // Hotel
-    year_TS Hotel_load;
-    year_TS Heatload;
+	// Hotel
+	year_TS Hotel_load;
+	year_TS Heatload;
 
-    // PV
-    year_TS PVdcGen;
-    year_TS PVacGen;
+	// PV
+	year_TS PVdcGen;
+	year_TS PVacGen;
 
-    // EV
-    year_TS EV_targetload;
-    year_TS EV_actualload;
+	// EV
+	year_TS EV_targetload;
+	year_TS EV_actualload;
 
-    // ESS
-    year_TS ESS_charge;
-    year_TS ESS_discharge;
-    year_TS ESS_resulting_SoC;
-    year_TS ESS_AuxLoad;
-    year_TS ESS_RTL;
+	// ESS
+	year_TS ESS_charge;
+	year_TS ESS_discharge;
+	year_TS ESS_resulting_SoC;
+	year_TS ESS_AuxLoad;
+	year_TS ESS_RTL;
 
-    // DataCentre
-    year_TS Data_centre_target_load;
-    year_TS Data_centre_actual_load;
-    year_TS Data_centre_target_heat;
-    year_TS Data_centre_available_hot_heat;
+	// DataCentre
+	year_TS Data_centre_target_load;
+	year_TS Data_centre_actual_load;
+	year_TS Data_centre_target_heat;
+	year_TS Data_centre_available_hot_heat;
 
-    // Grid
-    year_TS Grid_Import;
-    year_TS Grid_Export;
+	// Grid
+	year_TS Grid_Import;
+	year_TS Grid_Export;
 
-    // MOP
-    year_TS MOP_load;
+	// MOP
+	year_TS MOP_load;
 
-    // GasCombustionHeater
-    year_TS GasCH_load;
-    
-    // DHW
-    year_TS DHW_load;
-    year_TS DHW_charging;
-    year_TS DHW_SoC;
-    year_TS DHW_Standby_loss;
-    year_TS DHW_ave_temperature;
-    year_TS DHW_Shortfall;
+	// GasCombustionHeater
+	year_TS GasCH_load;
+	
+	// DHW
+	year_TS DHW_load;
+	year_TS DHW_charging;
+	year_TS DHW_SoC;
+	year_TS DHW_Standby_loss;
+	year_TS DHW_ave_temperature;
+	year_TS DHW_Shortfall;
+
+	// ASHP
+	year_TS ASHP_elec_load;
+	year_TS ASHP_DHW_output;
+	year_TS ASHP_CH_output;
+	year_TS ASHP_free_heat;
+	year_TS ASHP_used_hotroom_heat;
+    };
     """
     
     for line in report_data_string.split("\n"):
@@ -150,5 +158,5 @@ def make_capex_breakdown_bindings():
 
 
 if __name__ == "__main__":
-    # make_report_data_bindings()
-    make_capex_breakdown_bindings()
+    make_report_data_bindings()
+    # make_capex_breakdown_bindings()

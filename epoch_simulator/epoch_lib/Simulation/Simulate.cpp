@@ -211,10 +211,11 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 	if (config.dataCentrePresent()) {
 		dataCentre->Report(reportData);
 	}
-	else {
+
+	if (ambientController) {
+		// There is a heatpump and no DataCentre
 		ambientController->Report(reportData);
 	}
-	// TODO do HeatPump Reporting
 
 	CostVectors costVectors;
 

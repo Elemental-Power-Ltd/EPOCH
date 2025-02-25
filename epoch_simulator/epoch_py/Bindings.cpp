@@ -153,7 +153,12 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("DHW_SoC", &ReportData::DHW_SoC)
 		.def_readonly("DHW_Standby_loss", &ReportData::DHW_Standby_loss)
 		.def_readonly("DHW_ave_temperature", &ReportData::DHW_ave_temperature)
-		.def_readonly("DHW_Shortfall", &ReportData::DHW_Shortfall);
+		.def_readonly("DHW_Shortfall", &ReportData::DHW_Shortfall)
+		.def_readonly("ASHP_elec_load", &ReportData::ASHP_elec_load)
+		.def_readonly("ASHP_DHW_output", &ReportData::ASHP_DHW_output)
+		.def_readonly("ASHP_CH_output", &ReportData::ASHP_CH_output)
+		.def_readonly("ASHP_free_heat", &ReportData::ASHP_free_heat)
+		.def_readonly("ASHP_used_hotroom_heat", &ReportData::ASHP_used_hotroom_heat);
 
 	pybind11::class_<CapexBreakdown>(m, "CapexBreakdown")
 		.def_readonly("dhw_capex", &CapexBreakdown::dhw_capex)

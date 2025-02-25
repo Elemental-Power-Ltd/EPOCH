@@ -325,7 +325,12 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& repo
 			<< valueOrEmpty(reportData.DHW_SoC, i) << ","
 			<< valueOrEmpty(reportData.DHW_Standby_loss, i) << ","
 			<< valueOrEmpty(reportData.DHW_ave_temperature, i) << ","
-			<< valueOrEmpty(reportData.DHW_Shortfall, i) << "\n";
+			<< valueOrEmpty(reportData.DHW_Shortfall, i) << ","
+			<< valueOrEmpty(reportData.ASHP_elec_load, i) << ","
+			<< valueOrEmpty(reportData.ASHP_DHW_output, i) << ","
+			<< valueOrEmpty(reportData.ASHP_CH_output, i) << ","
+			<< valueOrEmpty(reportData.ASHP_free_heat, i) << ","
+			<< valueOrEmpty(reportData.ASHP_used_hotroom_heat, i) << "\n";
 	}
 }
 

@@ -87,8 +87,11 @@ void DataCentreWithASHP::Report(ReportData& reportData) const {
 	reportData.Data_centre_target_heat = mTargetHeat_h;
 	reportData.Data_centre_available_hot_heat = mAvailableHotHeat_h;
 
-	// TODO report heatpump results
-
+	reportData.ASHP_elec_load = mHeatPump.mDHWload_e + mHeatPump.mCHload_e;
+	reportData.ASHP_DHW_output = mHeatPump.mDHWout_h;
+	reportData.ASHP_CH_output = mHeatPump.mCHout_h;
+	reportData.ASHP_free_heat = mHeatPump.mFreeHeat_h;
+	reportData.ASHP_used_hotroom_heat = mHeatPump.mUsedHotHeat_h;
 }
 
 

@@ -34,11 +34,10 @@ public:
     }
 
     void Report(ReportData& reportData) const {
-        // TODO - NEED TO ADD HEATPUMP RESULTS
-        //result.HeatPump_elec_load = mHeatPump.mDHWload_e + mHeatPump.mCHload_e;
-        //result.HeatPump_DHWoutput = mHeatPump.mDHWout_h;
-        //result.HeatPump_CHoutput = mHeatPump.mCHout_h;
-        //result.HeatPump_UsedAmbientHeat = mHeatPump.mFreeHeat_h;
+        reportData.ASHP_elec_load = mHeatPump.mDHWload_e + mHeatPump.mCHload_e;
+        reportData.ASHP_DHW_output = mHeatPump.mDHWout_h;
+        reportData.ASHP_CH_output = mHeatPump.mCHout_h;
+        reportData.ASHP_free_heat = mHeatPump.mFreeHeat_h;
     }
 
 private:
