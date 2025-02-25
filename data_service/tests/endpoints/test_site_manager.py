@@ -234,7 +234,9 @@ class TestGetLatestElectricity:
 
 
 class TestGetMultipleHeatLoads:
+    @pytest.mark.slow
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_create_and_get_heatloads(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
         """Test that we can get four different heatloads with different values."""
         gas_meter_result, _ = upload_meter_data
