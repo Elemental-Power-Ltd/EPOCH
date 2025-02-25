@@ -404,7 +404,7 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
         params.end_ts,
     )
     carbon_df = pd.DataFrame.from_records(res, columns=["start_ts", "forecast", "actual"], coerce_float=True)
-    carbon_df.index = pd.to_datetime(carbon_df["start_ts"])
+    carbon_df.index = pd.to_datetime(carbon_df["start_ts"])  # type: ignore
 
     # TODO (2025-01-09 MHJB): fix this awful pandas repeated interpolation, reindexing and resampling, it's a mess
     # carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().infer_objects().interpolate(method="time")
