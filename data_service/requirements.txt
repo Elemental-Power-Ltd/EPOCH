@@ -86,7 +86,7 @@ narwhals==1.19.1
     # via scikit-lego
 networkx==3.4.2
     # via torch
-numpy==2.2.1
+numpy==2.2.3
     # via
     #   -r requirements.in
     #   contourpy

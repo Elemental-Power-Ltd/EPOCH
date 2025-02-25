@@ -14,7 +14,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from app.dependencies import DatabasePoolDep, HttpClientDep, ProcessPoolDep
-from app.internal.thermal_model.fitting import create_structure_from_params, fit_to_gas_usage
+from app.internal.thermal_model.fitting import create_structure_from_params, fit_to_gas_usage, simulate_parameters
 from app.internal.thermal_model.heat_load import generate_heat_load
 from app.models.core import DatasetEntry, DatasetID, DatasetTypeEnum, SiteIDWithTime
 from app.models.heating_load import ThermalModelResult
@@ -168,9 +168,20 @@ async def generate_thermal_model_heating_load(
         )
         if weather_records is None:
             raise HTTPException(400, f"Failed to get a weather dataset for {site_params}.")
-        weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records])
+        weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records], index="timestamp")
+        weather_df["timestamp"] = weather_df.index
     elec_df = None
-    heating_load_df = generate_heat_load(structure, weather_df, elec_df)
+    heating_load_df = simulate_parameters(
+        scale_factor=thermal_model.scale_factor,
+        ach=thermal_model.ach,
+        u_value=thermal_model.u_value,
+        boiler_power=thermal_model.boiler_power,
+        setpoint=thermal_model.setpoint,
+        elec_df=elec_df,
+        start_ts=site_params.start_ts,
+        end_ts=site_params.end_ts,
+        weather_df=weather_df
+    )
     dataset_id = uuid.uuid4()
     created_at = datetime.datetime.now(datetime.UTC)
 

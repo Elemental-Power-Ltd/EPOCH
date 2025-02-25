@@ -429,7 +429,7 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
         DatasetTypeEnum.RenewablesGeneration: renewables_generation_task.result(),
         DatasetTypeEnum.HeatingLoad: heating_load_task.result(),
         DatasetTypeEnum.CarbonIntensity: carbon_intensity_task.result(),
-        DatasetTypeEnum.ThermalModel: thermal_model_task.result(),
+        DatasetTypeEnum.ThermalModel: thermal_model_task.result()
     }
     # If we didn't get any real datasets, then
     # don't insert a dummy ASHP dataset
@@ -515,7 +515,7 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         else None,
         ThermalModel=[max(all_datasets[DatasetTypeEnum.ThermalModel], key=lambda x: x.created_at)]
         if all_datasets.get(DatasetTypeEnum.ThermalModel)
-        else None,
+        else None
     )
 
 

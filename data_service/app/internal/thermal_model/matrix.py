@@ -4,7 +4,7 @@ import copy
 import datetime
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import NewType
+from typing import cast
 
 import numpy as np
 import scipy.linalg
@@ -14,7 +14,8 @@ from .building_elements import BuildingElement
 from .links import BoilerRadiativeLink, ConductiveLink, ConvectiveLink, RadiativeLink, ThermalRadiativeLink
 from .network import HeatNetwork
 
-GraphSize = NewType("GraphSize", int)
+type GraphSize = int
+type GraphVector1D = np.ndarray[tuple[GraphSize], np.dtype[np.float64]]
 
 
 def create_node_to_index_map(hm: HeatNetwork) -> Mapping[BuildingElement, int | None]:
@@ -46,7 +47,7 @@ def create_node_to_index_map(hm: HeatNetwork) -> Mapping[BuildingElement, int | 
     }
 
 
-def network_to_temperature_vec(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
+def network_to_temperature_vec(hm: HeatNetwork) -> GraphVector1D:
     """
     Generate a temperature vector in Kelvin for this heat network.
 
@@ -72,7 +73,7 @@ def network_to_temperature_vec(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], 
             continue
         temperature = attrs["temperature"]
         temperature_vec[idx] = celsius_to_kelvin(temperature) if np.isfinite(temperature) else 1.0
-    return temperature_vec
+    return cast(GraphVector1D, temperature_vec)
 
 
 def network_to_energy_matrix(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize, GraphSize], np.dtype[np.float64]]:
@@ -187,10 +188,12 @@ def network_to_energy_matrix(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize, Gra
             # We don't actually handle the direct energy gains here, as they
             # should be on the right hand side of the heat balance equation (I think)
             pass
-    return conductive_arr + convective_arr + radiative_arr + additive_radiative_arr + boiler_radiative_arr
+    result = conductive_arr + convective_arr + radiative_arr + additive_radiative_arr + boiler_radiative_arr
+
+    return cast(np.ndarray[tuple[GraphSize, GraphSize], np.dtype[np.float64]], result)
 
 
-def network_to_gains_vector(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
+def network_to_gains_vector(hm: HeatNetwork) -> GraphVector1D:
     """
     Create the vector on the right-hand-size of the heat balance network representing thermal gains in W.
 
@@ -247,10 +250,10 @@ def network_to_gains_vector(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], np.
 
             # TODO (2024-12-06 MHJB): other links implemented here?
 
-    return vec
+    return cast(GraphVector1D, vec)
 
 
-def network_to_heat_capacity_vec(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize], np.dtype[np.float64]]:
+def network_to_heat_capacity_vec(hm: HeatNetwork) -> GraphVector1D:
     """
     Create a vector of heat capacities by node.
 
@@ -277,7 +280,7 @@ def network_to_heat_capacity_vec(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize]
         if idx is None:
             continue
         hc_vec[idx] = heat_capacity if np.isfinite(heat_capacity) else 0.0
-    return hc_vec
+    return cast(GraphVector1D, hc_vec)
 
 
 def solve_heat_balance_equation(

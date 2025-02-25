@@ -235,7 +235,7 @@ def simulate(
         update_temperatures(graph)
 
     df = pd.DataFrame(
-        index=times,
+        index=[pd.Timestamp.fromtimestamp(item, tz=datetime.UTC) for item in times],
         data={
             "energy_changes": energy_changes[BuildingElement.InternalAir],
             "temperatures": temperatures[BuildingElement.InternalAir],

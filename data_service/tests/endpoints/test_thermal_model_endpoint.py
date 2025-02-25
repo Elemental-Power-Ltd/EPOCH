@@ -57,6 +57,7 @@ class TestThermalModelEndpoint:
     """Test that the Thermal Model endpoint works all the way through."""
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_send_request(
         self, client: httpx.AsyncClient, uploaded_meter_data: Awaitable[tuple[httpx.Response, httpx.Response]]
     ) -> None:
@@ -81,3 +82,35 @@ class TestThermalModelEndpoint:
         params = mdl_response.json()
         for val in params.values():
             assert val > 0
+
+    @pytest.mark.asyncio
+    @pytest.mark.slow
+    async def test_create_heat_load(
+        self, client: httpx.AsyncClient, uploaded_meter_data: Awaitable[tuple[httpx.Response, httpx.Response]]
+    ) -> None:
+        """Test that we can fit a simple thermal model of Matt's house."""
+        _, _ = await uploaded_meter_data
+
+        start_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/fit-thermal-model",
+            json={
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert response.status_code == 200, response.text
+
+        hl_response = await client.post(
+            "/generate-thermal-model-heating-load",
+            json={
+                "site_params": {"site_id": "demo_london", "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+                "thermal_model_dataset_id": {"dataset_id": response.json()["task_id"]},
+            },
+        )
+        assert hl_response.status_code == 200, hl_response.text
+        params = hl_response.json()
+        print(hl_response.json())
+        assert False
