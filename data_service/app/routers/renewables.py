@@ -233,5 +233,5 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
         raise ex.exceptions[0] from ex
 
     return EpochRenewablesEntry(
-        timestamps=all_dfs[0].result().index.tolist(), data=[df.result()["solar_generation"].to_list() for df in all_dfs]
+        timestamps=all_dfs[0].result().index.to_list(), data=[df.result()["solar_generation"].to_list() for df in all_dfs]
     )

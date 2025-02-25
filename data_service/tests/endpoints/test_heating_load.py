@@ -107,12 +107,14 @@ class TestHeatingLoad:
         ) - datetime.timedelta(minutes=1)
 
         timestamps = heating_load_result.json()["timestamps"]
-        first_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert first_ts.strftime("%H:%M") == "00:00", "First entry isn't 00:00"
-        assert first_ts.strftime("%d-%b") == start_ts.strftime("%d-%b")
-        last_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert last_ts.strftime("%H:%M") == "23:30", "Last entry isn't 23:30"
-        assert last_ts.strftime("%d-%b") == (end_ts - datetime.timedelta(minutes=30)).strftime("%d-%b")
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (end_ts - datetime.timedelta(minutes=30))
         assert (
             len(timestamps)
             == len(heating_load_result.json()["data"][0]["reduced_hload"])

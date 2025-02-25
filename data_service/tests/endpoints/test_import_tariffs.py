@@ -131,12 +131,14 @@ class TestSyntheticTariffs:
         assert result.status_code == 200, result.text
 
         timestamps = result.json()["timestamps"]
-        first_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert first_ts.strftime("%H:%M") == "00:00", "First entry isn't 00:00"
-        assert first_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
-        last_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert last_ts.strftime("%H:%M") == "23:30", "Last entry isn't 23:30"
-        assert last_ts.strftime("%d-%b") == (demo_end_ts - datetime.timedelta(minutes=30)).strftime("%d-%b")
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == demo_start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (demo_end_ts - datetime.timedelta(minutes=30))
         assert (
             len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
             for item in result.json()["data"]

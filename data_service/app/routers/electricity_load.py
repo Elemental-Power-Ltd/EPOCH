@@ -248,7 +248,7 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     # Now restructure for EPOCH
     elec_df = elec_df[["consumption_kwh"]].interpolate(method="time").ffill().bfill()
 
-    return EpochElectricityEntry(timestamps=elec_df.index.tolist(), data=elec_df["consumption_kwh"].to_list())
+    return EpochElectricityEntry(timestamps=elec_df.index.to_list(), data=elec_df["consumption_kwh"].to_list())
 
 
 @router.post("/get-blended-electricity-load", tags=["get", "electricity"])

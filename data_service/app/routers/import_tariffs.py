@@ -396,7 +396,7 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
     EpochTariffEntry
         Tariff entries in an EPOCH friendly format.
     """
-    dfs = []
+    dfs: list[pd.DataFrame] = []
     for dataset_id in params.dataset_id:
         res = await conn.fetch(
             """
@@ -428,4 +428,4 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
                 method="nearest",
             )
 
-    return EpochTariffEntry(timestamps=dfs[0].index.tolist(), data=[(df["unit_cost"] / 100).to_list() for df in dfs])
+    return EpochTariffEntry(timestamps=dfs[0].index.to_list(), data=[(df["unit_cost"] / 100).to_list() for df in dfs])

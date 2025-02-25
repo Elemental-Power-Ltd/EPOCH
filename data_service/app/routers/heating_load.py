@@ -343,18 +343,20 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         return heating_df
 
     async def get_heating_cost(db_pool: DatabasePoolDep, dataset_id: dataset_id_t) -> float:
-        async with db_pool.acquire() as conn:
-            res = await conn.fetch(
-                """
-                SELECT SUM(cost) AS total_cost
-                FROM heating.interventions
-                WHERE site_id = (SELECT site_id FROM heating.metadata WHERE dataset_id = $1)
-                AND intervention IN (
-                SELECT UNNEST((SELECT interventions FROM heating.metadata WHERE dataset_id = $1))
-                )""",
-                dataset_id,
-            )
-            return res[0]["total_cost"] or 0
+        res = await db_pool.fetchval(
+            """
+            SELECT
+                SUM(cost)
+            FROM heating.metadata AS m
+            JOIN heating.interventions AS i
+            ON
+                i.site_id = m.site_id AND i.intervention = ANY(m.interventions)
+            WHERE dataset_id = $1""",
+            dataset_id,
+        )
+        if res:
+            return res[0]["total_cost"]
+        return 0
 
     async with asyncio.TaskGroup() as tg:
         all_dfs = [
@@ -366,7 +368,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         all_costs = [tg.create_task(get_heating_cost(db_pool=pool, dataset_id=dataset_id)) for dataset_id in params.dataset_id]
 
     return EpochHeatingEntry(
-        timestamps=all_dfs[0].result().index.tolist(),
+        timestamps=all_dfs[0].result().index.to_list(),
         data=[
             FabricIntervention(cost=cost.result(), reduced_hload=df.result()["heating"].to_list())
             for cost, df in zip(all_costs, all_dfs, strict=False)
@@ -408,7 +410,7 @@ async def get_dhw_load(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
     )
     dhw_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "dhw"])
 
-    return EpochDHWEntry(timestamps=dhw_df.index.tolist(), data=dhw_df["dhw"].to_list())
+    return EpochDHWEntry(timestamps=dhw_df.index.to_list(), data=dhw_df["dhw"].to_list())
 
 
 @router.post("/get-air-temp", tags=["get", "airtemp"])
@@ -445,4 +447,4 @@ async def get_air_temp(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
     )
     dhw_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "air_temperature"])
 
-    return EpochAirTempEntry(timestamps=dhw_df.index.tolist(), data=dhw_df["air_temperature"].to_list())
+    return EpochAirTempEntry(timestamps=dhw_df.index.to_list(), data=dhw_df["air_temperature"].to_list())
