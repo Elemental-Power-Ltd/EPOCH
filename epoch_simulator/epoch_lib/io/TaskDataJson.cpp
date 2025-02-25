@@ -70,6 +70,9 @@ void from_json(const json& j, BatteryMode& mode) {
 	if (str == "CONSUME") {
 		mode = BatteryMode::CONSUME;
 	}
+	else if (str == "CONSUME_PLUS") {
+		mode = BatteryMode::CONSUME_PLUS;
+	}
 	else {
 		throw std::invalid_argument("Invalid Battery Mode - " + str);
 	}

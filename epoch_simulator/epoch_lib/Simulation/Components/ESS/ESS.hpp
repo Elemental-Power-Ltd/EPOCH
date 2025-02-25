@@ -9,6 +9,7 @@
 #include "../../../Definitions.hpp"
 #include "../../TempSum.hpp"
 #include "Battery.hpp"
+#include "../../DayTariffStats.hpp"
 
 class ESS {
 public:
@@ -23,7 +24,7 @@ public:
 
 class BasicESS : public ESS {
 public:
-    BasicESS(const SiteData& siteData, const EnergyStorageSystem& essData);
+    BasicESS(const SiteData& siteData, const EnergyStorageSystem& essData, size_t tariff_index, const DayTariffStats& tariff_stats);
 
     void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t);
     float AvailDisch();
@@ -36,6 +37,9 @@ private:
     const float mThresholdSoC;
 
     float mEnergyCalc;
+
+    year_TS mImport_tariff;
+    const DayTariffStats& mTariffStats;
 };
 
 

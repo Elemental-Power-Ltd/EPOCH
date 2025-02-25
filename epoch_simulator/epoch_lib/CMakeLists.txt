@@ -51,7 +51,8 @@ add_library(Epoch_lib STATIC
 	"Simulation/Costs/Capex.cpp"
 	"Simulation/Costs/Opex.cpp"
 	"Simulation/Costs/CostData.cpp"
-	"io/TaskDataJson.cpp")
+	"io/TaskDataJson.cpp"
+)
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)

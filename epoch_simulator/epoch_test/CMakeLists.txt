@@ -8,7 +8,7 @@ add_executable(epoch_test "test_main.cpp"
 "test_site_data_json.cpp"
 "test_timestamps.cpp"
 "test_scenario_validation.cpp"
-)
+ "test_tariff_stats.cpp")
 
 target_link_libraries(epoch_test PRIVATE Epoch_lib)
 

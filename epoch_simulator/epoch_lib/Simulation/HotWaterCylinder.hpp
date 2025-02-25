@@ -3,13 +3,14 @@
 #include "TaskComponents.hpp"
 #include "SiteData.hpp"
 #include "TempSum.hpp"
+#include "DayTariffStats.hpp"
 
 class HotWaterCylinder {
 
 public:
 	// Constructor
-	HotWaterCylinder(const SiteData& siteData, const DomesticHotWater& dhw, const HeatPumpData& heatPumpData, size_t tariff_index) :
 
+	HotWaterCylinder(const SiteData& siteData, const DomesticHotWater& dhw, const HeatPumpData& heatPumpData, size_t tariff_index, const DayTariffStats& tariff_stats) :
 		mCylinderVolume(dhw.cylinder_volume), // cylinder volume n litres
 		mTimesteps(siteData.timesteps),
 		mTimestep_seconds(std::chrono::duration<float>(siteData.timestep_interval_s).count()),// set up timestep seconds in constructor
@@ -25,6 +26,7 @@ public:
 		mDHW_diverter_load_e(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mDHW_heat_pump_load_h(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mImport_tariff(siteData.import_tariffs[tariff_index]),
+		mTariffStats(tariff_stats),
 		mHeat_pump_power_h(heatPumpData.heat_power) // will need to calculate energy per timestep
 	{}
 
@@ -92,10 +94,7 @@ public:
 
 		intialise_SoC();
 		calculate_U();
-
-		// calculate average tariff as a threshold to charge
-		mAverage_tariff = mImport_tariff.mean(); 
-
+		
 		// initialise cylinder at timestep zero
 		update_SoC_basic(0, mDHW_discharging[0], 0);
 
@@ -104,6 +103,9 @@ public:
 
 			float timestep_charge = 0;
 
+			float dayAverage = mTariffStats.getDayAverage(timestep);
+			float dayPercentile = mTariffStats.getDayPercentile(timestep);
+			
 			// determine charge
 			float max_charge_energy = mCapacity_h - mCylEnergy_h;
 			float max_heat_pump_charge_energy = std::min(max_charge_energy, (mHeat_pump_power_h * mTimestep_hours));
@@ -117,7 +119,7 @@ public:
 				timestep_renewable_charge = std::min(-tempSum.Elec_e[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
 			}
 
-			if (mImport_tariff[timestep] <= mAverage_tariff)	{
+			if (mImport_tariff[timestep] <= dayAverage ||  mImport_tariff[timestep] <= dayPercentile)	{
 				timestep_lowtariff_charge = max_heat_pump_charge_energy - timestep_renewable_charge;
 			}
 
@@ -181,8 +183,6 @@ private:
 
 	float mHeat_pump_power_h; // max heat pump power
 
-	float mAverage_tariff;
-
 	year_TS mDHW_charging; // member timeseries for calculated charging
 	year_TS mDHW_discharging;  // member timeseries for discharging from historical data
 	year_TS mDHW_standby_losses;
@@ -192,6 +192,8 @@ private:
 	year_TS mDHW_heat_pump_load_h;
 	year_TS mDHW_diverter_load_e;
 	year_TS mImport_tariff;
+
+	const DayTariffStats& mTariffStats;
 
 };
 

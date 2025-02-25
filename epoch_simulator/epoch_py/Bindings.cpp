@@ -79,7 +79,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("initial_charge", &EnergyStorageSystem::initial_charge);
 
 	pybind11::enum_<BatteryMode>(m, "BatteryMode")
-		.value("CONSUME", BatteryMode::CONSUME);
+		.value("CONSUME", BatteryMode::CONSUME)
+		.value("CONSUME_PLUS", BatteryMode::CONSUME_PLUS);
 
 	pybind11::class_<GridData>(m, "Grid")
 		.def(pybind11::init<>())

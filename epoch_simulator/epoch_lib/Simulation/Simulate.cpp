@@ -14,6 +14,7 @@
 #include "../Definitions.hpp"
 
 #include "Costs.hpp"
+#include "DayTariffStats.hpp"
 #include "HotWaterCylinder.hpp"
 
 #include "Config.hpp"
@@ -67,6 +68,12 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 	result.report_data = ReportData();
 	ReportData& reportData = *result.report_data;
 
+	// Do tariff precalculation
+	size_t tariff_index = taskData.grid ? taskData.grid->tariff_index : 0;
+
+	DayTariffStats tariffStats{ siteData, tariff_index };
+
+
 	// Run through the pre balancing loop components
 
 	if (taskData.building) {
@@ -88,8 +95,7 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 	}
 
 	if (taskData.domestic_hot_water && taskData.heat_pump) {
-		size_t tariff_index = taskData.grid ? taskData.grid->tariff_index : 0;
-		HotWaterCylinder hotWaterCylinder{ siteData, taskData.domestic_hot_water.value(), taskData.heat_pump.value(), tariff_index };
+		HotWaterCylinder hotWaterCylinder{ siteData, taskData.domestic_hot_water.value(), taskData.heat_pump.value(), tariff_index, tariffStats };
 		hotWaterCylinder.AllCalcs(tempSum);
 		hotWaterCylinder.Report(reportData);
 	}
@@ -99,7 +105,7 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 
 	std::unique_ptr<ESS> ESSmain;
 	if (taskData.energy_storage_system) {
-		ESSmain = std::make_unique<BasicESS>(siteData, taskData.energy_storage_system.value());
+		ESSmain = std::make_unique<BasicESS>(siteData, taskData.energy_storage_system.value(), tariff_index, tariffStats);
 	}
 	else {
 		ESSmain = std::make_unique<NullESS>(siteData);

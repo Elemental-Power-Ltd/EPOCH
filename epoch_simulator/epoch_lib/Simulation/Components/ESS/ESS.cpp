@@ -1,12 +1,15 @@
 #include "ESS.hpp"
 
-BasicESS::BasicESS(const SiteData& siteData, const EnergyStorageSystem& essData) :
+
+BasicESS::BasicESS(const SiteData& siteData, const EnergyStorageSystem& essData, size_t tariff_index, const DayTariffStats& tariff_stats) :
     ESS(siteData),
     mBattery(siteData, essData),
     mESS_mode(essData.battery_mode),
     mTimesteps(siteData.timesteps),
     mThresholdSoC(essData.capacity * 0.5f),
-    mEnergyCalc(0.0f)
+    mEnergyCalc(0.0f),
+    mImport_tariff(siteData.import_tariffs[tariff_index]),
+    mTariffStats(tariff_stats)
 {
 }
 
@@ -16,6 +19,28 @@ void BasicESS::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size
     switch (mESS_mode) {
     case BatteryMode::CONSUME: // Consume mode
         if (tempSum.Elec_e[t] >= 0) {  // Surplus Demand, discharge ESS
+            mEnergyCalc = std::min(tempSum.Elec_e[t], mBattery.getAvailableDischarge());
+            mBattery.doDischarge(mEnergyCalc, t);
+            tempSum.Elec_e[t] = tempSum.Elec_e[t] - mEnergyCalc;
+        }
+        else {        // Surplus Generation, charge ESS
+            mEnergyCalc = std::min(-tempSum.Elec_e[t], mBattery.getAvailableCharge());
+            mBattery.doCharge(mEnergyCalc, t);
+            tempSum.Elec_e[t] = tempSum.Elec_e[t] + mEnergyCalc;
+        }
+        break;
+    case BatteryMode::CONSUME_PLUS:
+        float averageTariff = mTariffStats.getDayAverage(t);
+        float percentileTariff = mTariffStats.getDayPercentile(t);
+        
+        // if we satisfy top-up conditions in this timestep, only do this charge. 75% is the threshold SoC level
+        if(mImport_tariff[t] <= averageTariff && mImport_tariff[t] <= percentileTariff && mBattery.GetSoC()/mBattery.GetCapacity_e() < 0.75f) {
+
+            mEnergyCalc = std::min((mBattery.GetCapacity_e()*0.75f), mBattery.getAvailableCharge());
+            mBattery.doCharge(mEnergyCalc, t);
+            tempSum.Elec_e[t] = tempSum.Elec_e[t] + mEnergyCalc;
+        }
+        else if (tempSum.Elec_e[t] >= 0) {  // Surplus Demand, discharge ESS
             mEnergyCalc = std::min(tempSum.Elec_e[t], mBattery.getAvailableDischarge());
             mBattery.doDischarge(mEnergyCalc, t);
             tempSum.Elec_e[t] = tempSum.Elec_e[t] - mEnergyCalc;

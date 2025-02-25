@@ -42,6 +42,8 @@ public:
 
 	float GetSoC() { return mPreSoC_e; }
 
+	float GetCapacity_e() { return mCapacity_e; }
+
 	void doCharge(float Charge_e, size_t t) {
 		mHistCharg_e[t] = Charge_e;
 		mHistRTL_e[t] = Charge_e * mRTLrate;

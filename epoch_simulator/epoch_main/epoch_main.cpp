@@ -106,6 +106,6 @@ void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 	spdlog::info("Scope 2 emissions: {} kgCO2e / year", result.scenario_carbon_balance_scope_2);
 	spdlog::info("Capex: {:.2f} pounds", result.project_CAPEX);
 	spdlog::info("Annualised Cost: {:.2f} pounds / year", result.total_annualised_cost);
-	spdlog::info("Cost Balance: {:.2f} pounds / year", result.total_annualised_cost);
+	spdlog::info("Cost Balance: {:.2f} pounds / year", result.scenario_cost_balance);
 	spdlog::info("Payback Horizon: {} years", result.payback_horizon_years);
 }

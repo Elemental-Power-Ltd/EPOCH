@@ -17,6 +17,8 @@ std::string enumToString(const BatteryMode& battery_mode) {
 	switch (battery_mode) {
 	case BatteryMode::CONSUME:
 		return "CONSUME";
+	case BatteryMode::CONSUME_PLUS:
+		return "CONSUME_PLUS";
 	default:
 		throw std::invalid_argument("Invalid Battery Mode");
 	}

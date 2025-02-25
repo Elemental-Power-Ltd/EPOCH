@@ -46,7 +46,7 @@ struct ElectricVehicles {
     bool operator==(const ElectricVehicles&) const = default;
 };
 
-enum class BatteryMode { CONSUME };
+enum class BatteryMode {CONSUME, CONSUME_PLUS};
 
 struct EnergyStorageSystem {
     float capacity = 800.0f;
