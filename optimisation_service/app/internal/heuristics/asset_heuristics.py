@@ -2,17 +2,20 @@
 Asset heuristics for initialising EPOCH search spaces.
 """
 
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 
 
-class heat_pump:
+class HeatPump:
     @staticmethod
     def heat_power(
-        heating_df: pd.DataFrame,
-        ashp_input_df: pd.DataFrame,
-        ashp_output_df: pd.DataFrame,
-        air_temp_df: pd.DataFrame,
+        building_hload: list[float],
+        ashp_input_table: list[list[float]],
+        ashp_output_table: list[list[float]],
+        air_temperature: list[float],
+        timestamps: list[datetime],
         ashp_mode: float,
         quantile: float = 0.99,
     ) -> float:
@@ -26,14 +29,16 @@ class heat_pump:
 
         Parameters
         ----------
-        heating_df
-            EPOCH friendly heat load dataframe with Date, Start Time and HLoad1 columns.
-        ashp_input_df
-            Air source heat pump power draw dataframe in EPOCH format (air temp rows, setting columns)
-        ashp_output_df
-            Air source heat pump heat output dataframe in EPOCH format (air temp rows, setting columns)
-        air_temp_df
-            Air temperature dataframe in °C with Air-temp column
+        building_hload
+            List of heat loads.
+        ashp_input_table
+            Air source heat pump power draw table in a row major list.
+        ashp_output_table
+            Air source heat pump heat output in a row major list.
+        air_temperature
+            List of air temperatures in °C.
+        timestamps
+            List of datetimes corresponding to the building_hload.
         ashp_mode
             Air source heat pump mode matching the column headers of the ASHP dataframes, this is either a weather compensation
             setting or a flow temperature.
@@ -44,29 +49,28 @@ class heat_pump:
         -------
         Estimated heat pump electrical rating in kW
         """
-        ashp_input_row = ashp_input_df[str(ashp_mode)].to_numpy()
-        ashp_output_row = ashp_output_df[str(ashp_mode)].to_numpy()
+        ashp_input_arr = np.array(ashp_input_table)
+        ashp_output_arr = np.array(ashp_output_table)
 
-        air_temps = air_temp_df["AirTemp"]
-        ashp_inputs = np.interp(air_temps, ashp_input_df.index.to_numpy(), ashp_input_row)
-        ashp_outputs = np.interp(air_temps, ashp_output_df.index.to_numpy(), ashp_output_row)
+        ashp_input_row = ashp_input_arr[ashp_input_arr[0, :] == ashp_mode][1:]
+        ashp_output_row = ashp_output_arr[ashp_output_arr[0, :] == ashp_mode][1:]
+
+        ashp_inputs = np.interp(air_temperature, ashp_input_arr[1:, 0], ashp_input_row)
+        ashp_outputs = np.interp(air_temperature, ashp_output_arr[1:, 0], ashp_output_row)
 
         cops = ashp_outputs / ashp_inputs
 
-        # We want rating in kW, so if there was a heat load of 1kWh in a 30 minute timestep, that's a 2kW load.
-        hload_times = pd.to_datetime(heating_df["Date"] + " 2024 " + heating_df["StartTime"], utc=True)
-
         timedeltas = np.pad(
-            [item.to_timedelta64() for item in np.ediff1d(hload_times)], pad_width=(0, 1), mode="wrap"
+            [item.to_timedelta64() for item in np.ediff1d(np.array(timestamps))], pad_width=(0, 1), mode="wrap"
         ) / np.timedelta64(1, "h")
 
-        elec_loads = (heating_df["HLoad1"] / cops) / timedeltas
+        elec_loads = (np.array(building_hload) / cops) / timedeltas
         return np.quantile(elec_loads, quantile)
 
 
-class renewables:
+class Renewables:
     @staticmethod
-    def yield_scalars(solar_df: pd.DataFrame, elec_df: pd.DataFrame, quantile: float = 0.75) -> float:
+    def yield_scalars(solar_yield: list[float], building_eload: list[float], quantile: float = 0.75) -> float:
         """
         Estimate the solar PV array size for this site to cover a fraction of daily usage.
 
@@ -78,10 +82,10 @@ class renewables:
 
         Parameters
         ----------
-        solar_df
-            Potential solar output of a 1kWp array on this site, with "RGen1" column.
-        elec_df
-            Electrical load dataframe with "FixLoad1" column
+        solar_yield
+            List of potential solar outputs of a 1kWp array on this site.
+        building_eload
+            List of electrical load values.
         quantile
             What fraction of electrical loads during sunny days to attempt to cover
 
@@ -89,14 +93,14 @@ class renewables:
         -------
         Estimated solar array size in kWp
         """
-        is_nonzero_solar = solar_df["RGen1"] > 0
-        required_solar = elec_df.loc[is_nonzero_solar, "FixLoad1"] / solar_df.loc[is_nonzero_solar, "RGen1"]
+        is_nonzero_solar = np.array(solar_yield) > 0
+        required_solar = np.array(building_eload)[is_nonzero_solar] / np.array(solar_yield)[is_nonzero_solar]
         return float(np.quantile(required_solar, quantile))
 
 
-class energy_storage_system:
+class EnergyStorageSystem:
     @staticmethod
-    def capacity(elec_df: pd.DataFrame, quantile: float = 0.75) -> float:
+    def capacity(building_eload: list[float], timestamps: list[datetime], quantile: float = 0.75) -> float:
         """
         Estimate the required battery capacity to avoid peak time usage.
 
@@ -105,8 +109,10 @@ class energy_storage_system:
 
         Parameters
         ----------
-        elec_df
-            EPOCH-friendly dataframe with "Date", "Start Time" and "FixLoad1" columns.
+        building_eload
+            List of electrical load values.
+        timestamps
+            List of datetimes corresponding to the building_eload.
         quantile
             What fraction of days 16:00-19:00 period we should cover.
 
@@ -114,13 +120,15 @@ class energy_storage_system:
         -------
         Estimated battery capacity for this site in kWh
         """
-        time_of_day = np.array([float(item[0]) + float(item[1]) / 60 for item in elec_df["StartTime"].str.split(":")])
+        time_of_day = np.array([dt.hour for dt in timestamps])
         is_peak = np.logical_and(time_of_day >= 16, time_of_day < 19)
+        elec_df = pd.DataFrame({{"load": building_eload, "Date": time_of_day}})
         peak_elec = elec_df[is_peak].groupby("Date").sum()["FixLoad1"]
+
         return float(np.quantile(peak_elec, quantile))
 
     @staticmethod
-    def discharge_power(elec_df: pd.DataFrame, quantile: float = 1.0) -> float:
+    def discharge_power(building_eload: list[float], timestamps: list[datetime], quantile: float = 1.0) -> float:
         """
         Estimate the required battery discharging rate for a given electrical demand.
 
@@ -130,8 +138,10 @@ class energy_storage_system:
 
         Parameters
         ----------
-        elec_df
-            EPOCH-friendly dataframe with "Date", "Start Time", and "FixLoad1" columns.
+        building_eload
+            List of electrical load values.
+        timestamps
+            List of datetimes corresponding to the building_eload.
         quantile
             Ratio between 0 and 1 of the quantile to select. 0 is min (lowest discharge rate), 1 is max (highest discharge rate)
 
@@ -139,14 +149,15 @@ class energy_storage_system:
         -------
         Estimated battery charging rate required in kW
         """
-        elec_times = pd.to_datetime(elec_df["Date"] + " 2024 " + elec_df["StartTime"], utc=True)
         timedeltas = np.pad(
-            [item.to_timedelta64() for item in np.ediff1d(elec_times)], pad_width=(0, 1), mode="wrap"
+            [item.to_timedelta64() for item in np.ediff1d(np.array(timestamps))], pad_width=(0, 1), mode="wrap"
         ) / np.timedelta64(1, "h")
-        return np.quantile(elec_df["FixLoad1"] / timedeltas, quantile)
+        return np.quantile(np.array(building_eload) / timedeltas, quantile)
 
     @staticmethod
-    def charge_power(solar_df: pd.DataFrame, solar_scale: float = 1.0, quantile: float = 0.9) -> float:
+    def charge_power(
+        solar_yield: list[float], timestamps: list[datetime], solar_scale: float = 1.0, quantile: float = 0.9
+    ) -> float:
         """
         Estimate the required battery charging rate for a given solar installation.
 
@@ -157,8 +168,10 @@ class energy_storage_system:
 
         Parameters
         ----------
-        solar_df
-            EPOCH-friendly dataframe with "Date", "Start Time", and "RGen1" columns.
+        solar_yield
+            List of potential solar outputs of a 1kWp array on this site.
+        timestamps
+            List of datetimes corresponding to the solar_yield.
         solar_scale
             kWp rating of the solar PV installation (maybe from `estimate_solar_pv`)
         quantile
@@ -168,10 +181,9 @@ class energy_storage_system:
         -------
         Estimated battery charging rate required in kW
         """
-        solar_output = solar_df["RGen1"].to_numpy() * solar_scale
-        solar_times = pd.to_datetime(solar_df["Date"] + " 2024 " + solar_df["StartTime"], utc=True)
+        solar_output = np.array(solar_yield) * solar_scale
         # Convert from kWh / timestep into kW (e.g. something that uses 1kWh in 0.5 hours is a 2kW charge)
         timedeltas = np.pad(
-            [item.to_timedelta64() for item in np.ediff1d(solar_times)], pad_width=(0, 1), mode="wrap"
+            [item.to_timedelta64() for item in np.ediff1d(np.array(timestamps))], pad_width=(0, 1), mode="wrap"
         ) / np.timedelta64(1, "h")
         return np.quantile(solar_output / timedeltas, quantile)

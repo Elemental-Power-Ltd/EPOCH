@@ -12,6 +12,7 @@ from epoch_simulator import (
     Simulator,
 )
 
+from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.epoch_utils import (
     TaskData,
     convert_sim_result,
@@ -32,7 +33,9 @@ def test_convert_sim_result() -> None:
     td.domestic_hot_water = DomesticHotWater()
     td.energy_storage_system = EnergyStorageSystem()
 
-    sim = Simulator(inputDir=str(Path(_DATA_PATH, "amcott_house")))
+    site_name = "amcott_house"
+    epoch_data = load_epoch_data_from_file(Path(_DATA_PATH, site_name, "epoch_data.json"))
+    sim = Simulator.from_json(epoch_data.model_dump_json())
 
     sim_result = sim.simulate_scenario(td)
 

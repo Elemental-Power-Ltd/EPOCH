@@ -47,7 +47,7 @@ class ProblemInstance(ElementwiseProblem):
         n_obj = len(self.objectives)
         n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
 
-        input_dirs = {}
+        epoch_data_dict = {}
         self.default_parameters: dict[str, dict] = {}
         self.site_ranges: dict[str, dict] = {}
         self.asset_parameters: dict[str, list] = {}
@@ -108,9 +108,9 @@ class ProblemInstance(ElementwiseProblem):
             self.indexes[site_name] = (n_var, n_var + n_parameters_to_optimise)
             n_var += n_parameters_to_optimise
 
-            input_dirs[site_name] = site._input_dir
+            epoch_data_dict[site_name] = site._epoch_data
 
-        self.sim = PortfolioSimulator(input_dirs=input_dirs)
+        self.sim = PortfolioSimulator(epoch_data_dict=epoch_data_dict)
 
         super().__init__(
             n_var=n_var,
@@ -261,7 +261,7 @@ class EstimateBasedSampling(Sampling):
             site_pops.append(  # noqa: PERF401
                 generate_building_initial_population(
                     site_range=site.site_range,
-                    input_dir=site._input_dir,
+                    epoch_data=site._epoch_data,
                     pop_size=n_samples,
                 )
             )

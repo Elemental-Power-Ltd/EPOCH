@@ -4,12 +4,11 @@ Endpoints to handle running individual simulations of EPOCH
 
 import json
 import logging
-import tempfile
 
 from epoch_simulator import Simulator
 from fastapi import APIRouter, HTTPException
 
-from app.internal.datamanager import DataManagerDep
+from app.internal.datamanager import DataManagerDep, EpochSiteData
 from app.internal.epoch_utils import TaskData, convert_sim_result
 from app.models.simulate import FullResult, ReproduceSimulationRequest, RunSimulationRequest
 from app.models.site_data import DatasetTypeEnum, LocalMetaData
@@ -42,7 +41,9 @@ async def run_simulation(request: RunSimulationRequest, data_manager: DataManage
 
     dataset_entries = await data_manager.fetch_specific_datasets(request.site_data)
 
-    return do_simulation(data_manager, dataset_entries, request.task_data)
+    epoch_data = data_manager.transform_all_input_data(dataset_entries, request.site_data.start_ts, request.site_data.end_ts)
+
+    return do_simulation(epoch_data, request.task_data)
 
 
 @router.post("/reproduce-simulation")
@@ -93,10 +94,12 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
 
     dataset_entries = await data_manager.fetch_specific_datasets(site_data)
 
-    return do_simulation(data_manager, dataset_entries, repro_config.task_data[request.site_id])
+    epoch_data = data_manager.transform_all_input_data(dataset_entries, site_data.start_ts, site_data.end_ts)
+
+    return do_simulation(epoch_data, repro_config.task_data[request.site_id])
 
 
-def do_simulation(data_manager, dataset_entries, task_data):
+def do_simulation(epoch_data: EpochSiteData, task_data: dict):
     """
     Internal function to run a simulation for a given set of site data and taskData
     Parameters
@@ -104,7 +107,7 @@ def do_simulation(data_manager, dataset_entries, task_data):
     data_manager
         A data manager to handle IO operations
     dataset_entries
-        The full timeseries for the site
+        The full timeseries for the site```
     task_data
         The EPOCH TaskData represented in JSON
 
@@ -112,18 +115,15 @@ def do_simulation(data_manager, dataset_entries, task_data):
     -------
 
     """
-    with tempfile.TemporaryDirectory(prefix="simulate_repro_") as repro_dir:
-        data_manager.write_input_data_to_files(dataset_entries, repro_dir)
+    sim = Simulator.from_json(epoch_data.model_dump_json())
+    pytd = TaskData.from_json(json.dumps(task_data))
 
-        sim = Simulator(inputDir=repro_dir)
-        pytd = TaskData.from_json(json.dumps(task_data))
+    res = sim.simulate_scenario(pytd, fullReporting=True)
 
-        res = sim.simulate_scenario(pytd, fullReporting=True)
+    report_dict = report_data_to_dict(res.report_data)
+    objectives = convert_sim_result(res)
 
-        report_dict = report_data_to_dict(res.report_data)
-        objectives = convert_sim_result(res)
-
-        return FullResult(report_data=report_dict, objectives=objectives)
+    return FullResult(report_data=report_dict, objectives=objectives)
 
 
 def report_data_to_dict(report_data) -> dict[str, list[float]]:

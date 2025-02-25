@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.epoch_utils import TaskData
 from app.internal.ga_utils import ProblemInstance
 from app.internal.portfolio_simulator import combine_metric_values
@@ -12,7 +13,7 @@ from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import _METRICS, Metric
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
-from app.models.site_data import FileLoc, LocalMetaData
+from app.models.site_data import EpochSiteData, FileLoc, LocalMetaData
 from app.models.site_range import (
     BatteryModeEnum,
     Building,
@@ -70,14 +71,19 @@ def default_siterange() -> SiteRange:
 
 
 def site_generator(site_name: str, site_range: SiteRange) -> Site:
-    site_data = LocalMetaData(loc=FileLoc.local, site_id=site_name, path=Path(_DATA_PATH, site_name))
+    site_data = LocalMetaData(loc=FileLoc.local, site_id=site_name, path=Path(_DATA_PATH, site_name, "epoch_data.json"))
     site = Site(
         name=site_data.site_id,
         site_range=site_range,
         site_data=site_data,
     )
-    site._input_dir = site_data.path
+    site._epoch_data = load_epoch_data_from_file(site_data.path)
     return site
+
+
+@pytest.fixture
+def default_epoch_data() -> EpochSiteData:
+    return load_epoch_data_from_file(Path(_DATA_PATH, "amcott_house", "epoch_data.json"))
 
 
 @pytest.fixture

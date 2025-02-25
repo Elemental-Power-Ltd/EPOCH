@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from epoch_simulator import Building, Simulator
 
+from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.epoch_utils import TaskData
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.internal.portfolio_simulator import PortfolioSimulator, combine_metric_values, simulate_scenario
@@ -14,18 +15,22 @@ from tests.conftest import _DATA_PATH
 
 class TestPortfolioSimulator:
     def test_init(self) -> None:
+        epoch_data_ah = load_epoch_data_from_file(Path(_DATA_PATH, "amcott_house", "epoch_data.json"))
+        epoch_data_blc = load_epoch_data_from_file(Path(_DATA_PATH, "bircotes_leisure_centre", "epoch_data.json"))
         PortfolioSimulator(
-            input_dirs={
-                "amcott_house": Path(_DATA_PATH, "amcott_house"),
-                "bircotes_leisure_centre": Path(_DATA_PATH, "bircotes_leisure_centre"),
+            epoch_data_dict={
+                "amcott_house": epoch_data_ah,
+                "bircotes_leisure_centre": epoch_data_blc,
             }
         )
 
     def test_simulate_portfolio(self) -> None:
+        epoch_data_ah = load_epoch_data_from_file(Path(_DATA_PATH, "amcott_house", "epoch_data.json"))
+        epoch_data_blc = load_epoch_data_from_file(Path(_DATA_PATH, "bircotes_leisure_centre", "epoch_data.json"))
         ps = PortfolioSimulator(
-            input_dirs={
-                "amcott_house": Path(_DATA_PATH, "amcott_house"),
-                "bircotes_leisure_centre": Path(_DATA_PATH, "bircotes_leisure_centre"),
+            epoch_data_dict={
+                "amcott_house": epoch_data_ah,
+                "bircotes_leisure_centre": epoch_data_blc,
             }
         )
         portfolio_scenarios = {"amcott_house": TaskData(), "bircotes_leisure_centre": TaskData()}
@@ -38,14 +43,16 @@ class TestPortfolioSimulator:
 class TestSimulateScenario:
     def test_good_inputs(self) -> None:
         site_name = "amcott_house"
-        sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))
+        epoch_data = load_epoch_data_from_file(Path(_DATA_PATH, site_name, "epoch_data.json"))
+        sim = Simulator.from_json(epoch_data.model_dump_json())
         site_scenario = TaskData()
         res = simulate_scenario(sim, site_name, site_scenario)
         assert all(obj in list(res.keys()) for obj in _METRICS)
 
     def test_caching(self) -> None:
         site_name = "amcott_house"
-        sim = Simulator(inputDir=str(Path(_DATA_PATH, site_name)))
+        epoch_data = load_epoch_data_from_file(Path(_DATA_PATH, site_name, "epoch_data.json"))
+        sim = Simulator.from_json(epoch_data.model_dump_json())
         building_1 = Building()
         site_scenario = TaskData()
         site_scenario.building = building_1

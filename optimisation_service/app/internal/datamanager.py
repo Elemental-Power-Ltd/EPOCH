@@ -1,14 +1,13 @@
 import json
 import logging
 import os
-import shutil
 import typing
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
-import pandas as pd
 from fastapi import Depends
 from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
@@ -16,13 +15,7 @@ from pydantic import UUID4
 from ..models.core import OptimisationResultEntry, Task
 from ..models.database import DatasetTypeEnum
 from ..models.simulate import ResultReproConfig
-from ..models.site_data import (
-    ASHPResult,
-    FileLoc,
-    RecordsList,
-    RemoteMetaData,
-    SiteDataEntries,
-)
+from ..models.site_data import EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
 
 logger = logging.getLogger("default")
 
@@ -62,25 +55,18 @@ class DataManager:
         -------
         None
         """
-        task._input_dir = Path(self.temp_dir, str(task.task_id))
-        logger.debug(f"Creating temporary directory {task._input_dir}.")
-        os.makedirs(task._input_dir)
-        logger.info(f"Saving site data to {task._input_dir}.")
-
         # TODO: makes this async
         for site in task.portfolio:
-            site._input_dir = Path(task._input_dir, site.site_data.site_id)
-            os.makedirs(site._input_dir)
             site_data = site.site_data
             if site_data.loc == FileLoc.remote:
                 await self.hydrate_site_with_latest_dataset_ids(site_data)
 
                 site_data_entries = await self.fetch_specific_datasets(site_data)
 
-                self.write_input_data_to_files(site_data_entries, site._input_dir)
+                site._epoch_data = self.transform_all_input_data(site_data_entries, site_data.start_ts, site_data.end_ts)
 
             elif site_data.loc == FileLoc.local:
-                self.copy_input_data(site_data.path, site._input_dir)
+                site._epoch_data = load_epoch_data_from_file(site_data.path)
 
     async def hydrate_site_with_latest_dataset_ids(self, site_data: RemoteMetaData) -> None:
         """
@@ -112,45 +98,6 @@ class DataManager:
             latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=site_data)
             return latest_ids
 
-    def write_input_data_to_files(self, site_data_entries: SiteDataEntries, destination: os.PathLike) -> None:
-        """
-        Write the input data to a target folder.
-
-        Parameters
-        ----------
-        site_data_entries
-            Input site data.
-        destination
-            Folder to write files to.
-
-        Returns
-        -------
-        None
-        """
-        dfs = self.transform_all_input_data(site_data_entries)
-        logger.info(f"Saving site data to {destination}.")
-        for name, df in dfs.items():
-            df.to_csv(Path(destination, f"CSV{name}.csv"), index=False)
-
-    def copy_input_data(self, source: str | os.PathLike, destination: str | os.PathLike) -> None:
-        """
-        Copies input data files from source to destination folder.
-
-        Parameters
-        ----------
-        source
-            Folder to copy files from.
-        destination
-            Folder to copy files to.
-
-        Returns
-        -------
-        None
-        """
-        logger.debug(f"Copying data from {source} to {destination}.")
-        for file in self.input_data_files:
-            shutil.copy(Path(source, file), Path(destination, file))
-
     def save_parameters(self, task: Task) -> None:
         """
         Save the parameters of a Task to file for debug.
@@ -161,8 +108,9 @@ class DataManager:
             Task to save parameters for.
         """
         for site in task.portfolio:
-            with open(Path(site._input_dir, "inputParameters.json"), "w") as fi:
-                json.dump(site.site_range.model_dump(), fi)
+            site_temp_dir = Path(self.temp_dir, str(task.task_id), site.site_data.site_id)
+            site_temp_dir.mkdir(parents=True, exist_ok=True)
+            Path(site_temp_dir, "site_range.json").write_text(site.site_range.model_dump_json())
 
     async def fetch_specific_datasets(self, site_data: RemoteMetaData) -> SiteDataEntries:
         """
@@ -185,11 +133,13 @@ class DataManager:
                 subdirectory="/get-specific-datasets",
                 data=site_data,
             )
-        return site_data_entries
+        return SiteDataEntries.model_validate(site_data_entries)
 
-    def transform_all_input_data(self, site_data_entries: SiteDataEntries) -> dict[str, pd.DataFrame]:
+    def transform_all_input_data(
+        self, site_data_entries: SiteDataEntries, start_ts: datetime, end_ts: datetime
+    ) -> EpochSiteData:
         """
-        Transform a response from /get-latest-datasets into a set of dataframes
+        Transform a response from /get-latest-datasets into EPOCH ingestable data.
 
         Parameters
         ----------
@@ -199,19 +149,23 @@ class DataManager:
         Returns
         -------
         site_data
-            Dictionary of pandas DataFrame for each Epoch input data field.
+            EPOCH ingestable data.
         """
-        site_data = {
-            "Eload": self.transform_electricity_data(site_data_entries["eload"]),
-            "Hload": self.transform_heat_data(site_data_entries["heat"]),
-            "Airtemp": self.transform_airtemp_data(site_data_entries["heat"]),
-            "RGen": self.transform_rgen_data(site_data_entries["rgen"]),
-            "ASHPinput": self.transform_ASHP_input_data(site_data_entries["ashp_input"]),
-            "ASHPoutput": self.transform_ASHP_output_data(site_data_entries["ashp_output"]),
-            "Importtariff": self.transform_import_tariff_data(site_data_entries["import_tariffs"]),
-            "GridCO2": self.transform_grid_CO2_data(site_data_entries["grid_co2"]),
-            "DHWdemand": self.transform_dhw_data(site_data_entries["heat"]),
-        }
+        site_data = EpochSiteData(
+            start_ts=start_ts,
+            end_ts=end_ts,
+            building_eload=site_data_entries.eload.data,
+            building_hload=site_data_entries.heat.data[0].reduced_hload,  # First heat_load is Baseline
+            ev_eload=[0 for _ in site_data_entries.eload.data],  # EV_load unsupported by DB
+            dhw_demand=site_data_entries.dhw.data,
+            air_temperature=site_data_entries.air_temp.data,
+            grid_co2=site_data_entries.grid_co2.data,
+            solar_yields=site_data_entries.rgen.data,
+            import_tariffs=site_data_entries.import_tariffs.data,
+            fabric_interventions=site_data_entries.heat.data[1:],  # Following heat_loads are fabric interventions
+            ashp_input_table=site_data_entries.ashp_output.data,
+            ashp_output_table=site_data_entries.ashp_output.data,
+        )
         return site_data
 
     async def db_post(self, client: httpx.AsyncClient, subdirectory: str, data: Any) -> Any:
@@ -303,179 +257,24 @@ class DataManager:
             logger.info("Repro with:", data)
             return ResultReproConfig.model_validate(data)
 
-    def transform_electricity_data(self, eload: RecordsList) -> pd.DataFrame:
-        """
-        Transform electricity load data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        eload
-            List of electricity load records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of electricity load records.
-        """
-        df = pd.DataFrame.from_records(eload)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "FixLoad1"])
-        df["FixLoad2"] = 0
-        return df
-
-    def transform_rgen_data(self, rgen: RecordsList) -> pd.DataFrame:
-        """
-        Transform renewables data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        rgen
-            List of renewables records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of renewables records.
-        """
-        df = pd.DataFrame.from_records(rgen)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "RGen1"])
-        df["RGen2"] = 0
-        df["RGen3"] = 0
-        df["RGen4"] = 0
-        return df
-
-    def transform_heat_data(self, heat: RecordsList) -> pd.DataFrame:
-        """
-        Transform heat load data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        heat
-            List of heat load records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of heat load records.
-        """
-        df = pd.DataFrame.from_records(heat)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "HLoad1"])
-        return df
-
-    def transform_airtemp_data(self, heat: RecordsList) -> pd.DataFrame:
-        """
-        Transform air temperature data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        heat
-            List of air temp records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of air temp records.
-        """
-        df = pd.DataFrame.from_records(heat)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "AirTemp"])
-        return df
-
-    def transform_dhw_data(self, heat: RecordsList) -> pd.DataFrame:
-        """
-        Transform domestic hot water load data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        heat
-            List of domestic hot water load records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of domestic hot water load records.
-        """
-        df = pd.DataFrame.from_records(heat)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "DHWLoad1"])
-        return df
-
-    def transform_ASHP_input_data(self, ashp_input: ASHPResult) -> pd.DataFrame:
-        """
-        Transform ASHP input data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        ashp_input
-            List of ASHP input records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of ASHP input records.
-        """
-        df = (
-            pd.DataFrame.from_dict(dict(ashp_input), orient="tight")
-            .sort_index()
-            .reset_index(drop=False)
-            .rename(columns={"temperature": 0})
-        )
-        return df
-
-    def transform_ASHP_output_data(self, ashp_output: ASHPResult) -> pd.DataFrame:
-        """
-        Transform ASHP output data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        ashp_output
-            List of ASHP output records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of ASHP output records.
-        """
-        df = (
-            pd.DataFrame.from_dict(dict(ashp_output), orient="tight")
-            .sort_index()
-            .reset_index(drop=False)
-            .rename(columns={"temperature": 0})
-        )
-        return df
-
-    def transform_import_tariff_data(self, import_tariffs: RecordsList) -> pd.DataFrame:
-        """
-        Transform import tariff data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        import_tariffs
-            List of import tariff records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of import tariff records.
-        """
-        df = pd.DataFrame.from_records(import_tariffs)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "Tariff", "Tariff1", "Tariff2", "Tariff3"])
-        return df
-
-    def transform_grid_CO2_data(self, grid_co2: RecordsList) -> pd.DataFrame:
-        """
-        Transform grid CO2 data from records to a pandas DataFrame.
-
-        Parameters
-        ----------
-        grid_co2
-            List of grid CO2 records.
-
-        Returns
-        -------
-        df
-            Pandas DataFrame of grid CO2 records.
-        """
-        df = pd.DataFrame.from_records(grid_co2)
-        df = df.reindex(columns=["HourOfYear", "Date", "StartTime", "GridCO2"])
-        return df
-
 
 DataManagerDep = typing.Annotated[DataManager, Depends(DataManager)]
+
+
+def load_epoch_data_from_file(path: os.PathLike) -> EpochSiteData:
+    """
+    Load EpochSiteData from file path.
+
+    Parameters
+    ----------
+    path
+        Path to EpochSiteData (including filename: *.json).
+
+    Returns
+    -------
+    epoch_data
+        Contents of file converted to EpochSiteData.
+    """
+    with open(path) as f:
+        epoch_data = EpochSiteData.model_validate(json.load(f))
+    return epoch_data

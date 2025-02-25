@@ -8,7 +8,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 from pandas.core.api import DataFrame as DataFrame
 
-from app.internal.datamanager import DataManager
+from app.internal.datamanager import DataManager, load_epoch_data_from_file
 from app.main import app
 from app.models.core import OptimisationResultEntry, Task
 from app.models.optimisers import (
@@ -32,9 +32,9 @@ def client(result_tmp_path: Path) -> Generator[TestClient, None, None]:
         async def fetch_portfolio_data(self, task: Task) -> None:
             for site in task.portfolio:
                 if isinstance(site.site_data, LocalMetaData):
-                    site._input_dir = site.site_data.path
+                    site._epoch_data = load_epoch_data_from_file(site.site_data.path)
                 elif isinstance(site.site_data, RemoteMetaData):
-                    site._input_dir = Path(_DATA_PATH, site.name)
+                    site._epoch_data = load_epoch_data_from_file(Path(_DATA_PATH, site.name))
 
         async def transmit_results(self, result: OptimisationResultEntry) -> None:
             with open(Path(result_tmp_path, f"{result.tasks.task_id}.json"), "w") as f:

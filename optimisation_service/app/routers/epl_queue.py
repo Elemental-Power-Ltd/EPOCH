@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import shutil
 from collections import OrderedDict
 
 from fastapi import APIRouter, HTTPException, Request
@@ -18,7 +17,7 @@ class IQueue(asyncio.Queue):
     Inspectable Queue with cancelling of tasks.
     """
 
-    def __init__(self, maxsize: PositiveInt = 1, remove_directory: bool = False) -> None:
+    def __init__(self, maxsize: PositiveInt = 1) -> None:
         """
         Parameters
         ----------
@@ -33,7 +32,6 @@ class IQueue(asyncio.Queue):
         super().__init__(maxsize=0)
         self.q: OrderedDict = OrderedDict()
         self.q_len = maxsize
-        self.remove_directory = remove_directory
 
     async def put(self, task_w_datamanager: TaskWDataManager) -> None:
         """
@@ -81,8 +79,6 @@ class IQueue(asyncio.Queue):
         """
         logger.info(f"Marking as done {task.task_id}.")
         del self.q[task.task_id]
-        if self.remove_directory:
-            shutil.rmtree(task._input_dir)
         super().task_done()
 
     def cancel(self, task_id: UUID4) -> None:

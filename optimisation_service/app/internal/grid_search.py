@@ -76,18 +76,13 @@ class GridSearch(Algorithm):
                 os.makedirs(output_dir, exist_ok=True)
 
                 config_dir = Path(temp_dir, "Config")
-                Path(temp_dir, "Config").mkdir(parents=False, exist_ok=False)
-
-                with open(Path(config_dir, "EpochConfig.json"), "w") as f:
-                    json.dump(_EPOCH_CONFIG, f)
-
-                with open(Path(site._input_dir, "inputParameters.json"), "w") as f:
-                    json.dump(site.site_range, f)
+                config_dir.mkdir(parents=False, exist_ok=False)
+                Path(config_dir, "EpochConfig.json").write_text(json.dumps(_EPOCH_CONFIG))
 
                 t0 = time.perf_counter()
                 run_headless(
                     config_dir=str(config_dir),
-                    input_dir=str(site._input_dir),
+                    input_dir=str(site._epoch_data),
                     output_dir=str(output_dir),
                 )
                 exec_time = timedelta(seconds=(time.perf_counter() - t0))

@@ -1,16 +1,13 @@
-from os import PathLike
-from pathlib import Path
-
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 
+from app.models.site_data import EpochSiteData
 from app.models.site_range import SiteRange
 
-from .asset_heuristics import energy_storage_system, heat_pump, renewables
+from .asset_heuristics import EnergyStorageSystem, HeatPump, Renewables
 
 
-def generate_building_initial_population(site_range: SiteRange, input_dir: PathLike, pop_size: int) -> npt.NDArray:
+def generate_building_initial_population(site_range: SiteRange, epoch_data: EpochSiteData, pop_size: int) -> npt.NDArray:
     """
     Generate a population of solutions by estimating some parameter values from data.
 
@@ -33,14 +30,10 @@ def generate_building_initial_population(site_range: SiteRange, input_dir: PathL
     pop
         Generated population, prepared for pymoo (in range [0, number of asset values])
     """
-    heating_df = pd.read_csv(Path(input_dir, "CSVHload.csv"))
-    ashp_input_df = pd.read_csv(Path(input_dir, "CSVASHPinput.csv"))
-    ashp_output_df = pd.read_csv(Path(input_dir, "CSVASHPoutput.csv"))
-    air_temp_df = pd.read_csv(Path(input_dir, "CSVAirtemp.csv"))
-    elec_df = pd.read_csv(Path(input_dir, "CSVEload.csv"))
-    solar_df = pd.read_csv(Path(input_dir, "CSVRGen.csv"))
-
     rng = np.random.default_rng()
+
+    N = len(epoch_data.building_eload)
+    timestamps = [epoch_data.start_ts + (epoch_data.end_ts - epoch_data.start_ts) * i / (N - 1) for i in range(N)]
 
     def normal_choice(est: float | int, attribute_values: list[float | int]) -> npt.NDArray:
         lo, hi = attribute_values[0], attribute_values[-1]
@@ -51,40 +44,58 @@ def generate_building_initial_population(site_range: SiteRange, input_dir: PathL
 
     estimates: dict[str, dict[str, int | float]] = {}
     estimates["heat_pump"] = {}
-    estimates["heat_pump"]["heat_power"] = heat_pump.heat_power(
-        heating_df=heating_df,
-        ashp_input_df=ashp_input_df,
-        ashp_output_df=ashp_output_df,
-        air_temp_df=air_temp_df,
+    estimates["heat_pump"]["heat_power"] = HeatPump.heat_power(
+        building_hload=epoch_data.building_hload,
+        ashp_input_table=epoch_data.ashp_input_table,
+        ashp_output_table=epoch_data.ashp_output_table,
+        air_temperature=epoch_data.air_temperature,
+        timestamps=timestamps,
         ashp_mode=2.0,
     )
     estimates["energy_storage_system"] = {}
-    estimates["energy_storage_system"]["capacity"] = energy_storage_system.capacity(elec_df=elec_df)
-    estimates["energy_storage_system"]["charge_power"] = energy_storage_system.charge_power(
-        solar_df=solar_df, solar_scale=renewables.yield_scalars(solar_df=solar_df, elec_df=elec_df)
+    estimates["energy_storage_system"]["capacity"] = EnergyStorageSystem.capacity(
+        building_eload=epoch_data.building_eload, timestamps=timestamps
     )
-    estimates["energy_storage_system"]["discharge_power"] = energy_storage_system.discharge_power(elec_df=elec_df)
+    solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields)]
+    estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystem.charge_power(
+        solar_yield=solar_yield_sum,
+        timestamps=timestamps,
+        solar_scale=Renewables.yield_scalars(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
+    )
+    estimates["energy_storage_system"]["discharge_power"] = EnergyStorageSystem.discharge_power(
+        building_eload=epoch_data.building_eload, timestamps=timestamps
+    )
     estimates["renewables"] = {}
-    estimates["renewables"]["yield_scalars"] = renewables.yield_scalars(solar_df=solar_df, elec_df=elec_df)
+    yield_scalars_estimates = [
+        Renewables.yield_scalars(solar_yield=solar_yield, building_eload=epoch_data.building_eload)
+        for solar_yield in epoch_data.solar_yields
+    ]
 
     pop = []
     for asset_name, asset_range in site_range.model_dump().items():
         if asset_name == "config":
             pass
+        if asset_name == "renewables":
+            if not asset_range["COMPONENT_IS_MANDATORY"]:
+                pop.append(rng.choice(a=[0, 1], size=pop_size))
+            for estimate, yield_scalar_values in zip(yield_scalars_estimates, asset_range["yield_scalars"]):
+                if len(yield_scalar_values) > 1:
+                    chosen_value = normal_choice(estimate, yield_scalar_values)
+                    pop.append(yield_scalar_values.index(chosen_value))
         else:
             for attrbute_name, attribute_values in asset_range.items():
                 if attrbute_name == "COMPONENT_IS_MANDATORY":
                     if not attribute_values:
-                        generated_indeces = rng.choice(a=[0, 1], size=pop_size)
+                        pop.append(rng.choice(a=[0, 1], size=pop_size))
                 elif (
                     asset_name in estimates.keys()
                     and attrbute_name in estimates[asset_name].keys()
                     and len(attribute_values) > 1
                 ):
                     estimate = estimates[asset_name][attrbute_name]
-                    generated_indeces = normal_choice(estimate, attribute_values)
+                    chosen_value = normal_choice(estimate, attribute_values)
+                    pop.append(attribute_values.index(chosen_value))
                 else:
-                    generated_indeces = rng.choice(a=range(len(attribute_values)), size=pop_size)
-        pop.append(generated_indeces)
+                    pop.append(rng.choice(a=range(len(attribute_values)), size=pop_size))
     # TODO: check CAPEX of values
     return np.array(pop).transpose()

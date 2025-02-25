@@ -1,7 +1,6 @@
 import datetime
 import logging
 import uuid
-from os import PathLike
 from typing import Annotated, Any
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
@@ -9,7 +8,7 @@ from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, Privat
 from app.models.constraints import Constraints
 from app.models.metrics import Metric
 from app.models.optimisers import GridSearchOptimiser, NSGA2Optmiser
-from app.models.site_data import SiteMetaData
+from app.models.site_data import EpochSiteData, SiteMetaData
 from app.models.site_range import SiteRange
 
 logger = logging.getLogger("default")
@@ -22,7 +21,7 @@ class Site(BaseModel):
         examples=[{"loc": "local", "site_id": "amcott_house", "path": "./data/InputData"}],
         description="Location to fetch input data from for EPOCH to ingest.",
     )
-    _input_dir: PathLike = PrivateAttr()
+    _epoch_data: EpochSiteData = PrivateAttr()
 
 
 class EndpointTask(Site):
@@ -58,7 +57,6 @@ class Task(BaseModel):
         default_factory=uuid.uuid4,
         description="Unique ID (generally a UUIDv4) of an optimisation task.",
     )
-    _input_dir: PathLike = PrivateAttr()
 
 
 class TaskResponse(BaseModel):

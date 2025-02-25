@@ -1,6 +1,5 @@
 import functools
 import logging
-from os import PathLike
 
 import numpy as np
 from epoch_simulator import Simulator
@@ -9,6 +8,7 @@ from app.internal.epoch_utils import TaskData, convert_sim_result
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.models.metrics import Metric, MetricValues
 from app.models.result import PortfolioSolution, SiteSolution
+from app.models.site_data import EpochSiteData
 
 logger = logging.getLogger("default")
 
@@ -18,20 +18,20 @@ class PortfolioSimulator:
     Provides portfolio simulation by initialising multiple EPOCH simulator's.
     """
 
-    def __init__(self, input_dirs: dict[str, PathLike]) -> None:
+    def __init__(self, epoch_data_dict: dict[str, EpochSiteData]) -> None:
         """
         Initialise the various EPOCH simulators.
 
         Parameters
         ----------
-        input_dirs
-            Dictionary of building names and directories containing input data.
+        epoch_data_dict
+            Dictionary of Epoch ingestable datasets. One for each site in the portfolio.
 
         Returns
         -------
         None
         """
-        self.sims = {name: Simulator(inputDir=str(input_dir)) for name, input_dir in input_dirs.items()}
+        self.sims = {name: Simulator.from_json(epoch_data.model_dump_json()) for name, epoch_data in epoch_data_dict.items()}
 
     def simulate_portfolio(self, portfolio_scenarios: dict[str, TaskData]) -> PortfolioSolution:
         """
