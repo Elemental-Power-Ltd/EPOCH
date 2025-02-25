@@ -1,17 +1,21 @@
+#include <cmath>
+
 #include <gtest/gtest.h>
+
+#include "test_helpers.hpp"
 #include "../epoch_lib/Simulation/TaskData.hpp"
 #include "../epoch_lib/Simulation/Costs/Capex.hpp"
-#include <cmath>
 
 class TaskDataTest : public ::testing::Test {
 protected:
+    SiteData siteData = make24HourSiteData();
     TaskData taskData = TaskData();
 };
 
 TEST_F(TaskDataTest, CalculateEmptyCapex) {
     // an empty TaskData should have 0 CAPEX
     TaskData emptyTask = {};
-    auto breakdown = calculate_capex(emptyTask);
+    auto breakdown = calculate_capex(siteData, emptyTask);
     EXPECT_EQ(breakdown.total_capex, 0.0f);
 }
 

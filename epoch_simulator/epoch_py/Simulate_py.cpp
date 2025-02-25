@@ -23,15 +23,14 @@ Simulator_py Simulator_py::from_json(const std::string& json_str)
 
 
 Simulator_py::Simulator_py(SiteData&& siteData) :
-	mSiteData{ std::move(siteData) },
-	mSimulator{}
+	mSimulator{ std::move(siteData) }
 {
 }
 
 bool Simulator_py::isValid(const TaskData& taskData)
 {
 	try {
-		mSimulator.validateScenario(mSiteData, taskData);
+		mSimulator.validateScenario(taskData);
 	}
 	catch (const std::runtime_error&) {
 		return false;
@@ -46,5 +45,9 @@ SimulationResult Simulator_py::simulateScenario(const TaskData& taskData, bool f
 
 	SimulationType reportingType = fullReporting ? SimulationType::FullReporting : SimulationType::ResultOnly;
 
-	return mSimulator.simulateScenario(mSiteData, taskData, reportingType);
+	return mSimulator.simulateScenario(taskData, reportingType);
+}
+
+CapexBreakdown Simulator_py::calculateCapex(const TaskData& taskData) {
+	return mSimulator.calculateCapex(taskData);
 }

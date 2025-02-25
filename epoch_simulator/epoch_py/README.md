@@ -64,6 +64,10 @@ Run a scenario, returning a `Result` object
 
 Check if the SiteData / TaskData pairing is valid without running a simulation
 
+`calculate_capex(task)`
+
+Calculate the capex for a site defined by its SiteData / TaskData pair
+
 #### Result
 
 A  `SimulationResult` is returned by calls to `simulate_scenario`. It contains the result values for each of the five objectives.

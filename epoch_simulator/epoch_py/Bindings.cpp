@@ -24,7 +24,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def("simulate_scenario", &Simulator_py::simulateScenario,
 			pybind11::arg("taskData"),
 			pybind11::arg("fullReporting") = false)
-		.def("is_valid", &Simulator_py::isValid, pybind11::arg("taskData"));
+		.def("is_valid", &Simulator_py::isValid, pybind11::arg("taskData"))
+		.def("calculate_capex", &Simulator_py::calculateCapex, pybind11::arg("taskData"));
 
 	pybind11::class_<TaskData>(m, "TaskData")
 		.def(pybind11::init<>())
@@ -175,9 +176,6 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("pv_BoP_capex", &CapexBreakdown::pv_BoP_capex)
 		.def_readonly("total_capex", &CapexBreakdown::total_capex)
 		.def("__repr__", &capexBreakdownToString);
-
-	// TODO - standalone functions should not be directly in the module
-	m.def("calculate_capex", &calculate_capex);
 }
 
 
@@ -335,7 +333,9 @@ std::string configToString(const TaskConfig& config) {
 
 std::string capexBreakdownToString(const CapexBreakdown& breakdown) {
 	std::ostringstream oss;
-	oss << "<CapexBreakdown " << "dhw_capex=" << breakdown.dhw_capex
+	oss << "<CapexBreakdown "
+		<< "building_fabric_capex=" << breakdown.building_fabric_capex
+		<< "dhw_capex=" << breakdown.dhw_capex
 		<< ", ev_charger_cost=" << breakdown.ev_charger_cost
 		<< ", ev_charger_install=" << breakdown.ev_charger_install
 		<< ", grid_capex=" << breakdown.grid_capex

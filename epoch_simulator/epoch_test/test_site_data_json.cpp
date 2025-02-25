@@ -26,7 +26,7 @@ void expectEigenVectorsEqual(const Eigen::VectorXf& a, const Eigen::VectorXf& b)
 /**
  * Test for round-trip FabricIntervention JSON serialization
  */
-TEST(FabricInterventionTest, RoundTrip)
+TEST(FabricInterventionJSONTest, RoundTrip)
 {
     // 1. Construct a FabricIntervention
     FabricIntervention fi;
@@ -49,7 +49,7 @@ TEST(FabricInterventionTest, RoundTrip)
 /**
  * Test for round-trip SiteData JSON serialization
  */
-TEST(SiteDataTest, RoundTrip)
+TEST(SiteDataJSONTest, RoundTrip)
 {
     // 1. Construct a SiteData
     SiteData sd = make24HourSiteData();
@@ -118,7 +118,7 @@ TEST(SiteDataTest, RoundTrip)
 }
 
 
-TEST(SiteDataTest, FromFile)
+TEST(SiteDataJSONTest, FromFile)
 {
     // This file contains {1,2,3,4} for each timeseries
     auto p = std::filesystem::path("./test_files/siteData_1234.json");

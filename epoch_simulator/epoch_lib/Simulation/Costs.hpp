@@ -12,7 +12,7 @@ class Costs
 {
 public:
 
-	Costs(const SiteData& siteData, const TaskData& taskData):
+	Costs(const SiteData& siteData, const TaskData& taskData, const CapexBreakdown& capexBreakdown):
 		mTaskData(taskData),
 		mTimesteps(siteData.timesteps),
 		mBaseline_elec_cost(0.0f),
@@ -30,12 +30,9 @@ public:
 		mScenario_elec_CO2e(0.0f),
 		mScenario_fuel_CO2e(0.0f),
 		mScenario_export_CO2e(0.0f),
-		mScenario_carbon_balance_scope_1(0.0f)
+		mScenario_carbon_balance_scope_1(0.0f),
+		mCapexBreakdown(capexBreakdown)
 	{	
-	}
-
-	void calculate_Project_CAPEX() {
-		mCapexBreakdown = calculate_capex(mTaskData);
 	}
 
 	

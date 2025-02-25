@@ -3,8 +3,12 @@
 
 static CapexPrices capex_prices{};
 
-CapexBreakdown calculate_capex(const TaskData& taskData) {
+CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskData) {
 	CapexBreakdown capex_breakdown{};
+
+	if (taskData.building) {
+		calculate_building_capex(siteData, taskData.building.value(), capex_breakdown);
+	}
 
 	if (taskData.domestic_hot_water) {
 		calculate_dhw_capex(taskData.domestic_hot_water.value(), capex_breakdown);
@@ -33,7 +37,9 @@ CapexBreakdown calculate_capex(const TaskData& taskData) {
 	// TODO JW
 	//  refactor has currently removed the project_plan_develop_EPC and project_plan_develop_Grid scalars
 	capex_breakdown.total_capex = (
-		capex_breakdown.dhw_capex
+		capex_breakdown.building_fabric_capex 
+
+		 + capex_breakdown.dhw_capex
 
 		+ capex_breakdown.ev_charger_cost
 		+ capex_breakdown.ev_charger_install
@@ -53,6 +59,16 @@ CapexBreakdown calculate_capex(const TaskData& taskData) {
 	);
 
 	return capex_breakdown;
+}
+
+void calculate_building_capex(const SiteData& siteData, const Building& building, CapexBreakdown& capex_breakdown) {
+	if (building.fabric_intervention_index == 0) {
+		capex_breakdown.building_fabric_capex = 0.0f;
+	}
+	else {
+		// we subtract one as a fabric_intervention_index of 0 corresponds to the base heating load with 0 cost
+		capex_breakdown.building_fabric_capex = siteData.fabric_interventions[building.fabric_intervention_index - 1].cost;
+	}
 }
 
 void calculate_dhw_capex(const DomesticHotWater& dhw, CapexBreakdown& capex_breakdown) {

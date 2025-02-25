@@ -3,7 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include "../epoch_lib/Optimisation/Optimiser.hpp"
-#include "../epoch_lib/Simulation/StandaloneSimulator.hpp"
+#include "../epoch_lib/Simulation/Simulate.hpp"
 #include "../epoch_lib/Simulation/TaskData.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
 #include "../epoch_lib/io/TaskDataJson.hpp"
@@ -87,13 +87,12 @@ void optimise(const FileConfig& fileConfig, const EpochConfig& config) {
 void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 	spdlog::info("Loading Simulator");
 
-	std::filesystem::path taskDataPath{ "./InputData/taskData.json" };
-	TaskData taskData = readTaskData(taskDataPath);
+	SiteData siteData = readSiteData(fileConfig.getSiteDataFilepath());
+	TaskData taskData = readTaskData(fileConfig.getTaskDataFilepath());
 
-	// TODO allow StandaloneSimulator to accept different file locations
-	StandaloneSimualtor simulator{};
+	Simulator simulator{ siteData };
 
-	auto result = simulator.simulateScenario(taskData, true);
+	auto result = simulator.simulateScenario(taskData, SimulationType::FullReporting);
 
 	// an invalid result will have no report data
 	if (result.report_data) {

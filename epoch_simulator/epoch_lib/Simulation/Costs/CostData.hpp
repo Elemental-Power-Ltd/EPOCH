@@ -61,6 +61,8 @@ struct OpexPrices {
 
 // We store the component costs as they are necessary to calculate annualised costs
 struct CapexBreakdown {
+	float building_fabric_capex;
+
 	float dhw_capex;
 
 	float ev_charger_cost;

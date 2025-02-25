@@ -1,11 +1,13 @@
 #pragma once
 
 #include "CostData.hpp"
+#include "../SiteData.hpp"
 #include "../TaskData.hpp"
 #include "../TaskComponents.hpp"
 
-CapexBreakdown calculate_capex(const TaskData& taskData);
+CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskData);
 
+void calculate_building_capex(const SiteData& siteData, const Building& building, CapexBreakdown& capex_breakdown);
 
 void calculate_dhw_capex(const DomesticHotWater& dhw, CapexBreakdown& capex_breakdown);
 

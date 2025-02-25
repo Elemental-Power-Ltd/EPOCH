@@ -32,16 +32,16 @@
 #include "Components/DataCentre.hpp"
 #include "Components/ESS/ESS.hpp"
 
-Simulator::Simulator() {
+Simulator::Simulator(SiteData siteData):
+	mSiteData(siteData)
+{}
 
-}
-
-SimulationResult Simulator::simulateScenario(const SiteData& siteData, const TaskData& taskData, SimulationType simulationType) const {
+SimulationResult Simulator::simulateScenario(const TaskData& taskData, SimulationType simulationType) const {
 
 	auto start = std::chrono::high_resolution_clock::now();
 
 	try {
-		validateScenario(siteData, taskData);
+		validateScenario(taskData);
 	}
 	catch (const std::runtime_error& e) {
 		spdlog::warn("Invalid scenario: {}", e.what());
@@ -49,10 +49,11 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 	}
 
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
-	Costs myCost(siteData, taskData);
-	myCost.calculate_Project_CAPEX();
-	if (taskData.config.capex_limit < myCost.get_project_CAPEX())
-	{
+	const CapexBreakdown capex = calculateCapex(taskData);
+
+	Costs myCost{ mSiteData, taskData, capex };
+
+	if (taskData.config.capex_limit < capex.total_capex) {
 		auto simulationResult = makeInvalidResult(taskData);
 
 		// but this invalid result can still have a valid CAPEX
@@ -62,7 +63,7 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 
 	/* INITIALISE classes that support energy sums and object precedence */
 	Config config(taskData);	// flags energy component presence in TaskData & balancing modes
-	TempSum tempSum(siteData);		// class of arrays for running totals (replace ESUM and Heat)
+	TempSum tempSum(mSiteData);		// class of arrays for running totals (replace ESUM and Heat)
 
 	SimulationResult result{};
 	result.report_data = ReportData();
@@ -71,31 +72,31 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 	// Do tariff precalculation
 	size_t tariff_index = taskData.grid ? taskData.grid->tariff_index : 0;
 
-	DayTariffStats tariffStats{ siteData, tariff_index };
+	DayTariffStats tariffStats{ mSiteData, tariff_index };
 
 
 	// Run through the pre balancing loop components
 
 	if (taskData.building) {
-		Hotel hotel(siteData, taskData.building.value());
+		Hotel hotel(mSiteData, taskData.building.value());
 		hotel.AllCalcs(tempSum);
 		hotel.Report(reportData);
 	}
 
 	if (taskData.renewables) {
-		BasicPV PV1(siteData, taskData.renewables.value());
+		BasicPV PV1(mSiteData, taskData.renewables.value());
 		PV1.AllCalcs(tempSum);
 		PV1.Report(reportData);
 	}
 
 	if (config.getEVFlag() == EVFlag::NON_BALANCING) {
-		BasicElectricVehicle EV1(siteData, taskData.electric_vehicles.value());
+		BasicElectricVehicle EV1(mSiteData, taskData.electric_vehicles.value());
 		EV1.AllCalcs(tempSum);
 		EV1.Report(reportData);
 	}
 
 	if (taskData.domestic_hot_water && taskData.heat_pump) {
-		HotWaterCylinder hotWaterCylinder{ siteData, taskData.domestic_hot_water.value(), taskData.heat_pump.value(), tariff_index, tariffStats };
+		HotWaterCylinder hotWaterCylinder{ mSiteData, taskData.domestic_hot_water.value(), taskData.heat_pump.value(), tariff_index, tariffStats };
 		hotWaterCylinder.AllCalcs(tempSum);
 		hotWaterCylinder.Report(reportData);
 	}
@@ -105,15 +106,15 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 
 	std::unique_ptr<ESS> ESSmain;
 	if (taskData.energy_storage_system) {
-		ESSmain = std::make_unique<BasicESS>(siteData, taskData.energy_storage_system.value(), tariff_index, tariffStats);
+		ESSmain = std::make_unique<BasicESS>(mSiteData, taskData.energy_storage_system.value(), tariff_index, tariffStats);
 	}
 	else {
-		ESSmain = std::make_unique<NullESS>(siteData);
+		ESSmain = std::make_unique<NullESS>(mSiteData);
 	}
 
 	std::unique_ptr<BasicElectricVehicle> EV1;
 	if (taskData.electric_vehicles) {
-		EV1 = std::make_unique<BasicElectricVehicle>(siteData, taskData.electric_vehicles.value());
+		EV1 = std::make_unique<BasicElectricVehicle>(mSiteData, taskData.electric_vehicles.value());
 	}
 
 	// TODO - as we can return an invalid result here, we should do this earlier
@@ -122,19 +123,19 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 
 	if (taskData.data_centre && taskData.heat_pump && taskData.heat_pump->heat_source == HeatSource::HOTROOM) {
 		// make a DataCentre with a hotroom heatpump
-		dataCentre = std::make_unique<DataCentreWithASHP>(siteData, taskData.data_centre.value(), taskData.heat_pump.value());
+		dataCentre = std::make_unique<DataCentreWithASHP>(mSiteData, taskData.data_centre.value(), taskData.heat_pump.value());
 
 	}
 	else if (taskData.data_centre && taskData.heat_pump && taskData.heat_pump->heat_source == HeatSource::AMBIENT_AIR) {
 		// make a basic data centre (without a heatpump)
-		dataCentre = std::make_unique<BasicDataCentre>(siteData, taskData.data_centre.value());
-		ambientController = std::make_unique<AmbientHeatPumpController>(siteData, taskData.heat_pump.value());
+		dataCentre = std::make_unique<BasicDataCentre>(mSiteData, taskData.data_centre.value());
+		ambientController = std::make_unique<AmbientHeatPumpController>(mSiteData, taskData.heat_pump.value());
 	}
 	else if (taskData.heat_pump && !taskData.data_centre) {
-		ambientController = std::make_unique<AmbientHeatPumpController>(siteData, taskData.heat_pump.value());
+		ambientController = std::make_unique<AmbientHeatPumpController>(mSiteData, taskData.heat_pump.value());
 	}
 	else if (taskData.data_centre && !taskData.heat_pump) {
-		dataCentre = std::make_unique<BasicDataCentre>(siteData, taskData.data_centre.value());
+		dataCentre = std::make_unique<BasicDataCentre>(mSiteData, taskData.data_centre.value());
 	}
 
 
@@ -149,8 +150,8 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 	// BALANCING LOOP
 
 	float futureEnergy = 0.0f;
-	size_t timesteps = siteData.timesteps;
-	const float availableGridImport = getFixedAvailableImport(siteData, taskData);
+	size_t timesteps = mSiteData.timesteps;
+	const float availableGridImport = getFixedAvailableImport(taskData);
 
 
 	auto dcFlag = config.getDataCentreFlag();
@@ -191,18 +192,18 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 	// Run through the post balancing loop components
 
 	if (taskData.mop) {
-		Mop mop(siteData, taskData.mop.value());
+		Mop mop(mSiteData, taskData.mop.value());
 		mop.AllCalcs(tempSum);
 		mop.Report(reportData);
 	}
 
 	if (taskData.grid && taskData.building) {
-		Grid grid(siteData, taskData.grid.value(), taskData.building.value());
+		Grid grid(mSiteData, taskData.grid.value(), taskData.building.value());
 		grid.AllCalcs(tempSum);
 		grid.Report(reportData);
 	}
 
-	GasCombustionHeater GasCH(siteData);
+	GasCombustionHeater GasCH(mSiteData);
 	GasCH.AllCalcs(tempSum);
 	GasCH.Report(reportData);
 
@@ -223,17 +224,17 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 	// hack on top of a hack
 	// If the components that create these vectors are not present then the vectors in reportData may be empty
 	// we instead need them to be 0 valued but of timestep length
-	costVectors.actual_ev_load_e = reportData.EV_actualload.size() ? reportData.EV_actualload : Eigen::VectorXf::Zero(siteData.timesteps);
-	costVectors.actual_data_centre_load_e = reportData.Data_centre_actual_load.size() ? reportData.Data_centre_actual_load : Eigen::VectorXf::Zero(siteData.timesteps);
-	costVectors.building_load_e = reportData.Hotel_load.size() ? reportData.Hotel_load : Eigen::VectorXf::Zero(siteData.timesteps);
-	costVectors.heatload_h = reportData.Heatload.size() ? reportData.Heatload : Eigen::VectorXf::Zero(siteData.timesteps);
-	costVectors.heat_shortfall_h = reportData.Heat_shortfall.size() ? reportData.Heat_shortfall : Eigen::VectorXf::Zero(siteData.timesteps);
-	costVectors.grid_import_e = reportData.Grid_Import.size() ? reportData.Grid_Import : Eigen::VectorXf::Zero(siteData.timesteps);
-	costVectors.grid_export_e = reportData.Grid_Export.size() ? reportData.Grid_Export : Eigen::VectorXf::Zero(siteData.timesteps);
-	costVectors.actual_low_priority_load_e = reportData.MOP_load.size() ? reportData.MOP_load : Eigen::VectorXf::Zero(siteData.timesteps);
+	costVectors.actual_ev_load_e = reportData.EV_actualload.size() ? reportData.EV_actualload : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.actual_data_centre_load_e = reportData.Data_centre_actual_load.size() ? reportData.Data_centre_actual_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.building_load_e = reportData.Hotel_load.size() ? reportData.Hotel_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.heatload_h = reportData.Heatload.size() ? reportData.Heatload : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.heat_shortfall_h = reportData.Heat_shortfall.size() ? reportData.Heat_shortfall : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.grid_import_e = reportData.Grid_Import.size() ? reportData.Grid_Import : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.grid_export_e = reportData.Grid_Export.size() ? reportData.Grid_Export : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.actual_low_priority_load_e = reportData.MOP_load.size() ? reportData.MOP_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
 
 	constexpr float fixed_export_price = 5.0f;
-	costVectors.grid_export_prices = Eigen::VectorXf::Constant(siteData.timesteps, fixed_export_price);
+	costVectors.grid_export_prices = Eigen::VectorXf::Constant(mSiteData.timesteps, fixed_export_price);
 
 
 	myCost.calculateCosts_no_CAPEX(costVectors);
@@ -268,37 +269,41 @@ SimulationResult Simulator::simulateScenario(const SiteData& siteData, const Tas
 
 }
 
-void Simulator::validateScenario(const SiteData& siteData, const TaskData& taskData) const {
+void Simulator::validateScenario(const TaskData& taskData) const {
 	// check fabric_intervention_index is in bounds
 	if (taskData.building) {
 		// building_hload is considered index 0 so we are effectively 1-based indexing
-		if (taskData.building->fabric_intervention_index >= siteData.fabric_interventions.size() + 1) {
+		if (taskData.building->fabric_intervention_index >= mSiteData.fabric_interventions.size() + 1) {
 			throw std::runtime_error(std::format(
 				"Cannot use fabric_intervention_index of {} with {} fabric interventions",
-				taskData.building->fabric_intervention_index, siteData.fabric_interventions.size()
+				taskData.building->fabric_intervention_index, mSiteData.fabric_interventions.size()
 			));
 		}
 	}
 
 	// check tariff_index is in bounds
 	if (taskData.grid) {
-		if (taskData.grid->tariff_index >= siteData.import_tariffs.size()) {
+		if (taskData.grid->tariff_index >= mSiteData.import_tariffs.size()) {
 			throw std::runtime_error(std::format(
 				"Cannot use tariff_index of {} with {} tariffs provided",
-				taskData.grid->tariff_index, siteData.import_tariffs.size()
+				taskData.grid->tariff_index, mSiteData.import_tariffs.size()
 			));
 		}
 	}
 
 	// check yield_scalars and solar_yields match
 	if (taskData.renewables) {
-		if (taskData.renewables->yield_scalars.size() > siteData.solar_yields.size()) {
+		if (taskData.renewables->yield_scalars.size() > mSiteData.solar_yields.size()) {
 			throw std::runtime_error(std::format(
 				"Mismatch: TaskData supplied {} yield_scalars but SiteData only supplied {} solar_yields",
-				taskData.renewables->yield_scalars.size(), siteData.solar_yields.size()
+				taskData.renewables->yield_scalars.size(), mSiteData.solar_yields.size()
 			));
 		}
 	}
+}
+
+CapexBreakdown Simulator::calculateCapex(const TaskData& taskData) const {
+	return calculate_capex(mSiteData, taskData);
 }
 
 SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
@@ -325,10 +330,10 @@ SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
 // 
 // If there is no grid, we instead return 0
 //  
-float Simulator::getFixedAvailableImport(const SiteData& siteData, const TaskData& taskData) const
+float Simulator::getFixedAvailableImport(const TaskData& taskData) const
 {
 	if (taskData.grid && taskData.building) {
-		Grid grid(siteData, taskData.grid.value(), taskData.building.value());
+		Grid grid(mSiteData, taskData.grid.value(), taskData.building.value());
 		return grid.AvailImport();
 	}
 	// else 0

@@ -42,8 +42,6 @@ add_library(Epoch_lib STATIC
 	"Simulation/Components/DataCentre.hpp"
 	"Simulation/Components/DataCentreWithASHP.cpp" 
 	"Simulation/Components/BasicDataCentre.cpp"
-	"Simulation/StandaloneSimulator.cpp"
-	"Simulation/StandaloneSimulator.hpp"
 	"Simulation/TaskComponents.hpp"
 	"Simulation/TaskData.hpp"
 	"Simulation/SiteData.hpp"

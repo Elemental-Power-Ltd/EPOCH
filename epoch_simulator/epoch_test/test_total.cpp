@@ -17,16 +17,13 @@ namespace fs = std::filesystem;
 */
 class EpochSimulationRun : public ::testing::Test {
 protected:
-	// put SiteData into a unique_ptr and use a test fixture so we only have to read it once
-	static std::unique_ptr<SiteData> mountSiteData;
+	Simulator simulator;
 
-	static void SetUpTestSuite() {
-		fs::path path{ "./test_files/siteData_MountHotel.json" };
-		mountSiteData = std::make_unique<SiteData>(readSiteData(path));
-	}
+	EpochSimulationRun() :
+		simulator(readSiteData(fs::path{ "./test_files/siteData_MountHotel.json" }))
+	{}
 };
 
-std::unique_ptr<SiteData> EpochSimulationRun::mountSiteData = nullptr;
 
 TEST_F(EpochSimulationRun, EmptyTaskData) {
 	/**
@@ -35,10 +32,7 @@ TEST_F(EpochSimulationRun, EmptyTaskData) {
 	*/
 
 	TaskData task = readTaskData(fs::path{"./test_files/taskData_empty.json" });
-
-	auto sim = Simulator();
-
-	auto result = sim.simulateScenario(*mountSiteData, task);
+	auto result = simulator.simulateScenario(task);
 
 	// We haven't installed anything, so we expect all of the results to be 0
 	EXPECT_FLOAT_EQ(result.project_CAPEX, 0);
@@ -56,10 +50,7 @@ TEST_F(EpochSimulationRun, CommonTaskData) {
 	* but none of the unusual ones
 	*/
 	TaskData task = readTaskData(fs::path{ "./test_files/taskData_common.json" });
-
-	auto sim = Simulator();
-
-	auto result = sim.simulateScenario(*mountSiteData, task);
+	auto result = simulator.simulateScenario(task);
 
 	EXPECT_FLOAT_EQ(result.project_CAPEX, 1238945.4f);
 	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 85420.227f);
@@ -74,10 +65,7 @@ TEST_F(EpochSimulationRun, FullTaskData) {
 	* Test with a TaskData containing every component
 	*/
 	TaskData task = readTaskData(fs::path{ "./test_files/taskData_full.json" });
-
-	auto sim = Simulator();
-
-	auto result = sim.simulateScenario(*mountSiteData, task);
+	auto result = simulator.simulateScenario(task);
 
 	EXPECT_FLOAT_EQ(result.project_CAPEX, 1249445.4f);
 	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 135397.08f);

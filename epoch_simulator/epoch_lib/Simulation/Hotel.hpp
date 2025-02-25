@@ -14,11 +14,19 @@ public:
         mTimesteps(siteData.timesteps),	// Used in init & functions
         // Initilaise data vectors with all values to zero
         mTargetLoad_e(siteData.building_eload * buildingData.scalar_electrical_load),
-        mTargetHeat_h(siteData.building_hload * buildingData.scalar_heat_load),
         mTargetDHW_h(siteData.dhw_demand)
 
         //TargetPool_h(Eigen::VectorXf::Zero(BattData.TS_max))
     {
+        if (buildingData.fabric_intervention_index == 0) {
+            mTargetHeat_h = siteData.building_hload * buildingData.scalar_heat_load;
+        }
+        else {
+            // we subtract 1 as fabric_intervention_index effectively uses 1-based indexing
+            // because 0 corresponds to the default building_hload
+            auto& scenarioIntervention = siteData.fabric_interventions[buildingData.fabric_intervention_index - 1];
+            mTargetHeat_h = scenarioIntervention.reduced_hload * buildingData.scalar_heat_load;
+        }
     }
 
     void AllCalcs(TempSum& tempSum) {
@@ -40,7 +48,7 @@ private:
     const size_t mTimesteps;
 
     year_TS mTargetLoad_e;
-    year_TS mTargetHeat_h;
     year_TS mTargetDHW_h;
+    year_TS mTargetHeat_h;
     //year_TS TargetPool_h;
 };
