@@ -8,6 +8,7 @@ import numpy.typing as npt
 import pandas as pd
 from bayes_opt import BayesianOptimization
 
+from ...models.heating_load import ThermalModelResult
 from ..utils.conversions import joule_to_kwh
 from .building_elements import BuildingElement
 from .integrator import simulate
@@ -218,7 +219,7 @@ def simulate_parameters(
 
 def fit_to_gas_usage(
     gas_df: pd.DataFrame, weather_df: pd.DataFrame, elec_df: pd.DataFrame | None = None, n_iter: int = 300
-) -> dict[str, float]:
+) -> ThermalModelResult:
     """
     Fit some building parameters to a gas consumption pattern.
 
@@ -266,4 +267,10 @@ def fit_to_gas_usage(
 
     assert opt.max is not None
     assert opt.max["params"] is not None
-    return cast(dict[str, float], opt.max["params"])
+    return ThermalModelResult(
+        scale_factor=opt.max["params"]["scale_factor"],
+        ach=opt.max["params"]["ach"],
+        u_value=opt.max["params"]["u_value"],
+        boiler_power=opt.max["params"]["boiler_power"],
+        setpoint=opt.max["params"]["setpoint"],
+    )

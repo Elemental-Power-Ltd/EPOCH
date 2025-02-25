@@ -200,7 +200,7 @@ async def list_import_tariff_datasets(site_id: SiteID, pool: DatabasePoolDep) ->
             ON tm.dataset_id = te.dataset_id
             WHERE site_id = $1
             GROUP BY tm.dataset_id""",
-            site_id,
+            site_id.site_id,
         )
     return [
         DatasetEntry(
@@ -242,7 +242,7 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             ON tm.dataset_id = te.dataset_id
             WHERE site_id = $1
             GROUP BY tm.dataset_id""",
-            site_id,
+            site_id.site_id,
         )
     return [
         DatasetEntry(
@@ -253,6 +253,40 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             end_ts=item["end_ts"],
             num_entries=item["num_entries"],
             resolution=item["resolution"],
+        )
+        for item in res
+    ]
+
+
+async def list_thermal_models(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List the available thermal models datasets we have for a given site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site that we've generated datasets for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+            SELECT
+                dataset_id,
+                created_at
+            FROM
+                heating.thermal_model
+            WHERE site_id = $1""",
+            site_id.site_id,
+        )
+    return [
+        DatasetEntry(
+            dataset_id=item["dataset_id"],
+            dataset_type=DatasetTypeEnum.ThermalModel,
+            created_at=item["created_at"],
+            start_ts=None,
+            end_ts=None,
+            num_entries=None,
+            resolution=None,
         )
         for item in res
     ]
@@ -285,7 +319,7 @@ async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> 
                 site_id = $1
             GROUP BY
                 cm.dataset_id""",
-            site_id,
+            site_id.site_id,
         )
     return [
         DatasetEntry(
@@ -328,7 +362,7 @@ async def list_carbon_intensity_datasets(site_id: SiteID, pool: DatabasePoolDep)
                 site_id = $1
             GROUP BY
                 cm.dataset_id""",
-            site_id,
+            site_id.site_id,
         )
     return [
         DatasetEntry(
@@ -385,6 +419,7 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
         heating_load_task = tg.create_task(list_heating_load_datasets(site_id, pool))
         carbon_intensity_task = tg.create_task(list_carbon_intensity_datasets(site_id, pool))
         ashp_task = tg.create_task(list_ashp_datasets())
+        thermal_model_task = tg.create_task(list_thermal_models(site_id, pool))
 
     res = {
         DatasetTypeEnum.GasMeterData: gas_task.result(),
@@ -394,6 +429,7 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
         DatasetTypeEnum.RenewablesGeneration: renewables_generation_task.result(),
         DatasetTypeEnum.HeatingLoad: heating_load_task.result(),
         DatasetTypeEnum.CarbonIntensity: carbon_intensity_task.result(),
+        DatasetTypeEnum.ThermalModel: thermal_model_task.result(),
     }
     # If we didn't get any real datasets, then
     # don't insert a dummy ASHP dataset
@@ -476,6 +512,9 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         # RenewablesGeneration are a MultipleDatasetIDWithTime, so wrap them into a list here.
         RenewablesGeneration=[max(all_datasets[DatasetTypeEnum.RenewablesGeneration], key=lambda x: x.created_at)]
         if all_datasets.get(DatasetTypeEnum.RenewablesGeneration)
+        else None,
+        ThermalModel=[max(all_datasets[DatasetTypeEnum.ThermalModel], key=lambda x: x.created_at)]
+        if all_datasets.get(DatasetTypeEnum.ThermalModel)
         else None,
     )
 

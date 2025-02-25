@@ -11,6 +11,14 @@ from pydantic import Field
 from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
 
 
+class ThermalModelResult(pydantic.BaseModel):
+    scale_factor: pydantic.NonNegativeFloat
+    ach: pydantic.NonNegativeFloat
+    u_value: pydantic.NonNegativeFloat
+    boiler_power: pydantic.NonNegativeFloat
+    setpoint: pydantic.NonNegativeFloat
+
+
 class InterventionEnum(StrEnum):
     Loft = "loft"
     DoubleGlazing = "double_glazing"

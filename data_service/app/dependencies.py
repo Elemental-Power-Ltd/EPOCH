@@ -147,11 +147,18 @@ async def get_secrets_dependency() -> SecretDict:
     return get_secrets_environment()
 
 
-_PROCESS_POOL = ProcessPoolExecutor()
+_PROCESS_POOL: ProcessPoolExecutor | None = None
 
 
 async def get_process_pool() -> ProcessPoolExecutor:
-    """Dependency Injection for background process pools."""
+    """
+    Dependency Injection for background process pools.
+
+    Will initialise the process pool the first time it is called.
+    """
+    global _PROCESS_POOL
+    if _PROCESS_POOL is None:
+        _PROCESS_POOL = ProcessPoolExecutor()
     return _PROCESS_POOL
 
 

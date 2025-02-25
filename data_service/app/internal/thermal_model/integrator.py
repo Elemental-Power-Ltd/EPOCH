@@ -239,6 +239,7 @@ def simulate(
         data={
             "energy_changes": energy_changes[BuildingElement.InternalAir],
             "temperatures": temperatures[BuildingElement.InternalAir],
+            "external_temperatures": external_temperatures,
             "heating_usage": energy_changes[BuildingElement.HeatSource]
             if BuildingElement.HeatSource in energy_changes
             else [float("NaN") for _ in energy_changes[BuildingElement.InternalAir]],
