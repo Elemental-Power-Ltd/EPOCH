@@ -36,15 +36,19 @@ class TestSyntheticTariffs:
         assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
         assert result.status_code == 200, result.text
+
         timestamps = result.json()["timestamps"]
-        first_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert first_ts.strftime("%H:%M") == "23:30"
-        assert first_ts.strftime("%d-%b") == (demo_end_ts - pd.Timedelta(minutes=30)).strftime("%d-%b")
-        last_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert last_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
-        expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
-        assert len(result.json()["timestamps"]) == expected_len
-        assert all(len(result.json()["timestamps"]) == len(data) for data in result.json()["data"])
+        first_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert first_ts.strftime("%H:%M") == "00:00", "First entry isn't 00:00"
+        assert first_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
+        last_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert last_ts.strftime("%H:%M") == "23:30", "Last entry isn't 23:30"
+        assert last_ts.strftime("%d-%b") == (demo_end_ts - datetime.timedelta(minutes=30)).strftime("%d-%b")
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in result.json()["data"]
+        )
+
         assert all(len(set(data)) > 10 for data in result.json()["data"])
 
     @pytest.mark.asyncio
@@ -63,15 +67,19 @@ class TestSyntheticTariffs:
         assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
         assert result.status_code == 200, result.text
+
         timestamps = result.json()["timestamps"]
-        first_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert first_ts.strftime("%H:%M") == "23:30"
-        assert first_ts.strftime("%d-%b") == (demo_end_ts - pd.Timedelta(minutes=30)).strftime("%d-%b")
-        last_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert last_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
-        expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
-        assert len(result.json()["timestamps"]) == expected_len
-        assert all(len(result.json()["timestamps"]) == len(data) for data in result.json()["data"])
+        first_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert first_ts.strftime("%H:%M") == "00:00", "First entry isn't 00:00"
+        assert first_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
+        last_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert last_ts.strftime("%H:%M") == "23:30", "Last entry isn't 23:30"
+        assert last_ts.strftime("%d-%b") == (demo_end_ts - datetime.timedelta(minutes=30)).strftime("%d-%b")
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in result.json()["data"]
+        )
+
         assert all(len(set(data)) == 1 for data in result.json()["data"])
 
     @pytest.mark.asyncio
@@ -90,15 +98,19 @@ class TestSyntheticTariffs:
         assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
         assert result.status_code == 200, result.text
+
         timestamps = result.json()["timestamps"]
-        first_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert first_ts.strftime("%H:%M") == "23:30"
-        assert first_ts.strftime("%d-%b") == (demo_end_ts - pd.Timedelta(minutes=30)).strftime("%d-%b")
-        last_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert last_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
-        expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
-        assert len(result.json()["timestamps"]) == expected_len
-        assert all(len(result.json()["timestamps"]) == len(data) for data in result.json()["data"])
+        first_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert first_ts.strftime("%H:%M") == "00:00", "First entry isn't 00:00"
+        assert first_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
+        last_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert last_ts.strftime("%H:%M") == "23:30", "Last entry isn't 23:30"
+        assert last_ts.strftime("%d-%b") == (demo_end_ts - datetime.timedelta(minutes=30)).strftime("%d-%b")
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in result.json()["data"]
+        )
+
         assert all(len(set(data)) == 2 for data in result.json()["data"])
 
     @pytest.mark.asyncio
@@ -117,15 +129,19 @@ class TestSyntheticTariffs:
         assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
         assert result.status_code == 200, result.text
+
         timestamps = result.json()["timestamps"]
-        first_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert first_ts.strftime("%H:%M") == "23:30"
-        assert first_ts.strftime("%d-%b") == (demo_end_ts - pd.Timedelta(minutes=30)).strftime("%d-%b")
-        last_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
-        assert last_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
-        expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
-        assert len(result.json()["timestamps"]) == expected_len
-        assert all(len(result.json()["timestamps"]) == len(data) for data in result.json()["data"])
+        first_ts = datetime.datetime.strptime(timestamps[0].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert first_ts.strftime("%H:%M") == "00:00", "First entry isn't 00:00"
+        assert first_ts.strftime("%d-%b") == demo_start_ts.strftime("%d-%b")
+        last_ts = datetime.datetime.strptime(timestamps[-1].replace("Z", "+0000"), "%Y-%m-%dT%H:%M:%S%z")
+        assert last_ts.strftime("%H:%M") == "23:30", "Last entry isn't 23:30"
+        assert last_ts.strftime("%d-%b") == (demo_end_ts - datetime.timedelta(minutes=30)).strftime("%d-%b")
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in result.json()["data"]
+        )
+
         assert all(len(set(data)) == 3 for data in result.json()["data"])
 
 

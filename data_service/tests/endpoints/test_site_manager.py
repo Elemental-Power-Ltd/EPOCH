@@ -86,11 +86,10 @@ class TestGetMultipleTariffs:
         )
         assert get_datasets_response.status_code == 200, get_datasets_response.text
         got_datasets = get_datasets_response.json()
-        assert all(np.isfinite(got_datasets["data"][0]))
-        assert all(np.isfinite(got_datasets["data"][1]))
+        assert all(all(np.isfinite(item)) for item in got_datasets["data"]), "Tariff is empty or NaN"
 
         # These shouldn't be identical
-        assert any(got_datasets["data"][0] != got_datasets["data"][1])
+        assert got_datasets["data"][0] != got_datasets["data"][1]
 
 
 class TestGenerateAll:
@@ -136,11 +135,20 @@ class TestGenerateAll:
         data_json = data_result.json()
         assert (
             len(data_json["eload"]["data"])
-            == len(data_json["heat"]["data"])
-            == len(data_json["rgen"]["data"])
-            == len(data_json["import_tariffs"]["data"])
+            == len(data_json["heat"]["data"][0]["reduced_hload"])
+            == len(data_json["rgen"]["data"][0])
+            == len(data_json["import_tariffs"]["data"][0])
             == len(data_json["grid_co2"]["data"])
         )
+
+        assert all(
+            len(item["reduced_hload"]) == len(data_json["heat"]["data"][0]["reduced_hload"])
+            for item in data_json["heat"]["data"]
+        )
+
+        assert all(len(item) == len(data_json["rgen"]["data"][0]) for item in data_json["rgen"]["data"])
+
+        assert all(len(item) == len(data_json["import_tariffs"]["data"][0]) for item in data_json["import_tariffs"]["data"])
 
         assert (
             data_json["eload"]["timestamps"]
@@ -153,15 +161,12 @@ class TestGenerateAll:
         # Check that we got multiple tariffs here, without having to generate all again
         tariff_data = data_json["import_tariffs"]
 
-        assert all(np.isfinite(tariff_data["data"][0])), "Tariff is empty or NaN"
-        assert all(np.isfinite(tariff_data["data"][1])), "Tariff1 is empty or NaN"
-        assert all(np.isfinite(tariff_data["data"][2])), "Tariff2 is empty or NaN"
-        assert all(np.isfinite(tariff_data["data"][3])), "Tariff3 is empty or NaN"
+        assert all(all(np.isfinite(item)) for item in tariff_data["data"]), "Tariff is empty or NaN"
 
         assert len(set(tariff_data["data"][0])) == 1, "First tariff must be fixed"
         assert len(set(tariff_data["data"][1])) > 48, "Second tariff must be agile"
         assert all(item == tariff_data["data"][0][0] for item in tariff_data["data"][0]), "First entry must be fixed tariff"
-        assert any(tariff_data["data"][0] != tariff_data["data"][1]), "Tariffs must be different"
+        assert tariff_data["data"][0] != tariff_data["data"][1], "Tariffs must be different"
 
     @pytest.mark.asyncio
     async def test_same_timestamps(self, client: httpx.AsyncClient) -> None:
