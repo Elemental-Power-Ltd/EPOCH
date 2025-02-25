@@ -43,15 +43,9 @@ class GSPCodeResponse(pydantic.BaseModel):
 
 
 class EpochTariffEntry(EpochEntry):
-    Tariff: float | None = pydantic.Field(examples=[32.4, 14.6], description="Import costs for this time period in £ / kWh")
-    Tariff1: float | None = pydantic.Field(
-        examples=[32.4, 14.6], description="Import costs for this time period in £ / kWh", default=None
-    )
-    Tariff2: float | None = pydantic.Field(
-        examples=[32.4, 14.6], description="Import costs for this time period in £ / kWh", default=None
-    )
-    Tariff3: float | None = pydantic.Field(
-        examples=[32.4, 14.6], description="Import costs for this time period in £ / kWh", default=None
+    data: list[list[float]] = pydantic.Field(
+        examples=[[[32.4, 14.6], [16.3, 20.8]]],
+        description="List of import tariffs. Each import tariff is a list of Import costs for this time period in £ / kWh.",
     )
 
 

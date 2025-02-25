@@ -55,15 +55,10 @@ class RenewablesMetadata(pydantic.BaseModel):
 
 
 class EpochRenewablesEntry(EpochEntry):
-    RGen1: float = pydantic.Field(examples=[0.123, 4.56], description="The renewables generation in kW / kWp for this array.")
-    RGen2: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="The renewables generation in kW / kWp for this array."
-    )
-    RGen3: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="The renewables generation in kW / kWp for this array."
-    )
-    RGen4: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="The renewables generation in kW / kWp for this array."
+    data: list[list[float]] = pydantic.Field(
+        examples=[[0.123, 4.56], [5.4, 6.7]],
+        description="""A list of renewable array generations.
+        Each renewable array generation is a list of renewable generations in kW / kWp for this array for this time period.""",
     )
 
 

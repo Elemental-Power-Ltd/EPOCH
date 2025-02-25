@@ -17,7 +17,7 @@ import pydantic
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
-from ..internal.utils import chunk_time_period, hour_of_year
+from ..internal.utils import chunk_time_period
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
 
@@ -80,16 +80,20 @@ def interpolate_carbon_intensity(
     for key in keys:
         # We re-do the xs each time as we have to check if the relevant key is in this entry,
         # which is might not be.
-        xp = np.asarray([
-            (item["start_ts"] - start_ts).total_seconds()
-            for item in raw_data
-            if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
-        ])
-        yp = np.asarray([
-            item[key]  # type: ignore
-            for item in raw_data
-            if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
-        ])
+        xp = np.asarray(
+            [
+                (item["start_ts"] - start_ts).total_seconds()
+                for item in raw_data
+                if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
+            ]
+        )
+        yp = np.asarray(
+            [
+                item[key]  # type: ignore
+                for item in raw_data
+                if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
+            ]
+        )
         if len(xp) == 0 or len(yp) == 0:
             # We've got nothing here!
             interpolated_vals = np.full_like(xp, np.nan)
@@ -364,7 +368,7 @@ async def generate_grid_co2(
 
 
 @router.post("/get-grid-co2", tags=["co2", "get"])
-async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> list[EpochCarbonEntry]:
+async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> EpochCarbonEntry:
     """
     Get a specific grid carbon itensity dataset that we generated with `generate-grid-co2`.
 
@@ -399,8 +403,8 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> list
         params.start_ts,
         params.end_ts,
     )
-    carbon_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "forecast", "actual"], coerce_float=True)
-    carbon_df.index = pd.to_datetime(carbon_df.index)
+    carbon_df = pd.DataFrame.from_records(res, columns=["start_ts", "forecast", "actual"], coerce_float=True)
+    carbon_df.index = pd.to_datetime(carbon_df["start_ts"])  # type: ignore
 
     # TODO (2025-01-09 MHJB): fix this awful pandas repeated interpolation, reindexing and resampling, it's a mess
     # carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().infer_objects().interpolate(method="time")
@@ -410,7 +414,4 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> list
 
     carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))
     carbon_df["GridCO2"] = carbon_df["GridCO2"].interpolate(method="time")
-    return [
-        EpochCarbonEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), GridCO2=val)
-        for ts, val in zip(carbon_df.index, carbon_df["GridCO2"], strict=True)
-    ]
+    return EpochCarbonEntry(timestamps=carbon_df["start_ts"].tolist(), data=carbon_df["GridCO2"].to_list())

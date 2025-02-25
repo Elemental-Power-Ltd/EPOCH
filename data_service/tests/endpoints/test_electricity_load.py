@@ -90,11 +90,19 @@ class TestUploadMeterData:
             },
         )
         assert get_result.status_code == 200, get_result.json()
-        assert get_result.json()[-1]["StartTime"] == "23:30"
-        assert get_result.json()[0]["Date"] == demo_start_ts.strftime("%d-%b")
-        assert get_result.json()[-1]["Date"] == (demo_end_ts - pd.Timedelta(minutes=30)).strftime("%d-%b")
-        expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
-        assert len(get_result.json()) == expected_len
+        timestamps = get_result.json()["timestamps"]
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == demo_start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (demo_end_ts - datetime.timedelta(minutes=30))
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in get_result.json()["data"]
+        )
 
 
 class TestGetBlendedData:

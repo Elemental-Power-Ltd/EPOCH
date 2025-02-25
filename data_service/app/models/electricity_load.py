@@ -17,4 +17,6 @@ class ElectricalLoadMetadata(MeterMetadata):
 
 
 class EpochElectricityEntry(EpochEntry):
-    FixLoad1: float = pydantic.Field(examples=[0.123, 4.56], description="Fixed electrical load for this building in kWh.")
+    data: list[float] = pydantic.Field(
+        examples=[[0.123, 4.56]], description="List of fixed electrical loads for this building in kWh."
+    )

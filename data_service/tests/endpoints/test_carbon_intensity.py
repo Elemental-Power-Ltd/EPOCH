@@ -112,9 +112,10 @@ class TestCarbonIntensity:
                 },
             )
         ).json()
-        assert all(item["GridCO2"] > 0 for item in grid_co2_result)
+        assert all(item > 0 for item in grid_co2_result["data"])
         assert (
-            len(grid_co2_result)
+            len(grid_co2_result["data"])
+            == len(grid_co2_result["timestamps"])
             == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
         ), "Not enough entries in set"
 

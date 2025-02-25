@@ -11,7 +11,7 @@ from app.models.core import DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetI
 from app.routers.air_source_heat_pump import get_ashp_input, get_ashp_output
 from app.routers.carbon_intensity import get_grid_co2
 from app.routers.electricity_load import get_blended_electricity_load
-from app.routers.heating_load import get_heating_load
+from app.routers.heating_load import get_air_temp, get_dhw_load, get_heating_load
 from app.routers.import_tariffs import get_import_tariffs
 from app.routers.renewables import get_renewables_generation
 
@@ -67,6 +67,39 @@ async def fetch_all_input_data(
                 if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
                 else DummyTask()
             )
+            dhw_task = (
+                tg.create_task(
+                    get_dhw_load(
+                        DatasetIDWithTime(
+                            dataset_id=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).dataset_id[
+                                0
+                            ],
+                            start_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).start_ts,
+                            end_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).end_ts,
+                        ),
+                        pool,
+                    )
+                )
+                if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
+                else DummyTask()
+            )
+
+            air_temp_task = (
+                tg.create_task(
+                    get_air_temp(
+                        DatasetIDWithTime(
+                            dataset_id=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).dataset_id[
+                                0
+                            ],
+                            start_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).start_ts,
+                            end_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).end_ts,
+                        ),
+                        pool,
+                    )
+                )
+                if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
+                else DummyTask()
+            )
 
             rgen_task = (
                 tg.create_task(
@@ -111,6 +144,8 @@ async def fetch_all_input_data(
     return SiteDataEntries(
         eload=eload_task.result(),
         heat=heat_task.result(),
+        air_temp=air_temp_task.result(),
+        dhw=dhw_task.result(),
         rgen=rgen_task.result(),
         import_tariffs=tariff_task.result(),
         grid_co2=grid_co2_task.result(),
