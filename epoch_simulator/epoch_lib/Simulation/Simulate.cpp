@@ -285,9 +285,9 @@ void Simulator::validateScenario(const SiteData& siteData, const TaskData& taskD
 
 	// check yield_scalars and solar_yields match
 	if (taskData.renewables) {
-		if (taskData.renewables->yield_scalars.size() != siteData.solar_yields.size()) {
+		if (taskData.renewables->yield_scalars.size() > siteData.solar_yields.size()) {
 			throw std::runtime_error(std::format(
-				"Mismatch: TaskData supplied {} yield_scalars while SiteData supplied {} solar_yields",
+				"Mismatch: TaskData supplied {} yield_scalars but SiteData only supplied {} solar_yields",
 				taskData.renewables->yield_scalars.size(), siteData.solar_yields.size()
 			));
 		}
