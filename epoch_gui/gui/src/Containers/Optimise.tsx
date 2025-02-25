@@ -4,7 +4,6 @@ import AccordionSection from "../util/Widgets/AccordionSection";
 import HyperParamForm from "../Components/HyperParams/OptimiserConfig";
 import SearchForm from "../Components/SearchParameters/SearchForm";
 import AddSiteModal from "../Components/SearchParameters/AddSite";
-import DefaultSiteRange from "../util/json/default/DefaultHumanFriendlySiteRange.json";
 
 import {Button, Box, IconButton} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
