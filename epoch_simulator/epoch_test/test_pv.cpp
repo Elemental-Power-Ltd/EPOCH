@@ -96,3 +96,14 @@ TEST_F(BasicPVTest, ScalarEffects) {
         EXPECT_FLOAT_EQ(pvOutput[i], 7.5f); // 2*1 + 0.5*2 + 1.5*3 + 0*4 = 7.5
     }
 }
+
+TEST_F(BasicPVTest, NoScalars) {
+    // a PV instance that is provided no yield_scalars should return 0 total solar
+    renewables.yield_scalars = {};
+
+    BasicPV pv(siteData, renewables);
+    pv.AllCalcs(tempsum);
+    auto pvOutput = pv.get_PV_AC_out();
+
+    EXPECT_EQ(pvOutput.sum(), 0.0f);
+}

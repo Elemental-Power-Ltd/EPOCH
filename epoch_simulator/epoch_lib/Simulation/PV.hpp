@@ -17,10 +17,10 @@ public:
         mPVdcGen_e(Eigen::VectorXf::Zero(mTimesteps)),
         mPVacGen_e(Eigen::VectorXf::Zero(mTimesteps))
     {
-        // We should have already verified that solar_yields and yield_scalars are the same length
-        assert(siteData.solar_yields.size() == renewablesData.yield_scalars.size());
+        // We should have already verified that solar_yields and yield_scalars are compatible
+        assert(siteData.solar_yields.size() >= renewablesData.yield_scalars.size());
 
-        for (size_t i = 0; i < siteData.solar_yields.size(); i++) {
+        for (size_t i = 0; i < renewablesData.yield_scalars.size(); i++) {
             mPVdcGen_e += siteData.solar_yields[i] * renewablesData.yield_scalars[i];
         }
     }
