@@ -426,24 +426,24 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
     """
     all_datasets = await list_datasets(params, pool)
 
-    def created_at_or_epoch(ts: datetime.datetime | None) -> datetime.datetime:
+    def created_at_or_epoch(ts: DatasetEntry | None) -> datetime.datetime:
         """Return the created_at date or the EPOCH."""
         if ts is None:
             return datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC)
         return ts.created_at
-    
+
     def subtype_contains(ds: DatasetEntry | None, subtype: InterventionEnum | SyntheticTariffEnum | None) -> bool:
         if ds is None:
             return False
-        
+
         if ds.dataset_subtype == subtype:
             return True
-        
-        if hasattr(ds.dataset_subtype, "__contains__") and subtype in ds.dataset_subtype:
+
+        if hasattr(ds.dataset_subtype, "__contains__") and subtype in ds.dataset_subtype:  # type: ignore
             return True
-        
+
         return False
-    
+
     heating_loads = [
         item
         for item in (
@@ -464,9 +464,7 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         item
         for item in (
             max(
-                filter(
-                    lambda ds: subtype_contains(ds, tariff_type), all_datasets[DatasetTypeEnum.ImportTariff]
-                ),
+                filter(lambda ds: subtype_contains(ds, tariff_type), all_datasets[DatasetTypeEnum.ImportTariff]),
                 key=created_at_or_epoch,
                 default=None,
             )
@@ -712,8 +710,12 @@ async def generate_all(
     for interventions in POTENTIAL_INTERVENTIONS:
         background_tasks.add_task(
             generate_heating_load,
-            HeatingLoadRequest(dataset_id=gas_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts,
-                               interventions=interventions),
+            HeatingLoadRequest(
+                dataset_id=gas_meter_dataset.dataset_id,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+                interventions=interventions,
+            ),
             pool=pool,
             http_client=http_client,
         )
@@ -755,16 +757,19 @@ async def generate_all(
     # Return the background tasks immediately with null-ish data.
     # The UUIDs will have to be collected later (unless we assign them in this function in future?)
     return {
-        DatasetTypeEnum.HeatingLoad: [DatasetEntry(
-            dataset_id=NULL_UUID,
-            dataset_type=DatasetTypeEnum.HeatingLoad,
-            created_at=datetime.datetime.now(tz=datetime.UTC),
-            resolution=RESOLUTION,
-            start_ts=params.start_ts,
-            end_ts=params.end_ts,
-            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
-            dataset_subtype=intervention
-        ) for intervention in POTENTIAL_INTERVENTIONS],
+        DatasetTypeEnum.HeatingLoad: [
+            DatasetEntry(
+                dataset_id=NULL_UUID,
+                dataset_type=DatasetTypeEnum.HeatingLoad,
+                created_at=datetime.datetime.now(tz=datetime.UTC),
+                resolution=RESOLUTION,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+                num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
+                dataset_subtype=intervention,
+            )
+            for intervention in POTENTIAL_INTERVENTIONS
+        ],
         DatasetTypeEnum.CarbonIntensity: DatasetEntry(
             dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.CarbonIntensity,

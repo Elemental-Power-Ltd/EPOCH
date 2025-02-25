@@ -97,6 +97,8 @@ async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> Mete
         reading_type=entries.metadata.reading_type,
         filename=entries.metadata.filename,
         is_synthesised=entries.metadata.is_synthesised,
+        start_ts=min(item.start_ts for item in entries.data),
+        end_ts=max(item.end_ts for item in entries.data),
     )
 
 

@@ -23,6 +23,8 @@ class MeterMetadata(pydantic.BaseModel):
     reading_type: ReadingTypeEnum
     filename: str | None = pydantic.Field(default=None)
     is_synthesised: bool = pydantic.Field(default=False)
+    start_ts: pydantic.AwareDatetime | None = pydantic.Field(default=None)
+    end_ts: pydantic.AwareDatetime | None = pydantic.Field(default=None)
 
 
 class MeterEntry(pydantic.BaseModel):
