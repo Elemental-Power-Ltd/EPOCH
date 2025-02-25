@@ -24,11 +24,14 @@ from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetList, RemoteMetaData
+from ..models.weather import WeatherRequest
 from .carbon_intensity import generate_grid_co2
+from .client_data import get_location
 from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
 from .import_tariffs import generate_import_tariffs, get_import_tariffs
 from .renewables import generate_renewables_generation
+from .weather import get_weather
 
 router = APIRouter()
 
@@ -705,6 +708,22 @@ async def generate_all(
     assert isinstance(elec_meter_dataset, DatasetEntry), (
         f"Expecting a DatasetEntry for elec_meter_dataset but got {type(elec_meter_dataset)}"
     )
+
+    # We have to get the weather into the database before we try to do any fitting,
+    # especially over the requested and gas meter time periods.
+    async with pool.acquire() as conn:
+        location = await get_location(params, conn)
+        await get_weather(
+            WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+            conn=conn,
+            http_client=http_client,
+        )
+        if gas_meter_dataset.start_ts is not None and gas_meter_dataset.end_ts is not None:
+            await get_weather(
+                WeatherRequest(location=location, start_ts=gas_meter_dataset.start_ts, end_ts=gas_meter_dataset.end_ts),
+                conn=conn,
+                http_client=http_client,
+            )
 
     POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
     for interventions in POTENTIAL_INTERVENTIONS:

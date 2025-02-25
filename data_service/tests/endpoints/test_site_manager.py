@@ -236,6 +236,7 @@ class TestGetLatestElectricity:
 class TestGetMultipleHeatLoads:
     @pytest.mark.asyncio
     async def test_create_and_get_heatloads(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+        """Test that we can get four different heatloads with different values."""
         gas_meter_result, _ = upload_meter_data
         POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
         background_tasks = []
@@ -271,6 +272,8 @@ class TestGetMultipleHeatLoads:
                         )
                     )
                 )
+        # keep references to the tasks to avoid a horrible Heisenbug (argh!)
+        # then wait for them all to be done.
         _ = [task.result() for task in background_tasks]
 
         listed_datasets_result = await client.post(
@@ -287,12 +290,20 @@ class TestGetMultipleHeatLoads:
 
         got_datasets = await client.post(
             "/get-specific-datasets",
-            json={"HeatingLoad": listed_data["HeatingLoad"]},
+            json={
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "HeatingLoad": listed_data["HeatingLoad"],
+            },
         )
-        assert got_datasets.status_code == 200
-        heating_data = got_datasets.json()["heat"]
+        assert got_datasets.status_code == 200, got_datasets.text
+        heating_data = got_datasets.json()["heat"]["data"]
         for idx in [1, 2, 3]:
             assert heating_data[0]["reduced_hload"] != heating_data[idx]["reduced_hload"]
+
+        assert len({item["cost"] for item in heating_data}) == 4, "Must have four different costs"
+        assert heating_data[0]["cost"] == 0, "First entry must be zero cost baseline"
 
 
 class TestListAllDatasets:

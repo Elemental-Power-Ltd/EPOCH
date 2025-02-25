@@ -351,9 +351,9 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             WHERE dataset_id = $1""",
             dataset_id,
         )
-        if res:
-            return res[0]["total_cost"]
-        return 0
+        if res is not None:
+            return float(res)
+        return 0.0
 
     async with asyncio.TaskGroup() as tg:
         all_dfs = [
