@@ -68,7 +68,11 @@ function App() {
         <BrowserRouter>
             <ThemeProvider theme={getAppTheme(prefersDarkMode)}>
                 <div className="fixed-tabs">
-                    <Box display="flex" alignItems="center">
+                    <Box
+                        display="flex"
+                        alignItems="center"
+                        sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}
+                    >
                         <NavTabs/>
                         <Select
                             value={selectedClient ? selectedClient.client_id : ""}
@@ -99,7 +103,7 @@ function App() {
 
                             {/*404*/}
                             <Route path="*" element={<div>404</div>}/>
-                      </Routes>
+                        </Routes>
                     </Box>
                 }
             </ThemeProvider>
