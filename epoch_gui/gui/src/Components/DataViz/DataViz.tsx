@@ -4,7 +4,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, {Dayjs} from 'dayjs';
 import 'dayjs/locale/en-gb';
-import {Select, MenuItem, FormControl, InputLabel, Button} from '@mui/material';
+import {Select, MenuItem, FormControl, InputLabel, Button, useMediaQuery} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 
 import Plot from 'react-plotly.js';
@@ -12,6 +12,7 @@ import Plot from 'react-plotly.js';
 import {ReportDataType, SimulationResult} from "../../Models/Endpoints";
 import {onClickDownloadReportData} from "../../util/MakeCSV";
 import {color_map, default_positive_stackbars, default_negative_stackbars, daysOptions} from "./GraphConfig";
+import {getAppTheme} from "../../Colours";
 
 interface DataVizProps {
     result: SimulationResult
@@ -123,6 +124,14 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
         }
     );
 
+
+    // we're using the theme's paper colour for both the plot and paper parts to the plot
+    // (this is closer to what plotly does by default and looks a bit better)
+    const isDarkMode = useMediaQuery('(prefers-color-scheme: dark)')
+    const theme = getAppTheme(isDarkMode);
+    const paper_bgcolor = theme.palette.background.paper;
+    const plot_bgcolor = theme.palette.background.paper;
+
     const stackedChartLayout = {
         title: `Half-hourly energy balances across the site`,
         barmode: 'relative',
@@ -151,7 +160,9 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
         yaxis: {title: "Energy draw / supply (kWh)"},
         autosize: true, // Disable autosize to control manually
         width: windowWidth * 0.95, // 95% of the window width
-        height: windowWidth * 0.95 * 0.4 // Adjust height as needed
+        height: windowWidth * 0.95 * 0.4, // Adjust height as needed
+        paper_bgcolor: paper_bgcolor,
+        plot_bgcolor: plot_bgcolor,
         // responsive: true
     }
 
@@ -214,7 +225,7 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
 
         if (hueDifference < threshold || hueDifference > 360 - threshold) {
             // If hues are too close, adjust the first color
-            return '#000000'; // Default fallback color (e.g., black)
+            return isDarkMode ? '#FFFFFF' : '#000000'; // Default fallback color is white/black for dark/light mode
         }
         return color1;
     };
@@ -373,7 +384,9 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
                             autosize: false, // Disable autosize
                             width: windowWidth * 0.45, // 45% of the window width per panel
                             height: windowWidth * 0.45 * 0.6, // Adjust height as needed
-                            showlegend: false
+                            showlegend: false,
+                            paper_bgcolor: paper_bgcolor,
+                            plot_bgcolor: plot_bgcolor,
                             //legend:  {
                             //     'x': 0.99,          // x position (0-1 inside plot, >1 outside)
                             //     'y': 1.0,          // y position (0-1)
