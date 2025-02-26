@@ -14,6 +14,7 @@ from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2
 from app.internal.portfolio_simulator import simulate_scenario
+from app.internal.site_range import count_parameters_to_optimise
 from app.models.core import (
     EndpointTask,
     OptimisationResultEntry,
@@ -201,16 +202,20 @@ async def submit_portfolio(request: Request, task: Task, data_manager: DataManag
     if task.task_id in q.q.keys():
         logger.warning(f"{task.task_id} already in queue.")
         raise HTTPException(status_code=400, detail="Task already in queue.")
-    else:
-        try:
-            await data_manager.fetch_portfolio_data(task)
-            data_manager.save_parameters(task)
-            await data_manager.transmit_task(task)
-            await q.put((task, data_manager))
-            return TaskResponse(task_id=task.task_id)
-        except httpx.HTTPStatusError as e:
-            logger.warning(f"Failed to add task to database: {e.response.text!s}")
-            raise HTTPException(status_code=500, detail=f"Failed to add task to database: {e.response.text!s}") from e
-        except Exception as e:
-            logger.warning(f"Failed to add task to queue: {type(e)}: {e!s}")
-            raise HTTPException(status_code=500, detail=f"Failed to add task to queue: {e!s}") from e
+    if sum(count_parameters_to_optimise(site.site_range) for site in task.portfolio) < 1:
+        logger.warning(f"{task.task_id} has an empty search space.")
+        raise HTTPException(
+            status_code=400, detail="Task search space is empty. Found no asset values to optimise in site range."
+        )
+    try:
+        await data_manager.fetch_portfolio_data(task)
+        data_manager.save_parameters(task)
+        await data_manager.transmit_task(task)
+        await q.put((task, data_manager))
+        return TaskResponse(task_id=task.task_id)
+    except httpx.HTTPStatusError as e:
+        logger.warning(f"Failed to add task to database: {e.response.text!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to add task to database: {e.response.text!s}") from e
+    except Exception as e:
+        logger.warning(f"Failed to add task to queue: {type(e)}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to add task to queue: {e!s}") from e
