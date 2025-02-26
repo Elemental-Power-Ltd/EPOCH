@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -9,10 +8,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .internal.log import logger
 from .routers import epl_queue, optimise, simulate
 from .routers.epl_queue import IQueue
 from .routers.optimise import process_requests
-from .internal.log import logger
 
 
 @asynccontextmanager

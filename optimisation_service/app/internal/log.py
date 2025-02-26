@@ -1,8 +1,8 @@
 import datetime
 import logging
 import sys
-from typing import Any, cast
 from pathlib import Path
+from typing import Any, cast
 
 LOG_DIR = Path("./", "app", "logs")
 
