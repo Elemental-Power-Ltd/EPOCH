@@ -12,8 +12,8 @@ from fastapi.responses import JSONResponse
 from .routers import epl_queue, optimise, simulate
 from .routers.epl_queue import IQueue
 from .routers.optimise import process_requests
+from internal.log import logger
 
-logger = logging.getLogger("default")
 
 
 @asynccontextmanager
@@ -45,7 +45,7 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    logging.error(f"Validation error: {exc.errors()} | Body: {exc.body}")
+    logger.error(f"Validation error: {exc.errors()} | Body: {exc.body}")
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "body": exc.body},
