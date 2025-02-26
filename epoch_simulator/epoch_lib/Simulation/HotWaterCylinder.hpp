@@ -119,7 +119,8 @@ public:
 				timestep_renewable_charge = std::min(-tempSum.Elec_e[timestep], max_charge_energy); // use renewable surplus as candidate amount to top up to tank capacit 
 			}
 
-			if (mImport_tariff[timestep] <= dayAverage ||  mImport_tariff[timestep] <= dayPercentile)	{
+			// here we use <= dayAverage to ensure that we top up the DHW cylinder in scenarios with a fixed price tariffs
+			if (mImport_tariff[timestep] <= dayAverage && mImport_tariff[timestep] <= dayPercentile) {
 				timestep_lowtariff_charge = max_heat_pump_charge_energy - timestep_renewable_charge;
 			}
 

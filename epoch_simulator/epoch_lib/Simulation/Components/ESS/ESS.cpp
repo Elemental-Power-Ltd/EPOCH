@@ -34,9 +34,14 @@ void BasicESS::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size
         float percentileTariff = mTariffStats.getDayPercentile(t);
         
         // if we satisfy top-up conditions in this timestep, only do this charge. 75% is the threshold SoC level
-        if(mImport_tariff[t] <= averageTariff && mImport_tariff[t] <= percentileTariff && mBattery.GetSoC()/mBattery.GetCapacity_e() < 0.75f) {
+        if(mImport_tariff[t] < averageTariff && 
+            mImport_tariff[t] <= percentileTariff && 
+            mBattery.GetSoC()/mBattery.GetCapacity_e() < 0.75f) {
 
+            // calculate how much energy we want to put into the battery
             mEnergyCalc = std::min((mBattery.GetCapacity_e()*0.75f), mBattery.getAvailableCharge());
+            // cap by the amount of energy available to us
+            mEnergyCalc = std::min(mEnergyCalc, futureEnergy_e);
             mBattery.doCharge(mEnergyCalc, t);
             tempSum.Elec_e[t] = tempSum.Elec_e[t] + mEnergyCalc;
         }

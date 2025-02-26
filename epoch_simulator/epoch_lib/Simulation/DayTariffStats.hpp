@@ -48,12 +48,9 @@ public:
 
             auto& dayValues = dailyValues[day];
 
-            // compute the average
-            float sum = 0.0f;
-            for (float v : dayValues) {
-                sum += v;
-            }
-            mDailyAverages[day] = sum / static_cast<float>(dayValues.size());
+            // compute the average (with a double to mitigate some floating point errors)
+            double sum = std::accumulate(dayValues.begin(), dayValues.end(), 0.0);
+            mDailyAverages[day] = static_cast<float>(sum) / static_cast<float>(dayValues.size());
 
             // compute the percentile
             int idx = static_cast<int>(std::floor(mPercentile * dayValues.size()));
