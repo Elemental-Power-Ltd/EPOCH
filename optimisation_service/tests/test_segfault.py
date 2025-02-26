@@ -1,9 +1,8 @@
 from pathlib import Path
 
-from epoch_simulator import Simulator
+from epoch_simulator import Simulator, TaskData
 
 from app.internal.datamanager import load_epoch_data_from_file
-from app.internal.epoch_utils import TaskData
 
 from .conftest import _DATA_PATH
 

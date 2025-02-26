@@ -2,10 +2,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from epoch_simulator import Building, Simulator
+from epoch_simulator import Building, Simulator, TaskData
 
 from app.internal.datamanager import load_epoch_data_from_file
-from app.internal.epoch_utils import TaskData
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.internal.portfolio_simulator import PortfolioSimulator, combine_metric_values, simulate_scenario
 from app.models.metrics import _METRICS, Metric, MetricValues

@@ -6,13 +6,13 @@ from typing import Any, Never
 
 import numpy as np
 import numpy.typing as npt
+from epoch_simulator import TaskData
 from pymoo.config import Config  # type: ignore
 from pymoo.core.mutation import Mutation  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
-from app.internal.epoch_utils import TaskData
 from app.internal.heuristics.population_init import generate_building_initial_population
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
 from app.internal.site_range import count_parameters_to_optimise

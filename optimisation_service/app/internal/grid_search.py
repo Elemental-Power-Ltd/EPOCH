@@ -13,9 +13,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from epoch_simulator import TaskData
 from paretoset import paretoset  # type: ignore
 
-from app.internal.epoch_utils import TaskData
 from app.internal.portfolio_simulator import combine_metric_values
 from app.models.constraints import Constraints
 from app.models.core import Site

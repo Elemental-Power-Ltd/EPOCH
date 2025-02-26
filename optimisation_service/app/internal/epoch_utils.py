@@ -7,9 +7,6 @@ from epoch_simulator import SimulationResult, TaskData
 from app.internal.metrics import calculate_carbon_cost
 from app.models.metrics import _EPOCH_NATIVE_METRICS, Metric, MetricValues
 
-TaskData.__hash__ = lambda td: hash(repr(td))  # type: ignore
-TaskData.__eq__ = lambda td, oth: repr(td) == repr(oth)  # type: ignore
-
 
 def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
     """

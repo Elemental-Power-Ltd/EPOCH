@@ -2,9 +2,9 @@ import functools
 import logging
 
 import numpy as np
-from epoch_simulator import Simulator
+from epoch_simulator import Simulator, TaskData
 
-from app.internal.epoch_utils import TaskData, convert_sim_result
+from app.internal.epoch_utils import convert_sim_result
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.models.metrics import Metric, MetricValues
 from app.models.result import PortfolioSolution, SiteSolution

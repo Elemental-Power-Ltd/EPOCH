@@ -4,9 +4,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from epoch_simulator import TaskData
 
 from app.internal.datamanager import load_epoch_data_from_file
-from app.internal.epoch_utils import TaskData
 from app.internal.ga_utils import ProblemInstance
 from app.internal.portfolio_simulator import combine_metric_values
 from app.models.constraints import Constraints

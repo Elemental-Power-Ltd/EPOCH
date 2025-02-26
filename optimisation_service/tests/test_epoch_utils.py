@@ -10,11 +10,11 @@ from epoch_simulator import (
     HeatPump,
     Renewables,
     Simulator,
+    TaskData,
 )
 
 from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.epoch_utils import (
-    TaskData,
     convert_sim_result,
     convert_TaskData_to_dictionary,
 )

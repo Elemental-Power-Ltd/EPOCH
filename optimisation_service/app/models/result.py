@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
-from app.internal.epoch_utils import TaskData
+from epoch_simulator import TaskData
+
 from app.models.metrics import MetricValues
 
 
