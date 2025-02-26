@@ -12,8 +12,7 @@ from fastapi.responses import JSONResponse
 from .routers import epl_queue, optimise, simulate
 from .routers.epl_queue import IQueue
 from .routers.optimise import process_requests
-from internal.log import logger
-
+from .internal.log import logger
 
 
 @asynccontextmanager

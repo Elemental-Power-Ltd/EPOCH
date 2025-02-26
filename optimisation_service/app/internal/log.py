@@ -44,7 +44,7 @@ class EndpointFilter(logging.Filter):
         -------
             True if we should allow this record through, False if otherwise.
         """
-        if not isinstance(record.args, (tuple, list)) or len(record.args) < 4:
+        if not isinstance(record.args, tuple | list) or len(record.args) < 4:
             print("Record args:", record.args)
             return True
         request_method = str(record.args[1])  # should be GET or POST
