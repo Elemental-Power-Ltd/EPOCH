@@ -57,30 +57,30 @@ class HeatingLoadMetadata(pydantic.BaseModel):
     interventions: list[InterventionEnum] = Field(examples=["Loft"], default=[])
 
 
+class FabricIntervention(pydantic.BaseModel):
+    cost: float
+    reduced_hload: list[float] = pydantic.Field(
+        examples=[[0.123, 4.56]], description="heating demand in kWh for this time period."
+    )
+
+
 class EpochHeatingEntry(EpochEntry):
-    HLoad1: float = pydantic.Field(examples=[0.123, 4.56], description="Heating demand in kWh for this time period.")
-    DHWLoad1: float = pydantic.Field(
-        examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
+    data: list[FabricIntervention] = pydantic.Field(
+        examples=[[0.123, 4.56]],
+        description="List of heating loads representing various fabric interventions with corresponding cost.",
     )
-    HLoad2: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="Heating demand in kWh for this time period."
+
+
+class EpochAirTempEntry(EpochEntry):
+    data: list[float] = pydantic.Field(
+        examples=[[16.0, 15.5, 15.0, 14.7]], description="Air temperature for this time period in °C."
     )
-    DHWLoad2: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
+
+
+class EpochDHWEntry(EpochEntry):
+    data: list[float] = pydantic.Field(
+        examples=[[0.123, 4.56]], description="Domestic hot water demand in kWh for this time period."
     )
-    HLoad3: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="Heating demand in kWh for this time period."
-    )
-    DHWLoad3: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
-    )
-    HLoad4: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="Heating demand in kWh for this time period."
-    )
-    DHWLoad4: float | None = pydantic.Field(
-        default=None, examples=[0.123, 4.56], description="Domestic hot water demand in kWh for this time period."
-    )
-    AirTemp: float = pydantic.Field(examples=[16.7], description="Air temperature at this time in °C.")
 
 
 class HeatingLoadRequest(DatasetIDWithTime):

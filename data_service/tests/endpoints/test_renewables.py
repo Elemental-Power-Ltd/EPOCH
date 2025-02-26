@@ -104,8 +104,13 @@ class TestRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(item["RGen1"] >= 0 for item in results)
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(all(item) >= 0 for item in results["data"])
 
     @pytest.mark.asyncio
     @pytest.mark.external
@@ -138,8 +143,13 @@ class TestRenewables:
             )
         ).json()
 
-        assert len(results) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(item["RGen1"] >= 0 for item in results)
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(results["data"][0]) >= 0
 
 
 class TestMultipleRenewables:
@@ -173,9 +183,14 @@ class TestMultipleRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(item["RGen1"] >= 0 for item in results)
-        assert all(item["RGen1"] == item["RGen2"] == item["RGen3"] == item["RGen4"] for item in results)
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(all(item) >= 0 for item in results["data"])
+        assert all(item == results["data"][0] for item in results["data"])
 
     @pytest.mark.asyncio
     @pytest.mark.external
@@ -221,12 +236,15 @@ class TestMultipleRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(item["RGen1"] >= 0 for item in results)
-        assert any(item["RGen1"] > 0 for item in results)
-        assert all(item["RGen2"] >= 0 for item in results)
-        assert any(item["RGen2"] > 0 for item in results)
-        assert not all(item["RGen1"] == item["RGen2"] for item in results)
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(all(item) >= 0 for item in results["data"])
+        assert all(any(item) > 0 for item in results["data"])
+        assert not all(item == results["data"][0] for item in results["data"])
 
 
 class TestRenewablesErrors:

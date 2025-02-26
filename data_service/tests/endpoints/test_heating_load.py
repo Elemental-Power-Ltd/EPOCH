@@ -38,8 +38,8 @@ class TestHeatingLoad:
         assert datetime.datetime.fromisoformat(generated_metadata.json()["created_at"]) > datetime.datetime.now(
             datetime.UTC
         ) - datetime.timedelta(minutes=1)
-        assert any(item["HLoad1"] > 0 for item in heating_load_result.json())
-        assert any(item["AirTemp"] != 0 for item in heating_load_result.json())
+        assert any(heating_load_result.json()["data"]) > 0
+        assert any(heating_load_result.json()["data"]) != 0
 
         assert generated_metadata.json()["site_id"] == "demo_london"
         assert generated_metadata.json()["params"]["solar_gain"] >= 0
@@ -83,8 +83,8 @@ class TestHeatingLoad:
             no_intervention_metadata.json()["params"]["heating_kwh"]
             > with_intervention_metadata.json()["params"]["heating_kwh"]
         )
-        no_intervention_total = sum(item["HLoad1"] for item in no_intervention_result.json())
-        with_intervention_total = sum(item["HLoad1"] for item in with_intervention_result.json())
+        no_intervention_total = sum(no_intervention_result.json()["data"][0]["reduced_hload"])
+        with_intervention_total = sum(with_intervention_result.json()["data"][0]["reduced_hload"])
         assert with_intervention_total < no_intervention_total
 
     @pytest.mark.asyncio
@@ -106,11 +106,20 @@ class TestHeatingLoad:
             datetime.UTC
         ) - datetime.timedelta(minutes=1)
 
-        assert heating_load_result.json()[0]["Date"] == start_ts.date().strftime("%d-%b")
-        assert heating_load_result.json()[-1]["Date"] == (end_ts - datetime.timedelta(minutes=30)).date().strftime("%d-%b")
-        assert heating_load_result.json()[0]["StartTime"] == "00:00", "First entry isn't 00:00"
-        assert heating_load_result.json()[-1]["StartTime"] == "23:30", "Last entry isn't 23:30"
-        assert len(heating_load_result.json()) == int((end_ts - start_ts) / datetime.timedelta(minutes=30))
+        timestamps = heating_load_result.json()["timestamps"]
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (end_ts - datetime.timedelta(minutes=30))
+        assert (
+            len(timestamps)
+            == len(heating_load_result.json()["data"][0]["reduced_hload"])
+            == int((end_ts - start_ts) / datetime.timedelta(minutes=30))
+        )
 
 
 class TestFabricInterventionCost:

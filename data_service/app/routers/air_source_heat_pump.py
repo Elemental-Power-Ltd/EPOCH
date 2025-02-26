@@ -39,17 +39,8 @@ async def get_ashp_input(params: DatasetIDWithTime) -> ASHPCOPResponse:
     """
     _ = params  # we ignore these, but mark them as used.
 
-    dataframe = pd.read_csv("./data/CSVASHPinput.csv").set_index("0")
-    dataframe.index.name = "temperature"
-
-    results = dataframe.to_dict(orient="tight")
-    return ASHPCOPResponse(
-        index=results["index"],
-        columns=results["columns"],
-        data=results["data"],
-        index_names=results["index_names"],
-        column_names=results["column_names"],
-    )
+    dataframe = pd.read_csv("./data/CSVASHPinput.csv", header=None)
+    return ASHPCOPResponse(data=dataframe.to_numpy().tolist())
 
 
 @router.post("/get-ashp-output")
@@ -76,14 +67,5 @@ async def get_ashp_output(params: DatasetIDWithTime) -> ASHPCOPResponse:
     """
     _ = params  # we ignore these, but mark them as used.
 
-    dataframe = pd.read_csv("./data/CSVASHPoutput.csv").set_index("0")
-    dataframe.index.name = "temperature"
-
-    results = dataframe.to_dict(orient="tight")
-    return ASHPCOPResponse(
-        index=results["index"],
-        columns=results["columns"],
-        data=results["data"],
-        index_names=results["index_names"],
-        column_names=results["column_names"],
-    )
+    dataframe = pd.read_csv("./data/CSVASHPoutput.csv", header=None)
+    return ASHPCOPResponse(data=dataframe.to_numpy().tolist())

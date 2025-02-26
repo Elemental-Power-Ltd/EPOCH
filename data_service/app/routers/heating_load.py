@@ -6,6 +6,7 @@ These generally use a combination of gas meters and external weather to perform 
 
 import asyncio
 import datetime
+import itertools
 import json
 import uuid
 
@@ -17,10 +18,12 @@ from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
 from ..internal.heating import apply_fabric_interventions, building_adjusted_internal_temperature
-from ..internal.utils import add_epoch_fields
-from ..models.core import MultipleDatasetIDWithTime, dataset_id_t
+from ..models.core import DatasetIDWithTime, MultipleDatasetIDWithTime, dataset_id_t
 from ..models.heating_load import (
+    EpochAirTempEntry,
+    EpochDHWEntry,
     EpochHeatingEntry,
+    FabricIntervention,
     HeatingLoadMetadata,
     HeatingLoadRequest,
     InterventionCostRequest,
@@ -223,27 +226,23 @@ async def generate_heating_load(
                         dataset_id,
                         site_id,
                         created_at,
-                        params)
-                VALUES ($1, $2, $3, $4)""",
+                        params,
+                        interventions
+                        )
+                VALUES ($1, $2, $3, $4, $5)""",
                 metadata["dataset_id"],
                 metadata["site_id"],
                 metadata["created_at"],
                 metadata["params"],
+                metadata["interventions"],
             )
 
-            await conn.executemany(
-                """
-                INSERT INTO
-                    heating.synthesised (
-                        dataset_id,
-                        start_ts,
-                        end_ts,
-                        heating,
-                        dhw,
-                        air_temperature)
-                VALUES ($1, $2, $3, $4, $5, $6)""",
-                zip(
-                    [metadata["dataset_id"] for _ in heating_df.index],
+            await conn.copy_records_to_table(
+                schema_name="heating",
+                table_name="synthesised",
+                columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
+                records=zip(
+                    itertools.repeat(metadata["dataset_id"], len(heating_df.index)),
                     heating_df.index,
                     heating_df.index + pd.Timedelta(minutes=30),
                     heating_df["heating"],
@@ -299,7 +298,7 @@ async def get_intervention_cost(params: InterventionCostRequest, conn: DatabaseD
 
 
 @router.post("/get-heating-load", tags=["get", "heating"])
-async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePoolDep) -> list[EpochHeatingEntry]:
+async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePoolDep) -> EpochHeatingEntry:
     """
     Get a previously generated heating load in an EPOCH friendly format.
 
@@ -325,10 +324,8 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             res = await conn.fetch(
                 """
                 SELECT
-                    start_ts AS timestamp,
-                    heating,
-                    dhw,
-                    air_temperature
+                    start_ts,
+                    heating
                 FROM heating.synthesised
                 WHERE
                     dataset_id = $1
@@ -338,11 +335,25 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
                 start_ts,
                 end_ts,
             )
-        heating_df = pd.DataFrame.from_records(
-            res, index="timestamp", columns=["timestamp", "heating", "dhw", "air_temperature"]
-        )
+        heating_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "heating"])
         heating_df.index = pd.to_datetime(heating_df.index)
         return heating_df
+
+    async def get_heating_cost(db_pool: DatabasePoolDep, dataset_id: dataset_id_t) -> float:
+        res = await db_pool.fetchval(
+            """
+            SELECT
+                SUM(cost)
+            FROM heating.metadata AS m
+            JOIN heating.interventions AS i
+            ON
+                i.site_id = m.site_id AND i.intervention = ANY(m.interventions)
+            WHERE dataset_id = $1""",
+            dataset_id,
+        )
+        if res is not None:
+            return float(res)
+        return 0.0
 
     async with asyncio.TaskGroup() as tg:
         all_dfs = [
@@ -351,31 +362,86 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             )
             for dataset_id in params.dataset_id
         ]
+        all_costs = [tg.create_task(get_heating_cost(db_pool=pool, dataset_id=dataset_id)) for dataset_id in params.dataset_id]
 
-    total_df = pd.DataFrame(index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30)))
-    for i, df in enumerate(all_dfs, 1):
-        total_df[f"HLoad{i}"] = df.result()["heating"]
-        total_df[f"DHWLoad{i}"] = df.result()["dhw"]
-    total_df["AirTemp"] = all_dfs[0].result()["air_temperature"]
+    return EpochHeatingEntry(
+        timestamps=all_dfs[0].result().index.to_list(),
+        data=[
+            FabricIntervention(cost=cost.result(), reduced_hload=df.result()["heating"].to_list())
+            for cost, df in zip(all_costs, all_dfs, strict=False)
+        ],
+    )
 
-    within_timestamps_mask = np.logical_and(params.start_ts <= total_df.index, total_df.index < params.end_ts)
-    total_df = total_df[within_timestamps_mask].dropna(axis=0, how="any")
 
-    total_df = add_epoch_fields(total_df)
-    return [
-        EpochHeatingEntry(
-            Date=item["Date"],
-            StartTime=item["StartTime"],
-            HourOfYear=item["HourOfYear"],
-            HLoad1=item["HLoad1"],
-            DHWLoad1=item["DHWLoad1"],
-            HLoad2=item.get("HLoad2"),
-            DHWLoad2=item.get("DHWLoad2"),
-            HLoad3=item.get("HLoad3"),
-            DHWLoad3=item.get("DHWLoad3"),
-            HLoad4=item.get("HLoad4"),
-            DHWLoad4=item.get("DHWLoad4"),
-            AirTemp=item["AirTemp"],
-        )
-        for item in total_df.to_dict(orient="records")
-    ]
+@router.post("/get-dhw-load", tags=["get", "dhw"])
+async def get_dhw_load(params: DatasetIDWithTime, conn: DatabasePoolDep) -> EpochDHWEntry:
+    """
+    Get a previously generated domestic hot water load in an EPOCH friendly format.
+
+    Provided with a given domestic hot water load dataset and timestamps, this will return an EPOCH json.
+
+    Parameters
+    ----------
+    *params*
+        Heating Load dataset ID and timestamps you're interested in (probably a whole year)
+
+    Returns
+    -------
+    epoch_dhw_entry
+        A list of timestamps and a list of DHW values.
+    """
+    res = await conn.fetch(
+        """
+        SELECT
+            start_ts,
+            end_ts,
+            dhw
+        FROM heating.synthesised
+        WHERE dataset_id = $1
+        AND $2 <= start_ts
+        AND end_ts <= $3
+        ORDER BY start_ts ASC""",
+        params.dataset_id,
+        params.start_ts,
+        params.end_ts,
+    )
+    dhw_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "dhw"])
+
+    return EpochDHWEntry(timestamps=dhw_df.index.to_list(), data=dhw_df["dhw"].to_list())
+
+
+@router.post("/get-air-temp", tags=["get", "airtemp"])
+async def get_air_temp(params: DatasetIDWithTime, conn: DatabasePoolDep) -> EpochAirTempEntry:
+    """
+    Get a previously generated air temp series in an EPOCH friendly format.
+
+    Provided with a given air temp dataset and timestamps, this will return an EPOCH json.
+
+    Parameters
+    ----------
+    *params*
+        Heating Load dataset ID and timestamps you're interested in (probably a whole year)
+
+    Returns
+    -------
+    epoch_air_temp_entry
+        A list of timestamps and a list of air temp values.
+    """
+    res = await conn.fetch(
+        """
+        SELECT
+            start_ts,
+            end_ts,
+            air_temperature
+        FROM heating.synthesised
+        WHERE dataset_id = $1
+        AND $2 <= start_ts
+        AND end_ts <= $3
+        ORDER BY start_ts ASC""",
+        params.dataset_id,
+        params.start_ts,
+        params.end_ts,
+    )
+    dhw_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "air_temperature"])
+
+    return EpochAirTempEntry(timestamps=dhw_df.index.to_list(), data=dhw_df["air_temperature"].to_list())
