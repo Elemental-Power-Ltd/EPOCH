@@ -75,13 +75,10 @@ class TestSubmitPortfolioTask:
             config=config,
         )
 
-        new_portfolio = []
         for site in default_task.portfolio:
             site.site_range = empty_site_range
 
-        task = default_task
-        task.portfolio = new_portfolio
-        response = client.post("/submit-portfolio-task", json=jsonable_encoder(task))
+        response = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
         assert response.status_code == 400, response.text
 
 
