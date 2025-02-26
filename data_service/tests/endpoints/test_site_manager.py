@@ -12,6 +12,7 @@ import pytest_asyncio
 
 from app.internal.gas_meters import parse_half_hourly
 from app.models.core import DatasetTypeEnum
+from app.models.heating_load import InterventionEnum
 
 
 @pytest_asyncio.fixture
@@ -168,6 +169,14 @@ class TestGenerateAll:
         assert all(item == tariff_data["data"][0][0] for item in tariff_data["data"][0]), "First entry must be fixed tariff"
         assert tariff_data["data"][0] != tariff_data["data"][1], "Tariffs must be different"
 
+        # Check that we got multiple heat loads here, this should be an array of {"cost": ..., "reduced_hload": ...} dicts
+        heatload_data = data_json["heat"]["data"]
+        assert len(heatload_data) == 4
+        assert len({item["cost"] for item in heatload_data}) == 4
+
+        for idx in range(1, 4):
+            assert heatload_data[0]["reduced_hload"] != heatload_data[idx]["reduced_hload"], "heatload_data must be different"
+
     @pytest.mark.asyncio
     async def test_same_timestamps(self, client: httpx.AsyncClient) -> None:
         """Check that we fail early if the same timestamps are requested."""
@@ -222,6 +231,81 @@ class TestGetLatestElectricity:
             == len(get_result.json()["eload"]["data"])
             == (end_ts - start_ts) / datetime.timedelta(minutes=30)
         )
+
+
+class TestGetMultipleHeatLoads:
+    @pytest.mark.slow
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    async def test_create_and_get_heatloads(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+        """Test that we can get four different heatloads with different values."""
+        gas_meter_result, _ = upload_meter_data
+        POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
+        background_tasks = []
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+
+        # If we allow the background tasks to get the weather, then they'll overwrite each
+        # other and cause terrible trouble, so let's get it here first.
+        await client.post(
+            "/get-weather",
+            json={"location": "London", "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+        )
+        await client.post(
+            "/get-weather",
+            json={
+                "location": "London",
+                "start_ts": gas_meter_result["start_ts"],
+                "end_ts": gas_meter_result["end_ts"],
+            },
+        )
+        async with asyncio.TaskGroup() as tg:
+            for intervention in POTENTIAL_INTERVENTIONS:
+                background_tasks.append(  # noqa: PERF401
+                    tg.create_task(
+                        client.post(
+                            "/generate-heating-load",
+                            json={
+                                "dataset_id": gas_meter_result["dataset_id"],
+                                "start_ts": start_ts.isoformat(),
+                                "end_ts": end_ts.isoformat(),
+                                "interventions": intervention,
+                            },
+                        )
+                    )
+                )
+        # keep references to the tasks to avoid a horrible Heisenbug (argh!)
+        # then wait for them all to be done.
+        _ = [task.result() for task in background_tasks]
+
+        listed_datasets_result = await client.post(
+            "/list-latest-datasets",
+            json={
+                "site_id": "demo_london",
+                "start_ts": "1970-01-01T00:00:00Z",
+                "end_ts": datetime.datetime.now(datetime.UTC).isoformat(),
+            },
+        )
+        assert listed_datasets_result.status_code == 200
+        listed_data = listed_datasets_result.json()
+        assert len(listed_data["HeatingLoad"]) == 4
+
+        got_datasets = await client.post(
+            "/get-specific-datasets",
+            json={
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "HeatingLoad": listed_data["HeatingLoad"],
+            },
+        )
+        assert got_datasets.status_code == 200, got_datasets.text
+        heating_data = got_datasets.json()["heat"]["data"]
+        for idx in [1, 2, 3]:
+            assert heating_data[0]["reduced_hload"] != heating_data[idx]["reduced_hload"]
+
+        assert len({item["cost"] for item in heating_data}) == 4, "Must have four different costs"
+        assert heating_data[0]["cost"] == 0, "First entry must be zero cost baseline"
 
 
 class TestListAllDatasets:

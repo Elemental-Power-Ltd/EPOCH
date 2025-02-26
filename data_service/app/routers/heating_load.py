@@ -6,6 +6,7 @@ These generally use a combination of gas meters and external weather to perform 
 
 import asyncio
 import datetime
+import itertools
 import json
 import uuid
 
@@ -225,27 +226,23 @@ async def generate_heating_load(
                         dataset_id,
                         site_id,
                         created_at,
-                        params)
-                VALUES ($1, $2, $3, $4)""",
+                        params,
+                        interventions
+                        )
+                VALUES ($1, $2, $3, $4, $5)""",
                 metadata["dataset_id"],
                 metadata["site_id"],
                 metadata["created_at"],
                 metadata["params"],
+                metadata["interventions"],
             )
 
-            await conn.executemany(
-                """
-                INSERT INTO
-                    heating.synthesised (
-                        dataset_id,
-                        start_ts,
-                        end_ts,
-                        heating,
-                        dhw,
-                        air_temperature)
-                VALUES ($1, $2, $3, $4, $5, $6)""",
-                zip(
-                    [metadata["dataset_id"] for _ in heating_df.index],
+            await conn.copy_records_to_table(
+                schema_name="heating",
+                table_name="synthesised",
+                columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
+                records=zip(
+                    itertools.repeat(metadata["dataset_id"], len(heating_df.index)),
                     heating_df.index,
                     heating_df.index + pd.Timedelta(minutes=30),
                     heating_df["heating"],
@@ -354,9 +351,9 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             WHERE dataset_id = $1""",
             dataset_id,
         )
-        if res:
-            return res[0]["total_cost"]
-        return 0
+        if res is not None:
+            return float(res)
+        return 0.0
 
     async with asyncio.TaskGroup() as tg:
         all_dfs = [
