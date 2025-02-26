@@ -82,3 +82,18 @@ check_untyped_defs = true
 warn_redundant_casts = true
 warn_unreachable = true
 plugins = ["numpy.typing.mypy_plugin"]
+
+[tool.sqlfluff.core]
+dialect = "postgres"
+max_line_length = 128
+templater = "python"
+large_file_skip_byte_limit = 20000 # ignore the big first file
+
+[tool.sqlfluff.rules.capitalisation.keywords]
+capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.capitalisation.identifiers]
+extended_capitalisation_policy = "lower"
+
+[tool.sqlfluff.rules.capitalisation.types]
+extended_capitalisation_policy = "upper"

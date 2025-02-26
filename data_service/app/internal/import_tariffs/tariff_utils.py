@@ -88,9 +88,9 @@ def resample_to_range(
 
     mask = np.ones(len(df.index), dtype=bool)
     if start_ts is not None:
-        mask = np.logical_and(df.start_ts >= start_ts, mask)  # type: ignore
+        mask = np.logical_and(df.start_ts >= start_ts, mask)
     if end_ts is not None:
-        mask = np.logical_and(df.end_ts <= end_ts, mask)  # type: ignore
+        mask = np.logical_and(df.end_ts <= end_ts, mask)
     return df[mask]
 
 

@@ -149,16 +149,23 @@ async def generate_thermal_model_heating_load(
     """
     Generate a heating load using the thermal model.
 
-    TODO (2025-02-24 MHJB): make sure all this works and write the docstring
+    Parameters
+    ----------
+    pool
+        Shared database pool for the PostgreSQL database, which should contain weather and thermal models
+    http_client 
+        HTTP Client connection pool for the access to 3rd party APIs
+    site_params
+        The Site ID you want to model, as well as the start and end timestamps you want a heating load for
+    thermal_model_dataset_id
+        The thermal model you want to use for this process
+
+    Returns
+    -------
+    DatasetEntry
+        ID of the generated thermal model dataset.
     """
     thermal_model = await get_thermal_model(pool, dataset_id=thermal_model_dataset_id)
-    structure = create_structure_from_params(
-        scale_factor=thermal_model.scale_factor,
-        ach=thermal_model.ach,
-        u_value=thermal_model.u_value,
-        boiler_power=thermal_model.boiler_power,
-        setpoint=thermal_model.setpoint,
-    )
     async with pool.acquire() as conn:
         location = await get_location(site_params, conn)
         weather_records = await get_weather(
