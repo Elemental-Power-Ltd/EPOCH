@@ -13,7 +13,8 @@ from ..utils.conversions import joule_to_kwh
 from .building_elements import BuildingElement
 from .integrator import simulate
 from .network import HeatNetwork, create_simple_structure
-
+from ..gas_meters.domestic_hot_water import get_poisson_weights
+from ..epl_typing import HHDataFrame
 
 def resample_to_gas_df(sim_df: pd.DataFrame, gas_df: pd.DataFrame) -> npt.NDArray[np.floating]:
     """
@@ -45,6 +46,7 @@ def parameters_to_loss(
     u_value: float,
     boiler_power: float,
     setpoint: float,
+    dhw_usage: float,
     gas_df: pd.DataFrame,
     weather_df: pd.DataFrame,
     elec_df: pd.DataFrame | None,
@@ -92,6 +94,12 @@ def parameters_to_loss(
             start_ts=start_ts,
             end_ts=end_ts,
         )
+        DHW_EVENT_SIZE = 1.0
+        # daily usage, the Poisson weights are normalised to 1.0
+        dhw_weights = get_poisson_weights(HHDataFrame(sim_df)) * dhw_usage 
+        rng = np.random.default_rng()
+        total_dhw_usage = rng.poisson(dhw_weights, dhw_weights.size) * DHW_EVENT_SIZE
+        sim_df["heating_usage"] += total_dhw_usage
     except AssertionError:
         # We need the "bad" outcome to roughly match the scale of the good outcomes,
         # so that we can sensibly fit Gaussians during the Bayesian optimisation.
@@ -181,6 +189,7 @@ def simulate_parameters(
     elec_df: pd.DataFrame | None,
     start_ts: datetime.datetime,
     end_ts: datetime.datetime,
+    dt: datetime.timedelta | None = None
 ) -> pd.DataFrame:
     """
     Calculate the gas usage loss for a specific set of parameters.
@@ -205,14 +214,15 @@ def simulate_parameters(
         Returns a "temperature", "heating_usage" column and is indexed by simulation time.
         You probably want to resample this to your period of interest.
     """
+    if dt is None:
+        dt = datetime.timedelta(minutes=3)
     hm = create_structure_from_params(
         scale_factor=scale_factor, ach=ach, u_value=u_value, boiler_power=boiler_power, setpoint=setpoint
     )
     sim_df = simulate(
-        hm, external_df=weather_df, start_ts=start_ts, end_ts=end_ts, dt=datetime.timedelta(minutes=5), elec_df=elec_df
+        hm, external_df=weather_df, start_ts=start_ts, end_ts=end_ts, dt=dt, elec_df=elec_df
     )
-
-    sim_df.index = pd.DatetimeIndex([pd.Timestamp.fromtimestamp(item, tz=datetime.UTC) for item in sim_df.index])
+    # Note the change of units here
     sim_df.heating_usage = -joule_to_kwh(sim_df.heating_usage)
     return sim_df
 
@@ -240,21 +250,23 @@ def fit_to_gas_usage(
         kwarg parameters for `create_simple_structure` that provide the best fit to the gas data.
     """
     pbounds = {
-        "scale_factor": (0.1, 20.0),  # Scale factor
-        "ach": (0.01, 20.0),  # ACH
-        "u_value": (0.1, 2.5),  # U values
+        "scale_factor": (0.1, 20.0),
+        "ach": (0.01, 20.0), 
+        "u_value": (0.1, 2.5),
         "boiler_power": (0, 60e3),  # Boiler Size in kW
-        "setpoint": (16, 24),  # Setpoint
+        "setpoint": (16, 24),
+        "dhw_usage": (0, max(gas_df.consumption))
     }
     opt = BayesianOptimization(
         # There's a minus in here as BayesianOptimisation tries to maximise,
         # and we want to minimize the loss.
-        f=lambda scale_factor, ach, u_value, boiler_power, setpoint: -parameters_to_loss(
+        f=lambda scale_factor, ach, u_value, boiler_power, setpoint, dhw_usage: -parameters_to_loss(
             scale_factor,
             ach=ach,
             u_value=u_value,
             boiler_power=boiler_power,
             setpoint=setpoint,
+            dhw_usage=dhw_usage,
             gas_df=gas_df,
             weather_df=weather_df,
             elec_df=elec_df,
@@ -273,4 +285,5 @@ def fit_to_gas_usage(
         u_value=opt.max["params"]["u_value"],
         boiler_power=opt.max["params"]["boiler_power"],
         setpoint=opt.max["params"]["setpoint"],
+        dhw_usage=opt.max["params"]["dhw_usage"]
     )

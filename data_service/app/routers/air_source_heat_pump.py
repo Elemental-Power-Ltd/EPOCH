@@ -6,12 +6,14 @@ ratios depending on the input and output temperatures.
 These endpoints should provide quick look-up tables for those coefficients of performance.
 """
 
+from typing import cast
+
 import pandas as pd
 from fastapi import APIRouter
 
 from ..models.air_source_heat_pump import ASHPCOPResponse
 from ..models.core import DatasetIDWithTime
-from typing import cast
+
 router = APIRouter()
 
 
@@ -40,7 +42,7 @@ async def get_ashp_input(params: DatasetIDWithTime) -> ASHPCOPResponse:
     _ = params  # we ignore these, but mark them as used.
 
     dataframe = pd.read_csv("./data/CSVASHPinput.csv", header=None)
-    # Some versions of mypy and numpy have `.tolist()` here incorrectly returning a str, so 
+    # Some versions of mypy and numpy have `.tolist()` here incorrectly returning a str, so
     # let's override that for now.
     return ASHPCOPResponse(data=cast(list[list[float]], dataframe.to_numpy().tolist()))
 

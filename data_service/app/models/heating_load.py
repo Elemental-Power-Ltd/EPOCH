@@ -17,6 +17,7 @@ class ThermalModelResult(pydantic.BaseModel):
     u_value: pydantic.NonNegativeFloat
     boiler_power: pydantic.NonNegativeFloat
     setpoint: pydantic.NonNegativeFloat
+    dhw_usage: pydantic.NonNegativeFloat = pydantic.Field(description="Daily domestic hot water usage in kWh")
 
 
 class InterventionEnum(StrEnum):

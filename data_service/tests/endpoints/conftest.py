@@ -10,6 +10,7 @@ Otherwise, leave it in the test file.
 """
 
 # ruff: noqa: D101, D102, D103
+import asyncio
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -22,7 +23,36 @@ from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, g
 from app.internal.utils.database_utils import get_migration_files
 from app.main import app
 
-db_factory = testing.postgresql.PostgresqlFactory(cache_initialized_db=True)
+
+async def apply_migrations(database: testing.postgresql.Database) -> None:
+    """
+    Apply the migrations to the testing database.
+
+    Parameters
+    ----------
+    database
+        Testing database, partially initialised, to use.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    PostgresSyntaxError
+        If there's an issue with a migration file.
+    """
+    conn = await asyncpg.connect(dsn=database.url())
+    for fname in get_migration_files(Path("migrations"), end=999998):
+        try:
+            await conn.execute(fname.read_text())
+        except asyncpg.PostgresSyntaxError as ex:
+            raise asyncpg.PostgresSyntaxError(f"Postgres syntax error in {fname}: {ex}") from ex
+
+
+db_factory = testing.postgresql.PostgresqlFactory(
+    cache_initialized_db=True, on_initialized=lambda db: asyncio.run(apply_migrations(db))
+)
 
 _http_client = AsyncClient(headers=[("Connection", "close")], timeout=60.0)
 
@@ -42,12 +72,12 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     await db.create_pool()
     assert db.pool is not None, "Could not create database pool"
     # Manually run the migrations in the migration file.
-    async with db.pool.acquire() as conn:
-        for fname in get_migration_files(Path("migrations"), end=999998):
-            try:
-                await conn.execute(fname.read_text())
-            except asyncpg.PostgresSyntaxError as ex:
-                raise asyncpg.PostgresSyntaxError(f"Postgres syntax error in {fname}: {ex}") from ex
+    # async with db.pool.acquire() as conn:
+    #    for fname in get_migration_files(Path("migrations"), end=999998):
+    #        try:
+    #            await conn.execute(fname.read_text())
+    #        except asyncpg.PostgresSyntaxError as ex:
+    #            raise asyncpg.PostgresSyntaxError(f"Postgres syntax error in {fname}: {ex}") from ex
 
     async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
         """

@@ -7,6 +7,7 @@ function and FastAPI will figure it out through magic.
 """
 
 import logging
+import multiprocessing
 import os
 import typing
 from collections.abc import AsyncGenerator, AsyncIterator
@@ -158,7 +159,10 @@ async def get_process_pool() -> ProcessPoolExecutor:
     """
     global _PROCESS_POOL
     if _PROCESS_POOL is None:
-        _PROCESS_POOL = ProcessPoolExecutor()
+        # We use the "spawn" multiprocessing context as
+        # "fork" can cause trouble with FastAPI's multithreading.
+        mp_context = multiprocessing.get_context("spawn")
+        _PROCESS_POOL = ProcessPoolExecutor(mp_context=mp_context)
     return _PROCESS_POOL
 
 

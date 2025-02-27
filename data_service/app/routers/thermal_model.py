@@ -8,21 +8,24 @@ import operator
 import uuid
 
 import httpx
+import numpy as np
 import pandas as pd
 import pydantic
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from app.dependencies import DatabasePoolDep, HttpClientDep, ProcessPoolDep
-from app.internal.thermal_model.fitting import create_structure_from_params, fit_to_gas_usage, simulate_parameters
-from app.internal.thermal_model.heat_load import generate_heat_load
+from app.internal.gas_meters.domestic_hot_water import get_poisson_weights
+from app.internal.thermal_model.fitting import fit_to_gas_usage, simulate_parameters
 from app.models.core import DatasetEntry, DatasetID, DatasetTypeEnum, SiteIDWithTime
 from app.models.heating_load import ThermalModelResult
+from app.models.thermal_model import ThermalModelRequest
 from app.models.weather import WeatherRequest
 from app.routers.client_data import get_location
 from app.routers.meter_data import get_meter_data
 from app.routers.site_manager import list_elec_datasets, list_gas_datasets
 from app.routers.weather import get_weather
+from app.internal.epl_typing import HHDataFrame
 
 router = APIRouter()
 
@@ -73,6 +76,7 @@ async def thermal_fitting_process_wrapper(
     gas_df: pd.DataFrame,
     weather_df: pd.DataFrame,
     elec_df: pd.DataFrame | None,
+    n_iter: int,
 ) -> None:
     """
     Monitor and join the Thermal Fitting background process.
@@ -105,7 +109,7 @@ async def thermal_fitting_process_wrapper(
         gas_df,
         weather_df,
         elec_df,
-        10,  # n_iter
+        n_iter,
     )
     await file_params_with_db(pool, site_id, task_id, result, datasets)
 
@@ -153,7 +157,7 @@ async def generate_thermal_model_heating_load(
     ----------
     pool
         Shared database pool for the PostgreSQL database, which should contain weather and thermal models
-    http_client 
+    http_client
         HTTP Client connection pool for the access to 3rd party APIs
     site_params
         The Site ID you want to model, as well as the start and end timestamps you want a heating load for
@@ -187,11 +191,15 @@ async def generate_thermal_model_heating_load(
         elec_df=elec_df,
         start_ts=site_params.start_ts,
         end_ts=site_params.end_ts,
-        weather_df=weather_df
+        weather_df=weather_df,
     )
     dataset_id = uuid.uuid4()
     created_at = datetime.datetime.now(datetime.UTC)
 
+    # TODO (2025-02-02 MHJB): improve DHW load here
+    DHW_EVENT_SIZE = 1.0
+    poisson_weights = get_poisson_weights(HHDataFrame(heating_load_df)) * thermal_model.dhw_usage
+    dhw_load = np.random.default_rng().poisson(poisson_weights) * DHW_EVENT_SIZE
     await pool.execute(
         """
         INSERT INTO heating.metadata
@@ -200,7 +208,7 @@ async def generate_thermal_model_heating_load(
         dataset_id,
         site_params.site_id,
         created_at,
-        {"thermal_model_dataset_id": thermal_model_dataset_id},
+        json.dumps({"thermal_model_dataset_id": str(thermal_model_dataset_id)}),
         None,
     )
 
@@ -213,7 +221,7 @@ async def generate_thermal_model_heating_load(
             heating_load_df.start_ts,
             heating_load_df.end_ts,
             heating_load_df.consumption,
-            itertools.repeat(0),  # dhw
+            dhw_load,
             heating_load_df.external_temperatures,
             strict=True,
         ),
@@ -232,7 +240,7 @@ async def generate_thermal_model_heating_load(
 
 @router.post("/fit-thermal-model")
 async def fit_thermal_model_endpoint(
-    pool: DatabasePoolDep, process_pool: ProcessPoolDep, bgt: BackgroundTasks, params: SiteIDWithTime
+    pool: DatabasePoolDep, process_pool: ProcessPoolDep, bgt: BackgroundTasks, params: ThermalModelRequest
 ) -> dict[str, pydantic.UUID4]:
     """
     Fit thermal model parameters via a background task.
@@ -278,9 +286,18 @@ async def fit_thermal_model_endpoint(
         )
 
     elec_df = pd.DataFrame.from_records([item.model_dump() for item in elec_meter_records])
-    gas_df = pd.DataFrame.from_records([item.model_dump() for item in gas_meter_records])
-    weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records])
+    gas_df = pd.DataFrame.from_records([item.model_dump() for item in gas_meter_records], index="start_ts")
+    gas_df["start_ts"] = gas_df.index
 
+    # If we've got very high resolution data, it can be too noisy to fit to, so resample it into
+    # weekly chunks (as those tend to align with people's schedules)
+    MIN_GAS_FREQ = pd.Timedelta(days=7)
+    if (gas_df["end_ts"] - gas_df["start_ts"]).mean() < MIN_GAS_FREQ: # type: ignore
+        gas_df = gas_df.resample(MIN_GAS_FREQ).sum(numeric_only=True)
+        gas_df["end_ts"] = gas_df.index + MIN_GAS_FREQ
+        gas_df["start_ts"] = gas_df.index
+    weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records], index="timestamp")
+    weather_df["timestamp"] = weather_df.index
     task_id = uuid.uuid4()
     bgt.add_task(
         thermal_fitting_process_wrapper,
@@ -295,5 +312,6 @@ async def fit_thermal_model_endpoint(
         gas_df=gas_df,
         weather_df=weather_df,
         elec_df=elec_df,
+        n_iter=params.n_iter,
     )
     return {"task_id": task_id}
