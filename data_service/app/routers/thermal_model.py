@@ -15,6 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from app.dependencies import DatabasePoolDep, HttpClientDep, ProcessPoolDep
+from app.internal.epl_typing import HHDataFrame
 from app.internal.gas_meters.domestic_hot_water import get_poisson_weights
 from app.internal.thermal_model.fitting import fit_to_gas_usage, simulate_parameters
 from app.models.core import DatasetEntry, DatasetID, DatasetTypeEnum, SiteIDWithTime
@@ -25,7 +26,6 @@ from app.routers.client_data import get_location
 from app.routers.meter_data import get_meter_data
 from app.routers.site_manager import list_elec_datasets, list_gas_datasets
 from app.routers.weather import get_weather
-from app.internal.epl_typing import HHDataFrame
 
 router = APIRouter()
 
@@ -292,7 +292,7 @@ async def fit_thermal_model_endpoint(
     # If we've got very high resolution data, it can be too noisy to fit to, so resample it into
     # weekly chunks (as those tend to align with people's schedules)
     MIN_GAS_FREQ = pd.Timedelta(days=7)
-    if (gas_df["end_ts"] - gas_df["start_ts"]).mean() < MIN_GAS_FREQ: # type: ignore
+    if (gas_df["end_ts"] - gas_df["start_ts"]).mean() < MIN_GAS_FREQ:  # type: ignore
         gas_df = gas_df.resample(MIN_GAS_FREQ).sum(numeric_only=True)
         gas_df["end_ts"] = gas_df.index + MIN_GAS_FREQ
         gas_df["start_ts"] = gas_df.index

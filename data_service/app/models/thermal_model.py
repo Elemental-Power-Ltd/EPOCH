@@ -14,5 +14,6 @@ class ThermalModelRequest(SiteIDWithTime):
         examples=[10, 100, 500],
     )
 
+
 class ThermalModelHeatingLoadRequest(SiteIDWithTime, DatasetID):
     pass

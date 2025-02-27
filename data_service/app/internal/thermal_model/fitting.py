@@ -9,12 +9,13 @@ import pandas as pd
 from bayes_opt import BayesianOptimization
 
 from ...models.heating_load import ThermalModelResult
+from ..epl_typing import HHDataFrame
+from ..gas_meters.domestic_hot_water import get_poisson_weights
 from ..utils.conversions import joule_to_kwh
 from .building_elements import BuildingElement
 from .integrator import simulate
 from .network import HeatNetwork, create_simple_structure
-from ..gas_meters.domestic_hot_water import get_poisson_weights
-from ..epl_typing import HHDataFrame
+
 
 def resample_to_gas_df(sim_df: pd.DataFrame, gas_df: pd.DataFrame) -> npt.NDArray[np.floating]:
     """
@@ -96,7 +97,7 @@ def parameters_to_loss(
         )
         DHW_EVENT_SIZE = 1.0
         # daily usage, the Poisson weights are normalised to 1.0
-        dhw_weights = get_poisson_weights(HHDataFrame(sim_df)) * dhw_usage 
+        dhw_weights = get_poisson_weights(HHDataFrame(sim_df)) * dhw_usage
         rng = np.random.default_rng()
         total_dhw_usage = rng.poisson(dhw_weights, dhw_weights.size) * DHW_EVENT_SIZE
         sim_df["heating_usage"] += total_dhw_usage
@@ -189,7 +190,7 @@ def simulate_parameters(
     elec_df: pd.DataFrame | None,
     start_ts: datetime.datetime,
     end_ts: datetime.datetime,
-    dt: datetime.timedelta | None = None
+    dt: datetime.timedelta | None = None,
 ) -> pd.DataFrame:
     """
     Calculate the gas usage loss for a specific set of parameters.
@@ -219,9 +220,7 @@ def simulate_parameters(
     hm = create_structure_from_params(
         scale_factor=scale_factor, ach=ach, u_value=u_value, boiler_power=boiler_power, setpoint=setpoint
     )
-    sim_df = simulate(
-        hm, external_df=weather_df, start_ts=start_ts, end_ts=end_ts, dt=dt, elec_df=elec_df
-    )
+    sim_df = simulate(hm, external_df=weather_df, start_ts=start_ts, end_ts=end_ts, dt=dt, elec_df=elec_df)
     # Note the change of units here
     sim_df.heating_usage = -joule_to_kwh(sim_df.heating_usage)
     return sim_df
@@ -251,11 +250,11 @@ def fit_to_gas_usage(
     """
     pbounds = {
         "scale_factor": (0.1, 20.0),
-        "ach": (0.01, 20.0), 
+        "ach": (0.01, 20.0),
         "u_value": (0.1, 2.5),
         "boiler_power": (0, 60e3),  # Boiler Size in kW
         "setpoint": (16, 24),
-        "dhw_usage": (0, max(gas_df.consumption))
+        "dhw_usage": (0, max(gas_df.consumption)),
     }
     opt = BayesianOptimization(
         # There's a minus in here as BayesianOptimisation tries to maximise,
@@ -285,5 +284,5 @@ def fit_to_gas_usage(
         u_value=opt.max["params"]["u_value"],
         boiler_power=opt.max["params"]["boiler_power"],
         setpoint=opt.max["params"]["setpoint"],
-        dhw_usage=opt.max["params"]["dhw_usage"]
+        dhw_usage=opt.max["params"]["dhw_usage"],
     )
