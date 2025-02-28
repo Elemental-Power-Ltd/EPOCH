@@ -339,6 +339,17 @@ class RoundingAndDegenerateRepair(Repair):
         super().__init__(**kwargs)
 
     def _do(self, problem: ProblemInstance, X, **kwargs):
+        """
+        Forces all degenrate solutions cause by optional components to have the same default values.
+
+        For example:
+        Imagine we would like to optimise a site with a single optional heat pump component with three sizes: [10, 20, 30].
+        The pymoo representation of the porblem would be [x, y], where x is a bool if the heat pump is installed or not,
+        and y is an index to the size list.
+        Then there are 6 possible chromosomes: [0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2].
+        However, [0, 0], [0, 1] and [0, 2] all represent the same solution, i.e. no heat pump is intsalled.
+        Hence, [0, 1] and [0, 2] are modified to [0, 0], [0, 0] such that all three solutions have the same chromosome.
+        """
         X = np.around(X).astype(int)
 
         toggle_columns_dict = {}
