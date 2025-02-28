@@ -5,7 +5,7 @@ import pytest
 
 from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.ga_utils import ProblemInstance, RoundingAndDegenerateRepair, SimpleIntMutation
-from app.internal.site_range import SiteRange, count_parameters_to_optimise
+from app.internal.site_range import count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import _METRICS, Metric, MetricValues
