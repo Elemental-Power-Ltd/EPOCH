@@ -10,6 +10,7 @@ from epoch_simulator import TaskData
 from pymoo.config import Config  # type: ignore
 from pymoo.core.mutation import Mutation  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
+from pymoo.core.repair import Repair  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
@@ -318,3 +319,56 @@ class SimpleIntMutation(Mutation):
         Xp = repair_random_init(Xp, X, xl, xu)
 
         return Xp
+
+
+class RoundingAndDegenerateRepair(Repair):
+    """
+    Function to repair pymoo chromosomes.
+    Floats are rounded to the nearest integer.
+    Components that have been disabled in the solution have all their other asset values set to the smallest value.
+    This is to reduce the number of degenerate solutions.
+    """
+
+    def __init__(self, **kwargs) -> None:
+        """
+
+        Returns
+        -------
+        object
+        """
+        super().__init__(**kwargs)
+
+    def _do(self, problem: ProblemInstance, X, **kwargs):
+        """
+        Forces all degenrate solutions cause by optional components to have the same default values.
+
+        For example:
+        Imagine we would like to optimise a site with a single optional heat pump component with three sizes: [10, 20, 30].
+        The pymoo representation of the porblem would be [x, y], where x is a bool if the heat pump is installed or not,
+        and y is an index to the size list.
+        Then there are 6 possible chromosomes: [0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2].
+        However, [0, 0], [0, 1] and [0, 2] all represent the same solution, i.e. no heat pump is intsalled.
+        Hence, [0, 1] and [0, 2] are modified to [0, 0], [0, 0] such that all three solutions have the same chromosome.
+        """
+        X = np.around(X).astype(int)
+
+        toggle_columns_dict = {}
+        curr_asset_toggled = ""
+        curr_toggle_idx = None
+        i = 0
+        for site_name in problem.site_names:
+            for asset_name, attr_name in problem.asset_parameters[site_name]:
+                if attr_name == "COMPONENT_IS_MANDATORY":
+                    toggle_columns = []
+                    curr_asset_toggled = asset_name
+                    curr_toggle_idx = i
+                elif asset_name == curr_asset_toggled:
+                    toggle_columns.append(i)
+                    toggle_columns_dict[curr_toggle_idx] = toggle_columns
+                i += 1
+
+        for key_col, affected_cols in toggle_columns_dict.items():
+            mask = X[:, key_col] == 0  # Find rows where the key column is zero
+            X[np.ix_(mask, affected_cols)] = 0
+
+        return X

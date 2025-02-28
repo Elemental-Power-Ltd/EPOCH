@@ -5,7 +5,6 @@ from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
-from pymoo.operators.repair.rounding import RoundingRepair  # type: ignore
 from pymoo.operators.sampling.rnd import IntegerRandomSampling  # type: ignore
 from pymoo.optimize import minimize  # type: ignore
 from pymoo.termination.ftol import MultiObjectiveSpaceTermination  # type: ignore
@@ -13,7 +12,7 @@ from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: i
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
 
-from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance
+from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
 from app.models.algorithms import Algorithm
@@ -83,9 +82,10 @@ class NSGA2(Algorithm):
             pop_size=pop_size,
             n_offsprings=n_offsprings,
             sampling=sampling_cls(),
-            crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingRepair()),
-            mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingRepair()),
+            crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingAndDegenerateRepair()),
+            mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingAndDegenerateRepair()),
             eliminate_duplicates=True,
+            repair=RoundingAndDegenerateRepair(),
         )
 
         if period is None:
