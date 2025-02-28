@@ -4,11 +4,14 @@ import numpy as np
 import pytest
 
 from app.internal.epoch_utils import convert_TaskData_to_dictionary
-from app.internal.ga_utils import ProblemInstance, SimpleIntMutation
-from app.internal.site_range import count_parameters_to_optimise
+from app.internal.ga_utils import ProblemInstance, RoundingAndDegenerateRepair, SimpleIntMutation
+from app.internal.site_range import SiteRange, count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import _METRICS, Metric, MetricValues
+from app.models.site_range import Building, Config, DomesticHotWater, Grid, HeatPump, HeatSourceEnum, Renewables, SiteRange
+
+from .conftest import site_generator
 
 
 class TestProblemInstance:
@@ -90,3 +93,124 @@ class TestSimpleIntMutation:
         assert np.min(Xp) >= 0
         assert np.max(Xp) <= 2
         assert not np.array_equal(X, Xp)
+
+
+class TestRoundingAndDegenerateRepair:
+    def test_rounding(self, default_objectives: list[Metric], default_constraints: Constraints):
+        building = Building(
+            COMPONENT_IS_MANDATORY=True, scalar_heat_load=[1], scalar_electrical_load=[1], fabric_intervention_index=[0]
+        )
+        domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
+        grid = Grid(
+            COMPONENT_IS_MANDATORY=True,
+            export_headroom=[0.5],
+            grid_export=[60],
+            grid_import=[60],
+            import_headroom=[0.5],
+            min_power_factor=[1],
+            tariff_index=[0, 1, 2, 3],
+        )
+        heat_pump = HeatPump(
+            COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
+        )
+        config = Config(capex_limit=99999999999)
+        site_range = SiteRange(
+            building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
+        )
+        portfolio = [site_generator("amcott_house", site_range)]
+        pi = ProblemInstance(default_objectives, default_constraints, portfolio)
+
+        rdr = RoundingAndDegenerateRepair()
+
+        X = np.array([[0, 1, 1, 1, 1], [1, 0, 0, 0, 1], [1, 1, 0, 1, 0]])
+
+        res = rdr._do(pi, X)
+        assert res.dtype == int
+        assert res.shape == X.shape
+
+    def test_degeneracy(self, default_objectives: list[Metric], default_constraints: Constraints):
+        building = Building(
+            COMPONENT_IS_MANDATORY=True, scalar_heat_load=[1], scalar_electrical_load=[1], fabric_intervention_index=[0]
+        )
+        domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
+        grid = Grid(
+            COMPONENT_IS_MANDATORY=True,
+            export_headroom=[0.5],
+            grid_export=[60],
+            grid_import=[60],
+            import_headroom=[0.5],
+            min_power_factor=[1],
+            tariff_index=[0, 1, 2, 3],
+        )
+        heat_pump = HeatPump(
+            COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
+        )
+        config = Config(capex_limit=99999999999)
+        site_range = SiteRange(
+            building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
+        )
+        portfolio = [site_generator("amcott_house", site_range)]
+        pi = ProblemInstance(default_objectives, default_constraints, portfolio)
+
+        rdr = RoundingAndDegenerateRepair()
+
+        X = np.array([[0, 1, 1, 1, 1], [1, 0, 1, 1, 1], [1, 1, 0, 1, 1], [1, 1, 1, 0, 1], [1, 1, 1, 1, 0]])
+
+        res = rdr._do(pi, X)
+        assert res.shape == X.shape
+        assert all(res == np.array([[0, 0, 1, 1, 1], [1, 0, 1, 1, 1], [1, 1, 0, 1, 1], [1, 1, 1, 0, 0], [1, 1, 1, 1, 0]]))
+
+    def test_degeneracy_with_renewables(self, default_objectives: list[Metric], default_constraints: Constraints):
+        building = Building(
+            COMPONENT_IS_MANDATORY=True, scalar_heat_load=[1], scalar_electrical_load=[1], fabric_intervention_index=[0, 1]
+        )
+        domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
+        grid = Grid(
+            COMPONENT_IS_MANDATORY=True,
+            export_headroom=[0.5],
+            grid_export=[60],
+            grid_import=[60],
+            import_headroom=[0.5],
+            min_power_factor=[1],
+            tariff_index=[0, 1, 2, 3],
+        )
+        config = Config(capex_limit=99999999999)
+        renewables = Renewables(COMPONENT_IS_MANDATORY=False, yield_scalars=[[100, 200]])
+        site_range = SiteRange(
+            building=building,
+            domestic_hot_water=domestic_hot_water,
+            grid=grid,
+            config=config,
+            renewables=renewables,
+        )
+        portfolio = [site_generator("amcott_house", site_range)]
+        pi = ProblemInstance(default_objectives, default_constraints, portfolio)
+
+        rdr = RoundingAndDegenerateRepair()
+
+        X = np.array(
+            [
+                [0, 1, 1, 1, 1, 1],
+                [1, 0, 1, 1, 1, 1],
+                [1, 1, 0, 1, 1, 1],
+                [1, 1, 1, 0, 1, 1],
+                [1, 1, 1, 1, 0, 1],
+                [1, 1, 1, 1, 1, 0],
+            ]
+        )
+
+        res = rdr._do(pi, X)
+        assert res.shape == X.shape
+        assert (
+            res
+            == np.array(
+                [
+                    [0, 0, 1, 1, 1, 1],
+                    [1, 0, 1, 1, 1, 1],
+                    [1, 1, 0, 1, 1, 1],
+                    [1, 1, 1, 0, 0, 1],
+                    [1, 1, 1, 1, 0, 1],
+                    [1, 1, 1, 1, 1, 0],
+                ]
+            )
+        ).all

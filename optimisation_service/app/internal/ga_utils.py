@@ -10,6 +10,7 @@ from epoch_simulator import TaskData
 from pymoo.config import Config  # type: ignore
 from pymoo.core.mutation import Mutation  # type: ignore
 from pymoo.core.problem import ElementwiseProblem  # type: ignore
+from pymoo.core.repair import Repair  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
@@ -318,3 +319,46 @@ class SimpleIntMutation(Mutation):
         Xp = repair_random_init(Xp, X, xl, xu)
 
         return Xp
+
+
+class RoundingAndDegenerateRepair(Repair):
+    """
+    Function to repair pymoo chromosomes.
+    Floats are rounded to the nearest integer.
+    Components that have been disabled in the solution have all their other asset values set to the smallest value.
+    This is to reduce the number of degenerate solutions.
+    """
+
+    def __init__(self, **kwargs) -> None:
+        """
+
+        Returns
+        -------
+        object
+        """
+        super().__init__(**kwargs)
+
+    def _do(self, problem: ProblemInstance, X, **kwargs):
+        X = np.around(X).astype(int)
+
+        toggle_columns_dict = {}
+        curr_asset_toggled = ""
+        curr_toggle_idx = None
+        i = 0
+        for site_name in problem.site_names:
+            for asset_name, attr_name in problem.asset_parameters[site_name]:
+                if attr_name == "COMPONENT_IS_MANDATORY":
+                    toggle_columns = []
+                    curr_asset_toggled = asset_name
+                    curr_toggle_idx = i
+                elif asset_name == curr_asset_toggled:
+                    toggle_columns.append(i)
+                if curr_toggle_idx is not None:
+                    toggle_columns_dict[curr_toggle_idx] = toggle_columns
+                i += 1
+
+        for key_col, affected_cols in toggle_columns_dict.items():
+            mask = X[:, key_col] == 0  # Find rows where the key column is zero
+            X[np.ix_(mask, affected_cols)] = 0
+
+        return X
