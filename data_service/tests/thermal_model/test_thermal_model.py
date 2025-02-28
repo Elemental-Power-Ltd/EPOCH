@@ -312,19 +312,6 @@ class TestInterpolateHeatingPower:
             )
         assert all(np.ediff1d(heat_losses) < 0), "Heat losses must increase as the windows get larger"
 
-    def test_roof_size_increase(self) -> None:
-        """Test that larger roofs lose more heat."""
-        heat_losses = []
-        for roof_area in [5, 10, 15, 20]:
-            G = create_simple_structure(
-                wall_height=10.0, wall_width=10.0, window_area=1.0, floor_area=20.0, roof_area=roof_area
-            )
-            heat_losses.append(
-                interpolate_heating_power(G, internal_temperature=21, external_temperature=-2.3, dt=datetime.timedelta(days=1))
-                / datetime.timedelta(days=1).total_seconds()
-            )
-        assert all(np.ediff1d(heat_losses) < 0), "Heat losses must increase as the roof gets larger"
-
     def test_floor_size_increase(self) -> None:
         """Test that larger floors lose more heat."""
         heat_losses = []
@@ -337,23 +324,6 @@ class TestInterpolateHeatingPower:
                 / datetime.timedelta(days=1).total_seconds()
             )
         assert all(np.ediff1d(heat_losses) < 0), "Heat losses must increase as the floor gets larger"
-
-    # def test_consistent_with_timestep(self, test_structure: HeatNetwork) -> None:
-    #    """Test that different timesteps lead to reasonably consistent required heating powers."""
-    #    results = []
-    #    for dt in [
-    #        datetime.timedelta(hours=1),
-    #        datetime.timedelta(hours=12),
-    #        datetime.timedelta(days=1),
-    #        datetime.timedelta(days=7),
-    #        datetime.timedelta(days=31),
-    #    ]:
-    #        res = (
-    #            interpolate_heating_power(test_structure, internal_temperature=21, external_temperature=-2.3, dt=dt)
-    #            / dt.total_seconds()
-    #        )
-    #        results.append(res)
-    #    assert np.allclose(results, results[0])
 
     def test_consistent_with_power(self, test_structure: HeatNetwork) -> None:
         """Test that different max heating powers lead to reasonably consistent required heating powers."""

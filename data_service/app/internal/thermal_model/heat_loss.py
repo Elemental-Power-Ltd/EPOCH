@@ -70,11 +70,11 @@ def calculate_maximum_dynamic_heat_loss(
     ]:
         if u in graph.nodes:
             graph.nodes[u]["temperature"] = internal_temperature
-
+    print(graph.edges[(BuildingElement.InternalAir, BuildingElement.WallEast)]["conductive"].interface_area)
     # TODO (2024-11-25 MHJB): make this iterate until convergence instead of just doing
     # a number of steps.
     energy_changes: list[float] = []
-    for _ in range(100):
+    for _ in range(1000):
         # Reset the internal air temperature every timestep to assume that we got the right amount of heat
         # from various internal gains and heating systems.
         graph.nodes[BuildingElement.InternalAir]["temperature"] = internal_temperature
@@ -86,9 +86,11 @@ def calculate_maximum_dynamic_heat_loss(
                 edge_attrs["convective"].step(u_attrs, v_attrs, dt)
             if edge_attrs.get("radiative") is not None:
                 edge_attrs["radiative"].step(u_attrs, v_attrs, dt)
+        # print({key: f"{graph.nodes[key]["energy_change"]:.2f}, {graph.nodes[key]["temperature"]:.2f}" for key in graph.nodes})
         energy_changes.append(graph.nodes[BuildingElement.InternalAir]["energy_change"])
         update_temperatures(graph)
-    return max(item / dt for item in energy_changes)
+    # Note that "losses" from the internal energy are negative, so we want to find the maximum loss
+    return min(item / dt for item in energy_changes)
 
 
 def calculate_maximum_static_heat_loss(
