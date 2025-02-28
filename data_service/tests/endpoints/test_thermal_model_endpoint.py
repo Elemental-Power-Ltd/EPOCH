@@ -112,5 +112,4 @@ class TestThermalModelEndpoint:
     #    )
     #    assert hl_response.status_code == 200, hl_response.text
     #    params = hl_response.json()
-    #    print(params)
     #    pytest.fail("show some error logs here")

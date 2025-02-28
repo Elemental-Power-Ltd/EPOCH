@@ -78,7 +78,6 @@ async def get_octopus_tariff(
     df = pd.DataFrame.from_records(all_results).rename(
         columns={"valid_from": "start_ts", "valid_to": "end_ts", "value_exc_vat": "cost"}
     )
-    print(df)
     df["start_ts"] = pd.to_datetime(df["start_ts"], utc=True).dt.tz_convert(datetime.UTC)
     df["end_ts"] = pd.to_datetime(df["end_ts"], utc=True).dt.tz_convert(datetime.UTC)
     df = df.drop(columns=["value_inc_vat", "payment_method"]).set_index("start_ts").sort_index()
