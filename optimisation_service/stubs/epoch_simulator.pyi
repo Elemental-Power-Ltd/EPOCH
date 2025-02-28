@@ -89,9 +89,26 @@ class TaskData:
     @staticmethod
     def from_json(json_str: str) -> TaskData: ...
 
+class CapexBreakdown:
+    dhw_capex: float
+    ev_charger_cost: float
+    ev_charger_install: float
+    grid_capex: float
+    heatpump_capex: float
+    ess_pcs_capex: float
+    ess_enclosure_capex: float
+    ess_enclosure_disposal: float
+    pv_panel_capex: float
+    pv_roof_capex: float
+    pv_ground_capex: float
+    pv_BoP_capex: float
+    total_capex: float
+
 class Simulator:
     @staticmethod
     def from_json(json_str: str) -> Simulator: ...
     @staticmethod
     def from_file(filepath: str) -> Simulator: ...
     def simulate_scenario(self, taskData: TaskData, fullReporting: bool = False) -> SimulationResult: ...
+    def is_valid(self, taskData: TaskData) -> bool: ...
+    def calculate_capex(self, taskData: TaskData) -> CapexBreakdown: ...
