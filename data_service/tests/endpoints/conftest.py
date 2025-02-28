@@ -14,7 +14,7 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator, Coroutine
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import asyncpg
 import httpx
@@ -25,6 +25,7 @@ from httpx import ASGITransport, AsyncClient
 from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
 from app.internal.utils.database_utils import get_migration_files
 from app.main import app
+from app.models.site_range import Jsonable
 
 
 async def apply_migrations(database: testing.postgresql.Database) -> None:
@@ -65,7 +66,7 @@ class MockedHttpClient(httpx.AsyncClient):
 
     DO_RATE_LIMIT = False  # For reading from files, we don't want to apply a rate limit.
 
-    async def get_tariff_from_file(self, url: str, **kwargs: Any) -> dict[str, Any] | None:
+    async def get_tariff_from_file(self, url: str, **kwargs: Any) -> Jsonable:
         """
         Get a stored tariff from a file when requesting an URL.
 
@@ -85,13 +86,13 @@ class MockedHttpClient(httpx.AsyncClient):
         url_params = url.replace("https://api.octopus.energy/v1/products/", "").replace("/", "")
         stored_tariff = Path(".", "tests", "data", "octopus", f"{url_params}.json")
         if stored_tariff.exists():
-            return json.loads(stored_tariff.read_text())
+            return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
             stored_tariff.write_text(json.dumps(data))
-            return data
+            return cast(Jsonable, data)
 
-    async def cache_ci_data(self, url: str, **kwargs: Any) -> dict[str, Any]:
+    async def cache_ci_data(self, url: str, **kwargs: Any) -> Jsonable:
         """
         Get some data from CarbonIntensity, and store it in a JSON file.
 
@@ -109,13 +110,13 @@ class MockedHttpClient(httpx.AsyncClient):
         url_params = url.replace("https://api.carbonintensity.org.uk/regional/intensity/", "").replace("/", "")
         stored_tariff = Path(".", "tests", "data", "carbon_intensity", f"{url_params}.json")
         if stored_tariff.exists():
-            return json.loads(stored_tariff.read_text())
+            return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
             stored_tariff.write_text(json.dumps(data))
-            return data
+            return cast(Jsonable, data)
 
-    async def cache_vc_data(self, url: str, **kwargs: Any) -> dict[str, Any]:
+    async def cache_vc_data(self, url: str, **kwargs: Any) -> Jsonable:
         """
         Get some data from VisualCrossing, and store it in a JSON file.
 
@@ -136,13 +137,13 @@ class MockedHttpClient(httpx.AsyncClient):
         ).replace("/", "")
         stored_tariff = Path(".", "tests", "data", "visual_crossing", f"{url_params}.json")
         if stored_tariff.exists():
-            return json.loads(stored_tariff.read_text())
+            return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
             stored_tariff.write_text(json.dumps(data))
-            return data
+            return cast(Jsonable, data)
 
-    async def cache_renewables_ninja_data(self, url: str, **kwargs: Any) -> dict[str, Any]:
+    async def cache_renewables_ninja_data(self, url: str, **kwargs: Any) -> Jsonable:
         """
         Get some data from renewables.ninja, and store it in a JSON file.
 
@@ -166,13 +167,13 @@ class MockedHttpClient(httpx.AsyncClient):
         url_params += "_".join(f"{key}_{value}" for key, value in sorted(kwargs["params"].items()))
         stored_rn = Path(".", "tests", "data", "renewables_ninja", f"{url_params}.json")
         if stored_rn.exists():
-            return json.loads(stored_rn.read_text())
+            return cast(Jsonable, json.loads(stored_rn.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
             stored_rn.write_text(json.dumps(data))
-            return data
+            return cast(Jsonable, data)
 
-    async def cache_pvgis_data(self, url: str, **kwargs: Any) -> dict[str, Any]:
+    async def cache_pvgis_data(self, url: str, **kwargs: Any) -> Jsonable:
         """
         Get some data from PVGIS, and store it in a JSON file.
 
@@ -196,11 +197,11 @@ class MockedHttpClient(httpx.AsyncClient):
         url_params += "_".join(f"{key}_{value}" for key, value in sorted(kwargs["params"].items()))
         stored_rn = Path(".", "tests", "data", "pvgis", f"{url_params}.json")
         if stored_rn.exists():
-            return json.loads(stored_rn.read_text())
+            return cast(Jsonable, json.loads(stored_rn.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
             stored_rn.write_text(json.dumps(data))
-            return data
+            return cast(Jsonable, data)
 
     # The httpx typing is gross so let's just bodge it and carry on
     async def get(self, url: httpx.URL | str, **kwargs: Any) -> Coroutine[Any, Any, httpx.Response] | httpx.Response:  # type: ignore

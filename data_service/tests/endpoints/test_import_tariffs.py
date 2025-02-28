@@ -21,6 +21,7 @@ async def demo_end_ts() -> datetime.datetime:
 
 class TestSyntheticTariffs:
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_generate_agile(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -202,6 +203,7 @@ class TestImportTariffs:
         assert all(not pd.isna(data).any() for data in tariff_result["data"])
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_generate_and_get_agile(
         self,
         client: httpx.AsyncClient,
