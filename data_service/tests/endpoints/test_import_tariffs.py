@@ -156,6 +156,7 @@ class TestSyntheticTariffs:
 
 class TestImportTariffs:
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_generate_import_tariff(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -173,6 +174,7 @@ class TestImportTariffs:
         assert metadata["site_id"] == "demo_london"
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_generate_and_get_import_tariff(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -343,6 +345,7 @@ class TestImportTariffs:
         assert all(not pd.isna(data).any() for data in tariff_result["data"])
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_get_one_of_each(self, client: httpx.AsyncClient) -> None:
         start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
