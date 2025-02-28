@@ -10,9 +10,10 @@ from pathlib import Path
 
 from ...models.heating_load import InterventionEnum, ThermalModelResult
 from ...models.weather import BaitAndModelCoefs
-from ..thermal_model.fitting import create_structure_from_params
-from ..thermal_model.building_elements import BuildingElement
-from ..thermal_model.heat_capacities import CONCRETE_U_VALUE
+from .building_elements import BuildingElement
+from .fitting import create_structure_from_params
+from .heat_capacities import CONCRETE_U_VALUE
+from .network import HeatNetwork
 
 # FABRIC_SAVINGS = {
 #    InterventionEnum.Loft: 1 - (2.4 / 100),  # via NEED 2021
@@ -62,7 +63,7 @@ def apply_fabric_interventions(bait_coefs: BaitAndModelCoefs, interventions: lis
 
 
 def apply_thermal_model_fabric_interventions(
-    params: ThermalModelResult, interventions: list[InterventionEnum]
+    params: ThermalModelResult, interventions: list[InterventionEnum], structure: HeatNetwork | None = None
 ) -> ThermalModelResult:
     """
     Apply interventions to a thermal model result with realistic U-values.
@@ -80,22 +81,24 @@ def apply_thermal_model_fabric_interventions(
         Fitted thermal model result with U value and ACH
     interventions
         List of building fabric interventions you'd like to do
+    structure
+        The structure to apply these interventions to; if None, will create a simple structure from the parameters.
 
     Returns
     -------
     ThermalModelResult
         Parameters for thermal modelling of the improved building.
     """
+    if structure is None:
+        structure = create_structure_from_params(
+            scale_factor=params.scale_factor,
+            ach=params.ach,
+            u_value=params.u_value,
+            boiler_power=params.boiler_power,
+            setpoint=params.setpoint,
+        )
     # Make sure that we don't beat this later
     initial_u_value = params.u_value
-
-    structure = create_structure_from_params(
-        scale_factor=params.scale_factor,
-        ach=params.ach,
-        u_value=params.u_value,
-        boiler_power=params.boiler_power,
-        setpoint=params.setpoint,
-    )
 
     window_area = 0.0
     wall_area = 0.0

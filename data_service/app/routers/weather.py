@@ -132,8 +132,8 @@ async def visual_crossing_request(
     async with aiometer.amap(
         functools.partial(get_single_result, location, http_client, api_key),
         ts_pairs,
-        max_at_once=1,
-        max_per_second=1,
+        max_at_once=1 if getattr(http_client, "DO_RATE_LIMIT", True) else None,
+        max_per_second=1 if getattr(http_client, "DO_RATE_LIMIT", True) else None,
     ) as results:
         async for req in results:
             try:

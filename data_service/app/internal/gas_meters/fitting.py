@@ -10,7 +10,7 @@ from sklearn.linear_model import LinearRegression  # type: ignore
 
 from ...models.weather import BaitAndModelCoefs
 from ..epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
-from ..heating import building_adjusted_internal_temperature
+from ..thermal_model import building_adjusted_internal_temperature
 from .domestic_hot_water import assign_hh_dhw_even
 
 

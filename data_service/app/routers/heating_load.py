@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
-from ..internal.heating import apply_fabric_interventions, building_adjusted_internal_temperature
+from ..internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from ..models.core import DatasetIDWithTime, MultipleDatasetIDWithTime, dataset_id_t
 from ..models.heating_load import (
     EpochAirTempEntry,

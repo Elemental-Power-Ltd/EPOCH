@@ -235,8 +235,10 @@ async def fetch_carbon_intensity(
     async with aiometer.amap(
         lambda ts_pair: fetch_carbon_intensity_batch(client=client, postcode=postcode, timestamps=ts_pair),
         time_pairs,
-        max_at_once=1,
-        max_per_second=1,
+        # This is a horrible bodge, but for testing we have a mocked client
+        # where we want to do
+        max_at_once=1 if getattr(client, "DO_RATE_LIMIT", True) else None,
+        max_per_second=1 if getattr(client, "DO_RATE_LIMIT", True) else None,
     ) as results:
         async for result in results:
             all_data.extend(result)

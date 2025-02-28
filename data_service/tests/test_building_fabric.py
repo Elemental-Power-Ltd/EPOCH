@@ -5,7 +5,7 @@ import copy
 
 import pytest
 
-from app.internal.heating import apply_fabric_interventions
+from app.internal.thermal_model import apply_fabric_interventions
 from app.models.heating_load import InterventionEnum
 from app.models.weather import BaitAndModelCoefs
 
