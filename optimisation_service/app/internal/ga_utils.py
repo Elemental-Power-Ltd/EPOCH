@@ -353,7 +353,6 @@ class RoundingAndDegenerateRepair(Repair):
                     curr_toggle_idx = i
                 elif asset_name == curr_asset_toggled:
                     toggle_columns.append(i)
-                if curr_toggle_idx is not None:
                     toggle_columns_dict[curr_toggle_idx] = toggle_columns
                 i += 1
 
