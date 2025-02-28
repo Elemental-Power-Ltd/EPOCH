@@ -158,7 +158,7 @@ class TestRoundingAndDegenerateRepair:
 
         res = rdr._do(pi, X)
         assert res.shape == X.shape
-        assert all(res == np.array([[0, 0, 1, 1, 1], [1, 0, 1, 1, 1], [1, 1, 0, 1, 1], [1, 1, 1, 0, 0], [1, 1, 1, 1, 0]]))
+        assert (res == np.array([[0, 0, 1, 1, 1], [1, 0, 1, 1, 1], [1, 1, 0, 1, 1], [1, 1, 1, 0, 0], [1, 1, 1, 1, 0]])).all
 
     def test_degeneracy_with_renewables(self, default_objectives: list[Metric], default_constraints: Constraints):
         building = Building(
