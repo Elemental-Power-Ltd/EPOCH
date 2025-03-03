@@ -8,7 +8,11 @@ from collections.abc import Awaitable
 import httpx
 import pytest
 
+from app.dependencies import get_db_pool
 from app.internal.gas_meters import parse_half_hourly
+from app.models.core import DatasetTypeEnum
+from app.models.heating_load import ThermalModelResult
+from app.routers.thermal_model import file_params_with_db
 
 
 @pytest.fixture
@@ -43,6 +47,19 @@ async def uploaded_gas_data(client: httpx.AsyncClient) -> httpx.Response:
     }
     records = json.loads(data.to_json(orient="records"))
     return await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
+
+
+@pytest.fixture
+def thermal_model_result() -> ThermalModelResult:
+    """Get a pre-generated thermal model for demo_london."""
+    return ThermalModelResult(
+        scale_factor=0.7757,
+        ach=1.27,
+        u_value=1.746,
+        boiler_power=6.546e03,
+        setpoint=18.0,
+        dhw_usage=0.6576,
+    )
 
 
 @pytest.fixture
@@ -83,33 +100,50 @@ class TestThermalModelEndpoint:
         for val in params.values():
             assert val > 0
 
-    # @pytest.mark.asyncio
-    # @pytest.mark.slow
-    # async def test_create_heat_load(
-    #    self, client: httpx.AsyncClient, uploaded_meter_data: Awaitable[tuple[httpx.Response, httpx.Response]]
-    # ) -> None:
-    #    """Test that we can fit a simple thermal model of Matt's house."""
-    #    _, _ = await uploaded_meter_data#
+    @pytest.mark.asyncio
+    @pytest.mark.slow
+    async def test_create_heat_load(
+        self,
+        client: httpx.AsyncClient,
+        uploaded_meter_data: Awaitable[tuple[httpx.Response, httpx.Response]],
+        thermal_model_result: ThermalModelResult,
+    ) -> None:
+        """Test that we can fit a simple thermal model of Matt's house."""
+        gas, elec = await uploaded_meter_data
 
-    #    start_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
-    #    end_ts = datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC)
-    #    response = await client.post(
-    #        "/fit-thermal-model",
-    #        json={
-    #            "site_id": "demo_london",
-    #            "start_ts": start_ts.isoformat(),
-    #            "end_ts": end_ts.isoformat(),
-    #        },
-    #    )
-    #    assert response.status_code == 200, response.text
+        start_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC)
+        task_id = uuid.uuid4()
+        # TODO (2025-03-03): This is an absolutely filthy way to get the testing database
+        # pool connection! Do it properly with a DB fixture or a called endpoint.
+        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+        await file_params_with_db(
+            pool=pool,
+            site_id="demo_london",
+            task_id=task_id,
+            results=thermal_model_result,
+            datasets={
+                DatasetTypeEnum.GasMeterData: str(gas.json()["dataset_id"]),  # type: ignore
+                DatasetTypeEnum.ElectricityMeterData: str(elec.json()["dataset_id"]),  # type: ignore
+            },
+        )
+        hl_gen_response = await client.post(
+            "/generate-thermal-model-heating-load",
+            json={
+                "site_params": {"site_id": "demo_london", "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+                "thermal_model_dataset_id": {"dataset_id": str(task_id)},
+            },
+        )
+        assert hl_gen_response.status_code == 200, hl_gen_response.text
+        data = hl_gen_response.json()
+        assert data["num_entries"] == 17568  # it was a leap year
 
-    #    hl_response = await client.post(
-    #        "/generate-thermal-model-heating-load",
-    #        json={
-    #            "site_params": {"site_id": "demo_london", "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
-    #            "thermal_model_dataset_id": {"dataset_id": response.json()["task_id"]},
-    #        },
-    #    )
-    #    assert hl_response.status_code == 200, hl_response.text
-    #    params = hl_response.json()
+        hl_data_response = await client.post(
+            "/get-heating-load", json={"dataset_id": data["dataset_id"], "start_ts": data["start_ts"], "end_ts": data["end_ts"]}
+        )
+        assert hl_data_response.status_code == 200
+        heatload = hl_data_response.json()["data"][0]["reduced_hload"]
+        assert len(heatload) == data["num_entries"]
+        assert all(item >= 0 for item in heatload), heatload
+
     #    pytest.fail("show some error logs here")

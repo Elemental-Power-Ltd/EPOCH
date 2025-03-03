@@ -24,7 +24,7 @@ from app.models.thermal_model import ThermalModelRequest
 from app.models.weather import WeatherRequest
 from app.routers.client_data import get_location
 from app.routers.meter_data import get_meter_data
-from app.routers.site_manager import list_elec_datasets, list_gas_datasets
+from app.routers.site_manager import list_elec_datasets, list_gas_datasets, list_thermal_models
 from app.routers.weather import get_weather
 
 router = APIRouter()
@@ -77,6 +77,7 @@ async def thermal_fitting_process_wrapper(
     weather_df: pd.DataFrame,
     elec_df: pd.DataFrame | None,
     n_iter: int,
+    hints: list[ThermalModelResult],
 ) -> None:
     """
     Monitor and join the Thermal Fitting background process.
@@ -103,14 +104,7 @@ async def thermal_fitting_process_wrapper(
         Electricity usage dataset with start_ts, end_ts and consumption columns (can be None)
     """
     loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(
-        executor,
-        fit_to_gas_usage,
-        gas_df,
-        weather_df,
-        elec_df,
-        n_iter,
-    )
+    result = await loop.run_in_executor(executor, fit_to_gas_usage, gas_df, weather_df, elec_df, n_iter, hints)
     await file_params_with_db(pool, site_id, task_id, result, datasets)
 
 
@@ -193,12 +187,22 @@ async def generate_thermal_model_heating_load(
         end_ts=site_params.end_ts,
         weather_df=weather_df,
     )
+    # We simulated at a much lower timestep than we want for EPOCH, so
+    # regroup it here by adding up the heating demands
+    hh_heating_load_df = heating_load_df.resample(pd.Timedelta(minutes=30)).sum(numeric_only=True)
+    # ... but we don't want to sum temperatures
+    hh_heating_load_df["external_temperatures"] = (
+        heating_load_df["external_temperatures"].resample(pd.Timedelta(minutes=30)).mean(numeric_only=True)
+    )
+    hh_heating_load_df["start_ts"] = hh_heating_load_df.index
+    hh_heating_load_df["end_ts"] = hh_heating_load_df.index + pd.Timedelta(minutes=30)
+
     dataset_id = uuid.uuid4()
     created_at = datetime.datetime.now(datetime.UTC)
 
     # TODO (2025-02-02 MHJB): improve DHW load here
     DHW_EVENT_SIZE = 1.0
-    poisson_weights = get_poisson_weights(HHDataFrame(heating_load_df)) * thermal_model.dhw_usage
+    poisson_weights = get_poisson_weights(HHDataFrame(hh_heating_load_df)) * thermal_model.dhw_usage
     dhw_load = np.random.default_rng().poisson(poisson_weights) * DHW_EVENT_SIZE
     await pool.execute(
         """
@@ -214,18 +218,19 @@ async def generate_thermal_model_heating_load(
 
     await pool.copy_records_to_table(
         schema_name="heating",
-        table_name="synthetised",
+        table_name="synthesised",
         columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
         records=zip(
-            itertools.repeat(dataset_id),
-            heating_load_df.start_ts,
-            heating_load_df.end_ts,
-            heating_load_df.consumption,
+            itertools.repeat(dataset_id, len(hh_heating_load_df)),
+            hh_heating_load_df.start_ts,
+            hh_heating_load_df.end_ts,
+            hh_heating_load_df.heating_usage,
             dhw_load,
-            heating_load_df.external_temperatures,
+            hh_heating_load_df.external_temperatures,
             strict=True,
         ),
     )
+
     # Upload the heating load dataframe to the database.
     return DatasetEntry(
         dataset_id=dataset_id,
@@ -233,7 +238,7 @@ async def generate_thermal_model_heating_load(
         created_at=created_at,
         start_ts=site_params.start_ts,
         end_ts=site_params.end_ts,
-        num_entries=len(heating_load_df),
+        num_entries=len(hh_heating_load_df),
         resolution=pd.Timedelta(minutes=30),  # hard coded for now
     )
 
@@ -270,6 +275,12 @@ async def fit_thermal_model_endpoint(
     if not all_elec_datasets:
         raise HTTPException(400, f"No gas datasets available for `{params.site_id}` to fit to.")
     latest_elec_dataset_id = max(all_elec_datasets, key=operator.attrgetter("created_at")).dataset_id
+
+    # We use the existing thermal models as probe points for the new model
+    all_thermal_metadata = await list_thermal_models(params, pool)
+    all_thermal_models = [
+        await get_thermal_model(pool=pool, dataset_id=DatasetID(dataset_id=item.dataset_id)) for item in all_thermal_metadata
+    ]
 
     async with pool.acquire() as conn, httpx.AsyncClient() as client:
         gas_meter_records = await get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), conn=conn)
@@ -313,5 +324,6 @@ async def fit_thermal_model_endpoint(
         weather_df=weather_df,
         elec_df=elec_df,
         n_iter=params.n_iter,
+        hints=all_thermal_models,
     )
     return {"task_id": task_id}

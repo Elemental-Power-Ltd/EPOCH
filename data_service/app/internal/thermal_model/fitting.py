@@ -6,7 +6,7 @@ from typing import cast
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from bayes_opt import BayesianOptimization
+from bayes_opt import BayesianOptimization, SequentialDomainReductionTransformer
 
 from ...models.heating_load import ThermalModelResult
 from ..epl_typing import HHDataFrame
@@ -106,7 +106,7 @@ def parameters_to_loss(
         # so that we can sensibly fit Gaussians during the Bayesian optimisation.
         worst_energy_loss = np.sum(gas_df["consumption"]) ** 2 * 1.1
         worst_temperature_loss = 50**2 * (end_ts - start_ts).total_seconds() / 300.0
-        return cast(float, worst_energy_loss + worst_temperature_loss)
+        return cast(float, 100.0 * (worst_energy_loss + worst_temperature_loss))
     resampled_df = resample_to_gas_df(sim_df, gas_df)
     energy_loss = cast(float, np.sum(np.power(gas_df["consumption"] - resampled_df, 2.0)))
 
@@ -223,11 +223,17 @@ def simulate_parameters(
     sim_df = simulate(hm, external_df=weather_df, start_ts=start_ts, end_ts=end_ts, dt=dt, elec_df=elec_df)
     # Note the change of units here
     sim_df.heating_usage = -joule_to_kwh(sim_df.heating_usage)
+    sim_df["start_ts"] = sim_df.index
+    sim_df["end_ts"] = sim_df.index + pd.Timedelta(minutes=30)
     return sim_df
 
 
 def fit_to_gas_usage(
-    gas_df: pd.DataFrame, weather_df: pd.DataFrame, elec_df: pd.DataFrame | None = None, n_iter: int = 300
+    gas_df: pd.DataFrame,
+    weather_df: pd.DataFrame,
+    elec_df: pd.DataFrame | None = None,
+    n_iter: int = 300,
+    hints: ThermalModelResult | list[ThermalModelResult] | None = None,
 ) -> ThermalModelResult:
     """
     Fit some building parameters to a gas consumption pattern.
@@ -242,20 +248,27 @@ def fit_to_gas_usage(
         Hourly weather dataframe with "temp", "windspeed", "solarradiation" columns
     elec_df
         Electricity usage dataframe with "consumption" columns (optional)
+    hints
+        Points to sample at that you think are reasonable, these can be previous thermal model results.
 
     Returns
     -------
     dict[str, float]
         kwarg parameters for `create_simple_structure` that provide the best fit to the gas data.
     """
+    # This is the upper bound, assuming that all usage in a given period is DHW.
+    total_days = (gas_df.end_ts - gas_df.start_ts).dt.total_seconds() / (pd.Timedelta(days=1).total_seconds())
+    daily_dhw = gas_df.consumption / total_days
+
     pbounds = {
-        "scale_factor": (0.1, 20.0),
-        "ach": (0.01, 20.0),
-        "u_value": (0.1, 2.5),
+        "scale_factor": (0.1, 10.0),
+        "ach": (1.0, 20.0),
+        "u_value": (1.0, 2.5),
         "boiler_power": (0, 60e3),  # Boiler Size in kW
         "setpoint": (16, 24),
-        "dhw_usage": (0, max(gas_df.consumption)),
+        "dhw_usage": (0, daily_dhw.mean()),  # Pick the average: DHW is probably closer to the min, but maybe holidays drop it?
     }
+
     opt = BayesianOptimization(
         # There's a minus in here as BayesianOptimisation tries to maximise,
         # and we want to minimize the loss.
@@ -273,7 +286,35 @@ def fit_to_gas_usage(
             end_ts=None,  # calculate automatically from gas meters
         ),
         pbounds=pbounds,
+        bounds_transformer=SequentialDomainReductionTransformer(),
     )
+
+    if hints is None:
+        default_hint = ThermalModelResult(
+            scale_factor=1,
+            ach=3.0,
+            u_value=2.0,
+            boiler_power=24e3,  # Boiler Size in kW
+            setpoint=21,
+            dhw_usage=daily_dhw.min(),
+        )
+        hints = [default_hint]
+    elif isinstance(hints, ThermalModelResult):
+        # We only got a single hint, so wrap it into a
+        # list for the next step.
+        hints = [hints]
+
+    for hint in hints:
+        # Probe some reasonable points to get us started
+        # TODO (2025-03-03 MHJB): also probe +/- 10% of each hint?
+        dumped_hint = hint.model_dump()
+        for key, val in dumped_hint.items():
+            # If we re-use a hint from before that's out of bounds,
+            # then clamp it back into the bounds that we're using.
+            clamped_val = max(pbounds[key][0], min(val, pbounds[key][1]))
+            dumped_hint[key] = clamped_val
+        opt.probe(hint.model_dump(), lazy=False)
+
     opt.maximize(init_points=int(np.ceil(n_iter / 10)), n_iter=n_iter)
 
     assert opt.max is not None
