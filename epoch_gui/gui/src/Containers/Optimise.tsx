@@ -5,7 +5,7 @@ import HyperParamForm from "../Components/HyperParams/OptimiserConfig";
 import SearchForm from "../Components/SearchParameters/SearchForm";
 import AddSiteModal from "../Components/SearchParameters/AddSite";
 
-import {Button, Box, IconButton} from '@mui/material';
+import {Button, Box, IconButton, Container} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import {getStatus, submitOptimisationJob} from "../endpoints";
@@ -177,7 +177,7 @@ function OptimisationContainer() {
     }
 
     return (
-        <div className="run-tab">
+        <Container maxWidth={"xl"}>
             <TaskConfigForm/>
 
             {Object.keys(state.portfolioMap).map((site_id) => renderSiteBuilder(site_id))}
@@ -195,7 +195,7 @@ function OptimisationContainer() {
                 availableSites={client_sites}
                 onAddSite={addSite}
             />
-        </div>
+        </Container>
     )
 }
 

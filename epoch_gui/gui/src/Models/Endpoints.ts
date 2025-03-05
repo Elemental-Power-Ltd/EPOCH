@@ -22,10 +22,37 @@ export interface ReproduceSimulationRequest {
 export type ReportDataType = { [key: string]: number[] };
 
 
+interface FabricIntervention {
+    cost: number;
+    reduced_hload: number[];
+}
+
+export interface EpochSiteData {
+    start_ts: string;
+    end_ts: string;
+
+    building_eload: number[];
+    building_hload: number[];
+    ev_eload: number[];
+    dhw_demand: number[];
+    air_temperature: number[];
+    grid_co2: number[];
+    solar_yields: number[][];
+    import_tariffs: number[][];
+    fabric_interventions: FabricIntervention[];
+
+    ashp_input_table: number[][];
+    ashp_output_table: number[][];
+}
+
 export interface SimulationResult {
     objectives: any;
 
     report_data: ReportDataType | null;
+
+    // the TaskData,SiteData pair used to produce this result
+    task_data: any;
+    site_data: EpochSiteData | null
 }
 
 export type Objective =

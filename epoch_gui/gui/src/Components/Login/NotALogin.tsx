@@ -1,5 +1,5 @@
 import React from 'react';
-import {Select, MenuItem, FormControl, InputLabel} from '@mui/material';
+import {Container, Select, MenuItem, FormControl, InputLabel} from '@mui/material';
 
 import {useEpochStore} from "../../State/Store";
 
@@ -17,22 +17,24 @@ const NotALogin = () => {
     };
 
     return (
-        <FormControl fullWidth>
-            <InputLabel id="client-selector-label">Select Client</InputLabel>
-            <Select
-                labelId="client-selector-label"
-                id="client-selector"
-                value={selectedClient ? selectedClient.client_id : ''}
-                onChange={handleChange}
-                label="Select Client"
-            >
-                {availableClients.map((client) => (
-                    <MenuItem key={client.client_id} value={client.client_id}>
-                        {client.name}
-                    </MenuItem>
-                ))}
-            </Select>
-        </FormControl>
+        <Container maxWidth={"xs"}>
+            <FormControl fullWidth>
+                <InputLabel id="client-selector-label">Select Client</InputLabel>
+                <Select
+                    labelId="client-selector-label"
+                    id="client-selector"
+                    value={selectedClient ? selectedClient.client_id : ''}
+                    onChange={handleChange}
+                    label="Select Client"
+                >
+                    {availableClients.map((client) => (
+                        <MenuItem key={client.client_id} value={client.client_id}>
+                            {client.name}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+        </Container>
     );
 };
 

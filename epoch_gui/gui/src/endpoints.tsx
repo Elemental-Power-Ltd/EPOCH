@@ -1,11 +1,13 @@
 import {Site, OptimisationTaskListEntry, Client, PortfolioOptimisationResult} from "./State/types";
 import {
+    EpochSiteData,
     ReproduceSimulationRequest,
     SimulationResult,
     SubmitOptimisationRequest,
     SubmitOptimisationResponse,
     SubmitSimulationRequest
 } from "./Models/Endpoints";
+import {Dayjs} from "dayjs";
 
 
 export const submitOptimisationJob = async(request: SubmitOptimisationRequest): Promise<ApiResponse<SubmitOptimisationResponse>> => {
@@ -218,4 +220,34 @@ export const generateAllData = async (site_id: string, start_ts: string, end_ts:
       console.error("Failed to generate data:", error);
       throw error;
     }
-  }
+}
+
+export const getLatestSiteData = async (site_id: string, start_ts: Dayjs, end_ts: Dayjs): Promise<ApiResponse<EpochSiteData>> => {
+    const payload = {
+        site_id,
+        start_ts: start_ts.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
+        end_ts: end_ts.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
+        loc: "remote"
+    };
+
+    try {
+        const response = await fetch("/api/optimisation/get-latest-site-data", {
+            method: "POST",
+            headers: {"Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if(!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const data: EpochSiteData = await response.json();
+        return {success: true, data};
+
+    } catch (error) {
+        console.error("Failed to fetch site data", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}

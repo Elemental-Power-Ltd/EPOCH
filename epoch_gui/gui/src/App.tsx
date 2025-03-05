@@ -8,6 +8,7 @@ import ResultsContainer from "./Containers/Results";
 import DatasetGenerationContainer from "./Containers/DatasetGeneration";
 import SimulationContainer from "./Containers/Simulate";
 import AnalysisContainer from "./Containers/AnalysisContainer";
+import SitesContainer from "./Containers/Sites";
 import NotALogin from "./Components/Login/NotALogin";
 import {useEpochStore} from "./State/Store";
 import {listClients, listSites} from "./endpoints";
@@ -99,6 +100,7 @@ function App() {
                             <Route path="/simulate" element={<SimulationContainer/>}/>
                             <Route path="/results" element={<ResultsContainer/>}/>
                             <Route path="/analyse/:portfolio_id?/:site_id?" element={<AnalysisContainer/>}/>
+                            <Route path="/sites" element={<SitesContainer/>}/>
                             <Route path="/generate-data" element={<DatasetGenerationContainer/>}/>
 
                             {/*404*/}
@@ -121,6 +123,7 @@ const NavTabs = () => {
         {label: 'Simulate', path: '/simulate'},
         {label: 'Results', path: '/results'},
         {label: 'Analyse', path: '/analyse'},
+        {label: 'Sites', path: '/sites'},
         {label: 'Generate Dataset', path: '/generate-data'},
     ];
 

@@ -2,6 +2,7 @@ import React, {FC, useState} from "react";
 
 import {
     Button,
+    Container,
     Stepper,
     Step,
     StepLabel,
@@ -206,14 +207,16 @@ const SimulationContainer: FC = () => {
     };
 
     return (
-        <div style={{margin: "0 auto"}}>
-            <Stepper activeStep={activeStep} style={{marginBottom: "2rem"}}>
-                {simulationSteps.map((label) => (
-                    <Step key={label}>
-                        <StepLabel>{label}</StepLabel>
-                    </Step>
-                ))}
-            </Stepper>
+        <Container maxWidth={"xl"}>
+            <Container maxWidth={"md"}>
+                <Stepper activeStep={activeStep} style={{marginBottom: "2rem"}}>
+                    {simulationSteps.map((label) => (
+                        <Step key={label}>
+                            <StepLabel>{label}</StepLabel>
+                        </Step>
+                    ))}
+                </Stepper>
+            </Container>
 
             {getStepContent(activeStep)}
 
@@ -235,7 +238,7 @@ const SimulationContainer: FC = () => {
                     </Button>
                 )}
             </div>
-        </div>
+        </Container>
     );
 };
 

@@ -53,3 +53,11 @@ export const daysOptions = [
     { value: 7, label: "7 Days" },
     { value: 30, label: "30 Days" },
 ];
+
+// the default variables for each line plot
+export const lineChartDefaults = [
+    {var1: 'DHW_load', var2: 'DHW_charging'},
+    {var1: 'DHW_SoC', var2: 'DHW_charging'},
+    {var1: 'PVacGen', var2: 'Grid_Import'},
+    {var1: 'Hotel_load', var2: 'ESS_discharge'}
+]

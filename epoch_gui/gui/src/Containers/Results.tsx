@@ -1,4 +1,6 @@
-import {useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
+
+import {Container} from "@mui/material";
 
 import {OptimiserStatusDisplay} from "../Components/OptimiserQueue/OptimiserQueue"
 import TaskTable from "../Components/Results/TaskTable"
@@ -69,7 +71,7 @@ function ResultsContainer() {
     }, [state.currentTask])
 
     return (
-        <div>
+        <Container maxWidth={"lg"}>
             <OptimiserStatusDisplay status={state.optimiserServiceStatus}/>
             <TaskTable tasks={state.tasks} setCurrentTask={setCurrentTask} currentTaskId={state.currentTask?.task_id}/>
 
@@ -81,7 +83,7 @@ function ResultsContainer() {
                 <SiteResultsTable results={state.currentPortfolioResult.site_results}/>
             }
 
-        </div>
+        </Container>
     )
 }
 

@@ -4,7 +4,7 @@ import React, {useState} from 'react';
 import SimulationSummary, {ErroredSimulationSummary, LoadingSimulatingSummary} from "./SimulationSummary";
 import DataViz from "../DataViz/DataViz";
 import {SimulationResult} from "../../Models/Endpoints";
-import {Button} from "@mui/material";
+import {Button, Container} from "@mui/material";
 
 interface SimulationResultViewerProps {
 
@@ -20,21 +20,32 @@ const SimulationResultViewer: React.FC<SimulationResultViewerProps> = ({isLoadin
     const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
     const toggleAnalysis = () => setShowAnalysis(prev => !prev);
 
-    if (isLoading) {
-        return <LoadingSimulatingSummary/>;
-    } else if (error) {
-        return <ErroredSimulationSummary error={error}/>
-    } else if (result === null) {
-        return <ErroredSimulationSummary error={"Simulation failed - unknown error"}/>
+    const getResultCard = () => {
+        if (isLoading) {
+            return <LoadingSimulatingSummary/>;
+        } else if (error) {
+            return <ErroredSimulationSummary error={error}/>
+        } else if (result === null) {
+            return <ErroredSimulationSummary error={"Simulation failed - unknown error"}/>
+        } else {
+            return <SimulationSummary result={result}></SimulationSummary>
+        }
     }
+
 
     return (
         <>
-            <SimulationSummary result={result}/>
-            <Button onClick={toggleAnalysis} variant="outlined">
-                {showAnalysis ? "Hide Analysis" : "Show Analysis"}
-            </Button>
-            {showAnalysis && <DataViz result={result}/>}
+            <Container maxWidth={"lg"}>
+                {getResultCard()}
+            </Container>
+            {(!isLoading && !error && result) &&
+                <>
+                    <Button onClick={toggleAnalysis} variant="outlined">
+                        {showAnalysis ? "Hide Analysis" : "Show Analysis"}
+                    </Button>
+                    {showAnalysis && <DataViz result={result}/>}
+                </>
+            }
         </>
     )
 }

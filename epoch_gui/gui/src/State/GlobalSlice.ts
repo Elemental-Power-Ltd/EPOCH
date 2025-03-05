@@ -1,6 +1,7 @@
 import { Client, Site } from "./types"
 import { defaultOptimiseContainer } from "./OptimiserSlice"
 import { defaultResultsContainer } from "./ResultsSlice"
+import {defaultAnalysisContainer} from "./AnalysisSlice";
 
 export const createGlobalSlice = (set, get, api) => ({
   global: {
@@ -19,7 +20,10 @@ export const createGlobalSlice = (set, get, api) => ({
       optimise: defaultOptimiseContainer,
 
       // Reset results slice to default:
-      results: defaultResultsContainer
+      results: defaultResultsContainer,
+
+      // Reset analysis slice to default:
+      analysis: defaultAnalysisContainer
     })),
 
   setAvailableClients: (clients: Client[]) =>

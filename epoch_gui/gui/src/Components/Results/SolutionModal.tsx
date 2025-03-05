@@ -17,6 +17,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 
 import SimulationSummary from "./SimulationSummary";
 import {SiteOptimisationResult} from "../../State/types";
+import {SimulationResult} from "../../Models/Endpoints";
 
 
 interface SolutionModalProps {
@@ -41,7 +42,9 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, siteResult
             annualised_cost: siteResult.metric_annualised_cost,
             carbon_cost: siteResult.metric_carbon_cost
         },
-        report_data: null
+        task_data: scenario,
+        report_data: null,
+        site_data: null
     };
 
     const handleAnalyse = async () => {
