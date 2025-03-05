@@ -225,3 +225,9 @@ class SiteData(pydantic.BaseModel):
     address: str = pydantic.Field(
         examples=["27 Mill Close, London, SW1A 0AA", "Queens Buildings, Potter Street, Worksop, S80 2AH"]
     )
+    epc_lmk: str | None = pydantic.Field(
+        description="LMK for the latest Commercial Energy Performance Certificate for this building", default=None
+    )
+    dec_lmk: str | None = pydantic.Field(
+        description="LMK for the latest Commercial Display Energy Certificate for this building", default=None
+    )
