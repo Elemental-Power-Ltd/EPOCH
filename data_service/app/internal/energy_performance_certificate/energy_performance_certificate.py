@@ -101,8 +101,8 @@ async def get_cepc_by_lmk(lmk_key: str, http_client: AsyncClient) -> NonDomestic
     NonDomesticEPC
         Non-domestic EPC retrieved from the API, with recommendations filled in (if possible!)
     """
-    _secrets = get_secrets_environment()
-    token = create_opendata_token(_secrets["OPENDATACOMMUNITIES_EMAIL"], _secrets["OPENDATACOMMUNITIES_API_KEY"])
+    secrets = get_secrets_environment()
+    token = create_opendata_token(secrets["OPENDATACOMMUNITIES_EMAIL"], secrets["OPENDATACOMMUNITIES_API_KEY"])
     headers = {"Accept": "application/json", "Authorization": f"Basic {token}"}
 
     response = await http_client.get(
@@ -142,8 +142,8 @@ async def get_dec_by_lmk(lmk_key: str, http_client: AsyncClient) -> NonDomesticD
     NonDomesticEPC
         Display Energy Certificate retrieved from the API, with recommendations filled in (if possible!)
     """
-    _secrets = get_secrets_environment()
-    token = create_opendata_token(_secrets["OPENDATACOMMUNITIES_EMAIL"], _secrets["OPENDATACOMMUNITIES_API_KEY"])
+    secrets = get_secrets_environment()
+    token = create_opendata_token(secrets["OPENDATACOMMUNITIES_EMAIL"], secrets["OPENDATACOMMUNITIES_API_KEY"])
     headers = {"Accept": "application/json", "Authorization": f"Basic {token}"}
 
     response = await http_client.get(
@@ -189,8 +189,8 @@ async def get_cepcs_lookup(
     dict[str, NonDomesticEPC]
         All EPCs we found, uniquely identified by their LMK Key
     """
-    _secrets = get_secrets_environment()
-    token = create_opendata_token(_secrets["OPENDATACOMMUNITIES_EMAIL"], _secrets["OPENDATACOMMUNITIES_API_KEY"])
+    secrets = get_secrets_environment()
+    token = create_opendata_token(secrets["OPENDATACOMMUNITIES_EMAIL"], secrets["OPENDATACOMMUNITIES_API_KEY"])
     headers = {"Accept": "application/json", "Authorization": f"Basic {token}"}
     search_resp = await http_client.get(
         "https://epc.opendatacommunities.org/api/v1/non-domestic/",
@@ -233,8 +233,8 @@ async def get_decs_lookup(
     dict[str, NonDomesticDEC]
         All DECs we found, uniquely identified by their LMK Key
     """
-    _secrets = get_secrets_environment()
-    token = create_opendata_token(_secrets["OPENDATACOMMUNITIES_EMAIL"], _secrets["OPENDATACOMMUNITIES_API_KEY"])
+    secrets = get_secrets_environment()
+    token = create_opendata_token(secrets["OPENDATACOMMUNITIES_EMAIL"], secrets["OPENDATACOMMUNITIES_API_KEY"])
     headers = {"Accept": "application/json", "Authorization": f"Basic {token}"}
 
     search_resp = await http_client.get(
