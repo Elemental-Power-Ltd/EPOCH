@@ -10,8 +10,14 @@ from fastapi import APIRouter, HTTPException
 
 from app.internal.datamanager import DataManagerDep, EpochSiteData
 from app.internal.epoch_utils import TaskData, convert_sim_result
-from app.models.simulate import FullResult, ReproduceSimulationRequest, RunSimulationRequest
-from app.models.site_data import DatasetTypeEnum, LocalMetaData
+from app.models.simulate import (
+    FullResult,
+    GetSavedSiteDataRequest,
+    ReproduceSimulationRequest,
+    RunSimulationRequest,
+    TaskDataType,
+)
+from app.models.site_data import LocalMetaData, RemoteMetaData
 
 router = APIRouter()
 logger = logging.getLogger("default")
@@ -37,11 +43,7 @@ async def run_simulation(request: RunSimulationRequest, data_manager: DataManage
     if isinstance(request.site_data, LocalMetaData):
         raise HTTPException(400, detail="Simulation from local data is not supported")
 
-    await data_manager.hydrate_site_with_latest_dataset_ids(request.site_data)
-
-    dataset_entries = await data_manager.fetch_specific_datasets(request.site_data)
-
-    epoch_data = data_manager.transform_all_input_data(dataset_entries, request.site_data.start_ts, request.site_data.end_ts)
+    epoch_data = await data_manager.get_latest_site_data(request.site_data)
 
     return do_simulation(epoch_data, request.task_data)
 
@@ -66,40 +68,47 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
     """
 
     logger.info(f"Reproducing simulation for {request.site_id} from portfolio {request.portfolio_id}")
+    saved_input = await data_manager.get_saved_epoch_input(request.portfolio_id, request.site_id)
 
-    repro_config = await data_manager.get_result_configuration(request.portfolio_id)
-
-    site_data = repro_config.site_data[request.site_id]
-
-    necessary_datasets = [
-        DatasetTypeEnum.GasMeterData,
-        DatasetTypeEnum.RenewablesGeneration,
-        DatasetTypeEnum.HeatingLoad,
-        DatasetTypeEnum.CarbonIntensity,
-        DatasetTypeEnum.ASHPData,
-        DatasetTypeEnum.ImportTariff,
-    ]
-    # Check that the dataset_ids have been saved to the database for this result
-    for key in necessary_datasets:
-        if site_data.__getattribute__(key) is None:
-            raise HTTPException(400, detail=f"Cannot reproduce a result without known {key} dataset ID")
-    if (
-        site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterData) is None
-        and site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterDataSynthesised) is None
-    ):
-        raise HTTPException(
-            400,
-            detail="Cannot reproduce a result without known ElectricityMeterData or ElectricityMeterDataSynthesised dataset ID",
-        )
-
-    dataset_entries = await data_manager.fetch_specific_datasets(site_data)
-
-    epoch_data = data_manager.transform_all_input_data(dataset_entries, site_data.start_ts, site_data.end_ts)
-
-    return do_simulation(epoch_data, repro_config.task_data[request.site_id])
+    return do_simulation(saved_input.site_data, saved_input.task_data)
 
 
-def do_simulation(epoch_data: EpochSiteData, task_data: dict):
+@router.post("/get-latest-site-data")
+async def get_latest_site_data(site_data: RemoteMetaData, data_manager: DataManagerDep) -> EpochSiteData:
+    """
+    Serve an EPOCH compatible SiteData using the most recently generated dataset of each type.
+
+    Parameters
+    ----------
+    site_data
+    data_manager
+
+    Returns
+    -------
+
+    """
+    return await data_manager.get_latest_site_data(site_data)
+
+
+@router.post("/get-saved-site-data")
+async def get_saved_site_data(request: GetSavedSiteDataRequest, data_manager: DataManagerDep) -> EpochSiteData:
+    """
+    Fetch the exact SiteData that was used to produce a result in the database.
+
+    Parameters
+    ----------
+    request
+    data_manager
+
+    Returns
+    -------
+
+    """
+    saved_input = await data_manager.get_saved_epoch_input(request.portfolio_id, request.site_id)
+    return saved_input.site_data
+
+
+def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataType):
     """
     Internal function to run a simulation for a given set of site data and taskData
     Parameters
@@ -123,7 +132,7 @@ def do_simulation(epoch_data: EpochSiteData, task_data: dict):
     report_dict = report_data_to_dict(res.report_data)
     objectives = convert_sim_result(res)
 
-    return FullResult(report_data=report_dict, objectives=objectives)
+    return FullResult(report_data=report_dict, objectives=objectives, task_data=task_data, site_data=epoch_data)
 
 
 def report_data_to_dict(report_data) -> dict[str, list[float]]:
