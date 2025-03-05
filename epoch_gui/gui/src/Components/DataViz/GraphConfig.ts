@@ -52,6 +52,7 @@ export const daysOptions = [
     { value: 2, label: "2 Days" },
     { value: 7, label: "7 Days" },
     { value: 30, label: "30 Days" },
+    { value: 90, label: "90 Days" }
 ];
 
 // the default variables for each line plot

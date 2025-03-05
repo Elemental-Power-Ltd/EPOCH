@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Alert, Box, Button, Container, Grid} from "@mui/material";
+import {Alert, Box, Button, Container, Grid, Typography} from "@mui/material";
 import dayjs, {Dayjs} from "dayjs";
 
 import {EpochSiteData} from "../../Models/Endpoints";
@@ -7,19 +7,28 @@ import {SiteDataLinePlot} from "./SiteDataLinePlot";
 import {DateRangeControls} from "../DataViz/DateRangeControls";
 import DownloadIcon from "@mui/icons-material/Download";
 import {downloadCSV, downloadJSON} from "./donwloadSiteData";
+import {aggregateSiteData} from "./aggregateSiteData";
 
 interface SiteDataViewerProps {
     siteData: EpochSiteData
 }
 
 export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
+
     const initialDatetime = dayjs(siteData.start_ts);
-    const dataPeriodInMinutes = 30;
-    const samplingFrequencySeconds = 1 / (dataPeriodInMinutes * 60); // Example: 1 sample per half hour
-    const samplingFrequencyMs = samplingFrequencySeconds / 1000;
+    const finalDatetime = dayjs(siteData.end_ts);
 
     const [selectedStartDatetime, setSelectedStartDatetime] = useState<Dayjs | null>(initialDatetime);
     const [daysToKeep, setDaysToKeep] = useState(1);
+
+    // if the DaysToKeep is monthly or higher, then we plot daily aggregate data instead of half hourly
+    const usingAggregates = daysToKeep >= 30;
+    const selectedSiteData = usingAggregates ? aggregateSiteData(siteData) : siteData;
+    const length = selectedSiteData.building_eload.length;
+
+    const dataPeriodInSeconds = (finalDatetime.unix() - initialDatetime.unix()) / length;
+    const samplingFrequencySeconds = 1 / (dataPeriodInSeconds); // Example: 1 sample per half hour
+    const samplingFrequencyMs = samplingFrequencySeconds / 1000;
 
 
     const initialTimestampMs = initialDatetime.valueOf();
@@ -30,29 +39,29 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
     const endIndex = Math.floor((endTimestampMs - initialTimestampMs) * samplingFrequencyMs);
 
     const rangedSiteData: EpochSiteData = {
-        start_ts: siteData.start_ts,
-        end_ts: siteData.end_ts,
+        start_ts: selectedSiteData.start_ts,
+        end_ts: selectedSiteData.end_ts,
 
-        building_eload: siteData.building_eload.slice(startIndex, endIndex + 1),
-        building_hload: siteData.building_hload.slice(startIndex, endIndex + 1),
-        ev_eload: siteData.ev_eload.slice(startIndex, endIndex + 1),
-        dhw_demand: siteData.dhw_demand.slice(startIndex, endIndex + 1),
-        air_temperature: siteData.air_temperature.slice(startIndex, endIndex + 1),
-        grid_co2: siteData.grid_co2.slice(startIndex, endIndex + 1),
-        solar_yields: siteData.solar_yields.map((solar) => solar.slice(startIndex, endIndex + 1)),
-        import_tariffs: siteData.import_tariffs.map((tariff) => tariff.slice(startIndex, endIndex + 1)),
-        fabric_interventions: siteData.fabric_interventions.map((fabric => ({
+        building_eload: selectedSiteData.building_eload.slice(startIndex, endIndex + 1),
+        building_hload: selectedSiteData.building_hload.slice(startIndex, endIndex + 1),
+        ev_eload: selectedSiteData.ev_eload.slice(startIndex, endIndex + 1),
+        dhw_demand: selectedSiteData.dhw_demand.slice(startIndex, endIndex + 1),
+        air_temperature: selectedSiteData.air_temperature.slice(startIndex, endIndex + 1),
+        grid_co2: selectedSiteData.grid_co2.slice(startIndex, endIndex + 1),
+        solar_yields: selectedSiteData.solar_yields.map((solar) => solar.slice(startIndex, endIndex + 1)),
+        import_tariffs: selectedSiteData.import_tariffs.map((tariff) => tariff.slice(startIndex, endIndex + 1)),
+        fabric_interventions: selectedSiteData.fabric_interventions.map((fabric => ({
             ...fabric, reduced_hload: fabric.reduced_hload.slice(startIndex, endIndex + 1),
         }))),
-        ashp_input_table: siteData.ashp_input_table,
-        ashp_output_table: siteData.ashp_output_table
+        ashp_input_table: selectedSiteData.ashp_input_table,
+        ashp_output_table: selectedSiteData.ashp_output_table
     };
 
     // We add an offset to the X values so that the bars are centred on the midpoint of each timerange
     // ie centred around 00:15 rather than 00:00 for the first entry in the day
-    const offset_to_centre = dataPeriodInMinutes / 2
-    const x_hh = Array.from({length: daysToKeep * 48}, (_, i) =>
-        dayjs(selectedStartDatetime).add(i * 30 + offset_to_centre, 'minute').toDate()
+    const offsetToCentreSeconds = 0.5 * dataPeriodInSeconds
+    const x_hh = Array.from({length: endIndex + 1 - startIndex}, (_, i) =>
+        dayjs(selectedStartDatetime).add(i * dataPeriodInSeconds + offsetToCentreSeconds, 'second').toDate()
     );
 
     const handleDownloadCSV = () => {downloadCSV(siteData)};
@@ -67,6 +76,9 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
                 daysToKeep={daysToKeep}
                 setDaysToKeep={setDaysToKeep}
             />
+
+            {usingAggregates && <Typography variant={"body1"} color={"info"}>Showing Daily Aggregates</Typography>}
+            {!usingAggregates && <Typography variant={"body1"}>Showing Half-hourly Data</Typography>}
 
             <Grid container spacing={1}>
 
@@ -126,7 +138,7 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
                     yData={[
                         {name: "Grid Intensity", data: rangedSiteData.grid_co2},
                     ]}
-                    yLabel={"%"}
+                    yLabel={"gCO₂/kWh"}
                 />
             </Grid>
 

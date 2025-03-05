@@ -1,7 +1,7 @@
 import {EpochSiteData, ReportDataType} from "../../Models/Endpoints";
 
 
-type Units = "kWh" | "Deg (c)" | "£/KwH" | "Carbon Intensity (%)"
+type Units = "kWh" | "Deg (c)" | "£/KwH" | "gCO₂/kWh"
 
 interface Annotation {
     // The human-readable name for this time series
@@ -58,7 +58,7 @@ const staticAnnotationsMap: AnnotationMap = {
     "ev_eload": {name: "EV Demand", units: "kWh", type: "Input"},
     "dhw_demand": {name: "DHW Demand", units: "kWh", type: "Input"},
     "air_temperature": {name: "Air Temperature", units: "Deg (c)", type: "Input"},
-    "grid_co2": {name: "Grid Carbon Intensity", units: "Carbon Intensity (%)", type: "Input"},
+    "grid_co2": {name: "Grid Carbon Intensity", units: "gCO₂/kWh", type: "Input"},
 }
 
 // extended version of the Annotation array that also includes the timeseries data
