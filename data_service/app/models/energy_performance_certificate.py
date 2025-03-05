@@ -45,6 +45,8 @@ class EpcPaybackEnum(StrEnum):
 
 
 class NonDomesticRecommendation(pydantic.BaseModel):
+    # We get fields in kebab-case from the EPC API, so
+    # generate snake_case aliases for each of them
     model_config = pydantic.ConfigDict(
         alias_generator=pydantic.AliasGenerator(
             validation_alias=lambda field_name: field_name.replace("_", "-"),
@@ -125,13 +127,13 @@ class NonDomesticEPCBase(pydantic.BaseModel):
             "If exact rating unknown, what is the estimated total effective output rating of the air conditioning system in kW."
         )
     )
-    floor_area: float = pydantic.Field(
+    floor_area: float = pydantic.Field(  # type: ignore
         description=(
             "The total useful floor area is the total of all enclosed spaces measured to the internal face"
             " of the external walls, i.e. the gross floor area as measured in accordance with the guidance issued from"
             " time to time by the Royal Institute of Chartered Surveyors or by a body replacing that institution. (m2)"
         ),
-        alias=pydantic.AliasChoices("floor_area", "total_floor_area", "floor-area", "total-floor-area"),
+        alias=pydantic.AliasChoices("floor_area", "total_floor_area", "floor-area", "total-floor-area"),  # type: ignore
     )
     inspection_date: pydantic.types.NaiveDatetime = pydantic.Field(
         description="The date that the inspection was actually carried out by the energy assessor"
@@ -159,9 +161,9 @@ class NonDomesticEPCBase(pydantic.BaseModel):
             " the greatest total thermal output for space or water heating."
         ),
     )
-    other_fuel_desc: str | None = pydantic.Field(
+    other_fuel_desc: str | None = pydantic.Field(  # type: ignore
         description="Text description of unspecified fuel type if 'Other' is selected for Main Heating Fuel.",
-        alias=pydantic.AliasChoices("other_fuel", "other_fuel_desc", "other-fuel", "other-fuel-desc"),
+        alias=pydantic.AliasChoices("other_fuel", "other_fuel_desc", "other-fuel", "other-fuel-desc"),  # type: ignore
     )
     posttown: str = pydantic.Field(description="Post town for the building address.")
     primary_energy: float | None = pydantic.Field(

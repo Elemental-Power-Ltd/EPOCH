@@ -22,6 +22,7 @@ def sample_cepc_lmk() -> str:
 
 class TestGetCEPCs:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_get_from_lmk(self, sample_cepc_lmk: str) -> None:
         """Test that we can get a certificate from a known LMK."""
         async with httpx.AsyncClient() as client:
@@ -32,6 +33,7 @@ class TestGetCEPCs:
 
 class TestGetDECs:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_get_from_lmk(self, sample_dec_lmk: str) -> None:
         """Test that we can get a certificate from a known LMK."""
         async with httpx.AsyncClient() as client:
