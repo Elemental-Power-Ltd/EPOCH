@@ -18,7 +18,8 @@ from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ..internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
 from ..internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
-from ..models.core import DatasetIDWithTime, MultipleDatasetIDWithTime, dataset_id_t
+from ..internal.thermal_model.costs import calculate_intervention_costs_params
+from ..models.core import DatasetID, DatasetIDWithTime, MultipleDatasetIDWithTime, dataset_id_t
 from ..models.heating_load import (
     EpochAirTempEntry,
     EpochDHWEntry,
@@ -29,12 +30,71 @@ from ..models.heating_load import (
     InterventionCostRequest,
     InterventionCostResult,
     InterventionEnum,
+    ThermalModelResult,
 )
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
-from .thermal_model import get_heating_cost_thermal_model
 from .weather import get_weather
 
 router = APIRouter()
+
+
+@router.post("/get-thermal-model")
+async def get_thermal_model(pool: DatabasePoolDep, dataset_id: DatasetID) -> ThermalModelResult:
+    """
+    Get thermal model fitted parameters from the database.
+
+    Parameters
+    ----------
+    pool
+        Connection pool for the database
+    dataset_id
+        The ID of the thermal model run you want to get data for
+
+    Returns
+    -------
+    dict[str, float]
+        Physical parameters as keys with values as floats, see fit_to_gas_usage for more detail
+    """
+    res = await pool.fetchval(
+        """
+        SELECT
+            results
+        FROM heating.thermal_model
+        WHERE dataset_id = $1
+        ORDER BY created_at
+        LIMIT 1""",
+        dataset_id.dataset_id,
+    )
+    if res is None:
+        raise HTTPException(404, f"Could not find a thermal model for {dataset_id.dataset_id}")
+    return ThermalModelResult.model_validate_json(res)
+
+
+async def get_heating_cost_thermal_model(
+    thermal_model_id: dataset_id_t, interventions: list[InterventionEnum], pool: DatabasePoolDep
+) -> float:
+    """
+    Get the intervention costs for interventions applied to a building described by a thermal model.
+
+    Parameters
+    ----------
+    thermal_model_id
+        The ID of the relevant thermal model stored in the database
+    interventions
+        The interventions you want to apply e.g. Cladding, DoubleGlazing
+    pool
+        Database with thermal models in it
+
+    Returns
+    -------
+    float
+        Cost in GBP of applying interventions to this building.
+    """
+    thermal_model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_id), pool=pool)
+    if thermal_model is None:
+        raise ValueError(f"Couldn't find a thermal model for {thermal_model_id}")
+    costs = calculate_intervention_costs_params(thermal_model, interventions=interventions)
+    return costs
 
 
 def weather_dataset_to_dataframe(records: list[WeatherDatasetEntry]) -> WeatherDataFrame:
@@ -346,7 +406,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         )
         if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
             thermal_model_dataset_id = metadata["params"]["thermal_model_dataset_id"]
-            res = await get_heating_cost_thermal_model(
+            return await get_heating_cost_thermal_model(
                 thermal_model_dataset_id, interventions=metadata["interventions"], pool=db_pool
             )
         else:
@@ -361,6 +421,8 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
                 WHERE dataset_id = $1""",
                 dataset_id,
             )
+            if res is None:
+                return 0.0
         return res
 
     async with asyncio.TaskGroup() as tg:

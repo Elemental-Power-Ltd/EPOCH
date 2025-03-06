@@ -14,20 +14,20 @@ import pydantic
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.encoders import jsonable_encoder
 
-from app.dependencies import DatabasePoolDep, HttpClientDep, ProcessPoolDep
-from app.internal.epl_typing import HHDataFrame
-from app.internal.gas_meters.domestic_hot_water import get_poisson_weights
-from app.internal.thermal_model.building_fabric import apply_thermal_model_fabric_interventions
-from app.internal.thermal_model.costs import calculate_intervention_costs_params
-from app.internal.thermal_model.fitting import fit_to_gas_usage, simulate_parameters
-from app.models.core import DatasetEntry, DatasetID, DatasetTypeEnum, SiteIDWithTime, dataset_id_t
-from app.models.heating_load import InterventionEnum, ThermalModelResult
-from app.models.thermal_model import ThermalModelRequest
-from app.models.weather import WeatherRequest
-from app.routers.client_data import get_location
-from app.routers.meter_data import get_meter_data
-from app.routers.site_manager import list_elec_datasets, list_gas_datasets, list_thermal_models
-from app.routers.weather import get_weather
+from ..dependencies import DatabasePoolDep, HttpClientDep, ProcessPoolDep
+from ..internal.epl_typing import HHDataFrame
+from ..internal.gas_meters.domestic_hot_water import get_poisson_weights
+from ..internal.thermal_model.building_fabric import apply_thermal_model_fabric_interventions
+from ..internal.thermal_model.fitting import fit_to_gas_usage, simulate_parameters
+from ..models.core import DatasetEntry, DatasetID, DatasetTypeEnum, SiteIDWithTime
+from ..models.heating_load import InterventionEnum, ThermalModelResult
+from ..models.thermal_model import ThermalModelRequest
+from ..models.weather import WeatherRequest
+from .client_data import get_location
+from .heating_load import get_thermal_model
+from .meter_data import get_meter_data
+from .site_manager import list_elec_datasets, list_gas_datasets, list_thermal_models
+from .weather import get_weather
 
 router = APIRouter()
 
@@ -108,65 +108,6 @@ async def thermal_fitting_process_wrapper(
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(executor, fit_to_gas_usage, gas_df, weather_df, elec_df, n_iter, hints)
     await file_params_with_db(pool, site_id, task_id, result, datasets)
-
-
-@router.post("/get-thermal-model")
-async def get_thermal_model(pool: DatabasePoolDep, dataset_id: DatasetID) -> ThermalModelResult:
-    """
-    Get thermal model fitted parameters from the database.
-
-    Parameters
-    ----------
-    pool
-        Connection pool for the database
-    dataset_id
-        The ID of the thermal model run you want to get data for
-
-    Returns
-    -------
-    dict[str, float]
-        Physical parameters as keys with values as floats, see fit_to_gas_usage for more detail
-    """
-    res = await pool.fetchval(
-        """
-        SELECT
-            results
-        FROM heating.thermal_model
-        WHERE dataset_id = $1
-        ORDER BY created_at
-        LIMIT 1""",
-        dataset_id.dataset_id,
-    )
-    if res is None:
-        raise HTTPException(404, f"Could not find a thermal model for {dataset_id.dataset_id}")
-    return ThermalModelResult.model_validate_json(res)
-
-
-async def get_heating_cost_thermal_model(
-    thermal_model_id: dataset_id_t, interventions: list[InterventionEnum], pool: DatabasePoolDep
-) -> float:
-    """
-    Get the intervention costs for interventions applied to a building described by a thermal model.
-
-    Parameters
-    ----------
-    thermal_model_id
-        The ID of the relevant thermal model stored in the database
-    interventions
-        The interventions you want to apply e.g. Cladding, DoubleGlazing
-    pool
-        Database with thermal models in it
-
-    Returns
-    -------
-    float
-        Cost in GBP of applying interventions to this building.
-    """
-    thermal_model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_id), pool=pool)
-    if thermal_model is None:
-        raise ValueError("Couldn't find a thermal model for {thermal_model_id}")
-    costs = calculate_intervention_costs_params(thermal_model, interventions=interventions)
-    return costs
 
 
 @router.post("/generate-thermal-model-heating-load")

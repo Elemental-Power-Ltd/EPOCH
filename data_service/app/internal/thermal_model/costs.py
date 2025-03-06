@@ -28,7 +28,7 @@ def get_wall_areas(structure: HeatNetwork) -> float:
     })
     area = 0.0
     for u, v, data in structure.edges(data=True):
-        if (u in wall_types or v in wall_types) and BuildingElement.ExternalAir in (u, v):
+        if (u in wall_types or v in wall_types) and BuildingElement.ExternalAir in {u, v}:
             area += data["conductive"].interface_area
     return area
 
@@ -55,7 +55,7 @@ def get_window_areas(structure: HeatNetwork) -> float:
     })
     area = 0.0
     for u, v, data in structure.edges(data=True):
-        if (u in window_types or v in window_types) and BuildingElement.ExternalAir in (u, v):
+        if (u in window_types or v in window_types) and BuildingElement.ExternalAir in {u, v}:
             area += data["conductive"].interface_area
     return area
 
