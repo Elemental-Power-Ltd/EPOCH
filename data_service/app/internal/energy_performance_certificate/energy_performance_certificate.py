@@ -193,7 +193,7 @@ async def get_cepcs_lookup(
     token = create_opendata_token(secrets["OPENDATACOMMUNITIES_EMAIL"], secrets["OPENDATACOMMUNITIES_API_KEY"])
     headers = {"Accept": "application/json", "Authorization": f"Basic {token}"}
     search_resp = await http_client.get(
-        "https://epc.opendatacommunities.org/api/v1/non-domestic/",
+        "https://epc.opendatacommunities.org/api/v1/non-domestic/search",
         params=create_search_params(postcode=postcode, address=address),
         headers=headers,
     )
@@ -206,7 +206,13 @@ async def get_cepcs_lookup(
         raise HTTPException(400, f"Got bad JSON from EPC API: {search_resp.text}") from ex
 
     # They actually return the EPC here in the search results but we fetch it again to keep our code DRY
-    return {row["lmk-key"]: await get_cepc_by_lmk(row["lmk-key"], http_client=http_client) for row in result["rows"]}
+    all_results = {}
+    for row in result["rows"]:
+        try:
+            all_results[row["lmk-key"]] = await get_cepc_by_lmk(row["lmk-key"], http_client=http_client)
+        except (JSONDecodeError, HTTPException):
+            continue
+    return all_results
 
 
 async def get_decs_lookup(
@@ -238,7 +244,7 @@ async def get_decs_lookup(
     headers = {"Accept": "application/json", "Authorization": f"Basic {token}"}
 
     search_resp = await http_client.get(
-        "https://epc.opendatacommunities.org/api/v1/display/",
+        "https://epc.opendatacommunities.org/api/v1/display/search",
         params=create_search_params(postcode=postcode, address=address),
         headers=headers,
     )
@@ -249,5 +255,10 @@ async def get_decs_lookup(
     except JSONDecodeError as ex:
         raise HTTPException(400, f"Got bad JSON from DEC API: {search_resp.text}") from ex
 
-    # They actually return the DEC here in the search results but we fetch it again to keep our code DRY
-    return {row["lmk-key"]: await get_dec_by_lmk(row["lmk-key"], http_client=http_client) for row in result["rows"]}
+    all_results = {}
+    for row in result["rows"]:
+        try:
+            all_results[row["lmk-key"]] = await get_dec_by_lmk(row["lmk-key"], http_client=http_client)
+        except (JSONDecodeError, HTTPException):
+            continue
+    return all_results

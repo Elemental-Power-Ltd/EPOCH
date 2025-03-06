@@ -138,6 +138,7 @@ class NonDomesticEPCBase(pydantic.BaseModel):
     inspection_date: pydantic.types.NaiveDatetime = pydantic.Field(
         description="The date that the inspection was actually carried out by the energy assessor"
     )
+    lmk_key: str
     local_authority: str = pydantic.Field(
         description="Office for National Statistics (ONS) code. Local authority area in which the building is located."
     )
@@ -195,8 +196,10 @@ class NonDomesticEPCBase(pydantic.BaseModel):
         mode="before",
         check_fields=False,
     )
-    def remove_blank_strings(cls, v: str) -> str | None:
+    def remove_blank_strings(cls, v: str | None) -> str | None:
         """Remove whitespace from EPC and return None if empty."""
+        if v is None:
+            return None
         v = v.strip()
         if not v:
             return None
