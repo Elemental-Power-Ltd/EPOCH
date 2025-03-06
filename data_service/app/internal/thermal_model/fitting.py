@@ -157,9 +157,11 @@ def create_structure_from_params(
         Simple structure with the values changed.
     """
     hm = create_simple_structure(
-        wall_width=10.0 * scale_factor,
-        wall_height=5.0 * scale_factor,
-        window_area=1.0 * scale_factor,
+        # Walls are 2D, so scale them appropriately.
+        wall_width=10.0 * np.sqrt(scale_factor),
+        wall_height=5.0 * np.sqrt(scale_factor),
+        # Assuming about 20% window to floor area ratio
+        window_area=10.0 * scale_factor,
         floor_area=50.0 * scale_factor,
     )
 

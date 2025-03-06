@@ -31,6 +31,7 @@ from ..models.heating_load import (
     InterventionEnum,
 )
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
+from .thermal_model import get_heating_cost_thermal_model
 from .weather import get_weather
 
 router = APIRouter()
@@ -340,20 +341,27 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         return heating_df
 
     async def get_heating_cost(db_pool: DatabasePoolDep, dataset_id: dataset_id_t) -> float:
-        res = await db_pool.fetchval(
-            """
-            SELECT
-                SUM(cost)
-            FROM heating.metadata AS m
-            JOIN heating.interventions AS i
-            ON
-                i.site_id = m.site_id AND i.intervention = ANY(m.interventions)
-            WHERE dataset_id = $1""",
-            dataset_id,
+        metadata = await db_pool.fetchrow(
+            """SELECT params, interventions FROM heating.metadata WHERE dataset_id = $1""", dataset_id
         )
-        if res is not None:
-            return float(res)
-        return 0.0
+        if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
+            thermal_model_dataset_id = metadata["params"]["thermal_model_dataset_id"]
+            res = await get_heating_cost_thermal_model(
+                thermal_model_dataset_id, interventions=metadata["interventions"], pool=db_pool
+            )
+        else:
+            res = await db_pool.fetchval(
+                """
+                SELECT
+                    SUM(cost)
+                FROM heating.metadata AS m
+                JOIN heating.interventions AS i
+                ON
+                    i.site_id = m.site_id AND i.intervention = ANY(m.interventions)
+                WHERE dataset_id = $1""",
+                dataset_id,
+            )
+        return res
 
     async with asyncio.TaskGroup() as tg:
         all_dfs = [

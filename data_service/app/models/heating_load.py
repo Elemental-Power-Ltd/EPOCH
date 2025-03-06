@@ -109,6 +109,9 @@ class HeatingLoadRequest(DatasetIDWithTime):
 class InterventionCostRequest(pydantic.BaseModel):
     interventions: list[InterventionEnum] = pydantic.Field(default=[])
     site_id: site_id_t = site_id_field
+    thermal_model_dataset_id: dataset_id_t | None = pydantic.Field(
+        description="ID of the thermal model you want to use for cost calculation, defaults to None", default=None
+    )
 
 
 class InterventionCostResult(pydantic.BaseModel):

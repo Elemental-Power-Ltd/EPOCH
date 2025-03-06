@@ -17,9 +17,11 @@ from fastapi.encoders import jsonable_encoder
 from app.dependencies import DatabasePoolDep, HttpClientDep, ProcessPoolDep
 from app.internal.epl_typing import HHDataFrame
 from app.internal.gas_meters.domestic_hot_water import get_poisson_weights
+from app.internal.thermal_model.building_fabric import apply_thermal_model_fabric_interventions
+from app.internal.thermal_model.costs import calculate_intervention_costs_params
 from app.internal.thermal_model.fitting import fit_to_gas_usage, simulate_parameters
-from app.models.core import DatasetEntry, DatasetID, DatasetTypeEnum, SiteIDWithTime
-from app.models.heating_load import ThermalModelResult
+from app.models.core import DatasetEntry, DatasetID, DatasetTypeEnum, SiteIDWithTime, dataset_id_t
+from app.models.heating_load import InterventionEnum, ThermalModelResult
 from app.models.thermal_model import ThermalModelRequest
 from app.models.weather import WeatherRequest
 from app.routers.client_data import get_location
@@ -140,9 +142,40 @@ async def get_thermal_model(pool: DatabasePoolDep, dataset_id: DatasetID) -> The
     return ThermalModelResult.model_validate_json(res)
 
 
+async def get_heating_cost_thermal_model(
+    thermal_model_id: dataset_id_t, interventions: list[InterventionEnum], pool: DatabasePoolDep
+) -> float:
+    """
+    Get the intervention costs for interventions applied to a building described by a thermal model.
+
+    Parameters
+    ----------
+    thermal_model_id
+        The ID of the relevant thermal model stored in the database
+    interventions
+        The interventions you want to apply e.g. Cladding, DoubleGlazing
+    pool
+        Database with thermal models in it
+
+    Returns
+    -------
+    float
+        Cost in GBP of applying interventions to this building.
+    """
+    thermal_model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_id), pool=pool)
+    if thermal_model is None:
+        raise ValueError("Couldn't find a thermal model for {thermal_model_id}")
+    costs = calculate_intervention_costs_params(thermal_model, interventions=interventions)
+    return costs
+
+
 @router.post("/generate-thermal-model-heating-load")
 async def generate_thermal_model_heating_load(
-    pool: DatabasePoolDep, http_client: HttpClientDep, site_params: SiteIDWithTime, thermal_model_dataset_id: DatasetID
+    pool: DatabasePoolDep,
+    http_client: HttpClientDep,
+    site_params: SiteIDWithTime,
+    thermal_model_dataset_id: DatasetID,
+    interventions: list[InterventionEnum] | None = None,
 ) -> DatasetEntry:
     """
     Generate a heating load using the thermal model.
@@ -157,6 +190,9 @@ async def generate_thermal_model_heating_load(
         The Site ID you want to model, as well as the start and end timestamps you want a heating load for
     thermal_model_dataset_id
         The thermal model you want to use for this process
+    interventions
+        The interventions you wish to apply to this site, e.g. Cladding or DoubleGlazing. Defaults to an empty list
+        (no interventions).
 
     Returns
     -------
@@ -164,6 +200,9 @@ async def generate_thermal_model_heating_load(
         ID of the generated thermal model dataset.
     """
     thermal_model = await get_thermal_model(pool, dataset_id=thermal_model_dataset_id)
+    if interventions is not None:
+        thermal_model = apply_thermal_model_fabric_interventions(params=thermal_model, interventions=interventions)
+
     async with pool.acquire() as conn:
         location = await get_location(site_params, conn)
         weather_records = await get_weather(
@@ -213,7 +252,7 @@ async def generate_thermal_model_heating_load(
         site_params.site_id,
         created_at,
         json.dumps({"thermal_model_dataset_id": str(thermal_model_dataset_id)}),
-        None,
+        interventions,
     )
 
     await pool.copy_records_to_table(
@@ -231,7 +270,6 @@ async def generate_thermal_model_heating_load(
         ),
     )
 
-    # Upload the heating load dataframe to the database.
     return DatasetEntry(
         dataset_id=dataset_id,
         dataset_type=DatasetTypeEnum.HeatingLoad,
@@ -240,6 +278,7 @@ async def generate_thermal_model_heating_load(
         end_ts=site_params.end_ts,
         num_entries=len(hh_heating_load_df),
         resolution=pd.Timedelta(minutes=30),  # hard coded for now
+        dataset_subtype={"type": "thermal_model", "interventions": interventions},  # TODO: improve this?
     )
 
 

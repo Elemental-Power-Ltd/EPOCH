@@ -7,6 +7,7 @@ import pytest
 
 from app.internal.thermal_model import apply_fabric_interventions
 from app.internal.thermal_model.building_fabric import apply_thermal_model_fabric_interventions
+from app.internal.thermal_model.costs import calculate_intervention_costs_params
 from app.models.heating_load import InterventionEnum, ThermalModelResult
 from app.models.weather import BaitAndModelCoefs
 
@@ -90,3 +91,33 @@ class TestThermalModelInterventions:
         stored_params = deepcopy(initial_parameters)
         new_params = apply_thermal_model_fabric_interventions(initial_parameters, [intervention])
         assert new_params.u_value < stored_params.u_value
+
+
+class TestCosts:
+    @pytest.fixture
+    def initial_parameters(self) -> ThermalModelResult:
+        """Reasonable physical parameters for the building."""
+        return ThermalModelResult(scale_factor=1.0, ach=15.0, u_value=4.0, boiler_power=24e3, setpoint=21.0, dhw_usage=100.0)
+
+    @pytest.mark.parametrize("intervention", [InterventionEnum.Cladding, InterventionEnum.DoubleGlazing, InterventionEnum.Loft])
+    def test_each_intervention_costs(self, initial_parameters: ThermalModelResult, intervention: InterventionEnum) -> None:
+        """Test that the interventions all help one at a time."""
+        costs = calculate_intervention_costs_params(initial_parameters, [intervention])
+        assert costs > 0
+
+    def test_no_intervention_zero(self, initial_parameters: ThermalModelResult) -> None:
+        """Test that zero interventions costs zero."""
+        costs = calculate_intervention_costs_params(initial_parameters, [])
+        assert costs == 0
+
+    @pytest.mark.parametrize("intervention", [InterventionEnum.Cladding, InterventionEnum.DoubleGlazing, InterventionEnum.Loft])
+    def test_each_intervention_costs_scale(
+        self, initial_parameters: ThermalModelResult, intervention: InterventionEnum
+    ) -> None:
+        """Test that the interventions all help one at a time."""
+        mid_cost = calculate_intervention_costs_params(initial_parameters, [intervention])
+        initial_parameters.scale_factor *= 2
+        high_cost = calculate_intervention_costs_params(initial_parameters, [intervention])
+        initial_parameters.scale_factor /= 4
+        low_cost = calculate_intervention_costs_params(initial_parameters, [intervention])
+        assert low_cost < mid_cost < high_cost
