@@ -199,7 +199,7 @@ class DataManager:
             solar_yields=site_data_entries.rgen.data,
             import_tariffs=site_data_entries.import_tariffs.data,
             fabric_interventions=site_data_entries.heat.data[1:],  # Following heat_loads are fabric interventions
-            ashp_input_table=site_data_entries.ashp_output.data,
+            ashp_input_table=site_data_entries.ashp_input.data,
             ashp_output_table=site_data_entries.ashp_output.data,
         )
         return site_data
