@@ -3,6 +3,7 @@
 from ...models.heating_load import InterventionEnum, ThermalModelResult
 from .building_elements import BuildingElement
 from .fitting import create_structure_from_params
+from .links import ConductiveLink
 from .network import HeatNetwork
 
 
@@ -76,7 +77,13 @@ def get_ceiling_areas(structure: HeatNetwork) -> float:
     float
         Size of the loft in contact with the internal air in m^2
     """
-    return structure.get_edge_data(BuildingElement.InternalAir, BuildingElement.Roof)["conductive"].interface_area
+    return float(
+        structure.get_edge_data(
+            BuildingElement.InternalAir,
+            BuildingElement.Roof,
+            default={"conductive": ConductiveLink(interface_area=0.0, heat_transfer=0.0)},
+        )["conductive"].interface_area
+    )
 
 
 def calculate_doubleglazing_cost(structure: HeatNetwork) -> float:

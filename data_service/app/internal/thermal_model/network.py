@@ -108,7 +108,6 @@ def add_structure_to_graph(
         air_volume = floor_area * wall_width * wall_height
     wall_u_value = BRICK_U_VALUE
     WALL_DEPTH = 0.25  # m
-    print(wall_width, wall_height, window_area, roof_area, floor_area)
     G.add_node(BuildingElement.InternalAir, thermal_mass=air_volume * AIR_HEAT_CAPACITY, temperature=18.0, energy_change=0.0)
     G.add_node(
         BuildingElement.WallSouth,
