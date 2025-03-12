@@ -104,21 +104,17 @@ void to_json(json& j, const EnergyStorageSystem& ess) {
 
 // Grid
 void from_json(const json& j, GridData& grid) {
-	j.at("export_headroom").get_to(grid.export_headroom);
 	j.at("grid_export").get_to(grid.grid_export);
 	j.at("grid_import").get_to(grid.grid_import);
 	j.at("import_headroom").get_to(grid.import_headroom);
-	j.at("min_power_factor").get_to(grid.min_power_factor);
 	j.at("tariff_index").get_to(grid.tariff_index);
 }
 
 void to_json(json& j, const GridData& grid) {
 	j = json{
-		{"export_headroom", grid.export_headroom},
 		{"grid_export", grid.grid_export},
 		{"grid_import", grid.grid_import},
 		{"import_headroom", grid.import_headroom},
-		{"min_power_factor", grid.min_power_factor},
 		{"tariff_index", grid.tariff_index}
 	};
 }

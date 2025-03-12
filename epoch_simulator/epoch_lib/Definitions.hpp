@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "1.2.1";
+const std::string EPOCH_VERSION = "1.3.1";
 
 using year_TS = Eigen::VectorXf;
 
@@ -136,7 +136,7 @@ struct OutputValues {
 	float ScalarRG1; float ScalarRG2; float ScalarRG3; float ScalarRG4; float ScalarHYield;
 	int s7_EV_CP_number; int f22_EV_CP_number; int r50_EV_CP_number; int u150_EV_CP_number; float EV_flex;
 	float ScalarHL1; float ASHP_HPower; int ASHP_HSource; float ASHP_RadTemp; float ASHP_HotTemp;
-	float GridImport; float GridExport; float Import_headroom; float Export_headroom; float Min_power_factor;
+	float GridImport; float GridExport; float Import_headroom;
 	float ESS_charge_power; float ESS_discharge_power; float ESS_capacity;  float ESS_start_SoC;
 	int ESS_charge_mode; int ESS_discharge_mode; float DHW_cylinder_volume;
 	float Export_kWh_price;

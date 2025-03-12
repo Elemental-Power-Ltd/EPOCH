@@ -60,11 +60,9 @@ struct EnergyStorageSystem {
 
 
 struct GridData {
-    float export_headroom = 0.0f;
     float grid_export = 100.0f;
     float grid_import = 140.0f;
     float import_headroom = 0.4f;
-    float min_power_factor = 0.95f;
     size_t tariff_index = 0;
 
     bool operator==(const GridData&) const = default;
@@ -159,8 +157,8 @@ struct std::hash<GridData>
     {
         std::size_t h = 0;
         hash_combine(h,
-            grid.export_headroom, grid.grid_export, grid.grid_import,
-            grid.import_headroom, grid.min_power_factor, grid.tariff_index);
+            grid.grid_export, grid.grid_import,
+            grid.import_headroom, grid.tariff_index);
         return h;
     }
 };

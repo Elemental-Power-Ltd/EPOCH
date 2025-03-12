@@ -85,11 +85,9 @@ PYBIND11_MODULE(epoch_simulator, m) {
 
 	pybind11::class_<GridData>(m, "Grid")
 		.def(pybind11::init<>())
-		.def_readwrite("export_headroom", &GridData::export_headroom)
 		.def_readwrite("grid_export", &GridData::grid_export)
 		.def_readwrite("grid_import", &GridData::grid_import)
 		.def_readwrite("import_headroom", &GridData::import_headroom)
-		.def_readwrite("min_power_factor", &GridData::min_power_factor)
 		.def_readwrite("tariff_index", &GridData::tariff_index);
 
 	pybind11::class_<HeatPumpData>(m, "HeatPump")
@@ -289,11 +287,9 @@ std::string essToString(const EnergyStorageSystem& ess) {
 
 std::string gridToString(const GridData& grid) {
 	std::ostringstream oss;
-	oss << "<Grid export_headroom=" << grid.export_headroom
-		<< ", grid_export=" << grid.grid_export
+	oss << "<Grid grid_export=" << grid.grid_export
 		<< ", grid_import=" << grid.grid_import
 		<< ", import_headroom=" << grid.import_headroom
-		<< ", min_power_factor=" << grid.min_power_factor
 		<< ", tariff_index=" << grid.tariff_index << ">";
 	return oss.str();
 }

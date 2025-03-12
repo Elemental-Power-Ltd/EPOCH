@@ -54,9 +54,9 @@ TEST_F(EpochSimulationRun, CommonTaskData) {
 
 	EXPECT_FLOAT_EQ(result.project_CAPEX, 1238945.4f);
 	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 85420.227f);
-	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, 73841.875f);
-	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 14127.625f);
-	EXPECT_FLOAT_EQ(result.payback_horizon_years, 87.696648f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, 73841.641f);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 14127.375f);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, 87.698204f);
 	EXPECT_FLOAT_EQ(result.total_annualised_cost, 74830.258f);
 }
 
@@ -69,8 +69,8 @@ TEST_F(EpochSimulationRun, FullTaskData) {
 
 	EXPECT_FLOAT_EQ(result.project_CAPEX, 1249445.4f);
 	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 135397.08f);
-	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, -8940.9922f);
-	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 181001.09f);
-	EXPECT_FLOAT_EQ(result.payback_horizon_years, 6.9029713f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, -9621.2344f);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 180253.69f);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, 6.9315939f);
 	EXPECT_FLOAT_EQ(result.total_annualised_cost, 75530.258f);
 }

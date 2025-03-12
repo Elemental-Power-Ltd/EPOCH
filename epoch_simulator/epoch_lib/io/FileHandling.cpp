@@ -35,7 +35,7 @@ OutMemberMapping OutMemberMappings[] = {
 	OUT_MEMBER_MAPPING_FLOAT(Fixed_load1_scalar), OUT_MEMBER_MAPPING_FLOAT(Fixed_load2_scalar), OUT_MEMBER_MAPPING_FLOAT(Flex_load_max), OUT_MEMBER_MAPPING_FLOAT(Mop_load_max),
 	OUT_MEMBER_MAPPING_FLOAT(ScalarRG1), OUT_MEMBER_MAPPING_FLOAT(ScalarRG2), OUT_MEMBER_MAPPING_FLOAT(ScalarRG3), OUT_MEMBER_MAPPING_FLOAT(ScalarRG4), OUT_MEMBER_MAPPING_FLOAT(ScalarHYield),
 	OUT_MEMBER_MAPPING_INT(s7_EV_CP_number), OUT_MEMBER_MAPPING_INT(f22_EV_CP_number), OUT_MEMBER_MAPPING_INT(r50_EV_CP_number), OUT_MEMBER_MAPPING_INT(u150_EV_CP_number), OUT_MEMBER_MAPPING_FLOAT(EV_flex),
-	OUT_MEMBER_MAPPING_FLOAT(GridImport), OUT_MEMBER_MAPPING_FLOAT(GridExport), OUT_MEMBER_MAPPING_FLOAT(Import_headroom), OUT_MEMBER_MAPPING_FLOAT(Export_headroom), OUT_MEMBER_MAPPING_FLOAT(Min_power_factor),
+	OUT_MEMBER_MAPPING_FLOAT(GridImport), OUT_MEMBER_MAPPING_FLOAT(GridExport), OUT_MEMBER_MAPPING_FLOAT(Import_headroom),
 	OUT_MEMBER_MAPPING_FLOAT(ScalarHL1), OUT_MEMBER_MAPPING_FLOAT(ASHP_HPower), OUT_MEMBER_MAPPING_INT(ASHP_HSource), OUT_MEMBER_MAPPING_FLOAT(ASHP_RadTemp), OUT_MEMBER_MAPPING_FLOAT(ASHP_HotTemp),
 	OUT_MEMBER_MAPPING_FLOAT(ESS_charge_power), OUT_MEMBER_MAPPING_FLOAT(ESS_discharge_power), OUT_MEMBER_MAPPING_FLOAT(ESS_capacity), OUT_MEMBER_MAPPING_FLOAT(ESS_start_SoC),
 	OUT_MEMBER_MAPPING_INT(ESS_charge_mode), OUT_MEMBER_MAPPING_INT(ESS_discharge_mode), OUT_MEMBER_MAPPING_FLOAT(DHW_cylinder_volume),
@@ -122,11 +122,9 @@ void writeObjectiveResultHeader(std::ofstream& outFile) {
 	outFile << "ess_initial_charge" << ",";
 
 	// grid
-	outFile << "export_headroom" << ",";
 	outFile << "grid_export" << ",";
 	outFile << "grid_import" << ",";
 	outFile << "import_headroon" << ",";
-	outFile << "min_power_factor" << ",";
 	outFile << "tariff_index" << ",";
 
 	// heatpump
@@ -207,11 +205,9 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	}
 
 	if (taskData.grid) {
-		outFile << taskData.grid->export_headroom << ",";
 		outFile << taskData.grid->grid_export << ",";
 		outFile << taskData.grid->grid_import << ",";
 		outFile << taskData.grid->import_headroom << ",";
-		outFile << taskData.grid->min_power_factor << ",";
 		outFile << taskData.grid->tariff_index << ",";
 	}
 	else {

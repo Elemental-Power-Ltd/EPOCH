@@ -94,8 +94,6 @@ OutputValues Optimiser::runOptimisation(nlohmann::json inputJson)
 	output.GridImport = 15.0;
 	output.GridExport = 16.0;
 	output.Import_headroom = 17.0;
-	output.Export_headroom = 18.0;
-	output.Min_power_factor = 19.0;
 	output.ESS_charge_power = 20.0;
 	output.ESS_discharge_power = 21.0;
 	output.ESS_capacity = 22.0;
