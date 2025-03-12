@@ -46,11 +46,9 @@ def default_siterange() -> SiteRange:
     )
     grid = Grid(
         COMPONENT_IS_MANDATORY=True,
-        export_headroom=[0.5],
         grid_export=[60],
         grid_import=[60],
         import_headroom=[0.5],
-        min_power_factor=[1],
         tariff_index=[0, 1, 2, 3],
     )
     heat_pump = HeatPump(

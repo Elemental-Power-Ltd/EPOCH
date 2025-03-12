@@ -52,11 +52,9 @@ class EnergyStorageSystem:
     initial_charge: float
 
 class Grid:
-    export_headroom: float
     grid_export: float
     grid_import: float
     import_headroom: float
-    min_power_factor: float
     tariff_index: int
 
 class HeatSource(Enum):

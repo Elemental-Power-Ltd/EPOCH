@@ -50,11 +50,9 @@ class EnergyStorageSystem(BaseModel):
 
 class Grid(BaseModel):
     COMPONENT_IS_MANDATORY: bool
-    export_headroom: list[Annotated[float, Field(ge=0.0, le=1.0)]]
     grid_export: list[Annotated[int, Field(ge=0)]]
     grid_import: list[Annotated[int, Field(ge=0)]]
     import_headroom: list[Annotated[float, Field(ge=0.0, le=1.0)]]
-    min_power_factor: list[Annotated[float, Field(ge=0.0, le=1.0)]]
     tariff_index: list[Annotated[int, Field(ge=0)]]
 
 
