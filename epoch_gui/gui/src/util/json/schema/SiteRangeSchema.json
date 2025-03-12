@@ -188,14 +188,6 @@
         "COMPONENT_IS_MANDATORY": {
           "type": "boolean"
         },
-        "export_headroom": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          }
-        },
         "grid_export": {
           "type": "array",
           "items": {
@@ -218,14 +210,6 @@
             "maximum": 1
           }
         },
-        "min_power_factor": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          }
-        },
         "tariff_index": {
           "type": "array",
           "items": {
@@ -235,11 +219,9 @@
         }
       },
       "required": [
-        "export_headroom",
         "grid_export",
         "grid_import",
         "import_headroom",
-        "min_power_factor",
         "tariff_index"
       ]
     },

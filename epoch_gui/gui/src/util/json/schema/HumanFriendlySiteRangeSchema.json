@@ -88,11 +88,9 @@
       "title": "Grid",
       "properties": {
         "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "export_headroom": {"$ref": "#/definitions/paramRangeFloat", "title": "Export Headroom"},
         "grid_export": {"$ref": "#/definitions/paramRangeFloat", "title": "Grid Export"},
         "grid_import": {"$ref": "#/definitions/paramRangeFloat", "title": "Grid Import"},
         "import_headroom": {"$ref": "#/definitions/paramRangeFloat", "title": "Import Headroom"},
-        "min_power_factor": {"$ref": "#/definitions/paramRangeFloat", "title": "Minimum Power Factor"},
         "tariff_index": {
           "type": "array",
           "items": {"type": "integer", "minimum": 0},
@@ -101,11 +99,9 @@
       },
       "required": [
         "COMPONENT_IS_MANDATORY",
-        "export_headroom",
         "grid_export",
         "grid_import",
         "import_headroom",
-        "min_power_factor",
         "tariff_index"
       ]
     },
