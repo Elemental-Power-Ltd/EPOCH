@@ -32,6 +32,14 @@ void to_json(json& j, const BatteryMode& mode);
 void from_json(const json& j, EnergyStorageSystem& ess);
 void to_json(json& j, const EnergyStorageSystem& ess);
 
+// GasType
+void from_json(const json& j, GasType& gas_type);
+void to_json(json& j, const GasType& gas_type);
+
+// Gas Heater
+void from_json(const json& j, GasCHData& gas_heater);
+void to_json(json& j, const GasCHData& gas_heater);
+
 // Grid
 void from_json(const json& j, GridData& grid);
 void to_json(json& j, const GridData& grid);

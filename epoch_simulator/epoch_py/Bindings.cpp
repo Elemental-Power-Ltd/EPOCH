@@ -34,6 +34,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("domestic_hot_water", &TaskData::domestic_hot_water)
 		.def_readwrite("electric_vehicles", &TaskData::electric_vehicles)
 		.def_readwrite("energy_storage_system", &TaskData::energy_storage_system)
+		.def_readwrite("gas_heater", &TaskData::gas_heater)
 		.def_readwrite("grid", &TaskData::grid)
 		.def_readwrite("heat_pump", &TaskData::heat_pump)
 		.def_readwrite("mop", &TaskData::mop)
@@ -82,6 +83,16 @@ PYBIND11_MODULE(epoch_simulator, m) {
 	pybind11::enum_<BatteryMode>(m, "BatteryMode")
 		.value("CONSUME", BatteryMode::CONSUME)
 		.value("CONSUME_PLUS", BatteryMode::CONSUME_PLUS);
+
+	pybind11::class_<GasCHData>(m, "GasHeater")
+		.def(pybind11::init<>())
+		.def_readwrite("maximum_output", &GasCHData::maximum_output)
+		.def_readwrite("gas_type", &GasCHData::gas_type)
+		.def_readwrite("boiler_efficiency", &GasCHData::boiler_efficiency);
+
+	pybind11::enum_<GasType>(m, "GasType")
+		.value("NATURAL_GAS", GasType::NATURAL_GAS)
+		.value("LIQUID_PETROLEUM_GAS", GasType::LIQUID_PETROLEUM_GAS);
 
 	pybind11::class_<GridData>(m, "Grid")
 		.def(pybind11::init<>())
@@ -221,6 +232,10 @@ std::string taskDataToString(const TaskData& taskData) {
 		oss << essToString(taskData.energy_storage_system.value()) << '\n';
 	}
 
+	if (taskData.gas_heater) {
+		oss << gasHeaterToString(taskData.gas_heater.value()) << '\n';
+	}
+
 	if (taskData.grid) {
 		oss << gridToString(taskData.grid.value()) << '\n';
 	}
@@ -282,6 +297,14 @@ std::string essToString(const EnergyStorageSystem& ess) {
 		<< ", discharge_power=" << ess.discharge_power
 		<< ", battery_mode=" << enumToString(ess.battery_mode)
 		<< ", initial_charge=" << ess.initial_charge << ">";
+	return oss.str();
+}
+
+std::string gasHeaterToString(const GasCHData& gh) {
+	std::ostringstream oss;
+	oss << "<GasHeater maximum_output=" << gh.maximum_output
+		<< ", gas_type=" << enumToString(gh.gas_type)
+		<< ", boiler_efficiency=" << gh.boiler_efficiency << ">";
 	return oss.str();
 }
 

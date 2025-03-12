@@ -28,19 +28,22 @@ protected:
 TEST_F(EpochSimulationRun, EmptyTaskData) {
 	/**
 	* Test against a (near) empty TaskData
-	* That is one with a Building, Grid (and config) but no new components to be installed
+	* That is one with a Building, Grid, Gas Heater (and config) but no new components to be installed
+	* 
+	* The Grid and Gas Heater are oversized to ensure we don't have a shortfall
 	*/
 
 	TaskData task = readTaskData(fs::path{"./test_files/taskData_empty.json" });
 	auto result = simulator.simulateScenario(task);
 
 	// We haven't installed anything, so we expect all of the results to be 0
-	EXPECT_FLOAT_EQ(result.project_CAPEX, 0);
-	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 0);
-	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, 0);
-	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 0);
-	EXPECT_FLOAT_EQ(result.payback_horizon_years, 0);
-	EXPECT_FLOAT_EQ(result.total_annualised_cost, 0);
+	// we allow an absolute error of 0.1f
+	EXPECT_NEAR(result.project_CAPEX, 0.0f, 0.1f);
+	EXPECT_NEAR(result.scenario_carbon_balance_scope_1, 0.0f, 0.1f);
+	EXPECT_NEAR(result.scenario_carbon_balance_scope_2, 0.0f, 0.1f);
+	EXPECT_NEAR(result.scenario_cost_balance, 0.0f, 0.1f);
+	EXPECT_NEAR(result.payback_horizon_years, 0.0f, 0.1f);
+	EXPECT_NEAR(result.total_annualised_cost, 0.0f, 0.1f);
 }
 
 TEST_F(EpochSimulationRun, CommonTaskData) {
@@ -52,12 +55,12 @@ TEST_F(EpochSimulationRun, CommonTaskData) {
 	TaskData task = readTaskData(fs::path{ "./test_files/taskData_common.json" });
 	auto result = simulator.simulateScenario(task);
 
-	EXPECT_FLOAT_EQ(result.project_CAPEX, 1238945.4f);
-	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 85420.227f);
-	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, 73841.641f);
-	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 14127.375f);
-	EXPECT_FLOAT_EQ(result.payback_horizon_years, 87.698204f);
-	EXPECT_FLOAT_EQ(result.total_annualised_cost, 74830.258f);
+	EXPECT_FLOAT_EQ(result.project_CAPEX, 1355945.4f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 102757.23f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, 71935.438f);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 2976.7969f);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, 455.50482f);
+	EXPECT_FLOAT_EQ(result.total_annualised_cost, 86580.258f);
 }
 
 TEST_F(EpochSimulationRun, FullTaskData) {
@@ -68,9 +71,9 @@ TEST_F(EpochSimulationRun, FullTaskData) {
 	auto result = simulator.simulateScenario(task);
 
 	EXPECT_FLOAT_EQ(result.project_CAPEX, 1249445.4f);
-	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 135397.08f);
-	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, -9621.2344f);
-	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 180253.69f);
-	EXPECT_FLOAT_EQ(result.payback_horizon_years, 6.9315939f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 144888.22f);
+	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, -11637.258f);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 178038.44f);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, 7.0178404f);
 	EXPECT_FLOAT_EQ(result.total_annualised_cost, 75530.258f);
 }

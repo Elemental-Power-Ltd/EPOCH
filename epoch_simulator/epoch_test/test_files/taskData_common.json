@@ -5,7 +5,7 @@
     "fabric_intervention_index": 0
   },
   "domestic_hot_water": {
-    "cylinder_volume": 2500.0
+    "cylinder_volume": 1500.0
   },
   "energy_storage_system": {
     "capacity": 800.0,
@@ -16,12 +16,12 @@
   },
   "grid": {
     "grid_export": 100.0,
-    "grid_import": 140.0,
+    "grid_import": 160.0,
     "import_headroom": 0.4,
     "tariff_index": 0
   },
   "heat_pump": {
-    "heat_power": 70.0,
+    "heat_power": 130.0,
     "heat_source": "AMBIENT_AIR",
     "send_temp": 70.0
   },

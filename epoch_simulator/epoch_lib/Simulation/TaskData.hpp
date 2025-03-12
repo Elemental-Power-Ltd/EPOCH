@@ -15,6 +15,7 @@ struct TaskData {
 	std::optional<HeatPumpData> heat_pump;
 	std::optional<MopData> mop;
 	std::optional<Renewables> renewables;
+	std::optional<GasCHData> gas_heater;
 	TaskConfig config;
 
 	bool operator==(const TaskData& other) const { 
@@ -24,6 +25,7 @@ struct TaskData {
 			domestic_hot_water == other.domestic_hot_water &&
 			electric_vehicles == other.electric_vehicles &&
 			energy_storage_system == other.energy_storage_system &&
+			gas_heater == other.gas_heater &&
 			grid == other.grid &&
 			heat_pump == other.heat_pump &&
 			mop == other.mop &&
@@ -44,6 +46,7 @@ struct std::hash<TaskData>
 			td.domestic_hot_water, 
 			td.electric_vehicles,
 			td.energy_storage_system,
+			td.gas_heater,
 			td.grid,
 			td.heat_pump,
 			td.mop,

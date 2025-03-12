@@ -4,6 +4,11 @@
     "scalar_electrical_load": 1.0,
     "fabric_intervention_index": 0
   },
+  "gas_heater": {
+    "maximum_output": 500.0,
+    "gas_type": "NATURAL_GAS",
+    "boiler_efficiency":  0.9
+  },
   "grid": {
     "grid_export": 100.0,
     "grid_import": 140.0,

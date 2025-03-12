@@ -102,6 +102,39 @@ void to_json(json& j, const EnergyStorageSystem& ess) {
 	};
 }
 
+// Gas Type
+void from_json(const json& j, GasType& gas_type) {
+	std::string str = j.get<std::string>();
+	if (str == "NATURAL_GAS") {
+		gas_type = GasType::NATURAL_GAS;
+	}
+	else if (str == "LIQUID_PETROLEUM_GAS") {
+		gas_type = GasType::LIQUID_PETROLEUM_GAS;
+	}
+	else {
+		throw std::invalid_argument("Invalid Gas Type - " + str);
+	}
+}
+
+void to_json(json& j, const GasType& gas_type) {
+	j = enumToString(gas_type);
+}
+
+// Gas Heater
+void from_json(const json& j, GasCHData& gas_heater) {
+	j.at("maximum_output").get_to(gas_heater.maximum_output);
+	j.at("boiler_efficiency").get_to(gas_heater.boiler_efficiency);
+	j.at("gas_type").get_to(gas_heater.gas_type);
+}
+
+void to_json(json& j, const GasCHData& gas_heater) {
+	j = json{
+		{"maximum_output", gas_heater.maximum_output},
+		{"boiler_efficiency", gas_heater.boiler_efficiency},
+		{"gas_type", gas_heater.gas_type}
+	};
+}
+
 // Grid
 void from_json(const json& j, GridData& grid) {
 	j.at("grid_export").get_to(grid.grid_export);
@@ -209,6 +242,10 @@ void from_json(const json& j, TaskData& taskData) {
 		taskData.energy_storage_system = j.at("energy_storage_system").get<EnergyStorageSystem>();
 	}
 
+	if (j.contains("gas_heater") && !j["gas_heater"].is_null()) {
+		taskData.gas_heater = j.at("gas_heater").get<GasCHData>();
+	}
+
 	if (j.contains("grid") && !j["grid"].is_null()) {
 		taskData.grid = j.at("grid").get<GridData>();
 	}
@@ -248,6 +285,10 @@ void to_json(json& j, const TaskData& taskData) {
 
 	if (taskData.energy_storage_system) {
 		j["energy_storage_system"] = taskData.energy_storage_system.value();
+	}
+
+	if (taskData.gas_heater) {
+		j["gas_heater"] = taskData.gas_heater.value();
 	}
 
 	if (taskData.grid) {

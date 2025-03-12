@@ -16,6 +16,7 @@ std::string dataCentreToString(const DataCentreData& dc);
 std::string dhwToString(const DomesticHotWater& dhw);
 std::string evToString(const ElectricVehicles& ev);
 std::string essToString(const EnergyStorageSystem& ess);
+std::string gasHeaterToString(const GasCHData& gh);
 std::string gridToString(const GridData& grid);
 std::string heatpumpToString(const HeatPumpData& hp);
 std::string mopToString(const MopData& mop);

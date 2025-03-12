@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "1.3.1";
+const std::string EPOCH_VERSION = "1.4.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -93,7 +93,7 @@ struct CostVectors {
 	year_TS building_load_e;
 
 	year_TS heatload_h;
-	year_TS heat_shortfall_h;
+	year_TS gas_import_h;
 
 	year_TS grid_import_e;
 	year_TS grid_export_e;

@@ -58,6 +58,16 @@ struct EnergyStorageSystem {
     bool operator==(const EnergyStorageSystem&) const = default;
 };
 
+enum class GasType { NATURAL_GAS, LIQUID_PETROLEUM_GAS };
+
+struct GasCHData {
+    // boiler output in kW
+    float maximum_output = 40.0f;
+    float boiler_efficiency = 0.9f;
+    GasType gas_type = GasType::NATURAL_GAS;
+
+    bool operator==(const GasCHData&) const = default;
+};
 
 struct GridData {
     float grid_export = 100.0f;
@@ -182,6 +192,18 @@ struct std::hash<MopData>
     {
         // We've only got one component, so hash it directly.
         return std::hash<float>{}(m.maximum_load);
+    }
+};
+
+template<>
+struct std::hash<GasCHData>
+{
+    std::size_t operator()(const GasCHData& gch) const noexcept
+    {
+        std::size_t h = 0;
+        hash_combine(h,
+            gch.maximum_output, gch.boiler_efficiency, gch.gas_type);
+        return h;
     }
 };
 

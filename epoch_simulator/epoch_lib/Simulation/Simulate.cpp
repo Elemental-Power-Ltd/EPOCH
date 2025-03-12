@@ -203,9 +203,11 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 		grid.Report(reportData);
 	}
 
-	GasCombustionHeater GasCH(mSiteData);
-	GasCH.AllCalcs(tempSum);
-	GasCH.Report(reportData);
+	if (taskData.gas_heater) {
+		GasCombustionHeater GasCH(mSiteData, taskData.gas_heater.value());
+		GasCH.AllCalcs(tempSum);
+		GasCH.Report(reportData);
+	}
 
 	tempSum.Report(reportData);
 	ESSmain->Report(reportData);
@@ -228,7 +230,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 	costVectors.actual_data_centre_load_e = reportData.Data_centre_actual_load.size() ? reportData.Data_centre_actual_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
 	costVectors.building_load_e = reportData.Hotel_load.size() ? reportData.Hotel_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
 	costVectors.heatload_h = reportData.Heatload.size() ? reportData.Heatload : Eigen::VectorXf::Zero(mSiteData.timesteps);
-	costVectors.heat_shortfall_h = reportData.Heat_shortfall.size() ? reportData.Heat_shortfall : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.gas_import_h = reportData.GasCH_load.size() ? reportData.GasCH_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
 	costVectors.grid_import_e = reportData.Grid_Import.size() ? reportData.Grid_Import : Eigen::VectorXf::Zero(mSiteData.timesteps);
 	costVectors.grid_export_e = reportData.Grid_Export.size() ? reportData.Grid_Export : Eigen::VectorXf::Zero(mSiteData.timesteps);
 	costVectors.actual_low_priority_load_e = reportData.MOP_load.size() ? reportData.MOP_load : Eigen::VectorXf::Zero(mSiteData.timesteps);

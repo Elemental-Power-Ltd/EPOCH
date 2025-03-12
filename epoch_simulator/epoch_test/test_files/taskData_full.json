@@ -26,9 +26,14 @@
     "battery_mode": "CONSUME",
     "initial_charge": 0.0
   },
+  "gas_heater": {
+    "maximum_output": 100.0,
+    "gas_type": "NATURAL_GAS",
+    "boiler_efficiency":  0.9
+  },
   "grid": {
     "grid_export": 100.0,
-    "grid_import": 140.0,
+    "grid_import": 220.0,
     "import_headroom": 0.4,
     "tariff_index": 0
   },

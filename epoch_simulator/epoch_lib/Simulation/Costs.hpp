@@ -31,7 +31,10 @@ public:
 		mScenario_fuel_CO2e(0.0f),
 		mScenario_export_CO2e(0.0f),
 		mScenario_carbon_balance_scope_1(0.0f),
-		mCapexBreakdown(capexBreakdown)
+		mCapexBreakdown(capexBreakdown),
+		// If there is no gas boiler we need to assume some defaults so use 90% efficiency and natural gas
+		mBoiler_efficiency(taskData.gas_heater ? taskData.gas_heater->boiler_efficiency : 0.9f),
+		mGasType(taskData.gas_heater ? taskData.gas_heater->gas_type : GasType::NATURAL_GAS)
 	{	
 	}
 
@@ -47,19 +50,14 @@ public:
 
 		year_TS baseline_heat_load = costVectors.heatload_h; // includes both baseline space heat and baseline DWH demand.
 
-		// TODO - need to add baseline fuel type in config
-		year_TS import_gas_prices{ Eigen::VectorXf::Constant(mTimesteps, mMains_gas_price) }; 
 
-		// trigger this instead of line before if fuel config is LPG
-		//year_TS import_LPG_prices{ Eigen::VectorXf::Constant(mTaskData.calculate_timesteps(), mLPG_cost_price) };
+		float gasPrice = mGasType == GasType::NATURAL_GAS ? mMains_gas_price : mLPG_cost_price;
+		year_TS import_gas_prices{ Eigen::VectorXf::Constant(mTimesteps, gasPrice) };
 
-		calculate_baseline_fuel_cost(baseline_heat_load, import_gas_prices);
-
-		// trigger this instead of line before if fuel config is LPG
-		// calculate_baseline_fuel_cost(baseline_heat_load, import_LPG_prices); 
+		calculate_baseline_fuel_cost(baseline_heat_load, import_gas_prices); 
 
 		calculate_scenario_elec_cost(costVectors.grid_import_e);
-		calculate_scenario_fuel_cost(costVectors.heat_shortfall_h, import_gas_prices);
+		calculate_scenario_fuel_cost(costVectors.gas_import_h, import_gas_prices);
 		calculate_scenario_export_cost(costVectors.grid_export_e, costVectors.grid_export_prices);
 
 		calculate_scenario_EV_revenue(costVectors.actual_ev_load_e);
@@ -83,10 +81,7 @@ public:
 
 		calculate_scenario_elec_CO2e(costVectors.grid_import_e);
 
-		calculate_scenario_gas_CO2e(costVectors.heat_shortfall_h);
-
-		// trigger this function based on scenario fuel config, if it is LPG
-		// calculate_scenario_LPG_CO2e(costVectors.heat_shortfall_h);
+		calculate_scenario_gas_CO2e(costVectors.gas_import_h);
 
 		calculate_scenario_export_CO2e(costVectors.grid_export_e);
 
@@ -189,10 +184,12 @@ public:
 		mScenario_import_cost = mScenario_import_cost_TS.sum(); // just use fixed value for now
 	};
 
-	void calculate_scenario_fuel_cost(const year_TS& total_heat_shortfall, const year_TS& import_fuel_prices) {
-		float total_heat_shortfall_sum = total_heat_shortfall.sum();
+	void calculate_scenario_fuel_cost(const year_TS& gas_import, const year_TS& import_fuel_prices) {
+		float total_gas_import = gas_import.sum();
 
-		mScenario_fuel_cost = (total_heat_shortfall_sum * import_fuel_prices[0] / mBoiler_efficiency);
+		// unlike the baseline, the scenario does not need to divide by the boiler efficiency
+		// as the gas heater has already done this
+		mScenario_fuel_cost = (total_gas_import * import_fuel_prices[0]);
 	};
 
 	void calculate_scenario_export_cost(const year_TS& grid_export, const year_TS& export_elec_prices) {
@@ -246,15 +243,11 @@ public:
 	};
 
 	void calculate_baseline_gas_CO2e(const year_TS& baseline_heat_load) {
+		float CO2e = mGasType == GasType::NATURAL_GAS ? mMains_gas_kg_C02e : mLPG_kg_C02e;
+
 		float baseline_heat_load_sum = baseline_heat_load.sum();
 
-		mBaseline_fuel_CO2e = (baseline_heat_load_sum * mMains_gas_kg_C02e);/// mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
-	};
-
-	void calculate_baseline_LPG_CO2e(const year_TS& baseline_heat_load) {
-		float baseline_heat_load_sum = baseline_heat_load.sum();
-
-		mBaseline_fuel_CO2e = (baseline_heat_load_sum * mLPG_kg_C02e);/// mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
+		mBaseline_fuel_CO2e = (baseline_heat_load_sum * CO2e) / mBoiler_efficiency;
 	};
 
 
@@ -266,15 +259,13 @@ public:
 	};
 
 	void calculate_scenario_gas_CO2e(const year_TS& total_heat_shortfall) {
+		float CO2e = mGasType == GasType::NATURAL_GAS ? mMains_gas_kg_C02e : mLPG_kg_C02e;
+
 		float total_heat_shortfall_sum = total_heat_shortfall.sum();
 
-		mScenario_fuel_CO2e = (total_heat_shortfall_sum * mMains_gas_kg_C02e);// / mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
-	};
-
-	void calculate_scenario_LPG_CO2e(const year_TS& total_heat_shortfall) {
-		float total_heat_shortfall_sum = total_heat_shortfall.sum();
-
-		mScenario_fuel_CO2e = (total_heat_shortfall_sum * mLPG_kg_C02e);// / mBoiler_efficiency; // AS to confirm whether to multiply by boilerefficiency or not but M-VEST v-06 does not as per !COSTX6 "(well2heat)"
+		// unlike the baseline, the scenario does not need to divide by the boiler efficiency
+		// as the gas heater has already done this
+		mScenario_fuel_CO2e = (total_heat_shortfall_sum * CO2e);
 	};
 
 
@@ -339,7 +330,9 @@ public:
 		const float mPetrol_displace_kg_CO2e = 0.9027f;
 
 		// coefficient applied to convert gas kWh to heat kWh (decimal, not percentage)
-		const float mBoiler_efficiency = 0.9f; 
+		const float mBoiler_efficiency;
+		const GasType mGasType;
+
 		const float mMains_gas_price = 0.068f; // £/kWh  
 		const float mLPG_cost_price = 0.122f; // £/kWh
 

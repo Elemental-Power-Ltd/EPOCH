@@ -9,36 +9,46 @@
 class GasCombustionHeater
 {
 public:
-	GasCombustionHeater(const SiteData& siteData) :
-		mTimesteps(siteData.timesteps),	// Used in init & functions
-		// FUTURE: Add GasCH power limit in task data
-			// GasCHmax_e(taskData.GasCH_heatpwr * taskData.timestep_hours),
-		// Initilaise results data vector with all values to zero
-		mGasCH_e(Eigen::VectorXf::Zero(mTimesteps))
+	GasCombustionHeater(const SiteData& siteData, GasCHData gasData) :
+		mTimesteps(siteData.timesteps),
+		mMaxOutput(gasData.maximum_output * siteData.timestep_hours),
+		mEfficiency(gasData.boiler_efficiency),
+		mGasCH_h(Eigen::VectorXf::Zero(mTimesteps))
 	{}
 
 	void AllCalcs(TempSum& tempSum) {
-		// VECTOR OPERATIONS APPLY TO ALL TIMESTEPS
-		// Clamp between 0 and GasCHmax to capture addressable heat load
-			//mGasCH_e = tempSum.Heat_e.cwiseMax(0.0f).cwiseMin(GasCHmax_e);
-		
-		// Assume infinite GasCH power provides all remaining heat load and Heat_h not -ve
-		mGasCH_e = tempSum.Heat_h;
-		tempSum.Heat_h(Eigen::VectorXf::Zero(mTimesteps));
 
-		//FUTURE: Enable GasCH to heat DHW (and poss pool)
-		//mGasCH_e = mGasCH_e + tempSum.DHW_load_h;
-		//tempSum.DHW_load_h(Eigen::VectorXf::Zero(mTimesteps);
-		//mGasCH_e = mGasCH_e + tempSum.Pool_h;
-		//tempSum.Pool_h(Eigen::VectorXf::Zero(mTimesteps);
+		year_TS heaterCapacity = Eigen::VectorXf::Constant(mTimesteps, mMaxOutput);
+
+		// First try to meet the remaining DHW heating demand
+		year_TS gasForDHW_h = tempSum.DHW_load_h.cwiseMax(0.0f).cwiseMin(heaterCapacity);
+		heaterCapacity -= gasForDHW_h;
+		tempSum.DHW_load_h -= gasForDHW_h;
+		mGasCH_h = gasForDHW_h;
+
+		// Then try to meet the remaining building heating demand
+		year_TS gasForBuilding_h = tempSum.Heat_h.cwiseMax(0.0f).cwiseMin(heaterCapacity);
+		heaterCapacity -= gasForBuilding_h;
+		tempSum.Heat_h -= gasForBuilding_h;
+		mGasCH_h += gasForBuilding_h;
+
+		// Finally try to meet the remaing pool heat
+		year_TS gasForPool_h = tempSum.Pool_h.cwiseMax(0.0f).cwiseMin(heaterCapacity);
+		heaterCapacity -= gasForPool_h;
+		tempSum.Pool_h -= gasForPool_h;
+		mGasCH_h += gasForPool_h;
+
+		// finally, divide by the efficiency to calculate the input energy needed
+		mGasCH_h /= mEfficiency;
 	}
 
 	void Report(ReportData& reportData) {
-		reportData.GasCH_load = mGasCH_e;
+		reportData.GasCH_load = mGasCH_h;
 	}
 
 private:
 	const size_t mTimesteps;
-	// const float GasCHmax_e;
-	year_TS mGasCH_e;
+	float mMaxOutput;
+	float mEfficiency;
+	year_TS mGasCH_h;
 };
