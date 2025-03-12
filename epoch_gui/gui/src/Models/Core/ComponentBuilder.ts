@@ -11,6 +11,11 @@ export type ComponentType =
     | "mop"
     | "renewables";
 
+// a list of components to exclude from selection by default
+// in future we may define a list of visible/excluded components on a per-client basis
+// but for now all we want to do is exclude the mop component
+export const defaultExcludedComponents: ComponentType[] = ["mop"]
+
 // Whether we are building components for a
 //  - a single simulation (TaskData)
 //  - an optimisation (SiteRange)

@@ -2,7 +2,7 @@ import React, {FC, useState, useEffect, Component} from "react";
 import {Select, MenuItem, SelectChangeEvent} from "@mui/material";
 import { Button, Box } from "@mui/material";
 
-import {ComponentType, ComponentsMap} from "../../Models/Core/ComponentBuilder"
+import {ComponentType, ComponentsMap, defaultExcludedComponents} from "../../Models/Core/ComponentBuilder"
 
 import {getComponentInfo} from "./ComponentDisplayInfo";
 
@@ -15,7 +15,11 @@ interface ComponentSelectorProps {
 const ComponentSelector: FC<ComponentSelectorProps> = (
     {componentsState, onAddComponent, onRemoveComponent}) => {
 
-    const componentTypes = Object.keys(componentsState) as ComponentType[];
+    const allComponentTypes = Object.keys(componentsState) as ComponentType[];
+
+    const componentTypes = allComponentTypes.filter(
+        (component) => !defaultExcludedComponents.includes(component));
+
 
     const onToggle = (type: ComponentType) => {
         if (componentsState[type].selected) {
