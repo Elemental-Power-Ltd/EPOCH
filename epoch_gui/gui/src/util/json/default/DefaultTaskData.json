@@ -9,7 +9,7 @@
     "hotroom_temp": 43.0
   },
   "domestic_hot_water": {
-    "cylinder_volume": 2500.0
+    "cylinder_volume": 100.0
   },
   "electric_vehicles": {
     "flexible_load_ratio": 0.5,
@@ -22,20 +22,20 @@
 
 
   "energy_storage_system": {
-    "capacity": 800.0,
-    "charge_power": 300.0,
-    "discharge_power": 300.0,
+    "capacity": 20.0,
+    "charge_power": 10.0,
+    "discharge_power": 10.0,
     "battery_mode": "CONSUME",
     "initial_charge": 0.0
   },
 "grid": {
-    "grid_export": 100.0,
-    "grid_import": 140.0,
+    "grid_export": 23.0,
+    "grid_import": 23.0,
     "import_headroom": 0.4,
     "tariff_index": 0
   },
   "heat_pump": {
-    "heat_power": 70.0,
+    "heat_power": 20.0,
     "heat_source": "AMBIENT_AIR",
     "send_temp": 70.0
   },
@@ -43,7 +43,7 @@
     "maximum_load": 300.0
   },
   "renewables": {
-    "yield_scalars": [ 500 ]
+    "yield_scalars": [ 20 ]
   },
   "config": {
     "capex_limit": 2500000.0
