@@ -31,7 +31,7 @@ struct DataCentreData {
 };
 
 struct DomesticHotWater {
-    float cylinder_volume = 2500.0f;
+    float cylinder_volume = 100.0f;
     bool operator==(const DomesticHotWater&) const = default;
 };
 
@@ -49,9 +49,9 @@ struct ElectricVehicles {
 enum class BatteryMode {CONSUME, CONSUME_PLUS};
 
 struct EnergyStorageSystem {
-    float capacity = 800.0f;
-    float charge_power = 300.0f;
-    float discharge_power = 300.0f;
+    float capacity = 20.0f;
+    float charge_power = 10.0f;
+    float discharge_power = 10.0f;
     BatteryMode battery_mode = BatteryMode::CONSUME;
     float initial_charge = 0.0f;
 
@@ -70,8 +70,8 @@ struct GasCHData {
 };
 
 struct GridData {
-    float grid_export = 100.0f;
-    float grid_import = 140.0f;
+    float grid_export = 23.0;
+    float grid_import = 23.0;
     float import_headroom = 0.4f;
     size_t tariff_index = 0;
 
@@ -81,7 +81,7 @@ struct GridData {
 enum class HeatSource {AMBIENT_AIR, HOTROOM};
 
 struct HeatPumpData {
-    float heat_power = 70.0f;
+    float heat_power = 20.0f;
     HeatSource heat_source = HeatSource::AMBIENT_AIR;
     float send_temp = 70.0f;
 
