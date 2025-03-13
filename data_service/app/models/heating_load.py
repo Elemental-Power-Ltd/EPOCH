@@ -84,6 +84,11 @@ class EpochDHWEntry(EpochEntry):
     )
 
 
+class HeatingLoadModelEnum(StrEnum):
+    Regression = "regression"
+    ThermalModel = "thermal_model"
+
+
 class HeatingLoadRequest(DatasetIDWithTime):
     interventions: list[InterventionEnum] = Field(
         examples=[[InterventionEnum.Loft], []],
@@ -95,6 +100,13 @@ class HeatingLoadRequest(DatasetIDWithTime):
         default=1.0,
         description="What fraction of the non-varying load is due to DHW."
         + "For most buildings this should be 1, unless there is an unusually inefficient heating system.",
+    )
+    model_type: HeatingLoadModelEnum = Field(
+        description="Which type of underyling heating load model to use.", default=HeatingLoadModelEnum.Regression
+    )
+    site_id: site_id_t | None = pydantic.Field(description="The site ID you want to analyse", default=None)
+    thermal_model_dataset_id: dataset_id_t | None = Field(
+        description="Which underlying thermal model to use if in thermal model mode", default=None
     )
 
     @pydantic.model_validator(mode="after")

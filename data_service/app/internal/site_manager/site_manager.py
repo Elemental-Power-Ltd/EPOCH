@@ -11,7 +11,7 @@ from app.models.core import DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetI
 from app.routers.air_source_heat_pump import get_ashp_input, get_ashp_output
 from app.routers.carbon_intensity import get_grid_co2
 from app.routers.electricity_load import get_blended_electricity_load
-from app.routers.heating_load import get_air_temp, get_dhw_load, get_heating_load
+from app.routers.heating_load.get_heating_loads import get_air_temp, get_dhw_load, get_heating_load
 from app.routers.import_tariffs import get_import_tariffs
 from app.routers.renewables import get_renewables_generation
 

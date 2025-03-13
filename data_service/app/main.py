@@ -21,7 +21,6 @@ from .routers import (
     optimisation,
     renewables,
     site_manager,
-    thermal_model,
     weather,
 )
 
@@ -40,7 +39,7 @@ app.add_middleware(
 app.include_router(client_data.router)
 app.include_router(meter_data.router)
 app.include_router(weather.router)
-app.include_router(heating_load.router)
+app.include_router(heating_load.api_router)
 app.include_router(renewables.router)
 app.include_router(carbon_intensity.router)
 app.include_router(optimisation.router)
@@ -48,7 +47,6 @@ app.include_router(air_source_heat_pump.router)
 app.include_router(import_tariffs.router)
 app.include_router(site_manager.router)
 app.include_router(electricity_load.router)
-app.include_router(thermal_model.router)
 
 
 @app.get("/")

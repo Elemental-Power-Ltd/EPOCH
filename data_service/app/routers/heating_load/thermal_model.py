@@ -1,35 +1,40 @@
-"""Fitting, database writing, and retrieving endpoints for the thermal model."""
+"""
+Thermal model fitting API endpoints.
+
+This module provides FastAPI endpoints for creating, retrieving, and managing
+thermal models of buildings. It supports:
+- Fitting thermal models to historical gas consumption data
+- Background processing for computationally intensive modeling tasks
+- Database storage and retrieval of fitted thermal model parameters
+- Integration with weather and meter data for comprehensive modeling
+
+Thermal models characterize building heat loss properties and can be used to
+simulate heating requirements under different conditions.
+"""
 
 import asyncio
 import datetime
-import itertools
 import json
 import operator
 import uuid
 
 import httpx
-import numpy as np
 import pandas as pd
 import pydantic
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from fastapi.encoders import jsonable_encoder
 
-from ..dependencies import DatabasePoolDep, HttpClientDep, ProcessPoolDep
-from ..internal.epl_typing import HHDataFrame
-from ..internal.gas_meters.domestic_hot_water import get_poisson_weights
-from ..internal.thermal_model.building_fabric import apply_thermal_model_fabric_interventions
-from ..internal.thermal_model.fitting import fit_to_gas_usage, simulate_parameters
-from ..models.core import DatasetEntry, DatasetID, DatasetTypeEnum, SiteIDWithTime
-from ..models.heating_load import InterventionEnum, ThermalModelResult
-from ..models.thermal_model import ThermalModelRequest
-from ..models.weather import WeatherRequest
-from .client_data import get_location
-from .heating_load import get_thermal_model
-from .meter_data import get_meter_data
-from .site_manager import list_elec_datasets, list_gas_datasets, list_thermal_models
-from .weather import get_weather
-
-router = APIRouter()
+from ...dependencies import DatabasePoolDep, ProcessPoolDep
+from ...internal.site_manager.dataset_lists import list_elec_datasets, list_gas_datasets, list_thermal_models
+from ...internal.thermal_model.fitting import fit_to_gas_usage
+from ...models.core import DatasetID, DatasetTypeEnum
+from ...models.heating_load import ThermalModelResult
+from ...models.thermal_model import ThermalModelRequest
+from ...models.weather import WeatherRequest
+from ..client_data import get_location
+from ..meter_data import get_meter_data
+from ..weather import get_weather
+from .router import api_router
 
 
 async def file_params_with_db(
@@ -110,120 +115,39 @@ async def thermal_fitting_process_wrapper(
     await file_params_with_db(pool, site_id, task_id, result, datasets)
 
 
-@router.post("/generate-thermal-model-heating-load")
-async def generate_thermal_model_heating_load(
-    pool: DatabasePoolDep,
-    http_client: HttpClientDep,
-    site_params: SiteIDWithTime,
-    thermal_model_dataset_id: DatasetID,
-    interventions: list[InterventionEnum] | None = None,
-) -> DatasetEntry:
+@api_router.post("/get-thermal-model")
+async def get_thermal_model(pool: DatabasePoolDep, dataset_id: DatasetID) -> ThermalModelResult:
     """
-    Generate a heating load using the thermal model.
+    Get thermal model fitted parameters from the database.
 
     Parameters
     ----------
     pool
-        Shared database pool for the PostgreSQL database, which should contain weather and thermal models
-    http_client
-        HTTP Client connection pool for the access to 3rd party APIs
-    site_params
-        The Site ID you want to model, as well as the start and end timestamps you want a heating load for
-    thermal_model_dataset_id
-        The thermal model you want to use for this process
-    interventions
-        The interventions you wish to apply to this site, e.g. Cladding or DoubleGlazing. Defaults to an empty list
-        (no interventions).
+        Connection pool for the database
+    dataset_id
+        The ID of the thermal model run you want to get data for
 
     Returns
     -------
-    DatasetEntry
-        ID of the generated thermal model dataset.
+    dict[str, float]
+        Physical parameters as keys with values as floats, see fit_to_gas_usage for more detail
     """
-    thermal_model = await get_thermal_model(pool, dataset_id=thermal_model_dataset_id)
-    if interventions is not None:
-        thermal_model = apply_thermal_model_fabric_interventions(params=thermal_model, interventions=interventions)
-
-    async with pool.acquire() as conn:
-        location = await get_location(site_params, conn)
-        weather_records = await get_weather(
-            weather_request=WeatherRequest(location=location, start_ts=site_params.start_ts, end_ts=site_params.end_ts),
-            conn=conn,
-            http_client=http_client,
-        )
-        if weather_records is None:
-            raise HTTPException(400, f"Failed to get a weather dataset for {site_params}.")
-        weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records], index="timestamp")
-        weather_df["timestamp"] = weather_df.index
-    elec_df = None
-    heating_load_df = simulate_parameters(
-        scale_factor=thermal_model.scale_factor,
-        ach=thermal_model.ach,
-        u_value=thermal_model.u_value,
-        boiler_power=thermal_model.boiler_power,
-        setpoint=thermal_model.setpoint,
-        elec_df=elec_df,
-        start_ts=site_params.start_ts,
-        end_ts=site_params.end_ts,
-        weather_df=weather_df,
-    )
-    # We simulated at a much lower timestep than we want for EPOCH, so
-    # regroup it here by adding up the heating demands
-    hh_heating_load_df = heating_load_df.resample(pd.Timedelta(minutes=30)).sum(numeric_only=True)
-    # ... but we don't want to sum temperatures
-    hh_heating_load_df["external_temperatures"] = (
-        heating_load_df["external_temperatures"].resample(pd.Timedelta(minutes=30)).mean(numeric_only=True)
-    )
-    hh_heating_load_df["start_ts"] = hh_heating_load_df.index
-    hh_heating_load_df["end_ts"] = hh_heating_load_df.index + pd.Timedelta(minutes=30)
-
-    dataset_id = uuid.uuid4()
-    created_at = datetime.datetime.now(datetime.UTC)
-
-    # TODO (2025-02-02 MHJB): improve DHW load here
-    DHW_EVENT_SIZE = 1.0
-    poisson_weights = get_poisson_weights(HHDataFrame(hh_heating_load_df)) * thermal_model.dhw_usage
-    dhw_load = np.random.default_rng().poisson(poisson_weights) * DHW_EVENT_SIZE
-    await pool.execute(
+    res = await pool.fetchval(
         """
-        INSERT INTO heating.metadata
-        (dataset_id, site_id, created_at, params, interventions)
-        VALUES ($1, $2, $3, $4, $5)""",
-        dataset_id,
-        site_params.site_id,
-        created_at,
-        json.dumps({"thermal_model_dataset_id": str(thermal_model_dataset_id)}),
-        interventions,
+        SELECT
+            results
+        FROM heating.thermal_model
+        WHERE dataset_id = $1
+        ORDER BY created_at
+        LIMIT 1""",
+        dataset_id.dataset_id,
     )
-
-    await pool.copy_records_to_table(
-        schema_name="heating",
-        table_name="synthesised",
-        columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
-        records=zip(
-            itertools.repeat(dataset_id, len(hh_heating_load_df)),
-            hh_heating_load_df.start_ts,
-            hh_heating_load_df.end_ts,
-            hh_heating_load_df.heating_usage,
-            dhw_load,
-            hh_heating_load_df.external_temperatures,
-            strict=True,
-        ),
-    )
-
-    return DatasetEntry(
-        dataset_id=dataset_id,
-        dataset_type=DatasetTypeEnum.HeatingLoad,
-        created_at=created_at,
-        start_ts=site_params.start_ts,
-        end_ts=site_params.end_ts,
-        num_entries=len(hh_heating_load_df),
-        resolution=pd.Timedelta(minutes=30),  # hard coded for now
-        dataset_subtype={"type": "thermal_model", "interventions": interventions},  # TODO: improve this?
-    )
+    if res is None:
+        raise HTTPException(404, f"Could not find a thermal model for {dataset_id.dataset_id}")
+    return ThermalModelResult.model_validate_json(res)
 
 
-@router.post("/fit-thermal-model")
+@api_router.post("/fit-thermal-model")
 async def fit_thermal_model_endpoint(
     pool: DatabasePoolDep, process_pool: ProcessPoolDep, bgt: BackgroundTasks, params: ThermalModelRequest
 ) -> dict[str, pydantic.UUID4]:
