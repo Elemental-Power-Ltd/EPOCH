@@ -43,6 +43,7 @@ class ElectricVehicles:
 
 class BatteryMode(Enum):
     CONSUME = "CONSUME"
+    CONSUME_PLUS = "CONSUME_PLUS"
 
 class EnergyStorageSystem:
     capacity: float
@@ -50,6 +51,15 @@ class EnergyStorageSystem:
     discharge_power: float
     battery_mode: BatteryMode
     initial_charge: float
+
+class GasType(Enum):
+    NATURAL_GAS = "NATURAL_GAS"
+    LIQUID_PETROLEUM_GAS = "LIQUID_PETROLEUM_GAS"
+
+class GasHeater:
+    maximum_output: float
+    gas_type: GasType
+    boiler_efficiency: float
 
 class Grid:
     grid_export: float
@@ -79,6 +89,7 @@ class TaskData:
     domestic_hot_water: DomesticHotWater
     electric_vehicles: ElectricVehicles
     energy_storage_system: EnergyStorageSystem
+    gas_heater: GasHeater
     grid: Grid
     heat_pump: HeatPump
     mop: Mop

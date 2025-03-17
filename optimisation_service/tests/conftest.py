@@ -1,8 +1,8 @@
 import json
+import random
 from datetime import timedelta
 from pathlib import Path
 
-import numpy as np
 import pytest
 from epoch_simulator import TaskData
 
@@ -20,6 +20,8 @@ from app.models.site_range import (
     Config,
     DomesticHotWater,
     EnergyStorageSystem,
+    GasHeater,
+    GasTypeEnum,
     Grid,
     HeatPump,
     HeatSourceEnum,
@@ -44,6 +46,12 @@ def default_siterange() -> SiteRange:
         battery_mode=[BatteryModeEnum.CONSUME],
         initial_charge=[0],
     )
+    gas_heater = GasHeater(
+        COMPONENT_IS_MANDATORY=True,
+        maximum_output=[40],
+        boiler_efficiency=[0.9],
+        gas_type=[GasTypeEnum.NATURAL_GAS, GasTypeEnum.LIQUID_PETROLEUM_GAS]
+    )
     grid = Grid(
         COMPONENT_IS_MANDATORY=True,
         grid_export=[60],
@@ -61,6 +69,7 @@ def default_siterange() -> SiteRange:
         building=building,
         domestic_hot_water=domestic_hot_water,
         energy_storage_system=energy_storage_system,
+        gas_heater=gas_heater,
         grid=grid,
         heat_pump=heat_pump,
         renewables=renewables,
@@ -111,23 +120,22 @@ def default_problem_instance(default_objectives, default_constraints, default_po
 
 def dummy_site_solution(site: Site) -> SiteSolution:
     site_scenario = {}
-    rng = np.random.default_rng()
     site_range = site.site_range
     for asset_name, asset in site_range.model_dump(exclude_none=True).items():
         if asset_name == "config":
             site_scenario[asset_name] = asset
         elif asset_name == "renewables":
-            site_scenario[asset_name] = {"yield_scalars": [float(rng.choice(a=asset["yield_scalars"][0]))]}
+            site_scenario[asset_name] = {"yield_scalars": [random.choice(asset["yield_scalars"][0])]}
         else:
             site_scenario[asset_name] = {}
             asset.pop("COMPONENT_IS_MANDATORY")
             for attribute_name, attribute_values in asset.items():
                 if len(attribute_values) > 1:
-                    site_scenario[asset_name][attribute_name] = float(rng.choice(a=attribute_values))
+                    site_scenario[asset_name][attribute_name] = random.choice(attribute_values)
                 else:
                     site_scenario[asset_name][attribute_name] = attribute_values[0]
     scenario = TaskData.from_json(json.dumps(site_scenario))
-    metric_values = {metric: rng.random() * 100 for metric in _METRICS}
+    metric_values = {metric: random.random() * 100 for metric in _METRICS}
     return SiteSolution(scenario=scenario, metric_values=metric_values)
 
 

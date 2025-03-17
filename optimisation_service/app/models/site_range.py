@@ -48,6 +48,18 @@ class EnergyStorageSystem(BaseModel):
     initial_charge: list[Annotated[float, Field(ge=0.0)]]
 
 
+class GasTypeEnum(StrEnum):
+    NATURAL_GAS = "NATURAL_GAS"
+    LIQUID_PETROLEUM_GAS = "LIQUID_PETROLEUM_GAS"
+
+
+class GasHeater(BaseModel):
+    COMPONENT_IS_MANDATORY: bool
+    maximum_output: list[Annotated[float, Field(gt=0.0)]]
+    gas_type: list[GasTypeEnum]
+    boiler_efficiency: list[Annotated[float, Field(gt=0.0)]]
+
+
 class Grid(BaseModel):
     COMPONENT_IS_MANDATORY: bool
     grid_export: list[Annotated[int, Field(ge=0)]]
@@ -88,6 +100,7 @@ class SiteRange(BaseModel):
     domestic_hot_water: DomesticHotWater | None = None
     electric_vehicles: ElectricVehicles | None = None
     energy_storage_system: EnergyStorageSystem | None = None
+    gas_heater: GasHeater | None = None
     grid: Grid | None = None
     heat_pump: HeatPump | None = None
     mop: Mop | None = None

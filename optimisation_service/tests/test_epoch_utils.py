@@ -6,6 +6,7 @@ from epoch_simulator import (
     DataCentre,
     DomesticHotWater,
     EnergyStorageSystem,
+    GasHeater,
     Grid,
     HeatPump,
     Renewables,
@@ -57,6 +58,7 @@ def test_convert_TaskData_to_dictionary() -> None:
     td.data_centre = DataCentre()
     td.domestic_hot_water = DomesticHotWater()
     td.energy_storage_system = EnergyStorageSystem()
+    td.gas_heater = GasHeater()
 
     res = convert_TaskData_to_dictionary(td)
 
@@ -68,3 +70,4 @@ def test_convert_TaskData_to_dictionary() -> None:
     assert "data_centre" in res
     assert "domestic_hot_water" in res
     assert "energy_storage_system" in res
+    assert "gas_heater" in res

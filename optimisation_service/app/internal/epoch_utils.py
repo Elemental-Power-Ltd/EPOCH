@@ -56,7 +56,7 @@ def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:
         if len(asset_fields) > 0:
             for asset_field in asset_fields:
                 attr_value = getattr(asset, asset_field)
-                if asset_field in ["heat_source", "battery_mode"]:
+                if asset_field in ["heat_source", "battery_mode", "gas_type"]:
                     asset_dict[asset_field] = attr_value.name
                 else:
                     asset_dict[asset_field] = attr_value
