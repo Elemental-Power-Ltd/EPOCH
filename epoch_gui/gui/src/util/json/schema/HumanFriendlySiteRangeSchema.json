@@ -83,6 +83,20 @@
         "initial_charge"
       ]
     },
+    "gas_heater": {
+      "type": "object",
+      "title": "Gas Heater",
+      "properties": {
+        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
+        "maximum_output": {"$ref": "#/definitions/paramRangeFloat", "title": "Maximum Output"},
+        "gas_type": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["NATURAL_GAS", "LIQUID_PETROLEUM_GAS"]},
+          "title": "Gas Type"
+        },
+        "boiler_efficiency": {"$ref": "#/definitions/paramRangeFloat", "title": "Boiler Efficiency"}
+      }
+    },
     "grid": {
       "type": "object",
       "title": "Grid",

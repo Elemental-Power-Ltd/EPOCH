@@ -6,6 +6,7 @@ export type ComponentType =
     | "domestic_hot_water"
     | "electric_vehicles"
     | "energy_storage_system"
+    | "gas_heater"
     | "grid"
     | "heat_pump"
     | "mop"

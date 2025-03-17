@@ -182,6 +182,38 @@
         "initial_charge"
       ]
     },
+    "gas_heater": {
+      "type": "object",
+      "properties": {
+        "COMPONENT_IS_MANDATORY": {
+          "type": "boolean"
+        },
+        "maximum_output": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "gas_type": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "NATURAL_GAS", "LIQUID_PETROLEUM_GAS"
+            ]
+          }
+        },
+        "boiler_efficiency": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
     "grid": {
       "type": "object",
       "properties": {

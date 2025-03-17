@@ -31,6 +31,12 @@
     "battery_mode": ["CONSUME"],
     "initial_charge": {"min": 0, "max":  0, "step": 0}
   },
+  "gas_heater": {
+    "COMPONENT_IS_MANDATORY": true,
+    "maximum_output": {"min": 40, "max":  40, "step":  0},
+    "gas_type": ["NATURAL_GAS"],
+    "boiler_efficiency": {"min": 0.9, "max":  0.9, "step":  0}
+  },
   "grid": {
     "COMPONENT_IS_MANDATORY": true,
     "grid_export": {"min": 23.0, "max":  23.0, "step": 0.0},

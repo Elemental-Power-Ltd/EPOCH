@@ -35,6 +35,11 @@ export const getInitialComponentsMap = (mode: BuilderMode): ComponentsMap => {
             selected: false,
             data: defaultData["energy_storage_system"]
         },
+        gas_heater: {
+            "displayName": "Gas Heater",
+            selected: false,
+            data: defaultData["gas_heater"]
+        },
         grid: {
             displayName: "Grid",
             selected: true,

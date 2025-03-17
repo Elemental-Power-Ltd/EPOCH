@@ -19,8 +19,6 @@
     "ultra_chargers": 0,
     "scalar_electrical_load": 3.0
   },
-
-
   "energy_storage_system": {
     "capacity": 20.0,
     "charge_power": 10.0,
@@ -28,7 +26,12 @@
     "battery_mode": "CONSUME",
     "initial_charge": 0.0
   },
-"grid": {
+  "gas_heater": {
+    "maximum_output": 40,
+    "gas_type": "NATURAL_GAS",
+    "boiler_efficiency": 0.9
+  },
+  "grid": {
     "grid_export": 23.0,
     "grid_import": 23.0,
     "import_headroom": 0.4,

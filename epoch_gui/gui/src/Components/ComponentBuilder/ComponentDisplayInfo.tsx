@@ -5,7 +5,7 @@ import {
   mdiEvStation, mdiGreenhouse, mdiHeatPump,
   mdiHome, mdiHomeBattery, mdiServer, mdiSolarPowerVariant,
   mdiTransmissionTower,
-    mdiWaterBoiler
+  mdiWaterBoiler, mdiGasBurner
 } from "@mdi/js";
 
 
@@ -39,6 +39,10 @@ export const componentInfoLookup: Record<
   energy_storage_system: {
     icon: <Icon path={mdiHomeBattery} size={2}/>,
     displayName: "Energy Storage System",
+  },
+  gas_heater: {
+    icon: <Icon path={mdiGasBurner} size={2}/>,
+    displayName: "Gas Heater",
   },
   grid: {
     icon: <Icon path={mdiTransmissionTower} size={2}/>,
