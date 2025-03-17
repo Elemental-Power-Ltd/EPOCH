@@ -11,11 +11,17 @@ class SiteSolution:
     scenario: TaskData
     metric_values: MetricValues
 
+    def __hash__(self):
+        return hash(self.scenario)
+
 
 @dataclass
 class PortfolioSolution:
     scenario: dict[str, SiteSolution]
     metric_values: MetricValues
+
+    def __hash__(self):
+        return hash(tuple(self.scenario.values()))
 
 
 @dataclass
