@@ -241,6 +241,25 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 
 	myCost.calculateCosts_no_CAPEX(costVectors);
 
+	result.total_annualised_cost = myCost.get_total_annualised_cost();
+	result.project_CAPEX = myCost.get_project_CAPEX();
+	result.scenario_cost_balance = myCost.get_scenario_cost_balance();
+	result.payback_horizon_years = myCost.get_payback_horizon_years();
+	result.scenario_carbon_balance_scope_1 = myCost.get_scenario_carbon_balance_scope_1();
+	result.scenario_carbon_balance_scope_2 = myCost.get_scenario_carbon_balance_scope_2();
+
+	result.metrics.total_gas_used = reportData.GasCH_load.sum();
+	result.metrics.total_electricity_imported = reportData.Grid_Import.sum();
+	result.metrics.total_electricity_generated = reportData.PVacGen.sum();
+	result.metrics.total_electricity_exported = reportData.Grid_Export.sum();
+
+	result.metrics.total_electrical_shortfall = reportData.Actual_import_shortfall.sum();
+	result.metrics.total_heat_shortfall = reportData.Heat_shortfall.sum();
+
+	result.metrics.total_gas_import_cost = myCost.get_scenario_fuel_cost();
+	result.metrics.total_electricity_import_cost = myCost.get_scenario_import_cost();
+	result.metrics.total_electricity_export_gain = myCost.get_scenario_export_gains();
+
 	if (simulationType != SimulationType::FullReporting) {
 		// TEMPORARY HACK
 		// until the costs have been refactored, we are always doing full reporting
@@ -250,14 +269,6 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 		// we remove the reportData again here
 		result.report_data = std::nullopt;
 	}
-	
-	result.total_annualised_cost = myCost.get_total_annualised_cost();
-	result.project_CAPEX = myCost.get_project_CAPEX();
-	result.scenario_cost_balance = myCost.get_scenario_cost_balance();
-	result.payback_horizon_years = myCost.get_payback_horizon_years();
-	result.scenario_carbon_balance_scope_1 = myCost.get_scenario_carbon_balance_scope_1();
-	result.scenario_carbon_balance_scope_2 = myCost.get_scenario_carbon_balance_scope_2();
-
 	
 	// calculate elaspsed run time
 	auto end = std::chrono::high_resolution_clock::now();

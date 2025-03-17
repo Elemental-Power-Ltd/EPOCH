@@ -27,16 +27,16 @@ struct EVChargerCosts {
 // TODO - this should ultimately be read from JSON
 
 struct CapexPrices {
-	// dhw costs are in £ / litre
+	// dhw costs are in Â£ / litre
 	ThreeTierCostData dhw_prices = ThreeTierCostData(1000.0f, 300.0f, 800.0f, 6.5f, 5.0f, 3.0f);
 
-	//EV Charger costs are in £ / charger (of each of the four types)
+	//EV Charger costs are in Â£ / charger (of each of the four types)
 	EVChargerCosts ev_prices = EVChargerCosts();
 
-	// grid costs are in £ / kW DC
+	// grid costs are in Â£ / kW DC
 	ThreeTierCostData grid_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 240.0f, 160.0f, 120.0f);
 
-	// Heatpump costs are in £ / KW DC
+	// Heatpump costs are in Â£ / KW DC
 	// 2500 mid_cost not a mistake - mid range HP have reverse economies of scale,
 	// fixed costs deals with most of CAPEX for small <15 kW systems
 	ThreeTierCostData heatpump_prices = ThreeTierCostData(4000.0f, 15.0f, 100.0f, 800.0f, 2500.0f, 1500.0f);

@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "1.4.1";
+const std::string EPOCH_VERSION = "1.5.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -72,6 +72,22 @@ struct ReportData {
 	year_TS ASHP_used_hotroom_heat;
 };
 
+struct SimulationMetrics {
+	// energy totals in kWh
+	float total_gas_used;
+	float total_electricity_imported;
+	float total_electricity_generated;
+	float total_electricity_exported;
+
+	float total_electrical_shortfall;
+	float total_heat_shortfall;
+
+	// financial totals in £
+	float total_gas_import_cost;
+	float total_electricity_import_cost;
+	float total_electricity_export_gain;
+};
+
 struct SimulationResult {
 	float runtime;
 
@@ -81,6 +97,8 @@ struct SimulationResult {
 	float payback_horizon_years;
 	float scenario_carbon_balance_scope_1;
 	float scenario_carbon_balance_scope_2;
+
+	SimulationMetrics metrics;
 
 	std::optional<ReportData> report_data;
 };

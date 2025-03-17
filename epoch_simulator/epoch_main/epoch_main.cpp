@@ -107,4 +107,30 @@ void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 	spdlog::info("Annualised Cost: {:.2f} pounds / year", result.total_annualised_cost);
 	spdlog::info("Cost Balance: {:.2f} pounds / year", result.scenario_cost_balance);
 	spdlog::info("Payback Horizon: {} years", result.payback_horizon_years);
+
+	spdlog::info(
+		"Energy totals (kWh):\n"
+		" - Gas used = {}\n"
+		" - Electricity imported = {}\n"
+		" - Electricity generated = {}\n"
+		" - Electricity exported = {}\n"
+		" - Electrical shortfall = {}\n"
+		" - Heat shortfall = {}\n\n"
+		"Financial totals (£):\n"
+		" - Gas import cost = {}\n"
+		" - Electricity import cost = {}\n"
+		" - Electricity export gain = {}\n",
+		result.metrics.total_gas_used,
+		result.metrics.total_electricity_imported,
+		result.metrics.total_electricity_generated,
+		result.metrics.total_electricity_exported,
+		result.metrics.total_electrical_shortfall,
+		result.metrics.total_heat_shortfall,
+		result.metrics.total_gas_import_cost,
+		result.metrics.total_electricity_import_cost,
+		result.metrics.total_electricity_export_gain
+	);
+
+
+
 }

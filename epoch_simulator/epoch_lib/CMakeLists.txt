@@ -50,6 +50,8 @@ add_library(Epoch_lib STATIC
 	"Simulation/Costs/Opex.cpp"
 	"Simulation/Costs/CostData.cpp"
 	"io/TaskDataJson.cpp"
+	"io/ToString.hpp"
+	"io/ToString.cpp"
 )
 
 find_package(Eigen3 CONFIG REQUIRED)

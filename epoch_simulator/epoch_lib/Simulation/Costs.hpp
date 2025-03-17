@@ -314,6 +314,18 @@ public:
 		return mTotal_annualised_cost;
 	}
 
+	float get_scenario_fuel_cost() const {
+		return mScenario_fuel_cost;
+	}
+
+	float get_scenario_import_cost() const {
+		return mScenario_import_cost;
+	}
+
+	float get_scenario_export_gains() const {
+		return mScenario_export_cost;
+	}
+
 	// "hard wired" constants for the moment
 	private:
 		const TaskData& mTaskData;
