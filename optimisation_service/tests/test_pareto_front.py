@@ -2,7 +2,7 @@ from itertools import combinations
 
 import pytest
 
-from app.internal.pareto_front import portfolio_pareto_front
+from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.models.core import Site
 from app.models.metrics import _METRICS, Metric, MetricDirection
 
@@ -51,3 +51,17 @@ class TestPortfolioParetoFront:
         portfolio_solution_list = optimal_list + non_optimal_list
         res = portfolio_pareto_front(portfolio_solution_list, objectives)
         assert res == optimal_list
+
+
+class TestMergeAndOptimiseTwoPortfolioSolutionLists:
+    def test_it_works(self, default_objectives: list[Metric], default_portfolio: list[Site]):
+        site_names = [site.site_data.site_id for site in default_portfolio]
+        portfolio_solutions_1 = [dummy_portfolio_solution(default_portfolio) for _ in range(10)]
+        for site in default_portfolio:
+            site.site_data.site_id += "_2"
+            site_names.append(site.site_data.site_id)
+        portfolio_solutions_2 = [dummy_portfolio_solution(default_portfolio) for _ in range(10)]
+        pfs = merge_and_optimise_two_portfolio_solution_lists(portfolio_solutions_1, portfolio_solutions_2, default_objectives)
+        assert len(pfs) >= 1
+        for solution in pfs:
+            assert all(site in solution.scenario.keys() for site in site_names)
