@@ -14,6 +14,7 @@ from pymoo.core.repair import Repair  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
+from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.heuristics.population_init import generate_building_initial_population
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
 from app.internal.site_range import count_parameters_to_optimise
@@ -136,7 +137,7 @@ class ProblemInstance(ElementwiseProblem):
         """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
-    def convert_solution(self, x: npt.NDArray, site_name: str) -> TaskData:
+    def convert_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> TaskData:
         """
         Convert a candidate solution from an array of indeces to a site scenario.
 
@@ -167,6 +168,42 @@ class ProblemInstance(ElementwiseProblem):
             site_scenario.pop(asset)
         return TaskData.from_json(json.dumps(site_scenario))
 
+    def convert_site_scenario_to_chromosome(self, site_scenario: TaskData, site_name: str) -> npt.NDArray:
+        """
+        Convert a candidate solution from a site scenario to an array of indeces.
+
+        Parameters
+        ----------
+        TaskData
+            A site scenario.
+        site_name
+            The name of the building.
+
+        Returns
+        -------
+        x
+            A pymoo compatible site solution (array of indeces).
+        """
+        td_dict = convert_TaskData_to_dictionary(site_scenario)
+        rgen_number = 0
+        site_range = self.site_ranges[site_name]
+        x = []
+        for asset_name, attr_name in self.asset_parameters[site_name]:
+            if asset_name in td_dict:
+                if attr_name == "COMPONENT_IS_MANDATORY":
+                    x.append(1)
+                elif asset_name == "renewables":
+                    value = td_dict[asset_name]["yield_scalars"][rgen_number]
+                    x.append(site_range[asset_name][attr_name].index(value))
+                    rgen_number += 1
+                else:
+                    value = td_dict[asset_name][attr_name]
+                    x.append(site_range[asset_name][attr_name].index(value))
+            else:
+                x.append(0)
+
+        return np.array(x)
+
     def simulate_portfolio(self, x: npt.NDArray) -> PortfolioSolution:
         """
         Simulate a candidate portfolio solution.
@@ -182,7 +219,7 @@ class ProblemInstance(ElementwiseProblem):
             The evaluated candidate solution.
         """
         x_dict = self.split_solution(x)
-        portfolio_pytd = {name: self.convert_solution(x, name) for name, x in x_dict.items()}
+        portfolio_pytd = {name: self.convert_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
         return self.sim.simulate_portfolio(portfolio_pytd)
 
     def apply_directions(self, metric_values: MetricValues) -> MetricValues:

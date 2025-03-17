@@ -27,7 +27,7 @@ class TestProblemInstance:
         assert [x == y for x, y in zip(splits, res)]
 
     @pytest.mark.parametrize("x_value", [0, 1])
-    def test_convert_solution(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
+    def test_convert_chromosome_to_site_scenario(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
             res = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
@@ -37,6 +37,14 @@ class TestProblemInstance:
                     assert asset_name not in td_dict.keys()
                 else:
                     assert asset_name in td_dict.keys()
+
+    @pytest.mark.parametrize("x_value", [0, 1])
+    def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance):
+        for site in default_problem_instance.portfolio:
+            x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
+            site_scenario = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
+            chromosome = default_problem_instance.convert_site_scenario_to_chromosome(site_scenario, site.name)
+            assert all(chromosome == x)
 
     @pytest.mark.parametrize("x_value", [0, 1])
     def test_simulate_portfolio(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
