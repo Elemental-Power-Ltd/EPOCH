@@ -30,7 +30,7 @@ class TestProblemInstance:
     def test_convert_solution(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
-            res = default_problem_instance.convert_solution(x, site.name)
+            res = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
             td_dict = convert_TaskData_to_dictionary(res)
             for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
                 if not x_value and asset_name != "config" and not asset["COMPONENT_IS_MANDATORY"]:

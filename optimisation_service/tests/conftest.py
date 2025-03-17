@@ -133,7 +133,7 @@ def dummy_site_solution(site: Site) -> SiteSolution:
     return SiteSolution(scenario=scenario, metric_values=metric_values)
 
 
-def dummy_portfolio_results(portfolio: list[Site]) -> PortfolioSolution:
+def dummy_portfolio_solution(portfolio: list[Site]) -> PortfolioSolution:
     solution = {}
     building_metric_values = []
     for site in portfolio:
@@ -145,6 +145,10 @@ def dummy_portfolio_results(portfolio: list[Site]) -> PortfolioSolution:
 
 
 @pytest.fixture
-def dummy_optimisation_result(default_portfolio) -> OptimisationResult:
-    solutions = [dummy_portfolio_results(default_portfolio) for _ in range(10)]
-    return OptimisationResult(solutions=solutions, n_evals=999, exec_time=timedelta(seconds=99))
+def dummy_portfolio_solutions(default_portfolio: list[Site]) -> list[PortfolioSolution]:
+    return [dummy_portfolio_solution(default_portfolio) for _ in range(10)]
+
+
+@pytest.fixture
+def dummy_optimisation_result(dummy_portfolio_solutions: list[PortfolioSolution]) -> OptimisationResult:
+    return OptimisationResult(solutions=dummy_portfolio_solutions, n_evals=999, exec_time=timedelta(seconds=99))
