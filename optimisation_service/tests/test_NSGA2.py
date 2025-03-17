@@ -1,10 +1,11 @@
 import pytest
 
+from app.internal.ga_utils import ProblemInstance
 from app.internal.NSGA2 import NSGA2
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
-from app.models.result import OptimisationResult
+from app.models.result import OptimisationResult, PortfolioSolution
 
 
 class TestNSGA2:
@@ -13,6 +14,17 @@ class TestNSGA2:
         Test default algorithm initialisation.
         """
         NSGA2()
+
+    def test_load_existing_solutions(
+        self,
+        default_objectives: list[Metric],
+        default_constraints: Constraints,
+        default_portfolio: list[Site],
+        dummy_portfolio_solutions: list[PortfolioSolution],
+    ) -> None:
+        alg = NSGA2()
+        problem_instance = ProblemInstance(default_objectives, default_constraints, default_portfolio)
+        alg._load_existing_solutions(dummy_portfolio_solutions, problem_instance)
 
     @pytest.mark.slow
     def test_run(
@@ -23,4 +35,16 @@ class TestNSGA2:
         """
         alg = NSGA2(pop_size=512, n_offsprings=256, n_max_gen=10)
         res = alg.run(default_objectives, default_constraints, default_portfolio)
+        assert isinstance(res, OptimisationResult)
+
+    @pytest.mark.slow
+    def test_run_with_existing_solutions(
+        self,
+        default_objectives: list[Metric],
+        default_constraints: Constraints,
+        default_portfolio: list[Site],
+        dummy_portfolio_solutions: list[PortfolioSolution],
+    ) -> None:
+        alg = NSGA2(pop_size=512, n_offsprings=256, n_max_gen=10)
+        res = alg.run(default_objectives, default_constraints, default_portfolio, dummy_portfolio_solutions)
         assert isinstance(res, OptimisationResult)
