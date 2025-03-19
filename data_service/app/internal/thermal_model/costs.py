@@ -2,9 +2,8 @@
 
 from ...models.heating_load import InterventionEnum, ThermalModelResult
 from .building_elements import BuildingElement
-from .fitting import create_structure_from_params
 from .links import ConductiveLink
-from .network import HeatNetwork
+from .network import HeatNetwork, create_structure_from_params
 
 
 def get_wall_areas(structure: HeatNetwork) -> float:

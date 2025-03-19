@@ -60,11 +60,16 @@ async def file_params_with_db(
     datasets
         The underlying datasets used to calculate this model, for reproducibility.
 
+    Raises
+    ------
+    ValueError
+        If the insertion failed for whatever reason
+
     Returns
     -------
     None
     """
-    await pool.execute(
+    result = await pool.execute(
         """INSERT INTO heating.thermal_model VALUES ($1, $2, $3, $4, $5)""",
         task_id,
         datetime.datetime.now(datetime.UTC),
@@ -72,6 +77,8 @@ async def file_params_with_db(
         results.model_dump_json(),
         json.dumps(jsonable_encoder(datasets)),
     )
+    if result != "INSERT 0 1":
+        raise ValueError("Failed to insert results into database")
 
 
 async def thermal_fitting_process_wrapper(

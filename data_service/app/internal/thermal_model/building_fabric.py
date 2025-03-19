@@ -11,9 +11,8 @@ from pathlib import Path
 from ...models.heating_load import InterventionEnum, ThermalModelResult
 from ...models.weather import BaitAndModelCoefs
 from .building_elements import BuildingElement
-from .fitting import create_structure_from_params
-from .heat_capacities import CONCRETE_U_VALUE
-from .network import HeatNetwork
+from .heat_capacities import CONCRETE_U_VALUE, U_VALUES_PATH
+from .network import HeatNetwork, create_structure_from_params
 
 # FABRIC_SAVINGS = {
 #    InterventionEnum.Loft: 1 - (2.4 / 100),  # via NEED 2021
@@ -62,8 +61,65 @@ def apply_fabric_interventions(bait_coefs: BaitAndModelCoefs, interventions: lis
     return new_coefs
 
 
+def apply_interventions_to_structure(
+    structure: HeatNetwork, interventions: list[InterventionEnum], u_values_path: Path = U_VALUES_PATH
+) -> HeatNetwork:
+    """
+    Apply a list of interventions to a pre-constructed HeatNetwork representing a structure.
+
+    This will replace the heat transfer and ACH coefficients of the appropriate edges in the graph.
+
+    Parameters
+    ----------
+    HeatNetwork
+        A thermal network representing heat flows in a given building. This is copied, and not modified.
+    interventions
+        A list of interventions you would like to apply, e.g. InterventionEnum.Loft
+    u_values_path
+        Path to a JSON file containing U-values for interventions (you may wish to change this if importing from a notebook)
+
+    Returns
+    -------
+    HeatNetwork
+        A new heat network with the fabric interventions applied, ready for simulation.
+    """
+    new_structure = copy.deepcopy(structure)
+    U_VALUE_DB = json.loads(u_values_path.read_text())
+    if InterventionEnum.Loft in interventions:
+        new_loft_u = U_VALUE_DB[
+            "Pitched roof - Slates or tiles, sarking felt, ventilated air space,"
+            + " 300mm insulation between joists, 9.5 mm plasterboard"
+        ]
+        new_structure[BuildingElement.InternalAir][BuildingElement.Roof]["conductive"].heat_transfer = new_loft_u
+
+    if InterventionEnum.DoubleGlazing in interventions:
+        new_window_u = U_VALUE_DB["Glazed wood or PVC-U door Metal Double Glazed"]
+
+        for window in [BuildingElement.WindowsSouth, BuildingElement.WindowsNorth]:
+            new_structure[BuildingElement.InternalAir][window]["conductive"].heat_transfer = new_window_u
+            new_structure[window][BuildingElement.ExternalAir]["conductive"].heat_transfer = new_window_u
+
+        new_structure[BuildingElement.InternalAir][BuildingElement.ExternalAir]["convective"].ach *= 0.8
+
+    if InterventionEnum.Cladding in interventions:
+        new_wall_u = U_VALUE_DB[
+            "Shiplap boards, airspace, standard aerated block 100mm,"
+            + " mineral wool slab in cavity 50mm, 125mm high performance block (K=0.11), 13mm plaster"
+        ]
+        for wall in [BuildingElement.WallSouth, BuildingElement.WallEast, BuildingElement.WallNorth, BuildingElement.WallWest]:
+            new_structure[BuildingElement.InternalAir][wall]["conductive"].heat_transfer = new_wall_u
+            new_structure[wall][BuildingElement.ExternalAir]["conductive"].heat_transfer = new_wall_u
+
+        new_structure[BuildingElement.InternalAir][BuildingElement.ExternalAir]["convective"].ach = 0.6
+
+    return new_structure
+
+
 def apply_thermal_model_fabric_interventions(
-    params: ThermalModelResult, interventions: list[InterventionEnum], structure: HeatNetwork | None = None
+    params: ThermalModelResult,
+    interventions: list[InterventionEnum],
+    structure: HeatNetwork | None = None,
+    u_values_path: Path = U_VALUES_PATH,
 ) -> ThermalModelResult:
     """
     Apply interventions to a thermal model result with realistic U-values.
@@ -83,22 +139,26 @@ def apply_thermal_model_fabric_interventions(
         List of building fabric interventions you'd like to do
     structure
         The structure to apply these interventions to; if None, will create a simple structure from the parameters.
+    u_values_path
+        Path to a JSON file of materials and U-values
 
     Returns
     -------
     ThermalModelResult
         Parameters for thermal modelling of the improved building.
     """
+    # Don't clobber the previously-fit thermal model.
+    new_params = copy.deepcopy(params)
     if structure is None:
         structure = create_structure_from_params(
-            scale_factor=params.scale_factor,
-            ach=params.ach,
-            u_value=params.u_value,
-            boiler_power=params.boiler_power,
-            setpoint=params.setpoint,
+            scale_factor=new_params.scale_factor,
+            ach=new_params.ach,
+            u_value=new_params.u_value,
+            boiler_power=new_params.boiler_power,
+            setpoint=new_params.setpoint,
         )
     # Make sure that we don't beat this later
-    initial_u_value = params.u_value
+    initial_u_value = new_params.u_value
 
     window_area = 0.0
     wall_area = 0.0
@@ -122,8 +182,8 @@ def apply_thermal_model_fabric_interventions(
     window_frac = window_area / total_area
     floor_frac = floor_area / total_area
 
-    U_VALUE_DB = json.loads(Path("./", "app", "internal", "thermal_model", "u_values.json").read_text())
-    existing_rvalue_sum = 1.0 / params.u_value
+    U_VALUE_DB = json.loads(u_values_path.read_text())
+    existing_rvalue_sum = 1.0 / new_params.u_value
 
     IMPROVED_U_WALL = U_VALUE_DB[
         "Shiplap boards, airspace, standard aerated block 100mm,"
@@ -141,7 +201,7 @@ def apply_thermal_model_fabric_interventions(
     if InterventionEnum.DoubleGlazing in interventions:
         existing_rvalue_sum -= window_frac / U_VALUE_DB["Glazed wood or PVC-U door Metal Single Glazed"]
         existing_rvalue_sum += window_frac / IMPROVED_U_WINDOW
-        params.ach = min(params.ach * 0.8, 10.0)
+        new_params.ach = min(new_params.ach * 0.8, 10.0)
 
     if InterventionEnum.Cladding in interventions:
         existing_rvalue_sum -= (
@@ -149,7 +209,7 @@ def apply_thermal_model_fabric_interventions(
             / U_VALUE_DB["Brick 102mm, mineral wool slab in cavity 50mm, 100mm standard aerated block (k=0.17), 13mm plaster"]
         )
         existing_rvalue_sum += wall_frac / IMPROVED_U_WALL
-        params.ach = 0.6
+        new_params.ach = 0.6
 
     if InterventionEnum.Loft in interventions:
         existing_rvalue_sum -= (
@@ -168,5 +228,5 @@ def apply_thermal_model_fabric_interventions(
         + floor_frac / IMPROVED_U_FLOOR
     )
     existing_rvalue_sum = min(minimum_r_value, existing_rvalue_sum)
-    params.u_value = min(initial_u_value, 1.0 / existing_rvalue_sum)
-    return params
+    new_params.u_value = min(initial_u_value, 1.0 / existing_rvalue_sum)
+    return new_params

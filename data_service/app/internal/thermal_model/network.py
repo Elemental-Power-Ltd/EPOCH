@@ -1,19 +1,20 @@
 """Thermal network construction."""
 
+import json
+from pathlib import Path
+
 import networkx as nx
+import numpy as np
 
 from .building_elements import BuildingElement
 from .heat_capacities import (
     AIR_HEAT_CAPACITY,
     BRICK_HEAT_CAPACITY,
-    BRICK_U_VALUE,
     CONCRETE_HEAT_CAPACITY,
-    CONCRETE_U_VALUE,
     FLOOR_U_VALUE,
     GLASS_HEAT_CAPACITY,
-    GLASS_U_VALUE,
-    ROOF_U_VALUE,
     TILE_HEAT_CAPACITY,
+    U_VALUES_PATH,
 )
 from .links import (
     BoilerRadiativeLink,
@@ -24,6 +25,7 @@ from .links import (
     ThermalNodeAttrDict,
     ThermalRadiativeLink,
 )
+from .rdsap import estimate_window_area
 
 
 class HeatNetwork(nx.DiGraph):
@@ -67,6 +69,7 @@ def add_structure_to_graph(
     roof_area: float | None = None,
     air_volume: float | None = None,
     air_changes_per_hour: float = 1.5,
+    u_values_path: Path = U_VALUES_PATH,
 ) -> HeatNetwork:
     """
     Add a structure to an existing graph.
@@ -92,7 +95,10 @@ def add_structure_to_graph(
         Area of the floor of this building in contact with the gound. If None, presume it's the same as one wall for a cube.
     roof_area
         Area of the roof of this building receiving sunlight. If None, presume the same as the floor area.
+    u_value_path
+        Path to a JSON file containing U values
     """
+    u_values = json.loads(u_values_path.read_text())
     if wall_height is None:
         wall_height = wall_width / 2.0
 
@@ -106,7 +112,9 @@ def add_structure_to_graph(
 
     if air_volume is None:
         air_volume = floor_area * wall_width * wall_height
-    wall_u_value = BRICK_U_VALUE
+
+    # Note that this is often overridden
+    wall_u_value = u_values["Brick 102mm, cavity, 100mm standard aerated block (k=0.17), 12.5mm plasterboard on dabs"]
     WALL_DEPTH = 0.25  # m
     G.add_node(BuildingElement.InternalAir, thermal_mass=air_volume * AIR_HEAT_CAPACITY, temperature=18.0, energy_change=0.0)
     G.add_node(
@@ -154,17 +162,19 @@ def add_structure_to_graph(
             conductive=ConductiveLink(interface_area=wall_area, heat_transfer=wall_u_value),
         )
 
+    # Presume that the existing windows are rubbish
+    glass_u_value = u_values["Wood/PVC Single Glazed"]
     for window in [BuildingElement.WindowsSouth, BuildingElement.WindowsNorth]:
         G.add_edge(
             BuildingElement.InternalAir,
             window,
-            conductive=ConductiveLink(interface_area=window_area / 2.0, heat_transfer=GLASS_U_VALUE),
+            conductive=ConductiveLink(interface_area=window_area / 2.0, heat_transfer=glass_u_value),
             radiative=None,
         )
         G.add_edge(
             window,
             BuildingElement.ExternalAir,
-            conductive=ConductiveLink(interface_area=window_area / 2.0, heat_transfer=GLASS_U_VALUE),
+            conductive=ConductiveLink(interface_area=window_area / 2.0, heat_transfer=glass_u_value),
         )
 
     G.add_edge(
@@ -183,21 +193,26 @@ def add_structure_to_graph(
     # TODO (2024-11-27 MHJB): do we need to treat the loft as a separate air volume?
     # ideally it doesn't heat the home downwards, and exchanges lots of air with
     # the outside, so it'd be easier to just have a whole loft volume with a heat capacity
+    roof_code = (
+        "Pitched roof - Slates or tiles, sarking felt, ventilated air space,"
+        + " 50mm insulation between rafters, 9.5 mm plasterboard"
+    )
+    roof_u_value = u_values[roof_code]
     G.add_edge(
         BuildingElement.InternalAir,
         BuildingElement.Roof,
         # This represents ceiling insulation
-        conductive=ConductiveLink(interface_area=roof_area, heat_transfer=ROOF_U_VALUE),
+        conductive=ConductiveLink(interface_area=roof_area, heat_transfer=roof_u_value),
         radiative=None,
     )
     G.add_edge(
         BuildingElement.Roof,
         BuildingElement.ExternalAir,
         # This is tiles-to-air
-        conductive=ConductiveLink(interface_area=roof_area, heat_transfer=CONCRETE_U_VALUE),
+        conductive=ConductiveLink(interface_area=roof_area, heat_transfer=roof_u_value),
         radiative=ThermalRadiativeLink(0, delta_t=20.0),
     )
-
+    # These are defaults, that are overwritten by the real potential solar gains times area elsewhere
     G.add_edge(BuildingElement.Sun, BuildingElement.Roof, conductive=None, radiative=RadiativeLink(1000))
     G.add_edge(BuildingElement.Sun, BuildingElement.WallSouth, conductive=None, radiative=RadiativeLink(150))
     G.add_edge(BuildingElement.InternalGains, BuildingElement.InternalAir, conductive=None, radiative=RadiativeLink(power=1000))
@@ -277,6 +292,7 @@ def create_simple_structure(
     air_volume: float | None = None,
     design_flow_temperature: float = 70.0,
     n_radiators: int = 4,
+    u_values_path: Path = U_VALUES_PATH,
 ) -> HeatNetwork:
     """
     Create a simple structure of four walls, two windows and a heating system.
@@ -297,6 +313,8 @@ def create_simple_structure(
         The temperature of the HeatSource to provide hot water at in °C
     n_radiators
         Number of 1kW radiators to join into the mega-emitter.
+    u_value_path
+        Path to a JSON file containing U values for the structure
 
     Returns
     -------
@@ -313,6 +331,64 @@ def create_simple_structure(
         floor_area=floor_area,
         roof_area=roof_area,
         air_volume=air_volume,
+        u_values_path=u_values_path,
     )
     G = add_heating_system_to_graph(G, design_flow_temperature=design_flow_temperature, n_radiators=n_radiators)
     return G
+
+
+def create_structure_from_params(
+    scale_factor: float = 1.0, ach: float = 1.0, u_value: float = 2.2, boiler_power: float = 24e3, setpoint: float = 21
+) -> HeatNetwork:
+    """
+    Create a simple structure with some fitted parameters.
+
+    This wraps around create_simple_structure, and then changes the parameters of the links
+    directly afterwards.
+
+    You should use this if you want to get exactly the same structure as you'd get oufr om
+    `simulate_parameters`.
+
+    Parameters
+    ----------
+    scale_factor
+        Scale factor of the building compared to the default, which is 50m^2 with 5m high walls.
+    ach
+        Air changes per hour in this building (as a fraction of total air)
+    u_value
+        U value of main structural material for walls.
+    boiler_power
+        Boiler power in W, also scales up the size of the heating system linearlly.
+    setpoint
+        Equivalent 24/7 thermostat setpoint for the boiler.
+
+    Returns
+    -------
+    HeatNetwork
+        Simple structure with the values changed.
+    """
+    floor_area = 50.0 * scale_factor
+    hm = create_simple_structure(
+        # Walls are 2D, so scale them appropriately.
+        wall_width=10.0 * np.sqrt(scale_factor),
+        wall_height=5.0 * np.sqrt(scale_factor),
+        # Assuming about 20% window to floor area ratio
+        window_area=estimate_window_area(floor_area),
+        floor_area=floor_area,
+    )
+
+    hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].power = boiler_power
+    hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].setpoint_temperature = setpoint
+
+    # Radiators are assumed to be slightly undersized compared to the boiler.
+    hm.edges[BuildingElement.HeatingSystem, BuildingElement.InternalAir]["radiative"].power = boiler_power * 0.75
+
+    # Scale up the thermal mass of the heating system according to the boiler size
+    hm.nodes[BuildingElement.HeatingSystem]["thermal_mass"] *= (
+        boiler_power / hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].power
+    )
+
+    hm.edges[BuildingElement.InternalAir, BuildingElement.ExternalAir]["convective"].ach = ach
+    for v in [BuildingElement.WallEast, BuildingElement.WallSouth, BuildingElement.WallNorth, BuildingElement.WallWest]:
+        hm.edges[BuildingElement.InternalAir, v]["conductive"].heat_transfer = u_value
+    return hm

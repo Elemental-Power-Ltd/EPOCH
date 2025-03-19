@@ -160,7 +160,7 @@ class TestStaticHeatLoss:
     def test_reasonable(self, test_structure: HeatNetwork) -> None:
         """Test that we get a reasonable value of 10-12kW static heat loss for this building."""
         heat_loss = calculate_maximum_static_heat_loss(test_structure, internal_temperature=21, external_temperature=-2.3)
-        assert heat_loss == pytest.approx(-9269.098)
+        assert heat_loss == pytest.approx(-10686.73)
 
     def test_breakdown_matches_mcs(self, test_structure: HeatNetwork) -> None:
         """Test that we get a reasonable value of 10-12kW static heat loss for this building."""
@@ -175,11 +175,11 @@ class TestStaticHeatLoss:
             # BuildingElement.WindowsWest,
             BuildingElement.WindowsSouth,
         ]
-        assert sum(heat_losses[BuildingElement.InternalAir, wall] for wall in walls) == pytest.approx(-2557.41)
+        assert sum(heat_losses[BuildingElement.InternalAir, wall] for wall in walls) == pytest.approx(-3653.44)
         assert heat_losses[BuildingElement.InternalAir, BuildingElement.Floor] == pytest.approx(-494.70)
         assert heat_losses[BuildingElement.InternalAir, BuildingElement.ExternalAir] == pytest.approx(-5766.75)
-        assert heat_losses[BuildingElement.InternalAir, BuildingElement.Roof] == pytest.approx(-385.00)
-        assert sum(heat_losses[BuildingElement.InternalAir, window] for window in windows) == pytest.approx(-65.24)
+        assert heat_losses[BuildingElement.InternalAir, BuildingElement.Roof] == pytest.approx(-660.00)
+        assert sum(heat_losses[BuildingElement.InternalAir, window] for window in windows) == pytest.approx(-111.84)
         assert {item[1] for item in heat_losses.keys()} == {
             *walls,
             *windows,
@@ -261,7 +261,7 @@ class TestInterpolateHeatingPower:
             )
             / datetime.timedelta(days=1).total_seconds()
         )
-        assert heat_loss == pytest.approx(-5594.4651)
+        assert heat_loss == pytest.approx(-5597.62)
 
     def test_internal_temperature_range(self) -> None:
         """Test that warmer indoors leads to a large static heat loss."""

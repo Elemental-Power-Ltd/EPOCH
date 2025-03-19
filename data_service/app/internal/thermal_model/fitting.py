@@ -8,13 +8,13 @@ import numpy.typing as npt
 import pandas as pd
 from bayes_opt import BayesianOptimization, SequentialDomainReductionTransformer
 
-from ...models.heating_load import ThermalModelResult
+from ...models.heating_load import InterventionEnum, ThermalModelResult
 from ..epl_typing import HHDataFrame
 from ..gas_meters.domestic_hot_water import get_poisson_weights
 from ..utils.conversions import joule_to_kwh
-from .building_elements import BuildingElement
+from .building_fabric import apply_interventions_to_structure
 from .integrator import simulate
-from .network import HeatNetwork, create_simple_structure
+from .network import create_structure_from_params
 
 
 def resample_to_gas_df(sim_df: pd.DataFrame, gas_df: pd.DataFrame) -> npt.NDArray[np.floating]:
@@ -126,62 +126,6 @@ def parameters_to_loss(
     return energy_loss + temperature_loss_scale * temperature_loss
 
 
-def create_structure_from_params(
-    scale_factor: float = 1.0, ach: float = 1.0, u_value: float = 2.2, boiler_power: float = 24e3, setpoint: float = 21
-) -> HeatNetwork:
-    """
-    Create a simple structure with some fitted parameters.
-
-    This wraps around create_simple_structure, and then changes the parameters of the links
-    directly afterwards.
-
-    You should use this if you want to get exactly the same structure as you'd get oufr om
-    `simulate_parameters`.
-
-    Parameters
-    ----------
-    scale_factor
-        Scale factor of the building compared to the default, which is 50m^2 with 5m high walls.
-    ach
-        Air changes per hour in this building (as a fraction of total air)
-    u_value
-        U value of main structural material for walls.
-    boiler_power
-        Boiler power in W, also scales up the size of the heating system linearlly.
-    setpoint
-        Equivalent 24/7 thermostat setpoint for the boiler.
-
-    Returns
-    -------
-    HeatNetwork
-        Simple structure with the values changed.
-    """
-    hm = create_simple_structure(
-        # Walls are 2D, so scale them appropriately.
-        wall_width=10.0 * np.sqrt(scale_factor),
-        wall_height=5.0 * np.sqrt(scale_factor),
-        # Assuming about 20% window to floor area ratio
-        window_area=10.0 * scale_factor,
-        floor_area=50.0 * scale_factor,
-    )
-
-    hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].power = boiler_power
-    hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].setpoint_temperature = setpoint
-
-    # Radiators are assumed to be slightly undersized compared to the boiler.
-    hm.edges[BuildingElement.HeatingSystem, BuildingElement.InternalAir]["radiative"].power = boiler_power * 0.75
-
-    # Scale up the thermal mass of the heating system according to the boiler size
-    hm.nodes[BuildingElement.HeatingSystem]["thermal_mass"] *= (
-        boiler_power / hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].power
-    )
-
-    hm.edges[BuildingElement.InternalAir, BuildingElement.ExternalAir]["convective"].ach = ach
-    for v in [BuildingElement.WallEast, BuildingElement.WallSouth, BuildingElement.WallNorth, BuildingElement.WallWest]:
-        hm.edges[BuildingElement.InternalAir, v]["conductive"].heat_transfer = u_value
-    return hm
-
-
 def simulate_parameters(
     scale_factor: float,
     ach: float,
@@ -193,6 +137,7 @@ def simulate_parameters(
     start_ts: datetime.datetime,
     end_ts: datetime.datetime,
     dt: datetime.timedelta | None = None,
+    interventions: list[InterventionEnum] | None = None,
 ) -> pd.DataFrame:
     """
     Calculate the gas usage loss for a specific set of parameters.
@@ -222,6 +167,8 @@ def simulate_parameters(
     hm = create_structure_from_params(
         scale_factor=scale_factor, ach=ach, u_value=u_value, boiler_power=boiler_power, setpoint=setpoint
     )
+    if interventions is not None:
+        hm = apply_interventions_to_structure(hm, interventions)
     sim_df = simulate(hm, external_df=weather_df, start_ts=start_ts, end_ts=end_ts, dt=dt, elec_df=elec_df)
     # Note the change of units here
     sim_df.heating_usage = -joule_to_kwh(sim_df.heating_usage)

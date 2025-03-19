@@ -25,7 +25,6 @@ from ...internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFra
 from ...internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
 from ...internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
-from ...internal.thermal_model.building_fabric import apply_thermal_model_fabric_interventions
 from ...internal.thermal_model.fitting import simulate_parameters
 from ...models.core import DatasetID, SiteID
 from ...models.heating_load import (
@@ -282,8 +281,6 @@ async def generate_thermal_model_heating_load(
     if params.thermal_model_dataset_id is None:
         raise HTTPException(400, "Must have provided a thermal model dataset ID to generat a heating load")
     thermal_model = await get_thermal_model(pool, dataset_id=DatasetID(dataset_id=params.thermal_model_dataset_id))
-    if params.interventions is not None:
-        thermal_model = apply_thermal_model_fabric_interventions(params=thermal_model, interventions=params.interventions)
 
     async with pool.acquire() as conn:
         if params.site_id is None:
@@ -309,6 +306,7 @@ async def generate_thermal_model_heating_load(
         start_ts=params.start_ts,
         end_ts=params.end_ts,
         weather_df=weather_df,
+        interventions=params.interventions,
     )
     # We simulated at a much lower timestep than we want for EPOCH, so
     # regroup it here by adding up the heating demands
