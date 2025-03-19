@@ -1,7 +1,7 @@
 import pytest
 
 from app.internal.ga_utils import ProblemInstance
-from app.internal.NSGA2 import NSGA2
+from app.internal.NSGA2 import NSGA2, SeperatedNSGA2
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
@@ -47,4 +47,23 @@ class TestNSGA2:
     ) -> None:
         alg = NSGA2(pop_size=512, n_offsprings=256, n_max_gen=10)
         res = alg.run(default_objectives, default_constraints, default_portfolio, dummy_portfolio_solutions)
+        assert isinstance(res, OptimisationResult)
+
+
+class TestSeperatedNSGA2:
+    def test_initialisation(self) -> None:
+        """
+        Test default algorithm initialisation.
+        """
+        SeperatedNSGA2()
+
+    @pytest.mark.slow
+    def test_run(
+        self, default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]
+    ) -> None:
+        """
+        Test output of algorithm.
+        """
+        alg = SeperatedNSGA2(pop_size=512, n_offsprings=256, n_max_gen=10)
+        res = alg.run(default_objectives, default_constraints, default_portfolio)
         assert isinstance(res, OptimisationResult)

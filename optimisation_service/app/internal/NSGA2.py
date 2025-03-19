@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
@@ -228,13 +228,25 @@ class SeperatedNSGA2(Algorithm):
             n_max_evals,
         )
 
-    def run(self, objectives, constraints, portfolio, existing_solutions=None):
-        capex_limit = constraints[Metric.capex]["max"]
+    def run(
+        self,
+        objectives: list[Metric],
+        constraints: Constraints,
+        portfolio: list[Site],
+    ) -> OptimisationResult:
+        start_time = datetime.now(UTC)
+        new_constraints = {}
+        if Metric.capex in constraints:
+            capex_limit = constraints[Metric.capex].get("max", None)
+            if capex_limit is not None:
+                new_constraints[Metric.capex] = {"max": capex_limit}
         sub_solutions: list[list[PortfolioSolution]] = []
+        n_evals = 0
         for i, site in enumerate(portfolio):
             print(f"Optimising portfolio {i+1} at max CAPEX £{capex_limit}.")
-            res = self.alg.run(objectives=objectives, constraints={Metric.capex: {"max": capex_limit}}, portfolio=[site])
+            res = self.alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
             sub_solutions.append(res.solutions)
+            n_evals += res.n_evals
 
         combined_solutions = sub_solutions[0]
         for sub_solution in sub_solutions[1:]:
@@ -245,4 +257,6 @@ class SeperatedNSGA2(Algorithm):
         mask = is_in_constraints(constraints, combined_solutions)
         combined_solutions = np.array(combined_solutions)[mask].tolist()
 
-        return combined_solutions
+        total_exec_time = datetime.now(UTC) - start_time
+
+        return OptimisationResult(solutions=combined_solutions, n_evals=n_evals, exec_time=total_exec_time)
