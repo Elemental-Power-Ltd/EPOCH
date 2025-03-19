@@ -19,6 +19,7 @@ from app.internal.constraints import is_in_constraints
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
+from app.internal.result import do_nothing_scenario
 from app.models.algorithms import Algorithm
 from app.models.constraints import Constraints
 from app.models.core import Site
@@ -179,6 +180,9 @@ class NSGA2(Algorithm):
         portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
         portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
+        if len(portfolio_solutions_pf) == 0:
+            portfolio_solutions_pf = [do_nothing_scenario(pi.site_names)]
+
         return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals)
 
 
@@ -242,8 +246,7 @@ class SeperatedNSGA2(Algorithm):
                 new_constraints[Metric.capex] = {"max": capex_limit}
         sub_solutions: list[list[PortfolioSolution]] = []
         n_evals = 0
-        for i, site in enumerate(portfolio):
-            print(f"Optimising portfolio {i+1} at max CAPEX £{capex_limit}.")
+        for site in portfolio:
             res = self.alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
             sub_solutions.append(res.solutions)
             n_evals += res.n_evals
