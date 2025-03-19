@@ -323,7 +323,8 @@ public:
 	}
 
 	float get_scenario_export_gains() const {
-		return mScenario_export_cost;
+		// we store the export as a negative cost, multiply by -1 to get the gain
+		return -1.0f * mScenario_export_cost;
 	}
 
 	// "hard wired" constants for the moment
