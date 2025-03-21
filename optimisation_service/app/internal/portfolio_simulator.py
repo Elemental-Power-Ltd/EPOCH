@@ -6,7 +6,7 @@ from epoch_simulator import Simulator, TaskData
 
 from app.internal.epoch_utils import convert_sim_result
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
-from app.models.metrics import Metric, MetricValues
+from app.models.metrics import _SUMMABLE_METRICS, Metric, MetricValues
 from app.models.result import PortfolioSolution, SiteSolution
 from app.models.site_data import EpochSiteData
 
@@ -100,21 +100,27 @@ def combine_metric_values(metric_values_list: list[MetricValues]) -> MetricValue
     metric_values
         Dictionary of metric values.
     """
-    metric_values = MetricValues()
 
-    for metric in [
-        Metric.annualised_cost,
-        Metric.capex,
-        Metric.carbon_balance_scope_1,
-        Metric.carbon_balance_scope_2,
-        Metric.cost_balance,
-    ]:
-        metric_values[metric] = sum(obj_vals[metric] for obj_vals in metric_values_list)
+    # start by finding the metrics that all entries have in common
+    # we can only combine a metric if it is present in every entry
+    common_metrics = set.intersection(*(set(mv.keys()) for mv in metric_values_list))
 
-    metric_values[Metric.payback_horizon] = calculate_payback_horizon(
-        capex=metric_values[Metric.capex], cost_balance=metric_values[Metric.cost_balance]
-    )
-    metric_values[Metric.carbon_cost] = calculate_carbon_cost(
-        capex=metric_values[Metric.capex], carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
-    )
-    return metric_values
+    combined_metric_values = MetricValues()
+
+    for metric in _SUMMABLE_METRICS:
+        if metric in common_metrics:
+            combined_metric_values[metric] = sum(obj_vals[metric] for obj_vals in metric_values_list)
+
+    if Metric.capex in combined_metric_values and Metric.cost_balance in combined_metric_values:
+        combined_metric_values[Metric.payback_horizon] = calculate_payback_horizon(
+            capex=combined_metric_values[Metric.capex],
+            cost_balance=combined_metric_values[Metric.cost_balance]
+        )
+
+    if Metric.capex in combined_metric_values and Metric.carbon_balance_scope_1 in combined_metric_values:
+        combined_metric_values[Metric.carbon_cost] = calculate_carbon_cost(
+            capex=combined_metric_values[Metric.capex],
+            carbon_balance_scope_1=combined_metric_values[Metric.carbon_balance_scope_1]
+        )
+
+    return combined_metric_values

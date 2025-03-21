@@ -71,7 +71,8 @@ A dictionary of parameters and corresponding values for the optimiser in the for
 #### Objectives
 
 A list of objectives to optimiser for:
-The options are: `carbon_balance`, `cost_balance`, `capex`, `payback_horizon` and `annualised_cost`
+The options include: `carbon_balance`, `cost_balance`, `capex`, `payback_horizon` and `annualised_cost`
+See `metrics.py` for a complete list
 
 #### Site Data
 

@@ -5,7 +5,7 @@ Wrappers for Epoch that are more ergonomic for python.
 from epoch_simulator import SimulationResult, TaskData
 
 from app.internal.metrics import calculate_carbon_cost
-from app.models.metrics import _EPOCH_NATIVE_METRICS, Metric, MetricValues
+from app.models.metrics import Metric, MetricValues
 
 
 def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
@@ -23,11 +23,32 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
         Dictionary of objective values.
     """
     metric_values = MetricValues()
-    for metric in _EPOCH_NATIVE_METRICS:
-        metric_values[metric] = getattr(sim_result, metric)
 
+    # Top-level fields
+    metric_values[Metric.carbon_balance_scope_1] = sim_result.carbon_balance_scope_1
+    metric_values[Metric.carbon_balance_scope_2] = sim_result.carbon_balance_scope_2
+    metric_values[Metric.capex] = sim_result.capex
+    metric_values[Metric.cost_balance] = sim_result.cost_balance
+    metric_values[Metric.annualised_cost] = sim_result.annualised_cost
+    metric_values[Metric.payback_horizon] = sim_result.payback_horizon
+
+    # Nested SimulationMetrics
+    metric_values[Metric.total_gas_used] = sim_result.metrics.total_gas_used
+    metric_values[Metric.total_electricity_imported] = sim_result.metrics.total_electricity_imported
+    metric_values[Metric.total_electricity_generated] = sim_result.metrics.total_electricity_generated
+    metric_values[Metric.total_electricity_exported] = sim_result.metrics.total_electricity_exported
+
+    metric_values[Metric.total_electrical_shortfall] = sim_result.metrics.total_electrical_shortfall
+    metric_values[Metric.total_heat_shortfall] = sim_result.metrics.total_heat_shortfall
+
+    metric_values[Metric.total_gas_import_cost] = sim_result.metrics.total_gas_import_cost
+    metric_values[Metric.total_electricity_import_cost] = sim_result.metrics.total_electricity_import_cost
+    metric_values[Metric.total_electricity_export_gain] = sim_result.metrics.total_electricity_export_gain
+
+    # Derive carbon cost from capex and scope-1 carbon balance
     metric_values[Metric.carbon_cost] = calculate_carbon_cost(
-        capex=metric_values[Metric.capex], carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
+        capex=metric_values[Metric.capex],
+        carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
     )
 
     return metric_values

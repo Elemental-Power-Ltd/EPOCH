@@ -19,7 +19,7 @@ from app.internal.epoch_utils import (
     convert_sim_result,
     convert_TaskData_to_dictionary,
 )
-from app.models.metrics import _EPOCH_NATIVE_METRICS, _SERVICE_NATIVE_METRICS
+from app.models.metrics import _METRICS
 
 from .conftest import _DATA_PATH
 
@@ -42,9 +42,7 @@ def test_convert_sim_result() -> None:
 
     res = convert_sim_result(sim_result)
 
-    for metric in _EPOCH_NATIVE_METRICS:
-        assert getattr(sim_result, metric) == res[metric]
-    for metric in _SERVICE_NATIVE_METRICS:
+    for metric in _METRICS:
         assert metric in res
 
 

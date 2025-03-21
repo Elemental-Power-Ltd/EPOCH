@@ -9,6 +9,19 @@ You can't import this file, but it's useful for static analysis.
 import typing
 from enum import Enum
 
+class SimulationMetrics:
+    total_gas_used: float
+    total_electricity_imported: float
+    total_electricity_generated: float
+    total_electricity_exported: float
+
+    total_electrical_shortfall: float
+    total_heat_shortfall: float
+
+    total_gas_import_cost: float
+    total_electricity_import_cost: float
+    total_electricity_export_gain: float
+
 class SimulationResult:
     carbon_balance_scope_1: float
     carbon_balance_scope_2: float
@@ -16,6 +29,7 @@ class SimulationResult:
     capex: float
     payback_horizon: float
     annualised_cost: float
+    metrics: SimulationMetrics
     report_data: typing.Any
 
 class Config:

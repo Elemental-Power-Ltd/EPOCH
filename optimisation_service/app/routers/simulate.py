@@ -132,7 +132,7 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataType):
     report_dict = report_data_to_dict(res.report_data)
     objectives = convert_sim_result(res)
 
-    return FullResult(report_data=report_dict, objectives=objectives, task_data=task_data, site_data=epoch_data)
+    return FullResult(report_data=report_dict, metrics=objectives, task_data=task_data, site_data=epoch_data)
 
 
 def report_data_to_dict(report_data) -> dict[str, list[float]]:

@@ -36,7 +36,7 @@ class EpochInputData(BaseModel):
 
 
 class FullResult(BaseModel):
-    objectives: MetricValues
+    metrics: MetricValues
     report_data: dict[str, list[float]]
 
     # we also return the TaskData,SiteData pair used to produce this result
