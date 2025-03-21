@@ -84,13 +84,13 @@ const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
                     {results.map((site_result) => (
                         <TableRow key={site_result.site_id}>
                             <TableCell>{getSiteName(site_result.site_id)}</TableCell>
-                            <TableCell>{formatCarbon(site_result.metric_carbon_balance_scope_1)}</TableCell>
-                            <TableCell>{formatCarbon(site_result.metric_carbon_balance_scope_2)}</TableCell>
-                            <TableCell>{formatCarbonCost(site_result.metric_carbon_cost)}</TableCell>
-                            <TableCell>{formatPounds(site_result.metric_cost_balance)}</TableCell>
-                            <TableCell>{formatPounds(site_result.metric_capex)}</TableCell>
-                            <TableCell>{formatYears(site_result.metric_payback_horizon)}</TableCell>
-                            <TableCell>{formatPounds(site_result.metric_annualised_cost)}</TableCell>
+                            <TableCell>{formatCarbon(site_result.metrics.carbon_balance_scope_1)}</TableCell>
+                            <TableCell>{formatCarbon(site_result.metrics.carbon_balance_scope_2)}</TableCell>
+                            <TableCell>{formatCarbonCost(site_result.metrics.carbon_cost)}</TableCell>
+                            <TableCell>{formatPounds(site_result.metrics.cost_balance)}</TableCell>
+                            <TableCell>{formatPounds(site_result.metrics.capex)}</TableCell>
+                            <TableCell>{formatYears(site_result.metrics.payback_horizon)}</TableCell>
+                            <TableCell>{formatPounds(site_result.metrics.annualised_cost)}</TableCell>
                             <TableCell>
                                 <IconButton
                                     color="primary"

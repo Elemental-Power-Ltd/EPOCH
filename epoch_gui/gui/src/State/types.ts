@@ -40,30 +40,55 @@ export interface OptimisationTaskListEntry {
     exec_time: string | null;
 }
 
+export interface SiteMetrics {
+    carbon_balance_scope_1?: number;
+    carbon_balance_scope_2?: number;
+    carbon_cost?: number;
+    cost_balance?: number;
+    capex?: number;
+    payback_horizon?: number;
+    annualised_cost?: number;
+    total_gas_used?: number;
+    total_electricity_imported?: number;
+    total_electricity_generated?: number;
+    total_electricity_exported?: number;
+    total_electrical_shortfall?: number;
+    total_heat_shortfall?: number;
+    total_gas_import_cost?: number;
+    total_electricity_import_cost?: number;
+    total_electricity_export_gain?: number;
+}
+
 export interface SiteOptimisationResult {
     site_id: string;
     portfolio_id: string;
     scenario: any;
-    metric_carbon_balance_scope_1?: number;
-    metric_carbon_balance_scope_2?: number;
-    metric_carbon_cost?: number;
-    metric_cost_balance?: number;
-    metric_capex?: number;
-    metric_payback_horizon?: number;
-    metric_annualised_cost?: number;
+    metrics: SiteMetrics;
 }
 
+export interface PortfolioMetrics {
+    carbon_balance_scope_1?: number;
+    carbon_balance_scope_2?: number;
+    carbon_cost?: number;
+    cost_balance?: number;
+    capex?: number;
+    payback_horizon?: number;
+    annualised_cost?: number;
+    total_gas_used?: number;
+    total_electricity_imported?: number;
+    total_electricity_generated?: number;
+    total_electricity_exported?: number;
+    total_electrical_shortfall?: number;
+    total_heat_shortfall?: number;
+    total_gas_import_cost?: number;
+    total_electricity_import_cost?: number;
+    total_electricity_export_gain?: number;
+}
 
 export interface PortfolioOptimisationResult {
     task_id: string;
     portfolio_id: string;
-    metric_carbon_balance_scope_1?: number;
-    metric_carbon_balance_scope_2?: number;
-    metric_carbon_cost?: number;
-    metric_cost_balance?: number;
-    metric_capex?: number;
-    metric_payback_horizon?: number;
-    metric_annualised_cost?: number;
+    metrics: PortfolioMetrics;
     site_results: SiteOptimisationResult[];
 }
 

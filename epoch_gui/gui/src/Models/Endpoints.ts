@@ -1,3 +1,4 @@
+import {SiteMetrics} from "../State/types.ts";
 
 interface SiteMetaData {
     site_id: string;
@@ -46,7 +47,7 @@ export interface EpochSiteData {
 }
 
 export interface SimulationResult {
-    objectives: any;
+    metrics: SiteMetrics;
 
     report_data: ReportDataType | null;
 

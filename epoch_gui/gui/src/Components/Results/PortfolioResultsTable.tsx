@@ -13,9 +13,8 @@ import {
 
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
-import {OptimisationTaskListEntry, PortfolioOptimisationResult} from "../../State/types";
+import {OptimisationTaskListEntry, PortfolioMetrics, PortfolioOptimisationResult} from "../../State/types";
 import {formatPounds, formatCarbon, formatYears, formatCarbonCost} from "../../util/displayFunctions";
-import SiteResultsTable from "./SiteResultsTable";
 import {useEpochStore} from "../../State/Store";
 
 interface PortfolioResultsTableProps {
@@ -27,20 +26,20 @@ type Order = 'asc' | 'desc';
 
 const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ task, results }) => {
     const [order, setOrder] = useState<Order>('asc');
-    const [orderBy, setOrderBy] = useState<keyof PortfolioOptimisationResult>('metric_carbon_balance_scope_1');
+    const [orderBy, setOrderBy] = useState<keyof PortfolioMetrics>('carbon_balance_scope_1');
 
     const currentPortfolioResult = useEpochStore((state) => state.results.currentPortfolioResult);
     const setCurrentPortfolioResult = useEpochStore((state) => state.setCurrentPortfolioResult);
 
-    const handleRequestSort = (property: keyof PortfolioOptimisationResult) => {
+    const handleRequestSort = (property: keyof PortfolioMetrics) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
         setOrderBy(property);
     };
 
     const sortedResults = results.slice().sort((a, b) => {
-        const aValue = a[orderBy];
-        const bValue = b[orderBy];
+        const aValue = a.metrics[orderBy];
+        const bValue = b.metrics[orderBy];
 
         // undefined cases
         if (aValue === undefined && bValue === undefined) return 0;
@@ -63,63 +62,63 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ task, res
                     <TableRow>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'metric_carbon_balance_scope_1'}
-                                direction={orderBy === 'metric_carbon_balance_scope_1' ? order : 'asc'}
-                                onClick={() => handleRequestSort('metric_carbon_balance_scope_1')}
+                                active={orderBy === 'carbon_balance_scope_1'}
+                                direction={orderBy === 'carbon_balance_scope_1' ? order : 'asc'}
+                                onClick={() => handleRequestSort('carbon_balance_scope_1')}
                             >
                                 Scope 1
                             </TableSortLabel>
                         </TableCell>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'metric_carbon_balance_scope_2'}
-                                direction={orderBy === 'metric_carbon_balance_scope_2' ? order : 'asc'}
-                                onClick={() => handleRequestSort('metric_carbon_balance_scope_2')}
+                                active={orderBy === 'carbon_balance_scope_2'}
+                                direction={orderBy === 'carbon_balance_scope_2' ? order : 'asc'}
+                                onClick={() => handleRequestSort('carbon_balance_scope_2')}
                             >
                                 Scope 2
                             </TableSortLabel>
                         </TableCell>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'metric_carbon_cost'}
-                                direction={orderBy === 'metric_carbon_cost' ? order : 'asc'}
-                                onClick={() => handleRequestSort('metric_carbon_cost')}
+                                active={orderBy === 'carbon_cost'}
+                                direction={orderBy === 'carbon_cost' ? order : 'asc'}
+                                onClick={() => handleRequestSort('carbon_cost')}
                             >
                                 Carbon Cost
                             </TableSortLabel>
                         </TableCell>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'metric_cost_balance'}
-                                direction={orderBy === 'metric_cost_balance' ? order : 'asc'}
-                                onClick={() => handleRequestSort('metric_cost_balance')}
+                                active={orderBy === 'cost_balance'}
+                                direction={orderBy === 'cost_balance' ? order : 'asc'}
+                                onClick={() => handleRequestSort('cost_balance')}
                             >
                                 Cost Balance
                             </TableSortLabel>
                         </TableCell>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'metric_capex'}
-                                direction={orderBy === 'metric_capex' ? order : 'asc'}
-                                onClick={() => handleRequestSort('metric_capex')}
+                                active={orderBy === 'capex'}
+                                direction={orderBy === 'capex' ? order : 'asc'}
+                                onClick={() => handleRequestSort('capex')}
                             >
                                 Capex
                             </TableSortLabel>
                         </TableCell>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'metric_payback_horizon'}
-                                direction={orderBy === 'metric_payback_horizon' ? order : 'asc'}
-                                onClick={() => handleRequestSort('metric_payback_horizon')}
+                                active={orderBy === 'payback_horizon'}
+                                direction={orderBy === 'payback_horizon' ? order : 'asc'}
+                                onClick={() => handleRequestSort('payback_horizon')}
                             >
                                 Payback Horizon
                             </TableSortLabel>
                         </TableCell>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'metric_annualised_cost'}
-                                direction={orderBy === 'metric_annualised_cost' ? order : 'asc'}
-                                onClick={() => handleRequestSort('metric_annualised_cost')}
+                                active={orderBy === 'annualised_cost'}
+                                direction={orderBy === 'annualised_cost' ? order : 'asc'}
+                                onClick={() => handleRequestSort('annualised_cost')}
                             >
                                 Annualised Cost
                             </TableSortLabel>
@@ -133,13 +132,13 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ task, res
                             key={portfolio_result.portfolio_id}
                             selected={currentPortfolioResult?.portfolio_id === portfolio_result.portfolio_id}
                         >
-                            <TableCell>{formatCarbon(portfolio_result.metric_carbon_balance_scope_1)}</TableCell>
-                            <TableCell>{formatCarbon(portfolio_result.metric_carbon_balance_scope_2)}</TableCell>
-                            <TableCell>{formatCarbonCost(portfolio_result.metric_carbon_cost)}</TableCell>
-                            <TableCell>{formatPounds(portfolio_result.metric_cost_balance)}</TableCell>
-                            <TableCell>{formatPounds(portfolio_result.metric_capex)}</TableCell>
-                            <TableCell>{formatYears(portfolio_result.metric_payback_horizon)}</TableCell>
-                            <TableCell>{formatPounds(portfolio_result.metric_annualised_cost)}</TableCell>
+                            <TableCell>{formatCarbon(portfolio_result.metrics.carbon_balance_scope_1)}</TableCell>
+                            <TableCell>{formatCarbon(portfolio_result.metrics.carbon_balance_scope_2)}</TableCell>
+                            <TableCell>{formatCarbonCost(portfolio_result.metrics.carbon_cost)}</TableCell>
+                            <TableCell>{formatPounds(portfolio_result.metrics.cost_balance)}</TableCell>
+                            <TableCell>{formatPounds(portfolio_result.metrics.capex)}</TableCell>
+                            <TableCell>{formatYears(portfolio_result.metrics.payback_horizon)}</TableCell>
+                            <TableCell>{formatPounds(portfolio_result.metrics.annualised_cost)}</TableCell>
                             <TableCell>
                                 <IconButton
                                     color="primary"

@@ -31,17 +31,8 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, siteResult
 
     const navigate = useNavigate();
 
-    // FIXME - unify types returned from the services
-    const SimResult = {
-        objectives: {
-            carbon_balance_scope_1: siteResult.metric_carbon_balance_scope_1,
-            carbon_balance_scope_2: siteResult.metric_carbon_balance_scope_2,
-            cost_balance: siteResult.metric_cost_balance,
-            capex: siteResult.metric_capex,
-            payback_horizon: siteResult.metric_payback_horizon,
-            annualised_cost: siteResult.metric_annualised_cost,
-            carbon_cost: siteResult.metric_carbon_cost
-        },
+    const SimResult: SimulationResult = {
+        metrics: siteResult.metrics,
         task_data: scenario,
         report_data: null,
         site_data: null
@@ -65,10 +56,10 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, siteResult
     }
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>Solution Details</DialogTitle>
             <DialogContent dividers>
-                <SimulationSummary result={SimResult}/>
+                <SimulationSummary result={SimResult} isLoading={false} error={null}/>
                 <Typography variant="h6" gutterBottom>
                     Components
                 </Typography>

@@ -44,6 +44,15 @@ export const formatYears = (value: number | undefined): string => {
     return `${value.toFixed(2)} years`;
 };
 
+// display energy to the nearest 100 kWh
+export const formatEnergy = (value: number | undefined): string => {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
+        return "-"
+    }
+    const roundedValue = Math.round(value / 100) * 100;
+    return `${roundedValue.toLocaleString()} kWh`;
+}
+
 
 export const parseISODuration = (duration: string | null): string => {
     if (duration === null) return "-";

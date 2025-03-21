@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 
 
-import SimulationSummary, {ErroredSimulationSummary, LoadingSimulatingSummary} from "./SimulationSummary";
+import SimulationSummary from "./SimulationSummary";
 import DataViz from "../DataViz/DataViz";
 import {SimulationResult} from "../../Models/Endpoints";
 import {Button, Container} from "@mui/material";
@@ -20,23 +20,10 @@ const SimulationResultViewer: React.FC<SimulationResultViewerProps> = ({isLoadin
     const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
     const toggleAnalysis = () => setShowAnalysis(prev => !prev);
 
-    const getResultCard = () => {
-        if (isLoading) {
-            return <LoadingSimulatingSummary/>;
-        } else if (error) {
-            return <ErroredSimulationSummary error={error}/>
-        } else if (result === null) {
-            return <ErroredSimulationSummary error={"Simulation failed - unknown error"}/>
-        } else {
-            return <SimulationSummary result={result}></SimulationSummary>
-        }
-    }
-
-
     return (
         <>
             <Container maxWidth={"lg"}>
-                {getResultCard()}
+                <SimulationSummary result={result} isLoading={isLoading} error={error}/>
             </Container>
             {(!isLoading && !error && result) &&
                 <>
