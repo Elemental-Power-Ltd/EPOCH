@@ -8,7 +8,9 @@ for the functions that go in here.
 import datetime
 import itertools
 import logging
+import urllib
 from collections.abc import Sequence
+from hashlib import sha256
 from typing import Any
 
 import numpy as np
@@ -271,3 +273,38 @@ def chunk_time_period(
             new_time_pairs.append((a, b))
 
     return new_time_pairs
+
+
+def url_to_hash(url: str, params: dict[str, Any] | None = None, max_len: int | None = None) -> str:
+    """
+    Take a given URL and set of query params, and translate into a string SHA-256 hash.
+
+    This is used in the test suite to store a specific query to a file, avoiding collisions and
+    windows filename encoding problems.
+
+    Parameters
+    ----------
+    url
+        The URL you are sending a request to, ideally without query parameters
+    params
+        Any query parameters you're sending, as a dictionary with types friendly for `urllib.parse.urlencode`.
+        These are ordered alphabetically by key for consistency.
+    max_len
+        The maximum number of characters in the string you want. If None, return all of them.
+
+    Returns
+    -------
+        SHA-256 of the url and query parameters.
+    """
+    hasher = sha256()
+    hasher.update(url.encode("utf-8"))
+    if params:
+        # We try to encode this as close to the actal URL encoding we'd send out over the wire as possible,
+        # and sort them for consistency
+        encoded_params = urllib.parse.urlencode({key: params[key] for key in sorted(params.keys())})
+        hasher.update(encoded_params.encode("utf-8"))
+    str_hash = str(hasher.hexdigest())
+    if max_len is None:
+        return str_hash
+
+    return str_hash[:max_len]

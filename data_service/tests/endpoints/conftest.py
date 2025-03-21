@@ -24,6 +24,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
 from app.internal.utils.database_utils import get_migration_files
+from app.internal.utils.utils import url_to_hash
 from app.main import app
 from app.models.site_range import Jsonable
 
@@ -82,14 +83,13 @@ class MockedHttpClient(httpx.AsyncClient):
         -------
             contents of the JSON file, or None if not found
         """
-        # Ignore the final slash and just get the tariff name
-        url_params = url.replace("https://api.octopus.energy/v1/products/", "").replace("/", "")
+        url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "octopus", f"{url_params}.json")
         if stored_tariff.exists():
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
-            stored_tariff.write_text(json.dumps(data))
+            stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
     async def cache_ci_data(self, url: str, **kwargs: Any) -> Jsonable:
@@ -107,13 +107,13 @@ class MockedHttpClient(httpx.AsyncClient):
         -------
             Response from VC, ideally via the stored file.
         """
-        url_params = url.replace("https://api.carbonintensity.org.uk/regional/intensity/", "").replace("/", "")
+        url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "carbon_intensity", f"{url_params}.json")
         if stored_tariff.exists():
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
-            stored_tariff.write_text(json.dumps(data))
+            stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
     async def cache_vc_data(self, url: str, **kwargs: Any) -> Jsonable:
@@ -132,15 +132,13 @@ class MockedHttpClient(httpx.AsyncClient):
         -------
             Response from VC, ideally via the stored file.
         """
-        url_params = url.replace(
-            "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/", ""
-        ).replace("/", "")
+        url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "visual_crossing", f"{url_params}.json")
         if stored_tariff.exists():
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
-            stored_tariff.write_text(json.dumps(data))
+            stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
     async def cache_renewables_ninja_data(self, url: str, **kwargs: Any) -> Jsonable:
@@ -163,14 +161,13 @@ class MockedHttpClient(httpx.AsyncClient):
             Response from RN, ideally via the stored file.
         """
         # Read the parameters passed to the endpoint to get a horrible _key_value_ type string.
-        url_params = url.replace("https://www.renewables.ninja/api/data/pv", "").replace("/", "")
-        url_params += "_".join(f"{key}_{value}" for key, value in sorted(kwargs["params"].items()))
+        url_params = url_to_hash(url, kwargs.get("params"))
         stored_rn = Path(".", "tests", "data", "renewables_ninja", f"{url_params}.json")
         if stored_rn.exists():
             return cast(Jsonable, json.loads(stored_rn.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
-            stored_rn.write_text(json.dumps(data))
+            stored_rn.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
     async def cache_pvgis_data(self, url: str, **kwargs: Any) -> Jsonable:
@@ -193,14 +190,13 @@ class MockedHttpClient(httpx.AsyncClient):
             Response from PVGIS, ideally via the stored file.
         """
         # Read the parameters passed to the endpoint to get a horrible _key_value_ type string.
-        url_params = url.replace("https://re.jrc.ec.europa.eu/api/PVcalc", "").replace("/", "")
-        url_params += "_".join(f"{key}_{value}" for key, value in sorted(kwargs["params"].items()))
+        url_params = url_to_hash(url, kwargs.get("params"))
         stored_rn = Path(".", "tests", "data", "pvgis", f"{url_params}.json")
         if stored_rn.exists():
             return cast(Jsonable, json.loads(stored_rn.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
-            stored_rn.write_text(json.dumps(data))
+            stored_rn.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
     # The httpx typing is gross so let's just bodge it and carry on
