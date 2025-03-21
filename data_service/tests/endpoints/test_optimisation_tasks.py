@@ -15,7 +15,9 @@ from app.models.optimisation import (
     OptimisationResultEntry,
     Optimiser,
     OptimiserEnum,
+    PortfolioMetrics,
     PortfolioOptimisationResult,
+    SiteMetrics,
     SiteOptimisationResult,
     TaskConfig,
     TaskResult,
@@ -77,13 +79,19 @@ class TestOptimisationTaskDatabase:
         return PortfolioOptimisationResult(
             portfolio_id=uuid.uuid4(),
             task_id=sample_task_config.task_id,
-            metric_carbon_balance_scope_1=1.0,
-            metric_carbon_balance_scope_2=2.0,
-            metric_cost_balance=3.0,
-            metric_capex=4.0,
-            metric_payback_horizon=None,  # we didn't calculate this one
-            metric_annualised_cost=-1.0,  # this one is negative!
-            metric_carbon_cost=5.0,
+            metrics=PortfolioMetrics(
+                carbon_balance_scope_1=1.0,
+                carbon_balance_scope_2=2.0,
+                cost_balance=3.0,
+                capex=4.0,
+                payback_horizon=None,  # we didn't calculate this one
+                annualised_cost=-1.0,  # this one is negative!
+                carbon_cost=5.0,
+                total_gas_used=3.0,
+                total_electricity_imported=3.0,
+                total_electricity_generated=3.0,
+                total_electricity_exported=3.0,
+            ),
         )
 
     @pytest.fixture
@@ -95,13 +103,19 @@ class TestOptimisationTaskDatabase:
             portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
             site_id="demo_london",
             scenario={"grid": {"export_headroom": 500}},
-            metric_carbon_balance_scope_1=1.0,
-            metric_carbon_balance_scope_2=2.0,
-            metric_cost_balance=3.0,
-            metric_capex=4.0,
-            metric_payback_horizon=None,  # we didn't calculate this one
-            metric_annualised_cost=-1.0,  # this one is negative!
-            metric_carbon_cost=5.0,
+            metrics=SiteMetrics(
+                carbon_balance_scope_1=1.0,
+                carbon_balance_scope_2=2.0,
+                cost_balance=3.0,
+                capex=4.0,
+                payback_horizon=None,  # we didn't calculate this one
+                annualised_cost=-1.0,  # this one is negative!
+                carbon_cost=5.0,
+                total_gas_used=3.0,
+                total_electricity_imported=3.0,
+                total_electricity_generated=3.0,
+                total_electricity_exported=3.0,
+            ),
         )
 
     @pytest.mark.asyncio
@@ -204,12 +218,12 @@ class TestOptimisationTaskDatabase:
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert result.status_code == 200, result.text
 
-        sample_site_optimisation_result.metric_cost_balance = float(np.finfo(np.float32).max) + 1.0
+        sample_site_optimisation_result.metrics.cost_balance = float(np.finfo(np.float32).max) + 1.0
         sample_site_result_2 = copy.deepcopy(sample_site_optimisation_result)
         sample_site_result_2.site_id = "demo_edinburgh"
 
         sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result, sample_site_result_2]
-        sample_portfolio_optimisation_result.metric_cost_balance = float(np.finfo(np.float32).max)
+        sample_portfolio_optimisation_result.metrics.cost_balance = float(np.finfo(np.float32).max)
         to_send = OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result])
         opt_result = await client.post("/add-optimisation-results", content=to_send.model_dump_json())
         assert opt_result.status_code == 200, opt_result.text
@@ -217,8 +231,8 @@ class TestOptimisationTaskDatabase:
             "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
         )
         assert get_result.status_code == 200, get_result.text
-        assert get_result.json()[0]["metric_cost_balance"] == float(np.finfo(np.float32).max)
-        assert get_result.json()[0]["site_results"][0]["metric_cost_balance"] == float(np.finfo(np.float32).max)
+        assert get_result.json()[0]["metrics"]["cost_balance"] == float(np.finfo(np.float32).max)
+        assert get_result.json()[0]["site_results"][0]["metrics"]["cost_balance"] == float(np.finfo(np.float32).max)
 
     @pytest.mark.asyncio
     async def test_site_inf(
@@ -232,12 +246,12 @@ class TestOptimisationTaskDatabase:
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert result.status_code == 200, result.text
 
-        sample_site_optimisation_result.metric_cost_balance = float("inf")
+        sample_site_optimisation_result.metrics.cost_balance = float("inf")
         sample_site_result_2 = copy.deepcopy(sample_site_optimisation_result)
         sample_site_result_2.site_id = "demo_edinburgh"
 
         sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result, sample_site_result_2]
-        sample_portfolio_optimisation_result.metric_cost_balance = float("inf")
+        sample_portfolio_optimisation_result.metrics.cost_balance = float("inf")
         to_send = OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result])
         opt_result = await client.post("/add-optimisation-results", content=to_send.model_dump_json())
         assert opt_result.status_code == 200, opt_result.text
@@ -245,8 +259,8 @@ class TestOptimisationTaskDatabase:
             "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
         )
         assert get_result.status_code == 200, get_result.text
-        assert get_result.json()[0]["metric_cost_balance"] is None
-        assert get_result.json()[0]["site_results"][0]["metric_cost_balance"] is None
+        assert get_result.json()[0]["metrics"]["cost_balance"] is None
+        assert get_result.json()[0]["site_results"][0]["metrics"]["cost_balance"] is None
 
     @pytest.mark.asyncio
     async def test_can_get_portfolio_results_one_site(
@@ -275,9 +289,44 @@ class TestOptimisationTaskDatabase:
         assert len(get_result.json()[0]["site_results"]) == 1
         assert get_result.json()[0]["site_results"][0]["scenario"] == sample_site_optimisation_result.model_dump()["scenario"]
         assert (
-            get_result.json()[0]["site_results"][0]["metric_capex"]
-            == sample_site_optimisation_result.model_dump()["metric_capex"]
+            get_result.json()[0]["site_results"][0]["metrics"]["capex"]
+            == sample_site_optimisation_result.model_dump()["metrics"]["capex"]
         )
+        assert (
+            get_result.json()[0]["site_results"][0]["metrics"]["total_gas_used"]
+            == sample_site_optimisation_result.model_dump()["metrics"]["total_gas_used"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_can_handle_result_with_no_metrics(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
+        """Test that we can add a result with no metrics and get it back."""
+        result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
+        assert result.status_code == 200, result.text
+
+        empty_portfolio_result = PortfolioOptimisationResult(
+            portfolio_id=uuid.uuid4(),
+            task_id=sample_task_config.task_id,
+            metrics=PortfolioMetrics(),  # no metrics recorded
+            site_results=[],
+        )
+
+        opt_result = await client.post(
+            "/add-optimisation-results",
+            content=OptimisationResultEntry(portfolio=[empty_portfolio_result]).model_dump_json(),
+        )
+        assert opt_result.status_code == 200, opt_result.text
+
+        get_result = await client.post(
+            "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
+        )
+        assert get_result.status_code == 200, get_result.text
+        assert get_result.json()[0]["task_id"] == str(sample_task_config.task_id)
+        assert get_result.json()[0]["portfolio_id"] == str(empty_portfolio_result.portfolio_id)
+
+        # All metrics should be None, check a few of them
+        assert get_result.json()[0]["metrics"]["carbon_cost"] is None
+        assert get_result.json()[0]["metrics"]["total_heat_shortfall"] is None
+        assert get_result.json()[0]["metrics"]["total_electricity_export_gain"] is None
 
     @pytest.mark.asyncio
     async def test_can_get_repro_results(

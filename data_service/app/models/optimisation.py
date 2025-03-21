@@ -15,6 +15,58 @@ from .site_range import SiteRange
 type SiteScenario = dict[str, Any]
 
 
+class SiteMetrics(pydantic.BaseModel):
+    """Metrics for a single site within a portfolio."""
+
+    carbon_balance_scope_1: float | None = pydantic.Field(
+        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, 3.14]
+    )
+    carbon_balance_scope_2: float | None = pydantic.Field(
+        description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
+    )
+    carbon_cost: float | None = pydantic.Field(
+        description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
+    )
+    cost_balance: float | None = pydantic.Field(
+        description="Net monetary cost (opex - returns) over the lifetime of these interventions on this site.", default=None
+    )
+    capex: float | None = pydantic.Field(description="Cost to install this scenario on this site.", default=None)
+    payback_horizon: float | None = pydantic.Field(
+        description="Years for this scenario to pay back on this site (if very large, represents no payback ever.)",
+        default=None,
+    )
+    annualised_cost: float | None = pydantic.Field(
+        description="Cost of running this scenario (including amortised deprecation) on this site.", default=None
+    )
+    total_gas_used: float | None = pydantic.Field(
+        description="Total gas imported (kWh) for this site", default=None
+    )
+    total_electricity_imported: float | None = pydantic.Field(
+        description="Total electricity imported from the grid (kWh) for this site", default=None
+    )
+    total_electricity_generated: float | None = pydantic.Field(
+        description="Total electricity generated on-site (kWh) for this site", default=None
+    )
+    total_electricity_exported: float | None = pydantic.Field(
+        description="Total electricity exported to the grid (kWh) for this site", default=None
+    )
+    total_electrical_shortfall: float | None = pydantic.Field(
+        description="Total electrical shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    total_heat_shortfall: float | None = pydantic.Field(
+        description="Total heat shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    total_gas_import_cost: float | None = pydantic.Field(
+        description="Total spend (£) importing gas for the site", default=None
+    )
+    total_electricity_import_cost: float | None = pydantic.Field(
+        description="Total spend (£) importing electricity from the grid for this site", default=None
+    )
+    total_electricity_export_gain: float | None = pydantic.Field(
+        description="Total income (£) exporting electricity to this grid for this site", default=None
+    )
+
+
 class SiteOptimisationResult(pydantic.BaseModel):
     """Result for a single site within a portfolio result."""
 
@@ -26,25 +78,61 @@ class SiteOptimisationResult(pydantic.BaseModel):
     scenario: SiteScenario = pydantic.Field(
         description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
     )
-    metric_carbon_balance_scope_1: float | None = pydantic.Field(
-        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, 3.14]
+    metrics: SiteMetrics = pydantic.Field(
+        description="The metrics calculated for this site."
     )
-    metric_carbon_balance_scope_2: float | None = pydantic.Field(
-        description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
+
+
+class PortfolioMetrics(pydantic.BaseModel):
+    """Metrics for the whole portfolio."""
+
+    carbon_balance_scope_1: float | None = pydantic.Field(
+        description="Direct carbon emissions saved by this entire portfolio of scenarios.", default=None, examples=[None, 3.14]
     )
-    metric_carbon_cost: float | None = pydantic.Field(
+    carbon_balance_scope_2: float | None = pydantic.Field(
+        description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
+    )
+    carbon_cost: float | None = pydantic.Field(
         description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
     )
-    metric_cost_balance: float | None = pydantic.Field(
-        description="Net monetary cost (opex - returns) over the lifetime of these interventions on this site.", default=None
+    cost_balance: float | None = pydantic.Field(
+        description="Net change in annual running cost due to this entire portfolio of scenarios.", default=None
     )
-    metric_capex: float | None = pydantic.Field(description="Cost to install this scenario on this site.", default=None)
-    metric_payback_horizon: float | None = pydantic.Field(
-        description="Years for this scenario to pay back on this site (if very large, represents no payback ever.)",
-        default=None,
+    capex: float | None = pydantic.Field(
+        description="Cost to install this scenario on entire portfolio of scenarios.", default=None
     )
-    metric_annualised_cost: float | None = pydantic.Field(
-        description="Cost of running this scenario (including amortised deprecation) on this site.", default=None
+    payback_horizon: float | None = pydantic.Field(
+        description="Years for these scenarios to pay back across this portfolio.", default=None
+    )
+    annualised_cost: float | None = pydantic.Field(
+        description="Cost of running these scenario (including amortised deprecation) across this portfolio", default=None
+    )
+    total_gas_used: float | None = pydantic.Field(
+        description="Total gas imported (kWh) across this portfolio", default=None
+    )
+    total_electricity_imported: float | None = pydantic.Field(
+        description="Total electricity imported from the grid (kWh) across this portfolio", default=None
+    )
+    total_electricity_generated: float | None = pydantic.Field(
+        description="Total electricity generated on-site (kWh) across this portfolio", default=None
+    )
+    total_electricity_exported: float | None = pydantic.Field(
+        description="Total electricity exported to the grid (kWh) across this portfolio", default=None
+    )
+    total_electrical_shortfall: float | None = pydantic.Field(
+        description="Total electrical shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    total_heat_shortfall: float | None = pydantic.Field(
+        description="Total heat shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    total_gas_import_cost: float | None = pydantic.Field(
+        description="Total spend (£) importing gas across this portfolio", default=None
+    )
+    total_electricity_import_cost: float | None = pydantic.Field(
+        description="Total spend (£) importing electricity from the grid across this portfolio", default=None
+    )
+    total_electricity_export_gain: float | None = pydantic.Field(
+        description="Total income (£) exporting electricity to this grid across this portfolio", default=None
     )
 
 
@@ -56,26 +144,8 @@ class PortfolioOptimisationResult(pydantic.BaseModel):
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
-    metric_carbon_balance_scope_1: float | None = pydantic.Field(
-        description="Direct carbon emissions saved by this entire portfolio of scenarios.", default=None, examples=[None, 3.14]
-    )
-    metric_carbon_balance_scope_2: float | None = pydantic.Field(
-        description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
-    )
-    metric_carbon_cost: float | None = pydantic.Field(
-        description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
-    )
-    metric_cost_balance: float | None = pydantic.Field(
-        description="Net change in annual running cost due to this entire portfolio of scenarios.", default=None
-    )
-    metric_capex: float | None = pydantic.Field(
-        description="Cost to install this scenario on entire portfolio of scenarios.", default=None
-    )
-    metric_payback_horizon: float | None = pydantic.Field(
-        description="Years for these scenarios to pay back across this portfolio.", default=None
-    )
-    metric_annualised_cost: float | None = pydantic.Field(
-        description="Cost of running these scenario (including amortised deprecation) across this portfolio", default=None
+    metrics: PortfolioMetrics = pydantic.Field(
+        description="The metrics calculated across the whole portfolio."
     )
     site_results: list[SiteOptimisationResult] | None = pydantic.Field(
         default=None,
