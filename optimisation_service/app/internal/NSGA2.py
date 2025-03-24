@@ -168,9 +168,9 @@ class NSGA2(Algorithm):
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
         pi = ProblemInstance(objectives, constraints, portfolio)
-        if existing_solutions is not None:
+        if existing_solutions is not None and len(existing_solutions) > 0:
             self._load_existing_solutions(existing_solutions, pi)
-        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, verbose=True)
+        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
         simulate_scenario.cache_clear()
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
