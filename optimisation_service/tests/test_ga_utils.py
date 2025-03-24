@@ -80,14 +80,14 @@ class TestProblemInstance:
 
             if min_value is not None and max_value is not None:
                 metric_values[metric] = min_value - 1
-                excess.append(1)
+                excess.append(1.0)
                 excess.append(-max_value)
             elif min_value is not None:
                 metric_values[metric] = min_value - 1
-                excess.append(1)
+                excess.append(1.0)
             elif max_value is not None:
                 metric_values[metric] = max_value + 1
-                excess.append(1)
+                excess.append(1.0)
 
         assert default_problem_instance.calculate_infeasibility(metric_values) == excess
 

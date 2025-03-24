@@ -73,7 +73,7 @@ def merge_and_optimise_two_portfolio_solution_lists(
             for sol1, sol2 in list(combinations)
         ]
     print(f"Combining {len(list1)} and {len(list2)} points.")
-    pf = []
+    pf: list[PortfolioSolution] = []
     while subset := list(islice(combinations, batch_size)):
         if capex_limit is not None:
             subset_combined = [

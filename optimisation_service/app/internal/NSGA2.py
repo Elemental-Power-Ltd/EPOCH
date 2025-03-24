@@ -2,8 +2,8 @@ from datetime import UTC, datetime, timedelta
 
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
-from pymoo.core.initialization import Initialization
-from pymoo.core.population import Population
+from pymoo.core.initialization import Initialization  # type: ignore
+from pymoo.core.population import Population  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
@@ -13,7 +13,7 @@ from pymoo.termination.ftol import MultiObjectiveSpaceTermination  # type: ignor
 from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: ignore
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
-from pymoo.util.misc import at_least_2d_array
+from pymoo.util.misc import at_least_2d_array  # type: ignore
 
 from app.internal.constraints import is_in_constraints
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
@@ -21,7 +21,7 @@ from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.result import do_nothing_scenario
 from app.models.algorithms import Algorithm
-from app.models.constraints import Constraints
+from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.ga_utils import SamplingMethod
 from app.models.metrics import Metric
@@ -243,7 +243,7 @@ class SeperatedNSGA2(Algorithm):
         if Metric.capex in constraints:
             capex_limit = constraints[Metric.capex].get("max", None)
             if capex_limit is not None:
-                new_constraints[Metric.capex] = {"max": capex_limit}
+                new_constraints[Metric.capex] = Bounds(max=capex_limit)
         sub_solutions: list[list[PortfolioSolution]] = []
         n_evals = 0
         for site in portfolio:

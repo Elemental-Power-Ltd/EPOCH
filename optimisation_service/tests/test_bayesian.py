@@ -125,11 +125,11 @@ class TestExtractSubPortfolioCapexAllocations:
         capex_a, capex_b, capex_c, capex_d, capex_e = 10, 20, 30, 40, 50
         solution = PortfolioSolution(
             scenario={
-                "a": SiteSolution(TaskData, {"capex": capex_a}),
-                "b": SiteSolution(TaskData, {"capex": capex_b}),
-                "c": SiteSolution(TaskData, {"capex": capex_c}),
-                "d": SiteSolution(TaskData, {"capex": capex_d}),
-                "e": SiteSolution(TaskData, {"capex": capex_e}),
+                "a": SiteSolution(TaskData(), {Metric.capex: capex_a}),
+                "b": SiteSolution(TaskData(), {Metric.capex: capex_b}),
+                "c": SiteSolution(TaskData(), {Metric.capex: capex_c}),
+                "d": SiteSolution(TaskData(), {Metric.capex: capex_d}),
+                "e": SiteSolution(TaskData(), {Metric.capex: capex_e}),
             },
             metric_values={},
         )
@@ -147,11 +147,11 @@ class TestConvertSolutionListToTensor:
         carbon_balance_scope_1 = 66
         solution = PortfolioSolution(
             scenario={
-                "a": SiteSolution(TaskData, {"capex": capex_a}),
-                "b": SiteSolution(TaskData, {"capex": capex_b}),
-                "c": SiteSolution(TaskData, {"capex": capex_c}),
-                "d": SiteSolution(TaskData, {"capex": capex_d}),
-                "e": SiteSolution(TaskData, {"capex": capex_e}),
+                "a": SiteSolution(TaskData(), {Metric.capex: capex_a}),
+                "b": SiteSolution(TaskData(), {Metric.capex: capex_b}),
+                "c": SiteSolution(TaskData(), {Metric.capex: capex_c}),
+                "d": SiteSolution(TaskData(), {Metric.capex: capex_d}),
+                "e": SiteSolution(TaskData(), {Metric.capex: capex_e}),
             },
             metric_values={Metric.cost_balance: cost_balance, Metric.carbon_balance_scope_1: carbon_balance_scope_1},
         )

@@ -59,23 +59,19 @@ class NSGA2HyperParam(BaseModel):
 
 
 class BayesianHyperParam(NSGA2HyperParam):
-    n_per_sub_portfolio: PositiveInt = (Field(examples=[1, 2], description="Number of sites per sub portfolio.", default=1),)
-    n_generations: PositiveInt = (Field(examples=[10, 20], description="Number of generations.", default=10),)
-    batch_size: PositiveInt = (Field(examples=[1, 2, 3, 4], description="Number of evaluations per generation.", default=4),)
-    n_init_samples: PositiveInt = (
-        Field(examples=[5, 10], description="Number of evaluations to initialise model.", default=5),
+    n_per_sub_portfolio: PositiveInt = Field(examples=[1, 2], description="Number of sites per sub portfolio.", default=1)
+    n_generations: PositiveInt = Field(examples=[10, 20], description="Number of generations.", default=10)
+    batch_size: PositiveInt = Field(examples=[1, 2, 3, 4], description="Number of evaluations per generation.", default=4)
+    n_init_samples: PositiveInt = Field(examples=[5, 10], description="Number of evaluations to initialise model.", default=5)
+    num_restarts: PositiveInt = Field(
+        examples=[2, 10], description="Number of restarts of the acquisition function optimisation process.", default=10
     )
-    num_restarts: PositiveInt = (
-        Field(examples=[2, 10], description="Number of restarts of the acquisition function optimisation process.", default=10),
+    raw_samples: PositiveInt = Field(
+        examples=[16, 512],
+        description="Number of raw samples to initialise acquisition function optimisation process with.",
+        default=512,
     )
-    raw_samples: PositiveInt = (
-        Field(
-            examples=[16, 512],
-            description="Number of raw samples to initialise acquisition function optimisation process with.",
-            default=512,
-        ),
-    )
-    mc_samples: PositiveInt = (Field(examples=[4, 128], description="Size of samples.", default=128),)
+    mc_samples: PositiveInt = Field(examples=[4, 128], description="Size of samples.", default=128)
 
 
 class GridSearchHyperParam(BaseModel):

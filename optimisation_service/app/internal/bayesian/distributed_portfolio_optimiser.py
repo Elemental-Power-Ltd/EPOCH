@@ -3,7 +3,7 @@ import numpy as np
 from app.internal.constraints import is_in_constraints
 from app.internal.NSGA2 import NSGA2
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
-from app.models.constraints import Constraints
+from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
 from app.models.result import PortfolioSolution
@@ -67,7 +67,7 @@ class DistributedPortfolioOptimiser:
         """
         sub_solutions: list[list[PortfolioSolution]] = []
         for i, capex_limit in enumerate(capex_limits):
-            constraints = {Metric.capex: {"max": capex_limit}}
+            constraints = {Metric.capex: Bounds(max=capex_limit)}
             selected_solutions = select_starting_solutions(
                 existing_solutions=list(self.sub_portfolio_solutions[i]),
                 constraints=constraints,
@@ -95,7 +95,7 @@ class DistributedPortfolioOptimiser:
 
         # update sub_portfolio_combinations
         for combination_set, new_combination_set in zip(self.sub_portfolio_combinations, new_sub_portfolio_combinations):
-            combination_set.update(new_combination_set)
+            combination_set.update(set(new_combination_set))
 
         mask = is_in_constraints(self.constraints, solutions)
 
@@ -107,7 +107,7 @@ class DistributedPortfolioOptimiser:
         self,
         solutions: list[list[PortfolioSolution]],
         objectives: list[Metric],
-    ) -> tuple[list[PortfolioSolution], list[set[PortfolioSolution]]]:
+    ) -> tuple[list[PortfolioSolution], list[list[PortfolioSolution]]]:
         """
         Merge and optimise a list of portfolio solution lists into a single portfolio solution Pareto-optimal front.
 
@@ -197,7 +197,7 @@ def select_starting_solutions(
                     [
                         selected_solutions,
                         rng.choice(
-                            existing_solutions,
+                            existing_solutions,  # type: ignore
                             min(n_select - len(selected_solutions), len(existing_solutions)),
                             replace=False,
                         ),
@@ -205,4 +205,4 @@ def select_starting_solutions(
                 )
         return selected_solutions
 
-    return None
+    return []

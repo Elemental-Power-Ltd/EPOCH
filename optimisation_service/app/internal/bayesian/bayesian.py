@@ -1,28 +1,29 @@
 import datetime
 import logging
 import warnings
+from typing import TypedDict
 
 import numpy as np
 import numpy.typing as npt
 import torch
-from botorch import fit_gpytorch_mll
-from botorch.acquisition.multi_objective.logei import (
-    qLogExpectedHypervolumeImprovement,
+from botorch import fit_gpytorch_mll  # type: ignore
+from botorch.acquisition.multi_objective.logei import (  # type: ignore
+    qLogExpectedHypervolumeImprovement,  # type: ignore
 )
-from botorch.exceptions import BadInitialCandidatesWarning
-from botorch.exceptions.warnings import UserInputWarning
-from botorch.models.approximate_gp import SingleTaskVariationalGP
-from botorch.models.gpytorch import GPyTorchModel
-from botorch.models.transforms.outcome import Standardize
-from botorch.optim.optimize import optimize_acqf
-from botorch.sampling.normal import IIDNormalSampler
-from botorch.utils.multi_objective.box_decompositions.non_dominated import (
-    FastNondominatedPartitioning,
+from botorch.exceptions import BadInitialCandidatesWarning  # type: ignore
+from botorch.exceptions.warnings import UserInputWarning  # type: ignore
+from botorch.models.approximate_gp import SingleTaskVariationalGP  # type: ignore
+from botorch.models.gpytorch import GPyTorchModel  # type: ignore
+from botorch.models.transforms.outcome import Standardize  # type: ignore
+from botorch.optim.optimize import optimize_acqf  # type: ignore
+from botorch.sampling.normal import IIDNormalSampler  # type: ignore
+from botorch.utils.multi_objective.box_decompositions.non_dominated import (  # type: ignore
+    FastNondominatedPartitioning,  # type: ignore
 )
-from botorch.utils.transforms import normalize
-from gpytorch.mlls import PredictiveLogLikelihood
-from gpytorch.mlls._approximate_mll import _ApproximateMarginalLogLikelihood
-from paretoset import paretoset
+from botorch.utils.transforms import normalize  # type: ignore
+from gpytorch.mlls import PredictiveLogLikelihood  # type: ignore
+from gpytorch.mlls._approximate_mll import _ApproximateMarginalLogLikelihood  # type: ignore
+from paretoset import paretoset  # type: ignore
 
 from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser
 from app.internal.NSGA2 import NSGA2
@@ -35,10 +36,13 @@ from app.models.result import OptimisationResult, PortfolioSolution
 
 logger = logging.getLogger("default")
 
-_TKWARGS = {
-    "dtype": torch.double,
-    "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-}
+
+class TKWARGS(TypedDict):
+    dtype: torch.dtype
+    device: torch.device
+
+
+_TKWARGS = TKWARGS(dtype=torch.double, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
 
 warnings.filterwarnings("ignore", category=BadInitialCandidatesWarning)
@@ -92,7 +96,6 @@ class Bayesian(Algorithm):
 
         # convert to tensors
         train_x, train_y = convert_solution_list_to_tensor(solutions, self.n_per_sub_portfolio, n_sub_portfolios, objectives)
-        print(len(train_x))
 
         # initialise model
         bounds = create_capex_allocation_bounds(n_sub_portfolios, capex_limit)
@@ -237,7 +240,7 @@ def create_reference_point(train_y: torch.Tensor) -> torch.Tensor:
     return ref_point
 
 
-def create_capex_allocation_bounds(n_sub_portfolios: int, capex_limit: int) -> torch.Tensor:
+def create_capex_allocation_bounds(n_sub_portfolios: int, capex_limit: float) -> torch.Tensor:
     """
     Creates a tensor representation of the bounds on the capex allocations.
     The capex allocations are bound to [0, capex_limit].
@@ -286,7 +289,7 @@ def optimize_acquisition_func_and_get_candidate(
     model: GPyTorchModel,
     train_x: torch.Tensor,
     mc_samples: int,
-    ref_point: list[float],
+    ref_point: torch.Tensor,
     bounds: torch.Tensor,
     batch_size: int,
     capex_limit: float,
@@ -426,5 +429,5 @@ def convert_solution_list_to_tensor(
         # Botorch maximises
         train_y.append([solution.metric_values[objective] * -MetricDirection[objective] for objective in objectives])
 
-    train_x, train_y = torch.tensor(train_x, **_TKWARGS), torch.tensor(train_y, **_TKWARGS)
-    return train_x, train_y
+    train_x_t, train_y_t = torch.tensor(train_x, **_TKWARGS), torch.tensor(train_y, **_TKWARGS)
+    return train_x_t, train_y_t
