@@ -9,6 +9,19 @@ You can't import this file, but it's useful for static analysis.
 import typing
 from enum import Enum
 
+class SimulationMetrics:
+    total_gas_used: float
+    total_electricity_imported: float
+    total_electricity_generated: float
+    total_electricity_exported: float
+
+    total_electrical_shortfall: float
+    total_heat_shortfall: float
+
+    total_gas_import_cost: float
+    total_electricity_import_cost: float
+    total_electricity_export_gain: float
+
 class SimulationResult:
     carbon_balance_scope_1: float
     carbon_balance_scope_2: float
@@ -16,6 +29,7 @@ class SimulationResult:
     capex: float
     payback_horizon: float
     annualised_cost: float
+    metrics: SimulationMetrics
     report_data: typing.Any
 
 class Config:
@@ -43,6 +57,7 @@ class ElectricVehicles:
 
 class BatteryMode(Enum):
     CONSUME = "CONSUME"
+    CONSUME_PLUS = "CONSUME_PLUS"
 
 class EnergyStorageSystem:
     capacity: float
@@ -51,12 +66,19 @@ class EnergyStorageSystem:
     battery_mode: BatteryMode
     initial_charge: float
 
+class GasType(Enum):
+    NATURAL_GAS = "NATURAL_GAS"
+    LIQUID_PETROLEUM_GAS = "LIQUID_PETROLEUM_GAS"
+
+class GasHeater:
+    maximum_output: float
+    gas_type: GasType
+    boiler_efficiency: float
+
 class Grid:
-    export_headroom: float
     grid_export: float
     grid_import: float
     import_headroom: float
-    min_power_factor: float
     tariff_index: int
 
 class HeatSource(Enum):
@@ -81,6 +103,7 @@ class TaskData:
     domestic_hot_water: DomesticHotWater
     electric_vehicles: ElectricVehicles
     energy_storage_system: EnergyStorageSystem
+    gas_heater: GasHeater
     grid: Grid
     heat_pump: HeatPump
     mop: Mop

@@ -7,7 +7,7 @@ from epoch_simulator import Building, Simulator, TaskData
 from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.internal.portfolio_simulator import PortfolioSimulator, combine_metric_values, simulate_scenario
-from app.models.metrics import _METRICS, Metric, MetricValues
+from app.models.metrics import _METRICS, _SUMMABLE_METRICS, Metric, MetricValues
 from app.models.result import PortfolioSolution
 from tests.conftest import _DATA_PATH
 
@@ -84,6 +84,16 @@ class TestCombineMetricValues:
             Metric.carbon_balance_scope_1: 10,
             Metric.carbon_balance_scope_2: 10,
             Metric.cost_balance: 10,
+            Metric.carbon_cost: 10,
+            Metric.total_gas_used: 10,
+            Metric.total_electricity_imported: 10,
+            Metric.total_electricity_generated: 10,
+            Metric.total_electricity_exported: 10,
+            Metric.total_electrical_shortfall: 10,
+            Metric.total_heat_shortfall: 10,
+            Metric.total_gas_import_cost: 10,
+            Metric.total_electricity_import_cost: 10,
+            Metric.total_electricity_export_gain: 10
         }
         metric_values[Metric.payback_horizon] = calculate_payback_horizon(
             capex=metric_values[Metric.capex], cost_balance=metric_values[Metric.cost_balance]
@@ -94,11 +104,11 @@ class TestCombineMetricValues:
         res = combine_metric_values([metric_values])
         assert res == metric_values
         res = combine_metric_values([metric_values, metric_values])
+        # check this test contains every metric
         assert all(obj in list(res.keys()) for obj in _METRICS)
-        assert res[Metric.annualised_cost] == metric_values[Metric.annualised_cost] * 2
-        assert res[Metric.capex] == metric_values[Metric.capex] * 2
-        assert res[Metric.carbon_balance_scope_1] == metric_values[Metric.carbon_balance_scope_1] * 2
-        assert res[Metric.carbon_balance_scope_2] == metric_values[Metric.carbon_balance_scope_2] * 2
+        # check every summable metric is 10 * 2
+        for metric in _SUMMABLE_METRICS:
+            assert res[metric] == metric_values[metric] * 2
         assert res[Metric.cost_balance] == metric_values[Metric.cost_balance] * 2
         assert res[Metric.payback_horizon] == calculate_payback_horizon(
             capex=metric_values[Metric.capex] * 2, cost_balance=metric_values[Metric.cost_balance] * 2
@@ -186,3 +196,30 @@ class TestCombineMetricValues:
             carbon_balance_scope_1=metric_values_1[Metric.carbon_balance_scope_1]
             + metric_values_2[Metric.carbon_balance_scope_1],
         )
+
+    def test_missing_metrics(self):
+        metric_values_1: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: 10,
+            Metric.carbon_balance_scope_1: 10,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: 10,
+        }
+        metric_values_no_scope_1: MetricValues = {
+            Metric.annualised_cost: 10,
+            Metric.capex: 10,
+            Metric.carbon_balance_scope_2: 10,
+            Metric.cost_balance: 10,
+        }
+        res = combine_metric_values([metric_values_1, metric_values_no_scope_1])
+
+        # metrics present in both results should be combine-able
+        assert Metric.annualised_cost in res
+        assert Metric.capex in res
+        assert Metric.carbon_balance_scope_2
+
+        # a metric missing from either should not be present
+        assert Metric.carbon_balance_scope_1 not in res
+
+        # we can't derive a carbon cost without scope_1 being present in both
+        assert Metric.carbon_cost not in res

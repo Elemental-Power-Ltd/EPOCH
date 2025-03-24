@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
 from ..models.core import OptimisationResultEntry, Task
 from ..models.database import DatasetTypeEnum
-from ..models.simulate import ResultReproConfig
+from ..models.simulate import EpochInputData, ResultReproConfig
 from ..models.site_data import EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
 
 logger = logging.getLogger("default")
@@ -22,24 +22,12 @@ logger = logging.getLogger("default")
 # When running within a docker network, this should be set to http://data:8762
 _DB_URL = os.environ.get("EP_DATA_SERVICE_URL", "http://localhost:8762")
 _TEMP_DIR = Path("app", "data", "temp")
-_INPUT_DATA_FILES = [
-    "CSVEload.csv",
-    "CSVHload.csv",
-    "CSVAirtemp.csv",
-    "CSVRGen.csv",
-    "CSVASHPinput.csv",
-    "CSVASHPoutput.csv",
-    "CSVImporttariff.csv",
-    "CSVGridCO2.csv",
-    "CSVDHWdemand.csv",
-]
 
 
 class DataManager:
     def __init__(self) -> None:
         self.db_url = _DB_URL
         self.temp_dir = _TEMP_DIR
-        self.input_data_files = _INPUT_DATA_FILES
 
     async def fetch_portfolio_data(self, task: Task) -> None:
         """
@@ -59,14 +47,62 @@ class DataManager:
         for site in task.portfolio:
             site_data = site.site_data
             if site_data.loc == FileLoc.remote:
-                await self.hydrate_site_with_latest_dataset_ids(site_data)
-
-                site_data_entries = await self.fetch_specific_datasets(site_data)
-
-                site._epoch_data = self.transform_all_input_data(site_data_entries, site_data.start_ts, site_data.end_ts)
+                site._epoch_data = await self.get_latest_site_data(site_data)
 
             elif site_data.loc == FileLoc.local:
                 site._epoch_data = load_epoch_data_from_file(site_data.path)
+
+    async def get_latest_site_data(self, site_data: RemoteMetaData) -> EpochSiteData:
+        """
+        Get an EPOCH-compatible SiteData using the most recently generated datasets of each type.
+
+        Parameters
+        ----------
+        site_data
+            the metadata definition of the SiteData we want
+        Returns
+        -------
+
+        """
+        await self.hydrate_site_with_latest_dataset_ids(site_data)
+
+        validate_for_necessary_datasets(site_data)
+
+        dataset_entries = await self.fetch_specific_datasets(site_data)
+
+        epoch_data = self.transform_all_input_data(dataset_entries, site_data.start_ts, site_data.end_ts)
+
+        return epoch_data
+
+    async def get_saved_epoch_input(self, portfolio_id: UUID4, site_id: str) -> EpochInputData:
+        """
+        Get the SiteData and TaskData that was used to produce a specific result in the database.
+
+        Parameters
+        ----------
+        portfolio_id
+        site_id
+
+        Returns
+        -------
+            An Epoch Compatible SiteData and a TaskData
+
+        """
+        repro_config = await self.get_result_configuration(portfolio_id)
+
+        if site_id not in repro_config.site_data or site_id not in repro_config.task_data:
+            raise HTTPException(400, detail=f"No result found for (portfolio, site) pair: {portfolio_id}, {site_id}")
+
+        site_data = repro_config.site_data[site_id]
+        task_data = repro_config.task_data[site_id]
+
+        validate_for_necessary_datasets(site_data)
+
+        dataset_entries = await self.fetch_specific_datasets(site_data)
+
+        epoch_data = self.transform_all_input_data(dataset_entries, site_data.start_ts, site_data.end_ts)
+
+        return EpochInputData(task_data=task_data, site_data=epoch_data)
 
     async def hydrate_site_with_latest_dataset_ids(self, site_data: RemoteMetaData) -> None:
         """
@@ -163,7 +199,7 @@ class DataManager:
             solar_yields=site_data_entries.rgen.data,
             import_tariffs=site_data_entries.import_tariffs.data,
             fabric_interventions=site_data_entries.heat.data[1:],  # Following heat_loads are fabric interventions
-            ashp_input_table=site_data_entries.ashp_output.data,
+            ashp_input_table=site_data_entries.ashp_input.data,
             ashp_output_table=site_data_entries.ashp_output.data,
         )
         return site_data
@@ -278,3 +314,43 @@ def load_epoch_data_from_file(path: os.PathLike) -> EpochSiteData:
     with open(path) as f:
         epoch_data = EpochSiteData.model_validate(json.load(f))
     return epoch_data
+
+
+def validate_for_necessary_datasets(site_data: RemoteMetaData) -> None:
+    """
+    Check that the site_data contains all of the necessary datasets.
+
+    Raises an Exception if this is not the case
+
+    Parameters
+    ----------
+    site_data
+
+    Returns
+    -------
+
+    """
+    necessary_datasets = [
+        DatasetTypeEnum.GasMeterData,
+        DatasetTypeEnum.RenewablesGeneration,
+        DatasetTypeEnum.HeatingLoad,
+        DatasetTypeEnum.CarbonIntensity,
+        DatasetTypeEnum.ASHPData,
+        DatasetTypeEnum.ImportTariff,
+    ]
+    # Check that the dataset_ids have been saved to the database for this result
+    missing_datasets: list[DatasetTypeEnum] = [
+        key for key in necessary_datasets if getattr(site_data, key) is None]
+
+    if (
+        site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterData) is None
+        and site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterDataSynthesised) is None
+    ):
+        missing_datasets.append(DatasetTypeEnum.ElectricityMeterData)
+
+    if len(missing_datasets):
+        list_as_string = ", ".join(missing_datasets)
+        raise HTTPException(
+            400,
+            detail=f"{site_data.site_id} is missing the following datasets: {list_as_string}",
+        )

@@ -6,6 +6,7 @@ from epoch_simulator import (
     DataCentre,
     DomesticHotWater,
     EnergyStorageSystem,
+    GasHeater,
     Grid,
     HeatPump,
     Renewables,
@@ -18,7 +19,7 @@ from app.internal.epoch_utils import (
     convert_sim_result,
     convert_TaskData_to_dictionary,
 )
-from app.models.metrics import _EPOCH_NATIVE_METRICS, _SERVICE_NATIVE_METRICS
+from app.models.metrics import _METRICS
 
 from .conftest import _DATA_PATH
 
@@ -41,9 +42,7 @@ def test_convert_sim_result() -> None:
 
     res = convert_sim_result(sim_result)
 
-    for metric in _EPOCH_NATIVE_METRICS:
-        assert getattr(sim_result, metric) == res[metric]
-    for metric in _SERVICE_NATIVE_METRICS:
+    for metric in _METRICS:
         assert metric in res
 
 
@@ -57,6 +56,7 @@ def test_convert_TaskData_to_dictionary() -> None:
     td.data_centre = DataCentre()
     td.domestic_hot_water = DomesticHotWater()
     td.energy_storage_system = EnergyStorageSystem()
+    td.gas_heater = GasHeater()
 
     res = convert_TaskData_to_dictionary(td)
 
@@ -68,3 +68,4 @@ def test_convert_TaskData_to_dictionary() -> None:
     assert "data_centre" in res
     assert "domestic_hot_water" in res
     assert "energy_storage_system" in res
+    assert "gas_heater" in res

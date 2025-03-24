@@ -115,11 +115,9 @@ class TestRoundingAndDegenerateRepair:
         domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
-            export_headroom=[0.5],
             grid_export=[60],
             grid_import=[60],
             import_headroom=[0.5],
-            min_power_factor=[1],
             tariff_index=[0, 1, 2, 3],
         )
         heat_pump = HeatPump(
@@ -147,11 +145,9 @@ class TestRoundingAndDegenerateRepair:
         domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
-            export_headroom=[0.5],
             grid_export=[60],
             grid_import=[60],
             import_headroom=[0.5],
-            min_power_factor=[1],
             tariff_index=[0, 1, 2, 3],
         )
         heat_pump = HeatPump(
@@ -179,11 +175,9 @@ class TestRoundingAndDegenerateRepair:
         domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
-            export_headroom=[0.5],
             grid_export=[60],
             grid_import=[60],
             import_headroom=[0.5],
-            min_power_factor=[1],
             tariff_index=[0, 1, 2, 3],
         )
         config = Config(capex_limit=99999999999)
