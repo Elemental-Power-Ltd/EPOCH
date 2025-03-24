@@ -78,10 +78,14 @@ class TestProblemInstance:
             min_value = bounds.get("min", None)
             max_value = bounds.get("max", None)
 
-            if min_value is not None:
+            if min_value is not None and max_value is not None:
                 metric_values[metric] = min_value - 1
                 excess.append(1)
-            if max_value is not None:
+                excess.append(-max_value)
+            elif min_value is not None:
+                metric_values[metric] = min_value - 1
+                excess.append(1)
+            elif max_value is not None:
                 metric_values[metric] = max_value + 1
                 excess.append(1)
 

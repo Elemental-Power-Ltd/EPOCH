@@ -21,23 +21,23 @@ class TestCountConstraints:
 
 
 class TestIsInConstraints:
-    def test_empty_constraints(self, dummy_portfolio_solutions: list[PortfolioSolution]):
-        mask = is_in_constraints(constraints={}, solutions=dummy_portfolio_solutions)
-        assert sum(mask) == len(dummy_portfolio_solutions)
+    def test_empty_constraints(self, default_portfolio_solutions: list[PortfolioSolution]):
+        mask = is_in_constraints(constraints={}, solutions=default_portfolio_solutions)
+        assert sum(mask) == len(default_portfolio_solutions)
 
-    def test_min_and_max_constraints(self, dummy_portfolio_solutions: list[PortfolioSolution]):
-        for solution in dummy_portfolio_solutions:
+    def test_min_and_max_constraints(self, default_portfolio_solutions: list[PortfolioSolution]):
+        for solution in default_portfolio_solutions:
             solution.metric_values[Metric.capex] = -10
-        dummy_portfolio_solutions[0].metric_values[Metric.capex] = 10
-        dummy_portfolio_solutions[1].metric_values[Metric.capex] = 30
-        mask = is_in_constraints(constraints={Metric.capex: {"min": 0, "max": 20}}, solutions=dummy_portfolio_solutions)
+        default_portfolio_solutions[0].metric_values[Metric.capex] = 10
+        default_portfolio_solutions[1].metric_values[Metric.capex] = 30
+        mask = is_in_constraints(constraints={Metric.capex: {"min": 0, "max": 20}}, solutions=default_portfolio_solutions)
         assert sum(mask) == 1
 
-    def test_multiple_constraints(self, dummy_portfolio_solutions: list[PortfolioSolution]):
+    def test_multiple_constraints(self, default_portfolio_solutions: list[PortfolioSolution]):
         constraints = {Metric.capex: {"min": 0}, Metric.cost_balance: {"max": 20}}
-        for solution in dummy_portfolio_solutions:
+        for solution in default_portfolio_solutions:
             solution.metric_values[Metric.capex] = -10
             solution.metric_values[Metric.cost_balance] = 10
-        dummy_portfolio_solutions[0].metric_values[Metric.capex] = 10
-        mask = is_in_constraints(constraints=constraints, solutions=dummy_portfolio_solutions)
+        default_portfolio_solutions[0].metric_values[Metric.capex] = 10
+        mask = is_in_constraints(constraints=constraints, solutions=default_portfolio_solutions)
         assert sum(mask) == 1

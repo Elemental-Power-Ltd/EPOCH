@@ -27,7 +27,7 @@ def count_constraints(constraints: Constraints) -> int:
     return n_constraints
 
 
-def is_in_constraints(constraints: Constraints, solutions: list[PortfolioSolution]) -> list[PortfolioSolution]:
+def is_in_constraints(constraints: Constraints, solutions: list[PortfolioSolution]) -> list[bool]:
     """
     Informs which PortfolioSolutions are within the metric constraints.
 
