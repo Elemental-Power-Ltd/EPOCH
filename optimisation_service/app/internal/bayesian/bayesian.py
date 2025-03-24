@@ -103,7 +103,7 @@ class Bayesian(Algorithm):
 
         # run n_generations rounds of Bayesian optimisation after the initial random batch
         for j in range(0, self.n_generations):
-            logger.debug(f"On generations {j+1} / {self.n_generations}.")
+            logger.debug(f"On generations {j + 1} / {self.n_generations}.")
 
             # create reference point. TODO: Improve Reference point selection
             ref_point = create_reference_point(train_y)
@@ -128,7 +128,7 @@ class Bayesian(Algorithm):
             # evaluate candidates
             new_solutions = []
             for k, candidate in enumerate(candidates):
-                logger.debug(f"On batch {k+1} / {self.batch_size}.")
+                logger.debug(f"On batch {k + 1} / {self.batch_size}.")
                 new = dpo.evaluate(candidate)
                 logger.debug(f"Found {len(new)} solutions.")
                 new_solutions.extend(new)
