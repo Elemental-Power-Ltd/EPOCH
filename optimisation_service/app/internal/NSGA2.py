@@ -15,6 +15,7 @@ from pymoo.termination.robust import RobustTermination  # type: ignore
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
 from app.internal.pareto_front import portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
+from app.internal.result import do_nothing_scenario
 from app.models.algorithms import Algorithm
 from app.models.constraints import Constraints
 from app.models.core import Site
@@ -115,10 +116,13 @@ class NSGA2(Algorithm):
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = timedelta(seconds=res.exec_time)
         non_dom_sol = res.X
-        if non_dom_sol.ndim == 1:
-            non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
-        portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
-        portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
+        if non_dom_sol is None:
+            portfolio_solutions_pf = [do_nothing_scenario(pi.site_names)]
+        else:
+            if non_dom_sol.ndim == 1:
+                non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
+            portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
+            portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
         return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals)
 
