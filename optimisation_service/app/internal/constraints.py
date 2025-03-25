@@ -21,7 +21,7 @@ def get_shortfall_constraints(portfolio: list[Site], heat_tolerance: float = 0.0
     constraints
         Constraints dict, containing constraints on total_electrical_shortfall and total_heat_shortfall.
     """
-    hload = 0
+    hload = 0.0
     for site in portfolio:
         hload += sum(site._epoch_data.building_hload)
     heat_max = max(heat_tolerance * hload, 1)

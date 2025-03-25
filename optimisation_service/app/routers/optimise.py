@@ -234,7 +234,7 @@ async def submit_portfolio(request: Request, task: Task, data_manager: DataManag
         )
     try:
         await data_manager.fetch_portfolio_data(task)
-        task.portfolio_constraints = task.portfolio_constraints | get_shortfall_constraints(task.portfolio)
+        task.portfolio_constraints = task.portfolio_constraints | get_shortfall_constraints(task.portfolio)  # type: ignore
         data_manager.save_parameters(task)
         await data_manager.transmit_task(task)
         await q.put((task, data_manager))
