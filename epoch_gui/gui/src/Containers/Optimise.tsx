@@ -145,13 +145,15 @@ function OptimisationContainer() {
     const renderSiteBuilder = (site_id: string) => {
         const hasErrors = site_id in portfolioRangeErrors
 
+        const siteName = client_sites.find((site) => site.site_id === site_id)?.name || site_id;
+
         return (
             <Box
                 key={site_id}
                 sx={{display: 'flex', flexDirection: 'row', alignItems: 'flex-start', mb: 2 }}
             >
                 <Box sx={{flex: 1}}>
-                    <AccordionSection title={site_id} error={hasErrors}>
+                    <AccordionSection title={siteName} error={hasErrors}>
                         {hasErrors && <ErrorList errors={portfolioRangeErrors[site_id]}/>}
                         <ComponentBuilderForm
                             mode={"SiteRangeMode"}

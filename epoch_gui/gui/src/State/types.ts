@@ -103,10 +103,6 @@ export interface OptimisationResultEntry {
 export interface ResultsContainer {
     optimiserServiceStatus: any;
     tasks: OptimisationTaskListEntry[];
-
-    currentTask: OptimisationTaskListEntry | null;
-    currentTaskResults: PortfolioOptimisationResult[];
-    currentPortfolioResult: PortfolioOptimisationResult | null;
 }
 
 export interface Site {
@@ -156,9 +152,6 @@ export interface AppState {
     setSelectedClient: (client: Client) => void;
     setClientSites: (sites: Site[]) => void;
     setTasks: (tasks: OptimisationTaskListEntry[]) => void;
-    setCurrentTask: (task: OptimisationTaskListEntry) => void;
-    setCurrentTaskResults: (results: PortfolioOptimisationResult[]) => void;
-    setCurrentPortfolioResult: (portfolio_result: PortfolioOptimisationResult) => void;
 
     setTaskConfig: (config: Partial<TaskConfig>) => void;
 

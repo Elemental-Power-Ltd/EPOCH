@@ -75,6 +75,8 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
                 setSelectedStartDatetime={setSelectedStartDatetime}
                 daysToKeep={daysToKeep}
                 setDaysToKeep={setDaysToKeep}
+                minDateTime={initialDatetime}
+                maxDateTime={finalDatetime}
             />
 
             {usingAggregates && <Typography variant={"body1"} color={"info"}>Showing Daily Aggregates</Typography>}

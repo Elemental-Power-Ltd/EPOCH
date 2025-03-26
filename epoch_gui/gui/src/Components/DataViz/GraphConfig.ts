@@ -44,11 +44,11 @@ export const color_map = {
 export const elec_supply_stackbars = ['Grid_Export', 'Hotel_load', 'MOP_load', 'EV_actualload',
     'ESS_charge', 'ESS_AuxLoad', 'Data_centre_actual_load', 'ASHP_elec_load']
 
-export const heat_supply_stackbars = ['GasCH_load', 'Heatload', 'DHW_charging', 'ASHP_used_hotroom_heat']
+export const heat_supply_stackbars = ['Heatload', 'DHW_charging', 'ASHP_used_hotroom_heat']
 
 export const elec_draw_stackbars = ['Grid_Import','PVacGen','ESS_discharge', 'ESS_RTL']
 
-export const heat_draw_stackbars = ['Data_centre_available_hot_heat', 'DHW_load', 'DHW_Standby_loss',
+export const heat_draw_stackbars = ['GasCH_load', 'Data_centre_available_hot_heat', 'DHW_load', 'DHW_Standby_loss',
     'ASHP_DHW_output', 'ASHP_CH_output']
 
 export const elec_shortfall_stackbars = ['Actual_import_shortfall'];

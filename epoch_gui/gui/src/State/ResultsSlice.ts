@@ -1,7 +1,6 @@
 import {
     ResultsContainer,
     OptimisationTaskListEntry,
-    PortfolioOptimisationResult
 } from "./types"
 
 export const defaultResultsContainer: ResultsContainer = {
@@ -11,9 +10,6 @@ export const defaultResultsContainer: ResultsContainer = {
     service_uptime: 0
   },
   tasks: [],
-  currentTask: null,
-  currentTaskResults: [],
-  currentPortfolioResult: null,
 }
 
 export const createResultsSlice = (set, get, api) => ({
@@ -34,31 +30,4 @@ export const createResultsSlice = (set, get, api) => ({
         tasks: tasks
       }
     })),
-
-  setCurrentTask: (task: OptimisationTaskListEntry) =>
-    set((state) => ({
-      results: {
-        ...state.results,
-        currentTask: task,
-        currentTaskResults: [],
-        currentPortfolioResult: null
-      }
-    })),
-
-  setCurrentTaskResults: (results: PortfolioOptimisationResult[]) =>
-    set((state) => ({
-      results: {
-        ...state.results,
-        currentTaskResults: results
-      }
-    })),
-
-    setCurrentPortfolioResult: (portfolio_result: PortfolioOptimisationResult) => {
-      set((state) => ({
-          results: {
-              ...state.results,
-              currentPortfolioResult: portfolio_result
-          }
-      }))
-    }
 })

@@ -98,7 +98,7 @@ function App() {
                             <Route path="/" element={<Navigate to="/optimise" replace/>}/>
                             <Route path="/optimise" element={<OptimisationContainer/>}/>
                             <Route path="/simulate" element={<SimulationContainer/>}/>
-                            <Route path="/results" element={<ResultsContainer/>}/>
+                            <Route path="/results/:task_id?/:portfolio_id?" element={<ResultsContainer/>}/>
                             <Route path="/analyse/:portfolio_id?/:site_id?" element={<AnalysisContainer/>}/>
                             <Route path="/sites" element={<SitesContainer/>}/>
                             <Route path="/generate-data" element={<DatasetGenerationContainer/>}/>

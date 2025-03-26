@@ -1,16 +1,18 @@
-import React, {FC, useId} from "react";
+import "./ComponentBuilderForm.css"
+import React, {FC, useId, useState} from "react";
 import ComponentSelector from "./ComponentSelector";
 import {ComponentWidget} from "./ComponentWidget";
 import {Button} from "@mui/material";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import Masonry from "react-masonry-css";
+
 import {BuilderMode, ComponentsMap, ComponentType} from "../../Models/Core/ComponentBuilder";
 import {useComponentBuilderFileHandlers} from "./useComponentBuilderFileHandlers";
 
 import TaskDataSchema from "../../util/json/schema/TaskDataSchema.json";
 import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema.json";
-
 
 interface ComponentBuilderFormProps {
     mode: BuilderMode;
@@ -55,6 +57,26 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
 
     const schema = (mode === "TaskDataMode") ? TaskDataSchema : SiteRangeSchema;
 
+    // start with all components expanded (selected or not)
+    const [expandedMap, setExpandedMap] = useState<Record<ComponentType, boolean>>({
+        building: true,
+        data_centre: true,
+        domestic_hot_water: true,
+        electric_vehicles: true,
+        energy_storage_system: true,
+        gas_heater: true,
+        grid: true,
+        heat_pump: true,
+        mop: true,
+        renewables: true
+    });
+
+    const handleAccordionToggle = (componentKey: ComponentType) => {
+        setExpandedMap((prev) => ({
+            ...prev,
+            [componentKey]: !prev[componentKey]
+        }));
+    };
 
     return (
         <>
@@ -64,24 +86,29 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
                 onRemoveComponent={removeComponent}
             />
 
-            <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                gap: "16px",
-                margin: "1rem 0",
-            }}>
+            <Masonry
+                breakpointCols={{
+                    default: 3,  // 3 columns for large screens
+                    1100: 2,     // 2 columns for >= 1100px
+                    700: 1       // 1 column for >= 700px
+                }}
+                className="component-builder-masonry"
+                columnClassName="component-builder-masonry-column"
+            >
                 {selectedComponents.map((component) => (
-                    <ComponentWidget
-                        key={component}
-                        componentKey={component}
-                        displayName={componentsMap[component].displayName}
-                        data={componentsMap[component].data}
-                        schema={schema}
-                        onRemove={removeComponent}
-                        onFormChange={handleTaskComponentChange}
-                    />
+                        <ComponentWidget
+                            key={component}
+                            componentKey={component}
+                            displayName={componentsMap[component].displayName}
+                            data={componentsMap[component].data}
+                            schema={schema}
+                            onRemove={removeComponent}
+                            onFormChange={handleTaskComponentChange}
+                            isExpanded={expandedMap[component]}
+                            toggleExpanded={()=>handleAccordionToggle(component)}
+                        />
                 ))}
-            </div>
+            </Masonry>
 
             <div style={{marginTop: "1rem", display: "flex", gap: "8px"}}>
                 <label htmlFor={formSpecificLabel}>

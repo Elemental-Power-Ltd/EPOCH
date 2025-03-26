@@ -1,0 +1,17 @@
+
+.component-builder-masonry {
+  display: flex;
+  margin-top: 1em;
+  margin-left: -1em;
+  width: auto;
+}
+
+/* Each column */
+.component-builder-masonry-column {
+  padding-left: 1em;
+  background-clip: padding-box;
+}
+
+.component-builder-masonry-column > div {
+  margin-bottom: 1em;
+}

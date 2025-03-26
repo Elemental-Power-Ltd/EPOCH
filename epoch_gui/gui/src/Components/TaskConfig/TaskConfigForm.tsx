@@ -55,19 +55,20 @@ const TaskConfigForm = () => {
             />
           </Grid>
 
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              select
-              label="Optimiser"
-              value={taskConfig.optimiser}
-              onChange={(e) => handleChange("optimiser", e.target.value)}
-              required
-            >
-              <MenuItem value="NSGA2">Genetic Algorithm</MenuItem>
-              <MenuItem disabled value="GridSearch">Grid Search</MenuItem>
-            </TextField>
-          </Grid>
+          {/* Select hidden - the only valid option is NSGA2 */}
+          {/*<Grid item xs={12}>*/}
+          {/*  <TextField*/}
+          {/*    fullWidth*/}
+          {/*    select*/}
+          {/*    label="Optimiser"*/}
+          {/*    value={taskConfig.optimiser}*/}
+          {/*    onChange={(e) => handleChange("optimiser", e.target.value)}*/}
+          {/*    required*/}
+          {/*  >*/}
+          {/*    <MenuItem value="NSGA2">Genetic Algorithm</MenuItem>*/}
+          {/*    <MenuItem disabled value="GridSearch">Grid Search</MenuItem>*/}
+          {/*  </TextField>*/}
+          {/*</Grid>*/}
 
           <Grid item xs={12}>
             <FormGroup>

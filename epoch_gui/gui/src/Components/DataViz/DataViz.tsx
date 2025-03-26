@@ -21,6 +21,7 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
 
     // Set const values for the assumed first date and sampling frequency in rawData
     const initialDatetime = dayjs("2022-01-01T00:00:00Z"); // Example default initial datetime
+    const finalDatetime = initialDatetime.add(1, 'year');
     const dataPeriodInMinutes = 30;
     const samplingFrequencySeconds = 1 / (dataPeriodInMinutes * 60); // Example: 1 sample per half hour
     const samplingFrequencyMs = samplingFrequencySeconds / 1000;
@@ -88,19 +89,21 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
                 setSelectedStartDatetime={setSelectedStartDatetime}
                 daysToKeep={daysToKeep}
                 setDaysToKeep={setDaysToKeep}
+                minDateTime={initialDatetime}
+                maxDateTime={finalDatetime}
             />
+
+            <StackedBarChart rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth}/>
+            <LineChartPanels rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth}/>
 
             <Button
                 variant="outlined"
                 onClick={() => onClickDownloadReportData(reportData)}
                 startIcon={<DownloadIcon/>}
-                style={{marginRight: '10px'}}
+                style={{marginTop: '1em'}}
             >
                 Download CSV
             </Button>
-
-            <StackedBarChart rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth}/>
-            <LineChartPanels rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth}/>
         </div>
     );
 }

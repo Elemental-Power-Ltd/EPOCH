@@ -49,7 +49,7 @@ export const SiteDataLinePlot: React.FC<SiteDataLinePlotProps> = (
                         legend: {
                             orientation: 'h',
                             yanchor: 'bottom',
-                            y: 1.02,
+                            y: 1.0,
                             xanchor: 'center',
                             x: 0.5
                         },

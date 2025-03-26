@@ -181,6 +181,7 @@ export const listOptimisationTasks = async(client_id: string): Promise<Optimisat
 export const getOptimisationResults = async(task_id: string): Promise<PortfolioOptimisationResult[]> => {
     const payload = {task_id: task_id};
 
+    // FIXME - make this return a Promise<ApiResponse<... type
     try {
         const response = await fetch("/api/data/get-optimisation-results", {
             method: "POST",

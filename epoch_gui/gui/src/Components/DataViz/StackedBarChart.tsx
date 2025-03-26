@@ -77,130 +77,130 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
     const elecDrawChartData = Object.keys(filteredAndRangedData)
         .filter((key) => elec_draw_stackbars.includes(key))
         .map((key) => {
-            return {
+                return {
                     x: xValues, //columnLabels,
                     y: elec_draw_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
-                    name: key,
+                    name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
                     customdata: negativeTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
-            };
-        }
-    );
+                };
+            }
+        );
 
     const elecSupplyChartData = Object.keys(filteredAndRangedData)
         .filter((key) => elec_supply_stackbars.includes(key))
         .map((key) => {
-            return {
-                x: xValues, //columnLabels,
-                y: elec_supply_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
-                name: key,
-                type: 'bar',
-                marker: getMarker(key),
-                customdata: positiveTotals,
-                hoverinfo: 'x+y+name',
-                hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
-            };
-        }
-    );
+                return {
+                    x: xValues, //columnLabels,
+                    y: elec_supply_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
+                    name: rangedData[key]?.name || key,
+                    type: 'bar',
+                    marker: getMarker(key),
+                    customdata: positiveTotals,
+                    hoverinfo: 'x+y+name',
+                    hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
+                };
+            }
+        );
 
     const heatDrawChartData = Object.keys(filteredAndRangedData)
         .filter((key) => heat_draw_stackbars.includes(key))
         .map((key) => {
-            return {
+                return {
                     x: xValues, //columnLabels,
                     y: heat_draw_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
-                    name: key,
+                    name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
                     customdata: negativeTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
-            };
-        }
-    );
+                };
+            }
+        );
 
     const heatSupplyChartData = Object.keys(filteredAndRangedData)
         .filter((key) => heat_supply_stackbars.includes(key))
         .map((key) => {
-            return {
-                x: xValues, //columnLabels,
-                y: heat_supply_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
-                name: key,
-                type: 'bar',
-                marker: getMarker(key),
-                customdata: positiveTotals,
-                hoverinfo: 'x+y+name',
-                hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
-            };
-        }
-    );
+                return {
+                    x: xValues, //columnLabels,
+                    y: heat_supply_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
+                    name: rangedData[key]?.name || key,
+                    type: 'bar',
+                    marker: getMarker(key),
+                    customdata: positiveTotals,
+                    hoverinfo: 'x+y+name',
+                    hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
+                };
+            }
+        );
 
     const elecShortfallChartData = Object.keys(filteredAndRangedData)
         .filter((key) => elec_shortfall_stackbars.includes(key))
         .map((key) => {
-            return {
+                return {
                     x: xValues, //columnLabels,
                     y: elec_shortfall_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
-                    name: key,
+                    name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
                     customdata: negativeTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
-            };
-        }
-    );
+                };
+            }
+        );
 
     const heatShortfallChartData = Object.keys(filteredAndRangedData)
         .filter((key) => heat_shortfall_stackbars.includes(key))
         .map((key) => {
-            return {
+                return {
                     x: xValues, //columnLabels,
                     y: heat_shortfall_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
-                    name: key,
+                    name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
                     customdata: negativeTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
-            };
-        }
-    );
+                };
+            }
+        );
 
     const elecSurplusChartData = Object.keys(filteredAndRangedData)
         .filter((key) => elec_surplus_stackbars.includes(key))
         .map((key) => {
-            return {
+                return {
                     x: xValues, //columnLabels,
                     y: elec_surplus_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
-                    name: key,
+                    name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
                     customdata: positiveTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
-            };
-        }
-    );
+                };
+            }
+        );
 
     const heatSurplusChartData = Object.keys(filteredAndRangedData)
         .filter((key) => heat_surplus_stackbars.includes(key))
         .map((key) => {
-            return {
+                return {
                     x: xValues, //columnLabels,
                     y: heat_surplus_stackbars.includes(key) ? filteredAndRangedData[key] : undefined,
-                    name: key,
+                    name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
                     customdata: positiveTotals,
                     hoverinfo: 'name+x+y',
-                    hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
-            };
-        }
-    );
+                    hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
+                };
+            }
+        );
 
 
 

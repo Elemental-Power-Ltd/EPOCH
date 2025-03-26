@@ -1,68 +1,74 @@
-import React, {FC} from "react";
-import {IconButton} from "@mui/material";
+import React, { FC, useState } from "react";
+import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Box,
+  IconButton,
+  Typography,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
-
-import {ComponentType} from "../../Models/Core/ComponentBuilder";
-
 import Form from "@rjsf/mui";
-import validator from '@rjsf/validator-ajv8';
-import {RJSFSchema} from "@rjsf/utils";
+import validator from "@rjsf/validator-ajv8";
+import { RJSFSchema } from "@rjsf/utils";
 
+import { ComponentType } from "../../Models/Core/ComponentBuilder";
 
 interface ComponentWidgetProps {
-    componentKey: ComponentType;
-    displayName: string;
-    data: any;
-    schema: any;
-
-    onRemove: (component: ComponentType) => void;
-    onFormChange: (component: ComponentType, event: any) => void;
+  componentKey: ComponentType;
+  displayName: string;
+  data: any;
+  schema: any;
+  onRemove: (component: ComponentType) => void;
+  onFormChange: (component: ComponentType, event: any) => void;
+  isExpanded: boolean;
+  toggleExpanded: () => void;
 }
 
-export const ComponentWidget: FC<ComponentWidgetProps> = (
-    {componentKey, displayName, data, schema, onRemove, onFormChange}
-) => (
-    <div
-        style={{
-            maxWidth: "500px",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            padding: "16px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-            position: "relative",
-        }}
-    >
-        {/* Close Button in Top-Right Corner */}
-        <IconButton
-            onClick={() => onRemove(componentKey)}
-            style={{
-                position: "absolute",
-                top: "8px",
-                right: "8px",
-                zIndex: 10,
+export const ComponentWidget: FC<ComponentWidgetProps> = ({
+  componentKey,
+  displayName,
+  data,
+  schema,
+  onRemove,
+  onFormChange,
+  isExpanded,
+  toggleExpanded
+}) => {
+
+  return (
+    <Accordion expanded={isExpanded} onChange={toggleExpanded}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ flexDirection: 'row-reverse' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <Typography variant="h6" sx={{ flex: 1, textAlign: 'center' }}>
+            {displayName}
+          </Typography>
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(componentKey);
             }}
             size="small"
-        >
-            <CloseIcon/>
-        </IconButton>
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </AccordionSummary>
 
-        <h3 style={{margin: 0, textAlign: "center"}}>{displayName}</h3>
-
-
+      <AccordionDetails>
         <Form
-            schema={getSingleComponentSchema(schema, componentKey) as RJSFSchema}
-            uiSchema={{"ui:submitButtonOptions": {"norender": true}}}
-            validator={validator}
-            // note: we have to wrap the data up in this form
-            // as the schema expects a top-level property of [componentKey]
-            formData={data}
-            onChange={evt => onFormChange(componentKey, evt)}
+          schema={getSingleComponentSchema(schema, componentKey) as RJSFSchema}
+          uiSchema={{ "ui:submitButtonOptions": { norender: true } }}
+          validator={validator}
+          formData={data}
+          onChange={(evt) => onFormChange(componentKey, evt)}
         />
+      </AccordionDetails>
+    </Accordion>
+  );
+};
 
-    </div>
-);
 
 // We only pass in the part of the schema that corresponds to this component
 // We do this by swapping the top-level properties and required fields for those inside the target component

@@ -18,18 +18,16 @@ import {formatPounds, formatCarbon, formatYears, formatCarbonCost} from "../../u
 import {useEpochStore} from "../../State/Store";
 
 interface PortfolioResultsTableProps {
-    task: OptimisationTaskListEntry;
     results: PortfolioOptimisationResult[];
+    selectPortfolio: (portfolio_id: string) => void;
+    selectedPortfolioId?: string;
 }
 
 type Order = 'asc' | 'desc';
 
-const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ task, results }) => {
+const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ results, selectPortfolio, selectedPortfolioId }) => {
     const [order, setOrder] = useState<Order>('asc');
     const [orderBy, setOrderBy] = useState<keyof PortfolioMetrics>('carbon_balance_scope_1');
-
-    const currentPortfolioResult = useEpochStore((state) => state.results.currentPortfolioResult);
-    const setCurrentPortfolioResult = useEpochStore((state) => state.setCurrentPortfolioResult);
 
     const handleRequestSort = (property: keyof PortfolioMetrics) => {
         const isAsc = orderBy === property && order === 'asc';
@@ -130,7 +128,7 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ task, res
                     {sortedResults.map((portfolio_result) => (
                         <TableRow
                             key={portfolio_result.portfolio_id}
-                            selected={currentPortfolioResult?.portfolio_id === portfolio_result.portfolio_id}
+                            selected={selectedPortfolioId === portfolio_result.portfolio_id}
                         >
                             <TableCell>{formatCarbon(portfolio_result.metrics.carbon_balance_scope_1)}</TableCell>
                             <TableCell>{formatCarbon(portfolio_result.metrics.carbon_balance_scope_2)}</TableCell>
@@ -142,7 +140,7 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ task, res
                             <TableCell>
                                 <IconButton
                                     color="primary"
-                                    onClick={() => setCurrentPortfolioResult(portfolio_result)}
+                                    onClick={() => selectPortfolio(portfolio_result.portfolio_id)}
                                 >
                                     <ArrowForwardIcon/>
                                 </IconButton>
