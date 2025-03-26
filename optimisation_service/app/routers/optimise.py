@@ -9,7 +9,7 @@ from enum import Enum
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 
-from app.internal.constraints import get_shortfall_constraints
+from app.internal.constraints import get_default_constraints, merge_constraints
 from app.internal.datamanager import DataManagerDep
 from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.grid_search import GridSearch, get_epoch_path
@@ -234,7 +234,8 @@ async def submit_portfolio(request: Request, task: Task, data_manager: DataManag
         )
     try:
         await data_manager.fetch_portfolio_data(task)
-        task.portfolio_constraints = task.portfolio_constraints | get_shortfall_constraints(task.portfolio)  # type: ignore
+        default_constraints = get_default_constraints(task.portfolio)
+        task.portfolio_constraints = merge_constraints([task.portfolio_constraints, default_constraints])  # type: ignore
         data_manager.save_parameters(task)
         await data_manager.transmit_task(task)
         await q.put((task, data_manager))
