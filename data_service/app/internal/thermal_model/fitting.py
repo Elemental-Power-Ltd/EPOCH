@@ -1,6 +1,7 @@
 """Functions for fitting structural and fabric data to a set of gas data."""
 
 import datetime
+from pathlib import Path
 from typing import cast
 
 import numpy as np
@@ -13,6 +14,7 @@ from ..epl_typing import HHDataFrame
 from ..gas_meters.domestic_hot_water import get_poisson_weights
 from ..utils.conversions import joule_to_kwh
 from .building_fabric import apply_interventions_to_structure
+from .heat_capacities import U_VALUES_PATH
 from .integrator import simulate
 from .network import create_structure_from_params
 
@@ -53,6 +55,7 @@ def parameters_to_loss(
     elec_df: pd.DataFrame | None,
     start_ts: datetime.datetime | None = None,
     end_ts: datetime.datetime | None = None,
+    u_values_path: Path = U_VALUES_PATH,
 ) -> float:
     """
     Calculate the gas usage loss for a specific set of parameters.
@@ -73,6 +76,16 @@ def parameters_to_loss(
         Earliest timestamp to simulate. If not provided, use the earliest time in gas_df.
     end_ts
         Latest timestamp to simulate. If not provided, use the latest time in gas_df.
+    scale_factor
+        Scale area for the floor, with 1.0 being a 100m^2 floor
+    ach
+        Air changes per hour
+    boiler_power
+        Maximum heat output of the heat sourcein W
+    setpoint
+        target temperature for thermostatic control of the heat source
+    dhw_usage
+        kWh of domestic hot water used per day
 
     Returns
     -------
@@ -94,9 +107,11 @@ def parameters_to_loss(
             elec_df=elec_df,
             start_ts=start_ts,
             end_ts=end_ts,
+            u_values_path=u_values_path,
         )
         DHW_EVENT_SIZE = 1.0
         # daily usage, the Poisson weights are normalised to 1.0
+        # TODO (2025-03-26 MHJB): move this into its own reusable function.
         dhw_weights = get_poisson_weights(HHDataFrame(sim_df)) * dhw_usage
         rng = np.random.default_rng()
         total_dhw_usage = rng.poisson(dhw_weights, dhw_weights.size) * DHW_EVENT_SIZE
@@ -106,11 +121,17 @@ def parameters_to_loss(
         # so that we can sensibly fit Gaussians during the Bayesian optimisation.
         worst_energy_loss = np.sum(gas_df["consumption"]) ** 2 * 1.1
         worst_temperature_loss = 50**2 * (end_ts - start_ts).total_seconds() / 300.0
-        return cast(float, 100.0 * (worst_energy_loss + worst_temperature_loss))
+        worst_aggregate_loss = worst_energy_loss
+        return cast(float, 100.0 * (worst_energy_loss + worst_temperature_loss + worst_aggregate_loss))
     resampled_df = resample_to_gas_df(sim_df, gas_df)
     energy_loss = cast(float, np.sum(np.power(gas_df["consumption"] - resampled_df, 2.0)))
 
+    aggregrate_loss = (gas_df["consumption"].sum() - np.sum(resampled_df)) ** 2
     # How closely we want the boiler to control the temperatures for the thermal loss.
+    # We generally want the temperatures to be within a few degrees of the setpoint
+    # at all points during the year, to punish under- or over- heating.
+    # TODO (2025-03-26 MHJB): handle hot ambient days better, this should be max(setpoint, ambient)
+    # or similar.
     setpoint_width = 3.0
     temperature_loss = cast(
         float,
@@ -123,7 +144,7 @@ def parameters_to_loss(
     )
 
     temperature_loss_scale = cast(float, max(gas_df.consumption) / 100.0)
-    return energy_loss + temperature_loss_scale * temperature_loss
+    return energy_loss + temperature_loss_scale * temperature_loss + aggregrate_loss
 
 
 def simulate_parameters(
@@ -138,6 +159,7 @@ def simulate_parameters(
     end_ts: datetime.datetime,
     dt: datetime.timedelta | None = None,
     interventions: list[InterventionEnum] | None = None,
+    u_values_path: Path = U_VALUES_PATH,
 ) -> pd.DataFrame:
     """
     Calculate the gas usage loss for a specific set of parameters.
@@ -154,6 +176,22 @@ def simulate_parameters(
         Earliest timestamp to simulate. If not provided, use the earliest time in gas_df.
     end_ts
         Latest timestamp to simulate. If not provided, use the latest time in gas_df.
+    scale_factor
+        Scale area for the floor, with 1.0 being a 100m^2 floor
+    ach
+        Air changes per hour
+    boiler_power
+        Maximum heat output of the heat sourcein W
+    setpoint
+        target temperature for thermostatic control of the heat source
+    dhw_usage
+        kWh of domestic hot water used per day
+    dt
+        Timestep to use in the integrator
+    interventions
+        List of fabric interventions to apply to a structure
+    u_values_path
+        Path to a JSON file of U values for the building's fabric
 
     Returns
     -------
@@ -165,7 +203,12 @@ def simulate_parameters(
     if dt is None:
         dt = datetime.timedelta(minutes=3)
     hm = create_structure_from_params(
-        scale_factor=scale_factor, ach=ach, u_value=u_value, boiler_power=boiler_power, setpoint=setpoint
+        scale_factor=scale_factor,
+        ach=ach,
+        u_value=u_value,
+        boiler_power=boiler_power,
+        setpoint=setpoint,
+        u_values_path=u_values_path,
     )
     if interventions is not None:
         hm = apply_interventions_to_structure(hm, interventions)
@@ -183,6 +226,7 @@ def fit_to_gas_usage(
     elec_df: pd.DataFrame | None = None,
     n_iter: int = 300,
     hints: ThermalModelResult | list[ThermalModelResult] | None = None,
+    u_values_path: Path = U_VALUES_PATH,
 ) -> ThermalModelResult:
     """
     Fit some building parameters to a gas consumption pattern.
@@ -199,6 +243,8 @@ def fit_to_gas_usage(
         Electricity usage dataframe with "consumption" columns (optional)
     hints
         Points to sample at that you think are reasonable, these can be previous thermal model results.
+    u_values_path
+        Path to a JSON file of U values for the building's fabric
 
     Returns
     -------
@@ -210,11 +256,11 @@ def fit_to_gas_usage(
     daily_dhw = gas_df.consumption / total_days
 
     pbounds = {
-        "scale_factor": (0.1, 10.0),
-        "ach": (1.0, 20.0),
-        "u_value": (1.0, 2.5),
+        "scale_factor": (0.1, 10.0),  # buildings are between 10m^2 and 1000M^2
+        "ach": (1.0, 20.0),  # average air changes per hour is often 3
+        "u_value": (0.1, 2.0),  # a reasonable range of U values from the table of best to worst material
         "boiler_power": (0, 60e3),  # Boiler Size in kW
-        "setpoint": (16, 24),
+        "setpoint": (16, 24),  # internal thermostat setpoint that the boiler targets
         "dhw_usage": (0, daily_dhw.mean()),  # Pick the average: DHW is probably closer to the min, but maybe holidays drop it?
     }
 
@@ -233,6 +279,7 @@ def fit_to_gas_usage(
             elec_df=elec_df,
             start_ts=None,  # calculate automatically from gas meters
             end_ts=None,  # calculate automatically from gas meters
+            u_values_path=u_values_path,
         ),
         pbounds=pbounds,
         bounds_transformer=SequentialDomainReductionTransformer(),

@@ -68,8 +68,11 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         metadata = await db_pool.fetchrow(
             """SELECT params, interventions FROM heating.metadata WHERE dataset_id = $1""", dataset_id
         )
+
+        # If we have a thermal model, get the heating cost based off the calculated areas.
+        # However, if we don't have a thermal model then we have no idea of the size,
+        # so look the cost up in the DB.
         if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
-            print(metadata["params"])
             if isinstance(metadata["params"], str):
                 # This is horrible, but the params section could legitimately have been passed as a string
                 # so try to read it as JSON

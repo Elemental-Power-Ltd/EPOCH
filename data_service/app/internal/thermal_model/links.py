@@ -234,7 +234,6 @@ class BoilerRadiativeLink:
         if thermostat_temperature < self.setpoint_temperature - 0.5:
             self.is_on = True
 
-        system_delta_t = 0.0
         if self.is_on:
             system_delta_t = max(u_attrs["temperature"] - v_attrs["temperature"], 0.0)
 
@@ -249,7 +248,7 @@ class BoilerRadiativeLink:
 class ConvectiveLink:
     """ConvectiveLinks represent air flow between two volumes of air."""
 
-    DEFAULT_WIND_SPEED = 4.0  # m /
+    DEFAULT_WIND_SPEED = 4.0  # m / s
 
     def __init__(self, ach: float):
         """

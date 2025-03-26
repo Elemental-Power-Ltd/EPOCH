@@ -338,7 +338,12 @@ def create_simple_structure(
 
 
 def create_structure_from_params(
-    scale_factor: float = 1.0, ach: float = 1.0, u_value: float = 2.2, boiler_power: float = 24e3, setpoint: float = 21
+    scale_factor: float = 1.0,
+    ach: float = 1.0,
+    u_value: float = 2.2,
+    boiler_power: float = 24e3,
+    setpoint: float = 21,
+    u_values_path: Path = U_VALUES_PATH,
 ) -> HeatNetwork:
     """
     Create a simple structure with some fitted parameters.
@@ -375,6 +380,7 @@ def create_structure_from_params(
         # Assuming about 20% window to floor area ratio
         window_area=estimate_window_area(floor_area),
         floor_area=floor_area,
+        u_values_path=u_values_path,
     )
 
     hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].power = boiler_power
