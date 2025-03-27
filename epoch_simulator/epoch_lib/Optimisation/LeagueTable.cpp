@@ -27,6 +27,7 @@ void LeagueTable::considerResult(const SimulationResult& r, const TaskWithIndex&
 	considerMinimum(mAnnualisedCost, r.total_annualised_cost, taskWithIndex.index);
 
 	// Payback Horizon
+	// FIXME - payback horizon can now be negative, if we restore grid search this will need changing
 	considerMinimum(mPaybackHorizon, r.payback_horizon_years, taskWithIndex.index);
 
 	// Cost Balance

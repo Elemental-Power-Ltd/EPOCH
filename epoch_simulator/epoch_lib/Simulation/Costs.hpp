@@ -220,15 +220,24 @@ public:
 		mScenario_cost_balance = (mBaseline_elec_cost + mBaseline_fuel_cost) - (mScenario_import_cost + mScenario_fuel_cost + mScenario_export_cost - mScenario_EV_revenue - mScenario_HP_revenue - mScenario_LP_revenue + Total_annualised_cost);
 	};
 
+	/**
+	* Calculate the payback hoizon of a scenario.
+	* 
+	* This is the capex divided by the yearly cost balance.
+	* 
+	* Note: we deliberately allow for negative payback horizons.
+	* These should be considered invalid (as the scenario will never pay back)
+	* but is useful to provide gradient information for optimisation.
+	*/
 	void calculate_payback_horizon() {
-		if (mCapexBreakdown.total_capex == 0) {
+		if (mCapexBreakdown.total_capex <= 0) {
 			// if we haven't spend any money then the payback horizon is 0
 			mPayback_horizon_years = 0.0f;
-		} else if (mScenario_cost_balance > 0) {
-			mPayback_horizon_years = mCapexBreakdown.total_capex / mScenario_cost_balance;
+		} else if (mScenario_cost_balance == 0.0f) {
+			// return the smallest possible negative number
+			mPayback_horizon_years = -1.0f / std::numeric_limits<float>::max();
 		} else {
-			// a non-positive scenario_cost_balance indicates that there is no payback horizon
-			mPayback_horizon_years = std::numeric_limits<float>::max();
+			mPayback_horizon_years = mCapexBreakdown.total_capex / mScenario_cost_balance;
 		}
 	};
 
