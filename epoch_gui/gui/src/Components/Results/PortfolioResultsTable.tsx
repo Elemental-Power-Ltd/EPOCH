@@ -44,6 +44,14 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ results, 
         if (aValue === undefined) return order === 'asc' ? 1 : -1;
         if (bValue === undefined) return order === 'asc' ? -1 : 1;
 
+        // special case:
+        // if we are sorting by payback_horizon, negative values are worse
+        if (orderBy == 'payback_horizon') {
+            if (aValue < 0 && bValue >= 0) return order == 'asc' ? 1 : -1;
+            if (aValue >= 0 && bValue < 0) return order == 'asc' ? -1 : 1;
+            // otherwise, allow the usual sorting cases to apply
+        }
+
         // normal cases
         if (aValue < bValue) return order === 'asc' ? -1 : 1;
         if (aValue > bValue) return order === 'asc' ? 1 : -1;

@@ -105,7 +105,7 @@ export const formatCarbonCost = (value: number | undefined): string => {
 
 // Display years to 2 decimal places
 export const formatYears = (value: number | undefined): string => {
-    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion || value < 0 ) {
         return "-"
     }
 
