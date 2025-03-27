@@ -10,7 +10,7 @@ import TaskTable from "../Components/Results/TaskTable"
 import {useEpochStore} from "../State/Store";
 
 import {getOptimisationResults, getStatus, listOptimisationTasks} from "../endpoints";
-import PortfolioResultsTable from "../Components/Results/PortfolioResultsTable";
+import PortfolioResultsViewer from "../Components/Results/PortfolioResultsViewer.tsx";
 import SiteResultsTable from "../Components/Results/SiteResultsTable";
 import {PortfolioOptimisationResult} from "../State/types.ts";
 
@@ -105,9 +105,10 @@ function ResultsContainer() {
             />
 
             {(task_id && resultsForTask) &&
-                <PortfolioResultsTable
+                <PortfolioResultsViewer
                     results={resultsForTask}
                     selectPortfolio={(portfolio_id: string) => navigate(`/results/${task_id}/${portfolio_id}`)}
+                    deselectPortfolio={()=> navigate(`/results/${task_id}`)}
                     selectedPortfolioId={portfolio_id}
                 />
             }
