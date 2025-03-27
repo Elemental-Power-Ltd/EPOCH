@@ -37,8 +37,8 @@ def calculate_carbon_cost(capex: float | int, carbon_balance_scope_1: float | in
 def calculate_payback_horizon(capex: float | int, cost_balance: float | int) -> float | int:
     """
     Calculate payback horizon from CAPEX and cost balance.
-    Returns largest float32 if CAPEX is non null and cost balance is null or negative.
-    Returns 0 if CAPEX is null.
+    Returns negative if CAPEX is non null and cost balance is null or negative.
+    Returns 0 if CAPEX is null or negative.
 
     Parameters
     ----------
@@ -52,10 +52,10 @@ def calculate_payback_horizon(capex: float | int, cost_balance: float | int) -> 
     payback_horizon
         Payback horizon.
     """
-    if capex > 0 and cost_balance > 0:
-        return capex / cost_balance
+    if capex <= 0:
+        return 0
 
-    if capex > 0 and cost_balance <= 0:
-        return float(np.finfo(np.float32).max)
+    if capex >= 0 and cost_balance == 0:
+        return -float(np.finfo(np.float32).tiny)
 
-    return 0
+    return capex / cost_balance

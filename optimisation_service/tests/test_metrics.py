@@ -25,10 +25,18 @@ class TestCalculateCalculatePaybackHorizon:
         res = calculate_payback_horizon(capex=10, cost_balance=10)
         assert res == 10 / 10
 
-    @pytest.mark.parametrize("cost_balance", [0, -10])
-    def test_null_and_negtative_cost_balance(self, cost_balance):
-        res = calculate_payback_horizon(capex=10, cost_balance=cost_balance)
-        assert res == float(np.finfo(np.float32).max)
+    def test_negtative_cost_balance(self):
+        res = calculate_payback_horizon(capex=10, cost_balance=-10)
+        assert res < 0
+
+    def test_null_cost_balance(self):
+        res = calculate_payback_horizon(capex=10, cost_balance=0)
+        assert res < 0
+
+    def test_null_vs_negative_cost_balance(self):
+        res_null = calculate_payback_horizon(capex=10, cost_balance=0)
+        res_neg = calculate_payback_horizon(capex=10, cost_balance=-10)
+        assert res_null > res_neg
 
     @pytest.mark.parametrize("capex", [0, -10])
     def test_null_and_negtative_capex(self, capex):
