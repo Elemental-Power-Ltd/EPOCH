@@ -2,6 +2,7 @@
 
 # ruff: noqa: D101
 import datetime
+import math
 import uuid
 from enum import StrEnum
 from typing import Any
@@ -19,7 +20,7 @@ class SiteMetrics(pydantic.BaseModel):
     """Metrics for a single site within a portfolio."""
 
     carbon_balance_scope_1: float | None = pydantic.Field(
-        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, 3.14]
+        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, math.pi]
     )
     carbon_balance_scope_2: float | None = pydantic.Field(
         description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
@@ -38,9 +39,7 @@ class SiteMetrics(pydantic.BaseModel):
     annualised_cost: float | None = pydantic.Field(
         description="Cost of running this scenario (including amortised deprecation) on this site.", default=None
     )
-    total_gas_used: float | None = pydantic.Field(
-        description="Total gas imported (kWh) for this site", default=None
-    )
+    total_gas_used: float | None = pydantic.Field(description="Total gas imported (kWh) for this site", default=None)
     total_electricity_imported: float | None = pydantic.Field(
         description="Total electricity imported from the grid (kWh) for this site", default=None
     )
@@ -56,9 +55,7 @@ class SiteMetrics(pydantic.BaseModel):
     total_heat_shortfall: float | None = pydantic.Field(
         description="Total heat shortfall (kWh) when compared to the demand for this site", default=None
     )
-    total_gas_import_cost: float | None = pydantic.Field(
-        description="Total spend (£) importing gas for the site", default=None
-    )
+    total_gas_import_cost: float | None = pydantic.Field(description="Total spend (£) importing gas for the site", default=None)
     total_electricity_import_cost: float | None = pydantic.Field(
         description="Total spend (£) importing electricity from the grid for this site", default=None
     )
@@ -78,16 +75,16 @@ class SiteOptimisationResult(pydantic.BaseModel):
     scenario: SiteScenario = pydantic.Field(
         description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
     )
-    metrics: SiteMetrics = pydantic.Field(
-        description="The metrics calculated for this site."
-    )
+    metrics: SiteMetrics = pydantic.Field(description="The metrics calculated for this site.")
 
 
 class PortfolioMetrics(pydantic.BaseModel):
     """Metrics for the whole portfolio."""
 
     carbon_balance_scope_1: float | None = pydantic.Field(
-        description="Direct carbon emissions saved by this entire portfolio of scenarios.", default=None, examples=[None, 3.14]
+        description="Direct carbon emissions saved by this entire portfolio of scenarios.",
+        default=None,
+        examples=[None, math.pi],
     )
     carbon_balance_scope_2: float | None = pydantic.Field(
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
@@ -107,9 +104,7 @@ class PortfolioMetrics(pydantic.BaseModel):
     annualised_cost: float | None = pydantic.Field(
         description="Cost of running these scenario (including amortised deprecation) across this portfolio", default=None
     )
-    total_gas_used: float | None = pydantic.Field(
-        description="Total gas imported (kWh) across this portfolio", default=None
-    )
+    total_gas_used: float | None = pydantic.Field(description="Total gas imported (kWh) across this portfolio", default=None)
     total_electricity_imported: float | None = pydantic.Field(
         description="Total electricity imported from the grid (kWh) across this portfolio", default=None
     )
@@ -144,9 +139,7 @@ class PortfolioOptimisationResult(pydantic.BaseModel):
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
-    metrics: PortfolioMetrics = pydantic.Field(
-        description="The metrics calculated across the whole portfolio."
-    )
+    metrics: PortfolioMetrics = pydantic.Field(description="The metrics calculated across the whole portfolio.")
     site_results: list[SiteOptimisationResult] | None = pydantic.Field(
         default=None,
         description="Individual site results for this Portfolio."
@@ -205,7 +198,7 @@ class OptimiserEnum(StrEnum):
 
 
 class Optimiser(pydantic.BaseModel):
-    name: OptimiserEnum = pydantic.Field(default=None, description="Name of optimiser.")
+    name: OptimiserEnum = pydantic.Field(default=OptimiserEnum.NSGA2, description="Name of optimiser.")
     hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
         default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
     )

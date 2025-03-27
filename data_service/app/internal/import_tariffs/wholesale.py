@@ -44,7 +44,7 @@ async def get_wholesale_costs(
         params = {"from": s_ts.isoformat(), "to": e_ts.isoformat(), "format": "json", "dataProviders": "APXMIDP"}
         resp = await client.get(base_url, params=params)
         if not resp.status_code == 200:
-            logger.warning("Could not get data from Elexon for {resp.url}")
+            logger.warning(f"Could not get data from Elexon for {resp.url}")
             continue
         all_data.extend(resp.json()["data"])
     df = pd.DataFrame.from_records(all_data)

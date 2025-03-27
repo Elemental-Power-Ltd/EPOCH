@@ -4,6 +4,7 @@
 import datetime
 
 import httpx
+import numpy as np
 import pytest
 import pytest_asyncio
 
@@ -65,8 +66,9 @@ class TestGetWeather:
         assert db_timestamps == vc_timestamps
 
         assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(hours=1).total_seconds()
-        for key in ["temp", "timestamp", "humidity", "windspeed"]:
+        for key in ["temp", "humidity", "windspeed"]:
             assert key in result.json()[0]
+            assert np.isfinite(result.json()[0][key])
 
     @pytest.mark.asyncio
     @pytest.mark.external

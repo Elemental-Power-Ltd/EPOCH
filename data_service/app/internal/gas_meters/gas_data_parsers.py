@@ -116,6 +116,7 @@ def parse_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame:
     consumption_df = pd.read_csv(fname, skipinitialspace=True).rename(
         columns={
             "Consumption (kWh)": "consumption",
+            "Consumption (kwh)": "consumption",
             "HH Read (kwh)": "consumption",
             "HH Read (kWh)": "consumption",
             "kWh": "consumption",
@@ -244,7 +245,7 @@ def parse_be_st_format(fname: os.PathLike | BinaryIO | str) -> MonthlyDataFrame:
     last_year, last_month = None, None
     year_idx = 0
 
-    start_timestamps: list[pd.Timestamp | pd._libs.tslibs.nattype.NaTType] = []  # type: ignore
+    start_timestamps: list[pd.Timestamp | pd._libs.tslibs.nattype.NaTType] = []
     for year, month in zip(df.Year, df.Month, strict=False):
         # Throw out the entries with no year or month information
         if pd.isna(year) or pd.isna(month):

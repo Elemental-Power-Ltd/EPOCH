@@ -7,12 +7,13 @@ This should be used wherever you're handling an API key.
 import copy
 import logging
 import os
+from collections import UserDict
 from pathlib import Path
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
-class SecretDict[K, V](dict):
+class SecretDict[K, V](UserDict):
     """Secret dict with unprintable keys to avoid logging problems."""
 
     def __repr__(self) -> str:
@@ -50,8 +51,7 @@ def load_secret_from_file(fpath: Path) -> str:
     -------
     stripped string of the contents of the file.
     """
-    with open(fpath) as fi:
-        return fi.read().strip()
+    return fpath.read_text().strip()
 
 
 def load_dotenv(fname: os.PathLike = Path(".env")) -> dict[str, str]:
@@ -83,9 +83,13 @@ def load_dotenv(fname: os.PathLike = Path(".env")) -> dict[str, str]:
             return {}
 
     with open(fpath) as fi:
-        for line in fi:
-            key, value = line.strip().split("=", 1)
-            os.environ[key.strip()] = value.strip()
+        for idx, line in enumerate(fi):
+            try:
+                key, value = line.strip().split("=", 1)
+                os.environ[key.strip()] = value.strip()
+            except ValueError:
+                logger.warning(f"Couldn't split line {idx} in {fi} into the form `key=value`.")
+                continue
     # turn this into a dict to prevent any trouble with weird types
     return dict(os.environ.items())
 
@@ -151,6 +155,6 @@ def get_secrets_environment(
             # logger.warning(f"Could not find GivEnergy JWT in environ, dotenv or {ge_fpath}")
 
     if overrides is not None:
-        total_environ = total_environ | overrides
+        total_environ |= overrides
 
     return SecretDict(total_environ)

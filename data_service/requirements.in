@@ -1,0 +1,14 @@
+aiometer
+asyncpg
+bayes_opt
+fastapi[standard]
+httpx
+matplotlib
+numpy
+pandas
+pydantic
+python-multipart
+scikit-learn
+scipy
+torch
+sklego

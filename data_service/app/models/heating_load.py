@@ -11,6 +11,15 @@ from pydantic import Field
 from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
 
 
+class ThermalModelResult(pydantic.BaseModel):
+    scale_factor: pydantic.NonNegativeFloat
+    ach: pydantic.NonNegativeFloat
+    u_value: pydantic.NonNegativeFloat
+    boiler_power: pydantic.NonNegativeFloat
+    setpoint: pydantic.NonNegativeFloat
+    dhw_usage: pydantic.NonNegativeFloat = pydantic.Field(description="Daily domestic hot water usage in kWh")
+
+
 class InterventionEnum(StrEnum):
     Loft = "loft"
     DoubleGlazing = "double_glazing"
@@ -75,6 +84,11 @@ class EpochDHWEntry(EpochEntry):
     )
 
 
+class HeatingLoadModelEnum(StrEnum):
+    Regression = "regression"
+    ThermalModel = "thermal_model"
+
+
 class HeatingLoadRequest(DatasetIDWithTime):
     interventions: list[InterventionEnum] = Field(
         examples=[[InterventionEnum.Loft], []],
@@ -86,6 +100,13 @@ class HeatingLoadRequest(DatasetIDWithTime):
         default=1.0,
         description="What fraction of the non-varying load is due to DHW."
         + "For most buildings this should be 1, unless there is an unusually inefficient heating system.",
+    )
+    model_type: HeatingLoadModelEnum = Field(
+        description="Which type of underyling heating load model to use.", default=HeatingLoadModelEnum.Regression
+    )
+    site_id: site_id_t | None = pydantic.Field(description="The site ID you want to analyse", default=None)
+    thermal_model_dataset_id: dataset_id_t | None = Field(
+        description="Which underlying thermal model to use if in thermal model mode", default=None
     )
 
     @pydantic.model_validator(mode="after")
@@ -100,6 +121,9 @@ class HeatingLoadRequest(DatasetIDWithTime):
 class InterventionCostRequest(pydantic.BaseModel):
     interventions: list[InterventionEnum] = pydantic.Field(default=[])
     site_id: site_id_t = site_id_field
+    thermal_model_dataset_id: dataset_id_t | None = pydantic.Field(
+        description="ID of the thermal model you want to use for cost calculation, defaults to None", default=None
+    )
 
 
 class InterventionCostResult(pydantic.BaseModel):

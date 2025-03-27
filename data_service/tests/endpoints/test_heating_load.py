@@ -25,6 +25,7 @@ async def uploaded_meter_data(client: httpx.AsyncClient) -> pydantic.Json:
 class TestHeatingLoad:
     @pytest.mark.asyncio
     @pytest.mark.external
+    @pytest.mark.slow
     async def test_generate_and_get_heating_load(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         dataset_id = uploaded_meter_data["dataset_id"]
 
@@ -49,6 +50,7 @@ class TestHeatingLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.external
+    @pytest.mark.slow
     async def test_generate_and_get_with_intervention(
         self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient
     ) -> None:
@@ -89,6 +91,7 @@ class TestHeatingLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.external
+    @pytest.mark.slow
     async def test_heating_load_right_length(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         """Check that we've got the right length of dataset and haven't dropped the last entry."""
         dataset_id = uploaded_meter_data["dataset_id"]

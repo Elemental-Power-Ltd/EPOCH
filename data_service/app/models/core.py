@@ -181,6 +181,7 @@ class DatasetTypeEnum(StrEnum):
     HeatingLoad = "HeatingLoad"
     ASHPData = "ASHPData"
     ImportTariff = "ImportTariff"
+    ThermalModel = "ThermalModel"
 
 
 class DatasetEntry(pydantic.BaseModel):

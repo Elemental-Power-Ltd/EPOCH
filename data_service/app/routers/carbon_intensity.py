@@ -7,6 +7,7 @@ varies over time as the grid changes.
 
 import datetime
 import logging
+import operator
 import typing
 import uuid
 
@@ -80,20 +81,16 @@ def interpolate_carbon_intensity(
     for key in keys:
         # We re-do the xs each time as we have to check if the relevant key is in this entry,
         # which is might not be.
-        xp = np.asarray(
-            [
-                (item["start_ts"] - start_ts).total_seconds()
-                for item in raw_data
-                if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
-            ]
-        )
-        yp = np.asarray(
-            [
-                item[key]  # type: ignore
-                for item in raw_data
-                if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
-            ]
-        )
+        xp = np.asarray([
+            (item["start_ts"] - start_ts).total_seconds()
+            for item in raw_data
+            if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
+        ])
+        yp = np.asarray([
+            item[key]  # type: ignore
+            for item in raw_data
+            if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
+        ])
         if len(xp) == 0 or len(yp) == 0:
             # We've got nothing here!
             interpolated_vals = np.full_like(xp, np.nan)
@@ -238,8 +235,10 @@ async def fetch_carbon_intensity(
     async with aiometer.amap(
         lambda ts_pair: fetch_carbon_intensity_batch(client=client, postcode=postcode, timestamps=ts_pair),
         time_pairs,
-        max_at_once=1,
-        max_per_second=1,
+        # This is a horrible bodge, but for testing we have a mocked client
+        # where we want to do
+        max_at_once=1 if getattr(client, "DO_RATE_LIMIT", True) else None,
+        max_per_second=1 if getattr(client, "DO_RATE_LIMIT", True) else None,
     ) as results:
         async for result in results:
             all_data.extend(result)
@@ -249,7 +248,7 @@ async def fetch_carbon_intensity(
 
     # Now we've got the data, we should tidy it up.
     # This involves sorting, filter and interpolate it
-    all_data = sorted(all_data, key=lambda x: x["start_ts"])
+    all_data = sorted(all_data, key=operator.itemgetter("start_ts"))
     new_times = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     all_data = interpolate_carbon_intensity(new_times, all_data)
     return all_data

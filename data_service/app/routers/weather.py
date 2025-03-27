@@ -132,8 +132,8 @@ async def visual_crossing_request(
     async with aiometer.amap(
         functools.partial(get_single_result, location, http_client, api_key),
         ts_pairs,
-        max_at_once=1,
-        max_per_second=1,
+        max_at_once=1 if getattr(http_client, "DO_RATE_LIMIT", True) else None,
+        max_per_second=1 if getattr(http_client, "DO_RATE_LIMIT", True) else None,
     ) as results:
         async for req in results:
             try:
@@ -228,11 +228,10 @@ async def get_weather(
 
     missing_days = sorted(expected_days - got_days)
 
+    logger = logging.getLogger(__name__)
     # TODO (2024-08-09 MHJB): make this async-ier
     for missing_session in split_into_sessions(missing_days, datetime.timedelta(days=1)):
-        logging.warning(
-            f"Missing days between {min(missing_session)} and {max(missing_session)} for {weather_request.location}"
-        )
+        logger.warning(f"Missing days between {min(missing_session)} and {max(missing_session)} for {weather_request.location}")
 
         session_min_ts = datetime.datetime.combine(min(missing_session), datetime.time.min, datetime.UTC)
         session_max_ts = datetime.datetime.combine(max(missing_session), datetime.time.max, datetime.UTC) + datetime.timedelta(
@@ -241,7 +240,6 @@ async def get_weather(
         vc_recs = await visual_crossing_request(
             weather_request.location,
             session_min_ts,
-            # This timedelta is here because the other end will interpret this as a date
             session_max_ts,
             http_client=http_client,
         )
@@ -258,28 +256,29 @@ async def get_weather(
                 session_max_ts,
             )
 
-            await conn.executemany(
-                """INSERT INTO weather.visual_crossing
-                    (timestamp,
-                    location,
-                    temp,
-                    humidity,
-                    precip,
-                    precipprob,
-                    snow,
-                    snowdepth,
-                    windgust,
-                    windspeed,
-                    winddir,
-                    pressure,
-                    cloudcover,
-                    solarradiation,
-                    solarenergy,
-                    dniradiation,
-                    difradiation)
-                    VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)""",
-                [
+            await conn.copy_records_to_table(
+                table_name="visual_crossing",
+                schema_name="weather",
+                columns=[
+                    "timestamp",
+                    "location",
+                    "temp",
+                    "humidity",
+                    "precip",
+                    "precipprob",
+                    "snow",
+                    "snowdepth",
+                    "windgust",
+                    "windspeed",
+                    "winddir",
+                    "pressure",
+                    "cloudcover",
+                    "solarradiation",
+                    "solarenergy",
+                    "dniradiation",
+                    "difradiation",
+                ],
+                records=[
                     (
                         item["timestamp"],
                         weather_request.location,

@@ -10,7 +10,7 @@ from collections import defaultdict
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import scipy.optimize  # type: ignore
+import scipy.optimize
 
 from ..epl_typing import HHDataFrame
 
@@ -39,7 +39,7 @@ def midday_sin_weights(hh_gas_df: HHDataFrame, gamma: float = 1.0) -> npt.NDArra
     assert isinstance(hh_gas_df.index, pd.DatetimeIndex), "Gas Dataframe must have a `start_ts` index."
     hours = hh_gas_df.index.hour + hh_gas_df.index.minute / 60 + hh_gas_df.index.second / (60 * 60)
 
-    sin_weights = np.maximum(np.sin(2 * np.pi * (hours.to_numpy() - 6) / 24), 0) ** gamma
+    sin_weights: npt.NDArray[np.floating] = np.maximum(np.sin(2 * np.pi * (hours.to_numpy() - 6) / 24), 0) ** gamma
 
     # Normalise the weights such that the weights for each day is 1
     # by dividing by the total number of days
@@ -117,7 +117,11 @@ def assign_hh_dhw_greedy(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float)
         # we use this default argument to please ruff, otherwise we can trip over a late binding
         # for the dataframe
         # https://docs.astral.sh/ruff/rules/function-uses-loop-variable/
-        res = scipy.optimize.minimize_scalar(lambda x, df=day_df: (dhw_kwh - np.sum(np.minimum(x, df.consumption))) ** 2)  # type: ignore
+
+        def calculate_loss(x: float, df: pd.DataFrame = day_df) -> float:
+            return float((dhw_kwh - np.sum(np.minimum(x, df.consumption))) ** 2)
+
+        res = scipy.optimize.minimize_scalar(calculate_loss)  # type: ignore
 
         hh_gas_df.loc[day_mask, "dhw"] = np.minimum(hh_gas_df.loc[day_mask, "consumption"], float(res.x))
     hh_gas_df["heating"] = hh_gas_df["consumption"] - hh_gas_df["dhw"]

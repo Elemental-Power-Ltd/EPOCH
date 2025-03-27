@@ -56,7 +56,6 @@ async def get_octopus_tariff(
     if tariff_metadata_resp.status_code != 200:
         raise ValueError(tariff_metadata_resp.text)
     tariff_meta = tariff_metadata_resp.json()
-
     # TODO (2024-10-25 MHJB): What if we don't have a tariff in this region?
     region_meta = tariff_meta["single_register_electricity_tariffs"][region_code.value]
 
@@ -65,6 +64,7 @@ async def get_octopus_tariff(
             if payment_method in region_meta:
                 for sub_url in region_meta[payment_method]["links"]:
                     if sub_url["rel"] == "standard_unit_rates":
+                        assert isinstance(sub_url["href"], str), f"Got a non-string of type {type(sub_url['href'])} for 'href'"
                         return sub_url["href"]
         raise ValueError(f"Could not find `standard_unit_rates` in {region_meta}")
 

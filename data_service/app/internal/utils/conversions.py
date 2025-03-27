@@ -11,12 +11,37 @@ belong in here.
 Where possible, these functions should work equally well on numpy arrays or on single float values.
 """
 
+import datetime
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from ..epl_typing import FloatOrArray
+if TYPE_CHECKING:
+    import numpy.typing as npt
+    import pandas as pd
 
 
-def m3_to_kwh(vol: FloatOrArray, calorific_value: float = 38.0) -> FloatOrArray:
+def mph_to_ms[T: (npt.NDArray[np.floating], float, pd.Series)](v: T) -> T:
+    """
+    Convert a speed in miles per hour to one in metres per second.
+
+    This is useful when converting wind speeds from VisualCrossing.
+
+    Parameters
+    ----------
+    v
+        Speed in miles per hour
+
+    Returns
+    -------
+        Speed in metres per second.
+    """
+    METRES_PER_MILE = 1609
+    SECONDS_PER_HOUR = 60 * 60
+    return v * METRES_PER_MILE / SECONDS_PER_HOUR
+
+
+def m3_to_kwh[T: (npt.NDArray[np.floating], float, pd.Series)](vol: T, calorific_value: float = 38.0) -> T:
     """
     Convert a gas reading in meters cubed to kWh.
 
@@ -34,7 +59,7 @@ def m3_to_kwh(vol: FloatOrArray, calorific_value: float = 38.0) -> FloatOrArray:
     return vol * calorific_value * 1.02264 / 3.6
 
 
-def celsius_to_kelvin(temperature: FloatOrArray) -> FloatOrArray:
+def celsius_to_kelvin[T: (npt.NDArray[np.floating], float, pd.Series)](temperature: T) -> T:
     """
     Convert a temperature in Celsius to one in Kelvin.
 
@@ -60,7 +85,7 @@ def celsius_to_kelvin(temperature: FloatOrArray) -> FloatOrArray:
     return temperature + 273.15
 
 
-def kelvin_to_celsius(temperature: FloatOrArray) -> FloatOrArray:
+def kelvin_to_celsius[T: (npt.NDArray[np.floating], float, pd.Series)](temperature: T) -> T:
     """
     Convert a temperature in Celsius to one in Kelvin.
 
@@ -86,7 +111,23 @@ def kelvin_to_celsius(temperature: FloatOrArray) -> FloatOrArray:
     return temperature - 273.15
 
 
-def millibar_to_megapascal(pressure: FloatOrArray) -> FloatOrArray:
+def joule_to_kwh[T: (npt.NDArray[np.floating], float, pd.Series)](joules: T) -> T:
+    """
+    Convert a temperature in Celsius to one in Kelvin.
+
+    Parameters
+    ----------
+    joules
+        Energy in J
+
+    Returns
+    -------
+        Energy in kWh
+    """
+    return joules / (1000 * datetime.timedelta(hours=1).total_seconds())
+
+
+def millibar_to_megapascal[T: (npt.NDArray[np.floating], float, pd.Series)](pressure: T) -> T:
     """
     Convert an air pressure in mbar into one in MPa.
 
@@ -115,7 +156,7 @@ def millibar_to_megapascal(pressure: FloatOrArray) -> FloatOrArray:
     return pressure / 10000
 
 
-def pa_to_mbar(pressure: FloatOrArray) -> FloatOrArray:
+def pa_to_mbar[T: (npt.NDArray[np.floating], float, pd.Series)](pressure: T) -> T:
     """
     Convert an air pressure in Pa to one in mbar.
 
@@ -144,7 +185,9 @@ def pa_to_mbar(pressure: FloatOrArray) -> FloatOrArray:
     return pressure / 100
 
 
-def relative_to_specific_humidity(rel_hum: FloatOrArray, air_temp: FloatOrArray, air_pressure: FloatOrArray) -> FloatOrArray:
+def relative_to_specific_humidity[T: (npt.NDArray[np.floating], float, pd.Series)](
+    rel_hum: T, air_temp: T, air_pressure: T
+) -> T:
     """
     Convert a relative (%) humidity to a specific humidity in grams of water per kg of air.
 
@@ -189,7 +232,7 @@ def relative_to_specific_humidity(rel_hum: FloatOrArray, air_temp: FloatOrArray,
             f"{air_pressure} out of range of likely values [900, 1100). Is it in the right units?"
         )
 
-    def enhancement_factor(temperature: FloatOrArray, pressure: FloatOrArray) -> FloatOrArray:
+    def enhancement_factor(temperature: T, pressure: T) -> T:
         """
         Corrections for vapour pressures for moist air.
 
@@ -214,20 +257,43 @@ def relative_to_specific_humidity(rel_hum: FloatOrArray, air_temp: FloatOrArray,
         A, B, C, D, E = 4.1e-4, 3.48e-6, 7.4e-10, 30.6, -3.8e-2
         return 1.0 + A + pressure * (B + C * (temperature + D + E * pressure) ** 2)
 
-    air_pres_pa: FloatOrArray = millibar_to_megapascal(air_pressure) * 1e6
+    air_pres_pa = millibar_to_megapascal(air_pressure) * 1e6
     vap_pres_at_t_ref = 611.21  # Pa
     # vapour pressure at 0C via
     # CRC Handbook of Chemistry and Physics, 85th Edition, Volume 85
     # https://books.google.co.uk/books?id=WDll8hA006AC&pg=SA6-PA10&redir_esc=y#v=onepage&q&f=false
 
     # Calculate the equilibrium mixing ratio via the Buck equation
-    eqm_mixing_ratio: FloatOrArray = vap_pres_at_t_ref * np.exp(
-        (18.678 - (air_temp / 234.5)) * (air_temp / (air_temp + 257.14))
-    )  # type: ignore
+    eqm_mixing_ratio = vap_pres_at_t_ref * np.exp((18.678 - (air_temp / 234.5)) * (air_temp / (air_temp + 257.14)))
 
     eqm_mixing_ratio *= enhancement_factor(air_temp, air_pressure)
     # Ratio of molar specific gas constants for water (molar mass 18 g mol^-1) to dry air (avg molar mass ~29 g mol^-1)
     gas_constant_ratio = 18 / 28.964917
 
     g_per_kg = 1e3
-    return g_per_kg * (rel_hum / 100) * gas_constant_ratio * eqm_mixing_ratio / air_pres_pa
+    val: T = g_per_kg * (rel_hum / 100) * gas_constant_ratio * eqm_mixing_ratio / air_pres_pa
+    return val
+
+
+def try_convert_float(maybe_float: str | float | datetime.datetime | None) -> float | None:
+    """
+    Try to convert a value to a float, returning None otherwise.
+
+    Parameters
+    ----------
+    maybe_float
+        A maybe-float like object, probably from a JSON or CSV
+
+    Returns
+    -------
+    float
+        If the value is a float encoded as a string
+    None
+        Otherwise
+    """
+    if isinstance(maybe_float, str | float):
+        try:
+            return float(maybe_float)
+        except (ValueError, TypeError):
+            return None
+    return None

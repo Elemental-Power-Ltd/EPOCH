@@ -5,12 +5,12 @@ import datetime
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import scipy.optimize  # type: ignore
+import scipy.optimize
 from sklearn.linear_model import LinearRegression  # type: ignore
 
 from ...models.weather import BaitAndModelCoefs
 from ..epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
-from ..heating import building_adjusted_internal_temperature
+from ..thermal_model import building_adjusted_internal_temperature
 from .domestic_hot_water import assign_hh_dhw_even
 
 
@@ -103,7 +103,7 @@ def predict_heating_load(gas_df: MonthlyDataFrame) -> npt.NDArray[np.float32]:
     xs = np.vstack([gas_df["days"], gas_df["hdd"].to_numpy()]).T
     ys = gas_df["consumption"].to_numpy()
     mdl.fit(xs, ys, sample_weight=gas_df["days"].to_numpy())
-    predicted = mdl.predict(xs)
+    predicted: npt.NDArray[np.floating] = mdl.predict(xs)
     return predicted
 
 
@@ -130,7 +130,7 @@ def score_bait_coefficients(x: list[float], gas_df: MonthlyDataFrame, weather_df
     predicted = predict_heating_load(gas_df)
     ys = gas_df["consumption"].to_numpy()
     # aim to minimize the mean squared loss, we want this to be zero
-    return np.sum((predicted - ys) ** 2, dtype=np.float32)
+    return float(np.sum((predicted - ys) ** 2))
 
 
 def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -> HHDataFrame:
@@ -180,7 +180,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
         humidity_discomfort=bait_fitted[2],
         smoothing=bait_fitted[3],
         thresh=bait_fitted[4],
-    )  # type: ignore
+    )
     gas_df["hdd"] = bait_hdd
 
     mdl = LinearRegression(positive=True, fit_intercept=False)

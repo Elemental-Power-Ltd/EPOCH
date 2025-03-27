@@ -10,6 +10,7 @@ import pytest
 
 import app.internal.import_tariffs as it
 from app.models.import_tariffs import GSPEnum
+from tests.endpoints.conftest import MockedHttpClient
 
 
 class TestCombineDataFrames:
@@ -58,7 +59,7 @@ class TestGetFixedRates:
     @pytest.mark.asyncio
     async def test_loyalty_tariff(self) -> None:
         """Test that we get good day rates for a known loyalty tariff."""
-        async with httpx.AsyncClient() as client:
+        async with MockedHttpClient() as client:
             result = await it.get_fixed_rates("EP-LOYAL-FIX-12M-23-09-14", region_code=GSPEnum.C, client=client)
         assert pytest.approx(27.0745) == result
 
@@ -66,14 +67,14 @@ class TestGetFixedRates:
     async def test_bad_tariff(self) -> None:
         """Test that we raise the correct error for a bad tariff.."""
         with pytest.raises(ValueError, match="NOT_A_REAL_TARIFF"):
-            async with httpx.AsyncClient() as client:
+            async with MockedHttpClient() as client:
                 _ = await it.get_fixed_rates("NOT_A_REAL_TARIFF", region_code=GSPEnum.C, client=client)
 
     @pytest.mark.asyncio
     async def test_agile_tariff(self) -> None:
         """Test that we don't try to get single costs for agile tariffs."""
         with pytest.raises(ValueError, match=r"use `get_octopus_tariff` for agile or varying tariffs."):
-            async with httpx.AsyncClient() as client:
+            async with MockedHttpClient() as client:
                 _ = await it.get_fixed_rates("AGILE-FLEX-22-11-25", region_code=GSPEnum.C, client=client)
 
 
@@ -81,7 +82,7 @@ class TestGetDayNightRates:
     @pytest.mark.asyncio
     async def test_loyalty_tariff(self) -> None:
         """Test that we get good day rates for a known loyalty tariff."""
-        async with httpx.AsyncClient() as client:
+        async with MockedHttpClient() as client:
             night, day = await it.get_day_and_night_rates("EP-LOYAL-FIX-12M-23-09-14", region_code=GSPEnum.C, client=client)
         assert pytest.approx(14.4314) == night
         assert pytest.approx(34.1549) == day
@@ -90,14 +91,14 @@ class TestGetDayNightRates:
     async def test_bad_tariff(self) -> None:
         """Test that we raise the correct error for a bad tariff.."""
         with pytest.raises(ValueError, match="NOT_A_REAL_TARIFF"):
-            async with httpx.AsyncClient() as client:
+            async with MockedHttpClient() as client:
                 _ = await it.get_day_and_night_rates("NOT_A_REAL_TARIFF", region_code=GSPEnum.C, client=client)
 
     @pytest.mark.asyncio
     async def test_agile_tariff(self) -> None:
         """Test that we can't get day/night costs for agile tariffs."""
         with pytest.raises(ValueError, match="AGILE-FLEX-22-11-25"):
-            async with httpx.AsyncClient() as client:
+            async with MockedHttpClient() as client:
                 _ = await it.get_day_and_night_rates("AGILE-FLEX-22-11-25", region_code=GSPEnum.C, client=client)
 
 

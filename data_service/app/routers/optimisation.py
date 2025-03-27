@@ -247,7 +247,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metrics.payback_horizon for item in opt_result.portfolio],
                         [item.metrics.annualised_cost for item in opt_result.portfolio],
                         [item.metrics.carbon_cost for item in opt_result.portfolio],
-
                         [item.metrics.total_gas_used for item in opt_result.portfolio],
                         [item.metrics.total_electricity_imported for item in opt_result.portfolio],
                         [item.metrics.total_electricity_generated for item in opt_result.portfolio],
@@ -269,7 +268,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_payback_horizon",
                         "metric_annualised_cost",
                         "metric_carbon_cost",
-
                         "metric_total_gas_used",
                         "metric_total_electricity_imported",
                         "metric_total_electricity_generated",
@@ -278,7 +276,7 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_total_heat_shortfall",
                         "metric_total_gas_import_cost",
                         "metric_total_electricity_import_cost",
-                        "metric_total_electricity_export_gain"
+                        "metric_total_electricity_export_gain",
                     ],
                 )
             except asyncpg.exceptions.ForeignKeyViolationError as ex:
@@ -306,7 +304,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metrics.payback_horizon for item in pf.site_results],
                         [item.metrics.annualised_cost for item in pf.site_results],
                         [item.metrics.carbon_cost for item in pf.site_results],
-
                         [item.metrics.total_gas_used for item in pf.site_results],
                         [item.metrics.total_electricity_imported for item in pf.site_results],
                         [item.metrics.total_electricity_generated for item in pf.site_results],
@@ -329,7 +326,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_payback_horizon",
                         "metric_annualised_cost",
                         "metric_carbon_cost",
-
                         "metric_total_gas_used",
                         "metric_total_electricity_imported",
                         "metric_total_electricity_generated",
@@ -338,7 +334,7 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_total_heat_shortfall",
                         "metric_total_gas_import_cost",
                         "metric_total_electricity_import_cost",
-                        "metric_total_electricity_export_gain"
+                        "metric_total_electricity_export_gain",
                     ],
                 )
 
