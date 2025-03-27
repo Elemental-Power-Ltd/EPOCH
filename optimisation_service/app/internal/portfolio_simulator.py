@@ -113,14 +113,13 @@ def combine_metric_values(metric_values_list: list[MetricValues]) -> MetricValue
 
     if Metric.capex in combined_metric_values and Metric.cost_balance in combined_metric_values:
         combined_metric_values[Metric.payback_horizon] = calculate_payback_horizon(
-            capex=combined_metric_values[Metric.capex],
-            cost_balance=combined_metric_values[Metric.cost_balance]
+            capex=combined_metric_values[Metric.capex], cost_balance=combined_metric_values[Metric.cost_balance]
         )
 
     if Metric.capex in combined_metric_values and Metric.carbon_balance_scope_1 in combined_metric_values:
         combined_metric_values[Metric.carbon_cost] = calculate_carbon_cost(
             capex=combined_metric_values[Metric.capex],
-            carbon_balance_scope_1=combined_metric_values[Metric.carbon_balance_scope_1]
+            carbon_balance_scope_1=combined_metric_values[Metric.carbon_balance_scope_1],
         )
 
     return combined_metric_values

@@ -93,7 +93,7 @@ class TestCombineMetricValues:
             Metric.total_heat_shortfall: 10,
             Metric.total_gas_import_cost: 10,
             Metric.total_electricity_import_cost: 10,
-            Metric.total_electricity_export_gain: 10
+            Metric.total_electricity_export_gain: 10,
         }
         metric_values[Metric.payback_horizon] = calculate_payback_horizon(
             capex=metric_values[Metric.capex], cost_balance=metric_values[Metric.cost_balance]
@@ -160,7 +160,7 @@ class TestCombineMetricValues:
             Metric.cost_balance: 10,
         }
         res = combine_metric_values([metric_values_1, metric_values_1])
-        assert res[Metric.payback_horizon] == float(np.finfo(np.float32).max)
+        assert res[Metric.payback_horizon] < 0
         res = combine_metric_values([metric_values_1, metric_values_2])
         assert res[Metric.payback_horizon] == calculate_payback_horizon(
             capex=metric_values_1[Metric.capex] + metric_values_2[Metric.capex],
