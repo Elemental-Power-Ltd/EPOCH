@@ -9,15 +9,12 @@ Use strong typing as much as possible to avoid errors, and add extra types here 
 import functools
 import warnings
 from collections.abc import Callable, Mapping
-from typing import NewType, ParamSpec, TypeVar
+from typing import NewType
 
 import pandas as pd
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
-
-def mark_unused(func: Callable[P, R]) -> Callable[P, R]:
+def mark_unused[R, **KW](func: Callable[KW, R]) -> Callable[KW, R]:
     """
     Mark a given function as unused.
 
@@ -26,8 +23,8 @@ def mark_unused(func: Callable[P, R]) -> Callable[P, R]:
     """
 
     @functools.wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        warnings.warn(f"Call to an unused function {func.__name__}")
+    def wrapper(*args: KW.args, **kwargs: KW.kwargs) -> R:
+        warnings.warn(f"Call to an unused function {func.__name__}", stacklevel=2)
         return func(*args, **kwargs)
 
     return wrapper
