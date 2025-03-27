@@ -9,6 +9,7 @@ from enum import Enum
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 
+from app.internal.constraints import get_default_constraints, merge_constraints
 from app.internal.datamanager import DataManagerDep
 from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.grid_search import GridSearch, get_epoch_path
@@ -61,7 +62,6 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                         capex=site_solution.metric_values[Metric.capex],
                         payback_horizon=site_solution.metric_values[Metric.payback_horizon],
                         annualised_cost=site_solution.metric_values[Metric.annualised_cost],
-
                         total_gas_used=site_solution.metric_values[Metric.total_gas_used],
                         total_electricity_imported=site_solution.metric_values[Metric.total_electricity_imported],
                         total_electricity_generated=site_solution.metric_values[Metric.total_electricity_generated],
@@ -86,7 +86,6 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     capex=portfolio_solution.metric_values[Metric.capex],
                     payback_horizon=portfolio_solution.metric_values[Metric.payback_horizon],
                     annualised_cost=portfolio_solution.metric_values[Metric.annualised_cost],
-
                     total_gas_used=portfolio_solution.metric_values[Metric.total_gas_used],
                     total_electricity_imported=portfolio_solution.metric_values[Metric.total_electricity_imported],
                     total_electricity_generated=portfolio_solution.metric_values[Metric.total_electricity_generated],
@@ -235,6 +234,8 @@ async def submit_portfolio(request: Request, task: Task, data_manager: DataManag
         )
     try:
         await data_manager.fetch_portfolio_data(task)
+        default_constraints = get_default_constraints(task.portfolio)
+        task.portfolio_constraints = merge_constraints([task.portfolio_constraints, default_constraints])  # type: ignore
         data_manager.save_parameters(task)
         await data_manager.transmit_task(task)
         await q.put((task, data_manager))

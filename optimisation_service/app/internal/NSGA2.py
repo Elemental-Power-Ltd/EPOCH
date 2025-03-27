@@ -46,6 +46,7 @@ class NSGA2(Algorithm):
         period: int | None = 5,
         n_max_gen: int = int(1e14),
         n_max_evals: int = int(1e14),
+        return_least_infeasible: bool = True,
     ) -> None:
         """
         Define GA hyperparameters.
@@ -74,6 +75,8 @@ class NSGA2(Algorithm):
             Max number of generations before termination
         n_max_evals
             Max number of evaluations of EPOCH before termination
+        return_least_infeasible
+            If true, returns the most feasible solution if all solution are infeasible.
         """
         if n_offsprings is None:
             n_offsprings = int(pop_size * (3 / 4))
@@ -92,6 +95,7 @@ class NSGA2(Algorithm):
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingAndDegenerateRepair()),
             eliminate_duplicates=True,
             repair=RoundingAndDegenerateRepair(),
+            return_least_infeasible=return_least_infeasible,
         )
 
         if period is None:
@@ -175,10 +179,13 @@ class NSGA2(Algorithm):
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
         non_dom_sol = res.X
-        if non_dom_sol.ndim == 1:
-            non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
-        portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
-        portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
+        if non_dom_sol is None:
+            portfolio_solutions_pf = [do_nothing_scenario(pi.site_names)]
+        else:
+            if non_dom_sol.ndim == 1:
+                non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
+            portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
+            portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
         if len(portfolio_solutions_pf) == 0:
             portfolio_solutions_pf = [do_nothing_scenario(pi.site_names)]
