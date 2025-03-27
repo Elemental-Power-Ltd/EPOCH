@@ -27,10 +27,10 @@ def merge_constraints(constraints_list: list[Constraints]) -> Constraints:
                 merged[metric] = Bounds()  # type: ignore
 
             if "min" in bounds:
-                merged[metric]["min"] = max(bounds["min"], merged[metric].get("min", bounds["min"]))
+                merged[metric]["min"] = max(bounds["min"], merged[metric].get("min", -float("inf")))
 
             if "max" in bounds:
-                merged[metric]["max"] = min(bounds["max"], merged[metric].get("max", bounds["max"]))
+                merged[metric]["max"] = min(bounds["max"], merged[metric].get("max", float("inf")))
 
     return merged
 
@@ -71,7 +71,7 @@ def get_capex_constraints() -> Constraints:
     constraints
         Constraints dict, containing a minimum constraint on CAPEX.
     """
-    constraints = {Metric.capex: Bounds(min=1 / float(np.finfo(np.float32).max))}
+    constraints = {Metric.capex: Bounds(min=float(np.finfo(np.float32).tiny))}
     return constraints
 
 
@@ -92,6 +92,10 @@ def get_cost_balance_constraints() -> Constraints:
 def get_default_constraints(portfolio: list[Site]) -> Constraints:
     """
     Get the default constraints that should be applied to an optimisation task.
+    These are:
+    - Electrical and Heat shortfall upper bounds. We want to make sure that the solutions provided are viable energetically.
+    - Cost balance lower bound. We wamt to make sure that the solutions provided are viable economically.
+    - CAPEX lower bound. We want to exclude the £0 scenario since it is of no interest.
 
     Parameters
     ----------
