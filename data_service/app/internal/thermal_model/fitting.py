@@ -126,7 +126,7 @@ def parameters_to_loss(
     resampled_df = resample_to_gas_df(sim_df, gas_df)
     energy_loss = cast(float, np.sum(np.power(gas_df["consumption"] - resampled_df, 2.0)))
 
-    aggregrate_loss = (gas_df["consumption"].sum() - np.sum(resampled_df)) ** 2
+    aggregrate_loss = cast(float, (gas_df["consumption"].sum() - np.sum(resampled_df)) ** 2)
     # How closely we want the boiler to control the temperatures for the thermal loss.
     # We generally want the temperatures to be within a few degrees of the setpoint
     # at all points during the year, to punish under- or over- heating.
