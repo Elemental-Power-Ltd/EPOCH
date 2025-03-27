@@ -5,11 +5,6 @@ import {
     DialogContent,
     DialogActions,
     Button,
-    Table,
-    TableBody,
-    TableCell,
-    TableRow,
-    Typography,
 } from '@mui/material';
 import {useNavigate} from "react-router-dom";
 import ArrowForward from "@mui/icons-material/ArrowForward";
@@ -18,6 +13,8 @@ import DownloadIcon from "@mui/icons-material/Download";
 import SimulationSummary from "./SimulationSummary";
 import {SiteOptimisationResult} from "../../State/types";
 import {SimulationResult} from "../../Models/Endpoints";
+import {TaskDataViewer} from "../TaskDataViewer/TaskDataViewer.tsx";
+import {TaskData} from "../TaskDataViewer/TaskData.ts";
 
 
 interface SolutionModalProps {
@@ -60,19 +57,7 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, siteResult
             <DialogTitle>Solution Details</DialogTitle>
             <DialogContent dividers>
                 <SimulationSummary result={SimResult} isLoading={false} error={null}/>
-                <Typography variant="h6" gutterBottom>
-                    Components
-                </Typography>
-                <Table>
-                    <TableBody>
-                        {Object.entries(scenario).map(([key, value]) => (
-                            <TableRow key={key}>
-                                <TableCell>{key}</TableCell>
-                                <TableCell>{JSON.stringify(value)}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                <TaskDataViewer data={scenario as TaskData}/>
             </DialogContent>
             <DialogActions>
                 <Button

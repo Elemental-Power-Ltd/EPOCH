@@ -137,22 +137,22 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         {
           icon: <FireIcon sx={{fontSize: 40}} color="action"/>,
           label: objectiveNames["total_gas_used"],
-          value: formatEnergy(total_gas_used),
+          value: formatEnergy(total_gas_used, 100),
         },
         {
           icon: <BoltIcon sx={{fontSize: 40}} color="action"/>,
           label: objectiveNames["total_electricity_imported"],
-          value: formatEnergy(total_electricity_imported),
+          value: formatEnergy(total_electricity_imported, 100),
         },
         {
           icon: <BoltIcon sx={{fontSize: 40}} color="action"/>,
           label: objectiveNames["total_electricity_generated"],
-          value: formatEnergy(total_electricity_generated),
+          value: formatEnergy(total_electricity_generated, 100),
         },
         {
           icon: <BoltIcon sx={{fontSize: 40}} color="action"/>,
           label: objectiveNames["total_electricity_exported"],
-          value: formatEnergy(total_electricity_exported),
+          value: formatEnergy(total_electricity_exported, 100),
         },
       ]
 
@@ -160,12 +160,12 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         {
           icon: <BoltIcon sx={{fontSize: 40}} color={(total_electrical_shortfall ?? 0) > 0 ? "error" : "action"}/>,
           label: objectiveNames["total_electrical_shortfall"],
-          value: formatEnergy(total_electrical_shortfall),
+          value: formatEnergy(total_electrical_shortfall, 100),
         },
         {
           icon: <FireIcon sx={{fontSize: 40}} color={(total_heat_shortfall ?? 0) > 0 ? "error" : "action"}/>,
           label: objectiveNames["total_heat_shortfall"],
-          value: formatEnergy(total_heat_shortfall),
+          value: formatEnergy(total_heat_shortfall, 100),
         },
       ]
 
