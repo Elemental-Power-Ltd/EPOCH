@@ -1,10 +1,12 @@
 import DefaultGrid from "../util/json/default/DefaultGridConfig.json"
-import DefaultGA from "../util/json/default/DefaultGAConfig.json"
+import DefaultNSGA2 from "../util/json/default/DefaultNSGA2Config.json"
 import { getInitialComponentsMap, hardcodedConfig } from "../Components/ComponentBuilder/initialState"
 import {
   TaskConfig,
-  OptimiseContainer
+  OptimiseContainer,
+  OptimisationApproach
 } from "./types"
+
 import dayjs from "dayjs";
 
 const defaultTaskConfig: TaskConfig = {
@@ -27,8 +29,8 @@ const defaultTaskConfig: TaskConfig = {
 export const defaultOptimiseContainer: OptimiseContainer = {
   taskConfig: defaultTaskConfig,
   hyperparameters: {
-    gridSearch: DefaultGrid,
-    geneticAlgorithm: DefaultGA
+    GridSearch: DefaultGrid,
+    NSGA2: DefaultNSGA2
   },
   portfolioMap: {}
 }
@@ -36,29 +38,18 @@ export const defaultOptimiseContainer: OptimiseContainer = {
 export const createOptimiserSlice = (set, get, api) => ({
   optimise: defaultOptimiseContainer,
 
-  setOptimiser: (optimiser: string) =>
+  setOptimiser: (optimiser: OptimisationApproach) =>
     set((state) => ({ optimise: { ...state.optimise, selectedOptimiser: optimiser } })),
 
-  setGridConfig: (form: any) =>
-    set((state) => ({
-      optimise: {
-        ...state.optimise,
-        hyperparameters: {
-          ...state.optimise.hyperparameters,
-          gridSearch: form
+  setHyperparameters: (optimiser: OptimisationApproach, form: any) =>
+      set((state) => ({
+        optimise : {
+          ...state.optimise,
+          hyperparameters: {
+            ...state.optimise.hyperparameters,
+            [optimiser]: form
+          }
         }
-      }
-    })),
-
-  setGAConfig: (form: any) =>
-    set((state) => ({
-      optimise: {
-        ...state.optimise,
-        hyperparameters: {
-          ...state.optimise.hyperparameters,
-          geneticAlgorithm: form
-        }
-      }
     })),
 
   // add a new ComponentBuilderState to the portfolio for a given site_id

@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "SamplingMethod": {
+      "enum": [
+        "RANDOM",
+        "ESTIMATE"
+      ],
+      "title": "SamplingMethod",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "pop_size": {
+      "default": 2048,
+      "description": "Size of population.",
+      "examples": [
+        256,
+        512
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Pop Size",
+      "type": "integer"
+    },
+    "n_offsprings": {
+      "default": 1024,
+      "description": "Number of offsprings to generate through crossover at each generation. Should be less than or equal to pop_size",
+      "examples": [
+        256,
+        512
+      ],
+      "exclusiveMinimum": 0,
+      "title": "N Offsprings",
+      "type": "integer"
+    },
+    "prob_crossover": {
+      "default": 0.8,
+      "description": "Probability of applying crossover between two parents.",
+      "examples": [
+        0.2
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "Prob Crossover",
+      "type": "number"
+    },
+    "n_crossover": {
+      "default": 2,
+      "description": "Number of crossover points.",
+      "examples": [
+        1,
+        2
+      ],
+      "exclusiveMinimum": 0,
+      "title": "N Crossover",
+      "type": "integer"
+    },
+    "prob_mutation": {
+      "default": 0.8,
+      "description": "Probability of applying mutation to each offspring.",
+      "examples": [
+        0.8
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "Prob Mutation",
+      "type": "number"
+    },
+    "std_scaler": {
+      "default": 0.2,
+      "description": "Scales the standard deviation of the mutation's normal distribution.",
+      "examples": [
+        0.2
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "Std Scaler",
+      "type": "number"
+    },
+    "tol": {
+      "default": 0.0025,
+      "description": "Termination Criterion.Minimum required improvement of population's best fitness value over a period of generations. Terminates if below.",
+      "examples": [
+        0.0025
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "Tol",
+      "type": "number"
+    },
+    "period": {
+      "default": 25,
+      "description": "Termination Criterion. Number of passed generations to include when checking for improvement.",
+      "examples": [
+        25
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Period",
+      "type": "integer"
+    },
+    "n_max_gen": {
+      "default": 1000,
+      "description": "Termination Criterion. Max number of generations before termination.",
+      "examples": [
+        1000,
+        2000
+      ],
+      "exclusiveMinimum": 0,
+      "title": "N Max Gen",
+      "type": "integer"
+    },
+    "n_max_evals": {
+      "default": 100000000000000,
+      "description": "Termination Criterion. Max number of fitness evaluations (Epoch simulations) before termination.",
+      "examples": [
+        1000000.0,
+        1000000000.0
+      ],
+      "exclusiveMinimum": 0,
+      "title": "N Max Evals",
+      "type": "integer"
+    },
+    "sampling": {
+      "$ref": "#/$defs/SamplingMethod",
+      "default": "RANDOM",
+      "description": "Whether to generate initial population randomly or from estimates.",
+      "examples": [
+        "RANDOM",
+        "ESTIMATE"
+      ]
+    }
+  },
+  "title": "NSGA2HyperParam",
+  "type": "object"
+}

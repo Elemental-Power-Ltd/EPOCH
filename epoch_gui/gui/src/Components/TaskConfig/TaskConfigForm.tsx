@@ -14,6 +14,7 @@ import { TaskConfig } from "../../State/types";
 import {objectiveNames} from "../../util/displayNames";
 
 import TimeRangeForm from "./TimeRangeForm";
+import HyperParamForm from "../HyperParams/OptimiserConfig.tsx";
 
 const TaskConfigForm = () => {
   const taskConfig = useEpochStore((state) => state.optimise.taskConfig);
@@ -93,6 +94,7 @@ const TaskConfigForm = () => {
           </Grid>
         </Grid>
       </form>
+      <HyperParamForm/>
     </Container>
   );
 };

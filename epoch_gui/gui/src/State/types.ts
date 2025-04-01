@@ -12,10 +12,12 @@ export interface TaskObjectives {
     annualised_cost: boolean;
 }
 
+export type OptimisationApproach = "NSGA2" | "GridSearch";
+
 
 export interface TaskConfig {
     task_name: string;
-    optimiser: "NSGA2" | "GridSearch";
+    optimiser: OptimisationApproach;
     objectives: TaskObjectives;
     client_id: string;
     start_date: Dayjs | null;
@@ -27,7 +29,7 @@ export type SiteRange = any;
 
 export interface OptimiseContainer {
     taskConfig: TaskConfig;
-    hyperparameters: any;
+    hyperparameters: {[key in OptimisationApproach]: any };
     portfolioMap: {[key: string]: ComponentsMap}
 }
 
@@ -135,9 +137,8 @@ export interface AppState {
     analysis: AnalysisContainer
 
 
-    setOptimiser: (optimiser: string) => void;
-    setGridConfig: (form: any) => void;
-    setGAConfig: (form: any) => void;
+    setOptimiser: (optimiser: OptimisationApproach) => void;
+    setHyperparameters: (optimiser: OptimisationApproach, form: any) => void;
     addSiteRange: (site_id: string) => void;
     removeSiteRange: (site_id: string) => void;
 

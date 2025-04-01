@@ -1,0 +1,13 @@
+{
+  "pop_size": 2048,
+  "n_offsprings": 1024,
+  "prob_crossover": 0.8,
+  "n_crossover": 2,
+  "prob_mutation": 0.8,
+  "std_scaler": 0.2,
+  "tol": 0.0025,
+  "period": 25,
+  "n_max_gen": 1000,
+  "n_max_evals": 1000000,
+  "sampling": "RANDOM"
+}

@@ -121,7 +121,7 @@ function OptimisationContainer() {
             name: state.taskConfig.task_name,
             optimiser: {
                 name: state.taskConfig.optimiser,
-                hyperparameters: {}
+                hyperparameters: state.hyperparameters[state.taskConfig.optimiser],
             },
             objectives: selected_objectives,
             portfolio: Object.keys(state.portfolioMap).map((site_id: string) => ({
