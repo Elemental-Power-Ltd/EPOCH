@@ -8,6 +8,10 @@ import httpx
 import pandas as pd
 
 from ...models.import_tariffs import GSPEnum
+from ..utils import RateLimiter
+
+# Octopus limis us to 100 calls an hour
+OCTOPUS_RATE_LIMITER = RateLimiter(rate_limit_requests=100, rate_limit_period=3600.0)
 
 
 async def get_octopus_tariff(
@@ -39,6 +43,10 @@ async def get_octopus_tariff(
         Latest time in tariff to get
     client
         Async http client used to send requests
+    rate_limit_requests
+        Maximum number of requests allowed in the rate limit period
+    rate_limit_period
+        Time period in seconds for the rate limit
 
     Returns
     -------
@@ -46,15 +54,41 @@ async def get_octopus_tariff(
     """
     if client is None:
         client = httpx.AsyncClient()
+
+    async def rate_limited_request(url: str, params: dict[str, Any] | None = None) -> httpx.Response:
+        """
+        Make a rate-limited GET request.
+
+        Octopus limits us to 100 calls an hour, which is much longer than
+        the timeline of a given function, so we use a shared rate limiter object.
+        This may take some time -- watch out if you get caught by the limiter!
+
+        Parameters
+        ----------
+        url
+            URL to send the get request to
+        params
+            Query parameters to send with your request
+
+        Returns
+        -------
+        httpx.Response
+            Response from the 3rd party API.
+        """
+        await OCTOPUS_RATE_LIMITER.acquire()
+        return await client.get(url, params=params)
+
     params: dict[str, str | int] = {"page_size": 1500}
     if start_ts is not None:
         params["period_from"] = start_ts.isoformat()
     if end_ts is not None:
         params["period_to"] = end_ts.isoformat()
 
-    tariff_metadata_resp = await client.get(f"https://api.octopus.energy/v1/products/{tariff_name}/", params=params)
+    tariff_metadata_resp = await rate_limited_request(f"https://api.octopus.energy/v1/products/{tariff_name}/", params=params)
+
     if tariff_metadata_resp.status_code != 200:
-        raise ValueError(tariff_metadata_resp.text)
+        raise ValueError(str(tariff_metadata_resp.status_code) + tariff_metadata_resp.text)
+
     tariff_meta = tariff_metadata_resp.json()
     # TODO (2024-10-25 MHJB): What if we don't have a tariff in this region?
     region_meta = tariff_meta["single_register_electricity_tariffs"][region_code.value]
@@ -72,9 +106,11 @@ async def get_octopus_tariff(
 
     all_results = []
     while unit_rate_url:
-        rates_response = await client.get(unit_rate_url, params=params)
-        unit_rate_url = rates_response.json().get("next")
-        all_results.extend(rates_response.json().get("results", []))
+        rates_response = await rate_limited_request(unit_rate_url, params=params)
+        response_json = rates_response.json()
+        unit_rate_url = response_json.get("next")
+        all_results.extend(response_json.get("results", []))
+
     df = pd.DataFrame.from_records(all_results).rename(
         columns={"valid_from": "start_ts", "valid_to": "end_ts", "value_exc_vat": "cost"}
     )
