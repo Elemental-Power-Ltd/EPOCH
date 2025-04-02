@@ -256,10 +256,11 @@ class DataManager:
             Optimisation task.
         """
         logger.info(f"Adding {task.task_id} to database.")
-        portfolio_range, input_data = {}, {}
+        portfolio_range, input_data, site_constraints = {}, {}, {}
         for site in task.portfolio:
             portfolio_range[site.site_data.site_id] = site.site_range
             input_data[site.site_data.site_id] = site.site_data
+            site_constraints[site.site_data.site_id] = site.constraints
         data = {
             "client_id": task.client_id,
             "task_id": task.task_id,
@@ -270,6 +271,7 @@ class DataManager:
             "portfolio_range": portfolio_range,
             "input_data": input_data,
             "portfolio_constraints": task.portfolio_constraints,
+            "site_constraints": site_constraints,
         }
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-task", data=data)
@@ -339,8 +341,7 @@ def validate_for_necessary_datasets(site_data: RemoteMetaData) -> None:
         DatasetTypeEnum.ImportTariff,
     ]
     # Check that the dataset_ids have been saved to the database for this result
-    missing_datasets: list[DatasetTypeEnum] = [
-        key for key in necessary_datasets if getattr(site_data, key) is None]
+    missing_datasets: list[DatasetTypeEnum] = [key for key in necessary_datasets if getattr(site_data, key) is None]
 
     if (
         site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterData) is None
