@@ -48,6 +48,8 @@ class ProblemInstance(ElementwiseProblem):
 
         n_obj = len(self.objectives)
         n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
+        for site in portfolio:
+            n_ieq_constr += sum(len(bounds) for bounds in site.constraints.values())
 
         epoch_data_dict = {}
         self.default_parameters: dict[str, dict] = {}
@@ -241,29 +243,28 @@ class ProblemInstance(ElementwiseProblem):
             metric_values[metric] *= MetricDirection[metric]
         return metric_values
 
-    def calculate_infeasibility(self, metric_values: MetricValues) -> list[float]:
+    def calculate_infeasibility(self, portfolio_solution: PortfolioSolution) -> list[float]:
         """
-        Calculate the infeasibility of metric values given the problem's portfolio constraints.
+        Calculate the infeasibility of a portfolio solution given the problem's portfolio constraints.
 
         Parameters
         ----------
-        metric_values
-            Dictionary of metric names and metric values.
+        portfolio_solution
+            The portfolio solution to evaluate.
 
         Returns
         -------
         excess
             List of values that indicate by how much the metric values exceed the constraints.
         """
-        excess = []
-        for metric, bounds in self.constraints.items():
-            min_value = bounds.get("min", None)
-            max_value = bounds.get("max", None)
+        # evaluate portfolio level constraints first
+        excess = evaluate_excess(portfolio_solution.metric_values, constraints=self.constraints)
 
-            if min_value is not None:
-                excess.append(min_value - metric_values[metric])
-            if max_value is not None:
-                excess.append(metric_values[metric] - max_value)
+        # evaluate site constraints
+        for site in self.portfolio:
+            metric_values = portfolio_solution.scenario[site.site_data.site_id].metric_values
+            excess.extend(evaluate_excess(metric_values=metric_values, constraints=site.constraints))
+
         return excess
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[float]]) -> None:
@@ -282,10 +283,39 @@ class ProblemInstance(ElementwiseProblem):
         None
         """
         portfolio_solution = self.simulate_portfolio(x=x)
-        out["G"] = self.calculate_infeasibility(portfolio_solution.metric_values)
+        out["G"] = self.calculate_infeasibility(portfolio_solution)
         selected_results = {metric: portfolio_solution.metric_values[metric] for metric in self.objectives}
         directed_results = self.apply_directions(selected_results)
         out["F"] = list(directed_results.values())
+
+
+def evaluate_excess(metric_values: MetricValues, constraints: Constraints) -> list[float]:
+    """
+    Measures by how much the metric values exceed the constraints.
+    Returns a list of floats, one for each constraint.
+
+    Parameters
+    ----------
+    metric_values
+        The metric values to evaluate.
+    constraints
+        The constraints to evaluate against.
+
+    Returns
+    -------
+    excess
+        List of floats indicating how close we are to the constraints.
+        A positive float indicates that the metric has exceeded the minimum or maximum bound.
+        A negative float indicates that the metric is within the minimum or maximum bound.
+    """
+    excess = []
+    for metric, bounds in constraints.items():
+        if "min" in bounds:
+            excess.append(bounds["min"] - metric_values[metric])
+        if "max" in bounds:
+            excess.append(metric_values[metric] - bounds["max"])
+
+    return excess
 
 
 class EstimateBasedSampling(Sampling):

@@ -1,12 +1,12 @@
 from app.internal.constraints import (
+    apply_default_constraints,
     count_constraints,
     get_capex_constraints,
-    get_default_constraints,
     get_shortfall_constraints,
     is_in_constraints,
     merge_constraints,
 )
-from app.models.constraints import Bounds
+from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.metrics import _METRICS, Metric
 from app.models.result import PortfolioSolution
@@ -30,31 +30,31 @@ class TestCountConstraints:
 
 
 class TestIsInConstraints:
-    def test_empty_constraints(self, default_portfolio_solutions: list[PortfolioSolution]):
-        mask = is_in_constraints(constraints={}, solutions=default_portfolio_solutions)
-        assert sum(mask) == len(default_portfolio_solutions)
+    def test_empty_constraints(self, dummy_portfolio_solutions: list[PortfolioSolution]):
+        mask = is_in_constraints(constraints={}, solutions=dummy_portfolio_solutions)
+        assert sum(mask) == len(dummy_portfolio_solutions)
 
-    def test_min_and_max_constraints(self, default_portfolio_solutions: list[PortfolioSolution]):
-        for solution in default_portfolio_solutions:
+    def test_min_and_max_constraints(self, dummy_portfolio_solutions: list[PortfolioSolution]):
+        for solution in dummy_portfolio_solutions:
             solution.metric_values[Metric.capex] = -10
-        default_portfolio_solutions[0].metric_values[Metric.capex] = 10
-        default_portfolio_solutions[1].metric_values[Metric.capex] = 30
-        mask = is_in_constraints(constraints={Metric.capex: Bounds(min=0, max=20)}, solutions=default_portfolio_solutions)
+        dummy_portfolio_solutions[0].metric_values[Metric.capex] = 10
+        dummy_portfolio_solutions[1].metric_values[Metric.capex] = 30
+        mask = is_in_constraints(constraints={Metric.capex: Bounds(min=0, max=20)}, solutions=dummy_portfolio_solutions)
         assert sum(mask) == 1
 
-    def test_multiple_constraints(self, default_portfolio_solutions: list[PortfolioSolution]):
+    def test_multiple_constraints(self, dummy_portfolio_solutions: list[PortfolioSolution]):
         constraints = {Metric.capex: Bounds(min=0), Metric.cost_balance: Bounds(max=20)}
-        for solution in default_portfolio_solutions:
+        for solution in dummy_portfolio_solutions:
             solution.metric_values[Metric.capex] = -10
             solution.metric_values[Metric.cost_balance] = 10
-        default_portfolio_solutions[0].metric_values[Metric.capex] = 10
-        mask = is_in_constraints(constraints=constraints, solutions=default_portfolio_solutions)
+        dummy_portfolio_solutions[0].metric_values[Metric.capex] = 10
+        mask = is_in_constraints(constraints=constraints, solutions=dummy_portfolio_solutions)
         assert sum(mask) == 1
 
 
 class TestGetShortfallConstraints:
-    def test_good_inputs(self, default_portfolio: list[Site]):
-        constraints = get_shortfall_constraints(portfolio=default_portfolio, heat_tolerance=0.01)
+    def test_good_inputs(self, default_site: Site):
+        constraints = get_shortfall_constraints(site=default_site, heat_tolerance=0.01)
         assert constraints[Metric.total_electrical_shortfall]["max"] == 1
         assert constraints[Metric.total_heat_shortfall]["max"] >= 1
 
@@ -66,13 +66,17 @@ class TestGetCapexConstraints:
         assert constraints[Metric.capex]["min"] >= 0
 
 
-class TestGetDefaultConstraints:
-    def test_good_inputs(self, default_portfolio: list[Site]):
-        constraints = get_default_constraints(portfolio=default_portfolio)
-        assert constraints[Metric.total_electrical_shortfall]["max"] == 1
-        assert constraints[Metric.total_heat_shortfall]["max"] >= 1
+class TestApplyDefaultConstraints:
+    def test_good_inputs(self, default_portfolio: list[Site], default_constraints: Constraints):
+        portfolio, constraints = apply_default_constraints(
+            exsiting_portfolio=default_portfolio, existing_constraints=default_constraints
+        )
         assert constraints[Metric.capex]["min"] <= 1
-        assert constraints[Metric.capex]["min"] >= 0
+        assert constraints[Metric.capex]["min"] > 0
+        assert constraints[Metric.cost_balance]["min"] == 0
+        for site in portfolio:
+            assert site.constraints[Metric.total_electrical_shortfall]["max"] == 1
+            assert site.constraints[Metric.total_heat_shortfall]["max"] >= 1
 
 
 class TestMergeConstrains:

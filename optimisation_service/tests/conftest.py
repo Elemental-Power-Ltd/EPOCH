@@ -50,7 +50,7 @@ def default_siterange() -> SiteRange:
         COMPONENT_IS_MANDATORY=True,
         maximum_output=[40],
         boiler_efficiency=[0.9],
-        gas_type=[GasTypeEnum.NATURAL_GAS, GasTypeEnum.LIQUID_PETROLEUM_GAS]
+        gas_type=[GasTypeEnum.NATURAL_GAS, GasTypeEnum.LIQUID_PETROLEUM_GAS],
     )
     grid = Grid(
         COMPONENT_IS_MANDATORY=True,
@@ -118,7 +118,7 @@ def default_problem_instance(default_objectives, default_constraints, default_po
     return ProblemInstance(default_objectives, default_constraints, default_portfolio)
 
 
-def dummy_site_solution(site: Site) -> SiteSolution:
+def gen_dummy_site_solution(site: Site) -> SiteSolution:
     site_scenario = {}
     site_range = site.site_range
     for asset_name, asset in site_range.model_dump(exclude_none=True).items():
@@ -139,26 +139,31 @@ def dummy_site_solution(site: Site) -> SiteSolution:
     return SiteSolution(scenario=scenario, metric_values=metric_values)
 
 
-def dummy_portfolio_solution(portfolio: list[Site]) -> PortfolioSolution:
+def gen_dummy_portfolio_solution(portfolio: list[Site]) -> PortfolioSolution:
     solution = {}
     building_metric_values = []
     for site in portfolio:
-        site_solution = dummy_site_solution(site)
+        site_solution = gen_dummy_site_solution(site)
         solution[site.site_data.site_id] = site_solution
         building_metric_values.append(site_solution.metric_values)
     metric_values = combine_metric_values(building_metric_values)
     return PortfolioSolution(scenario=solution, metric_values=metric_values)
 
 
-def dummy_portfolio_solutions(portfolio: list[Site]) -> list[PortfolioSolution]:
-    return [dummy_portfolio_solution(portfolio) for _ in range(10)]
+def gen_dummy_portfolio_solutions(portfolio: list[Site]) -> list[PortfolioSolution]:
+    return [gen_dummy_portfolio_solution(portfolio) for _ in range(10)]
 
 
 @pytest.fixture
-def default_portfolio_solutions(default_portfolio: list[Site]) -> list[PortfolioSolution]:
-    return [dummy_portfolio_solution(default_portfolio) for _ in range(10)]
+def dummy_portfolio_solution(default_portfolio: list[Site]) -> PortfolioSolution:
+    return gen_dummy_portfolio_solution(default_portfolio)
 
 
 @pytest.fixture
-def default_optimisation_result(default_portfolio_solutions: list[PortfolioSolution]) -> OptimisationResult:
-    return OptimisationResult(solutions=default_portfolio_solutions, n_evals=999, exec_time=timedelta(seconds=99))
+def dummy_portfolio_solutions(default_portfolio: list[Site]) -> list[PortfolioSolution]:
+    return gen_dummy_portfolio_solutions(default_portfolio)
+
+
+@pytest.fixture
+def dummy_optimisation_result(dummy_portfolio_solutions: list[PortfolioSolution]) -> OptimisationResult:
+    return OptimisationResult(solutions=dummy_portfolio_solutions, n_evals=999, exec_time=timedelta(seconds=99))

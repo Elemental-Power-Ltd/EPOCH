@@ -21,6 +21,9 @@ class Site(BaseModel):
         examples=[{"loc": "local", "site_id": "amcott_house", "path": "./data/InputData"}],
         description="Location to fetch input data from for EPOCH to ingest.",
     )
+    constraints: Constraints = Field(
+        description="Minimum or maximum bounds to apply on site metrics.", examples=[{Metric.capex: {"max": 50000}}], default={}
+    )
     _epoch_data: EpochSiteData = PrivateAttr()
 
 
@@ -93,9 +96,7 @@ class SiteMetrics(BaseModel):
     annualised_cost: float | None = Field(
         description="Cost of running this scenario (including amortised deprecation) on this site.", default=None
     )
-    total_gas_used: float | None = Field(
-        description="Total gas imported (kWh) for this site", default=None
-    )
+    total_gas_used: float | None = Field(description="Total gas imported (kWh) for this site", default=None)
     total_electricity_imported: float | None = Field(
         description="Total electricity imported from the grid (kWh) for this site", default=None
     )
@@ -111,9 +112,7 @@ class SiteMetrics(BaseModel):
     total_heat_shortfall: float | None = Field(
         description="Total heat shortfall (kWh) when compared to the demand for this site", default=None
     )
-    total_gas_import_cost: float | None = Field(
-        description="Total spend (£) importing gas for the site", default=None
-    )
+    total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
     total_electricity_import_cost: float | None = Field(
         description="Total spend (£) importing electricity from the grid for this site", default=None
     )
@@ -133,12 +132,8 @@ class SiteOptimisationResult(BaseModel):
         description="The portfolio pareto front entry this site is linked to."
         + " A single site result is uniquely identified by a (portfolio_id, site_id) pair."
     )
-    scenario: SiteScenario = Field(
-        description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
-    )
-    metrics: SiteMetrics = Field(
-        description="The metrics calculated for this site."
-    )
+    scenario: SiteScenario = Field(description="The mix of assets used in this scenario, e.g. solar PV and grid connects.")
+    metrics: SiteMetrics = Field(description="The metrics calculated for this site.")
 
 
 class PortfolioMetrics(BaseModel):
@@ -156,18 +151,14 @@ class PortfolioMetrics(BaseModel):
     cost_balance: float | None = Field(
         description="Net change in annual running cost due to this entire portfolio of scenarios.", default=None
     )
-    capex: float | None = Field(
-        description="Cost to install this scenario on entire portfolio of scenarios.", default=None
-    )
+    capex: float | None = Field(description="Cost to install this scenario on entire portfolio of scenarios.", default=None)
     payback_horizon: float | None = Field(
         description="Years for these scenarios to pay back across this portfolio.", default=None
     )
     annualised_cost: float | None = Field(
         description="Cost of running these scenario (including amortised deprecation) across this portfolio", default=None
     )
-    total_gas_used: float | None = Field(
-        description="Total gas imported (kWh) across this portfolio", default=None
-    )
+    total_gas_used: float | None = Field(description="Total gas imported (kWh) across this portfolio", default=None)
     total_electricity_imported: float | None = Field(
         description="Total electricity imported from the grid (kWh) across this portfolio", default=None
     )
@@ -183,9 +174,7 @@ class PortfolioMetrics(BaseModel):
     total_heat_shortfall: float | None = Field(
         description="Total heat shortfall (kWh) when compared to the demand across this portfolio", default=None
     )
-    total_gas_import_cost: float | None = Field(
-        description="Total spend (£) importing gas across this portfolio", default=None
-    )
+    total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas across this portfolio", default=None)
     total_electricity_import_cost: float | None = Field(
         description="Total spend (£) importing electricity from the grid across this portfolio", default=None
     )
@@ -202,9 +191,7 @@ class PortfolioOptimisationResult(BaseModel):
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
-    metrics: PortfolioMetrics = Field(
-        description="The metrics calculated across the whole portfolio."
-    )
+    metrics: PortfolioMetrics = Field(description="The metrics calculated across the whole portfolio.")
     site_results: list[SiteOptimisationResult] | None = Field(
         default=None,
         description="Individual site results for this Portfolio."

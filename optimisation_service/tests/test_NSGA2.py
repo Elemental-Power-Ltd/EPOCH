@@ -20,11 +20,11 @@ class TestNSGA2:
         default_objectives: list[Metric],
         default_constraints: Constraints,
         default_portfolio: list[Site],
-        default_portfolio_solutions: list[PortfolioSolution],
+        dummy_portfolio_solutions: list[PortfolioSolution],
     ) -> None:
         alg = NSGA2()
         problem_instance = ProblemInstance(default_objectives, default_constraints, default_portfolio)
-        alg._load_existing_solutions(default_portfolio_solutions, problem_instance)
+        alg._load_existing_solutions(dummy_portfolio_solutions, problem_instance)
 
     @pytest.mark.slow
     def test_run(
@@ -43,10 +43,10 @@ class TestNSGA2:
         default_objectives: list[Metric],
         default_constraints: Constraints,
         default_portfolio: list[Site],
-        default_portfolio_solutions: list[PortfolioSolution],
+        dummy_portfolio_solutions: list[PortfolioSolution],
     ) -> None:
         alg = NSGA2(pop_size=512, n_offsprings=256, n_max_gen=10)
-        res = alg.run(default_objectives, default_constraints, default_portfolio, default_portfolio_solutions)
+        res = alg.run(default_objectives, default_constraints, default_portfolio, dummy_portfolio_solutions)
         assert isinstance(res, OptimisationResult)
 
 

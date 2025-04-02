@@ -99,16 +99,16 @@ def merge_constraints(constraints_list: list[Constraints]) -> Constraints:
     return merged
 
 
-def get_shortfall_constraints(portfolio: list[Site], heat_tolerance: float = 0.01) -> Constraints:
+def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01) -> Constraints:
     """
-    Get the maximum shortfall constraints for a portfolio.
-    Total heat shortfall is bounded above by heat_tolerance percent of the portfolio's total heat load.
+    Get the maximum shortfall constraints for a site.
+    Total heat shortfall is bounded above by heat_tolerance percent of the site's heat load.
     Total electrical shortfall is bounded above by 1 kWh to allow for some floating point issues.
 
     Parameters
     ----------
-    portfolio
-        A list of sites to generate shortfall constraints for.
+    site
+        A site to generate shortfall constraints for.
     heat_tolerance
         Percentage of the heat load to bound the total heat shortfall by.
 
@@ -117,9 +117,7 @@ def get_shortfall_constraints(portfolio: list[Site], heat_tolerance: float = 0.0
     constraints
         Constraints dict, containing constraints on total_electrical_shortfall and total_heat_shortfall.
     """
-    hload = 0.0
-    for site in portfolio:
-        hload += sum(site._epoch_data.building_hload)
+    hload = sum(site._epoch_data.building_hload)
     heat_max = max(heat_tolerance * hload, 1)
     constraints = {Metric.total_electrical_shortfall: Bounds(max=1), Metric.total_heat_shortfall: Bounds(max=heat_max)}
     return constraints
@@ -153,26 +151,40 @@ def get_cost_balance_constraints() -> Constraints:
     return constraints
 
 
-def get_default_constraints(portfolio: list[Site]) -> Constraints:
+def apply_default_constraints(
+    exsiting_portfolio: list[Site], existing_constraints: Constraints
+) -> tuple[list[Site], Constraints]:
     """
-    Get the default constraints that should be applied to an optimisation task.
+    Apply default constraints to existing portfolio and site constraints.
     These are:
-    - Electrical and Heat shortfall upper bounds. We want to make sure that the solutions provided are viable energetically.
-    - Cost balance lower bound. We wamt to make sure that the solutions provided are viable economically.
-    - CAPEX lower bound. We want to exclude the £0 scenario since it is of no interest.
+    - Electrical and Heat shortfall upper bounds on the sites.
+      We want to make sure that the solutions provided are viable energetically.
+    - Cost balance lower bound on the portfolio. We wamt to make sure that the solutions provided are viable economically.
+    - CAPEX lower bound on the portfolio. We want to exclude the £0 scenario since it is of no interest.
 
     Parameters
     ----------
-    portfolio
-        The portfolio to be optimised.
+    exsiting_portfolio
+        The associated portfolio.
+    existing_constraints
+        The existing portfolio constraints.
 
     Retunrs
     -------
+    portfolio
+        The existing associated portfolio with default site constraints applied to it.
     constraints
-        A default constraints dict.
+        The existing portfolio constraints with default constraints applied to them.
     """
-    shortfall_constraints = get_shortfall_constraints(portfolio=portfolio)
+    portfolio = []
+    for site in exsiting_portfolio:
+        shortfall_constraints = get_shortfall_constraints(site=site)
+        exsiting_site_constraints = site.constraints
+        site.constraints = merge_constraints([exsiting_site_constraints, shortfall_constraints])
+        portfolio.append(site)
+
     cost_balance_constraints = get_cost_balance_constraints()
     capex_constraints = get_capex_constraints()
-    constraints = merge_constraints([shortfall_constraints, cost_balance_constraints, capex_constraints])
-    return constraints
+    constraints = merge_constraints([existing_constraints, cost_balance_constraints, capex_constraints])
+
+    return portfolio, constraints

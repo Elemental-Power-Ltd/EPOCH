@@ -6,7 +6,7 @@ from app.models.core import Site
 from app.models.metrics import Metric
 from app.models.result import PortfolioSolution
 
-from .conftest import dummy_portfolio_solutions
+from .conftest import gen_dummy_portfolio_solutions
 
 
 class TestDistributedPortfolioOptimiser:
@@ -45,10 +45,10 @@ class TestDistributedPortfolioOptimiser:
             alg=alg,
             constraints=default_constraints,
         )
-        solutions = [dummy_portfolio_solutions([site]) for site in default_portfolio]
+        solutions = [gen_dummy_portfolio_solutions([site]) for site in default_portfolio]
         dpo.merge_and_optimise_portfolio_solution_lists(solutions, default_objectives)
 
 
 class TestSelectStartingSolutions:
-    def test_good_inputs(self, default_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]):
-        select_starting_solutions(default_portfolio_solutions, {Metric.capex: {"max": 99999}}, default_objectives, 2)
+    def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]):
+        select_starting_solutions(dummy_portfolio_solutions, {Metric.capex: {"max": 99999}}, default_objectives, 2)
