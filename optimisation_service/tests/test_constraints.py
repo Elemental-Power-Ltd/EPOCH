@@ -1,12 +1,30 @@
 from app.internal.constraints import (
     apply_default_constraints,
+    count_constraints,
     get_capex_constraints,
     get_shortfall_constraints,
     merge_constraints,
 )
 from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
-from app.models.metrics import Metric
+from app.models.metrics import _METRICS, Metric
+
+
+class TestCountConstraints:
+    def test_empty_constraints(self):
+        assert count_constraints({}) == 0
+
+    def test_min_constraints(self):
+        constraints = {metric: Bounds(min=0) for metric in _METRICS}
+        assert count_constraints(constraints) == len(_METRICS)
+
+    def test_max_constraints(self):
+        constraints = {metric: Bounds(max=10) for metric in _METRICS}
+        assert count_constraints(constraints) == len(_METRICS)
+
+    def test_min_and_max_constraints(self):
+        constraints = {metric: Bounds(min=0, max=10) for metric in _METRICS}
+        assert count_constraints(constraints) == len(_METRICS) * 2
 
 
 class TestGetShortfallConstraints:
