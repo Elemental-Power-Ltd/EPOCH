@@ -1,17 +1,17 @@
 from app.internal.constraints import (
+    apply_default_constraints,
     get_capex_constraints,
-    get_default_constraints,
     get_shortfall_constraints,
     merge_constraints,
 )
-from app.models.constraints import Bounds
+from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
 
 
 class TestGetShortfallConstraints:
-    def test_good_inputs(self, default_portfolio: list[Site]):
-        constraints = get_shortfall_constraints(portfolio=default_portfolio, heat_tolerance=0.01)
+    def test_good_inputs(self, default_site: Site):
+        constraints = get_shortfall_constraints(site=default_site, heat_tolerance=0.01)
         assert constraints[Metric.total_electrical_shortfall]["max"] == 1
         assert constraints[Metric.total_heat_shortfall]["max"] >= 1
 
@@ -23,13 +23,17 @@ class TestGetCapexConstraints:
         assert constraints[Metric.capex]["min"] >= 0
 
 
-class TestGetDefaultConstraints:
-    def test_good_inputs(self, default_portfolio: list[Site]):
-        constraints = get_default_constraints(portfolio=default_portfolio)
-        assert constraints[Metric.total_electrical_shortfall]["max"] == 1
-        assert constraints[Metric.total_heat_shortfall]["max"] >= 1
+class TestApplyDefaultConstraints:
+    def test_good_inputs(self, default_portfolio: list[Site], default_constraints: Constraints):
+        portfolio, constraints = apply_default_constraints(
+            exsiting_portfolio=default_portfolio, existing_constraints=default_constraints
+        )
         assert constraints[Metric.capex]["min"] <= 1
-        assert constraints[Metric.capex]["min"] >= 0
+        assert constraints[Metric.capex]["min"] > 0
+        assert constraints[Metric.cost_balance]["min"] == 0
+        for site in portfolio:
+            assert site.constraints[Metric.total_electrical_shortfall]["max"] == 1
+            assert site.constraints[Metric.total_heat_shortfall]["max"] >= 1
 
 
 class TestMergeConstrains:

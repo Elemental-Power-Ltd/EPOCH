@@ -4,11 +4,12 @@ import numpy as np
 import pytest
 
 from app.internal.epoch_utils import convert_TaskData_to_dictionary
-from app.internal.ga_utils import ProblemInstance, RoundingAndDegenerateRepair, SimpleIntMutation
+from app.internal.ga_utils import ProblemInstance, RoundingAndDegenerateRepair, SimpleIntMutation, evaluate_excess
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import _METRICS, Metric, MetricValues
+from app.models.result import PortfolioSolution
 from app.models.site_range import Building, Config, DomesticHotWater, Grid, HeatPump, HeatSourceEnum, Renewables, SiteRange
 
 from .conftest import site_generator
@@ -62,11 +63,22 @@ class TestProblemInstance:
         assert res[Metric.carbon_balance_scope_2] == -metric_values[Metric.carbon_balance_scope_2]
         assert res[Metric.cost_balance] == -metric_values[Metric.cost_balance]
 
-    def test_calculate_infeasibility(self, default_problem_instance: ProblemInstance):
-        constraints = default_problem_instance.constraints
+    def test_calculate_infeasibility(
+        self, default_problem_instance: ProblemInstance, dummy_portfolio_solution: PortfolioSolution
+    ):
+        n_constraints = len(default_problem_instance.constraints)
+        for site in default_problem_instance.portfolio:
+            n_constraints += len(site.constraints)
+
+        assert len(default_problem_instance.calculate_infeasibility(dummy_portfolio_solution)) == n_constraints
+
+
+class TestEvaluateExcess:
+    def test_it_works(self, default_constraints: Constraints):
         metric_values: MetricValues = dict.fromkeys(_METRICS, 10)
+
         excess = []
-        for metric, bounds in constraints.items():
+        for metric, bounds in default_constraints.items():
             min_value = bounds.get("min", None)
             max_value = bounds.get("max", None)
 
@@ -77,7 +89,7 @@ class TestProblemInstance:
                 metric_values[metric] = max_value + 1
                 excess.append(1)
 
-        assert default_problem_instance.calculate_infeasibility(metric_values) == excess
+        assert evaluate_excess(metric_values=metric_values, constraints=default_constraints) == excess
 
 
 class TestSimpleIntMutation:
