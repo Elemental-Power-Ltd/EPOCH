@@ -1,7 +1,7 @@
 import React, {useEffect} from 'react';
 import './App.css';
 import {Tab, Tabs, Box, Select, SelectChangeEvent, MenuItem, useMediaQuery} from '@mui/material';
-import {ThemeProvider, createTheme} from "@mui/material/styles";
+import {ThemeProvider} from "@mui/material/styles";
 
 import OptimisationContainer from "./Containers/Optimise";
 import ResultsContainer from "./Containers/Results";
@@ -132,7 +132,7 @@ const NavTabs = () => {
         location.pathname.startsWith(tab.path)
     );
 
-    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
         navigate(tabsConfig[newValue].path);
     };
 

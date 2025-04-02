@@ -1,7 +1,7 @@
 import React from "react";
+
 import {
   TextField,
-  MenuItem,
   Grid,
   Checkbox,
   Container,
@@ -25,7 +25,7 @@ const TaskConfigForm = () => {
     setTaskConfig({ [field]: value });
   };
 
-  const handleObjectiveChange = (event) => {
+  const handleObjectiveChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const {name, checked} = event.target;
     handleChange("objectives", {
       ...taskConfig.objectives,
@@ -80,12 +80,12 @@ const TaskConfigForm = () => {
                       <FormControlLabel
                           control={
                             <Checkbox
-                                checked={taskConfig.objectives[objectiveKey]}
+                                checked={taskConfig.objectives[objectiveKey as keyof typeof taskConfig.objectives]}
                                 onChange={handleObjectiveChange}
                                 name={objectiveKey}
                             />
                           }
-                          label={objectiveNames[objectiveKey]}
+                          label={objectiveNames[objectiveKey as keyof typeof objectiveNames]}
                       />
                     </Grid>
                 ))}

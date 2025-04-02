@@ -1,12 +1,15 @@
-import {AnalysisContainer} from "./types";
 import {SimulationResult} from "../Models/Endpoints";
+import {StateCreator} from "zustand";
+import {AnalysisState, AnalysisSlice, AppState} from "./StoreTypes.ts";
 
 
-export const defaultAnalysisContainer: AnalysisContainer = {
+export const defaultAnalysisContainer: AnalysisState = {
     siteResult: null
 }
 
-export const createAnalysisSlice = (set, get, api) => ({
+export const createAnalysisSlice: StateCreator<AppState, [], [], AnalysisSlice>
+    = (set, _get, _api) => ({
+
     analysis: defaultAnalysisContainer,
 
     setAnalysisResult: (siteResult: SimulationResult | null) =>

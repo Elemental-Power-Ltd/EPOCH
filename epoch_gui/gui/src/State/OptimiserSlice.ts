@@ -1,13 +1,13 @@
+import {StateCreator} from "zustand"
+import dayjs from "dayjs";
+
+import {OptimisationApproach, TaskConfig} from "./types"
+import {AppState, OptimiseState, OptimiserSlice} from "./StoreTypes.ts";
+
 import DefaultGrid from "../util/json/default/DefaultGridConfig.json"
 import DefaultNSGA2 from "../util/json/default/DefaultNSGA2Config.json"
-import { getInitialComponentsMap, hardcodedConfig } from "../Components/ComponentBuilder/initialState"
-import {
-  TaskConfig,
-  OptimiseContainer,
-  OptimisationApproach
-} from "./types"
-
-import dayjs from "dayjs";
+import {getInitialComponentsMap, hardcodedConfig} from "../Components/ComponentBuilder/initialState"
+import {ComponentType} from "../Models/Core/ComponentBuilder.ts";
 
 const defaultTaskConfig: TaskConfig = {
   task_name: "",
@@ -26,7 +26,7 @@ const defaultTaskConfig: TaskConfig = {
   timestep_minutes: 30
 }
 
-export const defaultOptimiseContainer: OptimiseContainer = {
+export const defaultOptimiseContainer: OptimiseState = {
   taskConfig: defaultTaskConfig,
   hyperparameters: {
     GridSearch: DefaultGrid,
@@ -35,7 +35,9 @@ export const defaultOptimiseContainer: OptimiseContainer = {
   portfolioMap: {}
 }
 
-export const createOptimiserSlice = (set, get, api) => ({
+export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice>
+    = (set, get, _api) => ({
+
   optimise: defaultOptimiseContainer,
 
   setOptimiser: (optimiser: OptimisationApproach) =>
@@ -88,7 +90,7 @@ export const createOptimiserSlice = (set, get, api) => ({
             [site_id]: {
               ...siteMap,
               [componentKey]: {
-                ...siteMap[componentKey],
+                ...siteMap[componentKey as ComponentType],
                 selected: true
               }
             }
@@ -110,7 +112,7 @@ export const createOptimiserSlice = (set, get, api) => ({
             [site_id]: {
               ...siteMap,
               [componentKey]: {
-                ...siteMap[componentKey],
+                ...siteMap[componentKey as ComponentType],
                 selected: false
               }
             }
@@ -132,7 +134,7 @@ export const createOptimiserSlice = (set, get, api) => ({
             [site_id]: {
               ...siteMap,
               [componentKey]: {
-                ...siteMap[componentKey],
+                ...siteMap[componentKey as ComponentType],
                 data: newData
               }
             }
@@ -153,16 +155,16 @@ export const createOptimiserSlice = (set, get, api) => ({
           // if the component is present:
           //   - update the data field
           //   - set selected to true
-          newSiteMap[componentKey] = {
-            ...newSiteMap[componentKey],
+          newSiteMap[componentKey as ComponentType] = {
+            ...newSiteMap[componentKey as ComponentType],
             selected: true,
             data: componentsData[componentKey]
           }
         } else {
           // The component is not present
           //  mark as not 'selected' and leave the data field as is
-          newSiteMap[componentKey] = {
-            ...newSiteMap[componentKey],
+          newSiteMap[componentKey as ComponentType] = {
+            ...newSiteMap[componentKey as ComponentType],
             selected: false
           }
         }
@@ -187,8 +189,8 @@ export const createOptimiserSlice = (set, get, api) => ({
 
     // Add the data for each 'selected' component
     for (const componentKey in siteMap) {
-      if (siteMap[componentKey].selected) {
-        data[componentKey] = siteMap[componentKey].data
+      if (siteMap[componentKey as ComponentType].selected) {
+        data[componentKey] = siteMap[componentKey as ComponentType].data
       }
     }
 

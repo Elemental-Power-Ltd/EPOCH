@@ -1,9 +1,8 @@
-import React, {useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
 
 import {useEpochStore} from "../State/Store";
 import SimulationResultViewer from "../Components/Results/SimulationResultViewer";
-import {SimulationResult} from "../Models/Endpoints";
 import {reproduceSimulation} from "../endpoints";
 import {Box, Button, Typography} from "@mui/material";
 

@@ -1,9 +1,9 @@
-import {
-    ResultsContainer,
-    OptimisationTaskListEntry,
-} from "./types"
+import {StateCreator} from "zustand"
+import {OptimisationTaskListEntry} from "./types"
+import {AppState, ResultsState, ResultsSlice} from "./StoreTypes.ts";
 
-export const defaultResultsContainer: ResultsContainer = {
+
+export const defaultResultsContainer: ResultsState = {
   optimiserServiceStatus: {
     status: 'OFFLINE',
     queue: {},
@@ -12,8 +12,10 @@ export const defaultResultsContainer: ResultsContainer = {
   tasks: [],
 }
 
-export const createResultsSlice = (set, get, api) => ({
-  results: defaultResultsContainer,
+export const createResultsSlice: StateCreator<AppState, [], [], ResultsSlice> =
+    (set, _get, _api) => ({
+
+    results: defaultResultsContainer,
 
   setOptimiserServiceStatus: (status: any) =>
     set((state) => ({

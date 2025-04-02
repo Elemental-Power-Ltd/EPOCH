@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 
 import {Container} from "@mui/material";
 import {useNavigate, useParams} from "react-router-dom";
@@ -34,7 +34,9 @@ function ResultsContainer() {
     const navigate = useNavigate();
 
     const [resultsForTask, setResultsForTask] = useState<PortfolioOptimisationResult[] | null>(null);
+    // @ts-ignore
     const [isLoadingResults, setIsLoadingResults] = useState(false);
+    // @ts-ignore
     const [error, setError] = useState<string | null>(null);
 
 

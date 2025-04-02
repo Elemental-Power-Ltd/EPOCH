@@ -7,10 +7,10 @@ import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema
 
 export interface ComponentBuilderState {
   componentsState: any;
-  addComponent: (string) => void;
-  removeComponent: (string) => void;
-  updateComponent: (string, any) => void;
-  setComponents: (any) => void;
+  addComponent: (component: ComponentType) => void;
+  removeComponent: (component: ComponentType) => void;
+  updateComponent: (component: ComponentType, data: any) => void;
+  setComponents: (data: any) => void;
   getComponents: () => any;
   schema: any;
 }
@@ -70,7 +70,9 @@ export const useComponentBuilderState = (mode: BuilderMode): ComponentBuilderSta
     setComponentsState(prev => {
       const newComponentsMap = { ...prev };
 
-      for (const componentKey in prev) {
+      for (const stringKey in prev) {
+        const componentKey = stringKey as ComponentType;
+
         if (componentKey in components) {
           // set this component as 'selected' and apply the data from taskData
           newComponentsMap[componentKey] = {
@@ -95,10 +97,12 @@ export const useComponentBuilderState = (mode: BuilderMode): ComponentBuilderSta
    * Extract the TaskData out of the components state
    */
   const getComponents = () => {
-    const data = {};
+    const data: Record<string, any> = {};
 
     // Add the data for each 'selected' component
-    for (const componentKey in componentsState) {
+    for (const stringKey in componentsState) {
+      const componentKey = stringKey as ComponentType;
+
       if (componentsState[componentKey].selected) {
         data[componentKey] = componentsState[componentKey].data;
       }

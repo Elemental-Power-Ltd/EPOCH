@@ -1,5 +1,3 @@
-import {ComponentsMap} from "../Models/Core/ComponentBuilder";
-import {SimulationResult} from "../Models/Endpoints";
 import {Dayjs} from "dayjs";
 
 export interface TaskObjectives {
@@ -25,13 +23,6 @@ export interface TaskConfig {
 }
 
 export type SiteRange = any;
-
-
-export interface OptimiseContainer {
-    taskConfig: TaskConfig;
-    hyperparameters: {[key in OptimisationApproach]: any };
-    portfolioMap: {[key: string]: ComponentsMap}
-}
 
 
 export interface OptimisationTaskListEntry {
@@ -87,6 +78,11 @@ export interface PortfolioMetrics {
     total_electricity_export_gain?: number;
 }
 
+// fixme - provide a proper type
+export interface TaskResult {
+    [key: string]: any;
+}
+
 export interface PortfolioOptimisationResult {
     task_id: string;
     portfolio_id: string;
@@ -96,15 +92,7 @@ export interface PortfolioOptimisationResult {
 
 export interface OptimisationResultEntry {
     portfolio: PortfolioOptimisationResult[];
-
-    // This should be TaskResult
-    tasks: any[];
-}
-
-
-export interface ResultsContainer {
-    optimiserServiceStatus: any;
-    tasks: OptimisationTaskListEntry[];
+    tasks: TaskResult[];
 }
 
 export interface Site {
@@ -115,48 +103,4 @@ export interface Site {
 export interface Client {
     client_id: string;
     name: string;
-}
-
-export interface AnalysisContainer {
-    siteResult: SimulationResult | null;
-}
-
-
-interface GlobalState {
-    selectedClient: Client | null;
-
-    availableClients: Client[];
-    client_sites: Site[];
-}
-
-
-export interface AppState {
-    global: GlobalState
-    optimise: OptimiseContainer
-    results: ResultsContainer
-    analysis: AnalysisContainer
-
-
-    setOptimiser: (optimiser: OptimisationApproach) => void;
-    setHyperparameters: (optimiser: OptimisationApproach, form: any) => void;
-    addSiteRange: (site_id: string) => void;
-    removeSiteRange: (site_id: string) => void;
-
-    addComponent: (site_id: string, componentKey: string) => void;
-    removeComponent: (site_id: string, componentKey: string) => void;
-    updateComponent: (site_id: string, componentKey: string, newData: any) => void;
-    setComponents: (site_id: string, componentsData: Record<string, any>) => void;
-    getComponents: (site_id: string) => any;
-
-
-    setOptimiserServiceStatus: (status: any) => void;
-    setSelectedClient: (client: Client) => void;
-    setClientSites: (sites: Site[]) => void;
-    setTasks: (tasks: OptimisationTaskListEntry[]) => void;
-
-    setTaskConfig: (config: Partial<TaskConfig>) => void;
-
-    setAvailableClients: (clients: Client[]) => void;
-
-    setAnalysisResult: (siteResult: SimulationResult) => void;
 }

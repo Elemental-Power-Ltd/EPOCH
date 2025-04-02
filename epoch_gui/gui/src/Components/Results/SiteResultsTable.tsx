@@ -16,9 +16,6 @@ import {Site, SiteOptimisationResult} from "../../State/types";
 import {formatPounds, formatCarbon, formatYears, formatCarbonCost} from "../../util/displayFunctions";
 import SolutionModal from './SolutionModal';
 import {useEpochStore} from "../../State/Store";
-import {reproduceSimulation} from "../../endpoints";
-import {SimulationResult} from "../../Models/Endpoints";
-import SimulationResultViewer from "./SimulationResultViewer";
 
 interface SiteResultsTableProps {
     results: SiteOptimisationResult[];

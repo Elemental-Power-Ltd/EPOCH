@@ -1,5 +1,4 @@
-import React from 'react';
-import {Container, Select, MenuItem, FormControl, InputLabel} from '@mui/material';
+import {Container, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent} from '@mui/material';
 
 import {useEpochStore} from "../../State/Store";
 
@@ -9,7 +8,7 @@ const NotALogin = () => {
     const selectedClient = useEpochStore((state) => state.global.selectedClient);
 
     // Handle dropdown change event
-    const handleChange = (event) => {
+    const handleChange = (event: SelectChangeEvent) => {
         const client = availableClients.find((client) => client.client_id === event.target.value);
         if (client) {
             setSelectedClient(client);

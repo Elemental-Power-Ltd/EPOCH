@@ -1,5 +1,5 @@
 import "./ComponentBuilderForm.css"
-import React, {FC, useId, useState} from "react";
+import {FC, useId, useState} from "react";
 import ComponentSelector from "./ComponentSelector";
 import {ComponentWidget} from "./ComponentWidget";
 import {Button} from "@mui/material";
@@ -17,10 +17,10 @@ import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema
 interface ComponentBuilderFormProps {
     mode: BuilderMode;
     componentsMap: ComponentsMap;
-    addComponent: (string) => void;
-    removeComponent: (string) => void;
-    updateComponent: (string, any) => void;
-    setComponents: (any) => void;
+    addComponent: (component: ComponentType) => void;
+    removeComponent: (component: ComponentType) => void;
+    updateComponent: (component: ComponentType, data: any) => void;
+    setComponents: (data: any) => void;
     getComponents: () => any;
 }
 

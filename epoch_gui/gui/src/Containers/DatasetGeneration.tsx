@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   TextField,
   Button,
@@ -16,8 +16,7 @@ import 'dayjs/locale/en-gb';
 import utc from 'dayjs/plugin/utc';
 
 import { useEpochStore } from '../State/Store';
-import { generateAllData, listClients, listSites } from '../endpoints';
-import {Client, Site} from '../State/types'
+import { generateAllData } from '../endpoints';
 
 dayjs.extend(utc);
 

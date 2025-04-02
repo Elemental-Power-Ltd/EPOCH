@@ -149,16 +149,15 @@ const ComponentDetails: React.FC<{
           {componentNames[componentKey]}
         </Typography>
 
-        {Object.entries(fieldsDef).map(([fieldName, { label, unit }]) => {
+        {Object.entries(fieldsDef).map(([fieldName, info]) => {
           if (componentData[fieldName] == null) {
             return null; // Skip missing fields
           }
 
-          const units = fieldMappings[componentKey][fieldName].unit;
-          const value = formatField(componentData[fieldName], units);
+          const value = formatField(componentData[fieldName], info.unit);
           return (
             <Typography key={fieldName} variant="body2" sx={{ mb: 0.5 }}>
-              {label}: <strong>{value}</strong>
+              {info.label}: <strong>{value}</strong>
             </Typography>
           );
         })}

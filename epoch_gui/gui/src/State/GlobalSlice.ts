@@ -1,9 +1,12 @@
-import { Client, Site } from "./types"
-import { defaultOptimiseContainer } from "./OptimiserSlice"
-import { defaultResultsContainer } from "./ResultsSlice"
+import {Client, Site} from "./types"
+import {defaultOptimiseContainer} from "./OptimiserSlice"
+import {defaultResultsContainer} from "./ResultsSlice"
 import {defaultAnalysisContainer} from "./AnalysisSlice";
+import {StateCreator} from "zustand";
+import {AppState, GlobalSlice} from "./StoreTypes.ts";
 
-export const createGlobalSlice = (set, get, api) => ({
+
+export const createGlobalSlice: StateCreator<AppState, [], [], GlobalSlice> = (set, _get, _api) => ({
   global: {
     selectedClient: null,
     availableClients: [],

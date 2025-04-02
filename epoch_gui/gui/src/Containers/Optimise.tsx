@@ -1,14 +1,12 @@
 import {useState} from "react";
 
 import AccordionSection from "../util/Widgets/AccordionSection";
-import HyperParamForm from "../Components/HyperParams/OptimiserConfig";
-import SearchForm from "../Components/SearchParameters/SearchForm";
 import AddSiteModal from "../Components/SearchParameters/AddSite";
 
 import {Button, Box, IconButton, Container} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import {getStatus, submitOptimisationJob} from "../endpoints";
+import {submitOptimisationJob} from "../endpoints";
 
 import {useEpochStore} from "../State/Store";
 import TaskConfigForm from "../Components/TaskConfig/TaskConfigForm";
@@ -16,7 +14,6 @@ import {SubmitOptimisationRequest, Objective} from "../Models/Endpoints";
 import expandSiteRange, {PortfolioValidationResult} from "../Components/ComponentBuilder/ConvertSiteRange";
 import ComponentBuilderForm from "../Components/ComponentBuilder/ComponentBuilderForm";
 import ErrorList from "../Components/ComponentBuilder/ErrorList";
-import {validateSiteRange} from "../Components/ComponentBuilder/ValidateBuilders";
 
 
 function OptimisationContainer() {

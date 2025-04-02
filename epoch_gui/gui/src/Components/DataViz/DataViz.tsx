@@ -3,7 +3,7 @@ import {Button} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import dayjs, {Dayjs} from 'dayjs';
 
-import {ReportDataType, SimulationResult} from "../../Models/Endpoints";
+import {SimulationResult} from "../../Models/Endpoints";
 import {onClickDownloadReportData} from "../../util/MakeCSV";
 import {DateRangeControls} from "./DateRangeControls";
 import {StackedBarChart} from "./StackedBarChart";

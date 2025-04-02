@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {ReactElement} from 'react';
 import {
   Card,
   CardContent,
@@ -35,6 +35,12 @@ interface SimulationSummaryProps {
   error: string | null;
 }
 
+export interface MetricDisplay {
+  icon: ReactElement;
+  label: string;
+  value: string;
+}
+
 // A reusable component for displaying a single objective item
 const ObjectiveItem: React.FC<{
   icon: React.ReactElement;
@@ -58,7 +64,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
 
   const [tabValue, setTabValue] = React.useState(0);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
@@ -92,7 +98,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
 
       // we split the objectives into two rows so that the card can be displayed nicely
       // this may need to change as we introduce more information
-      const carbonObjectives = [
+      const carbonObjectives: MetricDisplay[] = [
         {
           icon: <Co2Icon sx={{ fontSize: 40 }} color="action" />,
           label: objectiveNames["carbon_balance_scope_1"],
@@ -110,7 +116,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         },
       ];
 
-      const costObjectives = [
+      const costObjectives: MetricDisplay[] = [
         {
           icon: <PoundIcon sx={{ fontSize: 40 }} color="action" />,
           label: objectiveNames["capex"],
@@ -133,7 +139,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         },
       ];
 
-      const usageTotals = [
+      const usageTotals: MetricDisplay[] = [
         {
           icon: <FireIcon sx={{fontSize: 40}} color="action"/>,
           label: objectiveNames["total_gas_used"],
@@ -156,7 +162,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         },
       ]
 
-      const shortfallTotals = [
+      const shortfallTotals: MetricDisplay[] = [
         {
           icon: <BoltIcon sx={{fontSize: 40}} color={(total_electrical_shortfall ?? 0) > 0 ? "error" : "action"}/>,
           label: objectiveNames["total_electrical_shortfall"],
@@ -169,7 +175,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         },
       ]
 
-      const costTotals = [
+      const costTotals: MetricDisplay[] = [
         {
           icon: <PoundIcon sx={{fontSize: 40}} color="action"/>,
           label: objectiveNames["total_gas_import_cost"],
@@ -187,7 +193,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         },
       ]
 
-      const renderObjectives = (objectives) =>
+      const renderObjectives = (objectives: MetricDisplay[]) =>
         objectives.map((obj, index) => (
           <Grid item key={index}>
             <ObjectiveItem icon={obj.icon} label={obj.label} value={obj.value} />

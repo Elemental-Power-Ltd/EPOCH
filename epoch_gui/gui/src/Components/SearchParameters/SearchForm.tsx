@@ -5,7 +5,7 @@ import validator from '@rjsf/validator-ajv8';
 
 import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema.json";
 
-import {Button, IconButton} from '@mui/material';
+import {Button} from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import {SiteRange} from "../../State/types";

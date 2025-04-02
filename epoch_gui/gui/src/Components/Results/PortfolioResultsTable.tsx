@@ -13,9 +13,8 @@ import {
 
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
-import {OptimisationTaskListEntry, PortfolioMetrics, PortfolioOptimisationResult} from "../../State/types";
+import {PortfolioMetrics, PortfolioOptimisationResult} from "../../State/types";
 import {formatPounds, formatCarbon, formatYears, formatCarbonCost} from "../../util/displayFunctions";
-import {useEpochStore} from "../../State/Store";
 
 interface PortfolioResultsTableProps {
     results: PortfolioOptimisationResult[];

@@ -1,6 +1,7 @@
 import React, {useState} from "react";
+// @ts-ignore
 import Plot from "react-plotly.js"
-import {FormControl, InputLabel, Select, MenuItem, useMediaQuery, ListSubheader} from "@mui/material"
+import {FormControl, InputLabel, Select, MenuItem, useMediaQuery} from "@mui/material"
 
 import {
     color_map,
@@ -63,14 +64,14 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
             // shortfall and surplus amounts are indicated in hatched markings so that they stand out
             return {
                 pattern: {
-                    fgcolor: color_map[key],
+                    fgcolor: color_map[key as keyof typeof color_map],
                     bgcolor: '#000000',
                     shape: "/", size: 10, solidity: 0.7
                 }
             }
         }
         // otherwise return a solid colour defined in the color_map
-        return {color: color_map[key]}
+        return {color: color_map[key as keyof typeof color_map]}
     }
 
 

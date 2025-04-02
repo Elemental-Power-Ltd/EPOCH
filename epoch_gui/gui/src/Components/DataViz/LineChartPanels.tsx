@@ -1,4 +1,5 @@
 import React, {useState} from "react";
+// @ts-ignore
 import Plot from "react-plotly.js"
 import {FormControl, InputLabel, Select, MenuItem, useMediaQuery, ListSubheader} from "@mui/material"
 
@@ -13,6 +14,10 @@ interface LineChartPanelProps {
     windowWidth: number;
 }
 
+interface PanelSelection {
+    var1: string;
+    var2: string;
+}
 
 export const LineChartPanels: React.FC<LineChartPanelProps> = ({
     rangedData, xValues, windowWidth
@@ -29,7 +34,7 @@ export const LineChartPanels: React.FC<LineChartPanelProps> = ({
 
     const [panelSelections, setPanelSelections] = useState(lineChartDefaults);
 
-    const handleSelectChange = (panelIndex, selectedVar, isVar1) => {
+    const handleSelectChange = (panelIndex: number, selectedVar: string, isVar1: boolean) => {
         setPanelSelections((prev) =>
             prev.map((panel, idx) =>
                 idx === panelIndex
@@ -112,7 +117,7 @@ export const LineChartPanels: React.FC<LineChartPanelProps> = ({
     };
 
     // Render each panel
-    const renderPanel = (panel, index) => {
+    const renderPanel = (panel: PanelSelection, index: number) => {
         // Check units to determine if we need a second y-axis
         const var1Units = rangedData[panel.var1]?.units;
         const var2Units = rangedData[panel.var2]?.units;
@@ -125,8 +130,8 @@ export const LineChartPanels: React.FC<LineChartPanelProps> = ({
         // Choose colors
         const defaultColor1 = '#1f77b4'; // Fallback for var1
         const defaultColor2 = '#d96b09'; // Fallback for var2
-        const color1 = color_map[panel.var1] || defaultColor1;
-        const color2 = color_map[panel.var2] || defaultColor2;
+        const color1 = color_map[panel.var1 as keyof typeof color_map] || defaultColor1;
+        const color2 = color_map[panel.var2 as keyof typeof color_map] || defaultColor2;
         // Ensure var1 color contrasts with var2 color in dark mode
         const var1Color = ensureContrastHue(color1, color2, isDarkMode);
         const var2Color = color2; // var2 just uses the default or mapped color

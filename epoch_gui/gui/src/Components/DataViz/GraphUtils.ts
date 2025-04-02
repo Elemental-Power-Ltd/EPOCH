@@ -1,4 +1,4 @@
-import {ReportDataType} from "../../Models/Endpoints";
+import { ReportDataType } from "../../Models/Endpoints";
 
 export const removeEmptyVectors = (data: ReportDataType): ReportDataType => {
     return Object.fromEntries(
@@ -6,9 +6,9 @@ export const removeEmptyVectors = (data: ReportDataType): ReportDataType => {
     );
 }
 
-const getHue = (color) => {
+const getHue = (color: string): number => {
     // Convert hex to RGB
-    const [r, g, b] = color.match(/\w\w/g).map((c) => parseInt(c, 16) / 255);
+    const [r, g, b] = color.match(/\w\w/g)!.map((c) => parseInt(c, 16) / 255);
 
     // Convert RGB to HSL and return the hue (H)
     const max = Math.max(r, g, b);
@@ -22,7 +22,7 @@ const getHue = (color) => {
     return hue; // Hue in degrees (0–360)
 };
 
-export const ensureContrastHue = (color1, color2, isDarkMode) => {
+export const ensureContrastHue = (color1: string, color2: string, isDarkMode: boolean): string => {
     const hue1 = getHue(color1);
     const hue2 = getHue(color2);
 

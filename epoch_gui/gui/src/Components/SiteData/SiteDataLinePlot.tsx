@@ -1,4 +1,5 @@
 import React from "react";
+// @ts-ignore
 import Plot from "react-plotly.js"
 import {Box, Grid, useMediaQuery} from "@mui/material";
 import {getAppTheme} from "../../Colours";

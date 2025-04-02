@@ -1,6 +1,5 @@
-import { useState } from "react";
 
-import {ValidationResult, validateTaskData, validateSiteRange} from "./ValidateBuilders";
+import {validateTaskData, validateSiteRange} from "./ValidateBuilders";
 import {BuilderMode} from "../../Models/Core/ComponentBuilder";
 
 interface UseFileHandlerProps {

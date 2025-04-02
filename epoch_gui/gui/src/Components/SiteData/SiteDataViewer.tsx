@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useState} from "react";
 import {Alert, Box, Button, Container, Grid, Typography} from "@mui/material";
 import dayjs, {Dayjs} from "dayjs";
 
@@ -160,6 +160,7 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
 // we don't currently return enough information to distinguish between
 //  - an error due to no datasets (the intended case for this)
 //  - some other server/network error
+// @ts-ignore
 const NoSiteDataToView = () => {
 
 }
