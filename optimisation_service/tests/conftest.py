@@ -50,7 +50,7 @@ def default_siterange() -> SiteRange:
         COMPONENT_IS_MANDATORY=True,
         maximum_output=[40],
         boiler_efficiency=[0.9],
-        gas_type=[GasTypeEnum.NATURAL_GAS, GasTypeEnum.LIQUID_PETROLEUM_GAS]
+        gas_type=[GasTypeEnum.NATURAL_GAS, GasTypeEnum.LIQUID_PETROLEUM_GAS],
     )
     grid = Grid(
         COMPONENT_IS_MANDATORY=True,
@@ -118,7 +118,7 @@ def default_problem_instance(default_objectives, default_constraints, default_po
     return ProblemInstance(default_objectives, default_constraints, default_portfolio)
 
 
-def dummy_site_solution(site: Site) -> SiteSolution:
+def gen_dummy_site_solution(site: Site) -> SiteSolution:
     site_scenario = {}
     site_range = site.site_range
     for asset_name, asset in site_range.model_dump(exclude_none=True).items():
@@ -139,11 +139,11 @@ def dummy_site_solution(site: Site) -> SiteSolution:
     return SiteSolution(scenario=scenario, metric_values=metric_values)
 
 
-def dummy_portfolio_results(portfolio: list[Site]) -> PortfolioSolution:
+def gen_dummy_portfolio_solution(portfolio: list[Site]) -> PortfolioSolution:
     solution = {}
     building_metric_values = []
     for site in portfolio:
-        site_solution = dummy_site_solution(site)
+        site_solution = gen_dummy_site_solution(site)
         solution[site.site_data.site_id] = site_solution
         building_metric_values.append(site_solution.metric_values)
     metric_values = combine_metric_values(building_metric_values)
@@ -151,6 +151,11 @@ def dummy_portfolio_results(portfolio: list[Site]) -> PortfolioSolution:
 
 
 @pytest.fixture
+def dummy_portfolio_solution(default_portfolio) -> PortfolioSolution:
+    return gen_dummy_portfolio_solution(default_portfolio)
+
+
+@pytest.fixture
 def dummy_optimisation_result(default_portfolio) -> OptimisationResult:
-    solutions = [dummy_portfolio_results(default_portfolio) for _ in range(10)]
+    solutions = [gen_dummy_portfolio_solution(default_portfolio) for _ in range(10)]
     return OptimisationResult(solutions=solutions, n_evals=999, exec_time=timedelta(seconds=99))
