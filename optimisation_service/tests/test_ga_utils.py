@@ -3,6 +3,7 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
+from app.internal.constraints import count_constraints
 from app.internal.epoch_utils import convert_TaskData_to_dictionary
 from app.internal.ga_utils import ProblemInstance, RoundingAndDegenerateRepair, SimpleIntMutation, evaluate_excess
 from app.internal.site_range import count_parameters_to_optimise
@@ -74,9 +75,9 @@ class TestProblemInstance:
     def test_calculate_infeasibility(
         self, default_problem_instance: ProblemInstance, dummy_portfolio_solution: PortfolioSolution
     ):
-        n_constraints = len(default_problem_instance.constraints)
+        n_constraints = count_constraints(default_problem_instance.constraints)
         for site in default_problem_instance.portfolio:
-            n_constraints += len(site.constraints)
+            n_constraints += count_constraints(site.constraints)
 
         assert len(default_problem_instance.calculate_infeasibility(dummy_portfolio_solution)) == n_constraints
 

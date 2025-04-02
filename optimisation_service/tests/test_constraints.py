@@ -9,7 +9,10 @@ from app.internal.constraints import (
 from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.metrics import _METRICS, Metric
+<<<<<<< HEAD
 from app.models.result import PortfolioSolution
+=======
+>>>>>>> bugfix/fix_NSGA2_infeasibility_test
 
 
 class TestCountConstraints:
@@ -27,6 +30,7 @@ class TestCountConstraints:
     def test_min_and_max_constraints(self):
         constraints = {metric: Bounds(min=0, max=10) for metric in _METRICS}
         assert count_constraints(constraints) == len(_METRICS) * 2
+<<<<<<< HEAD
 
 
 class TestIsInConstraints:
@@ -50,6 +54,8 @@ class TestIsInConstraints:
         dummy_portfolio_solutions[0].metric_values[Metric.capex] = 10
         mask = is_in_constraints(constraints=constraints, solutions=dummy_portfolio_solutions)
         assert sum(mask) == 1
+=======
+>>>>>>> bugfix/fix_NSGA2_infeasibility_test
 
 
 class TestGetShortfallConstraints:

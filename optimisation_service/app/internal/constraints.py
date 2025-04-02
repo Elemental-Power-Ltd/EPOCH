@@ -69,6 +69,31 @@ def is_in_constraints(constraints: Constraints, solutions: list[PortfolioSolutio
     return [True] * len(solutions)
 
 
+def count_constraints(constraints: Constraints) -> int:
+    """
+    Count the number of individual upper or lower bounds placed on metric values as optimisation constraints.
+
+    Parameters
+    ----------
+    constraints
+        Dictionary of constraints to analyse.
+
+    Returns
+    -------
+    n_constraints
+        Number of individuals constraints found.
+    """
+    n_constraints = 0
+    for bounds in constraints.values():
+        min_value = bounds.get("min", None)
+        max_value = bounds.get("max", None)
+        if min_value is not None:
+            n_constraints += 1
+        if max_value is not None:
+            n_constraints += 1
+    return n_constraints
+
+
 def merge_constraints(constraints_list: list[Constraints]) -> Constraints:
     """
     Merge a list of constraints into a single constraints dict keeping the harshest bounds.
