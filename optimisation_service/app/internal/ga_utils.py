@@ -256,7 +256,6 @@ def evaluate_excess(metric_values: MetricValues, constraints: Constraints) -> li
     """
     Measures by how much the metric values exceed the constraints.
     Returns a list of floats, one for each constraint.
-    A positive float indicates that the metric has exceeded the corresponding constraint.
 
     Parameters
     ----------
@@ -268,17 +267,16 @@ def evaluate_excess(metric_values: MetricValues, constraints: Constraints) -> li
     Returns
     -------
     excess
-        List of floats indicate the excess measured.
+        List of floats indicating how close we are to the constraints.
+        A positive float indicates that the metric has exceeded the minimum or maximum bound.
+        A negative float indicates that the metric is within the minimum or maximum bound.
     """
     excess = []
     for metric, bounds in constraints.items():
-        min_value = bounds.get("min", None)
-        max_value = bounds.get("max", None)
-
-        if min_value is not None:
-            excess.append(min_value - metric_values[metric])
-        if max_value is not None:
-            excess.append(metric_values[metric] - max_value)
+        if "min" in bounds:
+            excess.append(bounds["min"] - metric_values[metric])
+        if "max" in bounds:
+            excess.append(metric_values[metric] - bounds["max"])
 
     return excess
 
