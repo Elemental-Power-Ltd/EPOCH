@@ -87,7 +87,9 @@ def get_cost_balance_constraints() -> Constraints:
     return constraints
 
 
-def apply_default_constraints(exsiting_portfolio: list[Site], existing_constraints: Constraints) -> Constraints:
+def apply_default_constraints(
+    exsiting_portfolio: list[Site], existing_constraints: Constraints
+) -> tuple[list[Site], Constraints]:
     """
     Apply default constraints to existing portfolio and site constraints.
     These are:
