@@ -23,7 +23,6 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import (  # 
 from botorch.utils.transforms import normalize  # type: ignore
 from gpytorch.mlls import PredictiveLogLikelihood  # type: ignore
 from gpytorch.mlls._approximate_mll import _ApproximateMarginalLogLikelihood  # type: ignore
-from paretoset import paretoset  # type: ignore
 
 from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser
 from app.internal.NSGA2 import NSGA2
@@ -42,7 +41,7 @@ class TKWARGS(TypedDict):
     device: torch.device
 
 
-_TKWARGS = TKWARGS(dtype=torch.double, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+_TKWARGS = TKWARGS(dtype=torch.double, device=torch.device("cpu"))
 
 
 warnings.filterwarnings("ignore", category=BadInitialCandidatesWarning)
@@ -86,11 +85,10 @@ class Bayesian(Algorithm):
 
         # Initilise dpo
         dpo = DistributedPortfolioOptimiser(sub_portfolios, objectives, self.NSGA2, constraints)
+        solutions = dpo.init_solutions
 
         # generate random solutions
-        # use solutions generated during DPO initialisation as one of the samples
-        solutions = dpo.init_solutions
-        random_capex_allocations = generate_random_capex_allocations(n_sub_portfolios, self.n_init_samples - 1, capex_limit)
+        random_capex_allocations = generate_random_capex_allocations(n_sub_portfolios, self.n_init_samples, capex_limit)
         for capex_allocation in random_capex_allocations:
             solutions.extend(dpo.evaluate(capex_allocation))
 
@@ -124,6 +122,7 @@ class Bayesian(Algorithm):
                 num_restarts=self.num_restarts,
                 raw_samples=self.raw_samples,
             )
+            print(f"Candidates: {candidates}")
 
             # evaluate candidates
             new_solutions = []
@@ -142,9 +141,6 @@ class Bayesian(Algorithm):
                 # update training points
                 train_x = torch.cat([train_x, new_train_x])
                 train_y = torch.cat([train_y, new_train_y])
-                pareto_efficient = paretoset(-train_y.cpu().detach().numpy())
-                train_x = train_x[pareto_efficient]
-                train_y = train_y[pareto_efficient]
 
             # initialise model for next gen
             mll, model = initialise_model(train_x, train_y, bounds)
@@ -258,7 +254,7 @@ def create_capex_allocation_bounds(n_sub_portfolios: int, capex_limit: float) ->
     bounds
         A 2 x d tensor of lower and upper bounds for each of the train_x's d columns (Bounds on the sites' CAPEX allocations).
     """
-    bounds = torch.tensor([[0.0] * (n_sub_portfolios - 1), [capex_limit] * (n_sub_portfolios - 1)], **_TKWARGS)
+    bounds = torch.tensor([[0.0] * n_sub_portfolios, [capex_limit] * n_sub_portfolios], **_TKWARGS)
     return bounds
 
 
@@ -281,7 +277,7 @@ def generate_random_capex_allocations(n_portfolios: int, n_initial: int, capex_l
         A list of the randomly generated CAPEX allocations.
     """
     rng = np.random.default_rng()
-    X = rng.dirichlet([1] * n_portfolios, n_initial) * capex_limit
+    X = rng.dirichlet([1] * n_portfolios, n_initial) * (capex_limit * rng.random())
     return X
 
 
@@ -342,10 +338,8 @@ def optimize_acquisition_func_and_get_candidate(
         sampler=sampler,
     )
     # Define constraints on the features (CAPEX allocations). The sum of the allocations must be smaller than the CAPEX limit.
-    indeces = torch.tensor(
-        list(range(n_sub_portfolios - 1)), dtype=torch.int, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    )
-    coefficients = torch.tensor([-1.0] * (n_sub_portfolios - 1), **_TKWARGS)
+    indeces = torch.tensor(list(range(n_sub_portfolios)), dtype=torch.int, device=torch.device("cpu"))
+    coefficients = torch.tensor([-1.0] * n_sub_portfolios, **_TKWARGS)
     inequality_constraints = [(indeces, coefficients, -capex_limit)]
 
     # optimize
@@ -362,8 +356,6 @@ def optimize_acquisition_func_and_get_candidate(
     )
     # add capex allocation for last sub portfolio
     candidates_arr = candidates.cpu().detach().numpy()
-    last_sub_portfolio_capex = capex_limit - np.sum(candidates_arr, axis=1, keepdims=True)
-    candidates_arr = np.hstack((candidates_arr, last_sub_portfolio_capex))
 
     return candidates_arr
 
@@ -391,7 +383,7 @@ def extract_sub_portfolio_capex_allocations(
     capex_allocations_per_site = [site.metric_values[Metric.capex] for site in solution.scenario.values()]
     capex_allocations_per_sub = [
         sum(capex_allocations_per_site[i * n_per_sub_portfolio : (i + 1) * n_per_sub_portfolio])
-        for i in range(n_sub_portfolios - 1)
+        for i in range(n_sub_portfolios)
     ]
     return capex_allocations_per_sub
 

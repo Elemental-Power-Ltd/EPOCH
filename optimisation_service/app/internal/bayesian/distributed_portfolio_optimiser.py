@@ -84,7 +84,7 @@ class DistributedPortfolioOptimiser:
             self.n_evals += res.n_evals
 
         solutions, new_sub_portfolio_combinations = self.merge_and_optimise_portfolio_solution_lists(
-            sub_solutions, self.objectives
+            sub_solutions, self.objectives, capex_limits
         )
         # update sub_portfolio_solutions
         for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(self.sub_portfolio_solutions, sub_solutions):
@@ -107,6 +107,7 @@ class DistributedPortfolioOptimiser:
         self,
         solutions: list[list[PortfolioSolution]],
         objectives: list[Metric],
+        capex_limits: list[float],
     ) -> tuple[list[PortfolioSolution], list[list[PortfolioSolution]]]:
         """
         Merge and optimise a list of portfolio solution lists into a single portfolio solution Pareto-optimal front.
@@ -124,12 +125,22 @@ class DistributedPortfolioOptimiser:
 
         """
         new_solutions = solutions[0]
+        combined_capex_limit = capex_limits[0]
         new_combinations = [new_solutions]
         for i in range(1, len(solutions)):
             new_solutions_combined = list(set(new_solutions) - self.sub_portfolio_combinations[i - 1])
-            old_solutions_combined = list(self.sub_portfolio_combinations[i - 1].intersection(new_solutions))
+            old_solutions_combined = list(self.sub_portfolio_combinations[i - 1] - set(new_solutions))
+
+            mask = is_in_constraints(
+                constraints={Metric.capex: Bounds(max=combined_capex_limit)}, solutions=old_solutions_combined
+            )
+            old_solutions_combined = np.array(old_solutions_combined)[mask].tolist()
+
             new_solutions_incoming = list(set(solutions[i]) - self.sub_portfolio_solutions[i])
-            old_solutions_incoming = list(self.sub_portfolio_solutions[i].intersection(set(solutions[i])))
+            old_solutions_incoming = list(self.sub_portfolio_solutions[i] - set(solutions[i]))
+
+            mask = is_in_constraints(constraints={Metric.capex: Bounds(max=capex_limits[i])}, solutions=old_solutions_incoming)
+            old_solutions_incoming = np.array(old_solutions_incoming)[mask].tolist()
 
             if len(new_solutions_combined) > 0 and len(new_solutions_incoming) > 0:
                 new_new = merge_and_optimise_two_portfolio_solution_lists(
@@ -151,11 +162,17 @@ class DistributedPortfolioOptimiser:
                 old_new = []
 
             new_solutions = new_new + new_old + old_new
+            combined_capex_limit += capex_limits[i]
+
+            existing_combinations = list(self.sub_portfolio_combinations[i])
+            mask = is_in_constraints(
+                constraints={Metric.capex: Bounds(max=combined_capex_limit)}, solutions=existing_combinations
+            )
+            existing_combinations = np.array(existing_combinations)[mask].tolist()
 
             if len(new_solutions) > 0:
-                new_solutions = portfolio_pareto_front(new_solutions + list(self.sub_portfolio_combinations[i]), objectives)
-            else:
-                new_solutions = portfolio_pareto_front(list(self.sub_portfolio_combinations[i]), objectives)
+                new_solutions = portfolio_pareto_front(new_solutions + existing_combinations, objectives)
+
             new_combinations.append(new_solutions)
 
         return new_solutions, new_combinations
