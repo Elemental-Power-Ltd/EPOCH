@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 import torch
 from epoch_simulator import TaskData
@@ -10,7 +9,6 @@ from app.internal.bayesian.bayesian import (
     create_capex_allocation_bounds,
     create_reference_point,
     extract_sub_portfolio_capex_allocations,
-    generate_random_capex_allocations,
     initialise_model,
     optimize_acquisition_func_and_get_candidate,
 )
@@ -34,7 +32,7 @@ class TestBayesian:
         """
         Test output of algorithm.
         """
-        alg = Bayesian(pop_size=512, n_offsprings=256, n_max_gen=50, n_generations=20, period=10)
+        alg = Bayesian(pop_size=512, n_offsprings=256, n_max_gen=2, n_generations=2, period=10)
         res = alg.run(default_objectives, default_constraints, default_portfolio)
         assert isinstance(res, OptimisationResult)
 
@@ -54,17 +52,17 @@ class TestCreateReferencePoint:
 
 class TestCreateCapexAllocationBounds:
     def test_good_inputs(self):
-        capex_limit = 10000
+        max_capexs = [1000.0, 500.0]
         n_sub_portfolios = 2
-        bounds = create_capex_allocation_bounds(n_sub_portfolios, capex_limit)
-        assert bounds.shape == (2, n_sub_portfolios - 1)
+        bounds = create_capex_allocation_bounds(n_sub_portfolios, max_capexs)
+        assert bounds.shape == (2, n_sub_portfolios)
         assert bounds[0].sum() == 0
-        assert bounds[1].sum() == capex_limit * (n_sub_portfolios - 1)
+        assert all(bounds[1] == torch.tensor(max_capexs, **_TKWARGS))
 
 
 class TestInitializeModel:
     def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]):
-        capex_limit = 10000
+        max_capexs = [1000.0, 500.0]
         n_sub_portfolios = len(dummy_portfolio_solutions[0].scenario)
         train_x, train_y = convert_solution_list_to_tensor(
             solutions=dummy_portfolio_solutions,
@@ -72,25 +70,14 @@ class TestInitializeModel:
             n_sub_portfolios=n_sub_portfolios,
             objectives=default_objectives,
         )
-        bounds = create_capex_allocation_bounds(n_sub_portfolios, capex_limit)
+        bounds = create_capex_allocation_bounds(n_sub_portfolios, max_capexs)
         initialise_model(train_x, train_y, bounds)
-
-
-class TestGenerateRandomCapexAllocations:
-    def test_good_inputs(self):
-        n_portfolios = 2
-        n_initial = 4
-        capex_limit = 10000
-        capex_allocations = generate_random_capex_allocations(
-            n_portfolios=n_portfolios, n_initial=n_initial, capex_limit=capex_limit
-        )
-        assert capex_allocations.shape == (n_initial, n_portfolios)
-        assert all(np.isclose(np.sum(capex_allocations, axis=1), capex_limit))
 
 
 class TestOptimizeAcquisitionFuncAndGetCandidate:
     def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]):
         capex_limit = 10000
+        max_capexs = [1000.0, 500.0]
         batch_size = 2
         n_sub_portfolios = len(dummy_portfolio_solutions[0].scenario)
         train_x, train_y = convert_solution_list_to_tensor(
@@ -99,7 +86,7 @@ class TestOptimizeAcquisitionFuncAndGetCandidate:
             n_sub_portfolios=n_sub_portfolios,
             objectives=default_objectives,
         )
-        bounds = create_capex_allocation_bounds(n_sub_portfolios, capex_limit)
+        bounds = create_capex_allocation_bounds(n_sub_portfolios, max_capexs)
         ref_point = create_reference_point(train_y)
         _, model = initialise_model(train_x, train_y, bounds)
         candidates_arr = optimize_acquisition_func_and_get_candidate(
@@ -134,7 +121,7 @@ class TestExtractSubPortfolioCapexAllocations:
             metric_values={},
         )
         capex_allocations = extract_sub_portfolio_capex_allocations(solution, n_per_sub_portfolio, n_sub_portfolios)
-        assert capex_allocations == [capex_a + capex_b, capex_c + capex_d]
+        assert capex_allocations == [capex_a + capex_b, capex_c + capex_d, capex_e]
 
 
 class TestConvertSolutionListToTensor:
@@ -156,7 +143,7 @@ class TestConvertSolutionListToTensor:
             metric_values={Metric.cost_balance: cost_balance, Metric.carbon_balance_scope_1: carbon_balance_scope_1},
         )
         train_x, train_y = convert_solution_list_to_tensor([solution], n_per_sub_portfolio, n_sub_portfolios, objectives)
-        assert all(train_x[0] == torch.tensor([capex_a + capex_b, capex_c + capex_d], **_TKWARGS))
+        assert all(train_x[0] == torch.tensor([capex_a + capex_b, capex_c + capex_d, capex_e], **_TKWARGS))
         assert all(train_y[0] == torch.tensor([cost_balance, carbon_balance_scope_1], **_TKWARGS))
 
     def test_good_inputs_2(self, dummy_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]):

@@ -11,9 +11,9 @@ from botorch.acquisition.multi_objective.logei import (  # type: ignore
 )
 from botorch.exceptions import BadInitialCandidatesWarning  # type: ignore
 from botorch.exceptions.warnings import UserInputWarning  # type: ignore
-from botorch.models.gp_regression import SingleTaskGP
+from botorch.models.gp_regression import SingleTaskGP  # type: ignore
 from botorch.models.gpytorch import GPyTorchModel  # type: ignore
-from botorch.models.model_list_gp_regression import ModelListGP
+from botorch.models.model_list_gp_regression import ModelListGP  # type: ignore
 from botorch.models.transforms.outcome import Standardize  # type: ignore
 from botorch.optim.optimize import optimize_acqf  # type: ignore
 from botorch.sampling.normal import IIDNormalSampler  # type: ignore
@@ -21,7 +21,7 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import (  # 
     FastNondominatedPartitioning,  # type: ignore
 )
 from botorch.utils.transforms import normalize  # type: ignore
-from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
+from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood  # type: ignore
 
 from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser
 from app.internal.NSGA2 import NSGA2

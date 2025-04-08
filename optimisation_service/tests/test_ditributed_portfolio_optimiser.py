@@ -46,7 +46,7 @@ class TestDistributedPortfolioOptimiser:
             constraints=default_constraints,
         )
         solutions = [gen_dummy_portfolio_solutions([site]) for site in default_portfolio]
-        dpo.merge_and_optimise_portfolio_solution_lists(solutions, default_objectives)
+        dpo.merge_and_optimise_portfolio_solution_lists(solutions, default_objectives, dpo.max_capexs)
 
 
 class TestSelectStartingSolutions:

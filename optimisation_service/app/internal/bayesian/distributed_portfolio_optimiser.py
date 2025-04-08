@@ -23,7 +23,7 @@ class DistributedPortfolioOptimiser:
         self.n_evals = 0
         self.init_solutions, self.max_capexs = self._initialise()
 
-    def _initialise(self) -> list[PortfolioSolution]:
+    def _initialise(self) -> tuple[list[PortfolioSolution], list[float]]:
         """
         Initialise the optimiser by tackling the problem as if it were seperable.
 
@@ -41,7 +41,7 @@ class DistributedPortfolioOptimiser:
             res = self.alg.run(
                 objectives=self.objectives, constraints={Metric.capex: {"max": capex_limit}}, portfolio=sub_portfolio
             )
-            max_capex = 0
+            max_capex = 0.0
             for solution in res.solutions:
                 if solution.metric_values[Metric.capex] > max_capex:
                     max_capex = solution.metric_values[Metric.capex]
