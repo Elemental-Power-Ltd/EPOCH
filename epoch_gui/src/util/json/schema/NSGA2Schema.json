@@ -93,6 +93,26 @@
       "title": "Period",
       "type": "integer"
     },
+    "cv_tol": {
+      "default": 0.001,
+      "description": "Termination Criterion. Minimum required improvement of population's best constraint violation value over a period of generations. Terminates if below.",
+      "examples": [
+        0.001
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "CV Tol",
+      "type": "number"
+    },
+    "cv_period": {
+      "default": 25,
+      "description": "Termination Criterion. Number of passed generations to include when checking for constraint violation improvement.",
+      "examples": [
+        25
+      ],
+      "exclusiveMinimum": 0,
+      "title": "CV Period",
+      "type": "integer"
+    },
     "n_max_gen": {
       "default": 1000,
       "description": "Termination Criterion. Max number of generations before termination.",
