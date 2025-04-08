@@ -40,6 +40,19 @@ class NSGA2HyperParam(BaseModel):
         description="Termination Criterion. Number of passed generations to include when checking for improvement.",
         default=25,
     )
+    cv_tol: PositiveFloat = Field(
+        examples=[0.001],
+        description="Termination Criterion."
+        + "Minimum required improvement of population's best constraint violation value over a period of generations."
+        + "Terminates if below.",
+        default=0.001,
+    )
+    cv_period: PositiveInt = Field(
+        examples=[25],
+        description="Termination Criterion."
+        + "Number of passed generations to include when checking for constraint violation improvement.",
+        default=25,
+    )
     n_max_gen: PositiveInt = Field(
         examples=[1000, 2000],
         description="Termination Criterion. Max number of generations before termination.",
