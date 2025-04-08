@@ -9,6 +9,7 @@ from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
 from pymoo.operators.sampling.rnd import IntegerRandomSampling  # type: ignore
 from pymoo.optimize import minimize  # type: ignore
+from pymoo.termination.cv import ConstraintViolationTermination  # type: ignore
 from pymoo.termination.ftol import MultiObjectiveSpaceTermination  # type: ignore
 from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: ignore
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
@@ -46,6 +47,8 @@ class NSGA2(Algorithm):
         period: int | None = 5,
         n_max_gen: int = int(1e14),
         n_max_evals: int = int(1e14),
+        cv_tol: float = 1e-14,
+        cv_period: int = int(1e14),
         return_least_infeasible: bool = True,
     ) -> None:
         """
@@ -71,6 +74,10 @@ class NSGA2(Algorithm):
         period
             Number of passed fitness values to include in delta calculation, max delta is selected.
             Defaults to n_max_gen if set to None.
+        cv_tol
+            Tolerance of improvement between current and past constraint violations, terminates if below.
+        cv_period
+            Number of generations to include in constraint violation improvement calculation.
         n_max_gen
             Max number of generations before termination
         n_max_evals
@@ -101,7 +108,7 @@ class NSGA2(Algorithm):
         if period is None:
             period = n_max_gen
 
-        self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals)
+        self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals, cv_tol, cv_period)
 
     def _load_existing_solutions(self, solutions: list[PortfolioSolution], problem: ProblemInstance):
         """
@@ -194,19 +201,29 @@ class NSGA2(Algorithm):
 
 
 class MultiTermination(Termination):
-    def __init__(self, tol: float = 1e-6, period: int = 30, n_max_gen: int = 1000, n_max_evals: int = 100000) -> None:
+    def __init__(
+        self,
+        tol: float = 1e-6,
+        period: int = 30,
+        n_max_gen: int = 1000,
+        n_max_evals: int = 100000,
+        cv_tol: float = 1e-6,
+        cv_period: int = 30,
+    ) -> None:
         super().__init__()
         self.f = RobustTermination(MultiObjectiveSpaceTermination(tol, only_feas=True), period)
         self.max_gen = MaximumGenerationTermination(n_max_gen)
         self.max_evals = MaximumFunctionCallTermination(n_max_evals)
+        self.cv = RobustTermination(ConstraintViolationTermination(cv_tol, terminate_when_feasible=False), cv_period)
 
-        self.criteria = [self.f, self.max_gen, self.max_evals]
+        self.criteria = [self.f, self.max_gen, self.max_evals, self.cv]
 
     def _update(self, algorithm: Algorithm) -> float:
         f_progress = self.f.update(algorithm)
         max_gen_progess = self.max_gen.update(algorithm)
         max_evals_progress = self.max_evals.update(algorithm)
-        p = [f_progress, max_gen_progess, max_evals_progress]
+        cv_progress = self.cv.update(algorithm)
+        p = [f_progress, max_gen_progess, max_evals_progress, cv_progress]
         return max(p)
 
 
