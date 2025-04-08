@@ -3,7 +3,6 @@ import logging
 import warnings
 from typing import TypedDict
 
-import numpy as np
 import numpy.typing as npt
 import torch
 from botorch import fit_gpytorch_mll  # type: ignore
@@ -12,8 +11,9 @@ from botorch.acquisition.multi_objective.logei import (  # type: ignore
 )
 from botorch.exceptions import BadInitialCandidatesWarning  # type: ignore
 from botorch.exceptions.warnings import UserInputWarning  # type: ignore
-from botorch.models.approximate_gp import SingleTaskVariationalGP  # type: ignore
+from botorch.models.gp_regression import SingleTaskGP
 from botorch.models.gpytorch import GPyTorchModel  # type: ignore
+from botorch.models.model_list_gp_regression import ModelListGP
 from botorch.models.transforms.outcome import Standardize  # type: ignore
 from botorch.optim.optimize import optimize_acqf  # type: ignore
 from botorch.sampling.normal import IIDNormalSampler  # type: ignore
@@ -21,8 +21,7 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import (  # 
     FastNondominatedPartitioning,  # type: ignore
 )
 from botorch.utils.transforms import normalize  # type: ignore
-from gpytorch.mlls import PredictiveLogLikelihood  # type: ignore
-from gpytorch.mlls._approximate_mll import _ApproximateMarginalLogLikelihood  # type: ignore
+from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
 
 from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser
 from app.internal.NSGA2 import NSGA2
@@ -41,7 +40,8 @@ class TKWARGS(TypedDict):
     device: torch.device
 
 
-_TKWARGS = TKWARGS(dtype=torch.double, device=torch.device("cpu"))
+_TDEVICE = torch.device("cpu")
+_TKWARGS = TKWARGS(dtype=torch.double, device=_TDEVICE)
 
 
 warnings.filterwarnings("ignore", category=BadInitialCandidatesWarning)
@@ -55,14 +55,12 @@ class Bayesian(Algorithm):
         n_per_sub_portfolio: int = 1,
         n_generations: int = 10,
         batch_size: int = 4,
-        n_init_samples: int = 5,
         num_restarts: int = 10,
         raw_samples: int = 512,
         mc_samples: int = 128,
         **kwargs,
     ):
         self.n_per_sub_portfolio = n_per_sub_portfolio
-        self.n_init_samples = n_init_samples
         self.num_restarts = num_restarts
         self.raw_samples = raw_samples
         self.n_generations = n_generations
@@ -87,16 +85,11 @@ class Bayesian(Algorithm):
         dpo = DistributedPortfolioOptimiser(sub_portfolios, objectives, self.NSGA2, constraints)
         solutions = dpo.init_solutions
 
-        # generate random solutions
-        random_capex_allocations = generate_random_capex_allocations(n_sub_portfolios, self.n_init_samples, capex_limit)
-        for capex_allocation in random_capex_allocations:
-            solutions.extend(dpo.evaluate(capex_allocation))
-
         # convert to tensors
         train_x, train_y = convert_solution_list_to_tensor(solutions, self.n_per_sub_portfolio, n_sub_portfolios, objectives)
 
         # initialise model
-        bounds = create_capex_allocation_bounds(n_sub_portfolios, capex_limit)
+        bounds = create_capex_allocation_bounds(n_sub_portfolios, dpo.max_capexs)
         mll, model = initialise_model(train_x, train_y, bounds)
 
         # run n_generations rounds of Bayesian optimisation after the initial random batch
@@ -108,6 +101,7 @@ class Bayesian(Algorithm):
 
             # fit the model
             fit_gpytorch_mll(mll)
+            state_dict = model.state_dict()
 
             # optimize acquisition functions and get new candidates
             candidates = optimize_acquisition_func_and_get_candidate(
@@ -146,8 +140,8 @@ class Bayesian(Algorithm):
             mll, model = initialise_model(train_x, train_y, bounds)
 
             # Should be able to load old model dict. TODO: Fix model load bug.
-            # if state_dict is not None:
-            #     model.load_state_dict(state_dict)
+            if state_dict is not None:
+                model.load_state_dict(state_dict)
 
             solutions = portfolio_pareto_front(solutions + new_solutions, objectives)
 
@@ -184,7 +178,7 @@ def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -
 
 def initialise_model(
     train_x: torch.Tensor, train_y: torch.Tensor, bounds: torch.Tensor
-) -> tuple[_ApproximateMarginalLogLikelihood, SingleTaskVariationalGP]:
+) -> tuple[SumMarginalLogLikelihood, ModelListGP]:
     """
     Initialise Gaussian process models with training features and observations.
 
@@ -204,13 +198,15 @@ def initialise_model(
     model
         A collection of Gaussian Process models.
     """
+    print(f"Initialising model with {len(train_x)} training points.")
     train_x = normalize(train_x, bounds)
-
-    num_outputs = train_y.shape[1]
-
-    model = SingleTaskVariationalGP(train_x, train_y, outcome_transform=Standardize(m=num_outputs), num_outputs=num_outputs)
-    mll = PredictiveLogLikelihood(model.likelihood, model.model, num_data=len(train_x))
-
+    models = []
+    for i in range(train_y.shape[-1]):
+        train_y_i = train_y[..., i : i + 1]
+        train_yvar = torch.full_like(train_y_i, 1e-6)
+        models.append(SingleTaskGP(train_x, train_y_i, train_yvar, outcome_transform=Standardize(m=1)))
+    model = ModelListGP(*models)
+    mll = SumMarginalLogLikelihood(model.likelihood, model)
     return mll, model
 
 
@@ -236,49 +232,25 @@ def create_reference_point(train_y: torch.Tensor) -> torch.Tensor:
     return ref_point
 
 
-def create_capex_allocation_bounds(n_sub_portfolios: int, capex_limit: float) -> torch.Tensor:
+def create_capex_allocation_bounds(n_sub_portfolios: int, max_capexs: list[float]) -> torch.Tensor:
     """
     Creates a tensor representation of the bounds on the capex allocations.
-    The capex allocations are bound to [0, capex_limit].
-    1 of the N sub-portfolios is ommitted since we aim to optimise N - 1 capex allocations.
+    The capex allocations are bound to [0, max_capex].
 
     Parameters
     ----------
     n_sub_portfolios
         The number of sub portfolios.
-    capex_limit
-        Upper CAPEX limit for the portfolio.
+    max_capexs
+        Upper CAPEX limit for each portfolio.
 
     Returns
     -------
     bounds
         A 2 x d tensor of lower and upper bounds for each of the train_x's d columns (Bounds on the sites' CAPEX allocations).
     """
-    bounds = torch.tensor([[0.0] * n_sub_portfolios, [capex_limit] * n_sub_portfolios], **_TKWARGS)
+    bounds = torch.tensor([[0.0] * n_sub_portfolios, max_capexs], **_TKWARGS)
     return bounds
-
-
-def generate_random_capex_allocations(n_portfolios: int, n_initial: int, capex_limit: float) -> npt.NDArray:
-    """
-    Randomly generate n_initial sets of CAPEX allocations across the portfolio and evaluate them.
-
-    Parameters
-    ----------
-    n_portfolios
-        The number of sub portfolios to allocate CAPEX to.
-    n_initial
-        The number of random solutions to generate.
-    capex_limit
-        Upper CAPEX limit for the portfolio.
-
-    Returns
-    -------
-    solutions
-        A list of the randomly generated CAPEX allocations.
-    """
-    rng = np.random.default_rng()
-    X = rng.dirichlet([1] * n_portfolios, n_initial) * (capex_limit * rng.random())
-    return X
 
 
 def optimize_acquisition_func_and_get_candidate(
@@ -338,7 +310,7 @@ def optimize_acquisition_func_and_get_candidate(
         sampler=sampler,
     )
     # Define constraints on the features (CAPEX allocations). The sum of the allocations must be smaller than the CAPEX limit.
-    indeces = torch.tensor(list(range(n_sub_portfolios)), dtype=torch.int, device=torch.device("cpu"))
+    indeces = torch.tensor(list(range(n_sub_portfolios)), dtype=torch.int, device=_TDEVICE)
     coefficients = torch.tensor([-1.0] * n_sub_portfolios, **_TKWARGS)
     inequality_constraints = [(indeces, coefficients, -capex_limit)]
 
