@@ -14,7 +14,7 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator, Coroutine
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import asyncpg
 import httpx
@@ -67,7 +67,7 @@ class MockedHttpClient(httpx.AsyncClient):
 
     DO_RATE_LIMIT = False  # For reading from files, we don't want to apply a rate limit.
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> Self:  # type: ignore
         super().__init__(*args, **kwargs)
         self.octopus_requests = {"cached": 0, "uncached": 0}
         self.visualcrossing_requests = {"cached": 0, "uncached": 0}
@@ -145,7 +145,7 @@ class MockedHttpClient(httpx.AsyncClient):
             self.visualcrossing_requests["cached"] += 1
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
-            self.uncached_requests["cached"] += 1
+            self.visualcrossing_requests["uncached"] += 1
             data = (await _http_client.get(url, **kwargs)).json()
             stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
@@ -325,4 +325,3 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     del app.dependency_overrides[get_db_conn]
     del app.dependency_overrides[get_db_pool]
     del app.dependency_overrides[get_http_client]
-

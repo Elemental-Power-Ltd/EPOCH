@@ -379,4 +379,3 @@ class TestImportTariffs:
         assert len(tariff_result["timestamps"]) == expected_len
         assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
         assert all(not pd.isna(data).any() for data in tariff_result["data"])
-        assert False
