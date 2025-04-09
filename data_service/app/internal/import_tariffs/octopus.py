@@ -10,7 +10,8 @@ import pandas as pd
 from ...models.import_tariffs import GSPEnum
 from ..utils import RateLimiter
 
-# Octopus the number of calls we can make; it isn't documented so we have to guess about this.
+# Octopus limits the number of calls we can make; it isn't documented so we have to guess about this.
+# "BottlecapDave" from Home Assistant suggests it's 100 / hour, but that seems stricter than what I've actually seen
 OCTOPUS_RATE_LIMITER = RateLimiter(rate_limit_requests=25, rate_limit_period=60.0)
 
 
