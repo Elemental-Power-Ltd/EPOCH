@@ -67,6 +67,11 @@ class MockedHttpClient(httpx.AsyncClient):
 
     DO_RATE_LIMIT = False  # For reading from files, we don't want to apply a rate limit.
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.octopus_requests = {"cached": 0, "uncached": 0}
+        self.visualcrossing_requests = {"cached": 0, "uncached": 0}
+
     async def get_tariff_from_file(self, url: str, **kwargs: Any) -> Jsonable:
         """
         Get a stored tariff from a file when requesting an URL.
@@ -86,8 +91,10 @@ class MockedHttpClient(httpx.AsyncClient):
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "octopus", f"{url_params}.json")
         if stored_tariff.exists():
+            self.octopus_requests["cached"] += 1
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
+            self.octopus_requests["uncached"] += 1
             data = (await _http_client.get(url, **kwargs)).json()
             stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
@@ -135,8 +142,10 @@ class MockedHttpClient(httpx.AsyncClient):
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "visual_crossing", f"{url_params}.json")
         if stored_tariff.exists():
+            self.visualcrossing_requests["cached"] += 1
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
+            self.uncached_requests["cached"] += 1
             data = (await _http_client.get(url, **kwargs)).json()
             stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
@@ -212,11 +221,7 @@ class MockedHttpClient(httpx.AsyncClient):
             HTTPX status, 200 if file found, 404 otherwise.
         """
         url = str(url)
-        if url.startswith("https://api.octopus.energy/v1/products/") and (kwargs or kwargs.get("params") is not None):
-            # We don't want to cache the detailed & paginated responses from Octopus
-            # as there's loads of them.
-            return await _http_client.get(url, **kwargs)
-        elif url.startswith("https://api.octopus.energy/v1/products/"):
+        if url.startswith("https://api.octopus.energy/v1/products/"):
             maybe_tariff_data = await self.get_tariff_from_file(url, **kwargs)
             if maybe_tariff_data is not None:
                 return httpx.Response(status_code=200, json=maybe_tariff_data)
@@ -320,3 +325,4 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     del app.dependency_overrides[get_db_conn]
     del app.dependency_overrides[get_db_pool]
     del app.dependency_overrides[get_http_client]
+

@@ -15,7 +15,7 @@ async def get_octopus_tariff(
     region_code: GSPEnum = GSPEnum.C,
     start_ts: datetime.datetime | None = None,
     end_ts: datetime.datetime | None = None,
-    client: httpx.AsyncClient | None = None,
+    http_client: httpx.AsyncClient | None = None,
 ) -> pd.DataFrame:
     """
     Get a specific Octopus Tariff from their API.
@@ -44,15 +44,15 @@ async def get_octopus_tariff(
     -------
         Dataframe with cost in p / kWh
     """
-    if client is None:
-        client = httpx.AsyncClient()
+    if http_client is None:
+        http_client = httpx.AsyncClient()
     params: dict[str, str | int] = {"page_size": 1500}
     if start_ts is not None:
         params["period_from"] = start_ts.isoformat()
     if end_ts is not None:
         params["period_to"] = end_ts.isoformat()
 
-    tariff_metadata_resp = await client.get(f"https://api.octopus.energy/v1/products/{tariff_name}/", params=params)
+    tariff_metadata_resp = await http_client.get(f"https://api.octopus.energy/v1/products/{tariff_name}/", params=params)
     if tariff_metadata_resp.status_code != 200:
         raise ValueError(tariff_metadata_resp.text)
     tariff_meta = tariff_metadata_resp.json()
@@ -72,7 +72,7 @@ async def get_octopus_tariff(
 
     all_results = []
     while unit_rate_url:
-        rates_response = await client.get(unit_rate_url, params=params)
+        rates_response = await http_client.get(unit_rate_url, params=params)
         unit_rate_url = rates_response.json().get("next")
         all_results.extend(rates_response.json().get("results", []))
     df = pd.DataFrame.from_records(all_results).rename(

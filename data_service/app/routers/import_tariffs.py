@@ -253,11 +253,11 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             underlying_tariff = "AGILE-24-10-01"
             # Request "None" timestamps to get as much data as we have available.
             price_df_new = await get_octopus_tariff(
-                underlying_tariff, region_code=region_code, start_ts=None, end_ts=None, client=http_client
+                underlying_tariff, region_code=region_code, start_ts=None, end_ts=None, http_client=http_client
             )
             # Combine with the previous agile tariff to get enough coverage
             price_df_old = await get_octopus_tariff(
-                "AGILE-23-12-06", region_code=region_code, start_ts=None, end_ts=None, client=http_client
+                "AGILE-23-12-06", region_code=region_code, start_ts=None, end_ts=None, http_client=http_client
             )
             price_df = combine_tariffs([price_df_old, price_df_new])
             price_df = resample_to_range(price_df)

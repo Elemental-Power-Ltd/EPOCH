@@ -312,7 +312,8 @@ async def get_weather(
             windspeed,
             pressure,
             dniradiation,
-            difradiation
+            difradiation,
+            cloudcover
         FROM weather.visual_crossing
         WHERE location = $1
         AND $2 <= timestamp
@@ -333,6 +334,7 @@ async def get_weather(
             solarradiation=item["solarradiation"],
             dniradiation=item["dniradiation"],
             difradiation=item["difradiation"],
+            cloudcover=item["cloudcover"],
         )
         for item in res
     ]
