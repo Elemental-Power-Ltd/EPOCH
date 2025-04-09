@@ -10,8 +10,9 @@ import pandas as pd
 from ...models.import_tariffs import GSPEnum
 from ..utils import RateLimiter
 
-# Octopus limis us to 100 calls an hour
-OCTOPUS_RATE_LIMITER = RateLimiter(rate_limit_requests=100, rate_limit_period=3600.0)
+# Octopus limits the number of calls we can make; it isn't documented so we have to guess about this.
+# "BottlecapDave" from Home Assistant suggests it's 100 / hour, but that seems stricter than what I've actually seen
+OCTOPUS_RATE_LIMITER = RateLimiter(rate_limit_requests=25, rate_limit_period=60.0)
 
 
 async def get_octopus_tariff(
@@ -19,7 +20,7 @@ async def get_octopus_tariff(
     region_code: GSPEnum = GSPEnum.C,
     start_ts: datetime.datetime | None = None,
     end_ts: datetime.datetime | None = None,
-    client: httpx.AsyncClient | None = None,
+    http_client: httpx.AsyncClient | None = None,
 ) -> pd.DataFrame:
     """
     Get a specific Octopus Tariff from their API.
@@ -52,8 +53,8 @@ async def get_octopus_tariff(
     -------
         Dataframe with cost in p / kWh
     """
-    if client is None:
-        client = httpx.AsyncClient()
+    if http_client is None:
+        http_client = httpx.AsyncClient()
 
     async def rate_limited_request(url: str, params: dict[str, Any] | None = None) -> httpx.Response:
         """
@@ -76,7 +77,7 @@ async def get_octopus_tariff(
             Response from the 3rd party API.
         """
         await OCTOPUS_RATE_LIMITER.acquire()
-        return await client.get(url, params=params)
+        return await http_client.get(url, params=params)
 
     params: dict[str, str | int] = {"page_size": 1500}
     if start_ts is not None:

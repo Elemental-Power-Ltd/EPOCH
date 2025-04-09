@@ -364,6 +364,7 @@ class TestImportTariffs:
             metadata = response.json()
             tariff_uuids[tariff_type] = metadata["dataset_id"]
 
+        assert len(tariff_uuids) == 4
         tariff_response = await client.post(
             "/get-import-tariffs",
             json={
