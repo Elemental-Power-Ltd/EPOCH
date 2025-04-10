@@ -424,4 +424,6 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
                 method="nearest",
             )
 
+    # Note that the unit costs in the database are in p / kWh, but we return £ / kWh for EPOCH to use.
+    # Yes, this is very confusing.
     return EpochTariffEntry(timestamps=dfs[0].index.to_list(), data=[(df["unit_cost"] / 100).to_list() for df in dfs])

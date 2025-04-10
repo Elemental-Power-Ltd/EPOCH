@@ -191,7 +191,7 @@ class TestRE24Tariffs:
         assert len(df) >= 31 * 2 * 24
 
     @pytest.mark.asyncio
-    async def test_can_now(self) -> None:
+    async def test_can_get_now(self) -> None:
         async with httpx.AsyncClient() as client:
             df = await it.get_re24_wholesale_tariff(
                 start_ts=datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=7),
@@ -199,4 +199,16 @@ class TestRE24Tariffs:
                 http_client=client,
             )
         assert np.all(df["cost"] != 0.0)
+        assert np.all(~np.isnan(df["cost"]))
         assert len(df) >= 7 * 2 * 24
+
+    @pytest.mark.asyncio
+    async def test_units_correct(self) -> None:
+        """Test that we've got the correct units for external consumption"""
+        async with httpx.AsyncClient() as client:
+            df = await it.get_re24_wholesale_tariff(
+                start_ts=datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=7),
+                end_ts=datetime.datetime.now(datetime.UTC),
+                http_client=client,
+            )
+        assert np.all(np.logical_and(df["cost"] >= -100.0, df["cost"] <= 100.0))
