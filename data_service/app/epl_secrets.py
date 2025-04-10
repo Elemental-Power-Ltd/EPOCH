@@ -155,11 +155,12 @@ def get_secrets_environment(
             # We used to warn on this, but it was too noisy.
             # logger.warning(f"Could not find GivEnergy JWT in environ, dotenv or {ge_fpath}")
 
+    re24_fpath = Path(total_environ.get("EP_RE24_API_KEY_FILE", default_directory / "ep_re24_api_key"))
     try:
-        total_environ["EP_RE24_API_KEY"] = load_secret_from_file(ge_fpath)
+        total_environ["EP_RE24_API_KEY"] = load_secret_from_file(re24_fpath)
     except FileNotFoundError:
         if "EP_RE24_API_KEY" not in total_environ:
-            logger.warning(f"Could not find RE24 key in environ, dotenv or {pg_fpath}")
+            logger.warning(f"Could not find RE24 key in environ, dotenv or {re24_fpath}")
 
     if overrides is not None:
         total_environ |= overrides
