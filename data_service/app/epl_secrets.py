@@ -79,7 +79,8 @@ def load_dotenv(fname: os.PathLike = Path(".env")) -> dict[str, str]:
                 fpath = parent_path
                 break
         else:
-            logger.warning(f"Could not find {fname} in the specified location {fpath} or its parents.")
+            # We used to warn here, but it was too noisy.
+            # In this case, we haven't found a file and will use your environment.
             return {}
 
     with open(fpath) as fi:
@@ -153,6 +154,12 @@ def get_secrets_environment(
             pass
             # We used to warn on this, but it was too noisy.
             # logger.warning(f"Could not find GivEnergy JWT in environ, dotenv or {ge_fpath}")
+
+    try:
+        total_environ["EP_RE24_API_KEY"] = load_secret_from_file(ge_fpath)
+    except FileNotFoundError:
+        if "EP_RE24_API_KEY" not in total_environ:
+            logger.warning(f"Could not find RE24 key in environ, dotenv or {pg_fpath}")
 
     if overrides is not None:
         total_environ |= overrides
