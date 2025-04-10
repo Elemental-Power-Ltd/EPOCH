@@ -88,13 +88,11 @@ async def get_re24_wholesale_tariff(
     # truncate to the nearest hour to ensure that the reindexing lines up with the resampling.
     if start_ts.minute != 0 or start_ts.second != 0 or start_ts.microsecond != 0:
         start_ts = start_ts.replace(minute=0, second=0, microsecond=0)
-    
+
     if end_ts.minute != 0 or end_ts.second != 0 or end_ts.microsecond != 0:
         end_ts = end_ts.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(minutes=30)
 
-    wholesale_hh_df = (
-        wholesale_hh_df.reindex(pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30))).ffill().bfill()
-    )
+    wholesale_hh_df = wholesale_hh_df.reindex(pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30))).ffill().bfill()
 
     wholesale_hh_df["start_ts"] = wholesale_hh_df.index
     wholesale_hh_df["end_ts"] = wholesale_hh_df.index + pd.Timedelta(minutes=30)

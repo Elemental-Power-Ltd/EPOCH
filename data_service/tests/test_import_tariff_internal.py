@@ -204,7 +204,7 @@ class TestRE24Tariffs:
 
     @pytest.mark.asyncio
     async def test_units_correct(self) -> None:
-        """Test that we've got the correct units for external consumption"""
+        """Test that we've got the correct units for external consumption."""
         async with httpx.AsyncClient() as client:
             df = await it.get_re24_wholesale_tariff(
                 start_ts=datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=7),
