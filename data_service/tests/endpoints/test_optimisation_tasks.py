@@ -191,6 +191,9 @@ class TestOptimisationTaskDatabase:
         assert portfolio_results[0]["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
         assert portfolio_results[0]["site_results"] is None
 
+        # check that we don't highlight results for the same reason more than once
+        highlighted_results = get_result.json()["highlighted_results"]
+        assert len(highlighted_results) == len({highlight["reason"] for highlight in highlighted_results})
 
     @pytest.mark.asyncio
     async def test_can_add_portfolio_results_one_site(
