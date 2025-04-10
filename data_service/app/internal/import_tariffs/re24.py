@@ -63,7 +63,7 @@ async def get_re24_wholesale_tariff(
 
     assert end_ts > start_ts, "Timestamps provided in wrong order"
     assert start_ts > datetime.datetime(year=2024, month=4, day=1, tzinfo=datetime.UTC), "Start timestamp too far back"
-    print(datetime_to_re24_format(start_ts), datetime_to_re24_format(end_ts))
+
     resp = await http_client.get(
         "https://api.re24.energy/v1/data/prices/nordpool",
         params={"timestampStart": datetime_to_re24_format(start_ts), "timestampEnd": datetime_to_re24_format(end_ts)},
@@ -78,14 +78,25 @@ async def get_re24_wholesale_tariff(
     wholesale_df = pd.DataFrame.from_records(resp.json()["data"])
     wholesale_df["timestamp"] = pd.to_datetime(wholesale_df["timestamp"])
     wholesale_df = wholesale_df.set_index("timestamp").rename(columns={"price": "cost"})
+    wholesale_df["cost"] /= 10.0  # convert from £ / MWh to p / kWh
 
     # We do this resampling and reindexing to make sure we've got the extra half hour period at the end,
     # which the resampling alone misses.
     wholesale_hh_df = wholesale_df.resample(pd.Timedelta(minutes=30)).max()
+
+    # note that if you've provided weird timestamps, this might behave strangely as we
+    # truncate to the nearest hour to ensure that the reindexing lines up with the resampling.
+    if start_ts.minute != 0 or start_ts.second != 0 or start_ts.microsecond != 0:
+        start_ts = start_ts.replace(minute=0, second=0, microsecond=0)
+
+    if end_ts.minute != 0 or end_ts.second != 0 or end_ts.microsecond != 0:
+        end_ts = end_ts.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(minutes=30)
+
     wholesale_hh_df = wholesale_hh_df.reindex(pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30))).ffill().bfill()
 
     wholesale_hh_df["start_ts"] = wholesale_hh_df.index
     wholesale_hh_df["end_ts"] = wholesale_hh_df.index + pd.Timedelta(minutes=30)
+
     return wholesale_to_agile(
         wholesale_hh_df,
         distribution_factor=DISTRIBUTION_REGION_FACTORS[region_code],
