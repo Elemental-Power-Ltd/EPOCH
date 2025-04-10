@@ -176,3 +176,27 @@ class TestGetWholesale:
             )
         assert np.all(df["cost"] != 0.0)
         assert len(df) >= 31 * 2 * 24
+
+
+class TestRE24Tariffs:
+    @pytest.mark.asyncio
+    async def test_can_get_past(self) -> None:
+        async with httpx.AsyncClient() as client:
+            df = await it.get_re24_wholesale_tariff(
+                datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                http_client=client,
+            )
+        assert np.all(df["cost"] != 0.0)
+        assert len(df) >= 31 * 2 * 24
+
+    @pytest.mark.asyncio
+    async def test_can_now(self) -> None:
+        async with httpx.AsyncClient() as client:
+            df = await it.get_re24_wholesale_tariff(
+                start_ts=datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=7),
+                end_ts=datetime.datetime.now(datetime.UTC),
+                http_client=client,
+            )
+        assert np.all(df["cost"] != 0.0)
+        assert len(df) >= 7 * 2 * 24

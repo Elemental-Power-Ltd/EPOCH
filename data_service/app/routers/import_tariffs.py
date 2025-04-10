@@ -14,13 +14,13 @@ from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.import_tariffs import (
-    combine_tariffs,
     create_day_and_night_tariff,
     create_fixed_tariff,
     create_peak_tariff,
     get_day_and_night_rates,
     get_fixed_rates,
     get_octopus_tariff,
+    get_re24_wholesale_tariff,
     resample_to_range,
     tariff_to_new_timestamps,
 )
@@ -249,18 +249,14 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
     if isinstance(params.tariff_name, SyntheticTariffEnum):
         provider = TariffProviderEnum.Synthetic
         if params.tariff_name == SyntheticTariffEnum.Agile:
-            logger.info(f"Generating an Agile tariff in {region_code} between {params.start_ts} and {params.end_ts}")
-            underlying_tariff = "AGILE-24-10-01"
-            # Request "None" timestamps to get as much data as we have available.
-            price_df_new = await get_octopus_tariff(
-                underlying_tariff, region_code=region_code, start_ts=None, end_ts=None, http_client=http_client
+            logger.info(f"Generating an Agile-like tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+            # Use these rounded dates to make sure everything resamples nicely and that we get the most recent data.
+            underlying_tariff = "RE24-NORDPOOL"
+            end_ts = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+            start_ts = end_ts - datetime.timedelta(days=365)
+            price_df = await get_re24_wholesale_tariff(
+                start_ts=start_ts, end_ts=end_ts, http_client=http_client, region_code=region_code
             )
-            # Combine with the previous agile tariff to get enough coverage
-            price_df_old = await get_octopus_tariff(
-                "AGILE-23-12-06", region_code=region_code, start_ts=None, end_ts=None, http_client=http_client
-            )
-            price_df = combine_tariffs([price_df_old, price_df_new])
-            price_df = resample_to_range(price_df)
             price_df = tariff_to_new_timestamps(
                 price_df, pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30))
             )

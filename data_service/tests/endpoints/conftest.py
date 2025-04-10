@@ -208,6 +208,34 @@ class MockedHttpClient(httpx.AsyncClient):
             stored_rn.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
+    async def cache_re24_data(self, url: str, **kwargs: Any) -> Jsonable:
+        """
+        Get some data from RE24, and store it in a JSON file.
+
+        Note that we need the "params" passed to the kwargs, as that's the structure of their API.
+
+        Parameters
+        ----------
+        url
+            Base URL, which should be https://api.re24.energy/v1/data/prices/nordpool
+        kwargs
+            params
+                key value dict of parameters passed to RE24, including start and end timesstamps
+
+        Returns
+        -------
+            Response from RE24, ideally via the stored file.
+        """
+        # Read the parameters passed to the endpoint, but do not get the header as they contain an API key!
+        url_params = url_to_hash(url, kwargs.get("params"))
+        stored_re24 = Path(".", "tests", "data", "re24", f"{url_params}.json")
+        if stored_re24.exists():
+            return cast(Jsonable, json.loads(stored_re24.read_text()))
+        else:
+            data = (await _http_client.get(url, **kwargs)).json()
+            stored_re24.write_text(json.dumps(data, indent=4, sort_keys=True))
+            return cast(Jsonable, data)
+
     # The httpx typing is gross so let's just bodge it and carry on
     async def get(self, url: httpx.URL | str, **kwargs: Any) -> Coroutine[Any, Any, httpx.Response] | httpx.Response:  # type: ignore
         """
@@ -258,7 +286,12 @@ class MockedHttpClient(httpx.AsyncClient):
             maybe_rn_data = await self.cache_renewables_ninja_data(url, **kwargs)
             if maybe_rn_data is not None:
                 return httpx.Response(status_code=200, json=maybe_rn_data)
-        return httpx.Response(status_code=404)
+
+        if url.startswith("https://api.re24.energy/v1/data/prices/nordpool"):
+            maybe_re24_data = await self.cache_re24_data(url, **kwargs)
+            if maybe_re24_data is not None:
+                return httpx.Response(status_code=200, json=maybe_re24_data)
+        return httpx.Response(status_code=404, text=f"Trying to get an unhandled URL with mock client: {url}")
 
 
 @pytest_asyncio.fixture

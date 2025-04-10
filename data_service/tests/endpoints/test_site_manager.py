@@ -165,7 +165,7 @@ class TestGenerateAll:
         assert all(all(np.isfinite(item)) for item in tariff_data["data"]), "Tariff is empty or NaN"
 
         assert len(set(tariff_data["data"][0])) == 1, "First tariff must be fixed"
-        assert len(set(tariff_data["data"][1])) > 48, "Second tariff must be agile"
+        assert len(set(tariff_data["data"][1])) >= 23, "Second tariff must be agile"
         assert all(item == tariff_data["data"][0][0] for item in tariff_data["data"][0]), "First entry must be fixed tariff"
         assert tariff_data["data"][0] != tariff_data["data"][1], "Tariffs must be different"
 
