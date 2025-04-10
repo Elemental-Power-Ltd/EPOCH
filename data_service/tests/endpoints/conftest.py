@@ -12,6 +12,7 @@ Otherwise, leave it in the test file.
 # ruff: noqa: D101, D102, D103
 import asyncio
 import json
+import sys
 from collections.abc import AsyncGenerator, Coroutine
 from pathlib import Path
 from typing import Any, Self, cast
@@ -27,6 +28,18 @@ from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
 from app.main import app
 from app.models.site_range import Jsonable
+
+# apply a windows-specific patch for database termination (we can't use SIGINT)
+if sys.platform.startswith("win"):
+    import testing.postgresql
+
+    def win_terminate(self, _signal=None):
+        if self.child_process:
+            self.child_process.terminate()
+            self.child_process.wait()
+
+    testing.postgresql.Postgresql.terminate = win_terminate
+    testing.common.database.Database.terminate = win_terminate
 
 
 async def apply_migrations(database: testing.postgresql.Database) -> None:
