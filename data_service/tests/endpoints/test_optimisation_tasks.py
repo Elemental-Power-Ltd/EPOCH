@@ -185,10 +185,15 @@ class TestOptimisationTaskDatabase:
             "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
         )
         assert get_result.status_code == 200, get_result.text
-        assert len(get_result.json()) == 1
-        assert get_result.json()[0]["task_id"] == str(sample_task_config.task_id)
-        assert get_result.json()[0]["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
-        assert get_result.json()[0]["site_results"] is None
+        portfolio_results = get_result.json()["portfolio_results"]
+        assert len(portfolio_results) == 1
+        assert portfolio_results[0]["task_id"] == str(sample_task_config.task_id)
+        assert portfolio_results[0]["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
+        assert portfolio_results[0]["site_results"] is None
+
+        # check that we don't highlight results for the same reason more than once
+        highlighted_results = get_result.json()["highlighted_results"]
+        assert len(highlighted_results) == len({highlight["reason"] for highlight in highlighted_results})
 
     @pytest.mark.asyncio
     async def test_can_add_portfolio_results_one_site(
@@ -231,8 +236,9 @@ class TestOptimisationTaskDatabase:
             "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
         )
         assert get_result.status_code == 200, get_result.text
-        assert get_result.json()[0]["metrics"]["cost_balance"] == float(np.finfo(np.float32).max)
-        assert get_result.json()[0]["site_results"][0]["metrics"]["cost_balance"] == float(np.finfo(np.float32).max)
+        portfolio_results = get_result.json()["portfolio_results"]
+        assert portfolio_results[0]["metrics"]["cost_balance"] == float(np.finfo(np.float32).max)
+        assert portfolio_results[0]["site_results"][0]["metrics"]["cost_balance"] == float(np.finfo(np.float32).max)
 
     @pytest.mark.asyncio
     async def test_site_inf(
@@ -259,8 +265,9 @@ class TestOptimisationTaskDatabase:
             "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
         )
         assert get_result.status_code == 200, get_result.text
-        assert get_result.json()[0]["metrics"]["cost_balance"] is None
-        assert get_result.json()[0]["site_results"][0]["metrics"]["cost_balance"] is None
+        portfolio_results = get_result.json()["portfolio_results"]
+        assert portfolio_results[0]["metrics"]["cost_balance"] is None
+        assert portfolio_results[0]["site_results"][0]["metrics"]["cost_balance"] is None
 
     @pytest.mark.asyncio
     async def test_can_get_portfolio_results_one_site(
@@ -284,16 +291,17 @@ class TestOptimisationTaskDatabase:
             "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
         )
         assert get_result.status_code == 200, get_result.text
-        assert get_result.json()[0]["task_id"] == str(sample_task_config.task_id)
-        assert get_result.json()[0]["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
-        assert len(get_result.json()[0]["site_results"]) == 1
-        assert get_result.json()[0]["site_results"][0]["scenario"] == sample_site_optimisation_result.model_dump()["scenario"]
+        portfolio_results = get_result.json()["portfolio_results"]
+        assert portfolio_results[0]["task_id"] == str(sample_task_config.task_id)
+        assert portfolio_results[0]["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
+        assert len(portfolio_results[0]["site_results"]) == 1
+        assert portfolio_results[0]["site_results"][0]["scenario"] == sample_site_optimisation_result.model_dump()["scenario"]
         assert (
-            get_result.json()[0]["site_results"][0]["metrics"]["capex"]
+            portfolio_results[0]["site_results"][0]["metrics"]["capex"]
             == sample_site_optimisation_result.model_dump()["metrics"]["capex"]
         )
         assert (
-            get_result.json()[0]["site_results"][0]["metrics"]["total_gas_used"]
+            portfolio_results[0]["site_results"][0]["metrics"]["total_gas_used"]
             == sample_site_optimisation_result.model_dump()["metrics"]["total_gas_used"]
         )
 
@@ -320,13 +328,14 @@ class TestOptimisationTaskDatabase:
             "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
         )
         assert get_result.status_code == 200, get_result.text
-        assert get_result.json()[0]["task_id"] == str(sample_task_config.task_id)
-        assert get_result.json()[0]["portfolio_id"] == str(empty_portfolio_result.portfolio_id)
+        portfolio_results = get_result.json()["portfolio_results"]
+        assert portfolio_results[0]["task_id"] == str(sample_task_config.task_id)
+        assert portfolio_results[0]["portfolio_id"] == str(empty_portfolio_result.portfolio_id)
 
         # All metrics should be None, check a few of them
-        assert get_result.json()[0]["metrics"]["carbon_cost"] is None
-        assert get_result.json()[0]["metrics"]["total_heat_shortfall"] is None
-        assert get_result.json()[0]["metrics"]["total_electricity_export_gain"] is None
+        assert portfolio_results[0]["metrics"]["carbon_cost"] is None
+        assert portfolio_results[0]["metrics"]["total_heat_shortfall"] is None
+        assert portfolio_results[0]["metrics"]["total_electricity_export_gain"] is None
 
     @pytest.mark.asyncio
     async def test_can_get_repro_results(

@@ -15,9 +15,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from ..dependencies import DatabaseDep
+from ..internal.optimisation import pick_highlighted_results
 from ..models.core import ClientID, ResultID, TaskID
 from ..models.optimisation import (
     OptimisationResultEntry,
+    OptimisationResultsResponse,
     OptimisationTaskListEntry,
     PortfolioMetrics,
     PortfolioOptimisationResult,
@@ -31,7 +33,7 @@ router = APIRouter()
 
 
 @router.post("/get-optimisation-results")
-async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[PortfolioOptimisationResult]:
+async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> OptimisationResultsResponse:
     """
     Get all the optimisation results for a single task.
 
@@ -91,7 +93,7 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[P
         posinf=np.finfo(np.float32).max,
         neginf=np.finfo(np.float32).min,
     )
-    return [
+    portfolio_results = [
         PortfolioOptimisationResult(
             task_id=item["task_id"],
             portfolio_id=item["portfolio_id"],
@@ -147,6 +149,13 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> list[P
         )
         for item in res
     ]
+
+    highlighted_results = pick_highlighted_results(portfolio_results)
+
+    return OptimisationResultsResponse(
+        portfolio_results=portfolio_results,
+        highlighted_results=highlighted_results
+    )
 
 
 @router.post("/list-optimisation-tasks")

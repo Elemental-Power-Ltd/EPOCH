@@ -147,6 +147,34 @@ class PortfolioOptimisationResult(pydantic.BaseModel):
     )
 
 
+class HighlightReason(StrEnum):
+    BestCostBalance = "best_cost_balance"
+    BestCarbonBalance = "best_carbon_balance"
+    BestPaybackHorizon = "best_payback_horizon"
+
+
+class HighlightedResult(pydantic.BaseModel):
+    """A portfolio result we want to draw attention to and a reason why."""
+
+    portfolio_id: pydantic.UUID4 = pydantic.Field(
+        description="Individual ID representing this entry in the portfolio pareto front."
+    )
+    reason: HighlightReason = pydantic.Field(
+        description="The reason the portfolio result is highlighted."
+    )
+
+
+class OptimisationResultsResponse(pydantic.BaseModel):
+    """Response containing all saved results for a given task_id and some highlighted results."""
+
+    portfolio_results: list[PortfolioOptimisationResult] = pydantic.Field(
+        description="Result for a whole portfolio optimisation task, often one entry in the Pareto front."
+    )
+    highlighted_results: list[HighlightedResult] = pydantic.Field(
+        description="A list of highlighted results, containing a portfolio_id and the reason the result is highlighted."
+    )
+
+
 class TaskResult(pydantic.BaseModel):
     """Result for metadata about an optimisation task."""
 
