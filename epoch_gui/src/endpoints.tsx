@@ -1,6 +1,7 @@
-import {Site, OptimisationTaskListEntry, Client, PortfolioOptimisationResult} from "./State/types";
+import {Site, OptimisationTaskListEntry, Client} from "./State/types";
 import {
     EpochSiteData,
+    OptimisationResultsResponse,
     ReproduceSimulationRequest,
     SimulationResult,
     SubmitOptimisationRequest,
@@ -178,10 +179,9 @@ export const listOptimisationTasks = async(client_id: string): Promise<Optimisat
     }
 }
 
-export const getOptimisationResults = async(task_id: string): Promise<PortfolioOptimisationResult[]> => {
+export const getOptimisationResults = async(task_id: string): Promise<ApiResponse<OptimisationResultsResponse>> => {
     const payload = {task_id: task_id};
 
-    // FIXME - make this return a Promise<ApiResponse<... type
     try {
         const response = await fetch("/api/data/get-optimisation-results", {
             method: "POST",
@@ -190,15 +190,17 @@ export const getOptimisationResults = async(task_id: string): Promise<PortfolioO
         });
 
         if(!response.ok) {
-            console.error(`HTTP error! Status: ${response.status}`);
-            return [];
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
         }
 
-        return await response.json();
+        const data: OptimisationResultsResponse = await response.json();
+        return {success: true, data};
 
     } catch (error) {
         console.error("Failed to list sites", error);
-        return [];
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 }
 

@@ -12,7 +12,7 @@ import {useEpochStore} from "../State/Store";
 import {getOptimisationResults, getStatus, listOptimisationTasks} from "../endpoints";
 import PortfolioResultsViewer from "../Components/Results/PortfolioResultsViewer.tsx";
 import SiteResultsTable from "../Components/Results/SiteResultsTable";
-import {PortfolioOptimisationResult} from "../State/types.ts";
+import {OptimisationResultsResponse} from "../Models/Endpoints.ts";
 
 
 function ResultsContainer() {
@@ -33,10 +33,9 @@ function ResultsContainer() {
     const {task_id, portfolio_id} = useParams();
     const navigate = useNavigate();
 
-    const [resultsForTask, setResultsForTask] = useState<PortfolioOptimisationResult[] | null>(null);
-    // @ts-ignore
+    // state / loading / error for the PortfolioResults within a task
+    const [resultsForTask, setResultsForTask] = useState<OptimisationResultsResponse | null>(null);
     const [isLoadingResults, setIsLoadingResults] = useState(false);
-    // @ts-ignore
     const [error, setError] = useState<string | null>(null);
 
 
@@ -76,22 +75,24 @@ function ResultsContainer() {
         }
 
         const fetchPortfolioResults = async () => {
-            try {
-                setIsLoadingResults(true);
-                const results = await getOptimisationResults(task_id);
-                setResultsForTask(results);
-            }  catch (error) {
-                setError("Failed to fetch results.");
-            } finally {
-                setIsLoadingResults(false);
+            setIsLoadingResults(true);
+            setError(null);
+            const result = await getOptimisationResults(task_id);
+
+            if (result.success && result.data) {
+                setResultsForTask(result.data);
+                setError(null);
+            } else {
+                setError(result.error!)
             }
+            setIsLoadingResults(false);
         }
 
         fetchPortfolioResults();
 
     }, [client_id, task_id])
 
-    const resultsForPortfolio = resultsForTask?.find((result) =>
+    const resultsForPortfolio = resultsForTask?.portfolio_results.find((result) =>
         result.portfolio_id === portfolio_id
     )
 
@@ -106,9 +107,12 @@ function ResultsContainer() {
                 selectedTaskId={task_id}
             />
 
-            {(task_id && resultsForTask) &&
+            {task_id &&
                 <PortfolioResultsViewer
-                    results={resultsForTask}
+                    isLoading={isLoadingResults}
+                    error={error}
+                    results={resultsForTask?.portfolio_results || []}
+                    highlighted={resultsForTask?.highlighted_results || []}
                     selectPortfolio={(portfolio_id: string) => navigate(`/results/${task_id}/${portfolio_id}`)}
                     deselectPortfolio={()=> navigate(`/results/${task_id}`)}
                     selectedPortfolioId={portfolio_id}

@@ -1,4 +1,4 @@
-import {SiteMetrics} from "../State/types.ts";
+import {HighlightedResult, PortfolioOptimisationResult, SiteMetrics} from "../State/types.ts";
 
 interface SiteMetaData {
     site_id: string;
@@ -93,4 +93,9 @@ export interface SubmitOptimisationRequest {
 
 export interface SubmitOptimisationResponse {
     task_id: string;
+}
+
+export interface OptimisationResultsResponse {
+    portfolio_results: PortfolioOptimisationResult[];
+    highlighted_results: HighlightedResult[];
 }

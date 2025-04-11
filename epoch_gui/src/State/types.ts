@@ -90,6 +90,17 @@ export interface PortfolioOptimisationResult {
     site_results: SiteOptimisationResult[];
 }
 
+export enum HighlightReason {
+  BestCostBalance = "best_cost_balance",
+  BestCarbonBalance = "best_carbon_balance",
+  BestPaybackHorizon = "best_payback_horizon"
+}
+
+export interface HighlightedResult {
+  portfolio_id: string;
+  reason: HighlightReason;
+}
+
 export interface OptimisationResultEntry {
     portfolio: PortfolioOptimisationResult[];
     tasks: TaskResult[];
