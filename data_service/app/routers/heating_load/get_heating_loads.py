@@ -55,7 +55,9 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
                 WHERE
                     dataset_id = $1
                     AND $2 <= start_ts
-                    AND end_ts <= $3""",
+                    AND end_ts <= $3
+                ORDER BY
+                    start_ts""",
                 dataset_id,
                 start_ts,
                 end_ts,
