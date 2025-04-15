@@ -13,7 +13,8 @@
 #include "TaskData.hpp"
 #include "../Definitions.hpp"
 
-#include "Costs.hpp"
+#include "Costs/Usage.hpp"
+#include "Costs/Compare.hpp"
 #include "DayTariffStats.hpp"
 #include "HotWaterCylinder.hpp"
 
@@ -34,7 +35,24 @@
 
 Simulator::Simulator(SiteData siteData):
 	mSiteData(siteData)
-{}
+{
+
+	TaskData baselineTaskData{};
+	baselineTaskData.building = Building();
+	baselineTaskData.grid = GridData();
+	baselineTaskData.gas_heater = GasCHData();
+
+	// we construct a TaskData with oversized grid and gas capacities
+	// to ensure there is no shortfall
+	baselineTaskData.grid->grid_import = 1000000.0f;
+	baselineTaskData.grid->grid_export = 1000000.0f;
+	baselineTaskData.gas_heater->maximum_output = 1000000.0f;
+
+	auto baselineReportData = simulateTimesteps(baselineTaskData);
+	CostVectors baselineCostVectors = extractCostVectors(baselineReportData);
+	mBaselineUsage = calculateUsage(mSiteData, baselineTaskData, baselineCostVectors);
+
+}
 
 SimulationResult Simulator::simulateScenario(const TaskData& taskData, SimulationType simulationType) const {
 
@@ -51,23 +69,106 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
 	const CapexBreakdown capex = calculateCapex(taskData);
 
-	Costs myCost{ mSiteData, taskData, capex };
-
 	if (taskData.config.capex_limit < capex.total_capex) {
 		auto simulationResult = makeInvalidResult(taskData);
 
 		// but this invalid result can still have a valid CAPEX
-		simulationResult.project_CAPEX = myCost.get_project_CAPEX();
+		simulationResult.project_CAPEX = capex.total_capex;
 		return simulationResult;
 	}
 
+	SimulationResult result{};
+
+	result.report_data = simulateTimesteps(taskData, simulationType);
+
+	const CostVectors& costVectors = extractCostVectors(result.report_data.value());
+
+	auto scenarioUsage = calculateUsage(mSiteData, taskData, costVectors);
+
+	auto comparison = compareScenarios(mBaselineUsage, scenarioUsage);
+
+	result.project_CAPEX = scenarioUsage.capex_breakdown.total_capex;
+	result.total_annualised_cost = comparison.total_annualised_cost;
+	result.scenario_cost_balance = comparison.cost_balance;
+	result.payback_horizon_years = comparison.payback_horizon_years;
+	result.scenario_carbon_balance_scope_1 = comparison.carbon_balance_scope_1;
+	result.scenario_carbon_balance_scope_2 = comparison.carbon_balance_scope_2;
+
+	result.metrics.total_gas_used = result.report_data->GasCH_load.sum();
+	result.metrics.total_electricity_imported = result.report_data->Grid_Import.sum();
+	result.metrics.total_electricity_generated = result.report_data->PVacGen.sum();
+	result.metrics.total_electricity_exported = result.report_data->Grid_Export.sum();
+
+	result.metrics.total_electrical_shortfall = result.report_data->Actual_import_shortfall.sum();
+	result.metrics.total_heat_shortfall = result.report_data->Heat_shortfall.sum();
+
+	result.metrics.total_gas_import_cost = scenarioUsage.fuel_cost;
+	result.metrics.total_electricity_import_cost = scenarioUsage.elec_cost;
+	result.metrics.total_electricity_export_gain = scenarioUsage.export_revenue;
+
+	if (simulationType != SimulationType::FullReporting) {
+		// TEMPORARY HACK
+		// until the costs have been refactored, we are always doing full reporting
+		// this is a lazy way of getting the vectors we need into costVectors
+
+		// in order to preserve the correct appearance of there being no reportData,
+		// we remove the reportData again here
+		result.report_data = std::nullopt;
+	}
+	
+	// calculate elaspsed run time
+	auto end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> elapsed = end - start;
+	float runtime = static_cast<float>(elapsed.count());
+
+	result.runtime = runtime;
+
+	return result;
+}
+
+void Simulator::validateScenario(const TaskData& taskData) const {
+	// check fabric_intervention_index is in bounds
+	if (taskData.building) {
+		// building_hload is considered index 0 so we are effectively 1-based indexing
+		if (taskData.building->fabric_intervention_index >= mSiteData.fabric_interventions.size() + 1) {
+			throw std::runtime_error(std::format(
+				"Cannot use fabric_intervention_index of {} with {} fabric interventions",
+				taskData.building->fabric_intervention_index, mSiteData.fabric_interventions.size()
+			));
+		}
+	}
+
+	// check tariff_index is in bounds
+	if (taskData.grid) {
+		if (taskData.grid->tariff_index >= mSiteData.import_tariffs.size()) {
+			throw std::runtime_error(std::format(
+				"Cannot use tariff_index of {} with {} tariffs provided",
+				taskData.grid->tariff_index, mSiteData.import_tariffs.size()
+			));
+		}
+	}
+
+	// check yield_scalars and solar_yields match
+	if (taskData.renewables) {
+		if (taskData.renewables->yield_scalars.size() > mSiteData.solar_yields.size()) {
+			throw std::runtime_error(std::format(
+				"Mismatch: TaskData supplied {} yield_scalars but SiteData only supplied {} solar_yields",
+				taskData.renewables->yield_scalars.size(), mSiteData.solar_yields.size()
+			));
+		}
+	}
+}
+
+CapexBreakdown Simulator::calculateCapex(const TaskData& taskData) const {
+	return calculate_capex(mSiteData, taskData);
+}
+
+ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType simulationType) const {
 	/* INITIALISE classes that support energy sums and object precedence */
 	Config config(taskData);	// flags energy component presence in TaskData & balancing modes
 	TempSum tempSum(mSiteData);		// class of arrays for running totals (replace ESUM and Heat)
 
-	SimulationResult result{};
-	result.report_data = ReportData();
-	ReportData& reportData = *result.report_data;
+	ReportData reportData{};
 
 	// Do tariff precalculation
 	size_t tariff_index = taskData.grid ? taskData.grid->tariff_index : 0;
@@ -145,7 +246,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 
 	if (config.getDataCentreFlag() == DataCentreFlag::NON_BALANCING) {
 		dataCentre->AllCalcs(tempSum);
-	} 
+	}
 
 	// BALANCING LOOP
 
@@ -220,103 +321,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 		ambientController->Report(reportData);
 	}
 
-	CostVectors costVectors;
-
-	// FIXME
-	// hack on top of a hack
-	// If the components that create these vectors are not present then the vectors in reportData may be empty
-	// we instead need them to be 0 valued but of timestep length
-	costVectors.actual_ev_load_e = reportData.EV_actualload.size() ? reportData.EV_actualload : Eigen::VectorXf::Zero(mSiteData.timesteps);
-	costVectors.actual_data_centre_load_e = reportData.Data_centre_actual_load.size() ? reportData.Data_centre_actual_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
-	costVectors.building_load_e = reportData.Hotel_load.size() ? reportData.Hotel_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
-	costVectors.heatload_h = reportData.Heatload.size() ? reportData.Heatload : Eigen::VectorXf::Zero(mSiteData.timesteps);
-	costVectors.gas_import_h = reportData.GasCH_load.size() ? reportData.GasCH_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
-	costVectors.grid_import_e = reportData.Grid_Import.size() ? reportData.Grid_Import : Eigen::VectorXf::Zero(mSiteData.timesteps);
-	costVectors.grid_export_e = reportData.Grid_Export.size() ? reportData.Grid_Export : Eigen::VectorXf::Zero(mSiteData.timesteps);
-	costVectors.actual_low_priority_load_e = reportData.MOP_load.size() ? reportData.MOP_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
-
-	constexpr float fixed_export_price = 5.0f;
-	costVectors.grid_export_prices = Eigen::VectorXf::Constant(mSiteData.timesteps, fixed_export_price);
-
-
-	myCost.calculateCosts_no_CAPEX(costVectors);
-
-	result.total_annualised_cost = myCost.get_total_annualised_cost();
-	result.project_CAPEX = myCost.get_project_CAPEX();
-	result.scenario_cost_balance = myCost.get_scenario_cost_balance();
-	result.payback_horizon_years = myCost.get_payback_horizon_years();
-	result.scenario_carbon_balance_scope_1 = myCost.get_scenario_carbon_balance_scope_1();
-	result.scenario_carbon_balance_scope_2 = myCost.get_scenario_carbon_balance_scope_2();
-
-	result.metrics.total_gas_used = reportData.GasCH_load.sum();
-	result.metrics.total_electricity_imported = reportData.Grid_Import.sum();
-	result.metrics.total_electricity_generated = reportData.PVacGen.sum();
-	result.metrics.total_electricity_exported = reportData.Grid_Export.sum();
-
-	result.metrics.total_electrical_shortfall = reportData.Actual_import_shortfall.sum();
-	result.metrics.total_heat_shortfall = reportData.Heat_shortfall.sum();
-
-	result.metrics.total_gas_import_cost = myCost.get_scenario_fuel_cost();
-	result.metrics.total_electricity_import_cost = myCost.get_scenario_import_cost();
-	result.metrics.total_electricity_export_gain = myCost.get_scenario_export_gains();
-
-	if (simulationType != SimulationType::FullReporting) {
-		// TEMPORARY HACK
-		// until the costs have been refactored, we are always doing full reporting
-		// this is a lazy way of getting the vectors we need into costVectors
-
-		// in order to preserve the correct appearance of there being no reportData,
-		// we remove the reportData again here
-		result.report_data = std::nullopt;
-	}
-	
-	// calculate elaspsed run time
-	auto end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> elapsed = end - start;
-	float runtime = static_cast<float>(elapsed.count());
-
-	result.runtime = runtime;
-
-
-	return result;
-
-}
-
-void Simulator::validateScenario(const TaskData& taskData) const {
-	// check fabric_intervention_index is in bounds
-	if (taskData.building) {
-		// building_hload is considered index 0 so we are effectively 1-based indexing
-		if (taskData.building->fabric_intervention_index >= mSiteData.fabric_interventions.size() + 1) {
-			throw std::runtime_error(std::format(
-				"Cannot use fabric_intervention_index of {} with {} fabric interventions",
-				taskData.building->fabric_intervention_index, mSiteData.fabric_interventions.size()
-			));
-		}
-	}
-
-	// check tariff_index is in bounds
-	if (taskData.grid) {
-		if (taskData.grid->tariff_index >= mSiteData.import_tariffs.size()) {
-			throw std::runtime_error(std::format(
-				"Cannot use tariff_index of {} with {} tariffs provided",
-				taskData.grid->tariff_index, mSiteData.import_tariffs.size()
-			));
-		}
-	}
-
-	// check yield_scalars and solar_yields match
-	if (taskData.renewables) {
-		if (taskData.renewables->yield_scalars.size() > mSiteData.solar_yields.size()) {
-			throw std::runtime_error(std::format(
-				"Mismatch: TaskData supplied {} yield_scalars but SiteData only supplied {} solar_yields",
-				taskData.renewables->yield_scalars.size(), mSiteData.solar_yields.size()
-			));
-		}
-	}
-}
-
-CapexBreakdown Simulator::calculateCapex(const TaskData& taskData) const {
-	return calculate_capex(mSiteData, taskData);
+	return reportData;
 }
 
 SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
@@ -334,6 +339,27 @@ SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
 
 	return result;
 }
+
+CostVectors Simulator::extractCostVectors(const ReportData& reportData) const {
+	CostVectors costVectors;
+
+	// If the components that create these vectors are not present then the vectors in reportData may be empty
+	// we instead need them to be 0 valued but of timestep length
+	costVectors.actual_ev_load_e = reportData.EV_actualload.size() ? reportData.EV_actualload : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.actual_data_centre_load_e = reportData.Data_centre_actual_load.size() ? reportData.Data_centre_actual_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.building_load_e = reportData.Hotel_load.size() ? reportData.Hotel_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.heatload_h = reportData.Heatload.size() ? reportData.Heatload : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.gas_import_h = reportData.GasCH_load.size() ? reportData.GasCH_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.grid_import_e = reportData.Grid_Import.size() ? reportData.Grid_Import : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.grid_export_e = reportData.Grid_Export.size() ? reportData.Grid_Export : Eigen::VectorXf::Zero(mSiteData.timesteps);
+	costVectors.actual_low_priority_load_e = reportData.MOP_load.size() ? reportData.MOP_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
+
+	constexpr float fixed_export_price = 0.05f;
+	costVectors.grid_export_prices = Eigen::VectorXf::Constant(mSiteData.timesteps, fixed_export_price);
+
+	return costVectors;
+}
+
 
 // HACK: the balancing loop needs to know how much is available 
 // to import from the Grid but there may not be a grid.

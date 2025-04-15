@@ -11,7 +11,6 @@ add_library(Epoch_lib STATIC
 	"Optimisation/Optimiser.hpp"
 	"Optimisation/TaskGenerator.cpp"
 	"Optimisation/TaskGenerator.hpp"
-	"Simulation/Costs.hpp"
 	
 	"Simulation/Simulate.hpp"
 	"Simulation/Simulate.cpp"
@@ -48,11 +47,16 @@ add_library(Epoch_lib STATIC
 	"Simulation/Components/ESS/ESS.cpp"
 	"Simulation/Costs/Capex.cpp"
 	"Simulation/Costs/Opex.cpp"
+	"Simulation/Costs/Compare.hpp"
+	"Simulation/Costs/Compare.cpp"
 	"Simulation/Costs/CostData.cpp"
+	"Simulation/Costs/Usage.cpp"
+	"Simulation/Costs/Usage.hpp"
 	"io/TaskDataJson.cpp"
 	"io/ToString.hpp"
 	"io/ToString.cpp"
-)
+	
+ )
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)

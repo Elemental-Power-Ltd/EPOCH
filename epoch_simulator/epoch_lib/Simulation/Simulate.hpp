@@ -9,6 +9,7 @@
 #include "SiteData.hpp"
 #include "TempSum.hpp"
 #include "Costs/Capex.hpp"
+#include "Costs/Usage.hpp"
 
 
 enum class SimulationType {
@@ -36,10 +37,16 @@ public:
 	CapexBreakdown calculateCapex(const TaskData& taskData) const;
 
 private:
+	ReportData simulateTimesteps(const TaskData& taskData, SimulationType simulationType = SimulationType::ResultOnly) const;
 
 	SimulationResult makeInvalidResult(const TaskData& taskData) const;
+
+	CostVectors extractCostVectors(const ReportData& reportData) const;
 
 	float getFixedAvailableImport(const TaskData& taskData) const;
 
 	const SiteData mSiteData;
+	
+	UsageData mBaselineUsage;
+
 };

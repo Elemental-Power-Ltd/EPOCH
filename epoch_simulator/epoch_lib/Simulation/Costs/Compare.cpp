@@ -1,0 +1,144 @@
+#include "Compare.hpp"
+
+#include <limits> 
+#include <Eigen/Core>
+
+
+ScenarioComparison compareScenarios(const UsageData& baselineUsage, const UsageData& scenarioUsage) {
+	ScenarioComparison comparison{};
+
+
+	float baseline_total_annualised_costs = calculate_total_annualised_cost(baselineUsage);
+	float scenario_total_annualised_costs = calculate_total_annualised_cost(scenarioUsage);
+	comparison.total_annualised_cost = scenario_total_annualised_costs;
+
+
+	float baseline_usage_costs = calculate_usage_cost(baselineUsage, baseline_total_annualised_costs);
+	float scenario_usage_costs = calculate_usage_cost(scenarioUsage, scenario_total_annualised_costs);
+	comparison.cost_balance = baseline_usage_costs - scenario_usage_costs;
+
+	comparison.payback_horizon_years = calculate_payback_horizon(scenarioUsage.capex_breakdown.total_capex, comparison.cost_balance);
+
+	float baseline_carbon_scope_1 = calculate_carbon_usage_scope_1(baselineUsage);
+	float scenario_carbon_scope_1 = calculate_carbon_usage_scope_1(scenarioUsage);
+
+	float baseline_carbon_scope_2 = calculate_carbon_usage_scope_2(baselineUsage);
+	float scenario_carbon_scope_2 = calculate_carbon_usage_scope_2(scenarioUsage);
+
+	comparison.carbon_balance_scope_1 = baseline_carbon_scope_1 - scenario_carbon_scope_1;
+	comparison.carbon_balance_scope_2 = baseline_carbon_scope_2 - scenario_carbon_scope_2;
+
+	return comparison;
+}
+
+
+float calculate_ESS_annualised_cost(const UsageData& usage) {
+	float ess_capex = usage.capex_breakdown.ess_pcs_capex + usage.capex_breakdown.ess_enclosure_capex + usage.capex_breakdown.ess_enclosure_disposal;
+	float ess_opex = usage.opex_breakdown.ess_pcs_opex + usage.opex_breakdown.ess_enclosure_opex;
+
+	return (ess_capex / ESS_lifetime) + ess_opex;
+}
+
+float calculate_PV_annualised_cost(const UsageData& usage) {
+	float pv_capex = usage.capex_breakdown.pv_panel_capex + usage.capex_breakdown.pv_roof_capex + usage.capex_breakdown.pv_ground_capex + usage.capex_breakdown.pv_BoP_capex;
+
+	return (pv_capex / PV_panel_lifetime) + usage.opex_breakdown.pv_opex;
+}
+
+float calculate_EV_CP_annualised_cost(const UsageData& usage) {
+	return (usage.capex_breakdown.ev_charger_cost + usage.capex_breakdown.ev_charger_install) / EV_CP_lifetime;
+}
+
+float calculate_ASHP_annualised_cost(const UsageData& usage) {
+	return usage.capex_breakdown.heatpump_capex / ASHP_lifetime;
+}
+
+float calculate_DHW_annualised_cost(const UsageData& usage) {
+	return usage.capex_breakdown.dhw_capex / DHW_lifetime;
+}
+
+float calculate_Grid_annualised_cost(const UsageData& usage) {
+	return usage.capex_breakdown.grid_capex / grid_lifetime;
+}
+
+float calculate_Project_annualised_cost(const UsageData& usage) {
+
+	float ESS_CAPEX = usage.capex_breakdown.ess_pcs_capex + usage.capex_breakdown.ess_enclosure_capex + usage.capex_breakdown.ess_enclosure_disposal;
+	float PV_CAPEX = usage.capex_breakdown.pv_panel_capex + usage.capex_breakdown.pv_roof_capex + usage.capex_breakdown.pv_roof_capex + usage.capex_breakdown.pv_BoP_capex;
+	float EV_CP_CAPEX = usage.capex_breakdown.ev_charger_cost + usage.capex_breakdown.ev_charger_install;
+	float ASHP_CAPEX = usage.capex_breakdown.heatpump_capex;
+	float DHW_CAPEX = usage.capex_breakdown.dhw_capex;
+	float Grid_CAPEX = usage.capex_breakdown.grid_capex;
+
+	float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX + DHW_CAPEX) * project_plan_develop_EPC;
+	float Project_cost_grid = Grid_CAPEX * project_plan_develop_Grid;
+
+	float Project_annualised_cost = (Project_cost + Project_cost_grid) / project_lifetime;
+
+	return Project_annualised_cost;
+}
+
+// Calculate annualised costs
+
+float calculate_total_annualised_cost(const UsageData& usage) {
+
+	float ESS_annualised_cost = (
+		(usage.capex_breakdown.ess_pcs_capex + usage.capex_breakdown.ess_enclosure_capex + usage.capex_breakdown.ess_enclosure_disposal)
+		/ ESS_lifetime) + usage.opex_breakdown.ess_pcs_opex + usage.opex_breakdown.ess_enclosure_opex;
+
+	float PV_annualised_cost = (
+		(usage.capex_breakdown.pv_panel_capex + usage.capex_breakdown.pv_roof_capex + usage.capex_breakdown.pv_ground_capex + usage.capex_breakdown.pv_BoP_capex)
+		/ PV_panel_lifetime) + usage.opex_breakdown.pv_opex;
+
+	float EV_CP_annualised_cost = calculate_EV_CP_annualised_cost(usage);
+
+	float Grid_annualised_cost = calculate_Grid_annualised_cost(usage);
+
+	float ASHP_annualised_cost = calculate_ASHP_annualised_cost(usage);
+
+	float DHW_annualised_cost = calculate_DHW_annualised_cost(usage);
+
+	float Project_annualised_cost = calculate_Project_annualised_cost(usage);
+
+	float total_annualised_cost = Project_annualised_cost + ESS_annualised_cost + PV_annualised_cost + EV_CP_annualised_cost + Grid_annualised_cost + ASHP_annualised_cost + DHW_annualised_cost;
+	return total_annualised_cost;
+}
+
+float calculate_usage_cost(const UsageData& usage, float total_annualised_cost) {
+	float costs = usage.elec_cost + usage.fuel_cost;
+	float revenues = usage.export_revenue + usage.electric_vehicle_revenue + usage.high_priority_revenue + usage.low_priority_revenue;
+	return costs + total_annualised_cost - revenues;
+}
+
+/**
+* Calculate the payback hoizon of a scenario.
+*
+* This is the capex divided by the yearly cost balance.
+*
+* Note: we deliberately allow for negative payback horizons.
+* These should be considered invalid (as the scenario will never pay back)
+* but is useful to provide gradient information for optimisation.
+*/
+float calculate_payback_horizon(float capex, float cost_balance) {
+	if (capex <= 0) {
+		// if we haven't spend any money then the payback horizon is 0
+		return 0.0f;
+	}
+	else if (cost_balance == 0.0f) {
+		// return the smallest possible negative number
+		return -1.0f / std::numeric_limits<float>::max();
+	}
+	else {
+		return capex / cost_balance;
+	}
+};
+
+float calculate_carbon_usage_scope_1(const UsageData& usage) {
+	return usage.fuel_CO2e - usage.low_priority_CO2e_avoided;
+}
+
+float calculate_carbon_usage_scope_2(const UsageData& usage) {
+	// export_CO2e <= 0
+	// it is the CO2 'saved' by exporting 100% green electricity to the grid
+	return usage.elec_CO2e + usage.export_CO2e;
+}
