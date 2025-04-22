@@ -1,3 +1,4 @@
+import typing
 from datetime import timedelta
 
 import numpy as np
@@ -44,8 +45,41 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         pop_size_incr_threshold: float = 0.9,
         **kwargs,
     ):
+        """
+        Initialise a Pymoo NSGA2 algorithm with a customised loop capable of automatically increasing the population size at
+        each generation dependent on the proportion of optimal scenarios in the population.
+
+        Parameters
+        ----------
+        pop_size
+            Initial population size.
+        n_offsprings
+            Number of offspring to generate at each generation.
+            If the number of offspring is smaller than the population size,
+            then the following popluation will be constituted of the newly generated offspring
+            as well as (pop_size - n_offsprings) individuals from the current population.
+            If the number of offpsring is greater than the population size,
+            then the following popluation will be constituted of pop_size newly generated offspring.
+        sampling
+            Sampling method to generate the initial population with.
+        crossover
+            Crossover method to generate new offspring at each generation.
+        mutation
+            Mutation method to generate new offspring at each generation.
+        eliminate_duplicates
+            Boolean indicating if duplicates should be eliminated from the population or not.
+        repair
+            Repair method to ensure correctness of new offspring.
+        return_least_infeasible
+            Boolean indicating if the least feasible individual should be returned or not if no feasible solution is found.
+        pop_size_incr_scalar
+            Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of
+            optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.
+        pop_size_incr_threshold
+            Percent of the pop_size to set as the threshold to increase the pop_size.
+        """
         assert pop_size_incr_scalar >= 0.0, "pop_size_incr_scaler must be greater or equal to 1."
-        assert pop_size_incr_threshold > 0.0, "pop_size_incr_threshold must be greater than 1."
+        assert pop_size_incr_threshold > 0.0, "pop_size_incr_threshold must be greater than 0."
         assert pop_size_incr_threshold <= 1.0, "pop_size_incr_threshold must be smaller or equal to 1."
         self.pop_size_incr_scalar = pop_size_incr_scalar
         self.pop_size_incr_threshold = pop_size_incr_threshold
@@ -62,12 +96,19 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         )
 
     def _advance(self, infills=None, **kwargs):
+        """
+        Extending the _advance function to enable automatic population size increase.
+        The function is called at each generation.
+        """
+        self.pop_size = typing.cast(int, self.pop_size)
+        self.n_offsprings = typing.cast(int, self.n_offsprings)
         if self.pop_size_incr_scalar > 0.0:
             # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
-            # increases pop size by pop_size_incr_scalar percent
-            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:  # type: ignore
-                self.pop_size = int((1 + self.pop_size_incr_scalar) * self.pop_size)  # type: ignore
-                self.n_offsprings = int((1 + self.pop_size_incr_scalar) * self.n_offsprings)  # type: ignore
+            # increases pop size by pop_size_incr_scalar percent.
+            # the population is limited to 10k individuals.
+            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:
+                self.pop_size = min(self.pop_size + max(1, int(self.pop_size_incr_scalar * self.pop_size)), 10000)
+                self.n_offsprings = min(self.n_offsprings + max(1, int(self.pop_size_incr_scalar * self.n_offsprings)), 10000)
         return super()._advance(infills, **kwargs)
 
 
