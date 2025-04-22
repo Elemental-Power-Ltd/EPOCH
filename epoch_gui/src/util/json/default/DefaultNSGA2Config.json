@@ -12,6 +12,6 @@
   "n_max_gen": 1000,
   "n_max_evals": 1000000,
   "sampling": "RANDOM",
-  "pop_size_incr_scaler": 0.1,
+  "pop_size_incr_scalar": 0.1,
   "pop_size_incr_threshold": 0.9
 }

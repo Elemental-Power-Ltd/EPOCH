@@ -144,9 +144,9 @@
         "ESTIMATE"
       ]
     },
-    "pop_size_incr_scaler": {
+    "pop_size_incr_scalar": {
       "default": 0.1,
-      "description": "Scaler value to increase the pop_size and n_offsprings by for the next generation when the number of optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.",
+      "description": "Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.",
       "examples": [
         0.1
       ],
