@@ -13,15 +13,15 @@ class OptimiserStr(StrEnum):
 
 
 class NSGA2HyperParam(BaseModel):
-    pop_size: PositiveInt = Field(examples=[256, 512], description="Size of population.", default=4096)
+    pop_size: PositiveInt = Field(examples=[128, 256], description="Size of population.", default=128)
     n_offsprings: PositiveInt = Field(
-        examples=[256, 512],
+        examples=[64, 128],
         description="Number of offsprings to generate through crossover at each generation."
         + "Can be greater or smaller than initial pop_size",
-        default=2048,
+        default=64,
     )
     prob_crossover: PositiveFloat = Field(
-        examples=[0.2], description="Probability of applying crossover between two parents.", default=0.2
+        examples=[0.8], description="Probability of applying crossover between two parents.", default=0.8
     )
     n_crossover: PositiveInt = Field(examples=[1, 2], description="Number of crossover points.", default=2)
     prob_mutation: PositiveFloat = Field(
@@ -31,10 +31,10 @@ class NSGA2HyperParam(BaseModel):
         examples=[0.2], description="Scales the standard deviation of the mutation's normal distribution.", default=0.2
     )
     tol: PositiveFloat = Field(
-        examples=[0.0025],
+        examples=[0.001],
         description="Termination Criterion."
         + "Minimum required improvement of population's best fitness value over a period of generations. Terminates if below.",
-        default=0.0025,
+        default=0.001,
     )
     period: PositiveInt = Field(
         examples=[25],
@@ -68,6 +68,15 @@ class NSGA2HyperParam(BaseModel):
         examples=["RANDOM", "ESTIMATE"],
         description="Whether to generate initial population randomly or from estimates.",
         default=SamplingMethod.RANDOM,
+    )
+    pop_size_incr_scalar: PositiveFloat = Field(
+        examples=[0.1],
+        description="Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of"
+        + "optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.",
+        default=0.1,
+    )
+    pop_size_incr_threshold: PositiveFloat = Field(
+        examples=[0.9], description="Percent of the pop_size to set as the threshold to increase the pop_size.", default=0.9
     )
 
 

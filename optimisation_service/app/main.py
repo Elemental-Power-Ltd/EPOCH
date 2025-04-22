@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state._queue_task.cancel()
 
 
-app = FastAPI(lifespan=lifespan, title="Optimisation")
+app = FastAPI(lifespan=lifespan, title="Optimisation", root_path="/api/optimisation")
 
 origins = ["*"]
 
