@@ -2,6 +2,10 @@ from datetime import timedelta
 
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
+from pymoo.core.crossover import Crossover  # type: ignore
+from pymoo.core.mutation import Mutation  # type: ignore
+from pymoo.core.repair import Repair  # type: ignore
+from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
@@ -25,6 +29,86 @@ from app.models.metrics import Metric
 from app.models.result import OptimisationResult
 
 
+class CustomPymooNSGA2(Pymoo_NSGA2):
+    def __init__(
+        self,
+        pop_size: int,
+        n_offsprings: int,
+        sampling: Sampling,
+        crossover: Crossover,
+        mutation: Mutation,
+        eliminate_duplicates: bool,
+        repair: Repair,
+        return_least_infeasible: bool,
+        pop_size_incr_scalar: float = 0.1,
+        pop_size_incr_threshold: float = 0.9,
+        **kwargs,
+    ):
+        """
+        Initialise a Pymoo NSGA2 algorithm with a customised loop capable of automatically increasing the population size at
+        each generation dependent on the proportion of optimal scenarios in the population.
+
+        Parameters
+        ----------
+        pop_size
+            Initial population size.
+        n_offsprings
+            Number of offspring to generate at each generation.
+            If the number of offspring is smaller than the population size,
+            then the following popluation will be constituted of the newly generated offspring
+            as well as (pop_size - n_offsprings) individuals from the current population.
+            If the number of offpsring is greater than the population size,
+            then the following popluation will be constituted of pop_size newly generated offspring.
+        sampling
+            Sampling method to generate the initial population with.
+        crossover
+            Crossover method to generate new offspring at each generation.
+        mutation
+            Mutation method to generate new offspring at each generation.
+        eliminate_duplicates
+            Boolean indicating if duplicates should be eliminated from the population or not.
+        repair
+            Repair method to ensure correctness of new offspring.
+        return_least_infeasible
+            Boolean indicating if the least feasible individual should be returned or not if no feasible solution is found.
+        pop_size_incr_scalar
+            Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of
+            optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.
+        pop_size_incr_threshold
+            Percent of the pop_size to set as the threshold to increase the pop_size.
+        """
+        assert pop_size_incr_scalar >= 0.0, "pop_size_incr_scaler must be greater or equal to 1."
+        assert pop_size_incr_threshold > 0.0, "pop_size_incr_threshold must be greater than 0."
+        assert pop_size_incr_threshold <= 1.0, "pop_size_incr_threshold must be smaller or equal to 1."
+        self.pop_size_incr_scalar = pop_size_incr_scalar
+        self.pop_size_incr_threshold = pop_size_incr_threshold
+        super().__init__(
+            pop_size=pop_size,
+            n_offsprings=n_offsprings,
+            sampling=sampling,
+            crossover=crossover,
+            mutation=mutation,
+            eliminate_duplicates=eliminate_duplicates,
+            repair=repair,
+            return_least_infeasible=return_least_infeasible,
+            **kwargs,
+        )
+
+    def _advance(self, infills=None, **kwargs):
+        """
+        Extending the _advance function to enable automatic population size increase.
+        The function is called at each generation.
+        """
+        if self.pop_size_incr_scalar > 0.0:
+            # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
+            # increases pop size by pop_size_incr_scalar percent.
+            # the population is limited to 10k individuals.
+            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:  # type: ignore
+                self.pop_size = min(self.pop_size + max(1, int(self.pop_size_incr_scalar * self.pop_size)), 10000)  # type: ignore
+                self.n_offsprings = min(self.n_offsprings + max(1, int(self.pop_size_incr_scalar * self.n_offsprings)), 10000)  # type: ignore
+        return super()._advance(infills, **kwargs)
+
+
 class NSGA2(Algorithm):
     """
     Optimise a multi-objective EPOCH problem using NSGA-II.
@@ -45,6 +129,8 @@ class NSGA2(Algorithm):
         n_max_evals: int = int(1e14),
         cv_tol: float = 1e-14,
         cv_period: int = int(1e14),
+        pop_size_incr_scalar: float = 0.0,
+        pop_size_incr_threshold: float = 1.0,
         return_least_infeasible: bool = True,
     ) -> None:
         """
@@ -78,6 +164,11 @@ class NSGA2(Algorithm):
             Max number of generations before termination
         n_max_evals
             Max number of evaluations of EPOCH before termination
+        pop_size_incr_scalar
+            Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of
+            optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.
+        pop_size_incr_threshold
+            Percent of the pop_size to set as the threshold to increase the pop_size.
         return_least_infeasible
             If true, returns the most feasible solution if all solution are infeasible.
         """
@@ -89,7 +180,7 @@ class NSGA2(Algorithm):
         elif sampling == SamplingMethod.RANDOM:
             sampling_cls = IntegerRandomSampling
 
-        self.algorithm = Pymoo_NSGA2(
+        self.algorithm = CustomPymooNSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
             sampling=sampling_cls(),
@@ -98,6 +189,8 @@ class NSGA2(Algorithm):
             eliminate_duplicates=True,
             repair=RoundingAndDegenerateRepair(),
             return_least_infeasible=return_least_infeasible,
+            pop_size_incr_scalar=pop_size_incr_scalar,
+            pop_size_incr_threshold=pop_size_incr_threshold,
         )
 
         if period is None:
