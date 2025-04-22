@@ -1,4 +1,3 @@
-import typing
 from datetime import timedelta
 
 import numpy as np
@@ -100,15 +99,13 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         Extending the _advance function to enable automatic population size increase.
         The function is called at each generation.
         """
-        self.pop_size = typing.cast(int, self.pop_size)
-        self.n_offsprings = typing.cast(int, self.n_offsprings)
         if self.pop_size_incr_scalar > 0.0:
             # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
             # increases pop size by pop_size_incr_scalar percent.
             # the population is limited to 10k individuals.
-            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:
-                self.pop_size = min(self.pop_size + max(1, int(self.pop_size_incr_scalar * self.pop_size)), 10000)
-                self.n_offsprings = min(self.n_offsprings + max(1, int(self.pop_size_incr_scalar * self.n_offsprings)), 10000)
+            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:  # type: ignore
+                self.pop_size = min(self.pop_size + max(1, int(self.pop_size_incr_scalar * self.pop_size)), 10000)  # type: ignore
+                self.n_offsprings = min(self.n_offsprings + max(1, int(self.pop_size_incr_scalar * self.n_offsprings)), 10000)  # type: ignore
         return super()._advance(infills, **kwargs)
 
 
