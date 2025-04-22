@@ -65,9 +65,9 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         if self.pop_size_incr_scaler > 0.0:
             # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
             # increases pop size by pop_size_incr_scaler percent
-            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:  # type: ignore
-                self.pop_size = int((1 + self.pop_size_incr_scaler) * self.pop_size)  # type: ignore
-                self.n_offsprings = int((1 + self.pop_size_incr_scaler) * self.n_offsprings)  # type: ignore
+            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:
+                self.pop_size = int((1 + self.pop_size_incr_scaler) * self.pop_size)
+                self.n_offsprings = int((1 + self.pop_size_incr_scaler) * self.n_offsprings)
         return super()._advance(infills, **kwargs)
 
 
