@@ -40,14 +40,14 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         eliminate_duplicates: bool,
         repair: Repair,
         return_least_infeasible: bool,
-        pop_size_incr_scaler: float = 0.1,
+        pop_size_incr_scalar: float = 0.1,
         pop_size_incr_threshold: float = 0.9,
         **kwargs,
     ):
-        assert pop_size_incr_scaler >= 0.0, "pop_size_incr_scaler must be greater or equal to 1."
+        assert pop_size_incr_scalar >= 0.0, "pop_size_incr_scaler must be greater or equal to 1."
         assert pop_size_incr_threshold > 0.0, "pop_size_incr_threshold must be greater than 1."
         assert pop_size_incr_threshold <= 1.0, "pop_size_incr_threshold must be smaller or equal to 1."
-        self.pop_size_incr_scaler = pop_size_incr_scaler
+        self.pop_size_incr_scalar = pop_size_incr_scalar
         self.pop_size_incr_threshold = pop_size_incr_threshold
         super().__init__(
             pop_size=pop_size,
@@ -62,12 +62,12 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         )
 
     def _advance(self, infills=None, **kwargs):
-        if self.pop_size_incr_scaler > 0.0:
+        if self.pop_size_incr_scalar > 0.0:
             # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
-            # increases pop size by pop_size_incr_scaler percent
-            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:
-                self.pop_size = int((1 + self.pop_size_incr_scaler) * self.pop_size)
-                self.n_offsprings = int((1 + self.pop_size_incr_scaler) * self.n_offsprings)
+            # increases pop size by pop_size_incr_scalar percent
+            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:  # type: ignore
+                self.pop_size = int((1 + self.pop_size_incr_scalar) * self.pop_size)  # type: ignore
+                self.n_offsprings = int((1 + self.pop_size_incr_scalar) * self.n_offsprings)  # type: ignore
         return super()._advance(infills, **kwargs)
 
 
@@ -91,7 +91,7 @@ class NSGA2(Algorithm):
         n_max_evals: int = int(1e14),
         cv_tol: float = 1e-14,
         cv_period: int = int(1e14),
-        pop_size_incr_scaler: float = 0.0,
+        pop_size_incr_scalar: float = 0.0,
         pop_size_incr_threshold: float = 1.0,
         return_least_infeasible: bool = True,
     ) -> None:
@@ -126,8 +126,8 @@ class NSGA2(Algorithm):
             Max number of generations before termination
         n_max_evals
             Max number of evaluations of EPOCH before termination
-        pop_size_incr_scaler
-            Scaler value to increase the pop_size and n_offsprings by for the next generation when the number of
+        pop_size_incr_scalar
+            Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of
             optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.
         pop_size_incr_threshold
             Percent of the pop_size to set as the threshold to increase the pop_size.
@@ -151,7 +151,7 @@ class NSGA2(Algorithm):
             eliminate_duplicates=True,
             repair=RoundingAndDegenerateRepair(),
             return_least_infeasible=return_least_infeasible,
-            pop_size_incr_scaler=pop_size_incr_scaler,
+            pop_size_incr_scalar=pop_size_incr_scalar,
             pop_size_incr_threshold=pop_size_incr_threshold,
         )
 

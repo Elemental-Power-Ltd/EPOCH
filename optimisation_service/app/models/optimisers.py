@@ -68,9 +68,9 @@ class NSGA2HyperParam(BaseModel):
         description="Whether to generate initial population randomly or from estimates.",
         default=SamplingMethod.RANDOM,
     )
-    pop_size_incr_scaler: PositiveFloat = Field(
+    pop_size_incr_scalar: PositiveFloat = Field(
         examples=[0.1],
-        description="Scaler value to increase the pop_size and n_offsprings by for the next generation when the number of"
+        description="Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of"
         + "optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.",
         default=0.1,
     )
