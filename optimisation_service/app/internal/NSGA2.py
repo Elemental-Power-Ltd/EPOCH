@@ -2,10 +2,6 @@ from datetime import timedelta
 
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
-from pymoo.core.crossover import Crossover  # type: ignore
-from pymoo.core.mutation import Mutation  # type: ignore
-from pymoo.core.repair import Repair  # type: ignore
-from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
 from pymoo.operators.crossover.pntx import PointCrossover  # type: ignore
 from pymoo.operators.mutation.gauss import GaussianMutation  # type: ignore
@@ -32,14 +28,6 @@ from app.models.result import OptimisationResult
 class CustomPymooNSGA2(Pymoo_NSGA2):
     def __init__(
         self,
-        pop_size: int,
-        n_offsprings: int,
-        sampling: Sampling,
-        crossover: Crossover,
-        mutation: Mutation,
-        eliminate_duplicates: bool,
-        repair: Repair,
-        return_least_infeasible: bool,
         pop_size_incr_scaler: float = 0.1,
         pop_size_incr_threshold: float = 0.9,
         **kwargs,
@@ -49,17 +37,7 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         assert pop_size_incr_threshold <= 1.0, "pop_size_incr_threshold must be smaller or equal to 1."
         self.pop_size_incr_scaler = pop_size_incr_scaler
         self.pop_size_incr_threshold = pop_size_incr_threshold
-        super().__init__(
-            pop_size,
-            n_offsprings,
-            sampling,
-            crossover,
-            mutation,
-            eliminate_duplicates,
-            repair,
-            return_least_infeasible,
-            **kwargs,
-        )
+        super().__init__(**kwargs)
 
     def _advance(self, infills=None, **kwargs):
         if self.pop_size_incr_scaler > 0.0:
