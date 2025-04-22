@@ -25,6 +25,30 @@ from app.models.metrics import Metric
 from app.models.result import OptimisationResult
 
 
+class CustomPymooNSGA2(Pymoo_NSGA2):
+    def __init__(
+        self,
+        pop_size_incr_scaler: float = 0.1,
+        pop_size_incr_threshold: float = 0.9,
+        **kwargs,
+    ):
+        assert pop_size_incr_scaler >= 0.0, "pop_size_incr_scaler must be greater or equal to 1."
+        assert pop_size_incr_threshold > 0.0, "pop_size_incr_threshold must be greater than 1."
+        assert pop_size_incr_threshold <= 1.0, "pop_size_incr_threshold must be smaller or equal to 1."
+        self.pop_size_incr_scaler = pop_size_incr_scaler
+        self.pop_size_incr_threshold = pop_size_incr_threshold
+        super().__init__(**kwargs)
+
+    def _advance(self, infills=None, **kwargs):
+        if self.pop_size_incr_scaler > 0.0:
+            # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
+            # increases pop size by pop_size_incr_scaler percent
+            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:
+                self.pop_size = int((1 + self.pop_size_incr_scaler) * self.pop_size)
+                self.n_offsprings = int((1 + self.pop_size_incr_scaler) * self.n_offsprings)
+        return super()._advance(infills, **kwargs)
+
+
 class NSGA2(Algorithm):
     """
     Optimise a multi-objective EPOCH problem using NSGA-II.
@@ -45,6 +69,8 @@ class NSGA2(Algorithm):
         n_max_evals: int = int(1e14),
         cv_tol: float = 1e-14,
         cv_period: int = int(1e14),
+        pop_size_incr_scaler: float = 0.0,
+        pop_size_incr_threshold: float = 1.0,
         return_least_infeasible: bool = True,
     ) -> None:
         """
@@ -78,6 +104,11 @@ class NSGA2(Algorithm):
             Max number of generations before termination
         n_max_evals
             Max number of evaluations of EPOCH before termination
+        pop_size_incr_scaler
+            Scaler value to increase the pop_size and n_offsprings by for the next generation when the number of
+            optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.
+        pop_size_incr_threshold
+            Percent of the pop_size to set as the threshold to increase the pop_size.
         return_least_infeasible
             If true, returns the most feasible solution if all solution are infeasible.
         """
@@ -89,7 +120,7 @@ class NSGA2(Algorithm):
         elif sampling == SamplingMethod.RANDOM:
             sampling_cls = IntegerRandomSampling
 
-        self.algorithm = Pymoo_NSGA2(
+        self.algorithm = CustomPymooNSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
             sampling=sampling_cls(),
@@ -98,6 +129,8 @@ class NSGA2(Algorithm):
             eliminate_duplicates=True,
             repair=RoundingAndDegenerateRepair(),
             return_least_infeasible=return_least_infeasible,
+            pop_size_incr_scaler=pop_size_incr_scaler,
+            pop_size_incr_threshold=pop_size_incr_threshold,
         )
 
         if period is None:
