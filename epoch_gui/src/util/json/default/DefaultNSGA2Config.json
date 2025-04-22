@@ -1,15 +1,17 @@
 {
-  "pop_size": 2048,
-  "n_offsprings": 1024,
+  "pop_size": 128,
+  "n_offsprings": 64,
   "prob_crossover": 0.8,
   "n_crossover": 2,
   "prob_mutation": 0.8,
   "std_scaler": 0.2,
-  "tol": 0.0025,
+  "tol": 0.001,
   "period": 25,
   "cv_tol": 0.001,
   "cv_period": 25,
   "n_max_gen": 1000,
   "n_max_evals": 1000000,
-  "sampling": "RANDOM"
+  "sampling": "RANDOM",
+  "pop_size_incr_scaler": 0.1,
+  "pop_size_incr_threshold": 0.9
 }

@@ -11,22 +11,22 @@
   },
   "properties": {
     "pop_size": {
-      "default": 2048,
+      "default": 128,
       "description": "Size of population.",
       "examples": [
-        256,
-        512
+        128,
+        256
       ],
       "exclusiveMinimum": 0,
       "title": "Pop Size",
       "type": "integer"
     },
     "n_offsprings": {
-      "default": 1024,
+      "default": 64,
       "description": "Number of offsprings to generate through crossover at each generation. Should be less than or equal to pop_size",
       "examples": [
-        256,
-        512
+        64,
+        128
       ],
       "exclusiveMinimum": 0,
       "title": "N Offsprings",
@@ -36,7 +36,7 @@
       "default": 0.8,
       "description": "Probability of applying crossover between two parents.",
       "examples": [
-        0.2
+        0.8
       ],
       "exclusiveMinimum": 0.0,
       "title": "Prob Crossover",
@@ -74,10 +74,10 @@
       "type": "number"
     },
     "tol": {
-      "default": 0.0025,
+      "default": 0.001,
       "description": "Termination Criterion.Minimum required improvement of population's best fitness value over a period of generations. Terminates if below.",
       "examples": [
-        0.0025
+        0.001
       ],
       "exclusiveMinimum": 0.0,
       "title": "Tol",
@@ -143,6 +143,24 @@
         "RANDOM",
         "ESTIMATE"
       ]
+    },
+    "pop_size_incr_scaler": {
+      "default": 0.1,
+      "description": "Scaler value to increase the pop_size and n_offsprings by for the next generation when the number of optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.",
+      "examples": [
+        0.1
+      ],
+      "title": "Population Size Increase Factor",
+      "type": "number"
+    },
+    "pop_size_incr_threshold": {
+      "default": 0.9,
+      "description": "Percent of the pop_size to set as the threshold to increase the pop_size.",
+      "examples": [
+        0.9
+      ],
+      "title": "Population Size Increase Threshold",
+      "type": "number"
     }
   },
   "title": "NSGA2HyperParam",
