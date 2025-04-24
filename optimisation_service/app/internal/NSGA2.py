@@ -120,21 +120,21 @@ class NSGA2(Algorithm):
 
     def __init__(
         self,
-        pop_size: int = 2048,
+        pop_size: int = 256,
         sampling: SamplingMethod = SamplingMethod.RANDOM,
         n_offsprings: int | None = None,
-        prob_crossover: float = 0.9,
-        n_crossover: int = 1,
+        prob_crossover: float = 0.2,
+        n_crossover: int = 2,
         prob_mutation: float = 0.9,
         std_scaler: float = 0.2,
-        tol: float = 1e-14,
+        tol: float = 0.0001,
         period: int | None = 5,
-        n_max_gen: int = int(1e14),
+        n_max_gen: int = 10000,
         n_max_evals: int = int(1e14),
-        cv_tol: float = 1e-14,
-        cv_period: int = int(1e14),
-        pop_size_incr_scalar: float = 0.0,
-        pop_size_incr_threshold: float = 1.0,
+        cv_tol: float = 1,
+        cv_period: int = 10000,
+        pop_size_incr_scalar: float = 0.1,
+        pop_size_incr_threshold: float = 0.5,
         return_least_infeasible: bool = True,
     ) -> None:
         """
@@ -279,16 +279,13 @@ class NSGA2(Algorithm):
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
         non_dom_sol = res.X
-        if non_dom_sol is None:
+        if non_dom_sol is None or len(non_dom_sol) == 0:
             portfolio_solutions_pf = [do_nothing_scenario(pi.site_names)]
         else:
             if non_dom_sol.ndim == 1:
                 non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
             portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
             portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
-
-        if len(portfolio_solutions_pf) == 0:
-            portfolio_solutions_pf = [do_nothing_scenario(pi.site_names)]
 
         return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals)
 
@@ -321,32 +318,91 @@ class MultiTermination(Termination):
 
 
 class SeperatedNSGA2(Algorithm):
+    """
+    Optimise a single or multi objective portfolio problem by optimising each site individually with NSGA-II.
+    The site solutions are recombined into portfolio solutions as follows:
+        1. Select a site's set of solutions as the "recombined" set.
+        2. Select another site's set of solutions as the "incoming" set.
+        3. Perform a dot product between the "recombined" and "incoming" sets to create a list of all feasible portfolio
+           solutions.
+        4. Pareto optimise the list of portfolios. This list now becomes the "recombined" set.
+        5. Repeat steps 2-4 until all sites have been utilised.
+    """
+
     def __init__(
         self,
-        pop_size=2048,
-        sampling=SamplingMethod.RANDOM,
-        n_offsprings=None,
-        prob_crossover=0.9,
-        n_crossover=1,
-        prob_mutation=0.9,
-        std_scaler=0.2,
-        tol=1e-14,
-        period=5,
-        n_max_gen=100000000000000,
-        n_max_evals=100000000000000,
+        pop_size: int = 256,
+        sampling: SamplingMethod = SamplingMethod.RANDOM,
+        n_offsprings: int | None = None,
+        prob_crossover: float = 0.2,
+        n_crossover: int = 2,
+        prob_mutation: float = 0.9,
+        std_scaler: float = 0.2,
+        tol: float = 0.0001,
+        period: int | None = 25,
+        n_max_gen: int = 10000,
+        n_max_evals: int = int(1e14),
+        cv_tol: float = 1,
+        cv_period: int = 10000,
+        pop_size_incr_scalar: float = 0.1,
+        pop_size_incr_threshold: float = 0.5,
+        return_least_infeasible: bool = True,
     ):
+        """
+        Define NSGA2 hyperparameters.
+
+        Parameters
+        ----------
+                pop_size
+            population size of GA
+        n_offsprings
+            number of offspring to generate at each generation, defaults to pop_size
+        prob_crossover
+            probability of applying crossover between two parents
+        n_crossover
+            number of points to use in crossover
+        prob_mutation
+            probability of applying mutation to each child (not probability of mutating a parameter!)
+        std_scaler
+            Scales standard deviation of nomral distribution from which is sampled new parameter values during mutation.
+            Base value of std is parameter range
+        tol
+            Value for tolerance of improvement between current and past fitness, terminates if below
+        period
+            Number of passed fitness values to include in delta calculation, max delta is selected.
+            Defaults to n_max_gen if set to None.
+        cv_tol
+            Tolerance of improvement between current and past constraint violations, terminates if below.
+        cv_period
+            Number of generations to include in constraint violation improvement calculation.
+        n_max_gen
+            Max number of generations before termination
+        n_max_evals
+            Max number of evaluations of EPOCH before termination
+        pop_size_incr_scalar
+            Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of
+            optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.
+        pop_size_incr_threshold
+            Percent of the pop_size to set as the threshold to increase the pop_size.
+        """
+        self.return_least_infeasible = return_least_infeasible
         self.alg = NSGA2(
-            pop_size,
-            sampling,
-            n_offsprings,
-            prob_crossover,
-            n_crossover,
-            prob_mutation,
-            std_scaler,
-            tol,
-            period,
-            n_max_gen,
-            n_max_evals,
+            pop_size=pop_size,
+            sampling=sampling,
+            n_offsprings=n_offsprings,
+            prob_crossover=prob_crossover,
+            n_crossover=n_crossover,
+            prob_mutation=prob_mutation,
+            std_scaler=std_scaler,
+            tol=tol,
+            period=period,
+            n_max_gen=n_max_gen,
+            n_max_evals=n_max_evals,
+            cv_tol=cv_tol,
+            cv_period=cv_period,
+            pop_size_incr_scalar=pop_size_incr_scalar,
+            pop_size_incr_threshold=pop_size_incr_threshold,
+            return_least_infeasible=False,
         )
 
     def run(
@@ -355,6 +411,25 @@ class SeperatedNSGA2(Algorithm):
         constraints: Constraints,
         portfolio: list[Site],
     ) -> OptimisationResult:
+        """
+        Run optimisation.
+
+        Parameters
+        ----------
+        objectives
+            Objectives to optimise.
+        constraints
+            Constraints on the metrics to apply.
+        portfolio
+            Portfolio of sites to optimise.
+
+        Returns
+        -------
+        OptimisationResult
+            solutions: Pareto-front of evaluated candidate portfolio solutions.
+            exec_time: Time taken for optimisation process to conclude.
+            n_evals: Number of simulation evaluations taken for optimisation process to conclude.
+        """
         start_time = datetime.now(UTC)
         new_constraints = {}
         if Metric.capex in constraints:
@@ -375,7 +450,10 @@ class SeperatedNSGA2(Algorithm):
             )
 
         mask = is_in_constraints(constraints, combined_solutions)
-        combined_solutions = np.array(combined_solutions)[mask].tolist()
+        if sum(mask) > 0:
+            combined_solutions = np.array(combined_solutions)[mask].tolist()
+        elif not self.return_least_infeasible and sum(mask) == 0:
+            combined_solutions = [do_nothing_scenario([site.site_data.site_id for site in portfolio])]
 
         total_exec_time = datetime.now(UTC) - start_time
 

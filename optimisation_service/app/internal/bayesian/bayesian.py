@@ -50,6 +50,20 @@ warnings.filterwarnings("ignore", category=UserInputWarning)
 
 
 class Bayesian(Algorithm):
+    """
+    Optimise a single or multi objective portfolio problem by optimising the CAPEX allocations accross the portfolio with a
+    Bayesian optimiser as follows:
+        1. Split the portfolio into N sub-portfolios
+        2. Initialise the optimiser by optimising each sub-portfolio individually with NSGA-II for maximum CAPEX, recombining
+           the sub-portfolio solutions into feasible portfolio solutions.
+        3. Convert the portfolio solutions into input (sub-portfolio CAPEX allocations) / output (objective values) pairs to fit
+           Gaussian process models to.
+        4. Optimise the acquisition function and get new CAPEX allocations to test.
+        5. Optimise each sub-portfolio individually with NSGA-II for the new CAPEX allocations, recombining
+           the sub-portfolio solutions into feasible portfolio solutions.
+        6. Repeat steps 3-5 until algorithm terminates.
+    """
+
     def __init__(
         self,
         n_per_sub_portfolio: int = 1,
@@ -60,6 +74,26 @@ class Bayesian(Algorithm):
         mc_samples: int = 128,
         **kwargs,
     ):
+        """
+        Define Bayesian and NSGA-II hyperparameters.
+
+        Parameters
+        ----------
+        n_per_sub_portfolio
+            Number of sites in each sub-portfolio.
+        n_generations
+            Number of Bayesian optimisation generations to perform.
+        batch_size
+            Number of CAPEX allocations to test at each generation.
+            Fitting the gaussian models and optimising the acquisition function can be compute intensive, selecting a larger
+            batch_size can reduce the total number of generations.
+        num_restarts
+            Number of times to restart the acquisition function optimisation.
+        raw_samples
+            Number of samples to initialise the acquisition function optimisation with.
+        mc_samples
+            The size of each sample.
+        """
         self.n_per_sub_portfolio = n_per_sub_portfolio
         self.num_restarts = num_restarts
         self.raw_samples = raw_samples
@@ -81,14 +115,11 @@ class Bayesian(Algorithm):
         n_sub_portfolios = len(sub_portfolios)
         assert n_sub_portfolios > 1, "There must be at least two sub portfolios."
 
-        # Initilise dpo
         dpo = DistributedPortfolioOptimiser(sub_portfolios, objectives, self.NSGA2, constraints)
         solutions = dpo.init_solutions
 
-        # convert to tensors
         train_x, train_y = convert_solution_list_to_tensor(solutions, self.n_per_sub_portfolio, n_sub_portfolios, objectives)
 
-        # initialise model
         bounds = create_capex_allocation_bounds(n_sub_portfolios, dpo.max_capexs)
         mll, model = initialise_model(train_x, train_y, bounds)
 
@@ -116,7 +147,6 @@ class Bayesian(Algorithm):
                 num_restarts=self.num_restarts,
                 raw_samples=self.raw_samples,
             )
-            print(f"Candidates: {candidates}")
 
             # evaluate candidates
             new_solutions = []
@@ -198,13 +228,12 @@ def initialise_model(
     model
         A collection of Gaussian Process models.
     """
-    print(f"Initialising model with {len(train_x)} training points.")
     train_x = normalize(train_x, bounds)
     models = []
     for i in range(train_y.shape[-1]):
         train_y_i = train_y[..., i : i + 1]
-        train_yvar = torch.full_like(train_y_i, 1e-6)
-        models.append(SingleTaskGP(train_x, train_y_i, train_yvar, outcome_transform=Standardize(m=1)))
+        train_y_noise = torch.full_like(train_y_i, 1e-06)
+        models.append(SingleTaskGP(train_x, train_y_i, train_y_noise, outcome_transform=Standardize(m=1)))
     model = ModelListGP(*models)
     mll = SumMarginalLogLikelihood(model.likelihood, model)
     return mll, model
