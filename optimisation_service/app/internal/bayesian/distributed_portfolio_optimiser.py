@@ -237,22 +237,23 @@ def select_starting_solutions(
     rng = np.random.default_rng()
     mask = is_in_constraints(constraints, existing_solutions)
     selected_solutions = np.array(existing_solutions)[mask].tolist()
-    if len(selected_solutions) > 0:
-        if len(selected_solutions) > n_select:
-            selected_solutions = portfolio_pareto_front(selected_solutions, objectives)  # select pareto-front
-            if len(selected_solutions) > n_select:  # cut down if too many
-                selected_solutions = rng.choice(selected_solutions, n_select, replace=False)
-            elif len(selected_solutions) < n_select:  # random fill if pareto-front is smaller than pop-size
-                selected_solutions = np.concatenate(
-                    [
-                        selected_solutions,
-                        rng.choice(
-                            existing_solutions,  # type: ignore
-                            min(n_select - len(selected_solutions), len(existing_solutions)),
-                            replace=False,
-                        ),
-                    ]
-                )
-        return selected_solutions
 
-    return []
+    if len(selected_solutions) == 0:
+        return []
+
+    if len(selected_solutions) > n_select:
+        selected_solutions = portfolio_pareto_front(selected_solutions, objectives)  # select pareto-front
+        if len(selected_solutions) > n_select:  # cut down if too many
+            selected_solutions = rng.choice(selected_solutions, n_select, replace=False)
+        elif len(selected_solutions) < n_select:  # random fill if pareto-front is smaller than pop-size
+            selected_solutions = np.concatenate(
+                [
+                    selected_solutions,
+                    rng.choice(
+                        existing_solutions,  # type: ignore
+                        min(n_select - len(selected_solutions), len(existing_solutions)),
+                        replace=False,
+                    ),
+                ]
+            )
+    return selected_solutions
