@@ -14,7 +14,8 @@ from pymoo.core.repair import Repair  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
-from app.internal.heuristics.population_init import generate_building_initial_population
+from app.internal.epoch_utils import convert_TaskData_to_dictionary
+from app.internal.heuristics.population_init import generate_site_scenarios_from_heuristics
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.constraints import Constraints
@@ -169,6 +170,42 @@ class ProblemInstance(ElementwiseProblem):
             site_scenario.pop(asset)
         return TaskData.from_json(json.dumps(site_scenario))
 
+    def convert_site_scenario_to_chromosome(self, site_scenario: TaskData, site_name: str) -> npt.NDArray:
+        """
+        Convert a candidate solution from a site scenario to an array of indeces.
+
+        Parameters
+        ----------
+        TaskData
+            A site scenario.
+        site_name
+            The name of the building.
+
+        Returns
+        -------
+        x
+            A pymoo compatible site solution (array of indeces).
+        """
+        td_dict = convert_TaskData_to_dictionary(site_scenario)
+        rgen_number = 0
+        site_range = self.site_ranges[site_name]
+        x = []
+        for asset_name, attr_name in self.asset_parameters[site_name]:
+            if asset_name in td_dict:
+                if attr_name == "COMPONENT_IS_MANDATORY":
+                    x.append(1)
+                elif asset_name == "renewables":
+                    value = td_dict[asset_name]["yield_scalars"][rgen_number]
+                    x.append(site_range[asset_name][attr_name].index(value))
+                    rgen_number += 1
+                else:
+                    value = td_dict[asset_name][attr_name]
+                    x.append(site_range[asset_name][attr_name].index(value))
+            else:
+                x.append(0)
+
+        return np.array(x)
+
     def simulate_portfolio(self, x: npt.NDArray) -> PortfolioSolution:
         """
         Simulate a candidate portfolio solution.
@@ -289,12 +326,14 @@ class EstimateBasedSampling(Sampling):
     def _do(self, problem: ProblemInstance, n_samples: int, **kwargs):
         site_pops = []
         for site in problem.portfolio:
-            site_pops.append(  # noqa: PERF401
-                generate_building_initial_population(
-                    site_range=site.site_range,
-                    epoch_data=site._epoch_data,
-                    pop_size=n_samples,
-                )
+            site_name = site.site_data.site_id
+            site_scenarios = generate_site_scenarios_from_heuristics(
+                site_range=site.site_range,
+                epoch_data=site._epoch_data,
+                pop_size=n_samples,
+            )
+            site_pops.append(
+                [problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios]
             )
         portfolio_pop = np.concatenate(site_pops, axis=1)
         return portfolio_pop
