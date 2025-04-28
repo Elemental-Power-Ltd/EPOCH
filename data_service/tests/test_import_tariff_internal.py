@@ -198,7 +198,9 @@ class TestRE24Tariffs:
                 end_ts=datetime.datetime.now(datetime.UTC),
                 http_client=client,
             )
-        assert np.all(df["cost"] != 0.0)
+        # These numbers picked for being the potentially largest costs we've seen in either direction.
+        # If the prices are outside this range, something horrible has happened.
+        assert np.all(np.logical_and(df["cost"] > -2000.0, df["cost"] < 2000.0))
         assert np.all(~np.isnan(df["cost"]))
         assert len(df) >= 7 * 2 * 24
 
