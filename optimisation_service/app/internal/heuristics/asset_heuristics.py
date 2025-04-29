@@ -202,7 +202,7 @@ def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
     N = len(epoch_data.building_eload)
     timestamps = [epoch_data.start_ts + (epoch_data.end_ts - epoch_data.start_ts) * i / (N - 1) for i in range(N)]
 
-    estimates: dict[str, dict[str, int | float]] = {}
+    estimates: dict[str, dict[str, int | float | list[float]]] = {}
     estimates["heat_pump"] = {}
     estimates["heat_pump"]["heat_power"] = HeatPump.heat_power(
         building_hload=epoch_data.building_hload,

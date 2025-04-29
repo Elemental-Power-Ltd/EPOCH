@@ -74,7 +74,7 @@ def generate_site_scenarios_from_heuristics(site_range: SiteRange, epoch_data: E
     return td_pop
 
 
-def normal_choice(estimate: float | int, attribute_values: list[float | int], std_dev_scale: float = 0.1) -> int | float:
+def normal_choice(estimate: float | int, attribute_values: list[float] | list[int], std_dev_scale: float = 0.1) -> int | float:
     """
     Randomly select a value from the attribute values list with probabilties from a truncated normal distribution with mu equal
     to the estimate and with the standard deviation equal to std_dev_scale times the difference between the minimum and maximum
