@@ -18,7 +18,7 @@ classifiers = [
 ]
 
 [tool.ruff]
-extend-include = ["*.ipynb"]
+exclude = ["*ipynb", "app/models/epoch_types/"]
 line-length = 128
 
 [tool.ruff.lint.pydocstyle]
@@ -82,6 +82,10 @@ check_untyped_defs = true
 warn_redundant_casts = true
 warn_unreachable = true
 plugins = ["numpy.typing.mypy_plugin"]
+
+[[tool.mypy.overrides]]
+module = "app.models.epoch_types.task_data_type"
+ignore_errors = true
 
 [tool.sqlfluff.core]
 dialect = "postgres"

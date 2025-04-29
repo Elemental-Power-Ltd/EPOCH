@@ -33,7 +33,7 @@ from app.models.site_range import Jsonable
 if sys.platform.startswith("win"):
     import testing.postgresql
 
-    def win_terminate(self, _signal=None):
+    def win_terminate(self: Any, _signal: Any = None) -> None:
         if self.child_process:
             self.child_process.terminate()
             self.child_process.wait()

@@ -11,6 +11,8 @@ import numpy as np
 import pydantic
 import pytest
 
+from app.models.epoch_types import TaskDataPydantic
+from app.models.epoch_types.task_data_type import Building, Grid
 from app.models.optimisation import (
     OptimisationResultEntry,
     Optimiser,
@@ -95,14 +97,21 @@ class TestOptimisationTaskDatabase:
         )
 
     @pytest.fixture
+    def sample_scenario(self) -> TaskDataPydantic:
+        task_data = TaskDataPydantic()
+        task_data.building = Building(scalar_heat_load=1.0, scalar_electrical_load=1.0, fabric_intervention_index=0)
+        task_data.grid = Grid(grid_export=23.0, grid_import=23.0, import_headroom=0.4, tariff_index=0)
+        return task_data
+
+    @pytest.fixture
     def sample_site_optimisation_result(
-        self, sample_portfolio_optimisation_result: PortfolioOptimisationResult
+        self, sample_portfolio_optimisation_result: PortfolioOptimisationResult, sample_scenario: TaskDataPydantic
     ) -> SiteOptimisationResult:
         """Create a sample result for the one site in our portfolio."""
         return SiteOptimisationResult(
             portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
             site_id="demo_london",
-            scenario={"grid": {"export_headroom": 500}},
+            scenario=sample_scenario,
             metrics=SiteMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
@@ -376,7 +385,8 @@ class TestOptimisationTaskDatabase:
         assert repro_data["site_data"]["demo_london"] == json.loads(
             sample_task_config.input_data["demo_london"].model_dump_json()
         )
-        assert repro_data["task_data"] == {sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario}
+        assert repro_data["task_data"] == {
+            sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()}
 
     @pytest.mark.asyncio
     async def test_can_retrieve_task_result(

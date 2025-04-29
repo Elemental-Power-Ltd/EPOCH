@@ -18,6 +18,8 @@ from .core import dataset_id_field as dataset_id_field
 from .core import dataset_id_t as dataset_id_t
 from .core import site_id_field as site_id_field
 from .core import site_id_t as site_id_t
+from .epoch_types import ReportData as ReportData
+from .epoch_types import TaskDataPydantic as TaskDataPydantic
 from .heating_load import EpochHeatingEntry as EpochHeatingEntry
 from .heating_load import HeatingLoadEntry as HeatingLoadEntry
 from .heating_load import HeatingLoadMetadata as HeatingLoadMetadata

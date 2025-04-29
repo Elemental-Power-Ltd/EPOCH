@@ -5,15 +5,13 @@ import datetime
 import math
 import uuid
 from enum import StrEnum
-from typing import Any
 
 import pydantic
 
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
+from .epoch_types import TaskDataPydantic
 from .site_manager import SiteDataEntry
 from .site_range import SiteRange
-
-type SiteScenario = dict[str, Any]
 
 
 class SiteMetrics(pydantic.BaseModel):
@@ -72,7 +70,7 @@ class SiteOptimisationResult(pydantic.BaseModel):
         description="The portfolio pareto front entry this site is linked to."
         + " A single site result is uniquely identified by a (portfolio_id, site_id) pair."
     )
-    scenario: SiteScenario = pydantic.Field(
+    scenario: TaskDataPydantic = pydantic.Field(
         description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
     )
     metrics: SiteMetrics = pydantic.Field(description="The metrics calculated for this site.")
@@ -300,7 +298,7 @@ class TaskConfig(pydantic.BaseModel):
 
 class ResultReproConfig(pydantic.BaseModel):
     portfolio_id: pydantic.UUID4
-    task_data: dict[site_id_t, SiteScenario]
+    task_data: dict[site_id_t, TaskDataPydantic]
     site_data: dict[site_id_t, SiteDataEntry]
 
 
