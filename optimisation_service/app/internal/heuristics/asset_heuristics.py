@@ -2,13 +2,15 @@
 Asset heuristics for initialising EPOCH search spaces.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
 
+from app.models.site_data import EpochSiteData
 
-class HeatPump:
+
+class HeatPumpHeuristic:
     @staticmethod
     def heat_power(
         building_hload: list[float],
@@ -52,23 +54,21 @@ class HeatPump:
         ashp_input_arr = np.array(ashp_input_table)
         ashp_output_arr = np.array(ashp_output_table)
 
-        ashp_input_row = ashp_input_arr[ashp_input_arr[0, :] == ashp_mode][1:]
-        ashp_output_row = ashp_output_arr[ashp_output_arr[0, :] == ashp_mode][1:]
+        ashp_input_row = ashp_input_arr[1:, ashp_input_arr[0, :] == ashp_mode].flatten()
+        ashp_output_row = ashp_output_arr[1:, ashp_output_arr[0, :] == ashp_mode].flatten()
 
         ashp_inputs = np.interp(air_temperature, ashp_input_arr[1:, 0], ashp_input_row)
         ashp_outputs = np.interp(air_temperature, ashp_output_arr[1:, 0], ashp_output_row)
 
         cops = ashp_outputs / ashp_inputs
 
-        timedeltas = np.pad(
-            [item.to_timedelta64() for item in np.ediff1d(np.array(timestamps))], pad_width=(0, 1), mode="wrap"
-        ) / np.timedelta64(1, "h")
+        timedeltas = np.pad(np.diff(np.array(timestamps)), pad_width=(0, 1), mode="wrap") / timedelta(hours=1)
 
         elec_loads = (np.array(building_hload) / cops) / timedeltas
         return np.quantile(elec_loads, quantile)
 
 
-class Renewables:
+class RenewablesHeuristic:
     @staticmethod
     def yield_scalars(solar_yield: list[float], building_eload: list[float], quantile: float = 0.75) -> float:
         """
@@ -98,7 +98,7 @@ class Renewables:
         return float(np.quantile(required_solar, quantile))
 
 
-class EnergyStorageSystem:
+class EnergyStorageSystemHeuristic:
     @staticmethod
     def capacity(building_eload: list[float], timestamps: list[datetime], quantile: float = 0.75) -> float:
         """
@@ -122,8 +122,8 @@ class EnergyStorageSystem:
         """
         time_of_day = np.array([dt.hour for dt in timestamps])
         is_peak = np.logical_and(time_of_day >= 16, time_of_day < 19)
-        elec_df = pd.DataFrame({{"load": building_eload, "Date": time_of_day}})
-        peak_elec = elec_df[is_peak].groupby("Date").sum()["FixLoad1"]
+        elec_df = pd.DataFrame({"load": building_eload, "Date": time_of_day})
+        peak_elec = elec_df[is_peak].groupby("Date").sum()["load"]
 
         return float(np.quantile(peak_elec, quantile))
 
@@ -149,9 +149,7 @@ class EnergyStorageSystem:
         -------
         Estimated battery charging rate required in kW
         """
-        timedeltas = np.pad(
-            [item.to_timedelta64() for item in np.ediff1d(np.array(timestamps))], pad_width=(0, 1), mode="wrap"
-        ) / np.timedelta64(1, "h")
+        timedeltas = np.pad(np.diff(np.array(timestamps)), pad_width=(0, 1), mode="wrap") / timedelta(hours=1)
         return np.quantile(np.array(building_eload) / timedeltas, quantile)
 
     @staticmethod
@@ -183,7 +181,54 @@ class EnergyStorageSystem:
         """
         solar_output = np.array(solar_yield) * solar_scale
         # Convert from kWh / timestep into kW (e.g. something that uses 1kWh in 0.5 hours is a 2kW charge)
-        timedeltas = np.pad(
-            [item.to_timedelta64() for item in np.ediff1d(np.array(timestamps))], pad_width=(0, 1), mode="wrap"
-        ) / np.timedelta64(1, "h")
+        timedeltas = np.pad(np.diff(np.array(timestamps)), pad_width=(0, 1), mode="wrap") / timedelta(hours=1)
         return np.quantile(solar_output / timedeltas, quantile)
+
+
+def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
+    """
+    Estimate values for assets for assets with heuristics.
+
+    Parameters
+    ----------
+    epoch_data
+        Site data to generate estimates from.
+
+    Returns
+    -------
+    estimates
+        A dictionary of the estimates.
+    """
+    N = len(epoch_data.building_eload)
+    timestamps = [epoch_data.start_ts + (epoch_data.end_ts - epoch_data.start_ts) * i / (N - 1) for i in range(N)]
+
+    estimates: dict[str, dict[str, int | float | list[float]]] = {}
+    estimates["heat_pump"] = {}
+    estimates["heat_pump"]["heat_power"] = HeatPumpHeuristic.heat_power(
+        building_hload=epoch_data.building_hload,
+        ashp_input_table=epoch_data.ashp_input_table,
+        ashp_output_table=epoch_data.ashp_output_table,
+        air_temperature=epoch_data.air_temperature,
+        timestamps=timestamps,
+        ashp_mode=2.0,
+    )
+    estimates["energy_storage_system"] = {}
+    estimates["energy_storage_system"]["capacity"] = EnergyStorageSystemHeuristic.capacity(
+        building_eload=epoch_data.building_eload, timestamps=timestamps
+    )
+    solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields)]
+    estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystemHeuristic.charge_power(
+        solar_yield=solar_yield_sum,
+        timestamps=timestamps,
+        solar_scale=RenewablesHeuristic.yield_scalars(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
+    )
+    estimates["energy_storage_system"]["discharge_power"] = EnergyStorageSystemHeuristic.discharge_power(
+        building_eload=epoch_data.building_eload, timestamps=timestamps
+    )
+    estimates["renewables"] = {}
+    estimates["renewables"]["yield_scalars"] = [
+        RenewablesHeuristic.yield_scalars(solar_yield=solar_yield, building_eload=epoch_data.building_eload)
+        for solar_yield in epoch_data.solar_yields
+    ]
+
+    return estimates

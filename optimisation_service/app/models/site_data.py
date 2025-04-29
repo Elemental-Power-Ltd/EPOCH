@@ -90,8 +90,8 @@ class ASHPCOPResponse(BaseModel):
         ],
         description="""
         Row major ASHP lookup table.
-        First element of each row should be the row's index: Output (send) hot water temperature in °C for COP lookup.
-        First row should be column headers: the Ambient air temperatures in °C for COP lookup.
+        First element of each row should be the row's index: the Ambient air temperatures in °C for COP lookup.
+        First row should be column headers: Output (send) hot water temperature in °C for COP lookup.
         """,
     )
 
