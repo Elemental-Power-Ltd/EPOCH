@@ -18,6 +18,7 @@ classifiers = [
 ]
 
 [tool.ruff]
+exclude = ["app/models/epoch_types"]
 line-length = 128
 
 [tool.ruff.lint.pydocstyle]
@@ -64,3 +65,7 @@ asyncio_default_fixture_loop_scope = "function"
 check_untyped_defs = true
 warn_redundant_casts = true
 warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = "app.models.epoch_types.task_data_type"
+ignore_errors = true

@@ -15,7 +15,7 @@ from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
 from app.internal.epoch_utils import convert_TaskData_to_dictionary
-from app.internal.heuristics.population_init import generate_building_initial_population
+from app.internal.heuristics.population_init import generate_site_scenarios_from_heuristics
 from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.constraints import Constraints
@@ -326,12 +326,14 @@ class EstimateBasedSampling(Sampling):
     def _do(self, problem: ProblemInstance, n_samples: int, **kwargs):
         site_pops = []
         for site in problem.portfolio:
-            site_pops.append(  # noqa: PERF401
-                generate_building_initial_population(
-                    site_range=site.site_range,
-                    epoch_data=site._epoch_data,
-                    pop_size=n_samples,
-                )
+            site_name = site.site_data.site_id
+            site_scenarios = generate_site_scenarios_from_heuristics(
+                site_range=site.site_range,
+                epoch_data=site._epoch_data,
+                pop_size=n_samples,
+            )
+            site_pops.append(
+                [problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios]
             )
         portfolio_pop = np.concatenate(site_pops, axis=1)
         return portfolio_pop

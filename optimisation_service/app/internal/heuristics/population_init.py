@@ -1,15 +1,18 @@
+import json
+import random  # Use random instead of numpy.random to avoid numpy types that aren't json serialisable
+
 import numpy as np
-import numpy.typing as npt
+from epoch_simulator import TaskData
 
 from app.models.site_data import EpochSiteData
 from app.models.site_range import SiteRange
 
-from .asset_heuristics import EnergyStorageSystem, HeatPump, Renewables
+from .asset_heuristics import get_all_estimates
 
 
-def generate_building_initial_population(site_range: SiteRange, epoch_data: EpochSiteData, pop_size: int) -> npt.NDArray:
+def generate_site_scenarios_from_heuristics(site_range: SiteRange, epoch_data: EpochSiteData, pop_size: int) -> list[TaskData]:
     """
-    Generate a population of solutions by estimating some parameter values from data.
+    Generate a population of site scenarios by estimating some parameter values from data.
 
     For some parameters, estimates can be generated from the input data.
     We can then set these as the mu to truncated normal distributions.
@@ -20,82 +23,89 @@ def generate_building_initial_population(site_range: SiteRange, epoch_data: Epoc
     ----------
     site_range
         Problem site range.
-    input_dir
-        Path to folder containing data files.
+    epoch_data
+        Site data to generate estimates from.
     pop_size
-        Number of solutions generated in population.
+        Number of scenarios generated in population.
 
     Returns
     -------
     pop
-        Generated population, prepared for pymoo (in range [0, number of asset values])
+        Population of site scenarios.
     """
-    rng = np.random.default_rng()
+    estimates = get_all_estimates(epoch_data)
 
-    N = len(epoch_data.building_eload)
-    timestamps = [epoch_data.start_ts + (epoch_data.end_ts - epoch_data.start_ts) * i / (N - 1) for i in range(N)]
+    site_range_dict = site_range.model_dump(exclude_none=True)
+    config = site_range_dict["config"]
+    site_range_dict.pop("config")
 
-    def normal_choice(est: float | int, attribute_values: list[float | int]) -> npt.NDArray:
-        lo, hi = attribute_values[0], attribute_values[-1]
-        std_dev = np.abs(hi - lo) / 4
-        probabilities = np.exp(-0.5 * ((np.array(attribute_values) - est) / std_dev) ** 2)
-        probabilities /= probabilities.sum()
-        return rng.choice(a=range(len(attribute_values)), size=pop_size, p=probabilities)
-
-    estimates: dict[str, dict[str, int | float]] = {}
-    estimates["heat_pump"] = {}
-    estimates["heat_pump"]["heat_power"] = HeatPump.heat_power(
-        building_hload=epoch_data.building_hload,
-        ashp_input_table=epoch_data.ashp_input_table,
-        ashp_output_table=epoch_data.ashp_output_table,
-        air_temperature=epoch_data.air_temperature,
-        timestamps=timestamps,
-        ashp_mode=2.0,
-    )
-    estimates["energy_storage_system"] = {}
-    estimates["energy_storage_system"]["capacity"] = EnergyStorageSystem.capacity(
-        building_eload=epoch_data.building_eload, timestamps=timestamps
-    )
-    solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields)]
-    estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystem.charge_power(
-        solar_yield=solar_yield_sum,
-        timestamps=timestamps,
-        solar_scale=Renewables.yield_scalars(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
-    )
-    estimates["energy_storage_system"]["discharge_power"] = EnergyStorageSystem.discharge_power(
-        building_eload=epoch_data.building_eload, timestamps=timestamps
-    )
-    estimates["renewables"] = {}
-    yield_scalars_estimates = [
-        Renewables.yield_scalars(solar_yield=solar_yield, building_eload=epoch_data.building_eload)
-        for solar_yield in epoch_data.solar_yields
-    ]
-
-    pop = []
-    for asset_name, asset_range in site_range.model_dump().items():
-        if asset_name == "config":
-            pass
-        if asset_name == "renewables":
-            if not asset_range["COMPONENT_IS_MANDATORY"]:
-                pop.append(rng.choice(a=[0, 1], size=pop_size))
-            for estimate, yield_scalar_values in zip(yield_scalars_estimates, asset_range["yield_scalars"]):
-                if len(yield_scalar_values) > 1:
-                    chosen_value = normal_choice(estimate, yield_scalar_values)
-                    pop.append(yield_scalar_values.index(chosen_value))
-        else:
-            for attrbute_name, attribute_values in asset_range.items():
-                if attrbute_name == "COMPONENT_IS_MANDATORY":
-                    if not attribute_values:
-                        pop.append(rng.choice(a=[0, 1], size=pop_size))
-                elif (
-                    asset_name in estimates.keys()
-                    and attrbute_name in estimates[asset_name].keys()
-                    and len(attribute_values) > 1
-                ):
-                    estimate = estimates[asset_name][attrbute_name]
-                    chosen_value = normal_choice(estimate, attribute_values)
-                    pop.append(attribute_values.index(chosen_value))
+    td_pop = []
+    for _ in range(pop_size):
+        individual = {"config": config}
+        for asset_name, asset_range in site_range_dict.items():
+            if (not asset_range["COMPONENT_IS_MANDATORY"] and random.choice([True, False])) or asset_range[
+                "COMPONENT_IS_MANDATORY"
+            ]:
+                if asset_name == "renewables":
+                    individual["renewables"] = {
+                        "yield_scalars": [
+                            normal_choice(estimate, yield_scalar_values)
+                            for estimate, yield_scalar_values in zip(
+                                estimates["renewables"]["yield_scalars"], asset_range["yield_scalars"]
+                            )
+                        ]
+                    }
                 else:
-                    pop.append(rng.choice(a=range(len(attribute_values)), size=pop_size))
+                    individual[asset_name] = {}
+                    for attribute_name, attribute_values in asset_range.items():
+                        if attribute_name == "COMPONENT_IS_MANDATORY":
+                            pass
+                        elif (
+                            asset_name in estimates.keys()
+                            and attribute_name in estimates[asset_name].keys()
+                            and len(attribute_values) > 1
+                        ):
+                            estimate = estimates[asset_name][attribute_name]
+                            individual[asset_name][attribute_name] = normal_choice(estimate, attribute_values)
+                        else:
+                            individual[asset_name][attribute_name] = random.choice(attribute_values)
+        td_pop.append(TaskData.from_json(json.dumps(individual)))
     # TODO: check CAPEX of values
-    return np.array(pop).transpose()
+    return td_pop
+
+
+def normal_choice(estimate: float | int, attribute_values: list[float] | list[int], std_dev_scale: float = 0.1) -> int | float:
+    """
+    Randomly select a value from the attribute values list with probabilties from a truncated normal distribution with mu equal
+    to the estimate and with the standard deviation equal to std_dev_scale times the difference between the minimum and maximum
+    attribute value.
+
+    Parameters
+    ----------
+    estimate
+        Estimate value for the attribute to center distribution on.
+    attribute_values
+        Candidate attribute values to select from.
+    std_dev_scale
+        Scaler to modify distribution standard deviation.
+
+    Returns
+    -------
+    selected
+        The selected attribute value.
+    """
+    max_attr = max(attribute_values)
+    if estimate > max_attr * 2:  # For cases where the estimate is much greater than any attribute value
+        return max_attr
+
+    min_attr = min(attribute_values)
+    if estimate < min_attr / 2:  # For cases where the estimate is much smaller than any attribute value
+        return min_attr
+
+    std_dev = np.abs(max_attr - min_attr) * std_dev_scale
+    probabilities = np.exp(-0.5 * ((np.array(attribute_values) - estimate) / std_dev) ** 2)
+    probabilities /= probabilities.sum()
+
+    selected = random.choices(population=attribute_values, weights=probabilities)[0]
+
+    return selected
