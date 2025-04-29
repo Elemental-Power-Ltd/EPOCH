@@ -1,11 +1,11 @@
-import {ReportDataType} from "../Models/Endpoints";
+import {NonNullReportDataType} from "../Models/Endpoints";
 
 /**
  * Convert a ReportDataType object into CSV format.
  * The first row is the list of keys (headers),
  * followed by rows of numerical data (columns).
  */
-function convertReportDataToCSV(reportData: ReportDataType): string {
+function convertReportDataToCSV(reportData: NonNullReportDataType): string {
   const keys = Object.keys(reportData);
   if (!keys.length) {
     return ""; // No data, return an empty CSV
@@ -34,7 +34,7 @@ function convertReportDataToCSV(reportData: ReportDataType): string {
  * onClick function that triggers the CSV download
  * with the filename "reportData.csv".
  */
-export function onClickDownloadReportData(reportData: ReportDataType) {
+export function onClickDownloadReportData(reportData: NonNullReportDataType) {
   const csv = convertReportDataToCSV(reportData);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

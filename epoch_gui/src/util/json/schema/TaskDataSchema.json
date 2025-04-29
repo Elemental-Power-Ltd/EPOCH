@@ -6,21 +6,28 @@
     "building": {
       "type": "object",
       "title": "Building",
+      "description": "A component to represent the physical building structure and its usage demands.",
       "properties": {
         "scalar_heat_load": {
           "type": "number",
           "title": "Scalar Heat Load",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Scalar multiplier applied to the baseline heat load.",
+          "default": 1.0
         },
         "scalar_electrical_load": {
           "type": "number",
           "title": "Scalar Electrical Load",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Scalar multiplier applied to the baseline electrical load.",
+          "default": 1.0
         },
         "fabric_intervention_index": {
           "type": "integer",
           "title": "Fabric Intervention Index",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Index mapping to a fabric intervention option specified in the SiteData.",
+          "default": 0
         }
       },
       "required": ["scalar_heat_load", "scalar_electrical_load", "fabric_intervention_index"]
@@ -28,15 +35,20 @@
     "data_centre": {
       "type": "object",
       "title": "Data Centre",
+      "description": "A Data Centre",
       "properties": {
         "maximum_load": {
           "type": "number",
           "title": "Maximum Load",
-          "minimum": 0
+          "minimum": 0,
+          "description": "The maximum load for the Data Centre in kW",
+          "default": 50.0
         },
         "hotroom_temp": {
           "type": "number",
-          "title": "Hotroom Temperature"
+          "title": "Hotroom Temperature",
+          "description": "Operating temperature of the Data Centre in degrees Celsius.",
+          "default": 43.0
         }
       },
       "required": ["maximum_load", "hotroom_temp"]
@@ -48,7 +60,9 @@
         "cylinder_volume": {
           "type": "number",
           "title": "Cylinder Volume",
-          "minimum": 0
+          "description": "The volume of the cylinder in metres cubed",
+          "minimum": 0,
+          "default": 100.0
         }
       },
       "required": ["cylinder_volume"]
@@ -61,32 +75,44 @@
           "type": "number",
           "minimum": 0,
           "title": "Flexible Load Ratio",
-          "maximum": 1
+          "description": "The decimal fraction of the load that must be met.",
+          "maximum": 1,
+          "default": 0.5
         },
         "small_chargers": {
           "type": "integer",
           "title": "Small Chargers",
-          "minimum": 0
+          "description": "The quantity of small chargers.",
+          "minimum": 0,
+          "default": 0
         },
         "fast_chargers": {
           "type": "integer",
           "title": "Fast Chargers",
-          "minimum": 0
+          "description": "The quantity of fast chargers.",
+          "minimum": 0,
+          "default": 3
         },
         "rapid_chargers": {
           "type": "integer",
           "title": "Rapid Chargers",
-          "minimum": 0
+          "description": "The quantity of rapid chargers.",
+          "minimum": 0,
+          "default": 0
         },
         "ultra_chargers": {
           "type": "integer",
           "title": "Ultra Chargers",
-          "minimum": 0
+          "description": "The quantity of ultra chargers.",
+          "minimum": 0,
+          "default": 0
         },
         "scalar_electrical_load": {
           "type": "number",
           "title": "Scalar Electrical Load",
-          "minimum": 0
+          "description": "Scalar multiplier for the EV Charging load.",
+          "minimum": 0,
+          "default": 3.0
         }
       },
       "required": [
@@ -105,27 +131,37 @@
         "capacity": {
           "type": "number",
           "title": "Capacity",
-          "exclusiveMinimum": 0
+          "description": "Battery capacity in kWh.",
+          "exclusiveMinimum": 0,
+          "default": 20.0
         },
         "charge_power": {
           "type": "number",
           "title": "Charge Power",
-          "exclusiveMinimum": 0
+          "description": "Instantaneous charge power in kW.",
+          "exclusiveMinimum": 0,
+          "default": 10.0
         },
         "discharge_power": {
           "type": "number",
           "title": "Discharge Power",
-          "exclusiveMinimum": 0
+          "description": "Instantaneous discharge power in kW.",
+          "exclusiveMinimum": 0,
+          "default": 10.0
         },
         "battery_mode": {
           "type": "string",
           "title": "Battery Mode",
-          "enum": ["CONSUME", "CONSUME_PLUS"]
+          "description": "The algorithmic mode that determines when the battery charges/discharges.",
+          "enum": ["CONSUME", "CONSUME_PLUS"],
+          "default": "CONSUME"
         },
         "initial_charge": {
           "type": "number",
           "title": "Initial Charge",
-          "minimum": 0
+          "description": "Initial charge of the battery in kWh.",
+          "minimum": 0,
+          "default": 0.0
         }
       },
       "required": [
@@ -143,18 +179,24 @@
         "maximum_output": {
           "type": "number",
           "title": "Maximum Output",
-          "exclusiveMinimum": 0
+          "description": "The maximum heat output in kW.",
+          "exclusiveMinimum": 0,
+          "default": 40.0
         },
         "gas_type": {
           "type": "string",
           "title": "Gas Type",
-          "enum": ["NATURAL_GAS", "LIQUID_PETROLEUM_GAS"]
+          "description": "The type of gas used to power this boiler.",
+          "enum": ["NATURAL_GAS", "LIQUID_PETROLEUM_GAS"],
+          "default": "NATURAL_GAS"
         },
         "boiler_efficiency": {
           "type": "number",
           "title": "Boiler Efficiency",
+          "description": "The decimal efficiency of the boiler.",
           "exclusiveMinimum": 0,
-          "maximum": 1
+          "maximum": 1,
+          "default": 0.9
         }
       },
       "required": [
@@ -170,23 +212,31 @@
         "grid_export": {
           "type": "number",
           "title": "Grid Export",
-          "minimum": 0
+          "description": "The maximum power the grid can export in kW.",
+          "minimum": 0,
+          "default": 23.0
         },
         "grid_import": {
           "type": "number",
           "title": "Grid Import",
-          "minimum": 0
+          "description": "The maximum power the grid can import in kW.",
+          "minimum": 0,
+          "default": 23.0
         },
         "import_headroom": {
           "type": "number",
           "title": "Import Headroom",
+          "description": "The decimal fraction of the peak electrical load that must be reserved.",
           "minimum": 0,
-          "maximum": 1
+          "maximum": 1,
+          "default": 0.4
         },
         "tariff_index": {
           "type": "integer",
           "title": "Tariff Index",
-          "minimum": 0
+          "description": "Index mapping to an electricity tariff option defined within SiteData.",
+          "minimum": 0,
+          "default": 0
         }
       },
       "required": [
@@ -203,16 +253,22 @@
         "heat_power": {
           "type": "number",
           "title": "Heat Power",
-          "minimum": 0
+          "description": "The maximum power output this heat pump can produce in kW.",
+          "minimum": 0,
+          "default": 20.0
         },
         "heat_source": {
           "type": "string",
           "title": "Heat Source",
-          "enum": ["AMBIENT_AIR", "HOTROOM"]
+          "description": "The source of the air the heat pump draws from.",
+          "enum": ["AMBIENT_AIR", "HOTROOM"],
+          "default": "AMBIENT_AIR"
         },
         "send_temp": {
           "type": "number",
-          "title": "Send Temperature"
+          "title": "Send Temperature",
+          "description": "The flow temperature the heat pump operates at in degrees Celsius.",
+          "default": 70.0
         }
       },
       "required": ["heat_power", "heat_source", "send_temp"]
@@ -220,11 +276,14 @@
     "mop": {
       "type": "object",
       "title": "Mop",
+      "description": "A generic component to consume excess heat.",
       "properties": {
         "maximum_load": {
           "type": "number",
           "title": "Maximum Load",
-          "minimum": 0
+          "description": "The maximum heat power this component will draw in kW.",
+          "minimum": 0,
+          "default": 300.0
         }
       },
       "required": ["maximum_load"]
@@ -236,10 +295,12 @@
         "yield_scalars": {
           "type": "array",
           "title": "Yield Scalars",
+          "description": "The peak solar generation capability of each set of panels in kW.",
           "items": {
             "type": "number",
             "minimum": 0
-          }
+          },
+          "default": [20.0]
         }
       },
       "required": ["yield_scalars"]
@@ -251,7 +312,9 @@
         "capex_limit": {
           "type": "number",
           "title": "CAPEX Limit",
-          "minimum": 0
+          "description": "The maximum capital expenditure (CAPEX) allowed at this site in pounds.",
+          "minimum": 0,
+          "default": 2500000
         }
       },
       "required": ["capex_limit"]

@@ -20,7 +20,8 @@ export interface ReproduceSimulationRequest {
 }
 
 
-export type ReportDataType = { [key: string]: number[] };
+export type ReportDataType = { [key: string]: number[] | null };
+export type NonNullReportDataType = { [key: string]: number[]};
 
 
 interface FabricIntervention {

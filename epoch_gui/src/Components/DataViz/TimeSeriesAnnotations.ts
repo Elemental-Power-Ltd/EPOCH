@@ -1,4 +1,4 @@
-import {EpochSiteData, ReportDataType} from "../../Models/Endpoints";
+import {EpochSiteData, NonNullReportDataType} from "../../Models/Endpoints";
 
 
 type Units = "kWh" | "Deg (c)" | "£/KwH" | "gCO₂/kWh"
@@ -68,7 +68,7 @@ interface AnnotationWithData extends Annotation {
 
 export type DataAnnotationMap = {[key: string]: AnnotationWithData};
 
-export const getAnnotatedSeries = (taskData: any, siteData: EpochSiteData, reportData: ReportDataType): DataAnnotationMap => {
+export const getAnnotatedSeries = (taskData: any, siteData: EpochSiteData, reportData: NonNullReportDataType): DataAnnotationMap => {
 
     // Add the SiteData
 

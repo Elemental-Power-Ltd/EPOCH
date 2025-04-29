@@ -3,7 +3,7 @@ import {Button} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import dayjs, {Dayjs} from 'dayjs';
 
-import {SimulationResult} from "../../Models/Endpoints";
+import {NonNullReportDataType, ReportDataType, SimulationResult} from "../../Models/Endpoints";
 import {onClickDownloadReportData} from "../../util/MakeCSV";
 import {DateRangeControls} from "./DateRangeControls";
 import {StackedBarChart} from "./StackedBarChart";
@@ -17,7 +17,7 @@ interface DataVizProps {
 
 const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
 
-    const reportData = removeEmptyVectors(result.report_data!);
+    const reportData = removeEmptyVectors(getNonNullReportData(result.report_data));
 
     // Set const values for the assumed first date and sampling frequency in rawData
     const initialDatetime = dayjs("2022-01-01T00:00:00Z"); // Example default initial datetime
@@ -30,9 +30,7 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
     const [selectedStartDatetime, setSelectedStartDatetime] = useState<Dayjs|null>(initialDatetime);
     const [daysToKeep, setDaysToKeep] = useState(1);
 
-    const nonNullReportData = result.report_data || {};
-
-    const fullTimeSeries = getAnnotatedSeries(result.task_data, result.site_data!, nonNullReportData);
+    const fullTimeSeries = getAnnotatedSeries(result.task_data, result.site_data!, reportData);
     const [rangedData, setRangedData] = useState<DataAnnotationMap>(fullTimeSeries);
 
     // Initial states - variable for reacting to browser window size
@@ -109,3 +107,13 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
 }
 
 export default DataVizContainer
+
+
+const getNonNullReportData = (reportData: ReportDataType | null): NonNullReportDataType => {
+    if (!reportData) return {};
+    return Object.fromEntries(
+        Object.entries(reportData).filter(
+            ([, value]) => value !== null
+        ) as [string, number[]][]
+    );
+};

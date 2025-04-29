@@ -1,6 +1,6 @@
-import { ReportDataType } from "../../Models/Endpoints";
+import { NonNullReportDataType } from "../../Models/Endpoints";
 
-export const removeEmptyVectors = (data: ReportDataType): ReportDataType => {
+export const removeEmptyVectors = (data: NonNullReportDataType): NonNullReportDataType => {
     return Object.fromEntries(
         Object.entries(data).filter(([_, vector]) => vector.length > 0)
     );
