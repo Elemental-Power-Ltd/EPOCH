@@ -2,7 +2,6 @@
 Endpoints to handle running individual simulations of EPOCH
 """
 
-import json
 import logging
 
 from epoch_simulator import Simulator
@@ -10,12 +9,12 @@ from fastapi import APIRouter, HTTPException
 
 from app.internal.datamanager import DataManagerDep, EpochSiteData
 from app.internal.epoch_utils import TaskData, convert_sim_result
+from app.models.epoch_types import ReportData, TaskDataPydantic
 from app.models.simulate import (
     FullResult,
     GetSavedSiteDataRequest,
     ReproduceSimulationRequest,
     RunSimulationRequest,
-    TaskDataType,
 )
 from app.models.site_data import LocalMetaData, RemoteMetaData
 
@@ -108,7 +107,7 @@ async def get_saved_site_data(request: GetSavedSiteDataRequest, data_manager: Da
     return saved_input.site_data
 
 
-def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataType):
+def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> FullResult:
     """
     Internal function to run a simulation for a given set of site data and taskData
     Parameters
@@ -125,14 +124,16 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataType):
 
     """
     sim = Simulator.from_json(epoch_data.model_dump_json())
-    pytd = TaskData.from_json(json.dumps(task_data))
+    pytd = TaskData.from_json(task_data.model_dump_json())
 
     res = sim.simulate_scenario(pytd, fullReporting=True)
 
-    report_dict = report_data_to_dict(res.report_data)
+    report_data_pydantic = report_data_to_pydantic(res.report_data)
     objectives = convert_sim_result(res)
 
-    return FullResult(report_data=report_dict, metrics=objectives, task_data=task_data, site_data=epoch_data)
+    return FullResult(
+        report_data=report_data_pydantic, metrics=objectives, task_data=task_data, site_data=epoch_data
+    )
 
 
 def report_data_to_dict(report_data) -> dict[str, list[float]]:
@@ -165,3 +166,8 @@ def report_data_to_dict(report_data) -> dict[str, list[float]]:
                 # convert the numpy array to a python list
                 report_dict[field] = list(vector)
     return report_dict
+
+
+def report_data_to_pydantic(report_data) -> ReportData:
+    """Convert the C++ / Pybind report_data type into a pydantic model (via a json dict)"""
+    return ReportData.model_validate(report_data_to_dict(report_data))
