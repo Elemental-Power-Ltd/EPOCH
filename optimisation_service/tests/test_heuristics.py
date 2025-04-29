@@ -1,4 +1,9 @@
-from app.internal.heuristics.asset_heuristics import EnergyStorageSystem, HeatPump, Renewables, get_all_estimates
+from app.internal.heuristics.asset_heuristics import (
+    EnergyStorageSystemHeuristic,
+    HeatPumpHeuristic,
+    RenewablesHeuristic,
+    get_all_estimates,
+)
 from app.models.site_data import EpochSiteData
 
 
@@ -9,7 +14,7 @@ class TestHeatPump:
             default_epoch_data.start_ts + (default_epoch_data.end_ts - default_epoch_data.start_ts) * i / (N - 1)
             for i in range(N)
         ]
-        HeatPump.heat_power(
+        HeatPumpHeuristic.heat_power(
             building_hload=default_epoch_data.building_hload,
             ashp_input_table=default_epoch_data.ashp_input_table,
             ashp_output_table=default_epoch_data.ashp_output_table,
@@ -21,7 +26,7 @@ class TestHeatPump:
 
 class TestRenewables:
     def test_yield_scalars(self, default_epoch_data: EpochSiteData):
-        Renewables.yield_scalars(
+        RenewablesHeuristic.yield_scalars(
             solar_yield=default_epoch_data.solar_yields[0],
             building_eload=default_epoch_data.building_eload,
         )
@@ -34,7 +39,7 @@ class TestEnergyStorageSystem:
             default_epoch_data.start_ts + (default_epoch_data.end_ts - default_epoch_data.start_ts) * i / (N - 1)
             for i in range(N)
         ]
-        EnergyStorageSystem.capacity(building_eload=default_epoch_data.building_eload, timestamps=timestamps)
+        EnergyStorageSystemHeuristic.capacity(building_eload=default_epoch_data.building_eload, timestamps=timestamps)
 
     def test_ccharge_power(self, default_epoch_data: EpochSiteData):
         N = len(default_epoch_data.building_eload)
@@ -42,11 +47,11 @@ class TestEnergyStorageSystem:
             default_epoch_data.start_ts + (default_epoch_data.end_ts - default_epoch_data.start_ts) * i / (N - 1)
             for i in range(N)
         ]
-        solar_scale = Renewables.yield_scalars(
+        solar_scale = RenewablesHeuristic.yield_scalars(
             solar_yield=default_epoch_data.solar_yields[0],
             building_eload=default_epoch_data.building_eload,
         )
-        EnergyStorageSystem.charge_power(
+        EnergyStorageSystemHeuristic.charge_power(
             solar_yield=default_epoch_data.solar_yields[0], timestamps=timestamps, solar_scale=solar_scale
         )
 
@@ -56,7 +61,7 @@ class TestEnergyStorageSystem:
             default_epoch_data.start_ts + (default_epoch_data.end_ts - default_epoch_data.start_ts) * i / (N - 1)
             for i in range(N)
         ]
-        EnergyStorageSystem.discharge_power(building_eload=default_epoch_data.building_eload, timestamps=timestamps)
+        EnergyStorageSystemHeuristic.discharge_power(building_eload=default_epoch_data.building_eload, timestamps=timestamps)
 
 
 class TestGetAllEstimates:

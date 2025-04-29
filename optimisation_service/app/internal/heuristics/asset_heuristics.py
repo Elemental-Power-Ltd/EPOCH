@@ -10,7 +10,7 @@ import pandas as pd
 from app.models.site_data import EpochSiteData
 
 
-class HeatPump:
+class HeatPumpHeuristic:
     @staticmethod
     def heat_power(
         building_hload: list[float],
@@ -68,7 +68,7 @@ class HeatPump:
         return np.quantile(elec_loads, quantile)
 
 
-class Renewables:
+class RenewablesHeuristic:
     @staticmethod
     def yield_scalars(solar_yield: list[float], building_eload: list[float], quantile: float = 0.75) -> float:
         """
@@ -98,7 +98,7 @@ class Renewables:
         return float(np.quantile(required_solar, quantile))
 
 
-class EnergyStorageSystem:
+class EnergyStorageSystemHeuristic:
     @staticmethod
     def capacity(building_eload: list[float], timestamps: list[datetime], quantile: float = 0.75) -> float:
         """
@@ -204,7 +204,7 @@ def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
 
     estimates: dict[str, dict[str, int | float | list[float]]] = {}
     estimates["heat_pump"] = {}
-    estimates["heat_pump"]["heat_power"] = HeatPump.heat_power(
+    estimates["heat_pump"]["heat_power"] = HeatPumpHeuristic.heat_power(
         building_hload=epoch_data.building_hload,
         ashp_input_table=epoch_data.ashp_input_table,
         ashp_output_table=epoch_data.ashp_output_table,
@@ -213,21 +213,21 @@ def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
         ashp_mode=2.0,
     )
     estimates["energy_storage_system"] = {}
-    estimates["energy_storage_system"]["capacity"] = EnergyStorageSystem.capacity(
+    estimates["energy_storage_system"]["capacity"] = EnergyStorageSystemHeuristic.capacity(
         building_eload=epoch_data.building_eload, timestamps=timestamps
     )
     solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields)]
-    estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystem.charge_power(
+    estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystemHeuristic.charge_power(
         solar_yield=solar_yield_sum,
         timestamps=timestamps,
-        solar_scale=Renewables.yield_scalars(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
+        solar_scale=RenewablesHeuristic.yield_scalars(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
     )
-    estimates["energy_storage_system"]["discharge_power"] = EnergyStorageSystem.discharge_power(
+    estimates["energy_storage_system"]["discharge_power"] = EnergyStorageSystemHeuristic.discharge_power(
         building_eload=epoch_data.building_eload, timestamps=timestamps
     )
     estimates["renewables"] = {}
     estimates["renewables"]["yield_scalars"] = [
-        Renewables.yield_scalars(solar_yield=solar_yield, building_eload=epoch_data.building_eload)
+        RenewablesHeuristic.yield_scalars(solar_yield=solar_yield, building_eload=epoch_data.building_eload)
         for solar_yield in epoch_data.solar_yields
     ]
 
