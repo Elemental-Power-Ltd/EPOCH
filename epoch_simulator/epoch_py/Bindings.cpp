@@ -100,7 +100,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("grid_export", &GridData::grid_export)
 		.def_readwrite("grid_import", &GridData::grid_import)
 		.def_readwrite("import_headroom", &GridData::import_headroom)
-		.def_readwrite("tariff_index", &GridData::tariff_index);
+		.def_readwrite("tariff_index", &GridData::tariff_index)
+		.def_readwrite("export_tariff", &GridData::export_tariff);
 
 	pybind11::class_<HeatPumpData>(m, "HeatPump")
 		.def(pybind11::init<>())

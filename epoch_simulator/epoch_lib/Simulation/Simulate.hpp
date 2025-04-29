@@ -41,7 +41,7 @@ private:
 
 	SimulationResult makeInvalidResult(const TaskData& taskData) const;
 
-	CostVectors extractCostVectors(const ReportData& reportData) const;
+	CostVectors extractCostVectors(const ReportData& reportData, const TaskData& taskData) const;
 
 	float getFixedAvailableImport(const TaskData& taskData) const;
 

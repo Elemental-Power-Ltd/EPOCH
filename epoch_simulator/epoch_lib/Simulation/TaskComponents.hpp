@@ -74,6 +74,7 @@ struct GridData {
     float grid_import = 23.0;
     float import_headroom = 0.4f;
     size_t tariff_index = 0;
+    float export_tariff = 0.05f;
 
     bool operator==(const GridData&) const = default;
 };
@@ -168,7 +169,7 @@ struct std::hash<GridData>
         std::size_t h = 0;
         hash_combine(h,
             grid.grid_export, grid.grid_import,
-            grid.import_headroom, grid.tariff_index);
+            grid.import_headroom, grid.tariff_index, grid.export_tariff);
         return h;
     }
 };

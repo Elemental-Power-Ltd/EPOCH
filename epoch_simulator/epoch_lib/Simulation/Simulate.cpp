@@ -49,7 +49,7 @@ Simulator::Simulator(SiteData siteData):
 	baselineTaskData.gas_heater->maximum_output = 1000000.0f;
 
 	auto baselineReportData = simulateTimesteps(baselineTaskData);
-	CostVectors baselineCostVectors = extractCostVectors(baselineReportData);
+	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, baselineTaskData);
 	mBaselineUsage = calculateUsage(mSiteData, baselineTaskData, baselineCostVectors);
 
 }
@@ -81,7 +81,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 
 	result.report_data = simulateTimesteps(taskData, simulationType);
 
-	const CostVectors& costVectors = extractCostVectors(result.report_data.value());
+	const CostVectors& costVectors = extractCostVectors(result.report_data.value(), taskData);
 
 	auto scenarioUsage = calculateUsage(mSiteData, taskData, costVectors);
 
@@ -340,7 +340,7 @@ SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
 	return result;
 }
 
-CostVectors Simulator::extractCostVectors(const ReportData& reportData) const {
+CostVectors Simulator::extractCostVectors(const ReportData& reportData, const TaskData& taskData) const {
 	CostVectors costVectors;
 
 	// If the components that create these vectors are not present then the vectors in reportData may be empty
@@ -354,7 +354,7 @@ CostVectors Simulator::extractCostVectors(const ReportData& reportData) const {
 	costVectors.grid_export_e = reportData.Grid_Export.size() ? reportData.Grid_Export : Eigen::VectorXf::Zero(mSiteData.timesteps);
 	costVectors.actual_low_priority_load_e = reportData.MOP_load.size() ? reportData.MOP_load : Eigen::VectorXf::Zero(mSiteData.timesteps);
 
-	constexpr float fixed_export_price = 0.05f;
+	float fixed_export_price = taskData.grid ? taskData.grid->export_tariff : 0.0f;
 	costVectors.grid_export_prices = Eigen::VectorXf::Constant(mSiteData.timesteps, fixed_export_price);
 
 	return costVectors;

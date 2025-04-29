@@ -152,7 +152,8 @@ std::string gridToString(const GridData& grid) {
 	oss << "<Grid grid_export=" << grid.grid_export
 		<< ", grid_import=" << grid.grid_import
 		<< ", import_headroom=" << grid.import_headroom
-		<< ", tariff_index=" << grid.tariff_index << ">";
+		<< ", tariff_index=" << grid.tariff_index 
+		<< ", export_tariff=" << grid.export_tariff << ">";
 	return oss.str();
 }
 

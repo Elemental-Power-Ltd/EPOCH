@@ -141,6 +141,7 @@ void from_json(const json& j, GridData& grid) {
 	j.at("grid_import").get_to(grid.grid_import);
 	j.at("import_headroom").get_to(grid.import_headroom);
 	j.at("tariff_index").get_to(grid.tariff_index);
+	j.at("export_tariff").get_to(grid.export_tariff);
 }
 
 void to_json(json& j, const GridData& grid) {
@@ -148,7 +149,8 @@ void to_json(json& j, const GridData& grid) {
 		{"grid_export", grid.grid_export},
 		{"grid_import", grid.grid_import},
 		{"import_headroom", grid.import_headroom},
-		{"tariff_index", grid.tariff_index}
+		{"tariff_index", grid.tariff_index},
+		{"export_tariff", grid.export_tariff}
 	};
 }
 
