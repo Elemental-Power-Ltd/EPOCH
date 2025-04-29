@@ -1,5 +1,5 @@
 import json
-import random
+import random  # Use random instead of numpy.random to avoid numpy types that aren't json serialisable
 
 import numpy as np
 from epoch_simulator import TaskData
@@ -7,7 +7,7 @@ from epoch_simulator import TaskData
 from app.models.site_data import EpochSiteData
 from app.models.site_range import SiteRange
 
-from .asset_heuristics import EnergyStorageSystem, HeatPump, Renewables
+from .asset_heuristics import get_all_estimates
 
 
 def generate_site_scenarios_from_heuristics(site_range: SiteRange, epoch_data: EpochSiteData, pop_size: int) -> list[TaskData]:
@@ -23,8 +23,8 @@ def generate_site_scenarios_from_heuristics(site_range: SiteRange, epoch_data: E
     ----------
     site_range
         Problem site range.
-    input_dir
-        Path to folder containing data files.
+    epoch_data
+        Site data to generate estimates from.
     pop_size
         Number of scenarios generated in population.
 
@@ -33,51 +33,7 @@ def generate_site_scenarios_from_heuristics(site_range: SiteRange, epoch_data: E
     pop
         Population of site scenarios.
     """
-    N = len(epoch_data.building_eload)
-    timestamps = [epoch_data.start_ts + (epoch_data.end_ts - epoch_data.start_ts) * i / (N - 1) for i in range(N)]
-
-    def normal_choice(est: float | int, attribute_values: list[float | int]) -> int | float:
-        if est > attribute_values[-1] * 2:
-            return attribute_values[-1]
-
-        if est < attribute_values[0] / 2:
-            return attribute_values[0]
-
-        lo, hi = attribute_values[0], attribute_values[-1]
-        std_dev = np.abs(hi - lo) * 0.1
-        probabilities = np.exp(-0.5 * ((np.array(attribute_values) - est) / std_dev) ** 2)
-        probabilities /= probabilities.sum()
-
-        return random.choices(population=attribute_values, weights=probabilities)[0]
-
-    estimates: dict[str, dict[str, int | float]] = {}
-    estimates["heat_pump"] = {}
-    estimates["heat_pump"]["heat_power"] = HeatPump.heat_power(
-        building_hload=epoch_data.building_hload,
-        ashp_input_table=epoch_data.ashp_input_table,
-        ashp_output_table=epoch_data.ashp_output_table,
-        air_temperature=epoch_data.air_temperature,
-        timestamps=timestamps,
-        ashp_mode=2.0,
-    )
-    estimates["energy_storage_system"] = {}
-    estimates["energy_storage_system"]["capacity"] = EnergyStorageSystem.capacity(
-        building_eload=epoch_data.building_eload, timestamps=timestamps
-    )
-    solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields)]
-    estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystem.charge_power(
-        solar_yield=solar_yield_sum,
-        timestamps=timestamps,
-        solar_scale=Renewables.yield_scalars(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
-    )
-    estimates["energy_storage_system"]["discharge_power"] = EnergyStorageSystem.discharge_power(
-        building_eload=epoch_data.building_eload, timestamps=timestamps
-    )
-    estimates["renewables"] = {}
-    yield_scalars_estimates = [
-        Renewables.yield_scalars(solar_yield=solar_yield, building_eload=epoch_data.building_eload)
-        for solar_yield in epoch_data.solar_yields
-    ]
+    estimates = get_all_estimates(epoch_data)
 
     site_range_dict = site_range.model_dump(exclude_none=True)
     config = site_range_dict["config"]
@@ -94,24 +50,62 @@ def generate_site_scenarios_from_heuristics(site_range: SiteRange, epoch_data: E
                     individual["renewables"] = {
                         "yield_scalars": [
                             normal_choice(estimate, yield_scalar_values)
-                            for estimate, yield_scalar_values in zip(yield_scalars_estimates, asset_range["yield_scalars"])
+                            for estimate, yield_scalar_values in zip(
+                                estimates["renewables"]["yield_scalars"], asset_range["yield_scalars"]
+                            )
                         ]
                     }
                 else:
                     individual[asset_name] = {}
-                    for attrbute_name, attribute_values in asset_range.items():
-                        if attrbute_name == "COMPONENT_IS_MANDATORY":
+                    for attribute_name, attribute_values in asset_range.items():
+                        if attribute_name == "COMPONENT_IS_MANDATORY":
                             pass
                         elif (
                             asset_name in estimates.keys()
-                            and attrbute_name in estimates[asset_name].keys()
+                            and attribute_name in estimates[asset_name].keys()
                             and len(attribute_values) > 1
                         ):
-                            estimate = estimates[asset_name][attrbute_name]
-                            individual[asset_name][attrbute_name] = normal_choice(estimate, attribute_values)
+                            estimate = estimates[asset_name][attribute_name]
+                            individual[asset_name][attribute_name] = normal_choice(estimate, attribute_values)
                         else:
-                            individual[asset_name][attrbute_name] = random.choice(attribute_values)
-        print(individual)
+                            individual[asset_name][attribute_name] = random.choice(attribute_values)
         td_pop.append(TaskData.from_json(json.dumps(individual)))
     # TODO: check CAPEX of values
     return td_pop
+
+
+def normal_choice(estimate: float | int, attribute_values: list[float | int], std_dev_scale: float = 0.1) -> int | float:
+    """
+    Randomly select a value from the attribute values list with probabilties from a truncated normal distribution with mu equal
+    to the estimate and with the standard deviation equal to std_dev_scale times the difference between the minimum and maximum
+    attribute value.
+
+    Parameters
+    ----------
+    estimate
+        Estimate value for the attribute to center distribution on.
+    attribute_values
+        Candidate attribute values to select from.
+    std_dev_scale
+        Scaler to modify distribution standard deviation.
+
+    Returns
+    -------
+    selected
+        The selected attribute value.
+    """
+    max_attr = max(attribute_values)
+    if estimate > max_attr * 2:  # For cases where the estimate is much greater than any attribute value
+        return max_attr
+
+    min_attr = min(attribute_values)
+    if estimate < min_attr / 2:  # For cases where the estimate is much smaller than any attribute value
+        return min_attr
+
+    std_dev = np.abs(max_attr - min_attr) * std_dev_scale
+    probabilities = np.exp(-0.5 * ((np.array(attribute_values) - estimate) / std_dev) ** 2)
+    probabilities /= probabilities.sum()
+
+    selected = random.choices(population=attribute_values, weights=probabilities)[0]
+
+    return selected

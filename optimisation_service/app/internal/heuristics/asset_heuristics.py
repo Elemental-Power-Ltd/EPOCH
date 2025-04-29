@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
+from app.models.site_data import EpochSiteData
+
 
 class HeatPump:
     @staticmethod
@@ -181,3 +183,52 @@ class EnergyStorageSystem:
         # Convert from kWh / timestep into kW (e.g. something that uses 1kWh in 0.5 hours is a 2kW charge)
         timedeltas = np.pad(np.diff(np.array(timestamps)), pad_width=(0, 1), mode="wrap") / timedelta(hours=1)
         return np.quantile(solar_output / timedeltas, quantile)
+
+
+def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
+    """
+    Estimate values for assets for assets with heuristics.
+
+    Parameters
+    ----------
+    epoch_data
+        Site data to generate estimates from.
+
+    Returns
+    -------
+    estimates
+        A dictionary of the estimates.
+    """
+    N = len(epoch_data.building_eload)
+    timestamps = [epoch_data.start_ts + (epoch_data.end_ts - epoch_data.start_ts) * i / (N - 1) for i in range(N)]
+
+    estimates: dict[str, dict[str, int | float]] = {}
+    estimates["heat_pump"] = {}
+    estimates["heat_pump"]["heat_power"] = HeatPump.heat_power(
+        building_hload=epoch_data.building_hload,
+        ashp_input_table=epoch_data.ashp_input_table,
+        ashp_output_table=epoch_data.ashp_output_table,
+        air_temperature=epoch_data.air_temperature,
+        timestamps=timestamps,
+        ashp_mode=2.0,
+    )
+    estimates["energy_storage_system"] = {}
+    estimates["energy_storage_system"]["capacity"] = EnergyStorageSystem.capacity(
+        building_eload=epoch_data.building_eload, timestamps=timestamps
+    )
+    solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields)]
+    estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystem.charge_power(
+        solar_yield=solar_yield_sum,
+        timestamps=timestamps,
+        solar_scale=Renewables.yield_scalars(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
+    )
+    estimates["energy_storage_system"]["discharge_power"] = EnergyStorageSystem.discharge_power(
+        building_eload=epoch_data.building_eload, timestamps=timestamps
+    )
+    estimates["renewables"] = {}
+    estimates["renewables"]["yield_scalars"] = [
+        Renewables.yield_scalars(solar_yield=solar_yield, building_eload=epoch_data.building_eload)
+        for solar_yield in epoch_data.solar_yields
+    ]
+
+    return estimates
