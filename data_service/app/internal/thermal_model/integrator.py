@@ -9,11 +9,12 @@ import numpy.typing as npt
 import pandas as pd
 
 from ..epl_typing import mark_unused
-from ..utils.conversions import kelvin_to_celsius, mph_to_ms
+from ..utils.conversions import kelvin_to_celsius, mph_to_ms, joule_to_kwh
 from .building_elements import BuildingElement
 from .links import BoilerRadiativeLink
 from .matrix import create_node_to_index_map, interpolate_heating_power, solve_heat_balance_equation
 from .network import HeatNetwork
+from ..gas_meters.domestic_hot_water import assign_hh_dhw_poisson
 
 
 @mark_unused
@@ -196,7 +197,7 @@ def simulate(
         wind_speeds = np.interp(times, external_df.index.astype("int64") // 10**9, mph_to_ms(external_df.windspeed))
 
     if elec_df is not None:
-        assert isinstance(elec_df.index, pd.DatetimeIndex)
+        assert isinstance(elec_df.index, pd.DatetimeIndex), "Electricity dataframe must have a DatetimeIndex"
         internal_gains = np.interp(times, elec_df.index.astype("int64") // 10**9, elec_df.consumption)
 
     for i in range(iters):
@@ -256,6 +257,11 @@ def simulate(
             else [0.0 for _ in energy_changes[BuildingElement.InternalAir]],
         },
     )
+
+    # Note the change of units here
+    df["heating_usage"] = -joule_to_kwh(df["heating_usage"])
+    df["start_ts"] = df.index
+    df["end_ts"] = df.index + dt
     return df
 
 

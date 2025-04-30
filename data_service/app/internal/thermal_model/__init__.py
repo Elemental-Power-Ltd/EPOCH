@@ -13,3 +13,4 @@ from .network import add_heating_system_to_graph as add_heating_system_to_graph
 from .network import add_structure_to_graph as add_structure_to_graph
 from .network import create_structure_from_params as create_structure_from_params
 from .network import initialise_outdoors as initialise_outdoors
+from .fitting import simulate_parameters

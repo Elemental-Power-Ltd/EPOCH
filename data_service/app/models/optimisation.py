@@ -159,9 +159,7 @@ class HighlightedResult(pydantic.BaseModel):
     portfolio_id: pydantic.UUID4 = pydantic.Field(
         description="Individual ID representing this entry in the portfolio pareto front."
     )
-    reason: HighlightReason = pydantic.Field(
-        description="The reason the portfolio result is highlighted."
-    )
+    reason: HighlightReason = pydantic.Field(description="The reason the portfolio result is highlighted.")
 
 
 class OptimisationResultsResponse(pydantic.BaseModel):
