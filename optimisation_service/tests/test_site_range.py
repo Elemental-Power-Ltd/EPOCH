@@ -11,7 +11,7 @@ class TestCountParametersToOptimise:
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=False, heat_power=[1], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[2.0]
         )
-        config = Config(capex_limit=9999999999)
+        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
 
         site_range = SiteRange(building=building, renewables=renewables, heat_pump=heat_pump, config=config)
 
@@ -31,7 +31,7 @@ class TestCountParametersToOptimise:
             heat_source=[HeatSourceEnum.AMBIENT_AIR, HeatSourceEnum.HOTROOM],
             send_temp=[2.0],
         )
-        config = Config(capex_limit=9999999999)
+        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
 
         site_range = SiteRange(building=building, renewables=renewables, heat_pump=heat_pump, config=config)
 

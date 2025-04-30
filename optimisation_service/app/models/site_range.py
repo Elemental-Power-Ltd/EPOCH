@@ -66,6 +66,7 @@ class Grid(BaseModel):
     grid_import: list[Annotated[int, Field(ge=0)]]
     import_headroom: list[Annotated[float, Field(ge=0.0, le=1.0)]]
     tariff_index: list[Annotated[int, Field(ge=0)]]
+    export_tariff: list[Annotated[float, Field(ge=0.0)]]
 
 
 class HeatSourceEnum(StrEnum):
@@ -92,6 +93,8 @@ class Renewables(BaseModel):
 
 class Config(BaseModel):
     capex_limit: Annotated[float, Field(ge=0.0)]
+    use_boiler_upgrade_scheme: bool
+    general_grant_funding: Annotated[float, Field(ge=0.0)]
 
 
 class SiteRange(BaseModel):

@@ -58,12 +58,13 @@ def default_siterange() -> SiteRange:
         grid_import=[60],
         import_headroom=[0.5],
         tariff_index=[0, 1, 2, 3],
+        export_tariff=[0.05]
     )
     heat_pump = HeatPump(
         COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
     )
     renewables = Renewables(COMPONENT_IS_MANDATORY=False, yield_scalars=[[100, 200]])
-    config = Config(capex_limit=99999999999)
+    config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
 
     return SiteRange(
         building=building,
