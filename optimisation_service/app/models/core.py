@@ -1,11 +1,12 @@
 import datetime
 import logging
 import uuid
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 
 from app.models.constraints import Constraints
+from app.models.epoch_types import TaskDataPydantic
 from app.models.metrics import Metric
 from app.models.optimisers import GridSearchOptimiser, NSGA2Optmiser
 from app.models.site_data import EpochSiteData, SiteMetaData
@@ -64,9 +65,6 @@ class Task(BaseModel):
 
 class TaskResponse(BaseModel):
     task_id: UUID4
-
-
-type SiteScenario = dict[str, Any]
 
 
 class SiteMetrics(BaseModel):
@@ -128,7 +126,7 @@ class SiteOptimisationResult(BaseModel):
         description="The portfolio pareto front entry this site is linked to."
         + " A single site result is uniquely identified by a (portfolio_id, site_id) pair."
     )
-    scenario: SiteScenario = Field(description="The mix of assets used in this scenario, e.g. solar PV and grid connects.")
+    scenario: TaskDataPydantic = Field(description="The mix of assets used in this scenario, e.g. solar PV and grid connects.")
     metrics: SiteMetrics = Field(description="The metrics calculated for this site.")
 
 
