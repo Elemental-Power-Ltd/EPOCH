@@ -6,7 +6,7 @@ import {AppState, OptimiseState, OptimiserSlice} from "./StoreTypes.ts";
 
 import DefaultGrid from "../util/json/default/DefaultGridConfig.json"
 import DefaultNSGA2 from "../util/json/default/DefaultNSGA2Config.json"
-import {getInitialComponentsMap, hardcodedConfig} from "../Components/ComponentBuilder/initialState"
+import {getInitialComponentsMap} from "../Components/ComponentBuilder/initialState"
 import {ComponentType} from "../Models/Core/ComponentBuilder.ts";
 
 const defaultTaskConfig: TaskConfig = {
@@ -193,10 +193,6 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
         data[componentKey] = siteMap[componentKey as ComponentType].data
       }
     }
-
-    // FIXME - this needs looking at
-    // Add the config
-    data["config"] = hardcodedConfig
 
     return data
   },

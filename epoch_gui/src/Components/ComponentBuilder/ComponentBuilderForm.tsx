@@ -13,6 +13,7 @@ import {useComponentBuilderFileHandlers} from "./useComponentBuilderFileHandlers
 
 import TaskDataSchema from "../../util/json/schema/TaskDataSchema.json";
 import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema.json";
+import TaskDataConfigForm from "./TaskConfig/TaskConfig.tsx";
 
 interface ComponentBuilderFormProps {
     mode: BuilderMode;
@@ -47,6 +48,8 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
     const formSpecificLabel = `upload-${formSpecificId}`
 
     const selectedComponents = Object.entries(componentsMap)
+        // we filter out the config as we display this in a different way
+        .filter(([key, _])=> key !== "config")
         .filter(([_, {selected}]) => selected)
         .map(([key]) => key as ComponentType);
 
@@ -68,7 +71,8 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
         grid: true,
         heat_pump: true,
         mop: true,
-        renewables: true
+        renewables: true,
+        config: true
     });
 
     const handleAccordionToggle = (componentKey: ComponentType) => {
@@ -78,6 +82,9 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
         }));
     };
 
+    const config = componentsMap["config"].data;
+    const changeConfig = (evt: any) => handleTaskComponentChange("config", evt);
+
     return (
         <>
             <ComponentSelector
@@ -85,6 +92,7 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
                 onAddComponent={addComponent}
                 onRemoveComponent={removeComponent}
             />
+            <TaskDataConfigForm config={config} changeConfig={changeConfig}/>
 
             <Masonry
                 breakpointCols={{

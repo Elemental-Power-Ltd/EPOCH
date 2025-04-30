@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BuilderMode, ComponentType, ComponentsMap } from "../../Models/Core/ComponentBuilder";
-import { getInitialComponentsMap, hardcodedConfig} from "./initialState";
+import { getInitialComponentsMap } from "./initialState";
 import TaskDataSchema from "../../util/json/schema/TaskDataSchema.json";
 import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema.json";
 
@@ -66,7 +66,6 @@ export const useComponentBuilderState = (mode: BuilderMode): ComponentBuilderSta
    * @param components
    */
   const setComponents = (components: any) => {
-    // FIXME: this currently ignores the config because we are hardcoding at 10m
     setComponentsState(prev => {
       const newComponentsMap = { ...prev };
 
@@ -107,9 +106,6 @@ export const useComponentBuilderState = (mode: BuilderMode): ComponentBuilderSta
         data[componentKey] = componentsState[componentKey].data;
       }
     }
-
-    // Add the config
-    data["config"] = hardcodedConfig;
 
     return data;
 

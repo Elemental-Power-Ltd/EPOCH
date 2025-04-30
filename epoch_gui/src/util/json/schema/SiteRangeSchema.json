@@ -248,13 +248,20 @@
             "type": "integer",
             "minimum": 0
           }
+        },
+        "export_tariff": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
         }
       },
       "required": [
         "grid_export",
         "grid_import",
         "import_headroom",
-        "tariff_index"
+        "tariff_index",
+        "export_tariff"
       ]
     },
     "heat_pump": {
@@ -326,13 +333,30 @@
     },
     "config": {
       "type": "object",
+      "title": "Config",
       "properties": {
         "capex_limit": {
           "type": "number",
-          "minimum": 0
+          "title": "CAPEX Limit",
+          "description": "The maximum capital expenditure (CAPEX) allowed at this site in pounds.",
+          "minimum": 0,
+          "default": 2500000
+        },
+        "use_boiler_upgrade_scheme": {
+          "type": "boolean",
+          "title": "Use Boiler Upgrade Scheme",
+          "description": "Apply funding from the boiler upgrade scheme (if eligible).",
+          "default": false
+        },
+        "general_grant_funding": {
+          "type": "number",
+          "title": "General Grant Funding",
+          "description": "Apply unconditional funding up to this value in £.",
+          "minimum": 0,
+          "default": 0
         }
       },
-      "required": ["capex_limit"]
+      "required": ["capex_limit", "use_boiler_upgrade_scheme", "general_grant_funding"]
     }
   },
   "required": ["config"]

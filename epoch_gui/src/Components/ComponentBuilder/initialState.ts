@@ -59,11 +59,14 @@ export const getInitialComponentsMap = (mode: BuilderMode): ComponentsMap => {
             displayName: "Renewables",
             selected: false,
             data: defaultData["renewables"]
+        },
+        config: {
+            displayName: "Config",
+            selected: true,
+            data: defaultData["config"]
         }
+
     };
 
     return map;
 }
-
-// FIXME - for simplicity, the config is hardcoded (at 10m)
-export const hardcodedConfig = {capex_limit: 10000000};

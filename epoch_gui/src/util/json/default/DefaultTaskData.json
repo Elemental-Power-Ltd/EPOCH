@@ -35,7 +35,8 @@
     "grid_export": 23.0,
     "grid_import": 23.0,
     "import_headroom": 0.4,
-    "tariff_index": 0
+    "tariff_index": 0,
+    "export_tariff": 0.05
   },
   "heat_pump": {
     "heat_power": 20.0,
@@ -49,6 +50,8 @@
     "yield_scalars": [ 20 ]
   },
   "config": {
-    "capex_limit": 2500000.0
+    "capex_limit": 100000000,
+    "use_boiler_upgrade_scheme": false,
+    "general_grant_funding": 0
   }
 }
