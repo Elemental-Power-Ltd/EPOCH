@@ -48,6 +48,6 @@ SimulationResult Simulator_py::simulateScenario(const TaskData& taskData, bool f
 	return mSimulator.simulateScenario(taskData, reportingType);
 }
 
-CapexBreakdown Simulator_py::calculateCapex(const TaskData& taskData) {
-	return mSimulator.calculateCapex(taskData);
+CapexBreakdown Simulator_py::calculateCapexWithDiscounts(const TaskData& taskData) {
+	return mSimulator.calculateCapexWithDiscounts(taskData);
 }

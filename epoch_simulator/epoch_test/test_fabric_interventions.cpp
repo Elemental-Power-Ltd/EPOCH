@@ -33,7 +33,7 @@ TEST_F(FabricInterventionTest, calculateCapex) {
 
 
 	Simulator sim{ siteData };
-	auto capex = sim.calculateCapex(taskData);
+	auto capex = sim.calculateCapexWithDiscounts(taskData);
 
 	EXPECT_EQ(capex.building_fabric_capex, 100.0f);
 }

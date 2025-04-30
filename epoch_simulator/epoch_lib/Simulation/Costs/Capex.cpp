@@ -3,6 +3,29 @@
 
 static CapexPrices capex_prices{};
 
+CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const TaskData& baseline, const TaskData& scenario) {
+
+	// first calculate the unadjusted capex of the scenario
+	auto capex_breakdown = calculate_capex(siteData, scenario);
+
+	if (scenario.config.use_boiler_upgrade_scheme) {
+		if (is_elegible_for_boiler_upgrade_scheme(baseline, scenario)) {
+			// discount the lower amount of the total heatpump cost and the maximum funding
+			capex_breakdown.boiler_upgrade_scheme_funding = std::min(capex_prices.max_boiler_upgrade_scheme_funding, capex_breakdown.heatpump_capex);
+			capex_breakdown.total_capex -= capex_breakdown.boiler_upgrade_scheme_funding;
+		}
+	}
+
+	// catch-all grant funding. Reduce the capex unconditionally down towards 0
+	if (scenario.config.general_grant_funding > 0) {
+		capex_breakdown.general_grant_funding = std::min(capex_breakdown.total_capex, scenario.config.general_grant_funding);;
+		capex_breakdown.total_capex -= capex_breakdown.general_grant_funding;
+	}
+
+	return capex_breakdown;
+}
+
+
 CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskData) {
 	CapexBreakdown capex_breakdown{};
 
@@ -127,3 +150,27 @@ void calculate_renewables_capex(const Renewables& renewables, CapexBreakdown& ca
 	capex_breakdown.pv_BoP_capex = calculate_three_tier_costs(capex_prices.pv_BoP_prices, pv_kWp_total);
 }
 
+
+bool is_elegible_for_boiler_upgrade_scheme(const TaskData& baseline, const TaskData& scenario) {
+	// the baseline must contain a gas boiler, which is replaced in the scenario
+	if (!baseline.gas_heater || scenario.gas_heater) {
+		return false;
+	}
+
+	// the baseline cannot have a heatpump, the scenario must
+	if (baseline.heat_pump || !scenario.heat_pump) {
+		return false;
+	}
+
+	// The peak capacity is 45 kW thermal
+	if (scenario.heat_pump->heat_power > 45) {
+		return false;
+	}
+
+	// The heat source cannot be from a building
+	if (scenario.heat_pump->heat_source == HeatSource::HOTROOM) {
+		return false;
+	}
+
+	return true;
+}

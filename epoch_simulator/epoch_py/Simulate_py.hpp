@@ -27,7 +27,7 @@ public:
 	*/
 	bool isValid(const TaskData& taskData);
 	SimulationResult simulateScenario(const TaskData& taskData, bool fullReporting = false);
-	CapexBreakdown calculateCapex(const TaskData& taskData);
+	CapexBreakdown calculateCapexWithDiscounts(const TaskData& taskData);
 
 private:
 	explicit Simulator_py(SiteData&& siteData);

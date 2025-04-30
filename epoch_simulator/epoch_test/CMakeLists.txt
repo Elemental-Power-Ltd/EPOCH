@@ -10,7 +10,8 @@ add_executable(epoch_test "test_main.cpp"
 "test_scenario_validation.cpp"
  "test_fabric_interventions.cpp"
  "test_tariff_stats.cpp"
- )
+ "test_funding.cpp"
+)
 
 target_link_libraries(epoch_test PRIVATE Epoch_lib)
 

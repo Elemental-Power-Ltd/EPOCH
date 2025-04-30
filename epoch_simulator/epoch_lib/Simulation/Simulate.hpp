@@ -34,7 +34,7 @@ public:
 	* Calculate the Capital Expenditure (upfront costs) for a given site
 	* returns an object containing the total cost and a breakdown per component
 	*/
-	CapexBreakdown calculateCapex(const TaskData& taskData) const;
+	CapexBreakdown calculateCapexWithDiscounts(const TaskData& taskData) const;
 
 private:
 	ReportData simulateTimesteps(const TaskData& taskData, SimulationType simulationType = SimulationType::ResultOnly) const;
@@ -46,7 +46,7 @@ private:
 	float getFixedAvailableImport(const TaskData& taskData) const;
 
 	const SiteData mSiteData;
-	
+	TaskData mBaselineTaskData;
 	UsageData mBaselineUsage;
 
 };

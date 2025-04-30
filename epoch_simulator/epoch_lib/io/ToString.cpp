@@ -186,7 +186,9 @@ std::string renewablesToString(const Renewables& r) {
 
 std::string configToString(const TaskConfig& config) {
 	std::ostringstream oss;
-	oss << "<Config capex_limit=" << config.capex_limit << ">";
+	oss << "<Config capex_limit=" << config.capex_limit 
+		<< "use_boiler_upgrade_scheme=" << config.use_boiler_upgrade_scheme 
+		<< "general_grant_funding=" << config.general_grant_funding << ">";
 	return oss.str();
 }
 

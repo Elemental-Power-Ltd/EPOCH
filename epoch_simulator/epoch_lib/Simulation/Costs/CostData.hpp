@@ -51,6 +51,9 @@ struct CapexPrices {
 	ThreeTierCostData pv_roof_prices = ThreeTierCostData(4250.0f, 50.0f, 1000.0f, 850.0f, 750.0f, 600.0f);
 	ThreeTierCostData pv_ground_prices = ThreeTierCostData(4250.0f, 50.0f, 1000.0f, 800.0f, 600.0f, 500.0f);
 	ThreeTierCostData pv_BoP_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 120.0f, 88.0f, 76.0f);
+
+	// Grant Schemes
+	const float max_boiler_upgrade_scheme_funding = 7500.0f;
 };
 
 struct OpexPrices {
@@ -80,6 +83,9 @@ struct CapexBreakdown {
 	float pv_roof_capex;
 	float pv_ground_capex;
 	float pv_BoP_capex;
+
+	float boiler_upgrade_scheme_funding;
+	float general_grant_funding;
 
 	float total_capex;
 };

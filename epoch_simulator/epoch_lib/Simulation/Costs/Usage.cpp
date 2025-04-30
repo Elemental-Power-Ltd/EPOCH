@@ -1,7 +1,10 @@
 #include "Usage.hpp"
 
 
-UsageData calculateUsage(const SiteData& siteData, const TaskData& taskData, const CostVectors& costVectors) {
+/**
+* internal method to sum up the usage data for both baseline and scenario data
+*/
+UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const CostVectors& costVectors) {
 	UsageData usage{};
 
 	// TODO - extract these somewhere else (make this a class or put make these globals?)
@@ -52,8 +55,21 @@ UsageData calculateUsage(const SiteData& siteData, const TaskData& taskData, con
 		usage.electric_vehicle_revenue = costVectors.actual_ev_load_e.sum() * EV_low_price;
 	}
 
+	return usage;
+}
+
+
+UsageData calculateBaselineUsage(const SiteData& siteData, const TaskData& taskData, const CostVectors& costVectors) {
+	auto usage = sumUsage(siteData, taskData, costVectors);
 	usage.capex_breakdown = calculate_capex(siteData, taskData);
 	usage.opex_breakdown = calculate_opex(taskData);
+	return usage;
+}
 
+
+UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& baseline, const TaskData& scenario, const CostVectors& costVectors) {
+	auto usage = sumUsage(siteData, scenario, costVectors);
+	usage.capex_breakdown = calculate_capex_with_discounts(siteData, baseline, scenario);
+	usage.opex_breakdown = calculate_opex(scenario);
 	return usage;
 }

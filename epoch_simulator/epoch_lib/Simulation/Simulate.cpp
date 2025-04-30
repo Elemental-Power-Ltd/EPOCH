@@ -37,20 +37,20 @@ Simulator::Simulator(SiteData siteData):
 	mSiteData(siteData)
 {
 
-	TaskData baselineTaskData{};
-	baselineTaskData.building = Building();
-	baselineTaskData.grid = GridData();
-	baselineTaskData.gas_heater = GasCHData();
+	mBaselineTaskData = TaskData{};
+	mBaselineTaskData.building = Building();
+	mBaselineTaskData.grid = GridData();
+	mBaselineTaskData.gas_heater = GasCHData();
 
 	// we construct a TaskData with oversized grid and gas capacities
 	// to ensure there is no shortfall
-	baselineTaskData.grid->grid_import = 1000000.0f;
-	baselineTaskData.grid->grid_export = 1000000.0f;
-	baselineTaskData.gas_heater->maximum_output = 1000000.0f;
+	mBaselineTaskData.grid->grid_import = 1000000.0f;
+	mBaselineTaskData.grid->grid_export = 1000000.0f;
+	mBaselineTaskData.gas_heater->maximum_output = 1000000.0f;
 
-	auto baselineReportData = simulateTimesteps(baselineTaskData);
-	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, baselineTaskData);
-	mBaselineUsage = calculateUsage(mSiteData, baselineTaskData, baselineCostVectors);
+	auto baselineReportData = simulateTimesteps(mBaselineTaskData);
+	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, mBaselineTaskData);
+	mBaselineUsage = calculateBaselineUsage(mSiteData, mBaselineTaskData, baselineCostVectors);
 
 }
 
@@ -67,7 +67,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 	}
 
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
-	const CapexBreakdown capex = calculateCapex(taskData);
+	const CapexBreakdown capex = calculateCapexWithDiscounts(taskData);
 
 	if (taskData.config.capex_limit < capex.total_capex) {
 		auto simulationResult = makeInvalidResult(taskData);
@@ -83,7 +83,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 
 	const CostVectors& costVectors = extractCostVectors(result.report_data.value(), taskData);
 
-	auto scenarioUsage = calculateUsage(mSiteData, taskData, costVectors);
+	auto scenarioUsage = calculateScenarioUsage(mSiteData, mBaselineTaskData, taskData, costVectors);
 
 	auto comparison = compareScenarios(mBaselineUsage, scenarioUsage);
 
@@ -159,8 +159,8 @@ void Simulator::validateScenario(const TaskData& taskData) const {
 	}
 }
 
-CapexBreakdown Simulator::calculateCapex(const TaskData& taskData) const {
-	return calculate_capex(mSiteData, taskData);
+CapexBreakdown Simulator::calculateCapexWithDiscounts(const TaskData& taskData) const {
+	return calculate_capex_with_discounts(mSiteData, mBaselineTaskData, taskData);
 }
 
 ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType simulationType) const {

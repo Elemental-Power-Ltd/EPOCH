@@ -26,7 +26,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 			pybind11::arg("taskData"),
 			pybind11::arg("fullReporting") = false)
 		.def("is_valid", &Simulator_py::isValid, pybind11::arg("taskData"))
-		.def("calculate_capex", &Simulator_py::calculateCapex, pybind11::arg("taskData"));
+		.def("calculate_capex", &Simulator_py::calculateCapexWithDiscounts, pybind11::arg("taskData"));
 
 	pybind11::class_<TaskData>(m, "TaskData")
 		.def(pybind11::init<>())
@@ -123,7 +123,9 @@ PYBIND11_MODULE(epoch_simulator, m) {
 
 	pybind11::class_<TaskConfig>(m, "Config")
 		.def(pybind11::init<>())
-		.def_readwrite("capex_limit", &TaskConfig::capex_limit);
+		.def_readwrite("capex_limit", &TaskConfig::capex_limit)
+		.def_readwrite("use_boiler_upgrade_scheme", &TaskConfig::use_boiler_upgrade_scheme)
+		.def_readwrite("general_grant_funding", &TaskConfig::general_grant_funding);
 
 
 	pybind11::class_<SimulationResult>(m, "SimulationResult")
