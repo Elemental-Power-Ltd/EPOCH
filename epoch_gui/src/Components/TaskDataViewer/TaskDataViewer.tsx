@@ -62,6 +62,8 @@ const fieldMappings: {
 } = {
   config: {
     capex_limit: { label: 'CAPEX Limit', unit: '£' },
+    use_boiler_upgrade_scheme: {label: 'Boiler Scheme'},
+    general_grant_funding: {label: 'General Funding', unit: '£'}
   },
   building: {
     scalar_heat_load:          { label: 'Heat Load'},
@@ -100,6 +102,7 @@ const fieldMappings: {
     grid_import:     { label: 'Grid Import', unit: 'kW' },
     import_headroom: { label: 'Import Headroom', unit: 'decimal %'},
     tariff_index:    { label: 'Tariff Index' },
+    export_tariff: { label: 'Export Tariff', unit: '£/kWh' }
   },
   heat_pump: {
     heat_power: { label: 'Heat Power', unit: 'kW' },

@@ -15,6 +15,8 @@ export enum HeatSource {
 
 export interface Config {
   capex_limit: number;
+  use_boiler_upgrade_scheme: boolean;
+  general_grant_funding: number;
 }
 
 export interface Building {
@@ -60,6 +62,7 @@ export interface Grid {
   grid_import: number;
   import_headroom: number;
   tariff_index: number;
+  export_tariff: number;
 }
 
 export interface HeatPump {
