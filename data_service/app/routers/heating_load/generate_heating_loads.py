@@ -41,7 +41,9 @@ from .thermal_model import get_thermal_model
 
 @api_router.post("/generate-heating-load", tags=["generate", "heating"])
 async def generate_heating_load(
-    params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep
+    params: HeatingLoadRequest,
+    pool: DatabasePoolDep,
+    http_client: HttpClientDep,
 ) -> HeatingLoadMetadata:
     """
     Generate a heating load based on the model type specified in an argument.
@@ -54,7 +56,6 @@ async def generate_heating_load(
         Database pool used by the underlying generators
     http_client
         HTTP client with connection pools
-
     Returns
     -------
     HeatingLoadMetadata
@@ -209,7 +210,7 @@ async def generate_heating_load_regression(
     )
 
     metadata = {
-        "dataset_id": uuid.uuid4(),
+        "dataset_id": params.final_uuid,
         "site_id": site_id,
         "created_at": datetime.datetime.now(datetime.UTC),
         "params": json.dumps({"source_dataset_id": str(params.dataset_id), **changed_coefs.model_dump()}),
@@ -318,7 +319,7 @@ async def generate_thermal_model_heating_load(
     hh_heating_load_df["start_ts"] = hh_heating_load_df.index
     hh_heating_load_df["end_ts"] = hh_heating_load_df.index + pd.Timedelta(minutes=30)
 
-    dataset_id = uuid.uuid4()
+    dataset_id = params.final_uuid
     created_at = datetime.datetime.now(datetime.UTC)
 
     # TODO (2025-02-02 MHJB): improve DHW load here

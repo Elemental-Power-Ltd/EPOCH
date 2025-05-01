@@ -5,11 +5,7 @@ import datetime
 
 import pydantic
 
-from .core import (
-    EpochEntry,
-    site_id_field,
-    site_id_t,
-)
+from .core import EpochEntry, site_id_field, site_id_t, SiteIDWithTime, dataset_id_t, final_uuid_field
 
 
 class CarbonIntensityMetadata(pydantic.BaseModel):
@@ -55,3 +51,7 @@ class EpochCarbonEntry(EpochEntry):
     data: list[float] = pydantic.Field(
         examples=[[32.4, 14.6, 7.2, 13.3]], description="List of carbon intensities during this time period in g CO2 / kWh."
     )
+
+
+class GridCO2Request(SiteIDWithTime):
+    final_uuid: dataset_id_t = final_uuid_field

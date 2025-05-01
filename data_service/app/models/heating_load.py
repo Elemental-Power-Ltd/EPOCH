@@ -7,8 +7,8 @@ from typing import Self
 
 import pydantic
 from pydantic import Field
-
-from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
+import uuid
+from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t, final_uuid_field
 
 
 class ThermalModelResult(pydantic.BaseModel):
@@ -108,6 +108,7 @@ class HeatingLoadRequest(DatasetIDWithTime):
     thermal_model_dataset_id: dataset_id_t | None = Field(
         description="Which underlying thermal model to use if in thermal model mode", default=None
     )
+    final_uuid: dataset_id_t = final_uuid_field
 
     @pydantic.model_validator(mode="after")
     def check_timestamps_valid(self) -> Self:

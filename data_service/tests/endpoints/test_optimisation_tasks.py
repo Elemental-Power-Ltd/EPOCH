@@ -386,7 +386,8 @@ class TestOptimisationTaskDatabase:
             sample_task_config.input_data["demo_london"].model_dump_json()
         )
         assert repro_data["task_data"] == {
-            sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()}
+            sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()
+        }
 
     @pytest.mark.asyncio
     async def test_can_retrieve_task_result(

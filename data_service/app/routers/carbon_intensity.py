@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.utils import chunk_time_period
-from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
+from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry, GridCO2Request
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
 
 logger = logging.getLogger(__name__)
@@ -256,7 +256,7 @@ async def fetch_carbon_intensity(
 
 @router.post("/generate-grid-co2", tags=["co2", "generate"])
 async def generate_grid_co2(
-    params: SiteIDWithTime, pool: DatabasePoolDep, http_client: HttpClientDep
+    params: GridCO2Request, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> CarbonIntensityMetadata:
     """
     Get a grid CO2 carbon intensity from the National Grid API.
@@ -274,6 +274,10 @@ async def generate_grid_co2(
     ----------
     *params*
         A JSON body containing `{"site_id":..., "start_ts":..., "end_ts":...}
+    pool
+        Shared database connection pool to store the data in
+    http_client
+        Client with connection pool to make HTTP requests to CarbonIntensity API.
 
     Returns
     -------
@@ -298,7 +302,7 @@ async def generate_grid_co2(
     )
 
     metadata = CarbonIntensityMetadata(
-        dataset_id=uuid.uuid4(),
+        dataset_id=params.final_uuid,
         created_at=datetime.datetime.now(datetime.UTC),
         data_source="api.carbonintensity.org.uk",
         is_regional=(postcode is not None),

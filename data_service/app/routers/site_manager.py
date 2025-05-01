@@ -4,8 +4,8 @@ import asyncio
 import datetime
 import logging
 import uuid
-
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+import warnings
 
 from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
 from ..internal.site_manager import (
@@ -33,7 +33,8 @@ from ..models.electricity_load import ElectricalLoadRequest
 from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
-from ..models.site_manager import DatasetList, RemoteMetaData
+from ..models.carbon_intensity import GridCO2Request
+from ..models.site_manager import DatasetList, RemoteMetaData, DatasetBundleMetadata
 from ..models.weather import WeatherRequest
 from .carbon_intensity import generate_grid_co2
 from .client_data import get_location
@@ -47,6 +48,72 @@ router = APIRouter()
 
 MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
 NULL_UUID = uuid.UUID(int=0, version=4)
+
+
+async def insert_dataset_bundle(
+    bundle: dict[DatasetTypeEnum, uuid.UUID | list[uuid.UUID]], bundle_metadata: DatasetBundleMetadata, pool: DatabasePoolDep
+) -> dataset_id_t:
+    """
+    Insert a dataset bundle into the database.
+
+    A dataset bundle is a collection of datasets applying to the same site, created at the same time.
+    This will generally include heating loads, electrical loads, carbon intensity, renewables etc.
+    There is no guarantee that a given bundle is complete.
+
+    Bundles are stored in a top level metadata table showing which sites they are for, and a below dataset links table.
+    Note that there isn't a foreign key constraint on the dataset links table -- this is because we do the admin now,
+    but actual datasets take some time to generate.
+    This means that you can potentially end up with ghost entries in the dataset links table.
+
+    Parameters
+    ----------
+    bundle
+        Dictionary of dataset types and associated dataset IDs; these are what is filed in the database.
+    bundle_metadata
+        Dataset bundle metadata, including site ID, human readable name, and start / end times.
+    pool
+        Connection pool to the database that we want these to be filed in
+    name
+        A human readable name for the data bundle, if provided.
+
+    Returns
+    -------
+    dataset_id_t
+        The bundle ID for this bundle of datasets, in case you want it later.
+    """
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO data_bundles.metadata (
+                    bundle_id,
+                    name,
+                    site_id,
+                    start_ts,
+                    end_ts,
+                    created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6)""",
+                bundle_metadata.bundle_id,
+                bundle_metadata.name,
+                bundle_metadata.site_id,
+                bundle_metadata.start_ts,
+                bundle_metadata.end_ts,
+                bundle_metadata.created_at,
+            )
+
+            dataset_link_tuples = []
+            # Some of these have multiple entries, e.g. heating loads.
+            # They lose their order in the database, but we can always look it up later.
+            for dataset_type, val in bundle.items():
+                if isinstance(val, list):
+                    for item in val:
+                        dataset_link_tuples.append( (bundle_metadata.bundle_id, dataset_type.value, item))
+                else:
+                    dataset_link_tuples.append( (bundle_metadata.bundle_id, dataset_type.value, val))
+
+            await conn.copy_records_to_table(table_name="dataset_links", schema_name="data_bundles",
+                                            records=dataset_link_tuples, columns=["bundle_id", "dataset_type", "dataset_id"])
+    return bundle_metadata.bundle_id
 
 
 @router.post("/list-datasets", tags=["db", "list"])
@@ -204,7 +271,40 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         else None,
     )
 
+@router.post("/get-dataset-bundle", tags=["db", "bundle", "get"])
+async def get_dataset_bundle(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> SiteDataEntries:
+    """
+    Get the datasets available in a specific dataset bundle.
 
+    A bundle is a collection of datasets for a single site, often created at the same time.
+    A bundle isn't guaranteed to be complete, but most likely will be.
+
+    Parameters
+    ----------
+    bundle_id
+        The bundle ID of the specific dataset you want
+    pool
+        Connection pool for the database to get the bundled datasets.
+
+    Returns
+    -------
+    SiteDataEntries
+        Entries for the datasets in the bundle; unavailable entries are None.
+    """
+    bundle_entries = await pool.fetch("""SELECT dataset_type, dataset_id FROM data_bundles.datasets WHERE bundle_id = $1""",
+                                      bundle_id)
+    dataset_requests: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime]
+    for dataset_type, dataset_id in bundle_entries:
+        if dataset_type in MULTIPLE_DATASET_ENDPOINTS:
+            if dataset_type not in dataset_requests:
+                dataset_requests[dataset_type] = MultipleDatasetIDWithTime(dataset_id=[dataset_id])
+            else:
+                dataset_requests[dataset_type].dataset_id.append(dataset_id)
+        else:
+            dataset_requests[dataset_type] = dataset_id
+    return await fetch_all_input_data(dataset_requests, pool=pool)
+
+@warnings.deprecated("Prefer get-dataset-bundle.")
 @router.post("/get-specific-datasets", tags=["db", "get"])
 async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
     """
@@ -213,7 +313,7 @@ async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: D
     If you have not requested a dataset (its entry is None in the DatasetList), then you'll receive None for that dataset.
     The usual workflow is to call list-latest-datasets yourself, look up each dataset in your own cache, and then
     request the get-specific-datasets that you require.
-
+    You should prefer to use get-dataset-bundle.
     Parameters
     ----------
     site_data
@@ -416,53 +516,65 @@ async def generate_all(
                 conn=conn,
                 http_client=http_client,
             )
-
+    final_uuids: dict[DatasetTypeEnum, uuid.UUID | list[uuid.UUID]] = {DatasetTypeEnum.HeatingLoad: []}
     POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
     for interventions in POTENTIAL_INTERVENTIONS:
+        req = HeatingLoadRequest(
+            dataset_id=gas_meter_dataset.dataset_id,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            interventions=interventions,
+        )
         background_tasks.add_task(
             generate_heating_load,
-            HeatingLoadRequest(
-                dataset_id=gas_meter_dataset.dataset_id,
-                start_ts=params.start_ts,
-                end_ts=params.end_ts,
-                interventions=interventions,
-            ),
+            req,
             pool=pool,
             http_client=http_client,
         )
+        final_uuids.append(req.final_uuid)
 
-    background_tasks.add_task(generate_grid_co2, params, pool=pool, http_client=http_client)
+    grid_req = GridCO2Request(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts)
+    background_tasks.add_task(generate_grid_co2, grid_req, http_client=http_client)
+    final_uuids[DatasetTypeEnum.CarbonIntensity] = grid_req.final_uuid
 
     # We generate four different types of tariff, here done manually to keep track of the
     # tasks and not lose the handle to the task (which causes mysterious bugs)
     for tariff_type in SyntheticTariffEnum:
+        tariff_req = TariffRequest(
+            site_id=params.site_id,
+            tariff_name=tariff_type,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+        )
         background_tasks.add_task(
             generate_import_tariffs,
-            TariffRequest(
-                site_id=params.site_id,
-                tariff_name=tariff_type,
-                start_ts=params.start_ts,
-                end_ts=params.end_ts,
-            ),
+            tariff_req,
             pool=pool,
             http_client=http_client,
         )
+        final_uuids[DatasetTypeEnum.ImportTariff].append(tariff_req.final_uuid)
 
+    renewables_req = RenewablesRequest(
+        site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None
+    )
     background_tasks.add_task(
         generate_renewables_generation,
-        RenewablesRequest(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None),
+        renewables_req,
         pool=pool,
         http_client=http_client,
         secrets_env=secrets_env,
     )
+    final_uuids[DatasetTypeEnum.RenewablesGeneration] = renewables_req.final_uuid
 
+    elec_req = ElectricalLoadRequest(dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts)
     background_tasks.add_task(
         generate_electricity_load,
-        ElectricalLoadRequest(dataset_id=elec_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
+        elec_req,
         pool=pool,
         http_client=http_client,
         vae=vae,
     )
+    final_uuids[DatasetTypeEnum.ElectricityMeterDataSynthesised] = elec_req.final_uuid
 
     RESOLUTION = datetime.timedelta(minutes=30)
     # Return the background tasks immediately with null-ish data.
@@ -470,7 +582,7 @@ async def generate_all(
     return {
         DatasetTypeEnum.HeatingLoad: [
             DatasetEntry(
-                dataset_id=NULL_UUID,
+                dataset_id=ds_uuid,
                 dataset_type=DatasetTypeEnum.HeatingLoad,
                 created_at=datetime.datetime.now(tz=datetime.UTC),
                 resolution=RESOLUTION,
@@ -479,10 +591,10 @@ async def generate_all(
                 num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
                 dataset_subtype=intervention,
             )
-            for intervention in POTENTIAL_INTERVENTIONS
+            for intervention, ds_uuid in zip(POTENTIAL_INTERVENTIONS, final_uuids[DatasetTypeEnum.HeatingLoad])
         ],
         DatasetTypeEnum.CarbonIntensity: DatasetEntry(
-            dataset_id=NULL_UUID,
+            dataset_id=final_uuids[DatasetTypeEnum.CarbonIntensity],
             dataset_type=DatasetTypeEnum.CarbonIntensity,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,
@@ -492,7 +604,7 @@ async def generate_all(
         ),
         DatasetTypeEnum.ImportTariff: [
             DatasetEntry(
-                dataset_id=NULL_UUID,
+                dataset_id=ds_uuid,
                 dataset_type=DatasetTypeEnum.ImportTariff,
                 created_at=datetime.datetime.now(tz=datetime.UTC),
                 dataset_subtype=tariff_type,
@@ -501,10 +613,10 @@ async def generate_all(
                 end_ts=params.end_ts,
                 num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
             )
-            for tariff_type in SyntheticTariffEnum
+            for tariff_type, ds_uuid in zip(SyntheticTariffEnum, final_uuids[DatasetTypeEnum.ImportTariff])
         ],
         DatasetTypeEnum.RenewablesGeneration: DatasetEntry(
-            dataset_id=NULL_UUID,
+            dataset_id=final_uuids[DatasetTypeEnum.RenewablesGeneration],
             dataset_type=DatasetTypeEnum.RenewablesGeneration,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,
@@ -514,7 +626,7 @@ async def generate_all(
         ),
         DatasetTypeEnum.ElectricityMeterData: elec_meter_dataset,
         DatasetTypeEnum.ElectricityMeterDataSynthesised: DatasetEntry(
-            dataset_id=NULL_UUID,
+            dataset_id=final_uuids[DatasetTypeEnum.ElectricityMeterDataSynthesised],
             dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,

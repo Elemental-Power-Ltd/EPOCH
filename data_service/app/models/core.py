@@ -59,6 +59,11 @@ epoch_date_field = Field(
     pattern=r"[0-9][0-9]-[A-Za-z]*",
 )
 
+final_uuid_field = pydantic.Field(
+    description=("The final UUID you want the generated dataset to have." + "If unspecified, generate a random UUID4."),
+    default_factory=uuid.uuid4,
+)
+
 
 class FuelEnum(StrEnum):
     gas = "gas"

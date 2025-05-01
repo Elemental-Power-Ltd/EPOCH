@@ -1,4 +1,5 @@
 """Logic for highlighting specific results from within the pareto front."""
+
 from app.models import PortfolioOptimisationResult
 from app.models.optimisation import HighlightedResult, HighlightReason
 
@@ -19,8 +20,10 @@ def find_best_payback_horizon(portfolio_results: list[PortfolioOptimisationResul
     """
     # negative paybacks are not valid, we filter them out along with any None values
     valid_paybacks = [
-        result for result in portfolio_results
-        if result.metrics.payback_horizon is not None and result.metrics.payback_horizon >= 0]
+        result
+        for result in portfolio_results
+        if result.metrics.payback_horizon is not None and result.metrics.payback_horizon >= 0
+    ]
 
     if valid_paybacks:
         best_payback = min(valid_paybacks, key=lambda payback: payback.metrics.payback_horizon)  # type: ignore
@@ -44,13 +47,14 @@ def find_best_carbon_balance(portfolio_results: list[PortfolioOptimisationResult
         A HighlightedResult or None
     """
     valid_carbon = [
-        result for result in portfolio_results
+        result
+        for result in portfolio_results
         if result.metrics.carbon_balance_scope_1 is not None and result.metrics.carbon_balance_scope_2 is not None
     ]
     if valid_carbon:
         best_carbon_balance = max(
             valid_carbon,
-            key=lambda r: (r.metrics.carbon_balance_scope_1 + r.metrics.carbon_balance_scope_2)  # type: ignore
+            key=lambda r: (r.metrics.carbon_balance_scope_1 + r.metrics.carbon_balance_scope_2),  # type: ignore
         )
         return HighlightedResult(portfolio_id=best_carbon_balance.portfolio_id, reason=HighlightReason.BestCarbonBalance)
     return None
@@ -70,10 +74,7 @@ def find_best_cost_balance(portfolio_results: list[PortfolioOptimisationResult])
     -------
         A HighlightedResult or None
     """
-    valid_cost = [
-        result for result in portfolio_results
-        if result.metrics.cost_balance is not None
-    ]
+    valid_cost = [result for result in portfolio_results if result.metrics.cost_balance is not None]
     if valid_cost:
         best_cost_balance = max(valid_cost, key=lambda r: r.metrics.cost_balance)  # type: ignore
         return HighlightedResult(portfolio_id=best_cost_balance.portfolio_id, reason=HighlightReason.BestCostBalance)
