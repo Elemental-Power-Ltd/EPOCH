@@ -1,6 +1,5 @@
 """Tests for gas meter conversion and sampling functions."""
 
-# ruff: noqa: D101, D102
 import numpy as np
 import pandas as pd
 import pytest

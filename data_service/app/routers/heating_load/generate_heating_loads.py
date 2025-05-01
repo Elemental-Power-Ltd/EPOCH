@@ -14,8 +14,9 @@ stored in a database for further analysis.
 import datetime
 import itertools
 import json
-import uuid
 import logging
+import operator
+import uuid
 
 import numpy as np
 import pandas as pd
@@ -24,6 +25,7 @@ from fastapi import HTTPException
 from ...dependencies import DatabasePoolDep, HttpClientDep
 from ...internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ...internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
+from ...internal.site_manager import list_thermal_models
 from ...internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.fitting import simulate_parameters
@@ -33,7 +35,6 @@ from ...models.heating_load import (
     HeatingLoadModelEnum,
     HeatingLoadRequest,
 )
-from ...internal.site_manager import list_thermal_models
 from ...models.weather import WeatherRequest
 from ..client_data import get_location
 from ..weather import get_weather
@@ -61,7 +62,6 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
     HeatingLoadRequest
         The new request which we should send to generate a heating load, filled with sensible defaults.
     """
-
     if params.site_id is None:
         # Old versions of the HeatingLoadRequest only needed a dataset ID for the source gas data,
         # and not the site ID.
@@ -108,6 +108,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         all_thermal_models,
         (item.created_at for item in available_thermal_model_ids),
         (item.dataset_id for item in available_thermal_model_ids),
+        strict=False,
     )
     # This is the quality bar for models in the database; we'll pick the most recent model above this quality threshold
     # if there is one
@@ -118,7 +119,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         return default_regression_request
 
     # Get the entry with the maximum created_at timestamp.
-    most_recent_id = max(above_thresh, key=lambda t: t[1])[2]
+    most_recent_id = max(above_thresh, key=operator.itemgetter(1))[2]
     return HeatingLoadRequest(
         dataset_id=params.dataset_id,
         start_ts=params.start_ts,

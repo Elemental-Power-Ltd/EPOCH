@@ -176,6 +176,7 @@ async def fit_thermal_model_endpoint(
         BackgroundTask collection that the fitting task will be assigned to asynchronously.
     params
         Request for the thermal model to fit,
+
     Returns
     -------
         The ID that this dataset will eventually get.

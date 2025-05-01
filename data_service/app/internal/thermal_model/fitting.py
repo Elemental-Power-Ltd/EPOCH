@@ -9,9 +9,10 @@ import numpy.typing as npt
 import pandas as pd
 from bayes_opt import BayesianOptimization, SequentialDomainReductionTransformer
 from sklearn.metrics import r2_score  # type: ignore
+
 from ...models.heating_load import InterventionEnum, ThermalModelResult
 from ..epl_typing import HHDataFrame
-from ..gas_meters.domestic_hot_water import get_poisson_weights, assign_hh_dhw_poisson
+from ..gas_meters.domestic_hot_water import get_poisson_weights
 from .building_fabric import apply_interventions_to_structure
 from .heat_capacities import U_VALUES_PATH
 from .integrator import simulate
@@ -223,7 +224,30 @@ def calculate_thermal_model_r2(
     elec_df: pd.DataFrame | None = None,
     u_values_path: Path = U_VALUES_PATH,
 ) -> float:
-    """ """
+    """
+    Calculate how effective this thermal model is at reproducing the actual gas meter data.
+
+    This will run a simulation over the time period we have gas meter data for, and calculate the r2_score
+    of (actual_gas, simulated_gas) including DHW.
+
+    Parameters
+    ----------
+    params
+        Thermal model parameters to use for the simulation
+    gas_df
+        Gas dataframe with a `consumption` column to measure against
+    weather_df
+        Weather dataframe over the same period as the gas_df
+    elec_df
+        Electricity dataframe for internal gains
+    u_values_path
+        Path to file containing u values; will default sensibly but watch out if you're in a notebook.
+
+    Returns
+    -------
+    float
+        r2_score of the simulated gas against real gas. 1.0 is the best possible score, but can be infinitely negative.
+    """
     # We want to simulate the total gas usage over the time that we have gas data for.
     # Note that for long time periods, this might be slow (e.g. if we have 3 years of data)
     start_ts = gas_df["start_ts"].min() if "start_ts" in gas_df.columns else gas_df.index.min()
@@ -246,7 +270,7 @@ def calculate_thermal_model_r2(
     )
 
     sim_gas_usages = []
-    for start_ts, end_ts in zip(gas_df.start_ts, gas_df.end_ts):
+    for start_ts, end_ts in zip(gas_df.start_ts, gas_df.end_ts, strict=False):
         sim_within_mask = np.logical_and(sim_df.index >= start_ts, sim_df.index < end_ts)
         if np.any(sim_within_mask):
             heating_usage_within = sim_df.loc[sim_within_mask, "heating_usage"].sum()
@@ -257,7 +281,7 @@ def calculate_thermal_model_r2(
             heating_usage_within = 0.0
             dhw_usage_within = 0.0
         sim_gas_usages.append(heating_usage_within + dhw_usage_within)
-    return r2_score(gas_df["consumption"].to_numpy(), np.asarray(sim_gas_usages))
+    return float(r2_score(gas_df["consumption"].to_numpy(), np.asarray(sim_gas_usages)))
 
 
 def fit_to_gas_usage(
