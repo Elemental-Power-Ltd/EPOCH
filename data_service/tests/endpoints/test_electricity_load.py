@@ -1,6 +1,6 @@
 """Tests for electrical data synthesis."""
 
-# ruff: noqa: D101, D102, D103
+# ruff: noqa: D101, D102
 import datetime
 import json
 

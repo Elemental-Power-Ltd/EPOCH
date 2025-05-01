@@ -30,7 +30,7 @@ from ..models.core import (
     dataset_id_t,
 )
 from ..models.electricity_load import ElectricalLoadRequest
-from ..models.heating_load import HeatingLoadRequest, InterventionEnum
+from ..models.heating_load import HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetList, RemoteMetaData
@@ -426,6 +426,7 @@ async def generate_all(
                 start_ts=params.start_ts,
                 end_ts=params.end_ts,
                 interventions=interventions,
+                model_type=HeatingLoadModelEnum.Auto,
             ),
             pool=pool,
             http_client=http_client,

@@ -9,7 +9,7 @@ If your fixture is used by tests for multiple unrelated endpoints, put it here.
 Otherwise, leave it in the test file.
 """
 
-# ruff: noqa: D101, D102, D103
+# ruff: noqa: D103
 import asyncio
 import json
 import sys

@@ -152,10 +152,7 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
 
     highlighted_results = pick_highlighted_results(portfolio_results)
 
-    return OptimisationResultsResponse(
-        portfolio_results=portfolio_results,
-        highlighted_results=highlighted_results
-    )
+    return OptimisationResultsResponse(portfolio_results=portfolio_results, highlighted_results=highlighted_results)
 
 
 @router.post("/list-optimisation-tasks")

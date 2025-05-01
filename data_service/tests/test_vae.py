@@ -1,6 +1,6 @@
 """Tests for the VAE without the usual endpoint scaffolding."""
 
-# ruff: noqa: D101, D102
+# ruff: noqa: D101
 
 import datetime
 

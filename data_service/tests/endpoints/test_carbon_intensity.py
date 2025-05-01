@@ -1,6 +1,6 @@
 """Endpoint testing for carbon intensity endpoints."""
 
-# ruff: noqa: D101, D102, D103
+# ruff: noqa: D101
 import datetime
 import itertools
 

@@ -1,6 +1,5 @@
 """Test various unit conversion functions."""
 
-# ruff: noqa: D101, D102
 from collections.abc import Callable
 
 import numpy as np
