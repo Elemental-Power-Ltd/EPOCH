@@ -62,6 +62,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
     HeatingLoadRequest
         The new request which we should send to generate a heating load, filled with sensible defaults.
     """
+    logger = logging.getLogger(__name__)
     if params.site_id is None:
         # Old versions of the HeatingLoadRequest only needed a dataset ID for the source gas data,
         # and not the site ID.
@@ -90,11 +91,13 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
     # If for some reason the site ID lookup failed, then we have to use regression.
     # Otherwise, try to use the thermal model.
     if site_id is None:
+        logger.debug("Using regression instead of thermal as we didn't get a site_id.")
         return default_regression_request
 
     available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
 
     if not available_thermal_model_ids:
+        logger.debug("Using regression instead of thermal as we didn't get any thermal model metadata.")
         return default_regression_request
 
     all_thermal_models = [
@@ -102,6 +105,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
     ]
 
     if not all_thermal_models:
+        logger.debug("Using regression instead of thermal as we didn't get any thermal models with valid parameters.")
         return default_regression_request
 
     paired = zip(
@@ -116,6 +120,10 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
     above_thresh = [item for item in paired if item[0].r2_score is not None and item[0].r2_score > R2_THRESH]
 
     if not above_thresh:
+        logger.debug(
+            "Using regression instead of thermal as we didn't get a thermal model above the threshold.",
+            extra={"best_r2": max(item[0].r2_score for item in paired)},
+        )
         return default_regression_request
 
     # Get the entry with the maximum created_at timestamp.

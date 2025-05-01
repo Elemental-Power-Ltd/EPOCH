@@ -366,11 +366,13 @@ def fit_to_gas_usage(
 
     for hint in hints:
         # Probe some reasonable points to get us started
-        # TODO (2025-03-03 MHJB): also probe +/- 10% of each hint?
+        # TODO (2025-05-01 MHJB): This is a single hint for each one, so we could try
+        # multiple slightly perturbed hints.
         dumped_hint = hint.model_dump()
         for key, val in dumped_hint.items():
             # If we re-use a hint from before that's out of bounds,
             # then clamp it back into the bounds that we're using.
+            # But stay just a touch within the bounds to avoid sampling right at the edges (which are often bad)
             clamped_val = max(pbounds[key][0] * 1.01, min(val, pbounds[key][1] * 0.99))
             dumped_hint[key] = clamped_val
         opt.probe(hint.model_dump(), lazy=False)

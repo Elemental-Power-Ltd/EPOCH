@@ -213,7 +213,7 @@ def get_poisson_weights(
         latest_day = gas_df.index.max()
 
     if "start_ts" in gas_df.columns:
-        earliest_day = gas_df["end_ts"].min()
+        earliest_day = gas_df["start_ts"].min()
     else:
         earliest_day = gas_df.index.min()
     days_involved = (latest_day - earliest_day).total_seconds() / (24 * 60 * 60)
