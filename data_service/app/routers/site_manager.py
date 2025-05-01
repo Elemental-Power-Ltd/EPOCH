@@ -304,6 +304,10 @@ async def get_dataset_bundle(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> 
             dataset_requests[dataset_type] = dataset_id
     return await fetch_all_input_data(dataset_requests, pool=pool)
 
+@router.post("/list-dataset-bundles")
+async def list_dataset_bundles(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> DatasetList:
+    pass
+
 @warnings.deprecated("Prefer get-dataset-bundle.")
 @router.post("/get-specific-datasets", tags=["db", "get"])
 async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
