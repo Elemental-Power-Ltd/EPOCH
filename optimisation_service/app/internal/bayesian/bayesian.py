@@ -3,6 +3,7 @@ import logging
 import warnings
 from typing import TypedDict
 
+import numpy as np
 import numpy.typing as npt
 import torch
 from botorch import fit_gpytorch_mll  # type: ignore
@@ -14,17 +15,16 @@ from botorch.exceptions.warnings import UserInputWarning  # type: ignore
 from botorch.models.gp_regression import SingleTaskGP  # type: ignore
 from botorch.models.gpytorch import GPyTorchModel  # type: ignore
 from botorch.models.model_list_gp_regression import ModelListGP  # type: ignore
+from botorch.models.transforms.input import Normalize  # type: ignore
 from botorch.models.transforms.outcome import Standardize  # type: ignore
 from botorch.optim.optimize import optimize_acqf  # type: ignore
 from botorch.sampling.normal import IIDNormalSampler  # type: ignore
 from botorch.utils.multi_objective.box_decompositions.non_dominated import (  # type: ignore
     FastNondominatedPartitioning,  # type: ignore
 )
-from botorch.utils.transforms import normalize  # type: ignore
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood  # type: ignore
 
 from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser
-from app.internal.NSGA2 import NSGA2
 from app.internal.pareto_front import portfolio_pareto_front
 from app.models.algorithms import Algorithm
 from app.models.constraints import Constraints
@@ -40,7 +40,7 @@ class TKWARGS(TypedDict):
     device: torch.device
 
 
-_TDEVICE = torch.device("cpu")
+_TDEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _TKWARGS = TKWARGS(dtype=torch.double, device=_TDEVICE)
 
 
@@ -67,12 +67,13 @@ class Bayesian(Algorithm):
     def __init__(
         self,
         n_per_sub_portfolio: int = 1,
+        n_initialisation_points: int = 5,
         n_generations: int = 10,
         batch_size: int = 4,
         num_restarts: int = 10,
         raw_samples: int = 512,
         mc_samples: int = 128,
-        **kwargs,
+        NSGA2_kwargs: dict = {},
     ):
         """
         Define Bayesian and NSGA-II hyperparameters.
@@ -95,15 +96,17 @@ class Bayesian(Algorithm):
             The size of each sample.
         """
         self.n_per_sub_portfolio = n_per_sub_portfolio
+        self.n_initialisation_points = n_initialisation_points
         self.num_restarts = num_restarts
         self.raw_samples = raw_samples
         self.n_generations = n_generations
         self.batch_size = batch_size
         self.mc_samples = mc_samples
-        self.NSGA2 = NSGA2(**kwargs)
+        self.NSGA2_kwargs = NSGA2_kwargs
 
     def run(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]):
         start_time = datetime.datetime.now(datetime.UTC)
+        rng = np.random.default_rng()
 
         assert len(portfolio) >= 2, "The portfolio must contain at least two sites."
 
@@ -115,26 +118,57 @@ class Bayesian(Algorithm):
         n_sub_portfolios = len(sub_portfolios)
         assert n_sub_portfolios > 1, "There must be at least two sub portfolios."
 
-        dpo = DistributedPortfolioOptimiser(sub_portfolios, objectives, self.NSGA2, constraints)
+        dpo = DistributedPortfolioOptimiser(
+            sub_portfolios=sub_portfolios, objectives=objectives, constraints=constraints, NSGA2_kwargs=self.NSGA2_kwargs
+        )
         solutions = dpo.init_solutions
+        max_capexs = [1.25 * val for val in dpo.max_capexs]  # Add 25% extra CAPEX in case initialisation didn't converge
 
-        train_x, train_y = convert_solution_list_to_tensor(solutions, self.n_per_sub_portfolio, n_sub_portfolios, objectives)
+        # We select a random subset of the solutions since they usually are all quite similar which leads to bad model fitting.
+        # TODO: Make the sampler less random, ex: Sobol sampling
+        train_x, train_y = convert_solution_list_to_tensor(
+            list(rng.choice(a=dpo.init_solutions, size=int(0.25 * len(dpo.init_solutions)), replace=False)),
+            self.n_per_sub_portfolio,
+            n_sub_portfolios,
+            objectives,
+        )
 
-        bounds = create_capex_allocation_bounds(n_sub_portfolios, dpo.max_capexs)
+        logger.debug(f"Currently have {len(solutions)} Pareto-optimal solutions.")
+        logger.debug(f"Currently have {len(train_x)} training points.")
+
+        candidates = generate_random_train_x(n=self.n_initialisation_points, max_capexs=max_capexs, capex_limit=capex_limit)
+        for k, candidate in enumerate(candidates):
+            logger.debug(f"On random candidate {k + 1} / {self.n_initialisation_points}.")
+            new_solutions = dpo.evaluate(candidate)
+
+            if len(new_solutions) > 0:
+                solutions = portfolio_pareto_front(solutions + new_solutions, objectives)
+
+                # TODO: Improve the sampling of the new solutions, ex: Sobol sampling.
+                # Converting all new solutions into training points would be best, but increasing the number of points makes
+                # the fitting process slower.
+                new_train_x, new_train_y = convert_solution_list_to_tensor(
+                    rng.choice(a=new_solutions, size=int(0.25 * len(new_solutions)), replace=False),
+                    self.n_per_sub_portfolio,
+                    n_sub_portfolios,
+                    objectives,
+                )
+                train_x = torch.cat([train_x, new_train_x])
+                train_y = torch.cat([train_y, new_train_y])
+
+        logger.debug(f"Currently have {len(solutions)} Pareto-optimal solutions.")
+        logger.debug(f"Currently have {len(train_x)} training points.")
+
+        ref_point = create_reference_point(train_y)
+        bounds = create_capex_allocation_bounds([0] * n_sub_portfolios, max_capexs)
         mll, model = initialise_model(train_x, train_y, bounds)
 
         # run n_generations rounds of Bayesian optimisation after the initial random batch
         for j in range(0, self.n_generations):
             logger.debug(f"On generations {j + 1} / {self.n_generations}.")
-
-            # create reference point. TODO: Improve Reference point selection
-            ref_point = create_reference_point(train_y)
-
-            # fit the model
             fit_gpytorch_mll(mll)
             state_dict = model.state_dict()
 
-            # optimize acquisition functions and get new candidates
             candidates = optimize_acquisition_func_and_get_candidate(
                 model=model,
                 train_x=train_x,
@@ -148,34 +182,34 @@ class Bayesian(Algorithm):
                 raw_samples=self.raw_samples,
             )
 
-            # evaluate candidates
-            new_solutions = []
             for k, candidate in enumerate(candidates):
                 logger.debug(f"On batch {k + 1} / {self.batch_size}.")
-                new = dpo.evaluate(candidate)
-                logger.debug(f"Found {len(new)} solutions.")
-                new_solutions.extend(new)
+                new_solutions = dpo.evaluate(candidate)
 
-            if len(new_solutions) > 0:  # if new solutions have been found
-                # convert to tensors
-                new_train_x, new_train_y = convert_solution_list_to_tensor(
-                    new_solutions, self.n_per_sub_portfolio, n_sub_portfolios, objectives
-                )
+                if len(new_solutions) > 0:
+                    solutions = portfolio_pareto_front(solutions + new_solutions, objectives)
 
-                # update training points
-                train_x = torch.cat([train_x, new_train_x])
-                train_y = torch.cat([train_y, new_train_y])
-
-            # initialise model for next gen
-            mll, model = initialise_model(train_x, train_y, bounds)
-
-            # Should be able to load old model dict. TODO: Fix model load bug.
-            if state_dict is not None:
-                model.load_state_dict(state_dict)
-
-            solutions = portfolio_pareto_front(solutions + new_solutions, objectives)
+                    # TODO: Improve the sampling of the new solutions, ex: Sobol sampling.
+                    # Converting all new solutions into training points would be best, but increasing the number of points makes
+                    # the fitting process slower and if too many points are near identical, can lead to failed fits.
+                    new_train_x, new_train_y = convert_solution_list_to_tensor(
+                        rng.choice(a=new_solutions, size=int(0.25 * len(new_solutions)), replace=False),
+                        self.n_per_sub_portfolio,
+                        n_sub_portfolios,
+                        objectives,
+                    )
+                    train_x = torch.cat([train_x, new_train_x])
+                    train_y = torch.cat([train_y, new_train_y])
 
             logger.debug(f"Currently have {len(solutions)} Pareto-optimal solutions.")
+            logger.debug(f"Currently have {len(train_x)} training points.")
+
+            ref_point = create_reference_point(train_y)
+
+            mll, model = initialise_model(train_x, train_y, bounds)
+
+            if state_dict is not None:
+                model.load_state_dict(state_dict)
 
         torch.cuda.empty_cache()
 
@@ -206,6 +240,37 @@ def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -
     return sub_portfolios
 
 
+def generate_random_train_x(n: int, max_capexs: list[float], capex_limit: int):
+    """
+    Generate n CAPEX allocation splits randomly.
+
+    Parameters
+    ----------
+    n
+        Number of training points to generate.
+    max_capexs
+        List of upper CAPEX limits, one for each site.
+    capex_limit
+        Upper CAPEX limit for the whole portfolio.
+
+    Returns
+    -------
+    candidates
+        An 2D array of training points
+    """
+    candidates = []
+    for _ in range(n):
+        candidate = np.zeros(len(max_capexs))
+        remaining = capex_limit
+        for i, max_capex in enumerate(max_capexs):
+            high = min(max_capex, remaining)
+            point = np.random.uniform(0, high)
+            candidate[i] = point
+            remaining -= point
+        candidates.append(candidate)
+    return np.array(candidates)
+
+
 def initialise_model(
     train_x: torch.Tensor, train_y: torch.Tensor, bounds: torch.Tensor
 ) -> tuple[SumMarginalLogLikelihood, ModelListGP]:
@@ -228,12 +293,19 @@ def initialise_model(
     model
         A collection of Gaussian Process models.
     """
-    train_x = normalize(train_x, bounds)
     models = []
     for i in range(train_y.shape[-1]):
         train_y_i = train_y[..., i : i + 1]
         train_y_noise = torch.full_like(train_y_i, 1e-06)
-        models.append(SingleTaskGP(train_x, train_y_i, train_y_noise, outcome_transform=Standardize(m=1)))
+        models.append(
+            SingleTaskGP(
+                train_x,
+                train_y_i,
+                train_y_noise,
+                outcome_transform=Standardize(m=1),
+                input_transform=Normalize(d=train_x.shape[-1], bounds=bounds),
+            )
+        )
     model = ModelListGP(*models)
     mll = SumMarginalLogLikelihood(model.likelihood, model)
     return mll, model
@@ -255,21 +327,20 @@ def create_reference_point(train_y: torch.Tensor) -> torch.Tensor:
     ref_point
         A reference point in the outcome space (Objective values).
     """
-    ref_point, _ = torch.max(train_y, dim=0)
-    ref_point = ref_point * 0.9 - 1
+    ref_point, _ = torch.min(train_y, dim=0)
 
     return ref_point
 
 
-def create_capex_allocation_bounds(n_sub_portfolios: int, max_capexs: list[float]) -> torch.Tensor:
+def create_capex_allocation_bounds(min_capexs: list[float], max_capexs: list[float]) -> torch.Tensor:
     """
     Creates a tensor representation of the bounds on the capex allocations.
-    The capex allocations are bound to [0, max_capex].
+    The capex allocations are bound to [min_capex, max_capex].
 
     Parameters
     ----------
-    n_sub_portfolios
-        The number of sub portfolios.
+    min_capexs
+        Lower CAPEX limit for each portfolio.
     max_capexs
         Upper CAPEX limit for each portfolio.
 
@@ -278,7 +349,7 @@ def create_capex_allocation_bounds(n_sub_portfolios: int, max_capexs: list[float
     bounds
         A 2 x d tensor of lower and upper bounds for each of the train_x's d columns (Bounds on the sites' CAPEX allocations).
     """
-    bounds = torch.tensor([[0.0] * n_sub_portfolios, max_capexs], **_TKWARGS)
+    bounds = torch.tensor(np.array([min_capexs, max_capexs]), **_TKWARGS)
     return bounds
 
 
@@ -327,7 +398,7 @@ def optimize_acquisition_func_and_get_candidate(
     """
     sampler = IIDNormalSampler(sample_shape=torch.Size([mc_samples]))
     with torch.no_grad():
-        pred = model.posterior(normalize(train_x, bounds)).mean
+        pred = model.posterior(train_x).mean
     partitioning = FastNondominatedPartitioning(
         ref_point=ref_point,
         Y=pred,
@@ -338,10 +409,15 @@ def optimize_acquisition_func_and_get_candidate(
         partitioning=partitioning,
         sampler=sampler,
     )
-    # Define constraints on the features (CAPEX allocations). The sum of the allocations must be smaller than the CAPEX limit.
+    # Define constraints on the features (CAPEX allocations).
+    # The sum of the allocations must be smaller than the CAPEX limit.
     indeces = torch.tensor(list(range(n_sub_portfolios)), dtype=torch.int, device=_TDEVICE)
     coefficients = torch.tensor([-1.0] * n_sub_portfolios, **_TKWARGS)
     inequality_constraints = [(indeces, coefficients, -capex_limit)]
+    # The sum of the allocations must be greater than 0.
+    indeces = torch.tensor(list(range(n_sub_portfolios)), dtype=torch.int, device=_TDEVICE)
+    coefficients = torch.tensor([1.0] * n_sub_portfolios, **_TKWARGS)
+    inequality_constraints.append((indeces, coefficients, 0))
 
     # optimize
     candidates, _ = optimize_acqf(
@@ -355,7 +431,7 @@ def optimize_acquisition_func_and_get_candidate(
         options={"batch_limit": 5, "maxiter": 200},
         sequential=True,
     )
-    # add capex allocation for last sub portfolio
+
     candidates_arr = candidates.cpu().detach().numpy()
 
     return candidates_arr

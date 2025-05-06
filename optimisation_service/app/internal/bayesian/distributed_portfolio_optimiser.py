@@ -15,7 +15,9 @@ class DistributedPortfolioOptimiser:
     Each sub-portfolio is optimised individually with NSGA-II.
     """
 
-    def __init__(self, sub_portfolios: list[list[Site]], objectives: list[Metric], alg: NSGA2, constraints: Constraints):
+    def __init__(
+        self, sub_portfolios: list[list[Site]], objectives: list[Metric], constraints: Constraints, NSGA2_kwargs: dict
+    ):
         """
         Define the problem and NSGA-II algoritm and initialise the optimiser.
 
@@ -25,20 +27,18 @@ class DistributedPortfolioOptimiser:
             A list of portfolios.
         objectives
             Metrics to optimise for.
-        alg
-            Instance of a NSGA-II algorithm to use.
         constraints
             Constraints to apply to the output metrics.
         """
         self.sub_portfolios = sub_portfolios
         self.objectives = objectives
         self.constraints = constraints
-        self.alg = alg
+        self.NSGA2_kwargs = NSGA2_kwargs
         self.n_evals = 0
         # maintain a cache of solutions for each sub-portfolio
-        self.sub_portfolio_solutions: list[set[PortfolioSolution]] = []
+        self.sub_portfolio_solutions: list[set[PortfolioSolution]] = [set() for _ in sub_portfolios]
         # maintain a cache for each step in the sub-portfolio merging loop
-        self.sub_portfolio_combinations: list[set[PortfolioSolution]] = []
+        self.sub_portfolio_combinations: list[set[PortfolioSolution]] = [set() for _ in sub_portfolios]
         self.init_solutions, self.max_capexs = self._initialise()
 
     def _initialise(self) -> tuple[list[PortfolioSolution], list[float]]:
@@ -56,24 +56,25 @@ class DistributedPortfolioOptimiser:
         max_capexs = []
         sub_solutions: list[list[PortfolioSolution]] = []
         for sub_portfolio in self.sub_portfolios:
-            res = self.alg.run(
-                objectives=self.objectives, constraints={Metric.capex: {"max": capex_limit}}, portfolio=sub_portfolio
-            )
+            alg = NSGA2(**self.NSGA2_kwargs)
+            constraints = {Metric.capex: Bounds(max=capex_limit)}
+            res = alg.run(objectives=self.objectives, constraints=constraints, portfolio=sub_portfolio)
+            sub_solutions.append(res.solutions)
+            self.n_evals += res.n_evals
             max_capex = 0.0
             for solution in res.solutions:
                 if solution.metric_values[Metric.capex] > max_capex:
                     max_capex = solution.metric_values[Metric.capex]
             max_capexs.append(max_capex)
-            sub_solutions.append(res.solutions)
-            self.n_evals += res.n_evals
 
-        self.sub_portfolio_solutions = [set(sub_portfolio) for sub_portfolio in sub_solutions]
+        capex_limits = [capex_limit] * len(self.sub_portfolios)
+        solutions = self.merge_and_optimise_portfolio_solution_lists(
+            sub_solutions, self.objectives, capex_limits, self.constraints
+        )
 
-        solutions = sub_solutions[0]
-        self.sub_portfolio_combinations = [set(solutions)]
-        for sub_solution in sub_solutions[1:]:
-            solutions = merge_and_optimise_two_portfolio_solution_lists(solutions, sub_solution, self.objectives, capex_limit)
-            self.sub_portfolio_combinations.append(set(solutions))
+        # update sub_portfolio_solutions
+        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(self.sub_portfolio_solutions, sub_solutions):
+            sub_portfolio_solution_list.update(set(new_sub_portfolio_solution_list))
 
         return solutions, max_capexs
 
@@ -93,14 +94,16 @@ class DistributedPortfolioOptimiser:
         """
         sub_solutions: list[list[PortfolioSolution]] = []
         for i, capex_limit in enumerate(capex_limits):
+            alg = NSGA2(**self.NSGA2_kwargs)
             constraints = {Metric.capex: Bounds(max=capex_limit)}
+            # TODO: Select the pop_size from the number of available existing solutions instead of the other way round
             selected_solutions = select_starting_solutions(
                 existing_solutions=list(self.sub_portfolio_solutions[i]),
                 constraints=constraints,
                 objectives=self.objectives,
-                n_select=self.alg.algorithm.pop_size,
+                n_select=alg.algorithm.pop_size,
             )
-            res = self.alg.run(
+            res = alg.run(
                 objectives=self.objectives,
                 constraints=constraints,
                 portfolio=self.sub_portfolios[i],
@@ -181,6 +184,7 @@ class DistributedPortfolioOptimiser:
             combined_capex_limit += capex_limits[i]
 
             new_combinations = new_combs_n_sols + new_combs_n_existing_sols + existing_combs_n_new_sols
+            combinations_to_cache.append(new_combinations)
 
             existing_combinations = list(self.sub_portfolio_combinations[i])
             mask = is_in_constraints(
@@ -201,8 +205,6 @@ class DistributedPortfolioOptimiser:
                     new_combinations = []
 
             new_combinations = list(set(new_combinations) - self.sub_portfolio_combinations[i])
-
-            combinations_to_cache.append(new_combinations)
 
         # update sub_portfolio_combinations
         for combination_set, new_combination_set in zip(self.sub_portfolio_combinations, combinations_to_cache):
