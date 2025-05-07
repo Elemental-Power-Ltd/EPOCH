@@ -97,8 +97,10 @@ class TestThermalModelEndpoint:
         )
         assert mdl_response.status_code == 200, mdl_response.text
         params = mdl_response.json()
-        for val in params.values():
-            assert val > 0
+        for key, val in params.items():
+            if key != "r2_score":
+                # We've picked a nonsense set of parameters here, so the r2 score will likely be very bad.
+                assert val > 0, f"{key} is out of valid range"
 
     @pytest.mark.asyncio
     @pytest.mark.slow

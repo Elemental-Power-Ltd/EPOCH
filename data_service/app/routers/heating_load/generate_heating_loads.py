@@ -14,6 +14,9 @@ stored in a database for further analysis.
 import datetime
 import itertools
 import json
+import logging
+import operator
+import uuid
 
 import numpy as np
 import pandas as pd
@@ -22,6 +25,7 @@ from fastapi import HTTPException
 from ...dependencies import DatabasePoolDep, HttpClientDep
 from ...internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ...internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
+from ...internal.site_manager import list_thermal_models
 from ...internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.fitting import simulate_parameters
@@ -36,6 +40,103 @@ from ..client_data import get_location
 from ..weather import get_weather
 from .router import api_router
 from .thermal_model import get_thermal_model
+
+
+async def select_regression_or_thermal(params: HeatingLoadRequest, pool: DatabasePoolDep) -> HeatingLoadRequest:
+    """
+    Select whether the regression mode or the thermal model is best for this site.
+
+    This will attempt to use the thermal model if there is a model stored in the database above a given quality
+    threshold, or fall back to regression mode otherwise.
+
+    Parameters
+    ----------
+    params
+        A HeatingLoadRequest with the HeatingLoadModelEnum set to Auto.
+        This may be modified as we go along, since we'll need to fill it in for the thermal model
+    pool
+        Connection pool to a database, potentially with thermal models in.
+
+    Returns
+    -------
+    HeatingLoadRequest
+        The new request which we should send to generate a heating load, filled with sensible defaults.
+    """
+    logger = logging.getLogger(__name__)
+    if params.site_id is None:
+        # Old versions of the HeatingLoadRequest only needed a dataset ID for the source gas data,
+        # and not the site ID.
+        # If we got no site ID, look it up here.
+        site_id = await pool.fetchval(
+            """SELECT site_id FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""", params.dataset_id
+        )
+    else:
+        site_id = params.site_id
+
+    # This function is structured slightly backwards, as it's cleaner than using a try... except
+    # We'll perform a number of processing steps to find if we have any thermal models, but
+    # if we don't, we'll return this Regression request via a series of early exits
+    # Future refactoring for the logic appreciated if you think it needs tidying.
+    default_regression_request = HeatingLoadRequest(
+        dataset_id=params.dataset_id,
+        start_ts=params.start_ts,
+        end_ts=params.end_ts,
+        interventions=params.interventions,
+        apply_bait=True,
+        model_type=HeatingLoadModelEnum.Regression,
+        site_id=site_id,
+        thermal_model_dataset_id=None,
+    )
+
+    # If for some reason the site ID lookup failed, then we have to use regression.
+    # Otherwise, try to use the thermal model.
+    if site_id is None:
+        logger.debug("Using regression instead of thermal as we didn't get a site_id.")
+        return default_regression_request
+
+    available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
+
+    if not available_thermal_model_ids:
+        logger.debug("Using regression instead of thermal as we didn't get any thermal model metadata.")
+        return default_regression_request
+
+    all_thermal_models = [
+        await get_thermal_model(pool, dataset_id=DatasetID(dataset_id=item.dataset_id)) for item in available_thermal_model_ids
+    ]
+
+    if not all_thermal_models:
+        logger.debug("Using regression instead of thermal as we didn't get any thermal models with valid parameters.")
+        return default_regression_request
+
+    paired = zip(
+        all_thermal_models,
+        (item.created_at for item in available_thermal_model_ids),
+        (item.dataset_id for item in available_thermal_model_ids),
+        strict=False,
+    )
+    # This is the quality bar for models in the database; we'll pick the most recent model above this quality threshold
+    # if there is one
+    R2_THRESH = 0.8
+    above_thresh = [item for item in paired if item[0].r2_score is not None and item[0].r2_score > R2_THRESH]
+
+    if not above_thresh:
+        logger.debug(
+            "Using regression instead of thermal as we didn't get a thermal model above the threshold.",
+            extra={"best_r2": max(item[0].r2_score if item[0].r2_score is not None else -float("inf") for item in paired)},
+        )
+        return default_regression_request
+
+    # Get the entry with the maximum created_at timestamp.
+    most_recent_id = max(above_thresh, key=operator.itemgetter(1))[2]
+    return HeatingLoadRequest(
+        dataset_id=params.dataset_id,
+        start_ts=params.start_ts,
+        end_ts=params.end_ts,
+        interventions=params.interventions,
+        model_type=HeatingLoadModelEnum.ThermalModel,
+        site_id=site_id,
+        thermal_model_dataset_id=most_recent_id,
+    )
 
 
 @api_router.post("/generate-heating-load", tags=["generate", "heating"])
@@ -61,7 +162,14 @@ async def generate_heating_load(
     HeatingLoadMetadata
         Metadata about the heating load we just put into the database.
     """
+    logger = logging.getLogger(__name__)
     match params.model_type:
+        case HeatingLoadModelEnum.Auto:
+            # This function will look up if we have a good enough thermal model, and create
+            # a new heating load request, then all that.
+            new_heatload_params = await select_regression_or_thermal(params=params, pool=pool)
+            logger.info(f"Generating heat load for {new_heatload_params.site_id} with {new_heatload_params.model_type}.")
+            return await generate_heating_load(new_heatload_params, pool, http_client)
         case HeatingLoadModelEnum.Regression:
             return await generate_heating_load_regression(params=params, pool=pool, http_client=http_client)
         case HeatingLoadModelEnum.ThermalModel:
@@ -303,6 +411,7 @@ async def generate_thermal_model_heating_load(
         u_value=thermal_model.u_value,
         boiler_power=thermal_model.boiler_power,
         setpoint=thermal_model.setpoint,
+        dhw_usage=thermal_model.dhw_usage,
         elec_df=elec_df,
         start_ts=params.start_ts,
         end_ts=params.end_ts,
@@ -322,10 +431,6 @@ async def generate_thermal_model_heating_load(
     dataset_id = params.final_uuid
     created_at = datetime.datetime.now(datetime.UTC)
 
-    # TODO (2025-02-02 MHJB): improve DHW load here
-    DHW_EVENT_SIZE = 1.0
-    poisson_weights = get_poisson_weights(HHDataFrame(hh_heating_load_df)) * thermal_model.dhw_usage
-    dhw_load = np.random.default_rng().poisson(poisson_weights) * DHW_EVENT_SIZE
     await pool.execute(
         """
         INSERT INTO heating.metadata
@@ -347,7 +452,7 @@ async def generate_thermal_model_heating_load(
             hh_heating_load_df.start_ts,
             hh_heating_load_df.end_ts,
             hh_heating_load_df.heating_usage,
-            dhw_load,
+            hh_heating_load_df.dhw,
             hh_heating_load_df.external_temperatures,
             strict=True,
         ),

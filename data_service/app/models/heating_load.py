@@ -12,12 +12,17 @@ from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field,
 
 
 class ThermalModelResult(pydantic.BaseModel):
-    scale_factor: pydantic.NonNegativeFloat
-    ach: pydantic.NonNegativeFloat
-    u_value: pydantic.NonNegativeFloat
-    boiler_power: pydantic.NonNegativeFloat
-    setpoint: pydantic.NonNegativeFloat
+    scale_factor: pydantic.NonNegativeFloat = pydantic.Field(description="Multiplier of the floor area; 1.0 is 100m^2.")
+    ach: pydantic.NonNegativeFloat = pydantic.Field(description="Air changes per hour; for a domestic building this is 1 - 4.")
+    u_value: pydantic.NonNegativeFloat = pydantic.Field(description="U-value of the main wall building material.")
+    boiler_power: pydantic.NonNegativeFloat = pydantic.Field(description="Heating output power of the boiler in W")
+    setpoint: pydantic.NonNegativeFloat = pydantic.Field(description="Target temperature of the building thermostat in °C")
     dhw_usage: pydantic.NonNegativeFloat = pydantic.Field(description="Daily domestic hot water usage in kWh")
+    r2_score: float | None = pydantic.Field(
+        description="R^2 score of this thermal model against the original gas meter data." + ""
+        "1.0 is the best possible score, but may be infinitely negative, or None if not calculated.",
+        default=None,
+    )
 
 
 class InterventionEnum(StrEnum):
@@ -87,6 +92,7 @@ class EpochDHWEntry(EpochEntry):
 class HeatingLoadModelEnum(StrEnum):
     Regression = "regression"
     ThermalModel = "thermal_model"
+    Auto = "auto"
 
 
 class HeatingLoadRequest(DatasetIDWithTime):
@@ -102,7 +108,11 @@ class HeatingLoadRequest(DatasetIDWithTime):
         + "For most buildings this should be 1, unless there is an unusually inefficient heating system.",
     )
     model_type: HeatingLoadModelEnum = Field(
-        description="Which type of underyling heating load model to use.", default=HeatingLoadModelEnum.Regression
+        description=(
+            "Which type of underyling heating load model to use."
+            + "By default, will try to use a thermal model if there's one available, and regression if not."
+        ),
+        default=HeatingLoadModelEnum.Auto,
     )
     site_id: site_id_t | None = pydantic.Field(description="The site ID you want to analyse", default=None)
     thermal_model_dataset_id: dataset_id_t | None = Field(

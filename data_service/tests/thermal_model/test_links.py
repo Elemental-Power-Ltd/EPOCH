@@ -1,6 +1,6 @@
 """Test that the individual thermal link elements behave reasonably."""
 
-# ruff: noqa: D101, D102, D103
+# ruff: noqa: D101
 from collections.abc import Callable
 
 import pytest

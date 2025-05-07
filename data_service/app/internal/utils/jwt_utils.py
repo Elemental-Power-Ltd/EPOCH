@@ -6,7 +6,7 @@ import hmac
 import json
 from typing import TypedDict
 
-# ruff: noqa: D101, D102
+# ruff: noqa: D101
 
 
 class JwtHeader(TypedDict):
