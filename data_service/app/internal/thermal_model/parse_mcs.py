@@ -9,13 +9,33 @@ import itertools
 import pathlib
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import TypedDict
+from typing import TypedDict, TYPE_CHECKING
 
 import openpyxl
 import openpyxl.worksheet
 import openpyxl.worksheet.worksheet
 
 from ..utils.conversions import try_convert_float
+
+if TYPE_CHECKING:
+    from openpyxl.worksheet.formula import DataTableFormula, ArrayFormula
+    from openpyxl.cell.rich_text import CellRichText
+    from decimal import Decimal
+
+    type pxyl_cell_t = (
+        bool
+        | float
+        | Decimal
+        | str
+        | CellRichText
+        | datetime.datetime
+        | datetime.date
+        | datetime.time
+        | datetime.timedelta
+        | DataTableFormula
+        | ArrayFormula
+        | None
+    )
 
 
 class MCSRoomMetadata(TypedDict):
@@ -90,7 +110,7 @@ def parse_single_room(sheet: openpyxl.worksheet.worksheet.Worksheet) -> dict[str
         Dictionary of {element_type: list[element sizes]}
     """
 
-    def parse_row(row: tuple[str | float | datetime.datetime | None, ...]) -> dict[str, float]:
+    def parse_row(row: tuple[pxyl_cell_t, ...]) -> dict[str, float]:
         """
         Parse a single row from the room sheet.
 
