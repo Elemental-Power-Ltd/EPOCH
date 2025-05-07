@@ -30,6 +30,7 @@ from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.ga_utils import SamplingMethod
 from app.models.metrics import Metric
+from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
 
 
@@ -331,15 +332,15 @@ class SeperatedNSGA2(Algorithm):
 
     def __init__(
         self,
-        pop_size: int = 256,
+        pop_size: int = 128,
         sampling: SamplingMethod = SamplingMethod.RANDOM,
-        n_offsprings: int | None = None,
+        n_offsprings: int = 64,
         prob_crossover: float = 0.2,
         n_crossover: int = 2,
         prob_mutation: float = 0.9,
         std_scaler: float = 0.2,
         tol: float = 0.0001,
-        period: int | None = 25,
+        period: int = 25,
         n_max_gen: int = 10000,
         n_max_evals: int = int(1e14),
         cv_tol: float = 1,
@@ -353,7 +354,7 @@ class SeperatedNSGA2(Algorithm):
 
         Parameters
         ----------
-                pop_size
+        pop_size
             population size of GA
         n_offsprings
             number of offspring to generate at each generation, defaults to pop_size
@@ -386,24 +387,24 @@ class SeperatedNSGA2(Algorithm):
             Percent of the pop_size to set as the threshold to increase the pop_size.
         """
         self.return_least_infeasible = return_least_infeasible
-        self.NSGA2_kwargs = {
-            "pop_size": pop_size,
-            "sampling": sampling,
-            "n_offsprings": n_offsprings,
-            "prob_crossover": prob_crossover,
-            "n_crossover": n_crossover,
-            "prob_mutation": prob_mutation,
-            "std_scaler": std_scaler,
-            "tol": tol,
-            "period": period,
-            "n_max_gen": n_max_gen,
-            "n_max_evals": n_max_evals,
-            "cv_tol": cv_tol,
-            "cv_period": cv_period,
-            "pop_size_incr_scalar": pop_size_incr_scalar,
-            "pop_size_incr_threshold": pop_size_incr_threshold,
-            "return_least_infeasible": False,
-        }
+        self.NSGA2_param = NSGA2HyperParam(
+            pop_size=pop_size,
+            n_offsprings=n_offsprings,
+            prob_crossover=prob_crossover,
+            n_crossover=n_crossover,
+            prob_mutation=prob_mutation,
+            std_scaler=std_scaler,
+            tol=tol,
+            period=period,
+            cv_tol=cv_tol,
+            cv_period=cv_period,
+            n_max_gen=n_max_gen,
+            n_max_evals=n_max_evals,
+            sampling=sampling,
+            pop_size_incr_scalar=pop_size_incr_scalar,
+            pop_size_incr_threshold=pop_size_incr_threshold,
+            return_least_infeasible=False,
+        )
 
     def run(
         self,
@@ -439,7 +440,7 @@ class SeperatedNSGA2(Algorithm):
         sub_solutions: list[list[PortfolioSolution]] = []
         n_evals = 0
         for site in portfolio:
-            alg = NSGA2(**self.NSGA2_kwargs)
+            alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
             res = alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
             sub_solutions.append(res.solutions)
             n_evals += res.n_evals

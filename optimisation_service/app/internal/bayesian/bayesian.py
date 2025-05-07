@@ -30,6 +30,7 @@ from app.models.algorithms import Algorithm
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import Metric, MetricDirection
+from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
 
 logger = logging.getLogger("default")
@@ -73,7 +74,7 @@ class Bayesian(Algorithm):
         num_restarts: int = 10,
         raw_samples: int = 512,
         mc_samples: int = 128,
-        NSGA2_kwargs: dict = {},
+        NSGA2_param: NSGA2HyperParam | None = None,
     ):
         """
         Define Bayesian and NSGA-II hyperparameters.
@@ -94,6 +95,8 @@ class Bayesian(Algorithm):
             Number of samples to initialise the acquisition function optimisation with.
         mc_samples
             The size of each sample.
+        NSGA2_param
+            NSGA2 hyperparameter values.
         """
         self.n_per_sub_portfolio = n_per_sub_portfolio
         self.n_initialisation_points = n_initialisation_points
@@ -102,7 +105,10 @@ class Bayesian(Algorithm):
         self.n_generations = n_generations
         self.batch_size = batch_size
         self.mc_samples = mc_samples
-        self.NSGA2_kwargs = NSGA2_kwargs
+        if NSGA2_param is None:
+            NSGA2_param = NSGA2HyperParam()
+        self.NSGA2_param = NSGA2_param
+        self.NSGA2_param.return_least_infeasible = False
 
     def run(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]):
         start_time = datetime.datetime.now(datetime.UTC)
@@ -119,18 +125,25 @@ class Bayesian(Algorithm):
         assert n_sub_portfolios > 1, "There must be at least two sub portfolios."
 
         dpo = DistributedPortfolioOptimiser(
-            sub_portfolios=sub_portfolios, objectives=objectives, constraints=constraints, NSGA2_kwargs=self.NSGA2_kwargs
+            sub_portfolios=sub_portfolios, objectives=objectives, constraints=constraints, NSGA2_param=self.NSGA2_param
         )
         solutions = dpo.init_solutions
+
+        if len(solutions) == 0:  # If initialisation found no solutions then no point in continuing.
+            total_exec_time = datetime.datetime.now(datetime.UTC) - start_time
+            total_n_evals = dpo.n_evals
+            return OptimisationResult(solutions, total_n_evals, total_exec_time)
+
         max_capexs = [1.25 * val for val in dpo.max_capexs]  # Add 25% extra CAPEX in case initialisation didn't converge
+
+        sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in sub_portfolios]
 
         # We select a random subset of the solutions since they usually are all quite similar which leads to bad model fitting.
         # TODO: Make the sampler less random, ex: Sobol sampling
         train_x, train_y = convert_solution_list_to_tensor(
-            list(rng.choice(a=dpo.init_solutions, size=int(0.25 * len(dpo.init_solutions)), replace=False)),
-            self.n_per_sub_portfolio,
-            n_sub_portfolios,
-            objectives,
+            solutions=list(rng.choice(a=solutions, size=max(1, int(0.25 * len(solutions))), replace=False)),  # type: ignore
+            sub_portfolio_site_ids=sub_portfolio_site_ids,
+            objectives=objectives,
         )
 
         logger.debug(f"Currently have {len(solutions)} Pareto-optimal solutions.")
@@ -148,10 +161,9 @@ class Bayesian(Algorithm):
                 # Converting all new solutions into training points would be best, but increasing the number of points makes
                 # the fitting process slower.
                 new_train_x, new_train_y = convert_solution_list_to_tensor(
-                    rng.choice(a=new_solutions, size=int(0.25 * len(new_solutions)), replace=False),
-                    self.n_per_sub_portfolio,
-                    n_sub_portfolios,
-                    objectives,
+                    solutions=list(rng.choice(a=new_solutions, size=max(1, int(0.25 * len(new_solutions))), replace=False)),  # type: ignore
+                    sub_portfolio_site_ids=sub_portfolio_site_ids,
+                    objectives=objectives,
                 )
                 train_x = torch.cat([train_x, new_train_x])
                 train_y = torch.cat([train_y, new_train_y])
@@ -177,7 +189,6 @@ class Bayesian(Algorithm):
                 bounds=bounds,
                 batch_size=self.batch_size,
                 capex_limit=capex_limit,
-                n_sub_portfolios=n_sub_portfolios,
                 num_restarts=self.num_restarts,
                 raw_samples=self.raw_samples,
             )
@@ -193,10 +204,9 @@ class Bayesian(Algorithm):
                     # Converting all new solutions into training points would be best, but increasing the number of points makes
                     # the fitting process slower and if too many points are near identical, can lead to failed fits.
                     new_train_x, new_train_y = convert_solution_list_to_tensor(
-                        rng.choice(a=new_solutions, size=int(0.25 * len(new_solutions)), replace=False),
-                        self.n_per_sub_portfolio,
-                        n_sub_portfolios,
-                        objectives,
+                        solutions=list(rng.choice(a=new_solutions, size=max(1, int(0.25 * len(new_solutions))), replace=False)),  # type: ignore
+                        sub_portfolio_site_ids=sub_portfolio_site_ids,
+                        objectives=objectives,
                     )
                     train_x = torch.cat([train_x, new_train_x])
                     train_y = torch.cat([train_y, new_train_y])
@@ -240,7 +250,7 @@ def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -
     return sub_portfolios
 
 
-def generate_random_train_x(n: int, max_capexs: list[float], capex_limit: int):
+def generate_random_train_x(n: int, max_capexs: list[float], capex_limit: float):
     """
     Generate n CAPEX allocation splits randomly.
 
@@ -361,7 +371,6 @@ def optimize_acquisition_func_and_get_candidate(
     bounds: torch.Tensor,
     batch_size: int,
     capex_limit: float,
-    n_sub_portfolios: int,
     num_restarts: int,
     raw_samples: int,
 ) -> npt.NDArray:
@@ -384,8 +393,6 @@ def optimize_acquisition_func_and_get_candidate(
         The number of candidates to generate.
     capex_limit
         Upper CAPEX limit for the portfolio.
-    n_sub_portfolios
-        The number of sub portfolios.
     num_restarts
         The number of restarts of the acquisition function optimisation.
     raw_samples
@@ -409,6 +416,7 @@ def optimize_acquisition_func_and_get_candidate(
         partitioning=partitioning,
         sampler=sampler,
     )
+    n_sub_portfolios = train_x.shape[-1]
     # Define constraints on the features (CAPEX allocations).
     # The sum of the allocations must be smaller than the CAPEX limit.
     indeces = torch.tensor(list(range(n_sub_portfolios)), dtype=torch.int, device=_TDEVICE)
@@ -438,7 +446,7 @@ def optimize_acquisition_func_and_get_candidate(
 
 
 def extract_sub_portfolio_capex_allocations(
-    solution: PortfolioSolution, n_per_sub_portfolio: int, n_sub_portfolios: int
+    solution: PortfolioSolution, sub_portfolio_site_ids: list[list[str]]
 ) -> list[float]:
     """
     Extracts the sub portfolio CAPEX allocations from a portfolio solution.
@@ -447,28 +455,24 @@ def extract_sub_portfolio_capex_allocations(
     ----------
     solution
         The PortfolioSolution.
-    n_per_sub_portfolio
-        The number of sites per sub portfolio.
-    n_portfolios
-        The number of sub portfolios.
+    sub_portfolio_site_ids
+        A list of lists of site_ids defining the sites in each sub portfolio.
 
     Returns
     -------
     capex_allocations_per_sub
         A list of the sub portfolio CAPEX allocations.
     """
-    capex_allocations_per_site = [site.metric_values[Metric.capex] for site in solution.scenario.values()]
     capex_allocations_per_sub = [
-        sum(capex_allocations_per_site[i * n_per_sub_portfolio : (i + 1) * n_per_sub_portfolio])
-        for i in range(n_sub_portfolios)
+        sum([solution.scenario[site_id].metric_values[Metric.capex] for site_id in portfolio])
+        for portfolio in sub_portfolio_site_ids
     ]
     return capex_allocations_per_sub
 
 
 def convert_solution_list_to_tensor(
     solutions: list[PortfolioSolution],
-    n_per_sub_portfolio: int,
-    n_sub_portfolios: int,
+    sub_portfolio_site_ids: list[list[str]],
     objectives: list[Metric],
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
@@ -478,10 +482,8 @@ def convert_solution_list_to_tensor(
     ----------
     solutions
         A list of N PortfolioSolutions.
-    n_per_sub_portfolio
-        The number of sites per sub portfolio.
-    n_portfolios
-        The number of sub portfolios.
+    sub_portfolio_site_ids
+        A list of lists of site_ids defining the sub portfolios.
     objectives
         The objectives to extract from the metrics.
 
@@ -494,7 +496,7 @@ def convert_solution_list_to_tensor(
     """
     train_x, train_y = [], []
     for solution in solutions:
-        train_x.append(extract_sub_portfolio_capex_allocations(solution, n_per_sub_portfolio, n_sub_portfolios))
+        train_x.append(extract_sub_portfolio_capex_allocations(solution, sub_portfolio_site_ids))
         # Botorch maximises
         train_y.append([solution.metric_values[objective] * -MetricDirection[objective] for objective in objectives])
 

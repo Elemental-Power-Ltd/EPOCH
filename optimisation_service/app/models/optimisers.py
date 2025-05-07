@@ -78,9 +78,14 @@ class NSGA2HyperParam(BaseModel):
     pop_size_incr_threshold: PositiveFloat = Field(
         examples=[0.9], description="Percent of the pop_size to set as the threshold to increase the pop_size.", default=0.9
     )
+    return_least_infeasible: bool = Field(
+        examples=[True, False],
+        description="Whether or not to return the most feasible of the infeasible solutions if no feasible solution is found.",
+        default=True,
+    )
 
 
-class BayesianHyperParam(NSGA2HyperParam):
+class BayesianHyperParam(BaseModel):
     n_per_sub_portfolio: PositiveInt = Field(examples=[1, 2], description="Number of sites per sub portfolio.", default=1)
     n_generations: PositiveInt = Field(examples=[10, 20], description="Number of generations.", default=10)
     batch_size: PositiveInt = Field(examples=[1, 2, 3, 4], description="Number of evaluations per generation.", default=4)
@@ -94,6 +99,10 @@ class BayesianHyperParam(NSGA2HyperParam):
         default=512,
     )
     mc_samples: PositiveInt = Field(examples=[4, 128], description="Size of samples.", default=128)
+    NSGA2_param: NSGA2HyperParam = Field(
+        description="Hyperparameters for the NSGA2 algorithm.",
+        default=NSGA2HyperParam(pop_size=128, n_offsprings=64),
+    )
 
 
 class GridSearchHyperParam(BaseModel):

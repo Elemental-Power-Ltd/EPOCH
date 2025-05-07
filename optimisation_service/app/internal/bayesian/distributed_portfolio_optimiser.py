@@ -6,6 +6,7 @@ from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_
 from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
+from app.models.optimisers import NSGA2HyperParam
 from app.models.result import PortfolioSolution
 
 
@@ -16,7 +17,7 @@ class DistributedPortfolioOptimiser:
     """
 
     def __init__(
-        self, sub_portfolios: list[list[Site]], objectives: list[Metric], constraints: Constraints, NSGA2_kwargs: dict
+        self, sub_portfolios: list[list[Site]], objectives: list[Metric], constraints: Constraints, NSGA2_param: NSGA2HyperParam
     ):
         """
         Define the problem and NSGA-II algoritm and initialise the optimiser.
@@ -29,11 +30,13 @@ class DistributedPortfolioOptimiser:
             Metrics to optimise for.
         constraints
             Constraints to apply to the output metrics.
+        NSGA2_param
+            Hyperparameters for NSGA2 optimiser.
         """
         self.sub_portfolios = sub_portfolios
         self.objectives = objectives
         self.constraints = constraints
-        self.NSGA2_kwargs = NSGA2_kwargs
+        self.NSGA2_param = NSGA2_param
         self.n_evals = 0
         # maintain a cache of solutions for each sub-portfolio
         self.sub_portfolio_solutions: list[set[PortfolioSolution]] = [set() for _ in sub_portfolios]
@@ -56,7 +59,7 @@ class DistributedPortfolioOptimiser:
         max_capexs = []
         sub_solutions: list[list[PortfolioSolution]] = []
         for sub_portfolio in self.sub_portfolios:
-            alg = NSGA2(**self.NSGA2_kwargs)
+            alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
             constraints = {Metric.capex: Bounds(max=capex_limit)}
             res = alg.run(objectives=self.objectives, constraints=constraints, portfolio=sub_portfolio)
             sub_solutions.append(res.solutions)
@@ -94,15 +97,15 @@ class DistributedPortfolioOptimiser:
         """
         sub_solutions: list[list[PortfolioSolution]] = []
         for i, capex_limit in enumerate(capex_limits):
-            alg = NSGA2(**self.NSGA2_kwargs)
+            alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
             constraints = {Metric.capex: Bounds(max=capex_limit)}
-            # TODO: Select the pop_size from the number of available existing solutions instead of the other way round
             selected_solutions = select_starting_solutions(
-                existing_solutions=list(self.sub_portfolio_solutions[i]),
-                constraints=constraints,
-                objectives=self.objectives,
-                n_select=alg.algorithm.pop_size,
+                existing_solutions=list(self.sub_portfolio_solutions[i]), constraints=constraints
             )
+            if len(selected_solutions) > alg.algorithm.pop_size * 0.9:
+                pop_to_offspring = alg.algorithm.n_offsprings / alg.algorithm.pop_size
+                alg.algorithm.pop_size = int(len(selected_solutions) * 1.1)
+                alg.algorithm.n_offsprings = int(pop_to_offspring * alg.algorithm.pop_size)
             res = alg.run(
                 objectives=self.objectives,
                 constraints=constraints,
@@ -213,9 +216,7 @@ class DistributedPortfolioOptimiser:
         return new_combinations
 
 
-def select_starting_solutions(
-    existing_solutions: list[PortfolioSolution], constraints: Constraints, objectives: list[Metric], n_select: int
-) -> list[PortfolioSolution]:
+def select_starting_solutions(existing_solutions: list[PortfolioSolution], constraints: Constraints) -> list[PortfolioSolution]:
     """
     Select a set of solutions to use to initialise an algorithm with from a set of existing solutions.
 
@@ -225,37 +226,13 @@ def select_starting_solutions(
         Existing portfolio solutions to select from.
     constraints
         Constraints that selected solutions must respect.
-    objectives
-        Objectives to prioritise solutions for.
-    n_select
-        Number of solutions to select.
-        If len(existing_solutions) < n_select, all existing_solutions within constraints are returned.
 
     Returns
     -------
     selected_solutions
         A subset of the existing_solutions.
     """
-    rng = np.random.default_rng()
     mask = is_in_constraints(constraints, existing_solutions)
     selected_solutions = np.array(existing_solutions)[mask].tolist()
 
-    if len(selected_solutions) == 0:
-        return []
-
-    if len(selected_solutions) > n_select:
-        selected_solutions = portfolio_pareto_front(selected_solutions, objectives)  # select pareto-front
-        if len(selected_solutions) > n_select:  # cut down if too many
-            selected_solutions = rng.choice(selected_solutions, n_select, replace=False)
-        elif len(selected_solutions) < n_select:  # random fill if pareto-front is smaller than pop-size
-            selected_solutions = np.concatenate(
-                [
-                    selected_solutions,
-                    rng.choice(
-                        existing_solutions,  # type: ignore
-                        min(n_select - len(selected_solutions), len(existing_solutions)),
-                        replace=False,
-                    ),
-                ]
-            )
     return selected_solutions
