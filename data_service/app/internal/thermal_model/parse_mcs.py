@@ -9,7 +9,7 @@ import itertools
 import pathlib
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import TypedDict, TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import openpyxl
 import openpyxl.worksheet
@@ -18,9 +18,10 @@ import openpyxl.worksheet.worksheet
 from ..utils.conversions import try_convert_float
 
 if TYPE_CHECKING:
-    from openpyxl.worksheet.formula import DataTableFormula, ArrayFormula
-    from openpyxl.cell.rich_text import CellRichText
     from decimal import Decimal
+
+    from openpyxl.cell.rich_text import CellRichText
+    from openpyxl.worksheet.formula import ArrayFormula, DataTableFormula
 
     type pxyl_cell_t = (
         bool
