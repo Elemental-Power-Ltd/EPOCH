@@ -386,24 +386,24 @@ class SeperatedNSGA2(Algorithm):
             Percent of the pop_size to set as the threshold to increase the pop_size.
         """
         self.return_least_infeasible = return_least_infeasible
-        self.alg = NSGA2(
-            pop_size=pop_size,
-            sampling=sampling,
-            n_offsprings=n_offsprings,
-            prob_crossover=prob_crossover,
-            n_crossover=n_crossover,
-            prob_mutation=prob_mutation,
-            std_scaler=std_scaler,
-            tol=tol,
-            period=period,
-            n_max_gen=n_max_gen,
-            n_max_evals=n_max_evals,
-            cv_tol=cv_tol,
-            cv_period=cv_period,
-            pop_size_incr_scalar=pop_size_incr_scalar,
-            pop_size_incr_threshold=pop_size_incr_threshold,
-            return_least_infeasible=False,
-        )
+        self.NSGA2_kwargs = {
+            "pop_size": pop_size,
+            "sampling": sampling,
+            "n_offsprings": n_offsprings,
+            "prob_crossover": prob_crossover,
+            "n_crossover": n_crossover,
+            "prob_mutation": prob_mutation,
+            "std_scaler": std_scaler,
+            "tol": tol,
+            "period": period,
+            "n_max_gen": n_max_gen,
+            "n_max_evals": n_max_evals,
+            "cv_tol": cv_tol,
+            "cv_period": cv_period,
+            "pop_size_incr_scalar": pop_size_incr_scalar,
+            "pop_size_incr_threshold": pop_size_incr_threshold,
+            "return_least_infeasible": False,
+        }
 
     def run(
         self,
@@ -439,7 +439,8 @@ class SeperatedNSGA2(Algorithm):
         sub_solutions: list[list[PortfolioSolution]] = []
         n_evals = 0
         for site in portfolio:
-            res = self.alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
+            alg = NSGA2(**self.NSGA2_kwargs)
+            res = alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
             sub_solutions.append(res.solutions)
             n_evals += res.n_evals
 
