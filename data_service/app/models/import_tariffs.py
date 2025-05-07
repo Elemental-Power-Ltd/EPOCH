@@ -7,7 +7,7 @@ from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, dataset_id_t, site_id_field, site_id_t
+from .core import EpochEntry, dataset_id_field, dataset_id_t, final_uuid_field, site_id_field, site_id_t
 
 
 class GSPEnum(StrEnum):
@@ -73,6 +73,7 @@ class TariffRequest(pydantic.BaseModel):
         description="The latest timestamp to get this tariff for"
         + "(but note that it may not be provided too far in the future).",
     )
+    final_uuid: dataset_id_t = final_uuid_field
 
     @pydantic.model_validator(mode="after")
     def check_timestamps_valid(self) -> Self:

@@ -7,7 +7,7 @@ from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, site_id_field, site_id_t, final_uuid_field, dataset_id_t
+from .core import EpochEntry, dataset_id_field, dataset_id_t, final_uuid_field, site_id_field, site_id_t
 
 
 class RenewablesRequest(pydantic.BaseModel):

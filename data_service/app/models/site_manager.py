@@ -86,4 +86,21 @@ class RemoteMetaData(pydantic.BaseModel):
     ThermalModel: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
 
 
+class DatasetBundleMetadata(pydantic.BaseModel):
+    """Metadata about a specific bundle of datasets, including a unique ID and when it was created."""
+
+    bundle_id: dataset_id_t = pydantic.Field(description="The ID of this bundle of datasets")
+    name: str | None = pydantic.Field(default=None, description="Human readable name of this dataset bundle.")
+    site_id: site_id_t = site_id_field
+    start_ts: pydantic.AwareDatetime | None = pydantic.Field(
+        default=None, description="The earliest timestamp for each of the datasets in this bundle, if applicable."
+    )
+    end_ts: pydantic.AwareDatetime | None = pydantic.Field(
+        default=None, description="The latest timestamp for each of the datasets in this bundle, if applicable."
+    )
+    created_at: pydantic.AwareDatetime = pydantic.Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC), description="When this bundle of datasets was created."
+    )
+
+
 SiteDataEntry = RemoteMetaData | LocalMetaData

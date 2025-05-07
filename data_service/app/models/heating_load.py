@@ -7,8 +7,8 @@ from typing import Self
 
 import pydantic
 from pydantic import Field
-import uuid
-from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t, final_uuid_field
+
+from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field, site_id_field, site_id_t
 
 
 class ThermalModelResult(pydantic.BaseModel):

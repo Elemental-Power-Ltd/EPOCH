@@ -3,7 +3,8 @@
 # ruff: noqa: D101
 
 import pydantic
-from .core import dataset_id_t, site_id_t, site_id_field
+
+from .core import dataset_id_t, site_id_field, site_id_t
 
 
 class DataBundleMetadata(pydantic.BaseModel):

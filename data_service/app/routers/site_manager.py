@@ -4,8 +4,8 @@ import asyncio
 import datetime
 import logging
 import uuid
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-import warnings
 
 from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
 from ..internal.site_manager import (
@@ -20,6 +20,7 @@ from ..internal.site_manager import (
     list_thermal_models,
 )
 from ..internal.site_manager.site_manager import fetch_all_input_data
+from ..models.carbon_intensity import GridCO2Request
 from ..models.client_data import SiteDataEntries
 from ..models.core import (
     DatasetEntry,
@@ -33,8 +34,7 @@ from ..models.electricity_load import ElectricalLoadRequest
 from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
-from ..models.carbon_intensity import GridCO2Request
-from ..models.site_manager import DatasetList, RemoteMetaData, DatasetBundleMetadata
+from ..models.site_manager import DatasetBundleMetadata, DatasetList, RemoteMetaData
 from ..models.weather import WeatherRequest
 from .carbon_intensity import generate_grid_co2
 from .client_data import get_location
@@ -101,18 +101,21 @@ async def insert_dataset_bundle(
                 bundle_metadata.created_at,
             )
 
-            dataset_link_tuples = []
+            dataset_link_tuples: list[tuple[uuid.UUID, str, uuid.UUID]] = []
             # Some of these have multiple entries, e.g. heating loads.
             # They lose their order in the database, but we can always look it up later.
             for dataset_type, val in bundle.items():
                 if isinstance(val, list):
-                    for item in val:
-                        dataset_link_tuples.append( (bundle_metadata.bundle_id, dataset_type.value, item))
+                    dataset_link_tuples.extend((bundle_metadata.bundle_id, dataset_type.value, item) for item in val)
                 else:
-                    dataset_link_tuples.append( (bundle_metadata.bundle_id, dataset_type.value, val))
+                    dataset_link_tuples.append((bundle_metadata.bundle_id, dataset_type.value, val))
 
-            await conn.copy_records_to_table(table_name="dataset_links", schema_name="data_bundles",
-                                            records=dataset_link_tuples, columns=["bundle_id", "dataset_type", "dataset_id"])
+            await conn.copy_records_to_table(
+                table_name="dataset_links",
+                schema_name="data_bundles",
+                records=dataset_link_tuples,
+                columns=["bundle_id", "dataset_type", "dataset_id"],
+            )
     return bundle_metadata.bundle_id
 
 
@@ -271,6 +274,7 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         else None,
     )
 
+
 @router.post("/get-dataset-bundle", tags=["db", "bundle", "get"])
 async def get_dataset_bundle(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> SiteDataEntries:
     """
@@ -291,24 +295,61 @@ async def get_dataset_bundle(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> 
     SiteDataEntries
         Entries for the datasets in the bundle; unavailable entries are None.
     """
-    bundle_entries = await pool.fetch("""SELECT dataset_type, dataset_id FROM data_bundles.datasets WHERE bundle_id = $1""",
-                                      bundle_id)
-    dataset_requests: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime]
+    bundle_entries = await pool.fetch(
+        """SELECT dataset_type, dataset_id FROM data_bundles.datasets WHERE bundle_id = $1""", bundle_id
+    )
+    dataset_requests: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
     for dataset_type, dataset_id in bundle_entries:
         if dataset_type in MULTIPLE_DATASET_ENDPOINTS:
             if dataset_type not in dataset_requests:
                 dataset_requests[dataset_type] = MultipleDatasetIDWithTime(dataset_id=[dataset_id])
             else:
-                dataset_requests[dataset_type].dataset_id.append(dataset_id)
+                dataset_requests[dataset_type].dataset_id.append(dataset_id)  # type: ignore
         else:
             dataset_requests[dataset_type] = dataset_id
     return await fetch_all_input_data(dataset_requests, pool=pool)
 
-@router.post("/list-dataset-bundles")
-async def list_dataset_bundles(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> DatasetList:
-    pass
 
-@warnings.deprecated("Prefer get-dataset-bundle.")
+@router.post("/list-dataset-bundles")
+async def list_dataset_bundles(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> list[DatasetBundleMetadata]:
+    """
+    List all the dataset bundles available for this site.
+
+    This just lists the metadata for the bundles, and not their contents.
+    To get the contents, you'll have to call `get-dataset-bundle` with the retrieved ID of each one.
+
+    Parameters
+    ----------
+    site_id
+        Site that you want to list the available datasets for
+    pool
+        Connection pool to the database storing the datasets
+
+    Returns
+    -------
+    list[DatasetBundleMetadata]
+        A list of the high-level metadata (ID, created_at, start_ts, end_ts) for the available bundles.
+    """
+    bundle_entries = await pool.fetch(
+        """
+        SELECT
+            bundle_id,
+            name,
+            site_id,
+            start_ts,
+            end_ts,
+            created_at
+        FROM data_bundles.metadata WHERE site_id = $1""",
+        site_id.site_id,
+    )
+    if bundle_entries is None or not bundle_entries:
+        # We got no available bundles for this site, so return an empty list
+        return []
+
+    return [DatasetBundleMetadata.model_validate(dict(rec.items())) for rec in bundle_entries]
+
+
+# @warnings.deprecated("Prefer get-dataset-bundle.")
 @router.post("/get-specific-datasets", tags=["db", "get"])
 async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
     """
@@ -318,6 +359,7 @@ async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: D
     The usual workflow is to call list-latest-datasets yourself, look up each dataset in your own cache, and then
     request the get-specific-datasets that you require.
     You should prefer to use get-dataset-bundle.
+
     Parameters
     ----------
     site_data
@@ -430,8 +472,16 @@ async def get_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> 
     """
     logger = logging.getLogger(__name__)
     logger.info(f"Getting latest dataset list for {params.site_id}")
-    site_data = await list_latest_datasets(params, pool=pool)
 
+    try:
+        bundle_metas = await list_dataset_bundles(site_id=params, pool=pool)
+        latest_bundle = max(bundle_metas, key=lambda bm: bm.created_at).bundle_id
+        return await get_dataset_bundle(bundle_id=latest_bundle, pool=pool)
+    except ValueError as ex:
+        logger.warning(f"Could not get a latest bundle for {params.site_id} due to {ex}, falling back.")
+        pass
+
+    site_data = await list_latest_datasets(params, pool=pool)
     try:
         return await get_specific_datasets(site_data, pool)
     except KeyError as ex:
@@ -520,7 +570,12 @@ async def generate_all(
                 conn=conn,
                 http_client=http_client,
             )
-    final_uuids: dict[DatasetTypeEnum, uuid.UUID | list[uuid.UUID]] = {DatasetTypeEnum.HeatingLoad: []}
+    # Most of these are single datasets, but prime the list of desired UUIDs with empty lists
+    # for the cases where we'll need them.
+    final_uuids: dict[DatasetTypeEnum, uuid.UUID | list[uuid.UUID]] = {
+        DatasetTypeEnum.HeatingLoad: [],
+        DatasetTypeEnum.ImportTariff: [],
+    }
     POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
     for interventions in POTENTIAL_INTERVENTIONS:
         req = HeatingLoadRequest(
@@ -535,10 +590,10 @@ async def generate_all(
             pool=pool,
             http_client=http_client,
         )
-        final_uuids.append(req.final_uuid)
+        final_uuids[DatasetTypeEnum.HeatingLoad].append(req.final_uuid)  # type: ignore
 
     grid_req = GridCO2Request(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts)
-    background_tasks.add_task(generate_grid_co2, grid_req, http_client=http_client)
+    background_tasks.add_task(generate_grid_co2, params=grid_req, http_client=http_client, pool=pool)
     final_uuids[DatasetTypeEnum.CarbonIntensity] = grid_req.final_uuid
 
     # We generate four different types of tariff, here done manually to keep track of the
@@ -556,7 +611,7 @@ async def generate_all(
             pool=pool,
             http_client=http_client,
         )
-        final_uuids[DatasetTypeEnum.ImportTariff].append(tariff_req.final_uuid)
+        final_uuids[DatasetTypeEnum.ImportTariff].append(tariff_req.final_uuid)  # type: ignore
 
     renewables_req = RenewablesRequest(
         site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None
@@ -595,10 +650,10 @@ async def generate_all(
                 num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
                 dataset_subtype=intervention,
             )
-            for intervention, ds_uuid in zip(POTENTIAL_INTERVENTIONS, final_uuids[DatasetTypeEnum.HeatingLoad])
+            for intervention, ds_uuid in zip(POTENTIAL_INTERVENTIONS, final_uuids[DatasetTypeEnum.HeatingLoad], strict=False)  # type: ignore
         ],
         DatasetTypeEnum.CarbonIntensity: DatasetEntry(
-            dataset_id=final_uuids[DatasetTypeEnum.CarbonIntensity],
+            dataset_id=final_uuids[DatasetTypeEnum.CarbonIntensity],  # type: ignore
             dataset_type=DatasetTypeEnum.CarbonIntensity,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,
@@ -617,10 +672,10 @@ async def generate_all(
                 end_ts=params.end_ts,
                 num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
             )
-            for tariff_type, ds_uuid in zip(SyntheticTariffEnum, final_uuids[DatasetTypeEnum.ImportTariff])
+            for tariff_type, ds_uuid in zip(SyntheticTariffEnum, final_uuids[DatasetTypeEnum.ImportTariff], strict=False)  # type: ignore
         ],
         DatasetTypeEnum.RenewablesGeneration: DatasetEntry(
-            dataset_id=final_uuids[DatasetTypeEnum.RenewablesGeneration],
+            dataset_id=final_uuids[DatasetTypeEnum.RenewablesGeneration],  # type: ignore
             dataset_type=DatasetTypeEnum.RenewablesGeneration,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,
@@ -630,7 +685,7 @@ async def generate_all(
         ),
         DatasetTypeEnum.ElectricityMeterData: elec_meter_dataset,
         DatasetTypeEnum.ElectricityMeterDataSynthesised: DatasetEntry(
-            dataset_id=final_uuids[DatasetTypeEnum.ElectricityMeterDataSynthesised],
+            dataset_id=final_uuids[DatasetTypeEnum.ElectricityMeterDataSynthesised],  # type: ignore
             dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,

@@ -14,7 +14,6 @@ stored in a database for further analysis.
 import datetime
 import itertools
 import json
-import uuid
 
 import numpy as np
 import pandas as pd
@@ -56,6 +55,7 @@ async def generate_heating_load(
         Database pool used by the underlying generators
     http_client
         HTTP client with connection pools
+
     Returns
     -------
     HeatingLoadMetadata

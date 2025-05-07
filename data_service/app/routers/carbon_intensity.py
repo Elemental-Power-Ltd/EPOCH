@@ -9,7 +9,6 @@ import datetime
 import logging
 import operator
 import typing
-import uuid
 
 import aiometer
 import numpy as np
@@ -20,7 +19,7 @@ from fastapi import APIRouter, HTTPException
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.utils import chunk_time_period
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry, GridCO2Request
-from ..models.core import DatasetIDWithTime, SiteIDWithTime
+from ..models.core import DatasetIDWithTime
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
