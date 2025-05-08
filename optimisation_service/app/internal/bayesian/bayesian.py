@@ -464,7 +464,7 @@ def extract_sub_portfolio_capex_allocations(
         A list of the sub portfolio CAPEX allocations.
     """
     capex_allocations_per_sub = [
-        sum([solution.scenario[site_id].metric_values[Metric.capex] for site_id in portfolio])
+        sum(solution.scenario[site_id].metric_values[Metric.capex] for site_id in portfolio)
         for portfolio in sub_portfolio_site_ids
     ]
     return capex_allocations_per_sub
