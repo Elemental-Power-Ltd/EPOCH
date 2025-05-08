@@ -6,12 +6,15 @@ The structure is that clients are the top level, each client has zero or more si
 site has zero or more datasets of different kinds.
 """
 
+import json
 import logging
+import typing
 
 import asyncpg
 from fastapi import APIRouter, HTTPException
+from pydantic_core._pydantic_core import ValidationError
 
-from ..dependencies import DatabaseDep
+from ..dependencies import DatabaseDep, DatabasePoolDep
 from ..models.core import (
     ClientData,
     ClientID,
@@ -23,8 +26,157 @@ from ..models.core import (
     location_t,
     site_id_t,
 )
+from ..models.epoch_types.task_data_type import Building, GasHeater, Grid, TaskData
 
 router = APIRouter()
+
+
+@router.post("/add-site-baseline", tags=["db", "baseline", "site"])
+async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDep) -> None:
+    """
+    Add the baseline configuration for a site in the database.
+
+    The baseline contains all the infrastructure that is already there:
+    by default, this is just a Building, a Grid and a Gas heater.
+    However, for some sites this will also include heat pumps or solar arrays.
+
+    This will override previous baselines that are stored in the database, as we only ever fetch the latest.
+
+    Parameters
+    ----------
+    site_id
+        The database ID of the site you want to get the baseline configuration for.
+    baseline
+        The configuration of the current elements you wish to insert, stored as a TaskData.
+    pool
+        Connection pool to the database storing the baseline configurations.
+
+    Returns
+    -------
+    None
+    """
+    try:
+        await pool.execute(
+            """
+            INSERT INTO client_info.site_baselines (site_id, baseline) VALUES ($1, $2)""",
+            site_id.site_id,
+            baseline.model_dump_json(),
+        )
+    except asyncpg.exceptions.ForeignKeyViolationError as ex:
+        raise HTTPException(400, f"Site {site_id.site_id} not found in the database.") from ex
+
+
+@router.post("/get-site-baseline", tags=["db", "baseline", "get"])
+async def get_baseline(site_id: SiteID, pool: DatabasePoolDep) -> TaskData:
+    """
+    Get the baseline configuration for a site in the database.
+
+    The baseline contains all the infrastructure that is already there:
+    by default, this is just a Building, a Grid and a Gas heater.
+    However, for some sites this will also include heat pumps or solar arrays.
+    This will fetch the most recent baseline that is stored in the database.
+
+    Where keys are necessary but were not stored in the database, this will fill in with the relevant default
+    from TaskData (e.g. if you do not provide a grid_import when storing the baseline, you'll get the default grid_import out.)
+
+    Parameters
+    ----------
+    site_id
+        The database ID of the site you want to get the baseline configuration for.
+    pool
+        Connection pool to the database storing the baseline configurations.
+
+    Returns
+    -------
+    TaskData
+        Single-scenario task data representing the baseline configuration of what infrastructure is already at the site.
+    """
+    DEFAULT_CONFIG = TaskData(
+        building=Building(),
+        grid=Grid(grid_import=1e3, grid_export=1e3),
+        gas_heater=GasHeater(maximum_output=1e3),  # this is unusually large to meet all the heat demand.
+    )
+
+    # We want to error differently if this site doesn't exist, as opposed to checking the baseline for a real site and
+    # getting the default.
+    is_valid_site = await pool.fetchval(
+        """
+        SELECT exists (
+            SELECT 1 FROM client_info.site_info WHERE site_id = $1 LIMIT 1
+        )""",
+        site_id.site_id,
+    )
+    if not is_valid_site:
+        raise HTTPException(400, f"Site {site_id.site_id} not found in the database.")
+
+    # We only want the most recent baseline config, so select them ordered by their created_at timestamps.
+    # The rest are stored only for historical interest, or for different EPOCH versions.
+    baseline_rec = await pool.fetchrow(
+        """
+        SELECT
+            baseline
+        FROM
+            client_info.site_baselines
+        WHERE site_id = $1
+        ORDER BY created_at DESC LIMIT 1""",
+        site_id.site_id,
+    )
+
+    if baseline_rec is None:
+        return DEFAULT_CONFIG
+
+    def pydantic_strict_validate(unpacked: dict) -> TaskData:
+        """
+        Try to validate this dictionary against the pydantic model, throwing out extra keys.
+
+        This checks two keys deep and tries to replicate the extra: forbid behaviour from pydantic.
+        We would normally set that on the model specifically, but here our models are auto generated so we can't edit them.
+        So here, we iterate through the first two layers of the dictionary and check if there are any missing keys.
+        If there are multiple potential types for a given field, check if the defined field is valid for any of them
+        (note that this will falsely succeed if your new sub component is a mixture of the two valid components, but is
+        itself invalid).
+
+        Parameters
+        ----------
+        unpacked
+            TaskData-like dictionary
+
+        Returns
+        -------
+        TaskData
+            parsed taskdata, if we succeeded
+
+        Raises
+        ------
+        HTTPException
+            If we failed to generate this
+        """
+        for key, subdict in unpacked.items():
+            if key not in TaskData.model_fields:
+                raise HTTPException(400, f"Bad component in stored baseline: {key}")
+            if isinstance(subdict, dict):
+                for subkey in subdict.keys():
+                    expected_type = TaskData.model_fields[key].annotation
+                    found_in_any = False
+                    for subtype in typing.get_args(expected_type):
+                        if subtype is None:
+                            continue
+                        expected_mdl = subtype()
+                        if subkey in expected_mdl.model_fields:
+                            found_in_any = True
+                    if not found_in_any:
+                        raise HTTPException(400, f"Bad component subvalue in stored baseline: {key}[{subkey}]")
+        # We're not strict here to allow the enums to get through
+        return TaskData.model_validate(unpacked, strict=False)
+
+    try:
+        baseline = json.loads(baseline_rec["baseline"])
+        return pydantic_strict_validate(baseline)
+
+    except ValidationError as ex:
+        raise HTTPException(
+            400, "Could not construct this baseline; has the format changed since it was filed?" + str(ex)
+        ) from ex
 
 
 @router.post("/add-client", tags=["db", "add"])
