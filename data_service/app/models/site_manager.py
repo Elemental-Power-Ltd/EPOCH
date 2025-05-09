@@ -8,7 +8,7 @@ from typing import Literal
 
 import pydantic
 
-from .core import DatasetEntry, dataset_id_t, site_id_field, site_id_t
+from .core import DatasetEntry, DatasetTypeEnum, dataset_id_t, site_id_field, site_id_t
 
 
 class FileLocationEnum(StrEnum):
@@ -100,6 +100,13 @@ class DatasetBundleMetadata(pydantic.BaseModel):
     )
     created_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC), description="When this bundle of datasets was created."
+    )
+    available_datasets: list[DatasetTypeEnum] = pydantic.Field(
+        default=[],
+        description=(
+            "Unsorted list of the types of datasets available in this bundle."
+            " May contain duplicates if there are multiple of a single type. "
+        ),
     )
 
 

@@ -333,19 +333,27 @@ async def list_dataset_bundles(site_id: SiteIDWithTime, pool: DatabasePoolDep) -
     bundle_entries = await pool.fetch(
         """
         SELECT
-            bundle_id,
-            name,
-            site_id,
-            start_ts,
-            end_ts,
-            created_at
-        FROM data_bundles.metadata WHERE site_id = $1""",
+            m.bundle_id,
+            ANY_VALUE(name) AS name,
+            ANY_VALUE(site_id) AS site_id,
+            ANY_VALUE(start_ts) AS start_ts,
+            ANY_VALUE(end_ts) AS end_ts,
+            ANY_VALUE(created_at) AS created_at,
+            ARRAY_AGG(dataset_type) AS available_datasets
+        FROM data_bundles.metadata AS m
+        LEFT JOIN
+            data_bundles.dataset_links AS dl
+        ON dl.bundle_id = m.bundle_id
+        WHERE m.site_id = $1
+        GROUP BY m.bundle_id""",
         site_id.site_id,
     )
     if bundle_entries is None or not bundle_entries:
         # We got no available bundles for this site, so return an empty list
         return []
-
+    # TODO (2025-05-09): Do we instead want to return something that looks a bit more like a DatasetEntry,
+    # in the form {DatasetTypeEnum: dataset_id | list[dataset_id]} ?
+    # For now, we just return a list of all the dataset types with some duplicates.
     return [DatasetBundleMetadata.model_validate(dict(rec.items())) for rec in bundle_entries]
 
 
@@ -636,8 +644,7 @@ async def generate_all(
     final_uuids[DatasetTypeEnum.ElectricityMeterDataSynthesised] = elec_req.final_uuid
 
     RESOLUTION = datetime.timedelta(minutes=30)
-    # Return the background tasks immediately with null-ish data.
-    # The UUIDs will have to be collected later (unless we assign them in this function in future?)
+    # These UUIDs are correct, but the metadata may change slightly (e.g. the created_at provided here is only an estimate).
     return {
         DatasetTypeEnum.HeatingLoad: [
             DatasetEntry(
