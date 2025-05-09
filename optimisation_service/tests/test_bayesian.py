@@ -9,6 +9,7 @@ from app.internal.bayesian.bayesian import (
     create_capex_allocation_bounds,
     create_reference_point,
     extract_sub_portfolio_capex_allocations,
+    generate_random_candidates,
     initialise_model,
     optimize_acquisition_func_and_get_candidate,
     split_into_sub_portfolios,
@@ -162,3 +163,14 @@ class TestConvertSolutionListToTensor:
         assert len(train_x) == len(train_y)
         assert train_x.dim() == 2
         assert train_y.dim() == 2
+
+
+class TestGenerateRandomCandidates:
+    def test_good_inputs(self):
+        n = 10
+        max_capexs = [100.0, 200.0, 50.0]
+        capex_limit = 150.0
+        res = generate_random_candidates(n=n, max_capexs=max_capexs, capex_limit=capex_limit)
+        assert res.shape == (n, len(max_capexs))
+        assert all(sum(candidate) <= capex_limit for candidate in res)
+        assert all(all(candidate <= max_capexs) for candidate in res)

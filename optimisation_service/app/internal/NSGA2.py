@@ -318,7 +318,7 @@ class MultiTermination(Termination):
         return max(p)
 
 
-class SeperatedNSGA2(Algorithm):
+class SeparatedNSGA2(Algorithm):
     """
     Optimise a single or multi objective portfolio problem by optimising each site individually with NSGA-II.
     The site solutions are recombined into portfolio solutions as follows:
@@ -442,7 +442,8 @@ class SeperatedNSGA2(Algorithm):
         for site in portfolio:
             alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
             res = alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
-            sub_solutions.append(res.solutions)
+            do_nothing = do_nothing_scenario([site.site_data.site_id])
+            sub_solutions.append([*res.solutions, do_nothing])
             n_evals += res.n_evals
 
         combined_solutions = sub_solutions[0]
@@ -452,9 +453,9 @@ class SeperatedNSGA2(Algorithm):
             )
 
         mask = is_in_constraints(constraints, combined_solutions)
-        if sum(mask) > 0:
+        if any(mask) > 0:
             combined_solutions = np.array(combined_solutions)[mask].tolist()
-        elif not self.return_least_infeasible and sum(mask) == 0:
+        elif not self.return_least_infeasible and not any(mask):
             combined_solutions = [do_nothing_scenario([site.site_data.site_id for site in portfolio])]
 
         total_exec_time = datetime.now(UTC) - start_time

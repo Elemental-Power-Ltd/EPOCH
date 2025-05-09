@@ -149,7 +149,7 @@ class Bayesian(Algorithm):
         logger.debug(f"Currently have {len(solutions)} Pareto-optimal solutions.")
         logger.debug(f"Currently have {len(train_x)} training points.")
 
-        candidates = generate_random_train_x(n=self.n_initialisation_points, max_capexs=max_capexs, capex_limit=capex_limit)
+        candidates = generate_random_candidates(n=self.n_initialisation_points, max_capexs=max_capexs, capex_limit=capex_limit)
         for k, candidate in enumerate(candidates):
             logger.debug(f"On random candidate {k + 1} / {self.n_initialisation_points}.")
             new_solutions = dpo.evaluate(candidate)
@@ -250,7 +250,7 @@ def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -
     return sub_portfolios
 
 
-def generate_random_train_x(n: int, max_capexs: list[float], capex_limit: float):
+def generate_random_candidates(n: int, max_capexs: list[float], capex_limit: float):
     """
     Generate n CAPEX allocation splits randomly.
 
@@ -268,15 +268,13 @@ def generate_random_train_x(n: int, max_capexs: list[float], capex_limit: float)
     candidates
         An 2D array of training points
     """
+    rng = np.random.default_rng()
     candidates = []
     for _ in range(n):
-        candidate = np.zeros(len(max_capexs))
-        remaining = capex_limit
-        for i, max_capex in enumerate(max_capexs):
-            high = min(max_capex, remaining)
-            point = np.random.uniform(0, high)
-            candidate[i] = point
-            remaining -= point
+        candidate = np.array([rng.uniform(0, max_capex) for max_capex in max_capexs])
+        candidate_sum = sum(candidate)
+        if candidate_sum > capex_limit:
+            candidate = candidate * rng.uniform(0.01, capex_limit / candidate_sum)
         candidates.append(candidate)
     return np.array(candidates)
 
@@ -324,13 +322,12 @@ def initialise_model(
 # TODO: improve reference point creation
 def create_reference_point(train_y: torch.Tensor) -> torch.Tensor:
     """
-    Creates a reference point for the hypervolume by taking the best value for each objective, reducing it by 10%
-    and taking away one.
+    Creates a reference point for the hypervolume by taking the worst value for each objective.
 
     Parameters
     ----------
     train_y
-        A n x m tensor of training observations (Portfolio objective values).
+        A n x m tensor of training observations (Portfolio objective values adjusted for maximisation).
 
     Returns
     -------
