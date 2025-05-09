@@ -292,6 +292,13 @@ class TaskConfig(pydantic.BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
+    baseline_id: dataset_id_t | None = pydantic.Field(
+        default=None,
+        description=(
+            "ID of the baseline scenario for this site."
+            + " If None, use the default baseline scenario, but be wary of changes to that default."
+        ),
+    )
 
 
 class ResultReproConfig(pydantic.BaseModel):

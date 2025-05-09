@@ -9,9 +9,11 @@ site has zero or more datasets of different kinds.
 import json
 import logging
 import typing
+import uuid
 
 import asyncpg
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from pydantic_core._pydantic_core import ValidationError
 
 from ..dependencies import DatabaseDep, DatabasePoolDep
@@ -19,6 +21,7 @@ from ..models.core import (
     ClientData,
     ClientID,
     ClientIdNamePair,
+    DatasetID,
     SiteData,
     SiteID,
     SiteIdNamePair,
@@ -41,6 +44,7 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
     However, for some sites this will also include heat pumps or solar arrays.
 
     This will override previous baselines that are stored in the database, as we only ever fetch the latest.
+    Baselines are given a UUID when generated that you can use for a task_config object later on.
 
     Parameters
     ----------
@@ -58,7 +62,8 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
     try:
         await pool.execute(
             """
-            INSERT INTO client_info.site_baselines (site_id, baseline) VALUES ($1, $2)""",
+            INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
+            uuid.uuid4(),
             site_id.site_id,
             baseline.model_dump_json(),
         )
@@ -67,7 +72,7 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
 
 
 @router.post("/get-site-baseline", tags=["db", "baseline", "get"])
-async def get_baseline(site_id: SiteID, pool: DatabasePoolDep) -> TaskData:
+async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoolDep) -> TaskData:
     """
     Get the baseline configuration for a site in the database.
 
@@ -81,8 +86,10 @@ async def get_baseline(site_id: SiteID, pool: DatabasePoolDep) -> TaskData:
 
     Parameters
     ----------
-    site_id
-        The database ID of the site you want to get the baseline configuration for.
+    site_or_dataset_id
+        One of either:
+            the database ID of the site you want to get the baseline configuration for.
+            the database ID of the specific configuration you want to get.
     pool
         Connection pool to the database storing the baseline configurations.
 
@@ -97,30 +104,98 @@ async def get_baseline(site_id: SiteID, pool: DatabasePoolDep) -> TaskData:
         gas_heater=GasHeater(maximum_output=1e3),  # this is unusually large to meet all the heat demand.
     )
 
-    # We want to error differently if this site doesn't exist, as opposed to checking the baseline for a real site and
-    # getting the default.
-    is_valid_site = await pool.fetchval(
+    async def get_baseline_from_site_id(site_id: SiteID) -> asyncpg.Record | None:
         """
-        SELECT exists (
-            SELECT 1 FROM client_info.site_info WHERE site_id = $1 LIMIT 1
-        )""",
-        site_id.site_id,
-    )
-    if not is_valid_site:
-        raise HTTPException(400, f"Site {site_id.site_id} not found in the database.")
+        Get the baseline scenario from a Site ID.
 
-    # We only want the most recent baseline config, so select them ordered by their created_at timestamps.
-    # The rest are stored only for historical interest, or for different EPOCH versions.
-    baseline_rec = await pool.fetchrow(
+        This will select the most recent scenario, or None if there isn't one.
+        It'll raise an error if the specified site isn't valid.
+
+        Parameters
+        ----------
+        site_id
+            Database ID of the site you want to get
+
+        Returns
+        -------
+        Jsonable | None
+            Raw baseline scenario JSON for later processing, or None if there's nothing there.
         """
-        SELECT
-            baseline
-        FROM
-            client_info.site_baselines
-        WHERE site_id = $1
-        ORDER BY created_at DESC LIMIT 1""",
-        site_id.site_id,
-    )
+        # We want to error differently if this site doesn't exist, as opposed to checking the baseline for a real site and
+        # getting the default.
+        is_valid_site = await pool.fetchval(
+            """
+            SELECT exists (
+                SELECT 1 FROM client_info.site_info WHERE site_id = $1 LIMIT 1
+            )""",
+            site_id.site_id,
+        )
+        if not is_valid_site:
+            raise HTTPException(400, f"Site {site_id.site_id} not found in the database.")
+
+        # We only want the most recent baseline config, so select them ordered by their created_at timestamps.
+        # The rest are stored only for historical interest, or for different EPOCH versions.
+        baseline_rec = await pool.fetchrow(
+            """
+            SELECT
+                baseline
+            FROM
+                client_info.site_baselines
+            WHERE site_id = $1
+            ORDER BY created_at DESC LIMIT 1""",
+            site_id.site_id,
+        )
+        return baseline_rec
+
+    async def get_baseline_from_dataset_id(dataset_id: DatasetID) -> asyncpg.Record | None:
+        """
+        Get the baseline scenario from a Dataset ID.
+
+        This will select a single scenario corresponding to that dataset ID, or error if it doesn't exist.
+
+        Parameters
+        ----------
+        dataset_id
+            Database ID of the scenario you want to get
+
+        Returns
+        -------
+        Jsonable | None
+            Raw baseline scenario JSON for later processing, or None if there's nothing there.
+
+        Raises
+        ------
+        HTTPException
+            If the baseline scenario doesn't exist
+        """
+        # We want to error differently if this dataset doesn't exist
+        is_valid_dataset = await pool.fetchval(
+            """
+            SELECT exists (
+                SELECT 1 FROM client_info.site_baselines WHERE dataset_id = $1 LIMIT 1
+            )""",
+            dataset_id.dataset_id,
+        )
+        if not is_valid_dataset:
+            raise HTTPException(400, f"Site {dataset_id.dataset_id} not found in the database.")
+
+        # We only want the most recent baseline config, so select them ordered by their created_at timestamps.
+        # The rest are stored only for historical interest, or for different EPOCH versions.
+        baseline_rec = await pool.fetchrow(
+            """
+            SELECT
+                baseline
+            FROM
+                client_info.site_baselines
+            WHERE dataset_id = $1""",
+            dataset_id.dataset_id,
+        )
+        return baseline_rec
+
+    if isinstance(site_or_dataset_id, SiteID):
+        baseline_rec = await get_baseline_from_site_id(site_id=site_or_dataset_id)
+    else:
+        baseline_rec = await get_baseline_from_dataset_id(dataset_id=site_or_dataset_id)
 
     if baseline_rec is None:
         return DEFAULT_CONFIG
@@ -159,10 +234,10 @@ async def get_baseline(site_id: SiteID, pool: DatabasePoolDep) -> TaskData:
                     expected_type = TaskData.model_fields[key].annotation
                     found_in_any = False
                     for subtype in typing.get_args(expected_type):
-                        if subtype is None:
-                            continue
                         expected_mdl = subtype()
-                        if subkey in expected_mdl.model_fields:
+                        # Check that we got a valid pydantic Model here to rule out None and NoneType, which have
+                        # a habit of sneaking through (and can be surprisingly hard to construct!)
+                        if isinstance(expected_mdl, BaseModel) and subkey in expected_mdl.model_fields:
                             found_in_any = True
                     if not found_in_any:
                         raise HTTPException(400, f"Bad component subvalue in stored baseline: {key}[{subkey}]")
