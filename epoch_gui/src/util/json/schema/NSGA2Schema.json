@@ -11,10 +11,9 @@
   },
   "properties": {
     "pop_size": {
-      "default": 128,
+      "default": 256,
       "description": "Size of population.",
       "examples": [
-        128,
         256
       ],
       "exclusiveMinimum": 0,
@@ -22,10 +21,9 @@
       "type": "integer"
     },
     "n_offsprings": {
-      "default": 64,
+      "default": 128,
       "description": "Number of offsprings to generate through crossover at each generation. Should be less than or equal to pop_size",
       "examples": [
-        64,
         128
       ],
       "exclusiveMinimum": 0,
@@ -33,10 +31,10 @@
       "type": "integer"
     },
     "prob_crossover": {
-      "default": 0.8,
+      "default": 0.2,
       "description": "Probability of applying crossover between two parents.",
       "examples": [
-        0.8
+        0.2
       ],
       "exclusiveMinimum": 0.0,
       "title": "Prob Crossover",
@@ -64,30 +62,30 @@
       "type": "number"
     },
     "std_scaler": {
-      "default": 0.2,
+      "default": 1.0,
       "description": "Scales the standard deviation of the mutation's normal distribution.",
       "examples": [
-        0.2
+        1.0
       ],
       "exclusiveMinimum": 0.0,
       "title": "Std Scaler",
       "type": "number"
     },
     "tol": {
-      "default": 0.001,
+      "default": 0.1,
       "description": "Termination Criterion.Minimum required improvement of population's best fitness value over a period of generations. Terminates if below.",
       "examples": [
-        0.001
+        0.1
       ],
       "exclusiveMinimum": 0.0,
       "title": "Tol",
       "type": "number"
     },
     "period": {
-      "default": 25,
+      "default": 50,
       "description": "Termination Criterion. Number of passed generations to include when checking for improvement.",
       "examples": [
-        25
+        50
       ],
       "exclusiveMinimum": 0,
       "title": "Period",
@@ -104,10 +102,10 @@
       "type": "number"
     },
     "cv_period": {
-      "default": 25,
+      "default": 100,
       "description": "Termination Criterion. Number of passed generations to include when checking for constraint violation improvement.",
       "examples": [
-        25
+        100
       ],
       "exclusiveMinimum": 0,
       "title": "CV Period",
