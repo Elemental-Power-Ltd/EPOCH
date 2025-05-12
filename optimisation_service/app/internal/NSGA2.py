@@ -123,21 +123,6 @@ class NSGA2(Algorithm):
         self,
         pop_size: int = 256,
         sampling: SamplingMethod = SamplingMethod.RANDOM,
-<<<<<<< HEAD
-        n_offsprings: int | None = None,
-        prob_crossover: float = 0.2,
-        n_crossover: int = 2,
-        prob_mutation: float = 0.9,
-        std_scaler: float = 0.2,
-        tol: float = 0.0001,
-        period: int | None = 5,
-        n_max_gen: int = 10000,
-        n_max_evals: int = int(1e14),
-        cv_tol: float = 1,
-        cv_period: int = 10000,
-        pop_size_incr_scalar: float = 0.1,
-        pop_size_incr_threshold: float = 0.5,
-=======
         n_offsprings: int | None = 128,
         prob_crossover: float = 0.2,
         n_crossover: int = 2,
@@ -151,7 +136,6 @@ class NSGA2(Algorithm):
         cv_period: int = 100,
         pop_size_incr_scalar: float = 0.0,
         pop_size_incr_threshold: float = 1.0,
->>>>>>> main
         return_least_infeasible: bool = True,
     ) -> None:
         """
