@@ -123,6 +123,7 @@ class NSGA2(Algorithm):
         self,
         pop_size: int = 256,
         sampling: SamplingMethod = SamplingMethod.RANDOM,
+<<<<<<< HEAD
         n_offsprings: int | None = None,
         prob_crossover: float = 0.2,
         n_crossover: int = 2,
@@ -136,6 +137,21 @@ class NSGA2(Algorithm):
         cv_period: int = 10000,
         pop_size_incr_scalar: float = 0.1,
         pop_size_incr_threshold: float = 0.5,
+=======
+        n_offsprings: int | None = 128,
+        prob_crossover: float = 0.2,
+        n_crossover: int = 2,
+        prob_mutation: float = 0.8,
+        std_scaler: float = 1.0,
+        tol: float = 1e-14,
+        period: int | None = 5,
+        n_max_gen: int = 1000,
+        n_max_evals: int = int(1e14),
+        cv_tol: float = 0.001,
+        cv_period: int = 100,
+        pop_size_incr_scalar: float = 0.0,
+        pop_size_incr_threshold: float = 1.0,
+>>>>>>> main
         return_least_infeasible: bool = True,
     ) -> None:
         """
@@ -154,8 +170,8 @@ class NSGA2(Algorithm):
         prob_mutation
             probability of applying mutation to each child (not probability of mutating a parameter!)
         std_scaler
-            Scales standard deviation of nomral distribution from which is sampled new parameter values during mutation.
-            Base value of std is parameter range
+            Scales standard deviation of normal distribution from which is sampled new parameter values during mutation.
+            Base value of std is parameter range.
         tol
             Value for tolerance of improvement between current and past fitness, terminates if below
         period
@@ -178,7 +194,7 @@ class NSGA2(Algorithm):
             If true, returns the most feasible solution if all solution are infeasible.
         """
         if n_offsprings is None:
-            n_offsprings = int(pop_size * (3 / 4))
+            n_offsprings = int(pop_size / 2)
 
         if sampling == SamplingMethod.ESTIMATE:
             sampling_cls = EstimateBasedSampling
@@ -191,7 +207,7 @@ class NSGA2(Algorithm):
             n_offsprings=n_offsprings,
             sampling=self.sampling,
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingAndDegenerateRepair()),
-            mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, vtype=float, repair=RoundingAndDegenerateRepair()),
+            mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, repair=RoundingAndDegenerateRepair()),
             eliminate_duplicates=True,
             repair=RoundingAndDegenerateRepair(),
             return_least_infeasible=return_least_infeasible,

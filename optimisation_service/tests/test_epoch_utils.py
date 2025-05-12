@@ -17,7 +17,7 @@ from epoch_simulator import (
 from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.epoch_utils import (
     convert_sim_result,
-    convert_TaskData_to_dictionary,
+    convert_TaskData_to_pydantic,
 )
 from app.models.metrics import _METRICS
 
@@ -46,7 +46,7 @@ def test_convert_sim_result() -> None:
         assert metric in res
 
 
-def test_convert_TaskData_to_dictionary() -> None:
+def test_convert_TaskData_to_pydantic() -> None:
     td = TaskData()
     td.config = Config()
     td.building = Building()
@@ -58,14 +58,14 @@ def test_convert_TaskData_to_dictionary() -> None:
     td.energy_storage_system = EnergyStorageSystem()
     td.gas_heater = GasHeater()
 
-    res = convert_TaskData_to_dictionary(td)
+    res = convert_TaskData_to_pydantic(td)
 
-    assert "config" in res
-    assert "building" in res
-    assert "grid" in res
-    assert "renewables" in res
-    assert "heat_pump" in res
-    assert "data_centre" in res
-    assert "domestic_hot_water" in res
-    assert "energy_storage_system" in res
-    assert "gas_heater" in res
+    assert hasattr(res, "config")
+    assert hasattr(res, "building")
+    assert hasattr(res, "grid")
+    assert hasattr(res, "renewables")
+    assert hasattr(res, "heat_pump")
+    assert hasattr(res, "data_centre")
+    assert hasattr(res, "domestic_hot_water")
+    assert hasattr(res, "energy_storage_system")
+    assert hasattr(res, "gas_heater")

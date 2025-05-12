@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from app.internal.constraints import count_constraints
-from app.internal.epoch_utils import convert_TaskData_to_dictionary
+from app.internal.epoch_utils import convert_TaskData_to_pydantic
 from app.internal.ga_utils import ProblemInstance, RoundingAndDegenerateRepair, SimpleIntMutation, evaluate_excess
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.constraints import Constraints
@@ -33,12 +33,12 @@ class TestProblemInstance:
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
             res = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
-            td_dict = convert_TaskData_to_dictionary(res)
+            td_pydantic = convert_TaskData_to_pydantic(res)
             for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
                 if not x_value and asset_name != "config" and not asset["COMPONENT_IS_MANDATORY"]:
-                    assert asset_name not in td_dict.keys()
+                    assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
                 else:
-                    assert asset_name in td_dict.keys()
+                    assert hasattr(td_pydantic, asset_name)
 
     @pytest.mark.parametrize("x_value", [0, 1])
     def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance):
@@ -54,12 +54,12 @@ class TestProblemInstance:
         x = np.array([x_value] * sum(count_parameters_to_optimise(site.site_range) for site in portfolio))
         res = default_problem_instance.simulate_portfolio(x)
         for site in portfolio:
-            td_dict = convert_TaskData_to_dictionary(res.scenario[site.name].scenario)
+            td_pydantic = convert_TaskData_to_pydantic(res.scenario[site.name].scenario)
             for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
                 if not x_value and asset_name != "config" and not asset["COMPONENT_IS_MANDATORY"]:
-                    assert asset_name not in td_dict.keys()
+                    assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
                 else:
-                    assert asset_name in td_dict.keys()
+                    assert hasattr(td_pydantic, asset_name)
 
     def test_apply_directions(self, default_problem_instance: ProblemInstance):
         metric_values: MetricValues = dict.fromkeys(_METRICS, 10)
@@ -132,11 +132,12 @@ class TestRoundingAndDegenerateRepair:
             grid_import=[60],
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
+            export_tariff=[0.05],
         )
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
         )
-        config = Config(capex_limit=99999999999)
+        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
         site_range = SiteRange(
             building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
         )
@@ -162,11 +163,12 @@ class TestRoundingAndDegenerateRepair:
             grid_import=[60],
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
+            export_tariff=[0.05],
         )
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
         )
-        config = Config(capex_limit=99999999999)
+        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
         site_range = SiteRange(
             building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
         )
@@ -192,8 +194,9 @@ class TestRoundingAndDegenerateRepair:
             grid_import=[60],
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
+            export_tariff=[0.05],
         )
-        config = Config(capex_limit=99999999999)
+        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
         renewables = Renewables(COMPONENT_IS_MANDATORY=False, yield_scalars=[[100, 200]])
         site_range = SiteRange(
             building=building,

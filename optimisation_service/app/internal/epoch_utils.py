@@ -5,6 +5,7 @@ Wrappers for Epoch that are more ergonomic for python.
 from epoch_simulator import SimulationResult, TaskData
 
 from app.internal.metrics import calculate_carbon_cost
+from app.models.epoch_types import TaskDataPydantic
 from app.models.metrics import Metric, MetricValues
 
 
@@ -83,3 +84,20 @@ def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:
                     asset_dict[asset_field] = attr_value
             task_data_dict[task_data_field] = asset_dict
     return task_data_dict
+
+
+def convert_TaskData_to_pydantic(task_data: TaskData) -> TaskDataPydantic:
+    """
+    Converts an Epoch TaskData instance into a pydantic model
+
+    Parameters
+    ----------
+    task_data
+        The TaskData instance to convert.
+
+    Returns
+    -------
+        A pydantic model of the TaskData
+    """
+    task_data_dict = convert_TaskData_to_dictionary(task_data)
+    return TaskDataPydantic.model_validate(task_data_dict)
