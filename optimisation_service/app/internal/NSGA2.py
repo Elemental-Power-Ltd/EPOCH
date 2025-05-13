@@ -497,7 +497,7 @@ class SeparatedNSGA2xNSGA2(Algorithm):
             exec_time: Time taken for optimisation process to conclude.
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
-        separatednsga2 = SeparatedNSGA2(**self.SNSGA2_param.model_dump())
+        separatednsga2 = SeparatedNSGA2(**self.SeparatedNSGA2_param.model_dump())
         separatednsga2_res = separatednsga2.run(objectives=objectives, constraints=constraints, portfolio=portfolio)
 
         nsga2 = NSGA2(**self.NSGA2_param.model_dump())
