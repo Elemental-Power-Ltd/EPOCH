@@ -41,7 +41,15 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
   optimise: defaultOptimiseContainer,
 
   setOptimiser: (optimiser: OptimisationApproach) =>
-    set((state) => ({ optimise: { ...state.optimise, selectedOptimiser: optimiser } })),
+      set((state) => ({
+        optimise:
+            {
+              ...state.optimise, taskConfig: {
+                ...state.optimise.taskConfig,
+                optimiser: optimiser
+              }
+            }
+      })),
 
   setHyperparameters: (optimiser: OptimisationApproach, form: any) =>
       set((state) => ({
