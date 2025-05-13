@@ -357,9 +357,8 @@ def parse_ideal(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame | HHDat
     assert any(~pd.isna(df["consumption_kwh"])), "All NaN values in consumption_kwh"
 
     df = df.set_index("start_ts")
-
     # Check if the most common spacing is exactly 30 minutes; if so, this is likely HH
-    average_spacing = (df["end_ts"] - df["start_ts"]).mode().iloc[0]
+    average_spacing = (df["end_ts"] - df.index).mode().iloc[0]
 
     # we call this just consumption once we're out of the file as we know the units
     df = df.rename(columns={"consumption_kwh": "consumption"})
@@ -565,4 +564,5 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
         except AssertionError as ex:
             encountered_exceptions.append(ex)
             continue
+
     raise NotImplementedError("No parser available for this file.")  # from encountered_exceptions
