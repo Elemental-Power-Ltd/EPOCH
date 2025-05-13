@@ -73,7 +73,6 @@ class TestApplyDefaultConstraints:
         )
         assert constraints[Metric.capex]["min"] <= 1
         assert constraints[Metric.capex]["min"] > 0
-        assert constraints[Metric.cost_balance]["min"] == 0
         for site in portfolio:
             assert site.constraints[Metric.total_electrical_shortfall]["max"] == 1
             assert site.constraints[Metric.total_heat_shortfall]["max"] >= 1

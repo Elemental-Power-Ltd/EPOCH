@@ -137,20 +137,6 @@ def get_capex_constraints() -> Constraints:
     return constraints
 
 
-def get_cost_balance_constraints() -> Constraints:
-    """
-    Get the minimum cost balance.
-    We force the cost balance to be positive 0, since a scenario with negative cost balance is uninteresting to us.
-
-    Returns
-    -------
-    constraints
-        Constraints dict, containing a minimum constraint on cost balacance.
-    """
-    constraints = {Metric.cost_balance: Bounds(min=0)}
-    return constraints
-
-
 def apply_default_constraints(
     exsiting_portfolio: list[Site], existing_constraints: Constraints
 ) -> tuple[list[Site], Constraints]:
@@ -159,7 +145,6 @@ def apply_default_constraints(
     These are:
     - Electrical and Heat shortfall upper bounds on the sites.
       We want to make sure that the solutions provided are viable energetically.
-    - Cost balance lower bound on the portfolio. We wamt to make sure that the solutions provided are viable economically.
     - CAPEX lower bound on the portfolio. We want to exclude the £0 scenario since it is of no interest.
 
     Parameters
@@ -183,8 +168,7 @@ def apply_default_constraints(
         site.constraints = merge_constraints([exsiting_site_constraints, shortfall_constraints])
         portfolio.append(site)
 
-    cost_balance_constraints = get_cost_balance_constraints()
     capex_constraints = get_capex_constraints()
-    constraints = merge_constraints([existing_constraints, cost_balance_constraints, capex_constraints])
+    constraints = merge_constraints([existing_constraints, capex_constraints])
 
     return portfolio, constraints
