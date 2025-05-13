@@ -10,6 +10,7 @@ class OptimiserStr(StrEnum):
     NSGA2 = "NSGA2"
     GridSearch = "GridSearch"
     Bayesian = "Bayesian"
+    SeparatedNSGA2 = "SeparatedNSGA2"
 
 
 class NSGA2HyperParam(BaseModel):
@@ -109,6 +110,17 @@ class GridSearchHyperParam(BaseModel):
     keep_degenerate: bool = Field(description="Include or exclude degenerate solutions.", default=False)
 
 
+class SeparatedNSGA2xNSGA2HyperParam(BaseModel):
+    SeparatedNSGA2_param: NSGA2HyperParam = Field(
+        description="Hyperparameters for the SeparatedNSGA2 algorithm.",
+        default=NSGA2HyperParam(pop_size=128, n_offsprings=64),
+    )
+    NSGA2_param: NSGA2HyperParam = Field(
+        description="Hyperparameters for the NSGA2 algorithm.",
+        default=NSGA2HyperParam(pop_size=256, n_offsprings=128),
+    )
+
+
 class NSGA2Optmiser(BaseModel):
     name: Literal[OptimiserStr.NSGA2]
     hyperparameters: NSGA2HyperParam
@@ -122,3 +134,13 @@ class GridSearchOptimiser(BaseModel):
 class BayesianOptimiser(BaseModel):
     name: Literal[OptimiserStr.Bayesian]
     hyperparameters: BayesianHyperParam
+
+
+class SeparatedNSGA2Optimiser(BaseModel):
+    name: Literal[OptimiserStr.SeparatedNSGA2]
+    hyperparameters: NSGA2HyperParam
+
+
+class SeparatedNSGA2xNSGA2Optimiser(BaseModel):
+    name: Literal[OptimiserStr.SeparatedNSGA2]
+    hyperparameters: SeparatedNSGA2xNSGA2HyperParam
