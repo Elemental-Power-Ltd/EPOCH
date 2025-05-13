@@ -468,7 +468,11 @@ class SeparatedNSGA2xNSGA2(Algorithm):
     Optimises a portfolio by first running the SeparatedNSGA2 algorithm and then running the NSGA2 algorithm.
     """
 
-    def __init__(self, SeparatedNSGA2_param: NSGA2HyperParam, NSGA2_param: NSGA2HyperParam):
+    def __init__(self, SeparatedNSGA2_param: NSGA2HyperParam | None = None, NSGA2_param: NSGA2HyperParam | None = None):
+        if SeparatedNSGA2_param is None:
+            SeparatedNSGA2_param = NSGA2HyperParam()
+        if NSGA2_param is None:
+            NSGA2_param = NSGA2HyperParam()
         self.SeparatedNSGA2_param = SeparatedNSGA2_param
         self.NSGA2_param = NSGA2_param
 
