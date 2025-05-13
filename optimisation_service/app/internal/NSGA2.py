@@ -461,3 +461,52 @@ class SeparatedNSGA2(Algorithm):
         total_exec_time = datetime.now(UTC) - start_time
 
         return OptimisationResult(solutions=combined_solutions, n_evals=n_evals, exec_time=total_exec_time)
+
+
+class SeparatedNSGA2xNSGA2(Algorithm):
+    """
+    Optimises a portfolio by first running the SeparatedNSGA2 algorithm and then running the NSGA2 algorithm.
+    """
+
+    def __init__(self, SeparatedNSGA2_param: NSGA2HyperParam, NSGA2_param: NSGA2HyperParam):
+        self.SeparatedNSGA2_param = SeparatedNSGA2_param
+        self.NSGA2_param = NSGA2_param
+
+    def run(
+        self,
+        objectives: list[Metric],
+        constraints: Constraints,
+        portfolio: list[Site],
+    ) -> OptimisationResult:
+        """
+        Run optimisation.
+
+        Parameters
+        ----------
+        objectives
+            Objectives to optimise.
+        constraints
+            Constraints on the metrics to apply.
+        portfolio
+            Portfolio of sites to optimise.
+
+        Returns
+        -------
+        OptimisationResult
+            solutions: Pareto-front of evaluated candidate portfolio solutions.
+            exec_time: Time taken for optimisation process to conclude.
+            n_evals: Number of simulation evaluations taken for optimisation process to conclude.
+        """
+        separatednsga2 = SeparatedNSGA2(**self.SNSGA2_param.model_dump())
+        separatednsga2_res = separatednsga2.run(objectives=objectives, constraints=constraints, portfolio=portfolio)
+
+        nsga2 = NSGA2(**self.NSGA2_param.model_dump())
+        nsga2_res = nsga2.run(
+            objectives=objectives, constraints=constraints, portfolio=portfolio, existing_solutions=separatednsga2_res.solutions
+        )
+
+        return OptimisationResult(
+            solutions=nsga2_res.solutions,
+            n_evals=separatednsga2_res.n_evals + nsga2_res.n_evals,
+            exec_time=separatednsga2_res.exec_time + nsga2_res.exec_time,
+        )
