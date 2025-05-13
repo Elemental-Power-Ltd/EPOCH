@@ -350,8 +350,8 @@ def parse_ideal(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame | HHDat
     expected_columns = {"start_ts", "end_ts", "consumption_kwh"}
     assert set(df.columns).issuperset(expected_columns), f"Missing expected columns from {df.columns}"
 
-    df["start_ts"] = pd.to_datetime(df["start_ts"])
-    df["end_ts"] = pd.to_datetime(df["end_ts"])
+    df["start_ts"] = pd.to_datetime(df["start_ts"], utc=True)
+    df["end_ts"] = pd.to_datetime(df["end_ts"], utc=True)
     df["consumption_kwh"] = df["consumption_kwh"].astype(float)
 
     assert any(~pd.isna(df["consumption_kwh"])), "All NaN values in consumption_kwh"
@@ -547,7 +547,6 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
     for parser in possible_parsers:
         # Some of the parsers will leave the file seek head at the end of the file.
         # In that case, move to the start.
-        print(parser)
         if hasattr(fname, "seek"):
             fname.seek(0, 0)
         try:
