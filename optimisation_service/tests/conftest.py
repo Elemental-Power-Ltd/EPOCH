@@ -106,7 +106,7 @@ def default_portfolio(default_siterange) -> list[Site]:
 
 @pytest.fixture
 def default_constraints() -> Constraints:
-    return {Metric.capex: {"min": 1}, Metric.payback_horizon: {"max": 10}}
+    return {Metric.capex: {"max": 999999, "min": 1}, Metric.payback_horizon: {"max": 25}}
 
 
 @pytest.fixture
@@ -151,12 +151,20 @@ def gen_dummy_portfolio_solution(portfolio: list[Site]) -> PortfolioSolution:
     return PortfolioSolution(scenario=solution, metric_values=metric_values)
 
 
+def gen_dummy_portfolio_solutions(portfolio: list[Site]) -> list[PortfolioSolution]:
+    return [gen_dummy_portfolio_solution(portfolio) for _ in range(10)]
+
+
 @pytest.fixture
-def dummy_portfolio_solution(default_portfolio) -> PortfolioSolution:
+def dummy_portfolio_solution(default_portfolio: list[Site]) -> PortfolioSolution:
     return gen_dummy_portfolio_solution(default_portfolio)
 
 
 @pytest.fixture
-def dummy_optimisation_result(default_portfolio) -> OptimisationResult:
-    solutions = [gen_dummy_portfolio_solution(default_portfolio) for _ in range(10)]
-    return OptimisationResult(solutions=solutions, n_evals=999, exec_time=timedelta(seconds=99))
+def dummy_portfolio_solutions(default_portfolio: list[Site]) -> list[PortfolioSolution]:
+    return gen_dummy_portfolio_solutions(default_portfolio)
+
+
+@pytest.fixture
+def dummy_optimisation_result(dummy_portfolio_solutions: list[PortfolioSolution]) -> OptimisationResult:
+    return OptimisationResult(solutions=dummy_portfolio_solutions, n_evals=999, exec_time=timedelta(seconds=99))

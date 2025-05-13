@@ -29,10 +29,10 @@ class TestProblemInstance:
         assert [x == y for x, y in zip(splits, res)]
 
     @pytest.mark.parametrize("x_value", [0, 1])
-    def test_convert_solution(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
+    def test_convert_chromosome_to_site_scenario(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
-            res = default_problem_instance.convert_solution(x, site.name)
+            res = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
             td_pydantic = convert_TaskData_to_pydantic(res)
             for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
                 if not x_value and asset_name != "config" and not asset["COMPONENT_IS_MANDATORY"]:
@@ -44,7 +44,7 @@ class TestProblemInstance:
     def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance):
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
-            site_scenario = default_problem_instance.convert_solution(x, site.name)
+            site_scenario = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
             chromosome = default_problem_instance.convert_site_scenario_to_chromosome(site_scenario, site.name)
             assert all(chromosome == x)
 
@@ -91,12 +91,16 @@ class TestEvaluateExcess:
             min_value = bounds.get("min", None)
             max_value = bounds.get("max", None)
 
-            if min_value is not None:
+            if min_value is not None and max_value is not None:
                 metric_values[metric] = min_value - 1
-                excess.append(1)
-            if max_value is not None:
+                excess.append(1.0)
+                excess.append(-max_value)
+            elif min_value is not None:
+                metric_values[metric] = min_value - 1
+                excess.append(1.0)
+            elif max_value is not None:
                 metric_values[metric] = max_value + 1
-                excess.append(1)
+                excess.append(1.0)
 
         assert evaluate_excess(metric_values=metric_values, constraints=default_constraints) == excess
 
@@ -128,7 +132,7 @@ class TestRoundingAndDegenerateRepair:
             grid_import=[60],
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
-            export_tariff=[0.05]
+            export_tariff=[0.05],
         )
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
@@ -159,7 +163,7 @@ class TestRoundingAndDegenerateRepair:
             grid_import=[60],
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
-            export_tariff=[0.05]
+            export_tariff=[0.05],
         )
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
@@ -190,7 +194,7 @@ class TestRoundingAndDegenerateRepair:
             grid_import=[60],
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
-            export_tariff=[0.05]
+            export_tariff=[0.05],
         )
         config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
         renewables = Renewables(COMPONENT_IS_MANDATORY=False, yield_scalars=[[100, 200]])

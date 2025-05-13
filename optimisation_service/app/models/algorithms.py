@@ -17,7 +17,7 @@ class Algorithm(ABC):
         objectives
             List of metrics to optimise for.
         portfolio
-            List of buidlings to find optimise scenarios.
+            List of sites to optimise.
         constraints
             Constraints to apply to metrics.
 

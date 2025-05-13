@@ -11,11 +11,23 @@ class SiteSolution:
     scenario: TaskData
     metric_values: MetricValues
 
+    def __hash__(self):
+        return hash(self.scenario)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
 
 @dataclass
 class PortfolioSolution:
     scenario: dict[str, SiteSolution]
     metric_values: MetricValues
+
+    def __hash__(self):
+        return hash(tuple(self.scenario.values()))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
 
 @dataclass

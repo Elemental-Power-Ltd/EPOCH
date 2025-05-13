@@ -139,7 +139,7 @@ class ProblemInstance(ElementwiseProblem):
         """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
-    def convert_solution(self, x: npt.NDArray, site_name: str) -> TaskData:
+    def convert_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> TaskData:
         """
         Convert a candidate solution from an array of indeces to a site scenario.
 
@@ -221,7 +221,7 @@ class ProblemInstance(ElementwiseProblem):
             The evaluated candidate solution.
         """
         x_dict = self.split_solution(x)
-        portfolio_pytd = {name: self.convert_solution(x, name) for name, x in x_dict.items()}
+        portfolio_pytd = {name: self.convert_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
         return self.sim.simulate_portfolio(portfolio_pytd)
 
     def apply_directions(self, metric_values: MetricValues) -> MetricValues:

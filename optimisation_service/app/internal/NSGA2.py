@@ -1,9 +1,11 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
 from pymoo.core.crossover import Crossover  # type: ignore
+from pymoo.core.initialization import Initialization  # type: ignore
 from pymoo.core.mutation import Mutation  # type: ignore
+from pymoo.core.population import Population  # type: ignore
 from pymoo.core.repair import Repair  # type: ignore
 from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.core.termination import Termination  # type: ignore
@@ -16,17 +18,20 @@ from pymoo.termination.ftol import MultiObjectiveSpaceTermination  # type: ignor
 from pymoo.termination.max_eval import MaximumFunctionCallTermination  # type: ignore
 from pymoo.termination.max_gen import MaximumGenerationTermination  # type: ignore
 from pymoo.termination.robust import RobustTermination  # type: ignore
+from pymoo.util.misc import at_least_2d_array  # type: ignore
 
+from app.internal.constraints import is_in_constraints
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
-from app.internal.pareto_front import portfolio_pareto_front
+from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.result import do_nothing_scenario
 from app.models.algorithms import Algorithm
-from app.models.constraints import Constraints
+from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.ga_utils import SamplingMethod
 from app.models.metrics import Metric
-from app.models.result import OptimisationResult
+from app.models.optimisers import NSGA2HyperParam
+from app.models.result import OptimisationResult, PortfolioSolution
 
 
 class CustomPymooNSGA2(Pymoo_NSGA2):
@@ -179,11 +184,12 @@ class NSGA2(Algorithm):
             sampling_cls = EstimateBasedSampling
         elif sampling == SamplingMethod.RANDOM:
             sampling_cls = IntegerRandomSampling
+        self.sampling = sampling_cls()
 
         self.algorithm = CustomPymooNSGA2(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
-            sampling=sampling_cls(),
+            sampling=self.sampling,
             crossover=PointCrossover(prob=prob_crossover, n_points=n_crossover, repair=RoundingAndDegenerateRepair()),
             mutation=GaussianMutation(prob=prob_mutation, sigma=std_scaler, repair=RoundingAndDegenerateRepair()),
             eliminate_duplicates=True,
@@ -198,14 +204,66 @@ class NSGA2(Algorithm):
 
         self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals, cv_tol, cv_period)
 
-    def run(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
+    def _load_existing_solutions(self, solutions: list[PortfolioSolution], problem: ProblemInstance):
+        """
+        Load existing solutions to the optimisation problem into the population.
+        Can only be run once before run.
+        Should not be used directly, favour using existing_solutions variable in run function.
+
+        Parameters
+        ----------
+        solutions
+            PortfolioSolutions to load into the population
+        problem
+            Optimisation problem instance. Used to convert PortfolioSolutions into Choromosomes.
+
+        Returns
+        -------
+        None
+        """
+        population = []
+        for solution in solutions:
+            individual = [
+                problem.convert_site_scenario_to_chromosome(solution.scenario[site_name].scenario, site_name)
+                for site_name in problem.site_names
+            ]
+            population.append(np.concatenate(individual))
+        population_arr = Population.new(X=at_least_2d_array(np.array(population)))
+
+        pop_size = self.algorithm.pop_size
+        rng = np.random.default_rng()
+        if len(population_arr) > pop_size:
+            population_arr = rng.choice(population_arr, pop_size, replace=False)
+        elif len(population_arr) < pop_size:
+            sampled_pop = self.sampling(problem, pop_size - len(population_arr))
+            population_arr = np.concatenate([population_arr, sampled_pop])
+
+        population_arr = population_arr.view(Population)
+
+        self.algorithm.initialization = Initialization(
+            population_arr, self.algorithm.initialization.repair, self.algorithm.initialization.eliminate_duplicates
+        )
+
+    def run(
+        self,
+        objectives: list[Metric],
+        constraints: Constraints,
+        portfolio: list[Site],
+        existing_solutions: list[PortfolioSolution] | None = None,
+    ) -> OptimisationResult:
         """
         Run NSGA optimisation.
 
         Parameters
         ----------
+        objectives
+            Objectives to optimise.
+        constraints
+            Constraints on the metrics to apply.
         portfolio
-            Portfolio problem instance to optimise.
+            Portfolio of sites to optimise.
+        existing_solutions
+            Existing solutions to the problem to initialise the optimisation with.
 
         Returns
         -------
@@ -215,12 +273,14 @@ class NSGA2(Algorithm):
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
         pi = ProblemInstance(objectives, constraints, portfolio)
-        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, verbose=True)
+        if existing_solutions is not None and len(existing_solutions) > 0:
+            self._load_existing_solutions(existing_solutions, pi)
+        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
         simulate_scenario.cache_clear()
         n_evals = res.algorithm.evaluator.n_eval
-        exec_time = timedelta(seconds=res.exec_time)
+        exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
         non_dom_sol = res.X
-        if non_dom_sol is None:
+        if non_dom_sol is None or len(non_dom_sol) == 0:
             portfolio_solutions_pf = [do_nothing_scenario(pi.site_names)]
         else:
             if non_dom_sol.ndim == 1:
@@ -256,3 +316,148 @@ class MultiTermination(Termination):
         cv_progress = self.cv.update(algorithm)
         p = [f_progress, max_gen_progess, max_evals_progress, cv_progress]
         return max(p)
+
+
+class SeparatedNSGA2(Algorithm):
+    """
+    Optimise a single or multi objective portfolio problem by optimising each site individually with NSGA-II.
+    The site solutions are recombined into portfolio solutions as follows:
+        1. Select a site's set of solutions as the "recombined" set.
+        2. Select another site's set of solutions as the "incoming" set.
+        3. Perform a dot product between the "recombined" and "incoming" sets to create a list of all feasible portfolio
+           solutions.
+        4. Pareto optimise the list of portfolios. This list now becomes the "recombined" set.
+        5. Repeat steps 2-4 until all sites have been utilised.
+    """
+
+    def __init__(
+        self,
+        pop_size: int = 128,
+        sampling: SamplingMethod = SamplingMethod.RANDOM,
+        n_offsprings: int = 64,
+        prob_crossover: float = 0.2,
+        n_crossover: int = 2,
+        prob_mutation: float = 0.9,
+        std_scaler: float = 0.2,
+        tol: float = 0.0001,
+        period: int = 25,
+        n_max_gen: int = 10000,
+        n_max_evals: int = int(1e14),
+        cv_tol: float = 1,
+        cv_period: int = 10000,
+        pop_size_incr_scalar: float = 0.1,
+        pop_size_incr_threshold: float = 0.5,
+        return_least_infeasible: bool = True,
+    ):
+        """
+        Define NSGA2 hyperparameters.
+
+        Parameters
+        ----------
+        pop_size
+            population size of GA
+        n_offsprings
+            number of offspring to generate at each generation, defaults to pop_size
+        prob_crossover
+            probability of applying crossover between two parents
+        n_crossover
+            number of points to use in crossover
+        prob_mutation
+            probability of applying mutation to each child (not probability of mutating a parameter!)
+        std_scaler
+            Scales standard deviation of nomral distribution from which is sampled new parameter values during mutation.
+            Base value of std is parameter range
+        tol
+            Value for tolerance of improvement between current and past fitness, terminates if below
+        period
+            Number of passed fitness values to include in delta calculation, max delta is selected.
+            Defaults to n_max_gen if set to None.
+        cv_tol
+            Tolerance of improvement between current and past constraint violations, terminates if below.
+        cv_period
+            Number of generations to include in constraint violation improvement calculation.
+        n_max_gen
+            Max number of generations before termination
+        n_max_evals
+            Max number of evaluations of EPOCH before termination
+        pop_size_incr_scalar
+            Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of
+            optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.
+        pop_size_incr_threshold
+            Percent of the pop_size to set as the threshold to increase the pop_size.
+        """
+        self.return_least_infeasible = return_least_infeasible
+        self.NSGA2_param = NSGA2HyperParam(
+            pop_size=pop_size,
+            n_offsprings=n_offsprings,
+            prob_crossover=prob_crossover,
+            n_crossover=n_crossover,
+            prob_mutation=prob_mutation,
+            std_scaler=std_scaler,
+            tol=tol,
+            period=period,
+            cv_tol=cv_tol,
+            cv_period=cv_period,
+            n_max_gen=n_max_gen,
+            n_max_evals=n_max_evals,
+            sampling=sampling,
+            pop_size_incr_scalar=pop_size_incr_scalar,
+            pop_size_incr_threshold=pop_size_incr_threshold,
+            return_least_infeasible=False,
+        )
+
+    def run(
+        self,
+        objectives: list[Metric],
+        constraints: Constraints,
+        portfolio: list[Site],
+    ) -> OptimisationResult:
+        """
+        Run optimisation.
+
+        Parameters
+        ----------
+        objectives
+            Objectives to optimise.
+        constraints
+            Constraints on the metrics to apply.
+        portfolio
+            Portfolio of sites to optimise.
+
+        Returns
+        -------
+        OptimisationResult
+            solutions: Pareto-front of evaluated candidate portfolio solutions.
+            exec_time: Time taken for optimisation process to conclude.
+            n_evals: Number of simulation evaluations taken for optimisation process to conclude.
+        """
+        start_time = datetime.now(UTC)
+        new_constraints = {}
+        if Metric.capex in constraints:
+            capex_limit = constraints[Metric.capex].get("max", None)
+            if capex_limit is not None:
+                new_constraints[Metric.capex] = Bounds(max=capex_limit)
+        sub_solutions: list[list[PortfolioSolution]] = []
+        n_evals = 0
+        for site in portfolio:
+            alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
+            res = alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
+            do_nothing = do_nothing_scenario([site.site_data.site_id])
+            sub_solutions.append([*res.solutions, do_nothing])
+            n_evals += res.n_evals
+
+        combined_solutions = sub_solutions[0]
+        for sub_solution in sub_solutions[1:]:
+            combined_solutions = merge_and_optimise_two_portfolio_solution_lists(
+                combined_solutions, sub_solution, objectives, capex_limit
+            )
+
+        mask = is_in_constraints(constraints, combined_solutions)
+        if any(mask) > 0:
+            combined_solutions = np.array(combined_solutions)[mask].tolist()
+        elif not self.return_least_infeasible and not any(mask):
+            combined_solutions = [do_nothing_scenario([site.site_data.site_id for site in portfolio])]
+
+        total_exec_time = datetime.now(UTC) - start_time
+
+        return OptimisationResult(solutions=combined_solutions, n_evals=n_evals, exec_time=total_exec_time)

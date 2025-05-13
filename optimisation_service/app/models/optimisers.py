@@ -9,6 +9,7 @@ from app.models.ga_utils import SamplingMethod
 class OptimiserStr(StrEnum):
     NSGA2 = "NSGA2"
     GridSearch = "GridSearch"
+    Bayesian = "Bayesian"
 
 
 class NSGA2HyperParam(BaseModel):
@@ -77,6 +78,31 @@ class NSGA2HyperParam(BaseModel):
     pop_size_incr_threshold: PositiveFloat = Field(
         examples=[0.9], description="Percent of the pop_size to set as the threshold to increase the pop_size.", default=0.9
     )
+    return_least_infeasible: bool = Field(
+        examples=[True, False],
+        description="Whether or not to return the most feasible of the infeasible solutions if no feasible solution is found.",
+        default=True,
+    )
+
+
+class BayesianHyperParam(BaseModel):
+    n_per_sub_portfolio: PositiveInt = Field(examples=[1, 2], description="Number of sites per sub portfolio.", default=1)
+    n_generations: PositiveInt = Field(examples=[10, 20], description="Number of generations.", default=10)
+    batch_size: PositiveInt = Field(examples=[1, 2, 3, 4], description="Number of evaluations per generation.", default=4)
+    n_init_samples: PositiveInt = Field(examples=[5, 10], description="Number of evaluations to initialise model.", default=5)
+    num_restarts: PositiveInt = Field(
+        examples=[2, 10], description="Number of restarts of the acquisition function optimisation process.", default=10
+    )
+    raw_samples: PositiveInt = Field(
+        examples=[16, 512],
+        description="Number of raw samples to initialise acquisition function optimisation process with.",
+        default=512,
+    )
+    mc_samples: PositiveInt = Field(examples=[4, 128], description="Size of samples.", default=128)
+    NSGA2_param: NSGA2HyperParam = Field(
+        description="Hyperparameters for the NSGA2 algorithm.",
+        default=NSGA2HyperParam(pop_size=128, n_offsprings=64),
+    )
 
 
 class GridSearchHyperParam(BaseModel):
@@ -91,3 +117,8 @@ class NSGA2Optmiser(BaseModel):
 class GridSearchOptimiser(BaseModel):
     name: Literal[OptimiserStr.GridSearch]
     hyperparameters: GridSearchHyperParam
+
+
+class BayesianOptimiser(BaseModel):
+    name: Literal[OptimiserStr.Bayesian]
+    hyperparameters: BayesianHyperParam
