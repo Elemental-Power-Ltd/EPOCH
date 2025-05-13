@@ -332,6 +332,42 @@ def parse_horizontal_monthly_both_years(fname: os.PathLike | str | BinaryIO) -> 
     return MonthlyDataFrame(gas_df[["end_ts", "consumption"]])
 
 
+def parse_ideal(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame | HHDataFrame:
+    """
+    Try to parse the ideal dataframe format, which has start_ts, end_ts and consumption_kwh columns.
+
+    Parameters
+    ----------
+    fname
+        CSV-like object to parse
+
+    Returns
+    -------
+    MonthlyDataFrame | HHDataFrame
+        Checks the frequency of readings and assigns the correct type
+    """
+    df = pd.read_csv(fname, skipinitialspace=True)
+    expected_columns = {"start_ts", "end_ts", "consumption_kwh"}
+    assert set(df.columns).issuperset(expected_columns), f"Missing expected columns from {df.columns}"
+
+    df["start_ts"] = pd.to_datetime(df["start_ts"])
+    df["end_ts"] = pd.to_datetime(df["end_ts"])
+    df["consumption_kwh"] = df["consumption_kwh"].astype(float)
+
+    assert any(~pd.isna(df["consumption_kwh"])), "All NaN values in consumption_kwh"
+
+    df = df.set_index("start_ts")
+
+    # Check if the most common spacing is exactly 30 minutes; if so, this is likely HH
+    average_spacing = (df["end_ts"] - df["start_ts"]).mode().iloc[0]
+
+    # we call this just consumption once we're out of the file as we know the units
+    df = df.rename(columns={"consumption_kwh": "consumption"})
+    if average_spacing == pd.Timedelta(minutes=30):
+        return HHDataFrame(df[["end_ts", "consumption"]])
+    return MonthlyDataFrame(df[["end_ts", "consumption"]])
+
+
 def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame:
     """
     Parse a reading file with columns being a single month.
@@ -492,9 +528,13 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
     NotImplementedError
         If we couldn't find a parser
     """
+    type csv_file_t = os.PathLike | str | BinaryIO
     possible_parsers: list[
-        Callable[[os.PathLike | str | BinaryIO], MonthlyDataFrame] | Callable[[os.PathLike | str | BinaryIO], HHDataFrame]
+        Callable[[csv_file_t], MonthlyDataFrame]
+        | Callable[[csv_file_t], HHDataFrame]
+        | Callable[[csv_file_t], HHDataFrame | MonthlyDataFrame]
     ] = [
+        parse_ideal,
         parse_be_st_format,
         parse_daily_readings,
         parse_half_hourly,
@@ -508,6 +548,7 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
     for parser in possible_parsers:
         # Some of the parsers will leave the file seek head at the end of the file.
         # In that case, move to the start.
+        print(parser)
         if hasattr(fname, "seek"):
             fname.seek(0, 0)
         try:
