@@ -24,11 +24,15 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 	(void)EV_high_price;
 
 	if (taskData.grid) {
+		// SiteData grid intensity is in g/kWh
+		// our reporting metrics are in kg/kWh so we need to convert
+		constexpr float g_to_kg = 0.001f;
+
 		auto& tariff = siteData.import_tariffs[taskData.grid->tariff_index];
 		usage.elec_cost = costVectors.grid_import_e.dot(tariff);
-		usage.elec_CO2e = costVectors.grid_import_e.dot(siteData.grid_co2);
+		usage.elec_kg_CO2e = costVectors.grid_import_e.dot(siteData.grid_co2) * g_to_kg;
 		usage.export_revenue = costVectors.grid_export_e.dot(costVectors.grid_export_prices);
-		usage.export_CO2e = -(costVectors.grid_export_e.dot(siteData.grid_co2));
+		usage.export_kg_CO2e = -(costVectors.grid_export_e.dot(siteData.grid_co2)) * g_to_kg;
 	}
 
 
@@ -37,12 +41,12 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 		float CO2e = taskData.gas_heater->gas_type == GasType::NATURAL_GAS ? mains_gas_kg_C02e : LPG_kg_C02e;
 
 		usage.fuel_cost = costVectors.gas_import_h.sum() * gas_price;
-		usage.fuel_CO2e = costVectors.gas_import_h.sum() * CO2e;
+		usage.fuel_kg_CO2e = costVectors.gas_import_h.sum() * CO2e;
 	}
 
 	if (taskData.mop) {
 		// assume the counterfactual of LP heat is gas based heat emissions
-		usage.low_priority_CO2e_avoided = costVectors.actual_low_priority_load_e.sum() * mains_gas_kg_C02e;
+		usage.low_priority_kg_CO2e_avoided = costVectors.actual_low_priority_load_e.sum() * mains_gas_kg_C02e;
 		usage.low_priority_revenue = costVectors.actual_low_priority_load_e.sum() * mains_gas_price / boiler_efficiency;
 	}
 

@@ -134,11 +134,11 @@ float calculate_payback_horizon(float capex, float cost_balance) {
 };
 
 float calculate_carbon_usage_scope_1(const UsageData& usage) {
-	return usage.fuel_CO2e - usage.low_priority_CO2e_avoided;
+	return usage.fuel_kg_CO2e - usage.low_priority_kg_CO2e_avoided;
 }
 
 float calculate_carbon_usage_scope_2(const UsageData& usage) {
-	// export_CO2e <= 0
+	// export_kg_CO2e <= 0
 	// it is the CO2 'saved' by exporting 100% green electricity to the grid
-	return usage.elec_CO2e + usage.export_CO2e;
+	return usage.elec_kg_CO2e + usage.export_kg_CO2e;
 }

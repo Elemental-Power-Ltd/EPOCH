@@ -65,7 +65,8 @@ struct SiteData {
 	year_TS dhw_demand;
 	// The ambient air temperature in degrees celsius
 	year_TS air_temperature;
-	// The grid carbon intensity in kg/kWh
+	// The grid carbon intensity in g/kWh
+	// This must be converted to kg for most of our metrics
 	year_TS grid_co2;
 
 	// The solar yields in kW / kWp
