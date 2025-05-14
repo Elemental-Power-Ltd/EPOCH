@@ -1,4 +1,4 @@
-FROM python:3.12.4-alpine3.20 AS epoch-build
+FROM python:3.12.10-alpine AS epoch-build
 
 # Install vcpkg to the root directory, as sometimes that makes things easier?
 WORKDIR /
@@ -40,15 +40,17 @@ RUN cmake --build --preset=headless-rel-linux -j
 RUN strip /code/Epoch/build/epoch_main/Epoch
 
 
-FROM python:3.12.4-alpine3.20
+FROM python:3.12.10-alpine
 
 WORKDIR /code
-RUN apk add --no-cache libstdc++
+RUN apk add --no-cache libstdc++ g++ llvm15-dev make
 
 # Add /code/install to both PATH and PYTHONPATH so that we don't have to know the relative path to Epoch
 ENV PATH="/code/install:$PATH"
 ENV PYTHONPATH="/code/install:$PYTHONPATH"
+ENV LLVM_CONFIG=/usr/bin/llvm-config-15
 
+# RUN pip install llvmlite
 # Copy the python bindings
 COPY --from=epoch-build /code/epoch_simulator.cpython-312-x86_64-linux-musl.so /code/install/
 # Copy the executable
@@ -58,6 +60,8 @@ COPY --from=epoch-build /code/Epoch/build/epoch_main/Epoch /code/install/
 # Install all the requirements, watching out for those that cause trouble for Alpine.
 COPY requirements.txt .
 COPY requirements requirements
+# RUN pip install --upgrade pip
+# RUN pip install numpy
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY app app
