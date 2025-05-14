@@ -78,7 +78,7 @@ export interface Site {
 }
 
 export interface OptimiserData {
-    name: "NSGA2" | "GridSearch";
+    name: "NSGA2" | "GridSearch" | "SeparatedNSGA2" | "SeparatedNSGA2xNSGA2" | "Bayesian";
     hyperparameters: any;
 }
 

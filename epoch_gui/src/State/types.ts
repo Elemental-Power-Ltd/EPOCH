@@ -10,7 +10,7 @@ export interface TaskObjectives {
     annualised_cost: boolean;
 }
 
-export type OptimisationApproach = "NSGA2" | "GridSearch";
+export type OptimisationApproach = "NSGA2" | "GridSearch" | "SeparatedNSGA2" | "Bayesian" | "SeparatedNSGA2xNSGA2";
 
 
 export interface TaskConfig {

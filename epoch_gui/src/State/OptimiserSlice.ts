@@ -6,6 +6,9 @@ import {AppState, OptimiseState, OptimiserSlice} from "./StoreTypes.ts";
 
 import DefaultGrid from "../util/json/default/DefaultGridConfig.json"
 import DefaultNSGA2 from "../util/json/default/DefaultNSGA2Config.json"
+import DefaultSeparatedNSGA2 from "../util/json/default/DefaultSeparatedNSGA2Config.json"
+import DefaultBayesian from "../util/json/default/DefaultBayesianConfig.json"
+import DefaultSeparatedNSGA2xNSGA2 from "../util/json/default/DefaultSeparatedNSGA2xNSGA2Config.json"
 import {getInitialComponentsMap} from "../Components/ComponentBuilder/initialState"
 import {ComponentType} from "../Models/Core/ComponentBuilder.ts";
 
@@ -30,7 +33,10 @@ export const defaultOptimiseContainer: OptimiseState = {
   taskConfig: defaultTaskConfig,
   hyperparameters: {
     GridSearch: DefaultGrid,
-    NSGA2: DefaultNSGA2
+    SeparatedNSGA2: DefaultSeparatedNSGA2,
+    Bayesian: DefaultBayesian,
+    NSGA2: DefaultNSGA2,
+    SeparatedNSGA2xNSGA2: DefaultSeparatedNSGA2xNSGA2
   },
   portfolioMap: {}
 }

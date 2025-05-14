@@ -1,0 +1,166 @@
+{
+  "$defs": {
+    "SamplingMethod": {
+      "enum": [
+        "RANDOM",
+        "ESTIMATE"
+      ],
+      "title": "SamplingMethod",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "pop_size": {
+      "default": 256,
+      "description": "Size of population.",
+      "examples": [
+        256
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Pop Size",
+      "type": "integer"
+    },
+    "n_offsprings": {
+      "default": 128,
+      "description": "Number of offsprings to generate through crossover at each generation. Should be less than or equal to pop_size",
+      "examples": [
+        128
+      ],
+      "exclusiveMinimum": 0,
+      "title": "N Offsprings",
+      "type": "integer"
+    },
+    "prob_crossover": {
+      "default": 0.2,
+      "description": "Probability of applying crossover between two parents.",
+      "examples": [
+        0.2
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "Prob Crossover",
+      "type": "number"
+    },
+    "n_crossover": {
+      "default": 2,
+      "description": "Number of crossover points.",
+      "examples": [
+        1,
+        2
+      ],
+      "exclusiveMinimum": 0,
+      "title": "N Crossover",
+      "type": "integer"
+    },
+    "prob_mutation": {
+      "default": 0.8,
+      "description": "Probability of applying mutation to each offspring.",
+      "examples": [
+        0.8
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "Prob Mutation",
+      "type": "number"
+    },
+    "std_scaler": {
+      "default": 1.0,
+      "description": "Scales the standard deviation of the mutation's normal distribution.",
+      "examples": [
+        1.0
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "Std Scaler",
+      "type": "number"
+    },
+    "tol": {
+      "default": 0.1,
+      "description": "Termination Criterion.Minimum required improvement of population's best fitness value over a period of generations. Terminates if below.",
+      "examples": [
+        0.1
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "Tol",
+      "type": "number"
+    },
+    "period": {
+      "default": 50,
+      "description": "Termination Criterion. Number of passed generations to include when checking for improvement.",
+      "examples": [
+        50
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Period",
+      "type": "integer"
+    },
+    "cv_tol": {
+      "default": 0.001,
+      "description": "Termination Criterion. Minimum required improvement of population's best constraint violation value over a period of generations. Terminates if below.",
+      "examples": [
+        0.001
+      ],
+      "exclusiveMinimum": 0.0,
+      "title": "CV Tol",
+      "type": "number"
+    },
+    "cv_period": {
+      "default": 100,
+      "description": "Termination Criterion. Number of passed generations to include when checking for constraint violation improvement.",
+      "examples": [
+        100
+      ],
+      "exclusiveMinimum": 0,
+      "title": "CV Period",
+      "type": "integer"
+    },
+    "n_max_gen": {
+      "default": 1000,
+      "description": "Termination Criterion. Max number of generations before termination.",
+      "examples": [
+        1000,
+        2000
+      ],
+      "exclusiveMinimum": 0,
+      "title": "N Max Gen",
+      "type": "integer"
+    },
+    "n_max_evals": {
+      "default": 100000000000000,
+      "description": "Termination Criterion. Max number of fitness evaluations (Epoch simulations) before termination.",
+      "examples": [
+        1000000.0,
+        1000000000.0
+      ],
+      "exclusiveMinimum": 0,
+      "title": "N Max Evals",
+      "type": "integer"
+    },
+    "sampling": {
+      "$ref": "#/$defs/SamplingMethod",
+      "default": "RANDOM",
+      "description": "Whether to generate initial population randomly or from estimates.",
+      "examples": [
+        "RANDOM",
+        "ESTIMATE"
+      ]
+    },
+    "pop_size_incr_scalar": {
+      "default": 0.1,
+      "description": "Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.",
+      "examples": [
+        0.1
+      ],
+      "title": "Population Size Increase Factor",
+      "type": "number"
+    },
+    "pop_size_incr_threshold": {
+      "default": 0.9,
+      "description": "Percent of the pop_size to set as the threshold to increase the pop_size.",
+      "examples": [
+        0.9
+      ],
+      "title": "Population Size Increase Threshold",
+      "type": "number"
+    }
+  },
+  "title": "NSGA2HyperParam",
+  "type": "object"
+}
