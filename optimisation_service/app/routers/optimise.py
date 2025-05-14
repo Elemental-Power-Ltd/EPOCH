@@ -9,11 +9,12 @@ from enum import Enum
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 
+from app.internal.bayesian.bayesian import Bayesian
 from app.internal.constraints import apply_default_constraints
 from app.internal.datamanager import DataManagerDep
 from app.internal.epoch_utils import convert_TaskData_to_pydantic
 from app.internal.grid_search import GridSearch, get_epoch_path
-from app.internal.NSGA2 import NSGA2
+from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.core import (
@@ -36,6 +37,9 @@ from app.routers.epl_queue import IQueue
 class OptimiserFunc(Enum):
     NSGA2 = NSGA2
     GridSearch = GridSearch
+    SeparatedNSGA2xNSGA2 = SeparatedNSGA2xNSGA2
+    SeparatedNSGA2 = SeparatedNSGA2
+    Bayesian = Bayesian
 
 
 router = APIRouter()
