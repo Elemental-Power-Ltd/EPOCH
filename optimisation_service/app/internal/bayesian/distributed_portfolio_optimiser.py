@@ -59,7 +59,7 @@ class DistributedPortfolioOptimiser:
         max_capexs = []
         sub_solutions: list[list[PortfolioSolution]] = []
         for sub_portfolio in self.sub_portfolios:
-            alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
+            alg = NSGA2(**dict(self.NSGA2_param))
             constraints = {Metric.capex: Bounds(max=capex_limit)}
             res = alg.run(objectives=self.objectives, constraints=constraints, portfolio=sub_portfolio)
             sub_solutions.append(res.solutions)
@@ -97,7 +97,7 @@ class DistributedPortfolioOptimiser:
         """
         sub_solutions: list[list[PortfolioSolution]] = []
         for i, capex_limit in enumerate(capex_limits):
-            alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
+            alg = NSGA2(**dict(self.NSGA2_param))
             constraints = {Metric.capex: Bounds(max=capex_limit)}
             selected_solutions = select_starting_solutions(
                 existing_solutions=list(self.sub_portfolio_solutions[i]), constraints=constraints

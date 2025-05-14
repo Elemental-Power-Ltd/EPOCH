@@ -165,7 +165,7 @@ async def process_requests(q: IQueue) -> None:
         try:
             logger.info(f"Optimising {task.task_id}.")
             loop = asyncio.get_event_loop()
-            optimiser = OptimiserFunc[task.optimiser.name].value(**task.optimiser.hyperparameters.model_dump(mode="python"))
+            optimiser = OptimiserFunc[task.optimiser.name].value(**dict(task.optimiser.hyperparameters))
             with ThreadPoolExecutor() as executor:
                 results = await loop.run_in_executor(
                     executor,

@@ -440,7 +440,7 @@ class SeparatedNSGA2(Algorithm):
         sub_solutions: list[list[PortfolioSolution]] = []
         n_evals = 0
         for site in portfolio:
-            alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
+            alg = NSGA2(**dict(self.NSGA2_param))
             res = alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
             do_nothing = do_nothing_scenario([site.site_data.site_id])
             sub_solutions.append([*res.solutions, do_nothing])
@@ -501,10 +501,10 @@ class SeparatedNSGA2xNSGA2(Algorithm):
             exec_time: Time taken for optimisation process to conclude.
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
-        separatednsga2 = SeparatedNSGA2(**self.SeparatedNSGA2_param.model_dump())
+        separatednsga2 = SeparatedNSGA2(**dict(self.SeparatedNSGA2_param))
         separatednsga2_res = separatednsga2.run(objectives=objectives, constraints=constraints, portfolio=portfolio)
 
-        nsga2 = NSGA2(**self.NSGA2_param.model_dump())
+        nsga2 = NSGA2(**dict(self.NSGA2_param))
         nsga2_res = nsga2.run(
             objectives=objectives, constraints=constraints, portfolio=portfolio, existing_solutions=separatednsga2_res.solutions
         )
