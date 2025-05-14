@@ -11,6 +11,7 @@ class OptimiserStr(StrEnum):
     GridSearch = "GridSearch"
     Bayesian = "Bayesian"
     SeparatedNSGA2 = "SeparatedNSGA2"
+    SeparatedNSGA2xNSGA2 = "SeparatedNSGA2xNSGA2"
 
 
 class NSGA2HyperParam(BaseModel):
@@ -144,5 +145,5 @@ class SeparatedNSGA2Optimiser(BaseModel):
 
 
 class SeparatedNSGA2xNSGA2Optimiser(BaseModel):
-    name: Literal[OptimiserStr.SeparatedNSGA2]
+    name: Literal[OptimiserStr.SeparatedNSGA2xNSGA2]
     hyperparameters: SeparatedNSGA2xNSGA2HyperParam
