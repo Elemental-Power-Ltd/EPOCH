@@ -3,7 +3,7 @@ FROM ubuntu:24.10 AS epoch-build
 # Install vcpkg to the root directory, as sometimes that makes things easier?
 WORKDIR /
 
-# Install the relevant dependencies for vcpkg, and a python enviroment (make sure this matches our venv!)
+# Install the relevant dependencies for vcpkg, and a python enviroment (make sure this matches the later version)
 # Then get the other utilities we need for vcpkg and the dependencies, and "install" vcpkg
 # setting the relevant environment variables too
 
@@ -24,15 +24,15 @@ RUN apt-get update \
         
 RUN git clone https://github.com/microsoft/vcpkg.git
 WORKDIR /vcpkg
-RUN git checkout c82f74667287d3dc386bce81e44964370c91a289 && ./bootstrap-vcpkg.sh
+RUN git checkout c82f74667287d3dc386bce81e44964370c91a289
+RUN ./bootstrap-vcpkg.sh
 # RUN ./bootstrap-vcpkg.sh
 ENV VCPKG_ROOT="/vcpkg"
 ENV PATH="$VCPKG_ROOT:$PATH"
 
-
 WORKDIR /code
 COPY Epoch Epoch
-
+WORKDIR /code/Epoch
 # Build python bindings and copy the file from its horrible location to somewhere saner
 RUN rm -rf ./build \
     && cmake . --preset=python-linux -DCMAKE_CXX_COMPILER=g++ -DCMAKE_MAKE_PROGRAM=make -Wno-dev \
@@ -54,17 +54,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 python3
 ENV PATH="/code/install:$PATH"
 ENV PYTHONPATH="/code/install:$PYTHONPATH"
 
-# Copy the python bindings and executable
-COPY --from=epoch-build /code/epoch_simulator.cpython-312-x86_64-linux-gnu.so /code/Epoch/build/epoch_main/Epoch /code/install/
-
 # We're using Ubuntu instead of the python image, so put the
 # dependencies for our app in a venv to avoid mangling the default ones
 COPY requirements.txt .
 COPY requirements requirements
-
 RUN python3 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrade -r requirements.txt
 
+# Copy the python bindings and executable
 COPY app app
+COPY --from=epoch-build /code/epoch_simulator.cpython-312-x86_64-linux-gnu.so /code/Epoch/build/epoch_main/Epoch /code/install/
 
 EXPOSE 8761
 CMD ["./venv/bin/python", "-m", "fastapi", "run", "./app/main.py", "--port", "8761"]
