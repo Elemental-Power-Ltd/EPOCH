@@ -8,13 +8,7 @@ from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, Privat
 from app.models.constraints import Constraints
 from app.models.epoch_types import TaskDataPydantic
 from app.models.metrics import Metric
-from app.models.optimisers import (
-    BayesianOptimiser,
-    GridSearchOptimiser,
-    NSGA2Optmiser,
-    SeparatedNSGA2Optimiser,
-    SeparatedNSGA2xNSGA2Optimiser,
-)
+from app.models.optimisers import OptimiserTypes
 from app.models.site_data import EpochSiteData, SiteMetaData
 from app.models.site_range import SiteRange
 
@@ -35,9 +29,7 @@ class Site(BaseModel):
 
 
 class EndpointTask(Site):
-    optimiser: (
-        NSGA2Optmiser | GridSearchOptimiser | BayesianOptimiser | SeparatedNSGA2Optimiser | SeparatedNSGA2xNSGA2Optimiser
-    ) = Field(description="Optimiser name and hyperparameters.")
+    optimiser: OptimiserTypes = Field(description="Optimiser name and hyperparameters.")
     objectives: list[Metric] = Field(examples=[["carbon_cost"]], description="List of objectives to optimise for.")
     created_at: AwareDatetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
@@ -51,9 +43,7 @@ class EndpointTask(Site):
 
 class Task(BaseModel):
     name: str = Field(description="Human readable name for a portfolio task, e.g. 'Demonstration v1'.")
-    optimiser: (
-        NSGA2Optmiser | GridSearchOptimiser | BayesianOptimiser | SeparatedNSGA2Optimiser | SeparatedNSGA2xNSGA2Optimiser
-    ) = Field(description="Optimiser name and hyperparameters.")
+    optimiser: OptimiserTypes = Field(description="Optimiser name and hyperparameters.")
     objectives: list[Metric] = Field(examples=[["capex", "carbon_balance"]], description="List of objectives to optimise for.")
     created_at: AwareDatetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC),

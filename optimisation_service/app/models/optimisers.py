@@ -124,7 +124,7 @@ class SeparatedNSGA2xNSGA2HyperParam(BaseModel):
     )
 
 
-class NSGA2Optmiser(BaseModel):
+class NSGA2Optimiser(BaseModel):
     name: Literal[OptimiserStr.NSGA2]
     hyperparameters: NSGA2HyperParam
 
@@ -147,3 +147,8 @@ class SeparatedNSGA2Optimiser(BaseModel):
 class SeparatedNSGA2xNSGA2Optimiser(BaseModel):
     name: Literal[OptimiserStr.SeparatedNSGA2xNSGA2]
     hyperparameters: SeparatedNSGA2xNSGA2HyperParam
+
+
+type OptimiserTypes = (
+    NSGA2Optimiser | GridSearchOptimiser | BayesianOptimiser | SeparatedNSGA2Optimiser | SeparatedNSGA2xNSGA2Optimiser
+)

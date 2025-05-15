@@ -465,7 +465,15 @@ class SeparatedNSGA2(Algorithm):
 
 class SeparatedNSGA2xNSGA2(Algorithm):
     """
-    Optimises a portfolio by first running the SeparatedNSGA2 algorithm and then running the NSGA2 algorithm.
+    Optimise a single or multi objective portfolio problem by first applying the SeparatedNSGA2 algorithm to the problem
+    followed by applying the NSGA2 algorithm to the problem with as starting population the solutions from the SeparatedNSGA2
+    algorithm.
+
+    This algorithm will perform better than either of its parts for extensive (many components) multi objective portfolio
+    problems with more than 3 sites. This is because it leverages the fast execution time of the SeparatedNSGA2 algorithm to
+    find "good enough" solutions which it refines with the NSGA2 algorithm.
+
+    Note: If the problem doesn't have an upper CAPEX bound, the SeparatedNSGA2 will likely return the same results.
     """
 
     def __init__(self, SeparatedNSGA2_param: NSGA2HyperParam | None = None, NSGA2_param: NSGA2HyperParam | None = None):

@@ -13,7 +13,7 @@ from app.main import app
 from app.models.core import OptimisationResultEntry, Task
 from app.models.optimisers import (
     NSGA2HyperParam,
-    NSGA2Optmiser,
+    NSGA2Optimiser,
     OptimiserStr,
 )
 from app.models.site_data import LocalMetaData, RemoteMetaData
@@ -50,8 +50,8 @@ def client(result_tmp_path: Path) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture
-def default_optimiser() -> NSGA2Optmiser:
-    return NSGA2Optmiser(
+def default_optimiser() -> NSGA2Optimiser:
+    return NSGA2Optimiser(
         name=OptimiserStr.NSGA2, hyperparameters=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=10, period=8)
     )
 
