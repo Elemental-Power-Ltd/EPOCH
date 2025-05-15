@@ -281,7 +281,7 @@ class NSGA2(Algorithm):
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
         non_dom_sol = res.X
         if non_dom_sol is None or len(non_dom_sol) == 0:
-            portfolio_solutions_pf = [do_nothing_scenario(pi.site_names)]
+            portfolio_solutions_pf = [do_nothing_scenario(portfolio)]
         else:
             if non_dom_sol.ndim == 1:
                 non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
@@ -442,7 +442,7 @@ class SeparatedNSGA2(Algorithm):
         for site in portfolio:
             alg = NSGA2(**dict(self.NSGA2_param))
             res = alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
-            do_nothing = do_nothing_scenario([site.site_data.site_id])
+            do_nothing = do_nothing_scenario([site])
             sub_solutions.append([*res.solutions, do_nothing])
             n_evals += res.n_evals
 
@@ -456,7 +456,7 @@ class SeparatedNSGA2(Algorithm):
         if any(mask) > 0:
             combined_solutions = np.array(combined_solutions)[mask].tolist()
         elif not self.return_least_infeasible and not any(mask):
-            combined_solutions = [do_nothing_scenario([site.site_data.site_id for site in portfolio])]
+            combined_solutions = [do_nothing_scenario(portfolio)]
 
         total_exec_time = datetime.now(UTC) - start_time
 
