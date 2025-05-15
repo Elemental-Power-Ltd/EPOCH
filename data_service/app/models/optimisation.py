@@ -217,14 +217,18 @@ class OptimisationResultEntry(pydantic.BaseModel):
 class OptimiserEnum(StrEnum):
     GridSearch = "GridSearch"
     NSGA2 = "NSGA2"
-    GeneticAlgorithm = "GeneticAlgorithm"
-    BayesianOptimisation = "BayesianOptimisation"
+    Bayesian = "Bayesian"
+    SeparatedNSGA2 = "SeparatedNSGA2"
+    SeparatedNSGA2xNSGA2 = "SeparatedNSGA2xNSGA2"
+
+
+type hyperparams_t = dict[str, float | int | str | hyperparams_t]
 
 
 class Optimiser(pydantic.BaseModel):
     name: OptimiserEnum = pydantic.Field(default=OptimiserEnum.NSGA2, description="Name of optimiser.")
-    hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
-        default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
+    hyperparameters: hyperparams_t | None = pydantic.Field(
+        default=None, description="Hyperparameters provided to the optimiser."
     )
 
 
