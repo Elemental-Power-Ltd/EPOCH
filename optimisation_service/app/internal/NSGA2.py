@@ -440,7 +440,7 @@ class SeparatedNSGA2(Algorithm):
         sub_solutions: list[list[PortfolioSolution]] = []
         n_evals = 0
         for site in portfolio:
-            alg = NSGA2(**self.NSGA2_param.model_dump(mode="python"))
+            alg = NSGA2(**dict(self.NSGA2_param))
             res = alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
             do_nothing = do_nothing_scenario([site.site_data.site_id])
             sub_solutions.append([*res.solutions, do_nothing])
@@ -461,3 +461,64 @@ class SeparatedNSGA2(Algorithm):
         total_exec_time = datetime.now(UTC) - start_time
 
         return OptimisationResult(solutions=combined_solutions, n_evals=n_evals, exec_time=total_exec_time)
+
+
+class SeparatedNSGA2xNSGA2(Algorithm):
+    """
+    Optimise a single or multi objective portfolio problem by first applying the SeparatedNSGA2 algorithm to the problem
+    followed by applying the NSGA2 algorithm to the problem with as starting population the solutions from the SeparatedNSGA2
+    algorithm.
+
+    This algorithm will perform better than either of its parts for extensive (many components) multi objective portfolio
+    problems with more than 3 sites. This is because it leverages the fast execution time of the SeparatedNSGA2 algorithm to
+    find "good enough" solutions which it refines with the NSGA2 algorithm.
+
+    Note: If the problem doesn't have an upper CAPEX bound, the SeparatedNSGA2 will likely return the same results.
+    """
+
+    def __init__(self, SeparatedNSGA2_param: NSGA2HyperParam | None = None, NSGA2_param: NSGA2HyperParam | None = None):
+        if SeparatedNSGA2_param is None:
+            SeparatedNSGA2_param = NSGA2HyperParam()
+        if NSGA2_param is None:
+            NSGA2_param = NSGA2HyperParam()
+        self.SeparatedNSGA2_param = SeparatedNSGA2_param
+        self.NSGA2_param = NSGA2_param
+
+    def run(
+        self,
+        objectives: list[Metric],
+        constraints: Constraints,
+        portfolio: list[Site],
+    ) -> OptimisationResult:
+        """
+        Run optimisation.
+
+        Parameters
+        ----------
+        objectives
+            Objectives to optimise.
+        constraints
+            Constraints on the metrics to apply.
+        portfolio
+            Portfolio of sites to optimise.
+
+        Returns
+        -------
+        OptimisationResult
+            solutions: Pareto-front of evaluated candidate portfolio solutions.
+            exec_time: Time taken for optimisation process to conclude.
+            n_evals: Number of simulation evaluations taken for optimisation process to conclude.
+        """
+        separatednsga2 = SeparatedNSGA2(**dict(self.SeparatedNSGA2_param))
+        separatednsga2_res = separatednsga2.run(objectives=objectives, constraints=constraints, portfolio=portfolio)
+
+        nsga2 = NSGA2(**dict(self.NSGA2_param))
+        nsga2_res = nsga2.run(
+            objectives=objectives, constraints=constraints, portfolio=portfolio, existing_solutions=separatednsga2_res.solutions
+        )
+
+        return OptimisationResult(
+            solutions=nsga2_res.solutions,
+            n_evals=separatednsga2_res.n_evals + nsga2_res.n_evals,
+            exec_time=separatednsga2_res.exec_time + nsga2_res.exec_time,
+        )

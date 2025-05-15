@@ -10,6 +10,8 @@ class OptimiserStr(StrEnum):
     NSGA2 = "NSGA2"
     GridSearch = "GridSearch"
     Bayesian = "Bayesian"
+    SeparatedNSGA2 = "SeparatedNSGA2"
+    SeparatedNSGA2xNSGA2 = "SeparatedNSGA2xNSGA2"
 
 
 class NSGA2HyperParam(BaseModel):
@@ -89,7 +91,9 @@ class BayesianHyperParam(BaseModel):
     n_per_sub_portfolio: PositiveInt = Field(examples=[1, 2], description="Number of sites per sub portfolio.", default=1)
     n_generations: PositiveInt = Field(examples=[10, 20], description="Number of generations.", default=10)
     batch_size: PositiveInt = Field(examples=[1, 2, 3, 4], description="Number of evaluations per generation.", default=4)
-    n_init_samples: PositiveInt = Field(examples=[5, 10], description="Number of evaluations to initialise model.", default=5)
+    n_initialisation_points: PositiveInt = Field(
+        examples=[5, 10], description="Number of evaluations to initialise model.", default=5
+    )
     num_restarts: PositiveInt = Field(
         examples=[2, 10], description="Number of restarts of the acquisition function optimisation process.", default=10
     )
@@ -109,7 +113,18 @@ class GridSearchHyperParam(BaseModel):
     keep_degenerate: bool = Field(description="Include or exclude degenerate solutions.", default=False)
 
 
-class NSGA2Optmiser(BaseModel):
+class SeparatedNSGA2xNSGA2HyperParam(BaseModel):
+    SeparatedNSGA2_param: NSGA2HyperParam = Field(
+        description="Hyperparameters for the SeparatedNSGA2 algorithm.",
+        default=NSGA2HyperParam(pop_size=128, n_offsprings=64),
+    )
+    NSGA2_param: NSGA2HyperParam = Field(
+        description="Hyperparameters for the NSGA2 algorithm.",
+        default=NSGA2HyperParam(pop_size=256, n_offsprings=128),
+    )
+
+
+class NSGA2Optimiser(BaseModel):
     name: Literal[OptimiserStr.NSGA2]
     hyperparameters: NSGA2HyperParam
 
@@ -122,3 +137,18 @@ class GridSearchOptimiser(BaseModel):
 class BayesianOptimiser(BaseModel):
     name: Literal[OptimiserStr.Bayesian]
     hyperparameters: BayesianHyperParam
+
+
+class SeparatedNSGA2Optimiser(BaseModel):
+    name: Literal[OptimiserStr.SeparatedNSGA2]
+    hyperparameters: NSGA2HyperParam
+
+
+class SeparatedNSGA2xNSGA2Optimiser(BaseModel):
+    name: Literal[OptimiserStr.SeparatedNSGA2xNSGA2]
+    hyperparameters: SeparatedNSGA2xNSGA2HyperParam
+
+
+type OptimiserTypes = (
+    NSGA2Optimiser | GridSearchOptimiser | BayesianOptimiser | SeparatedNSGA2Optimiser | SeparatedNSGA2xNSGA2Optimiser
+)
