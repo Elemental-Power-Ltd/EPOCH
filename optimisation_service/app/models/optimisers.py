@@ -33,7 +33,7 @@ class NSGA2HyperParam(BaseModel):
         title="Number of Crossover Points", examples=[1, 2], description="Number of crossover points.", default=2
     )
     prob_mutation: PositiveFloat = Field(
-        title="Mutatino Probability",
+        title="Mutation Probability",
         examples=[0.8],
         description="Probability of applying mutation to each offspring.",
         default=0.8,
