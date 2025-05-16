@@ -1,4 +1,4 @@
-from epoch_simulator import TaskData
+from epoch_simulator import Building, Grid, TaskData
 
 from app.internal.portfolio_simulator import PortfolioSimulator
 from app.models.core import Site
@@ -9,6 +9,10 @@ def do_nothing_scenario(portfolio: list[Site]) -> PortfolioSolution:
     epoch_data_dict = {site.site_data.site_id: site._epoch_data for site in portfolio}
     ps = PortfolioSimulator(epoch_data_dict=epoch_data_dict)
 
-    portfolio_scenarios = {site.site_data.site_id: TaskData() for site in portfolio}  # TODO: replace with baseline Scenario
+    do_nothing_td = TaskData()
+    do_nothing_td.building = Building()
+    do_nothing_td.grid = Grid()
+
+    portfolio_scenarios = {site.site_data.site_id: do_nothing_td for site in portfolio}  # TODO: replace with baseline Scenario
 
     return ps.simulate_portfolio(portfolio_scenarios)
