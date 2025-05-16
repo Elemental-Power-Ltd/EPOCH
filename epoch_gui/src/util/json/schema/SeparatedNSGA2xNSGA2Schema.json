@@ -9,7 +9,7 @@
             256
           ],
           "exclusiveMinimum": 0,
-          "title": "Pop Size",
+          "title": "Population Size",
           "type": "integer"
         },
         "n_offsprings": {
@@ -19,7 +19,7 @@
             128
           ],
           "exclusiveMinimum": 0,
-          "title": "N Offsprings",
+          "title": "Number of Offpsring",
           "type": "integer"
         },
         "prob_crossover": {
@@ -29,7 +29,7 @@
             0.2
           ],
           "exclusiveMinimum": 0.0,
-          "title": "Prob Crossover",
+          "title": "Crossover Probability",
           "type": "number"
         },
         "n_crossover": {
@@ -40,7 +40,7 @@
             2
           ],
           "exclusiveMinimum": 0,
-          "title": "N Crossover",
+          "title": "Number of Crossover Points",
           "type": "integer"
         },
         "prob_mutation": {
@@ -50,7 +50,7 @@
             0.8
           ],
           "exclusiveMinimum": 0.0,
-          "title": "Prob Mutation",
+          "title": "Mutation Probability",
           "type": "number"
         },
         "std_scaler": {
@@ -60,7 +60,7 @@
             1.0
           ],
           "exclusiveMinimum": 0.0,
-          "title": "Std Scaler",
+          "title": "Mutation Standard Deviation Scaler",
           "type": "number"
         },
         "tol": {
@@ -70,7 +70,7 @@
             0.1
           ],
           "exclusiveMinimum": 0.0,
-          "title": "Tol",
+          "title": "Tolerance of Improvement",
           "type": "number"
         },
         "period": {
@@ -80,7 +80,7 @@
             50
           ],
           "exclusiveMinimum": 0,
-          "title": "Period",
+          "title": "Period of Improvement",
           "type": "integer"
         },
         "cv_tol": {
@@ -90,7 +90,7 @@
             0.001
           ],
           "exclusiveMinimum": 0.0,
-          "title": "Cv Tol",
+          "title": "Tolerance of Infeasibility Improvement",
           "type": "number"
         },
         "cv_period": {
@@ -100,7 +100,7 @@
             100
           ],
           "exclusiveMinimum": 0,
-          "title": "Cv Period",
+          "title": "Period of Infeasibility Improvement",
           "type": "integer"
         },
         "n_max_gen": {
@@ -111,7 +111,7 @@
             2000
           ],
           "exclusiveMinimum": 0,
-          "title": "N Max Gen",
+          "title": "Maximum Number of Generations",
           "type": "integer"
         },
         "n_max_evals": {
@@ -122,7 +122,7 @@
             1000000000.0
           ],
           "exclusiveMinimum": 0,
-          "title": "N Max Evals",
+          "title": "Maximum Number of Simulations",
           "type": "integer"
         },
         "sampling": {
@@ -132,7 +132,8 @@
           "examples": [
             "RANDOM",
             "ESTIMATE"
-          ]
+          ],
+          "title": "Sampling Method"
         },
         "pop_size_incr_scalar": {
           "default": 0.1,
@@ -141,7 +142,7 @@
             0.1
           ],
           "exclusiveMinimum": 0.0,
-          "title": "Pop Size Incr Scalar",
+          "title": "Automatic Population Size Increase Scaler",
           "type": "number"
         },
         "pop_size_incr_threshold": {
@@ -151,7 +152,7 @@
             0.9
           ],
           "exclusiveMinimum": 0.0,
-          "title": "Pop Size Incr Threshold",
+          "title": "Automatic Population Size Increase Threshold",
           "type": "number"
         },
         "return_least_infeasible": {
@@ -198,7 +199,8 @@
         "pop_size_incr_threshold": 0.9,
         "return_least_infeasible": true
       },
-      "description": "Hyperparameters for the SeparatedNSGA2 algorithm."
+      "description": "Hyperparameters for the SeparatedNSGA2 algorithm.",
+      "title": "SeparatedNSGA2 Hyperparameters"
     },
     "NSGA2_param": {
       "$ref": "#/$defs/NSGA2HyperParam",
@@ -220,7 +222,8 @@
         "pop_size_incr_threshold": 0.9,
         "return_least_infeasible": true
       },
-      "description": "Hyperparameters for the NSGA2 algorithm."
+      "description": "Hyperparameters for the NSGA2 algorithm.",
+      "title": "NSGA2 Hyperparameters"
     }
   },
   "title": "SeparatedNSGA2xNSGA2HyperParam",
