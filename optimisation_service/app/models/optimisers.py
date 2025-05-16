@@ -15,35 +15,50 @@ class OptimiserStr(StrEnum):
 
 
 class NSGA2HyperParam(BaseModel):
-    pop_size: PositiveInt = Field(examples=[256], description="Size of population.", default=256)
+    pop_size: PositiveInt = Field(title="Population Size", examples=[256], description="Size of population.", default=256)
     n_offsprings: PositiveInt = Field(
+        title="Number of Offpsring",
         examples=[128],
         description="Number of offsprings to generate through crossover at each generation."
         + "Can be greater or smaller than initial pop_size",
         default=128,
     )
     prob_crossover: PositiveFloat = Field(
-        examples=[0.2], description="Probability of applying crossover between two parents.", default=0.2
+        title="Crossover Probability",
+        examples=[0.2],
+        description="Probability of applying crossover between two parents.",
+        default=0.2,
     )
-    n_crossover: PositiveInt = Field(examples=[1, 2], description="Number of crossover points.", default=2)
+    n_crossover: PositiveInt = Field(
+        title="Number of Crossover Points", examples=[1, 2], description="Number of crossover points.", default=2
+    )
     prob_mutation: PositiveFloat = Field(
-        examples=[0.8], description="Probability of applying mutation to each offspring.", default=0.8
+        title="Mutatino Probability",
+        examples=[0.8],
+        description="Probability of applying mutation to each offspring.",
+        default=0.8,
     )
     std_scaler: PositiveFloat = Field(
-        examples=[1.0], description="Scales the standard deviation of the mutation's normal distribution.", default=1.0
+        title="Mutation Standard Deviation Scaler",
+        examples=[1.0],
+        description="Scales the standard deviation of the mutation's normal distribution.",
+        default=1.0,
     )
     tol: PositiveFloat = Field(
+        title="Tolerance of Improvement",
         examples=[0.1],
         description="Termination Criterion."
         + "Minimum required improvement of population's best fitness value over a period of generations. Terminates if below.",
         default=0.1,
     )
     period: PositiveInt = Field(
+        title="Period of Improvement",
         examples=[50],
         description="Termination Criterion. Number of passed generations to include when checking for improvement.",
         default=50,
     )
     cv_tol: PositiveFloat = Field(
+        title="Tolerance of Infeasibility Improvement",
         examples=[0.001],
         description="Termination Criterion."
         + "Minimum required improvement of population's best constraint violation value over a period of generations."
@@ -51,36 +66,45 @@ class NSGA2HyperParam(BaseModel):
         default=0.001,
     )
     cv_period: PositiveInt = Field(
+        title="Period of Infeasibility Improvement",
         examples=[100],
         description="Termination Criterion."
         + "Number of passed generations to include when checking for constraint violation improvement.",
         default=100,
     )
     n_max_gen: PositiveInt = Field(
+        title="Maximum Number of Generations",
         examples=[1000, 2000],
         description="Termination Criterion. Max number of generations before termination.",
         default=1000,
     )
     n_max_evals: PositiveInt = Field(
+        title="Maximum Number of Simulations",
         examples=[1e6, 1e9],
         description="Termination Criterion. Max number of fitness evaluations (Epoch simulations) before termination.",
         default=int(1e14),
     )
     sampling: SamplingMethod = Field(
+        title="Sampling Method",
         examples=["RANDOM", "ESTIMATE"],
         description="Whether to generate initial population randomly or from estimates.",
         default=SamplingMethod.RANDOM,
     )
     pop_size_incr_scalar: PositiveFloat = Field(
+        title="Automatic Population Size Increase Scaler",
         examples=[0.1],
         description="Scalar value to increase the pop_size and n_offsprings by for the next generation when the number of"
         + "optimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.",
         default=0.1,
     )
     pop_size_incr_threshold: PositiveFloat = Field(
-        examples=[0.9], description="Percent of the pop_size to set as the threshold to increase the pop_size.", default=0.9
+        title="Automatic Population Size Increase Threshold",
+        examples=[0.9],
+        description="Percent of the pop_size to set as the threshold to increase the pop_size.",
+        default=0.9,
     )
     return_least_infeasible: bool = Field(
+        title="Return Least Infeasible",
         examples=[True, False],
         description="Whether or not to return the most feasible of the infeasible solutions if no feasible solution is found.",
         default=True,
@@ -88,22 +112,44 @@ class NSGA2HyperParam(BaseModel):
 
 
 class BayesianHyperParam(BaseModel):
-    n_per_sub_portfolio: PositiveInt = Field(examples=[1, 2], description="Number of sites per sub portfolio.", default=1)
-    n_generations: PositiveInt = Field(examples=[10, 20], description="Number of generations.", default=10)
-    batch_size: PositiveInt = Field(examples=[1, 2, 3, 4], description="Number of evaluations per generation.", default=4)
+    n_per_sub_portfolio: PositiveInt = Field(
+        title="Number of Sites per Sub Portfolio", examples=[1, 2], description="Number of sites per sub portfolio.", default=1
+    )
+    n_generations: PositiveInt = Field(
+        title="Number of Generations", examples=[10, 20], description="Number of generations.", default=10
+    )
+    batch_size: PositiveInt = Field(
+        title="Number of Trials per Generation",
+        examples=[1, 2, 3, 4],
+        description="Number of evaluations per generation.",
+        default=4,
+    )
     n_initialisation_points: PositiveInt = Field(
-        examples=[5, 10], description="Number of evaluations to initialise model.", default=5
+        title="Number of Initialisation Trials",
+        examples=[5, 10],
+        description="Number of evaluations to initialise model.",
+        default=5,
     )
     num_restarts: PositiveInt = Field(
-        examples=[2, 10], description="Number of restarts of the acquisition function optimisation process.", default=10
+        title="Number of Restarts of Acquisition Function Optimisation",
+        examples=[2, 10],
+        description="Number of restarts of the acquisition function optimisation process.",
+        default=10,
     )
     raw_samples: PositiveInt = Field(
+        title="Number of Samples for Acquisition Function Optimisation",
         examples=[16, 512],
         description="Number of raw samples to initialise acquisition function optimisation process with.",
         default=512,
     )
-    mc_samples: PositiveInt = Field(examples=[4, 128], description="Size of samples.", default=128)
+    mc_samples: PositiveInt = Field(
+        title="Size of Sampels for Acquisition Function Optimisation",
+        examples=[4, 128],
+        description="Size of samples.",
+        default=128,
+    )
     NSGA2_param: NSGA2HyperParam = Field(
+        title="NSGA2 Hyperparameters",
         description="Hyperparameters for the NSGA2 algorithm.",
         default=NSGA2HyperParam(pop_size=128, n_offsprings=64),
     )
@@ -115,10 +161,12 @@ class GridSearchHyperParam(BaseModel):
 
 class SeparatedNSGA2xNSGA2HyperParam(BaseModel):
     SeparatedNSGA2_param: NSGA2HyperParam = Field(
+        title="SeparatedNSGA2 Hyperparameters",
         description="Hyperparameters for the SeparatedNSGA2 algorithm.",
         default=NSGA2HyperParam(pop_size=128, n_offsprings=64),
     )
     NSGA2_param: NSGA2HyperParam = Field(
+        title="NSGA2 Hyperparameters",
         description="Hyperparameters for the NSGA2 algorithm.",
         default=NSGA2HyperParam(pop_size=256, n_offsprings=128),
     )
