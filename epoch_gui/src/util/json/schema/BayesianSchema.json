@@ -1,0 +1,287 @@
+{
+  "$defs": {
+    "NSGA2HyperParam": {
+      "properties": {
+        "pop_size": {
+          "default": 256,
+          "description": "Size of population.",
+          "examples": [
+            256
+          ],
+          "exclusiveMinimum": 0,
+          "title": "Population Size",
+          "type": "integer"
+        },
+        "n_offsprings": {
+          "default": 128,
+          "description": "Number of offsprings to generate through crossover at each generation.Can be greater or smaller than initial pop_size",
+          "examples": [
+            128
+          ],
+          "exclusiveMinimum": 0,
+          "title": "Number of Offpsring",
+          "type": "integer"
+        },
+        "prob_crossover": {
+          "default": 0.2,
+          "description": "Probability of applying crossover between two parents.",
+          "examples": [
+            0.2
+          ],
+          "exclusiveMinimum": 0.0,
+          "title": "Crossover Probability",
+          "type": "number"
+        },
+        "n_crossover": {
+          "default": 2,
+          "description": "Number of crossover points.",
+          "examples": [
+            1,
+            2
+          ],
+          "exclusiveMinimum": 0,
+          "title": "Number of Crossover Points",
+          "type": "integer"
+        },
+        "prob_mutation": {
+          "default": 0.8,
+          "description": "Probability of applying mutation to each offspring.",
+          "examples": [
+            0.8
+          ],
+          "exclusiveMinimum": 0.0,
+          "title": "Mutatino Probability",
+          "type": "number"
+        },
+        "std_scaler": {
+          "default": 1.0,
+          "description": "Scales the standard deviation of the mutation's normal distribution.",
+          "examples": [
+            1.0
+          ],
+          "exclusiveMinimum": 0.0,
+          "title": "Mutation Standard Deviation Scaler",
+          "type": "number"
+        },
+        "tol": {
+          "default": 0.1,
+          "description": "Termination Criterion.Minimum required improvement of population's best fitness value over a period of generations. Terminates if below.",
+          "examples": [
+            0.1
+          ],
+          "exclusiveMinimum": 0.0,
+          "title": "Tolerance of Improvement",
+          "type": "number"
+        },
+        "period": {
+          "default": 50,
+          "description": "Termination Criterion. Number of passed generations to include when checking for improvement.",
+          "examples": [
+            50
+          ],
+          "exclusiveMinimum": 0,
+          "title": "Period of Improvement",
+          "type": "integer"
+        },
+        "cv_tol": {
+          "default": 0.001,
+          "description": "Termination Criterion.Minimum required improvement of population's best constraint violation value over a period of generations.Terminates if below.",
+          "examples": [
+            0.001
+          ],
+          "exclusiveMinimum": 0.0,
+          "title": "Tolerance of Infeasibility Improvement",
+          "type": "number"
+        },
+        "cv_period": {
+          "default": 100,
+          "description": "Termination Criterion.Number of passed generations to include when checking for constraint violation improvement.",
+          "examples": [
+            100
+          ],
+          "exclusiveMinimum": 0,
+          "title": "Period of Infeasibility Improvement",
+          "type": "integer"
+        },
+        "n_max_gen": {
+          "default": 1000,
+          "description": "Termination Criterion. Max number of generations before termination.",
+          "examples": [
+            1000,
+            2000
+          ],
+          "exclusiveMinimum": 0,
+          "title": "Maximum Number of Generations",
+          "type": "integer"
+        },
+        "n_max_evals": {
+          "default": 100000000000000,
+          "description": "Termination Criterion. Max number of fitness evaluations (Epoch simulations) before termination.",
+          "examples": [
+            1000000.0,
+            1000000000.0
+          ],
+          "exclusiveMinimum": 0,
+          "title": "Maximum Number of Simulations",
+          "type": "integer"
+        },
+        "sampling": {
+          "$ref": "#/$defs/SamplingMethod",
+          "default": "RANDOM",
+          "description": "Whether to generate initial population randomly or from estimates.",
+          "examples": [
+            "RANDOM",
+            "ESTIMATE"
+          ],
+          "title": "Sampling Method"
+        },
+        "pop_size_incr_scalar": {
+          "default": 0.1,
+          "description": "Scalar value to increase the pop_size and n_offsprings by for the next generation when the number ofoptimal scenarios surpasses pop_size_incr_threshold percent of the pop_size.",
+          "examples": [
+            0.1
+          ],
+          "exclusiveMinimum": 0.0,
+          "title": "Automatic Population Size Increase Scaler",
+          "type": "number"
+        },
+        "pop_size_incr_threshold": {
+          "default": 0.9,
+          "description": "Percent of the pop_size to set as the threshold to increase the pop_size.",
+          "examples": [
+            0.9
+          ],
+          "exclusiveMinimum": 0.0,
+          "title": "Automatic Population Size Increase Threshold",
+          "type": "number"
+        },
+        "return_least_infeasible": {
+          "default": true,
+          "description": "Whether or not to return the most feasible of the infeasible solutions if no feasible solution is found.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Return Least Infeasible",
+          "type": "boolean"
+        }
+      },
+      "title": "NSGA2HyperParam",
+      "type": "object"
+    },
+    "SamplingMethod": {
+      "enum": [
+        "RANDOM",
+        "ESTIMATE"
+      ],
+      "title": "SamplingMethod",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "n_per_sub_portfolio": {
+      "default": 1,
+      "description": "Number of sites per sub portfolio.",
+      "examples": [
+        1,
+        2
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Number of Sites per Sub Portfolio",
+      "type": "integer"
+    },
+    "n_generations": {
+      "default": 10,
+      "description": "Number of generations.",
+      "examples": [
+        10,
+        20
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Number of Generations",
+      "type": "integer"
+    },
+    "batch_size": {
+      "default": 4,
+      "description": "Number of evaluations per generation.",
+      "examples": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Number of Trials per Generation",
+      "type": "integer"
+    },
+    "n_initialisation_points": {
+      "default": 5,
+      "description": "Number of evaluations to initialise model.",
+      "examples": [
+        5,
+        10
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Number of Initialisation Trials",
+      "type": "integer"
+    },
+    "num_restarts": {
+      "default": 10,
+      "description": "Number of restarts of the acquisition function optimisation process.",
+      "examples": [
+        2,
+        10
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Number of Restarts of Acquisition Function Optimisation",
+      "type": "integer"
+    },
+    "raw_samples": {
+      "default": 512,
+      "description": "Number of raw samples to initialise acquisition function optimisation process with.",
+      "examples": [
+        16,
+        512
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Number of Samples for Acquisition Function Optimisation",
+      "type": "integer"
+    },
+    "mc_samples": {
+      "default": 128,
+      "description": "Size of samples.",
+      "examples": [
+        4,
+        128
+      ],
+      "exclusiveMinimum": 0,
+      "title": "Size of Sampels for Acquisition Function Optimisation",
+      "type": "integer"
+    },
+    "NSGA2_param": {
+      "$ref": "#/$defs/NSGA2HyperParam",
+      "default": {
+        "pop_size": 128,
+        "n_offsprings": 64,
+        "prob_crossover": 0.2,
+        "n_crossover": 2,
+        "prob_mutation": 0.8,
+        "std_scaler": 1.0,
+        "tol": 0.1,
+        "period": 50,
+        "cv_tol": 0.001,
+        "cv_period": 100,
+        "n_max_gen": 1000,
+        "n_max_evals": 100000000000000,
+        "sampling": "RANDOM",
+        "pop_size_incr_scalar": 0.1,
+        "pop_size_incr_threshold": 0.9,
+        "return_least_infeasible": true
+      },
+      "description": "Hyperparameters for the NSGA2 algorithm.",
+      "title": "NSGA2 Hyperparameters"
+    }
+  },
+  "title": "BayesianHyperParam",
+  "type": "object"
+}
