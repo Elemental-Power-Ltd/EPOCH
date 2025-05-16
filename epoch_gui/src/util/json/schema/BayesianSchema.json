@@ -50,7 +50,7 @@
             0.8
           ],
           "exclusiveMinimum": 0.0,
-          "title": "Mutatino Probability",
+          "title": "Mutation Probability",
           "type": "number"
         },
         "std_scaler": {
