@@ -403,7 +403,7 @@ class SeparatedNSGA2(Algorithm):
             sampling=sampling,
             pop_size_incr_scalar=pop_size_incr_scalar,
             pop_size_incr_threshold=pop_size_incr_threshold,
-            return_least_infeasible=False,
+            return_least_infeasible=True,
         )
 
     def run(
@@ -442,8 +442,7 @@ class SeparatedNSGA2(Algorithm):
         for site in portfolio:
             alg = NSGA2(**dict(self.NSGA2_param))
             res = alg.run(objectives=objectives, constraints=new_constraints, portfolio=[site])
-            do_nothing = do_nothing_scenario([site])
-            sub_solutions.append([*res.solutions, do_nothing])
+            sub_solutions.append(res.solutions)
             n_evals += res.n_evals
 
         combined_solutions = sub_solutions[0]
