@@ -1,4 +1,4 @@
-from epoch_simulator import Building, Grid, TaskData
+from epoch_simulator import Building, GasHeater, Grid, TaskData
 
 from app.internal.portfolio_simulator import PortfolioSimulator
 from app.models.core import Site
@@ -12,6 +12,8 @@ def do_nothing_scenario(portfolio: list[Site]) -> PortfolioSolution:
     do_nothing_td = TaskData()
     do_nothing_td.building = Building()
     do_nothing_td.grid = Grid()
+    do_nothing_td.gas_heater = GasHeater()
+    do_nothing_td.gas_heater.maximum_output = 999999
 
     portfolio_scenarios = {site.site_data.site_id: do_nothing_td for site in portfolio}  # TODO: replace with baseline Scenario
 
