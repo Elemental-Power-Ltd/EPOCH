@@ -97,6 +97,7 @@ class TestOptimisationTaskDatabase:
 
     @pytest.fixture
     def sample_scenario(self) -> TaskDataPydantic:
+        """Create a sample scenario to put in our database."""
         task_data = TaskDataPydantic()
         task_data.building = Building(scalar_heat_load=1.0, scalar_electrical_load=1.0, fabric_intervention_index=0)
         task_data.grid = Grid(grid_export=23.0, grid_import=23.0, import_headroom=0.4, tariff_index=0)
@@ -385,7 +386,8 @@ class TestOptimisationTaskDatabase:
             sample_task_config.input_data["demo_london"].model_dump_json()
         )
         assert repro_data["task_data"] == {
-            sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()}
+            sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()
+        }
 
     @pytest.mark.asyncio
     async def test_can_retrieve_task_result(

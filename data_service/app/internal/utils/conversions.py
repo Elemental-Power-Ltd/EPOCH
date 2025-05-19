@@ -12,7 +12,7 @@ Where possible, these functions should work equally well on numpy arrays or on s
 """
 
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -275,7 +275,7 @@ def relative_to_specific_humidity[T: (npt.NDArray[np.floating], float, pd.Series
     return val
 
 
-def try_convert_float(maybe_float: str | float | datetime.datetime | None) -> float | None:
+def try_convert_float(maybe_float: Any) -> float | None:
     """
     Try to convert a value to a float, returning None otherwise.
 
@@ -291,7 +291,7 @@ def try_convert_float(maybe_float: str | float | datetime.datetime | None) -> fl
     None
         Otherwise
     """
-    if isinstance(maybe_float, str | float):
+    if isinstance(maybe_float, str | float | int):
         try:
             return float(maybe_float)
         except (ValueError, TypeError):
