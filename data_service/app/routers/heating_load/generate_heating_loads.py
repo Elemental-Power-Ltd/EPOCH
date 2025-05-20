@@ -120,9 +120,14 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
     above_thresh = [item for item in paired if item[0].r2_score is not None and item[0].r2_score > R2_THRESH]
 
     if not above_thresh:
+        all_r2s = [item[0].r2_score for item in paired if item[0].r2_score is not None]
+        if all_r2s:
+            best_r2 = max(all_r2s)
+        else:
+            best_r2 = None
         logger.debug(
             "Using regression instead of thermal as we didn't get a thermal model above the threshold.",
-            extra={"best_r2": max(item[0].r2_score if item[0].r2_score is not None else -float("inf") for item in paired)},
+            extra={"best_r2": best_r2},
         )
         return default_regression_request
 
