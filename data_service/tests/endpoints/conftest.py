@@ -61,7 +61,7 @@ async def apply_migrations(database: testing.postgresql.Database) -> None:
         If there's an issue with a migration file.
     """
     conn = await asyncpg.connect(dsn=database.url())
-    for fname in get_migration_files(Path("migrations"), end=999998):
+    for fname in get_migration_files(Path("migrations"), end=999):
         try:
             await conn.execute(fname.read_text())
         except asyncpg.PostgresSyntaxError as ex:
