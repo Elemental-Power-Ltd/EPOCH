@@ -38,7 +38,7 @@ async def get_octopus_jwt(http_client: httpx.AsyncClient) -> str:
     return str(response.json()["data"]["obtainKrakenToken"]["token"])
 
 
-async def get_home_mini_id(account_id: str, http_client: httpx.AsyncClient) -> str | None:
+async def get_home_mini_id(account_id: str, http_client: httpx.AsyncClient, token: str | None = None) -> str | None:
     """
     Get the device ID of the Home Mini associated with this account.
 
@@ -77,7 +77,8 @@ async def get_home_mini_id(account_id: str, http_client: httpx.AsyncClient) -> s
     }
     """
     )
-    token = await get_octopus_jwt(http_client)
+    if token is None:
+        token = await get_octopus_jwt(http_client)
     response = await http_client.post(
         "https://api.octopus.energy/v1/graphql/",
         json={"query": query},
@@ -95,7 +96,8 @@ async def get_home_mini_id(account_id: str, http_client: httpx.AsyncClient) -> s
 
 
 async def get_home_mini_readings(
-    home_mini_id: str, start_ts: datetime.datetime, end_ts: datetime.datetime, http_client: httpx.AsyncClient
+    home_mini_id: str, start_ts: datetime.datetime, end_ts: datetime.datetime, http_client: httpx.AsyncClient,
+    token: str | None = None
 ) -> pd.DataFrame:
     """
     Get a set of 10s resolution readings from an Octopus Home Mini.
@@ -138,7 +140,8 @@ async def get_home_mini_readings(
     """
     all_data = []
 
-    token = get_octopus_jwt(http_client)
+    if token is None:
+        token = await get_octopus_jwt(http_client)
     for start, end in itertools.pairwise(
         list(
             pd.date_range(
@@ -163,6 +166,9 @@ async def get_home_mini_readings(
             headers={"Content-Type": "application/json", "Authorization": str(token)},
         )
         data = response.json()["data"]["smartMeterTelemetry"]
+        if data is None:
+            print(response.text)
+            continue
         all_data.extend(data)
 
     # Turn this into a dataframe, with all the type conversions that entails.
