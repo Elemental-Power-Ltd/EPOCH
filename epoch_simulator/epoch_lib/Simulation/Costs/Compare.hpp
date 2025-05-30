@@ -5,6 +5,8 @@
 
 struct ScenarioComparison {
 	float cost_balance;
+	float meter_balance;
+	float operating_balance;
 	float payback_horizon_years;
 	float total_annualised_cost;
 	float carbon_balance_scope_1;
@@ -29,8 +31,6 @@ float calculate_Grid_annualised_cost(const UsageData& usage);
 float calculate_Project_annualised_cost(const UsageData& usage);
 
 float calculate_total_annualised_cost(const UsageData& usage);
-
-float calculate_usage_cost(const UsageData& usage, float total_annualised_cost);
 
 float calculate_payback_horizon(float capex, float cost_balance);
 

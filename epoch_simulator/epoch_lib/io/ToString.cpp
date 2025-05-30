@@ -4,37 +4,43 @@
 
 std::string resultToString(const SimulationResult& result) {
 	return std::format(
-		"SimulationResult("
-		"carbon_balance_scope_1: {},"
-		"carbon_balance_scope_2: {},"
-		"cost_balance: {},"
-		"capex: {},"
-		"payback_horizon: {},"
-		"annualised_cost: {},"
-		"{}"
+		"SimulationResult(\n"
+		"  carbon_balance_scope_1: {},\n"
+		"  carbon_balance_scope_2: {},\n"
+		"  meter_balance: {},\n"
+		"  operating_balance: {},\n"
+		"  cost_balance: {},\n"
+		"  capex: {},\n"
+		"  payback_horizon: {},\n"
+		"  annualised_cost: {},\n"
+		"  scenario: {}\n"
+		"  baseline: {}\n"
 		")",
 		result.scenario_carbon_balance_scope_1,
 		result.scenario_carbon_balance_scope_2,
+		result.meter_balance,
+		result.operating_balance,
 		result.scenario_cost_balance,
 		result.project_CAPEX,
 		result.payback_horizon_years,
 		result.total_annualised_cost,
-		metricsToString(result.metrics)
+		metricsToString(result.metrics),
+		metricsToString(result.baseline_metrics)
 	);
 }
 
-std::string metricsToString(const SimulationMetrics& metrics)
-{
+std::string metricsToString(const SimulationMetrics& metrics) {
 	return std::format(
-		"total_gas_used: {},"
-		"total_electricity_imported: {},"
-		"total_electricity_generated: {},"
-		"total_electricity_exported: {},"
-		"total_electrical_shortfall: {},"
-		"total_heat_shortfall: {},"
-		"total_gas_import_cost: {},"
-		"total_electricity_import_cost: {},"
-		"total_electricity_export_gain: {}",
+		"\n    total_gas_used: {},\n"
+		"    total_electricity_imported: {},\n"
+		"    total_electricity_generated: {},\n"
+		"    total_electricity_exported: {},\n"
+		"    total_electrical_shortfall: {},\n"
+		"    total_heat_shortfall: {},\n"
+		"    total_gas_import_cost: {},\n"
+		"    total_electricity_import_cost: {},\n"
+		"    total_electricity_export_gain: {},\n"
+		"    total_meter_cost: {}",
 		metrics.total_gas_used,
 		metrics.total_electricity_imported,
 		metrics.total_electricity_generated,
@@ -43,7 +49,9 @@ std::string metricsToString(const SimulationMetrics& metrics)
 		metrics.total_heat_shortfall,
 		metrics.total_gas_import_cost,
 		metrics.total_electricity_import_cost,
-		metrics.total_electricity_export_gain);
+		metrics.total_electricity_export_gain,
+		metrics.total_meter_cost
+	);
 }
 
 std::string taskDataToString(const TaskData& taskData) {

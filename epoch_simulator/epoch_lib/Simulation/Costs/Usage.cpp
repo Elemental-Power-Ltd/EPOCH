@@ -63,10 +63,18 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 }
 
 
+float calculate_meter_cost(const UsageData& usage) {
+	float costs = usage.elec_cost + usage.fuel_cost;
+	float revenues = usage.export_revenue + usage.electric_vehicle_revenue + usage.high_priority_revenue + usage.low_priority_revenue;
+	return costs - revenues;
+}
+
+
 UsageData calculateBaselineUsage(const SiteData& siteData, const TaskData& taskData, const CostVectors& costVectors) {
 	auto usage = sumUsage(siteData, taskData, costVectors);
 	usage.capex_breakdown = calculate_capex(siteData, taskData);
 	usage.opex_breakdown = calculate_opex(taskData);
+	usage.total_meter_cost = calculate_meter_cost(usage);
 	return usage;
 }
 
@@ -75,5 +83,6 @@ UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& basel
 	auto usage = sumUsage(siteData, scenario, costVectors);
 	usage.capex_breakdown = calculate_capex_with_discounts(siteData, baseline, scenario);
 	usage.opex_breakdown = calculate_opex(scenario);
+	usage.total_meter_cost = calculate_meter_cost(usage);
 	return usage;
 }

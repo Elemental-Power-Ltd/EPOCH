@@ -52,6 +52,7 @@ Simulator::Simulator(SiteData siteData):
 	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, mBaselineTaskData);
 	mBaselineUsage = calculateBaselineUsage(mSiteData, mBaselineTaskData, baselineCostVectors);
 
+	mBaselineMetrics = calculateMetrics(baselineReportData, mBaselineUsage);
 }
 
 SimulationResult Simulator::simulateScenario(const TaskData& taskData, SimulationType simulationType) const {
@@ -90,21 +91,15 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 	result.project_CAPEX = scenarioUsage.capex_breakdown.total_capex;
 	result.total_annualised_cost = comparison.total_annualised_cost;
 	result.scenario_cost_balance = comparison.cost_balance;
+	result.meter_balance = comparison.meter_balance;
+	result.operating_balance = comparison.operating_balance;
 	result.payback_horizon_years = comparison.payback_horizon_years;
 	result.scenario_carbon_balance_scope_1 = comparison.carbon_balance_scope_1;
 	result.scenario_carbon_balance_scope_2 = comparison.carbon_balance_scope_2;
 
-	result.metrics.total_gas_used = result.report_data->GasCH_load.sum();
-	result.metrics.total_electricity_imported = result.report_data->Grid_Import.sum();
-	result.metrics.total_electricity_generated = result.report_data->PVacGen.sum();
-	result.metrics.total_electricity_exported = result.report_data->Grid_Export.sum();
+	result.metrics = calculateMetrics(result.report_data.value(), scenarioUsage);
+	result.baseline_metrics = mBaselineMetrics;
 
-	result.metrics.total_electrical_shortfall = result.report_data->Actual_import_shortfall.sum();
-	result.metrics.total_heat_shortfall = result.report_data->Heat_shortfall.sum();
-
-	result.metrics.total_gas_import_cost = scenarioUsage.fuel_cost;
-	result.metrics.total_electricity_import_cost = scenarioUsage.elec_cost;
-	result.metrics.total_electricity_export_gain = scenarioUsage.export_revenue;
 
 	if (simulationType != SimulationType::FullReporting) {
 		// TEMPORARY HACK
@@ -358,6 +353,26 @@ CostVectors Simulator::extractCostVectors(const ReportData& reportData, const Ta
 	costVectors.grid_export_prices = Eigen::VectorXf::Constant(mSiteData.timesteps, fixed_export_price);
 
 	return costVectors;
+}
+
+SimulationMetrics Simulator::calculateMetrics(const ReportData& reportData, const UsageData& usage) const {
+	SimulationMetrics metrics{};
+
+	metrics.total_gas_used = reportData.GasCH_load.sum();
+	metrics.total_electricity_imported = reportData.Grid_Import.sum();
+	metrics.total_electricity_generated = reportData.PVacGen.sum();
+	metrics.total_electricity_exported = reportData.Grid_Export.sum();
+
+	metrics.total_electrical_shortfall = reportData.Actual_import_shortfall.sum();
+	metrics.total_heat_shortfall = reportData.Heat_shortfall.sum();
+
+	metrics.total_gas_import_cost = usage.fuel_cost;
+	metrics.total_electricity_import_cost = usage.elec_cost;
+	metrics.total_electricity_export_gain = usage.export_revenue;
+
+	metrics.total_meter_cost = usage.total_meter_cost;
+
+	return metrics;
 }
 
 

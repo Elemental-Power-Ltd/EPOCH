@@ -135,7 +135,10 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("capex", &SimulationResult::project_CAPEX)
 		.def_readonly("payback_horizon", &SimulationResult::payback_horizon_years)
 		.def_readonly("annualised_cost", &SimulationResult::total_annualised_cost)
+		.def_readonly("meter_balance", &SimulationResult::meter_balance)
+		.def_readonly("operating_balance", &SimulationResult::operating_balance)
 		.def_readonly("metrics", &SimulationResult::metrics)
+		.def_readonly("baseline_metrics", &SimulationResult::baseline_metrics)
 		.def_readonly("report_data", &SimulationResult::report_data)
 		.def("__repr__", &resultToString);
 
@@ -149,6 +152,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("total_gas_import_cost", &SimulationMetrics::total_gas_import_cost)
 		.def_readonly("total_electricity_import_cost", &SimulationMetrics::total_electricity_import_cost)
 		.def_readonly("total_electricity_export_gain", &SimulationMetrics::total_electricity_export_gain)
+		.def_readonly("total_meter_cost", &SimulationMetrics::total_meter_cost)
 		.def("__repr__", &metricsToString);
 
 	pybind11::class_<ReportData>(m, "ReportData")

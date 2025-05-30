@@ -22,11 +22,13 @@ struct UsageData {
 	float high_priority_revenue = 0.0f;
 	float low_priority_revenue = 0.0f;
 
+	float total_meter_cost;
 	CapexBreakdown capex_breakdown;
 	OpexBreakdown opex_breakdown;
 
 };
 
+float calculate_meter_cost(const UsageData& usage);
 UsageData calculateBaselineUsage(const SiteData& siteData, const TaskData& taskData, const CostVectors& costVectors);
 UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& baseline, const TaskData& scenario, const CostVectors& costVectors);
 

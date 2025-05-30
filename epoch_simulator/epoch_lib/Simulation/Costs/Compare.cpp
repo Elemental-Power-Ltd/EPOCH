@@ -12,10 +12,20 @@ ScenarioComparison compareScenarios(const UsageData& baselineUsage, const UsageD
 	float scenario_total_annualised_costs = calculate_total_annualised_cost(scenarioUsage);
 	comparison.total_annualised_cost = scenario_total_annualised_costs;
 
+	float baseline_opex = baselineUsage.opex_breakdown.ess_enclosure_opex
+		+ baselineUsage.opex_breakdown.ess_pcs_opex
+		+ baselineUsage.opex_breakdown.pv_opex;
 
-	float baseline_usage_costs = calculate_usage_cost(baselineUsage, baseline_total_annualised_costs);
-	float scenario_usage_costs = calculate_usage_cost(scenarioUsage, scenario_total_annualised_costs);
-	comparison.cost_balance = baseline_usage_costs - scenario_usage_costs;
+	float scenario_opex = scenarioUsage.opex_breakdown.ess_enclosure_opex
+		+ scenarioUsage.opex_breakdown.ess_pcs_opex
+		+ scenarioUsage.opex_breakdown.pv_opex;
+
+	// meter balance is the difference between the baseline & scenario imports and exports
+	comparison.meter_balance = baselineUsage.total_meter_cost - scenarioUsage.total_meter_cost;
+	// operating balance then include the OPEX difference
+	comparison.operating_balance = comparison.meter_balance + baseline_opex - scenario_opex;
+	// finally, cost balance also includes the annualised cost of the components
+	comparison.cost_balance = comparison.operating_balance + baseline_total_annualised_costs - scenario_total_annualised_costs;
 
 	comparison.payback_horizon_years = calculate_payback_horizon(scenarioUsage.capex_breakdown.total_capex, comparison.cost_balance);
 
@@ -104,11 +114,6 @@ float calculate_total_annualised_cost(const UsageData& usage) {
 	return total_annualised_cost;
 }
 
-float calculate_usage_cost(const UsageData& usage, float total_annualised_cost) {
-	float costs = usage.elec_cost + usage.fuel_cost;
-	float revenues = usage.export_revenue + usage.electric_vehicle_revenue + usage.high_priority_revenue + usage.low_priority_revenue;
-	return costs + total_annualised_cost - revenues;
-}
 
 /**
 * Calculate the payback hoizon of a scenario.

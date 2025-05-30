@@ -43,10 +43,13 @@ private:
 
 	CostVectors extractCostVectors(const ReportData& reportData, const TaskData& taskData) const;
 
+	SimulationMetrics calculateMetrics(const ReportData& reportData, const UsageData& usage) const;
+
 	float getFixedAvailableImport(const TaskData& taskData) const;
 
 	const SiteData mSiteData;
 	TaskData mBaselineTaskData;
 	UsageData mBaselineUsage;
+	SimulationMetrics mBaselineMetrics;
 
 };
