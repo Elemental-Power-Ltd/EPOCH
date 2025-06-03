@@ -9,7 +9,7 @@ from app.internal.ga_utils import ProblemInstance, RoundingAndDegenerateRepair, 
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
-from app.models.metrics import _METRICS, Metric, MetricValues
+from app.models.metrics import _METRICS, _OBJECTIVES, Metric, MetricValues
 from app.models.result import PortfolioSolution
 from app.models.site_range import Building, Config, DomesticHotWater, Grid, HeatPump, HeatSourceEnum, Renewables, SiteRange
 
@@ -62,7 +62,7 @@ class TestProblemInstance:
                     assert hasattr(td_pydantic, asset_name)
 
     def test_apply_directions(self, default_problem_instance: ProblemInstance):
-        metric_values: MetricValues = dict.fromkeys(_METRICS, 10)
+        metric_values: MetricValues = dict.fromkeys(_OBJECTIVES, 10)
         res = default_problem_instance.apply_directions(deepcopy(metric_values))
         assert res[Metric.annualised_cost] == metric_values[Metric.annualised_cost]
         assert res[Metric.capex] == metric_values[Metric.capex]
