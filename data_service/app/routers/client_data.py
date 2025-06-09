@@ -10,6 +10,7 @@ import json
 import logging
 import typing
 import uuid
+from logging import getLogger
 
 import asyncpg
 from fastapi import APIRouter, HTTPException
@@ -32,6 +33,8 @@ from ..models.core import (
 from ..models.epoch_types.task_data_type import Building, GasHeater, Grid, TaskData
 
 router = APIRouter()
+
+logger = getLogger(__name__)
 
 
 @router.post("/add-site-baseline", tags=["db", "baseline", "site"])
@@ -290,7 +293,7 @@ async def add_client(client_data: ClientData, conn: DatabaseDep) -> tuple[Client
         )
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"Client ID {client_data.client_id} already exists in the database.") from ex
-    logging.info(f"Inserted client {client_data.client_id} with return status {status}")
+    logger.info(f"Inserted client {client_data.client_id} with return status {status}")
     return (client_data, status)
 
 
@@ -331,22 +334,28 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
                 name,
                 location,
                 coordinates,
-                address)
+                address,
+                epc_lmk,
+                dec_lmk)
             VALUES (
                 $1,
                 $2,
                 $3,
                 $4,
                 $5,
-                $6)""",
+                $6,
+                $7,
+                $8)""",
             site_data.client_id,
             site_data.site_id,
             site_data.name,
             site_data.location,
             site_data.coordinates,
             site_data.address,
+            site_data.epc_lmk,
+            site_data.dec_lmk,
         )
-        logging.info(f"Inserted client {site_data.client_id} with return status {status}")
+        logger.info(f"Inserted client {site_data.client_id} with return status {status}")
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"Site ID `{site_data.site_id}` already exists in the database.") from ex
     except asyncpg.exceptions.ForeignKeyViolationError as ex:
@@ -430,3 +439,49 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
     if location is None:
         raise HTTPException(400, f"Site ID `{site_id.site_id}` has no location in the database.")
     return str(location)
+
+
+@router.post("/get-site-data", tags=["db"])
+async def get_site_data(site_id: SiteID, pool: DatabasePoolDep) -> SiteData:
+    """
+    Get the metadata, including human readable name, address and coordinates, for this site.
+
+    Parameters
+    ----------
+    site_id
+        Database ID of the site you are interested in.
+
+    Returns
+    -------
+    SiteData
+        Metadata about this site, including the location and coordinates.
+    """
+    result = await pool.fetchrow(
+        """
+        SELECT
+            client_id,
+            name,
+            location,
+            coordinates,
+            address,
+            epc_lmk,
+            dec_lmk
+        FROM
+            client_info.site_info
+        WHERE
+            site_id = $1""",
+        site_id.site_id,
+    )
+    if result is None:
+        raise HTTPException(400, f"Site ID `{site_id.site_id}` has no metadata in the database.")
+
+    return SiteData(
+        client_id=result["client_id"],
+        site_id=site_id.site_id,
+        name=result["name"],
+        location=result["location"],
+        coordinates=result["coordinates"],
+        address=result["address"],
+        epc_lmk=result["epc_lmk"],
+        dec_lmk=result["dec_lmk"],
+    )
