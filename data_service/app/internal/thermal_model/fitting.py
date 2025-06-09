@@ -8,11 +8,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from bayes_opt import BayesianOptimization, SequentialDomainReductionTransformer
+from sklearn.metrics import r2_score  # type: ignore
 
 from ...models.heating_load import InterventionEnum, ThermalModelResult
 from ..epl_typing import HHDataFrame
 from ..gas_meters.domestic_hot_water import get_poisson_weights
-from ..utils.conversions import joule_to_kwh
 from .building_fabric import apply_interventions_to_structure
 from .heat_capacities import U_VALUES_PATH
 from .integrator import simulate
@@ -92,7 +92,7 @@ def parameters_to_loss(
         L2 loss for this set of parameters in (kWh)^2
     """
     if start_ts is None:
-        start_ts = gas_df["start_ts"].min() if "start_ts" in gas_df.columns else gas_df.index.max()
+        start_ts = gas_df["start_ts"].min() if "start_ts" in gas_df.columns else gas_df.index.min()
     if end_ts is None:
         end_ts = gas_df["end_ts"].max() if "end_ts" in gas_df.columns else gas_df.index.max()
 
@@ -102,6 +102,7 @@ def parameters_to_loss(
             ach=ach,
             u_value=u_value,
             boiler_power=boiler_power,
+            dhw_usage=dhw_usage,
             setpoint=setpoint,
             weather_df=weather_df,
             elec_df=elec_df,
@@ -109,13 +110,6 @@ def parameters_to_loss(
             end_ts=end_ts,
             u_values_path=u_values_path,
         )
-        DHW_EVENT_SIZE = 1.0
-        # daily usage, the Poisson weights are normalised to 1.0
-        # TODO (2025-03-26 MHJB): move this into its own reusable function.
-        dhw_weights = get_poisson_weights(HHDataFrame(sim_df)) * dhw_usage
-        rng = np.random.default_rng()
-        total_dhw_usage = rng.poisson(dhw_weights, dhw_weights.size) * DHW_EVENT_SIZE
-        sim_df["heating_usage"] += total_dhw_usage
     except AssertionError:
         # We need the "bad" outcome to roughly match the scale of the good outcomes,
         # so that we can sensibly fit Gaussians during the Bayesian optimisation.
@@ -130,14 +124,14 @@ def parameters_to_loss(
     # How closely we want the boiler to control the temperatures for the thermal loss.
     # We generally want the temperatures to be within a few degrees of the setpoint
     # at all points during the year, to punish under- or over- heating.
-    # TODO (2025-03-26 MHJB): handle hot ambient days better, this should be max(setpoint, ambient)
-    # or similar.
     setpoint_width = 3.0
+    temperature_mins = np.maximum(setpoint, sim_df["external_temperatures"]) + setpoint_width
+    temperature_maxes = np.maximum(setpoint, sim_df["external_temperatures"]) - setpoint_width
     temperature_loss = cast(
         float,
         np.sum(
             np.maximum(
-                (sim_df["temperatures"] - (setpoint + setpoint_width)) * (sim_df["temperatures"] - (setpoint - setpoint_width)),
+                (sim_df["temperatures"] - temperature_mins) * (sim_df["temperatures"] - temperature_maxes),
                 0,
             )
         ),
@@ -153,6 +147,7 @@ def simulate_parameters(
     u_value: float,
     boiler_power: float,
     setpoint: float,
+    dhw_usage: float,
     weather_df: pd.DataFrame,
     elec_df: pd.DataFrame | None,
     start_ts: datetime.datetime,
@@ -211,13 +206,82 @@ def simulate_parameters(
         u_values_path=u_values_path,
     )
     if interventions is not None:
-        hm = apply_interventions_to_structure(hm, interventions)
+        hm = apply_interventions_to_structure(hm, interventions, u_values_path=u_values_path)
     sim_df = simulate(hm, external_df=weather_df, start_ts=start_ts, end_ts=end_ts, dt=dt, elec_df=elec_df)
-    # Note the change of units here
-    sim_df.heating_usage = -joule_to_kwh(sim_df.heating_usage)
-    sim_df["start_ts"] = sim_df.index
-    sim_df["end_ts"] = sim_df.index + pd.Timedelta(minutes=30)
+
+    DHW_EVENT_SIZE = 1.0
+    dhw_weights = get_poisson_weights(HHDataFrame(sim_df)) * dhw_usage
+    rng = np.random.default_rng()
+    total_dhw_usage = rng.poisson(dhw_weights, dhw_weights.size) * DHW_EVENT_SIZE
+    sim_df["dhw"] = total_dhw_usage
     return sim_df
+
+
+def calculate_thermal_model_r2(
+    params: ThermalModelResult,
+    gas_df: pd.DataFrame,
+    weather_df: pd.DataFrame,
+    elec_df: pd.DataFrame | None = None,
+    u_values_path: Path = U_VALUES_PATH,
+) -> float:
+    """
+    Calculate how effective this thermal model is at reproducing the actual gas meter data.
+
+    This will run a simulation over the time period we have gas meter data for, and calculate the r2_score
+    of (actual_gas, simulated_gas) including DHW.
+
+    Parameters
+    ----------
+    params
+        Thermal model parameters to use for the simulation
+    gas_df
+        Gas dataframe with a `consumption` column to measure against
+    weather_df
+        Weather dataframe over the same period as the gas_df
+    elec_df
+        Electricity dataframe for internal gains
+    u_values_path
+        Path to file containing u values; will default sensibly but watch out if you're in a notebook.
+
+    Returns
+    -------
+    float
+        r2_score of the simulated gas against real gas. 1.0 is the best possible score, but can be infinitely negative.
+    """
+    # We want to simulate the total gas usage over the time that we have gas data for.
+    # Note that for long time periods, this might be slow (e.g. if we have 3 years of data)
+    start_ts = gas_df["start_ts"].min() if "start_ts" in gas_df.columns else gas_df.index.min()
+    end_ts = gas_df["end_ts"].max() if "end_ts" in gas_df.columns else gas_df.index.max()
+
+    sim_df = simulate_parameters(
+        scale_factor=params.scale_factor,
+        ach=params.ach,
+        u_value=params.u_value,
+        boiler_power=params.boiler_power,
+        setpoint=params.setpoint,
+        dhw_usage=params.dhw_usage,
+        elec_df=elec_df,
+        start_ts=start_ts,
+        end_ts=end_ts,
+        weather_df=weather_df,
+        dt=None,
+        interventions=None,
+        u_values_path=u_values_path,
+    )
+
+    sim_gas_usages = []
+    for start_ts, end_ts in zip(gas_df.start_ts, gas_df.end_ts, strict=False):
+        sim_within_mask = np.logical_and(sim_df.index >= start_ts, sim_df.index < end_ts)
+        if np.any(sim_within_mask):
+            heating_usage_within = sim_df.loc[sim_within_mask, "heating_usage"].sum()
+            dhw_usage_within = sim_df.loc[sim_within_mask, "dhw"].sum()
+        else:
+            # In this case, we got an empty time period with no simulated sections.
+            # This is unusual, but we handle it sensibly here.
+            heating_usage_within = 0.0
+            dhw_usage_within = 0.0
+        sim_gas_usages.append(heating_usage_within + dhw_usage_within)
+    return float(r2_score(gas_df["consumption"].to_numpy(), np.asarray(sim_gas_usages)))
 
 
 def fit_to_gas_usage(
@@ -302,19 +366,40 @@ def fit_to_gas_usage(
 
     for hint in hints:
         # Probe some reasonable points to get us started
-        # TODO (2025-03-03 MHJB): also probe +/- 10% of each hint?
+        # TODO (2025-05-01 MHJB): This is a single hint for each one, so we could try
+        # multiple slightly perturbed hints.
         dumped_hint = hint.model_dump()
         for key, val in dumped_hint.items():
+            if key not in pbounds:
+                continue
             # If we re-use a hint from before that's out of bounds,
             # then clamp it back into the bounds that we're using.
-            clamped_val = max(pbounds[key][0], min(val, pbounds[key][1]))
+            # But stay just a touch within the bounds to avoid sampling right at the edges (which are often bad)
+            clamped_val = max(pbounds[key][0] * 1.01, min(val, pbounds[key][1] * 0.99))
             dumped_hint[key] = clamped_val
-        opt.probe(hint.model_dump(), lazy=False)
+        opt.probe(
+            params={
+                "scale_factor": float(hint.scale_factor),
+                "ach": float(hint.ach),
+                "u_value": float(hint.u_value),
+                "boiler_power": float(hint.boiler_power),
+                "setpoint": float(hint.setpoint),
+                "dhw_usage": float(hint.dhw_usage),
+            },
+            lazy=False,
+        )
 
     opt.maximize(init_points=int(np.ceil(n_iter / 10)), n_iter=n_iter)
 
-    assert opt.max is not None
-    assert opt.max["params"] is not None
+    assert opt.max is not None, "Did not find an optimum for this fitting job"
+    assert opt.max["params"] is not None, "Optimum had None in params for fitting job"
+    r2_score = calculate_thermal_model_r2(
+        ThermalModelResult.model_validate(opt.max["params"]),
+        gas_df=gas_df,
+        weather_df=weather_df,
+        elec_df=elec_df,
+        u_values_path=u_values_path,
+    )
     return ThermalModelResult(
         scale_factor=opt.max["params"]["scale_factor"],
         ach=opt.max["params"]["ach"],
@@ -322,4 +407,5 @@ def fit_to_gas_usage(
         boiler_power=opt.max["params"]["boiler_power"],
         setpoint=opt.max["params"]["setpoint"],
         dhw_usage=opt.max["params"]["dhw_usage"],
+        r2_score=r2_score,
     )

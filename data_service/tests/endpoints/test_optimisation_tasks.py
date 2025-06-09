@@ -1,6 +1,5 @@
 """Integration tests for adding and querying optimisation tasks."""
 
-# ruff: noqa: D102
 import copy
 import datetime
 import json
@@ -98,6 +97,7 @@ class TestOptimisationTaskDatabase:
 
     @pytest.fixture
     def sample_scenario(self) -> TaskDataPydantic:
+        """Create a sample scenario to put in our database."""
         task_data = TaskDataPydantic()
         task_data.building = Building(scalar_heat_load=1.0, scalar_electrical_load=1.0, fabric_intervention_index=0)
         task_data.grid = Grid(grid_export=23.0, grid_import=23.0, import_headroom=0.4, tariff_index=0)

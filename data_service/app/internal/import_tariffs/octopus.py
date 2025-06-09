@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime
+import json
 from typing import Any
 
 import httpx
@@ -237,3 +238,69 @@ async def get_fixed_rates(tariff_name: str, region_code: GSPEnum, client: httpx.
         raise ValueError(f"Got {fixed_count} entries for {tariff_name}; use `get_octopus_tariff` for agile or varying tariffs.")
 
     return float(fixed_results.json()["results"][0]["value_exc_vat"])
+
+
+async def get_shapeshifters_rates(
+    postcode: str, client: httpx.AsyncClient, underlying_tariff: str = "BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
+) -> dict[str, float]:
+    """
+    Get the business shapeshifters rates from the Octopus GraphQL API.
+
+    The shapeshifter rates have three sections: night, day, peak.
+    These are only available for business and require a postcode to be provided.
+    ShapeShifter rates are only available via the GraphQL API.
+
+    Parameters
+    ----------
+    postcode
+        The postcode of the address, both incoming and outgoing.
+    client
+        HTTPX async client
+    underlying_tariff
+        The three tier tariff that we're using to calculate these costs, probably something like
+        BUS-12M-FIXED-SHAPE-SHIFTER-YY-MM-DD
+        Check that you're using an up-to-date tariff for this.
+
+    Returns
+    -------
+        Dictionary with day, night and peak rates in p / kWh
+    """
+    # Octopus labels their "day" rate as "offPeakRate" and their "peak" rate as "DayRate".
+    # Rename them in the GraphQL query here for convenience later on.
+    # We use the pre-VAT rates for all tariffs that are charged to businesses.
+    query = """
+    query GetImportAndExportEnergyProduct(
+        $productCode: String!,
+        $postcode: String!) {
+        energyProduct(code: $productCode) {
+            tariffs(postcode: $postcode, first: 1) {
+                edges {
+                    node {
+                        ... on ThreeRateTariff {
+                            night: preVatNightRate
+                            peak: preVatDayRate
+                            day: preVatOffPeakRate
+                        }
+                    }
+                }
+            }
+        }
+    }"""
+    resp = await client.post(
+        "https://api.octopus.energy/v1/graphql/",
+        data={"query": query, "variables": json.dumps({"productCode": underlying_tariff, "postcode": postcode})},
+    )
+    assert resp.status_code == 200, resp.text
+    try:
+        data = resp.json()["data"]["energyProduct"]["tariffs"]["edges"][0]["node"]
+        return {"day": float(data["day"]), "night": float(data["night"]), "peak": float(data["peak"])}
+    except KeyError as ex:
+        raise ValueError(f"Could not get a ShapeShifter tariff for {underlying_tariff} due to `{ex}`") from ex
+    except IndexError as ex:
+        # If we had a bad postcode, it shows up as zero edges in the returned data.
+        raise ValueError(
+            f"Could not get a ShapeShifter tariff for {underlying_tariff} due to a bad postcode: {postcode}"
+        ) from ex
+    except TypeError as ex:
+        # If we had a bad postcode, it shows up as None in the data
+        raise ValueError(f"Could not get a ShapeShifter tariff for {underlying_tariff} due to a bad tariff code.") from ex

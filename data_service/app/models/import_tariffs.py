@@ -55,6 +55,7 @@ class SyntheticTariffEnum(StrEnum):
     Agile = "agile"
     Overnight = "overnight"
     Peak = "peak"
+    ShapeShifter = "shapeshifter"
 
 
 class TariffRequest(pydantic.BaseModel):

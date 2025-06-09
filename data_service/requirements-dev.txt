@@ -10,5 +10,5 @@ pandas-stubs
 joblib-stubs
 scipy-stubs
 types-openpyxl
-ruff==0.9.7
-mypy==1.15.0
+ruff==0.11.13
+mypy==1.16.0

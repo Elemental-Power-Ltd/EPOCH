@@ -30,7 +30,7 @@ from ..models.core import (
     dataset_id_t,
 )
 from ..models.electricity_load import ElectricalLoadRequest
-from ..models.heating_load import HeatingLoadRequest, InterventionEnum
+from ..models.heating_load import HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetList, RemoteMetaData
@@ -165,6 +165,7 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
                 SyntheticTariffEnum.Agile,
                 SyntheticTariffEnum.Overnight,
                 SyntheticTariffEnum.Peak,
+                SyntheticTariffEnum.ShapeShifter,
             ]
         )
         if item is not None
@@ -426,6 +427,7 @@ async def generate_all(
                 start_ts=params.start_ts,
                 end_ts=params.end_ts,
                 interventions=interventions,
+                model_type=HeatingLoadModelEnum.Auto,
             ),
             pool=pool,
             http_client=http_client,
@@ -433,9 +435,16 @@ async def generate_all(
 
     background_tasks.add_task(generate_grid_co2, params, pool=pool, http_client=http_client)
 
-    # We generate four different types of tariff, here done manually to keep track of the
+    # We generate five different types of tariff, here done manually to keep track of the
     # tasks and not lose the handle to the task (which causes mysterious bugs)
-    for tariff_type in SyntheticTariffEnum:
+    # Note that the order here doesn't matter, we just explicitly list them so it's clear what is going on.
+    for tariff_type in [
+        SyntheticTariffEnum.Fixed,
+        SyntheticTariffEnum.Agile,
+        SyntheticTariffEnum.Peak,
+        SyntheticTariffEnum.Overnight,
+        SyntheticTariffEnum.ShapeShifter,
+    ]:
         background_tasks.add_task(
             generate_import_tariffs,
             TariffRequest(

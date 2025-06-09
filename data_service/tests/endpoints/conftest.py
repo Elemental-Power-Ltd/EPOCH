@@ -61,11 +61,13 @@ async def apply_migrations(database: testing.postgresql.Database) -> None:
         If there's an issue with a migration file.
     """
     conn = await asyncpg.connect(dsn=database.url())
-    for fname in get_migration_files(Path("migrations"), end=999998):
+    for fname in get_migration_files(Path("migrations"), end=999):
         try:
             await conn.execute(fname.read_text())
         except asyncpg.PostgresSyntaxError as ex:
             raise asyncpg.PostgresSyntaxError(f"Postgres syntax error in {fname}: {ex}") from ex
+        except asyncpg.exceptions.UniqueViolationError as ex:
+            raise asyncpg.exceptions.UniqueViolationError(f"Unique violation error {fname}: {ex}") from ex
 
 
 db_factory = testing.postgresql.PostgresqlFactory(
