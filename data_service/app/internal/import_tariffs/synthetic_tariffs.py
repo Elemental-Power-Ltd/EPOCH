@@ -130,7 +130,7 @@ def create_shapeshifter_tariff(
     # Pre-fill with day costs as they're the "default"
     df = pd.DataFrame(index=timestamps, data={"cost": [day_cost for _ in timestamps]})
     utc_times = timestamps.tz_convert(datetime.UTC)
-    night_start, night_end = datetime.time(hour=4, minute=0), datetime.time(hour=7, minute=0)
+    night_start, night_end = datetime.time(hour=0, minute=0), datetime.time(hour=7, minute=0)
     peak_start, peak_end = datetime.time(hour=16, minute=0), datetime.time(hour=19, minute=0)
 
     is_night_mask = np.logical_and(night_start <= utc_times.time, utc_times.time < night_end)
