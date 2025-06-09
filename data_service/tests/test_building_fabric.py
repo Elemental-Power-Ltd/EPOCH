@@ -1,6 +1,6 @@
 """Tests for the currently janky building fabric savings."""
 
-# ruff: noqa: D101, D102
+# ruff: noqa: D101
 import copy
 
 import pytest

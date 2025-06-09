@@ -13,6 +13,11 @@ async def get_octopus_jwt(http_client: httpx.AsyncClient) -> str:
     """
     Get a short lived JWT for usage in other Octopus GraphQL queries.
 
+    Parameters
+    ----------
+    http_client
+        HTTP Client with connection pool
+
     Environment
     -----------
     EP_OCTOPUS_API_KEY
@@ -47,20 +52,18 @@ async def get_home_mini_id(account_id: str, http_client: httpx.AsyncClient, toke
     account_id
         The ID of the Octopus account, starts `A-...`
     http_client
+        HTTP client with connection pool.
+    token
+        JWT for connection to Octopus. If None, get a new one.
 
     Returns
     -------
-    Device ID of the home mini, or None if there isn't one.
+        Device ID of the home mini, or None if there isn't one.
     """
-    # TODO (2025-04-11 MHJB): this looks pretty graphql-injection risky
-    # but passing the argument requires a mystery incantation that I don't
-    # actually know, and this is only for internal use, so it's probably fine?
-    query = (
-        """
-    query MyQuery
-    {account(accountNumber: """
-        + f'"{account_id}"'
-        + """)
+    query = """
+    query MyQuery ($accountNumber: String!)
+    {
+        account(accountNumber: $accountNumber)
         {
             electricityAgreements(active: true)
             {
@@ -76,12 +79,11 @@ async def get_home_mini_id(account_id: str, http_client: httpx.AsyncClient, toke
         }
     }
     """
-    )
     if token is None:
         token = await get_octopus_jwt(http_client)
     response = await http_client.post(
         "https://api.octopus.energy/v1/graphql/",
-        json={"query": query},
+        json={"query": query, "variables": {"accountNumber": account_id}},
         headers={"Content-Type": "application/json", "Authorization": token},
     )
     try:
@@ -96,8 +98,11 @@ async def get_home_mini_id(account_id: str, http_client: httpx.AsyncClient, toke
 
 
 async def get_home_mini_readings(
-    home_mini_id: str, start_ts: datetime.datetime, end_ts: datetime.datetime, http_client: httpx.AsyncClient,
-    token: str | None = None
+    home_mini_id: str,
+    start_ts: datetime.datetime,
+    end_ts: datetime.datetime,
+    http_client: httpx.AsyncClient,
+    token: str | None = None,
 ) -> pd.DataFrame:
     """
     Get a set of 10s resolution readings from an Octopus Home Mini.
@@ -111,12 +116,18 @@ async def get_home_mini_readings(
     start_ts
         Earliest time to get data for
     end_ts
-        Latest time to get data for
+        Latest time to get data for. Must be within 7 days of start ts.
+    http_client
+        HTTP Client with connection pool
+    token
+        JWT for connection to Octopus. If None, get a new one.
 
     Returns
     -------
     Pandas dataframe of consumption, export, demand, consumptionDelta readings.
     """
+    if end_ts - start_ts > datetime.timedelta(days=7):
+        raise ValueError("Requested a start and end that are too far apart.")
     query = """
     query SmartMeterTelemetry(
       $deviceId: String!,

@@ -54,7 +54,6 @@ class Database:
         else:
             self.password = password
 
-
         self.user = user
         self.database = database
         print(self.host, self.user, self.password, self.dsn, self.database)

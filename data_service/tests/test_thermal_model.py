@@ -1,6 +1,6 @@
 """Tests for the non-endpoint thermal model code."""
 
-# ruff: noqa: D101, D102
+# ruff: noqa: D101
 from copy import deepcopy
 
 import pytest
