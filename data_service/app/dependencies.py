@@ -46,15 +46,17 @@ class Database:
         self.dsn = dsn  # might be None
 
         self.host = host
+
         if password is None:
             # If we didn't get a password from the environment, it might be None anyway
             # (this can sometimes bite us when importing, as we'll do this bit first!)
             self.password = get_secrets_environment().get("EP_POSTGRES_PASSWORD", None)
         else:
             self.password = password
+
         self.user = user
         self.database = database
-
+        print(self.host, self.user, self.password, self.dsn, self.database)
         self.pool: asyncpg.Pool | None = None
 
     async def create_pool(self) -> None:
