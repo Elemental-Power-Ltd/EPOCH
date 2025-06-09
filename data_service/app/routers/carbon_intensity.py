@@ -18,6 +18,7 @@ import pydantic
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
+from ..internal.client_data import get_postcode
 from ..internal.utils import chunk_time_period
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
@@ -280,17 +281,10 @@ async def generate_grid_co2(
     *metadata*
         Metadata about the grid CO2 information we've just put into the database.
     """
-    async with pool.acquire() as conn:
-        postcode = await conn.fetchval(
-            r"""
-            SELECT
-                (regexp_match(address, '[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}'))[1]
-            FROM client_info.site_info
-            WHERE site_id = $1""",
-            params.site_id,
-        )
-
-    if postcode is None:
+    try:
+        postcode = await get_postcode(site_id=params.site_id, pool=pool)
+    except ValueError:
+        postcode = None
         logger.warning(f"No postcode found for {params.site_id}, using National data.")
 
     all_data = await fetch_carbon_intensity(

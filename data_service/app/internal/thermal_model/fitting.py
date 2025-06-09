@@ -370,12 +370,24 @@ def fit_to_gas_usage(
         # multiple slightly perturbed hints.
         dumped_hint = hint.model_dump()
         for key, val in dumped_hint.items():
+            if key not in pbounds:
+                continue
             # If we re-use a hint from before that's out of bounds,
             # then clamp it back into the bounds that we're using.
             # But stay just a touch within the bounds to avoid sampling right at the edges (which are often bad)
             clamped_val = max(pbounds[key][0] * 1.01, min(val, pbounds[key][1] * 0.99))
             dumped_hint[key] = clamped_val
-        opt.probe(hint.model_dump(), lazy=False)
+        opt.probe(
+            params={
+                "scale_factor": float(hint.scale_factor),
+                "ach": float(hint.ach),
+                "u_value": float(hint.u_value),
+                "boiler_power": float(hint.boiler_power),
+                "setpoint": float(hint.setpoint),
+                "dhw_usage": float(hint.dhw_usage),
+            },
+            lazy=False,
+        )
 
     opt.maximize(init_points=int(np.ceil(n_iter / 10)), n_iter=n_iter)
 

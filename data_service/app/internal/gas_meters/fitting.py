@@ -155,31 +155,15 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
     hload_df
         Heating load dataframe at half hourly resolution with `dhw`, `heating` and `predicted` columns.
     """
-    bait_initial = [
-        0.012,  # solar gain
-        -0.20,  # wind chill
-        -0.05,  # humidity discomfort
-        0.5,  # smoothing
-        15.5,  # threshold
-    ]
-
-    result = scipy.optimize.minimize(
-        score_bait_coefficients,
-        bait_initial,
-        args=(gas_df, weather_df),
-        method="Nelder-Mead",
-        bounds=[(0, None), (None, 0), (None, None), (0, 1), (13, 20)],
-    )  # type: ignore
-    assert result.success, "Optimisation did not succeed"
-    bait_fitted = result.x
+    bait_fitted = fit_bait_and_model(gas_df=gas_df, weather_df=weather_df)
     bait_hdd = compute_monthly_hdd(
         gas_df=gas_df,
         weather_df=weather_df,
-        solar_gain=bait_fitted[0],
-        wind_chill=bait_fitted[1],
-        humidity_discomfort=bait_fitted[2],
-        smoothing=bait_fitted[3],
-        thresh=bait_fitted[4],
+        solar_gain=bait_fitted.solar_gain,
+        wind_chill=bait_fitted.wind_chill,
+        humidity_discomfort=bait_fitted.humidity_discomfort,
+        smoothing=bait_fitted.smoothing,
+        thresh=bait_fitted.threshold,
     )
     gas_df["hdd"] = bait_hdd
 
@@ -191,10 +175,10 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
     hh_weather_df = WeatherDataFrame(weather_df.resample("30min").mean().interpolate(method="time"))
     bait = building_adjusted_internal_temperature(
         hh_weather_df,
-        solar_gain=bait_fitted[0],
-        wind_chill=bait_fitted[1],
-        humidity_discomfort=bait_fitted[2],
-        smoothing=bait_fitted[3],
+        solar_gain=bait_fitted.solar_gain,
+        wind_chill=bait_fitted.wind_chill,
+        humidity_discomfort=bait_fitted.humidity_discomfort,
+        smoothing=bait_fitted.smoothing,
     )
 
     hload_df: HHDataFrame = HHDataFrame(
@@ -207,7 +191,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
             )
         )
     )
-    hh_bait_hdd = np.maximum(bait_fitted[4] - bait, 0) / 48
+    hh_bait_hdd = np.maximum(bait_fitted.threshold - bait, 0) / 48
     hload_df["hdd"] = hh_bait_hdd
 
     # TODO (2024-06-28 MHJB): Add different options for how to assign DHW and heating (even, greedy, poisson)
@@ -251,11 +235,11 @@ def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame, a
         args=(gas_df, weather_df),
         method="Nelder-Mead",
         bounds=[
-            (0.0, None if apply_bait else 0.0),
-            (None if apply_bait else 0.0, 0.0),
-            (None if apply_bait else 0.0, None if apply_bait else 0.0),
-            (0.0, 1.0 if apply_bait else 0.0),
-            (13, 20),
+            (0.0, None if apply_bait else 0.0),  # solar gain
+            (None if apply_bait else 0.0, 0.0),  # wind chill
+            (-1.0 if apply_bait else 0.0, 1.0 if apply_bait else 0.0),  # humidity
+            (0.0, 1.0 if apply_bait else 0.0),  # smoothing
+            (13, 20),  # threshold
         ],
     )  # type: ignore
     assert result.success, "Optimisation did not succeed"
