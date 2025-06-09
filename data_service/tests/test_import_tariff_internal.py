@@ -102,6 +102,61 @@ class TestGetDayNightRates:
                 _ = await it.get_day_and_night_rates("AGILE-FLEX-22-11-25", region_code=GSPEnum.C, client=client)
 
 
+class TestShapeShifterTariffs:
+    @pytest.mark.asyncio
+    async def test_shapeshifter_rates(self) -> None:
+        """Test that we get sensible results for a shapeshifter tariff."""
+        async with MockedHttpClient() as client:
+            result = await it.get_shapeshifters_rates(
+                postcode="SW1A 0AA", client=client, underlying_tariff="BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
+            )
+        assert set(result.keys()) == {"day", "peak", "night"}
+        assert result["night"] <= result["day"] <= result["peak"]
+
+    @pytest.mark.asyncio
+    async def test_real_non_shapeshifter(self) -> None:
+        """Test that we get a useful error for a non-shapeshifter tariff."""
+        with pytest.raises(ValueError, match="AGILE-FLEX-22-11-25"):
+            async with MockedHttpClient() as client:
+                _ = await it.get_shapeshifters_rates(
+                    postcode="SW1A 0AA", client=client, underlying_tariff="AGILE-FLEX-22-11-25"
+                )
+
+    @pytest.mark.asyncio
+    async def test_real_bad_tariff(self) -> None:
+        """Test that we get a useful error for a bad tariff."""
+        with pytest.raises(ValueError, match="NOT_A_REAL_TARIFF"):
+            async with MockedHttpClient() as client:
+                _ = await it.get_shapeshifters_rates(postcode="SW1A 0AA", client=client, underlying_tariff="NOT_A_REAL_TARIFF")
+
+    @pytest.mark.asyncio
+    async def test_real_bad_postcode(self) -> None:
+        """Test that we get a useful error for a non-shapeshifter tariff."""
+        with pytest.raises(ValueError, match="BAD_POSTCODE"):
+            async with MockedHttpClient() as client:
+                _ = await it.get_shapeshifters_rates(
+                    postcode="BAD_POSTCODE", client=client, underlying_tariff="BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
+                )
+
+    @pytest.mark.asyncio
+    async def test_create_tariff_from_rates(self) -> None:
+        """Test that we create a meaningful tariff from the rates."""
+        async with MockedHttpClient() as client:
+            result = await it.get_shapeshifters_rates(
+                postcode="SW1A 0AA", client=client, underlying_tariff="BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
+            )
+
+        timestamps = pd.date_range(
+            datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+            datetime.datetime(year=2026, month=1, day=1, tzinfo=datetime.UTC),
+            freq=pd.Timedelta(minutes=30),
+        )
+        df = it.create_shapeshifter_tariff(
+            timestamps, day_cost=result["day"], night_cost=result["night"], peak_cost=result["peak"]
+        )
+        assert len(df.cost.unique()) == 3
+
+
 class TestSyntheticTariffs:
     def test_create_fixed(self) -> None:
         fixed_cost = 26.0

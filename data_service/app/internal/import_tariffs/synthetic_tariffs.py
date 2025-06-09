@@ -80,6 +80,10 @@ def create_peak_tariff(
         Dataframe with cost column and timestamp index.
     """
     df = pd.DataFrame(index=timestamps, data={"cost": [day_cost for _ in timestamps]})
+
+    if night_cost is None:
+        night_cost = day_cost
+
     utc_times = timestamps.tz_convert(datetime.UTC)
     cosy_periods = [
         (datetime.time(hour=4, minute=0), datetime.time(hour=7, minute=0)),
@@ -94,4 +98,44 @@ def create_peak_tariff(
         datetime.time(hour=16, minute=0) <= utc_times.time, utc_times.time < datetime.time(hour=19, minute=0)
     )
     df.loc[is_peak_mask, "cost"] += peak_cost
+    return df
+
+
+def create_shapeshifter_tariff(
+    timestamps: pd.DatetimeIndex, day_cost: float, night_cost: float, peak_cost: float
+) -> pd.DataFrame:
+    """
+    Create a ShapeShifter Trio tariff with a peak time premium and cheap night rates.
+
+    This creates a three tier (night, day, peak) tariff.
+    The night period is always 00:00 to 07:00 UTC.
+    The peak period is always 16:00 to 19:00 UTC, and has an extra premium added.
+    https://octopus.energy/smart/shape-shifters/
+
+    Parameters
+    ----------
+    timestamps
+        DatetimeIndex you want to create entries at (most likely half hourly)
+    day_cost
+        Tariff day cost in p / kWh (07:00 to 16:00 and 19:00 - 24:00)
+    night_cost
+        Tariff night cost in p / kWh (00:00 to 07:00).
+    peak_cost
+        Tariff night cost in p / kWh (16:00 to 19:90).
+
+    Returns
+    -------
+        Dataframe with cost column and timestamp index.
+    """
+    # Pre-fill with day costs as they're the "default"
+    df = pd.DataFrame(index=timestamps, data={"cost": [day_cost for _ in timestamps]})
+    utc_times = timestamps.tz_convert(datetime.UTC)
+    night_start, night_end = datetime.time(hour=4, minute=0), datetime.time(hour=7, minute=0)
+    peak_start, peak_end = datetime.time(hour=16, minute=0), datetime.time(hour=19, minute=0)
+
+    is_night_mask = np.logical_and(night_start <= utc_times.time, utc_times.time < night_end)
+    df.loc[is_night_mask, "cost"] = night_cost
+
+    is_peak_mask = np.logical_and(peak_start <= utc_times.time, utc_times.time < peak_end)
+    df.loc[is_peak_mask, "cost"] = peak_cost
     return df

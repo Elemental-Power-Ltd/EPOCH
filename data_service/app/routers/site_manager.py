@@ -165,6 +165,7 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
                 SyntheticTariffEnum.Agile,
                 SyntheticTariffEnum.Overnight,
                 SyntheticTariffEnum.Peak,
+                SyntheticTariffEnum.ShapeShifter,
             ]
         )
         if item is not None
