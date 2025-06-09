@@ -7,6 +7,7 @@ varies over time as the grid changes.
 
 import datetime
 import logging
+import operator
 import typing
 import uuid
 
@@ -17,6 +18,7 @@ import pydantic
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
+from ..internal.client_data import get_postcode
 from ..internal.utils import chunk_time_period
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
@@ -234,8 +236,10 @@ async def fetch_carbon_intensity(
     async with aiometer.amap(
         lambda ts_pair: fetch_carbon_intensity_batch(client=client, postcode=postcode, timestamps=ts_pair),
         time_pairs,
-        max_at_once=1,
-        max_per_second=1,
+        # This is a horrible bodge, but for testing we have a mocked client
+        # where we want to do
+        max_at_once=1 if getattr(client, "DO_RATE_LIMIT", True) else None,
+        max_per_second=1 if getattr(client, "DO_RATE_LIMIT", True) else None,
     ) as results:
         async for result in results:
             all_data.extend(result)
@@ -245,7 +249,7 @@ async def fetch_carbon_intensity(
 
     # Now we've got the data, we should tidy it up.
     # This involves sorting, filter and interpolate it
-    all_data = sorted(all_data, key=lambda x: x["start_ts"])
+    all_data = sorted(all_data, key=operator.itemgetter("start_ts"))
     new_times = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     all_data = interpolate_carbon_intensity(new_times, all_data)
     return all_data
@@ -277,17 +281,10 @@ async def generate_grid_co2(
     *metadata*
         Metadata about the grid CO2 information we've just put into the database.
     """
-    async with pool.acquire() as conn:
-        postcode = await conn.fetchval(
-            r"""
-            SELECT
-                (regexp_match(address, '[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}'))[1]
-            FROM client_info.site_info
-            WHERE site_id = $1""",
-            params.site_id,
-        )
-
-    if postcode is None:
+    try:
+        postcode = await get_postcode(site_id=params.site_id, pool=pool)
+    except ValueError:
+        postcode = None
         logger.warning(f"No postcode found for {params.site_id}, using National data.")
 
     all_data = await fetch_carbon_intensity(

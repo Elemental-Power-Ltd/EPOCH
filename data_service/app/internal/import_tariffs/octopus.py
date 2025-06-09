@@ -2,12 +2,18 @@
 
 import asyncio
 import datetime
+import json
 from typing import Any
 
 import httpx
 import pandas as pd
 
 from ...models.import_tariffs import GSPEnum
+from ..utils import RateLimiter
+
+# Octopus limits the number of calls we can make; it isn't documented so we have to guess about this.
+# "BottlecapDave" from Home Assistant suggests it's 100 / hour, but that seems stricter than what I've actually seen
+OCTOPUS_RATE_LIMITER = RateLimiter(rate_limit_requests=25, rate_limit_period=60.0)
 
 
 async def get_octopus_tariff(
@@ -15,7 +21,7 @@ async def get_octopus_tariff(
     region_code: GSPEnum = GSPEnum.C,
     start_ts: datetime.datetime | None = None,
     end_ts: datetime.datetime | None = None,
-    client: httpx.AsyncClient | None = None,
+    http_client: httpx.AsyncClient | None = None,
 ) -> pd.DataFrame:
     """
     Get a specific Octopus Tariff from their API.
@@ -39,24 +45,53 @@ async def get_octopus_tariff(
         Latest time in tariff to get
     client
         Async http client used to send requests
+    rate_limit_requests
+        Maximum number of requests allowed in the rate limit period
+    rate_limit_period
+        Time period in seconds for the rate limit
 
     Returns
     -------
         Dataframe with cost in p / kWh
     """
-    if client is None:
-        client = httpx.AsyncClient()
+    if http_client is None:
+        http_client = httpx.AsyncClient()
+
+    async def rate_limited_request(url: str, params: dict[str, Any] | None = None) -> httpx.Response:
+        """
+        Make a rate-limited GET request.
+
+        Octopus limits us to 100 calls an hour, which is much longer than
+        the timeline of a given function, so we use a shared rate limiter object.
+        This may take some time -- watch out if you get caught by the limiter!
+
+        Parameters
+        ----------
+        url
+            URL to send the get request to
+        params
+            Query parameters to send with your request
+
+        Returns
+        -------
+        httpx.Response
+            Response from the 3rd party API.
+        """
+        await OCTOPUS_RATE_LIMITER.acquire()
+        return await http_client.get(url, params=params)
+
     params: dict[str, str | int] = {"page_size": 1500}
     if start_ts is not None:
         params["period_from"] = start_ts.isoformat()
     if end_ts is not None:
         params["period_to"] = end_ts.isoformat()
 
-    tariff_metadata_resp = await client.get(f"https://api.octopus.energy/v1/products/{tariff_name}/", params=params)
-    if tariff_metadata_resp.status_code != 200:
-        raise ValueError(tariff_metadata_resp.text)
-    tariff_meta = tariff_metadata_resp.json()
+    tariff_metadata_resp = await rate_limited_request(f"https://api.octopus.energy/v1/products/{tariff_name}/", params=params)
 
+    if tariff_metadata_resp.status_code != 200:
+        raise ValueError(str(tariff_metadata_resp.status_code) + tariff_metadata_resp.text)
+
+    tariff_meta = tariff_metadata_resp.json()
     # TODO (2024-10-25 MHJB): What if we don't have a tariff in this region?
     region_meta = tariff_meta["single_register_electricity_tariffs"][region_code.value]
 
@@ -65,6 +100,7 @@ async def get_octopus_tariff(
             if payment_method in region_meta:
                 for sub_url in region_meta[payment_method]["links"]:
                     if sub_url["rel"] == "standard_unit_rates":
+                        assert isinstance(sub_url["href"], str), f"Got a non-string of type {type(sub_url['href'])} for 'href'"
                         return sub_url["href"]
         raise ValueError(f"Could not find `standard_unit_rates` in {region_meta}")
 
@@ -72,9 +108,11 @@ async def get_octopus_tariff(
 
     all_results = []
     while unit_rate_url:
-        rates_response = await client.get(unit_rate_url, params=params)
-        unit_rate_url = rates_response.json().get("next")
-        all_results.extend(rates_response.json().get("results", []))
+        rates_response = await rate_limited_request(unit_rate_url, params=params)
+        response_json = rates_response.json()
+        unit_rate_url = response_json.get("next")
+        all_results.extend(response_json.get("results", []))
+
     df = pd.DataFrame.from_records(all_results).rename(
         columns={"valid_from": "start_ts", "valid_to": "end_ts", "value_exc_vat": "cost"}
     )
@@ -200,3 +238,69 @@ async def get_fixed_rates(tariff_name: str, region_code: GSPEnum, client: httpx.
         raise ValueError(f"Got {fixed_count} entries for {tariff_name}; use `get_octopus_tariff` for agile or varying tariffs.")
 
     return float(fixed_results.json()["results"][0]["value_exc_vat"])
+
+
+async def get_shapeshifters_rates(
+    postcode: str, client: httpx.AsyncClient, underlying_tariff: str = "BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
+) -> dict[str, float]:
+    """
+    Get the business shapeshifters rates from the Octopus GraphQL API.
+
+    The shapeshifter rates have three sections: night, day, peak.
+    These are only available for business and require a postcode to be provided.
+    ShapeShifter rates are only available via the GraphQL API.
+
+    Parameters
+    ----------
+    postcode
+        The postcode of the address, both incoming and outgoing.
+    client
+        HTTPX async client
+    underlying_tariff
+        The three tier tariff that we're using to calculate these costs, probably something like
+        BUS-12M-FIXED-SHAPE-SHIFTER-YY-MM-DD
+        Check that you're using an up-to-date tariff for this.
+
+    Returns
+    -------
+        Dictionary with day, night and peak rates in p / kWh
+    """
+    # Octopus labels their "day" rate as "offPeakRate" and their "peak" rate as "DayRate".
+    # Rename them in the GraphQL query here for convenience later on.
+    # We use the pre-VAT rates for all tariffs that are charged to businesses.
+    query = """
+    query GetImportAndExportEnergyProduct(
+        $productCode: String!,
+        $postcode: String!) {
+        energyProduct(code: $productCode) {
+            tariffs(postcode: $postcode, first: 1) {
+                edges {
+                    node {
+                        ... on ThreeRateTariff {
+                            night: preVatNightRate
+                            peak: preVatDayRate
+                            day: preVatOffPeakRate
+                        }
+                    }
+                }
+            }
+        }
+    }"""
+    resp = await client.post(
+        "https://api.octopus.energy/v1/graphql/",
+        data={"query": query, "variables": json.dumps({"productCode": underlying_tariff, "postcode": postcode})},
+    )
+    assert resp.status_code == 200, resp.text
+    try:
+        data = resp.json()["data"]["energyProduct"]["tariffs"]["edges"][0]["node"]
+        return {"day": float(data["day"]), "night": float(data["night"]), "peak": float(data["peak"])}
+    except KeyError as ex:
+        raise ValueError(f"Could not get a ShapeShifter tariff for {underlying_tariff} due to `{ex}`") from ex
+    except IndexError as ex:
+        # If we had a bad postcode, it shows up as zero edges in the returned data.
+        raise ValueError(
+            f"Could not get a ShapeShifter tariff for {underlying_tariff} due to a bad postcode: {postcode}"
+        ) from ex
+    except TypeError as ex:
+        # If we had a bad postcode, it shows up as None in the data
+        raise ValueError(f"Could not get a ShapeShifter tariff for {underlying_tariff} due to a bad tariff code.") from ex

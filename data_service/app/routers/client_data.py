@@ -203,7 +203,7 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
         Name of the location e.g. "Worksop", "Retford", "Cardiff"
     """
     location = await conn.fetchval(
-        """SELECT location FROM client_info.site_info WHERE site_id = $1""",
+        """SELECT location FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
         site_id.site_id,
     )
     if location is None:

@@ -6,14 +6,29 @@ as part of an API endpoint.
 Use strong typing as much as possible to avoid errors, and add extra types here liberally.
 """
 
-from collections.abc import Mapping
-from typing import NewType, TypeVar
+import functools
+import warnings
+from collections.abc import Callable, Mapping
+from typing import NewType
 
-import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
-FloatOrArray = TypeVar("FloatOrArray", float, npt.NDArray[np.floating], pd.Series)
+
+def mark_unused[R, **KW](func: Callable[KW, R]) -> Callable[KW, R]:
+    """
+    Mark a given function as unused.
+
+    This function has deliberately been left in the code for notebook or debugging purposes,
+    but should be used more generally.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: KW.args, **kwargs: KW.kwargs) -> R:
+        warnings.warn(f"Call to an unused function {func.__name__}", stacklevel=2)
+        return func(*args, **kwargs)
+
+    return wrapper
+
 
 ParameterDict = dict[str, list[float] | list[int] | float | int]
 ConstraintDict = Mapping[str, tuple[None, None] | tuple[float, float] | list[float] | list[int] | list[None]]

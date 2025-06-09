@@ -1,6 +1,5 @@
 """Tests for gas meter conversion and sampling functions."""
 
-# ruff: noqa: D101, D102
 import numpy as np
 import pandas as pd
 import pytest
@@ -70,7 +69,6 @@ class TestHHGasToMonthly:
     def test_output_data(self, gas_df: HHDataFrame) -> None:
         """Test if the output dataframe contains valid data."""
         monthly_gas_df = hh_gas_to_monthly(gas_df)
-        print(monthly_gas_df.head())
         assert pytest.approx(monthly_gas_df["consumption"].sum()) == gas_df["consumption"].sum()
         assert pytest.approx(monthly_gas_df["days"].sum()) == len(gas_df) / 48
 

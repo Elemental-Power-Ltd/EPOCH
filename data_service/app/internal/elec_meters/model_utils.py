@@ -2,6 +2,7 @@
 
 import pathlib
 from enum import StrEnum
+from typing import Self
 
 import joblib
 import numpy as np
@@ -63,7 +64,7 @@ class RBFTimestampEncoder(TransformerMixin):
         X_dayofyear = X_dates.dayofyear.to_numpy().reshape(-1, 1)
         return X_dayofyear
 
-    def fit(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+    def fit(self, X: npt.NDArray[np.floating]) -> Self:
         """
         Fit the RepeatingBasisFunction instance and perform any preprocessing.
 
@@ -93,7 +94,8 @@ class RBFTimestampEncoder(TransformerMixin):
         if not self.is_fitted:
             raise ValueError("The model needs to be fitted before transforming data.")
         X_preprocessed = self._preprocess(X)
-        return self.basis_function.transform(X_preprocessed)
+        result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed)
+        return result
 
     def fit_transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
@@ -107,12 +109,8 @@ class RBFTimestampEncoder(TransformerMixin):
             numpy.ndarray: The transformed data.
         """
         if not self.is_fitted:
-            X_preprocessed = self._preprocess(X)
-            self.basis_function.fit(X_preprocessed)
-            self.is_fitted = True
-            return self.basis_function.transform(X_preprocessed)
-        else:
-            return self.transform(X)
+            self.fit(X)
+        return self.transform(X)
 
 
 def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScaler:
@@ -148,9 +146,10 @@ def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScal
 
         if refresh:
             joblib.dump(scaler, path)
-        return scaler
     except FileNotFoundError as ex:
         raise FileNotFoundError(f"No StandardScaler found at {path}") from ex
+
+    return scaler
 
 
 def load_all_scalers(

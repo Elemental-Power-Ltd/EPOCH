@@ -55,7 +55,7 @@ async def get_pvgis_optima(
         if client is not None:
             res = await client.get(base_url, params=params)
         else:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient() as client:  # noqa: PLR1704
                 res = await client.get(base_url, params=params)
     except httpx.TimeoutException as ex:
         raise HTTPException(400, f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
@@ -144,7 +144,7 @@ async def get_pvgis_data(
     if client is not None:
         req = await client.get(base_url, params=params)
     else:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient() as client:  # noqa: PLR1704
             req = await client.get(base_url, params=params)
 
     try:
@@ -242,5 +242,8 @@ async def get_renewables_ninja_data(
     renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
     renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)
-    within_timestamps_mask = np.logical_and(renewables_df.index >= start_ts, renewables_df.index < end_ts)  # type: ignore
-    return renewables_df[within_timestamps_mask]
+    within_timestamps_mask = np.logical_and(
+        renewables_df.index >= pd.Timestamp(start_ts), renewables_df.index < pd.Timestamp(end_ts)
+    )
+    masked_df: pd.DataFrame = renewables_df[within_timestamps_mask]
+    return masked_df

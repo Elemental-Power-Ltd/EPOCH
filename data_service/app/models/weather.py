@@ -31,6 +31,7 @@ class WeatherDatasetEntry(pydantic.BaseModel):
     pressure: float | None = pydantic.Field(examples=[998.0], description="Air pressure in mbar")
     dniradiation: float | None = None
     difradiation: float | None = None
+    cloudcover: float | None = None
 
 
 class WeatherRequest(pydantic.BaseModel):

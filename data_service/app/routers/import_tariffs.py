@@ -12,15 +12,18 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
+from ..dependencies import DatabasePoolDep, HttpClientDep
+from ..internal.client_data import get_postcode
 from ..internal.import_tariffs import (
-    combine_tariffs,
     create_day_and_night_tariff,
     create_fixed_tariff,
     create_peak_tariff,
+    create_shapeshifter_tariff,
     get_day_and_night_rates,
     get_fixed_rates,
     get_octopus_tariff,
+    get_re24_wholesale_tariff,
+    get_shapeshifters_rates,
     resample_to_range,
     tariff_to_new_timestamps,
 )
@@ -81,7 +84,7 @@ CARBON_INTENSITY_ID_TO_AREA_ID = {
 
 
 @router.post("/get-gsp-code", tags=["list", "tariff"])
-async def get_gsp_code(site_id: SiteID, http_client: HttpClientDep, conn: DatabaseDep) -> GSPCodeResponse:
+async def get_gsp_code(site_id: SiteID, http_client: HttpClientDep, pool: DatabasePoolDep) -> GSPCodeResponse:
     """
     Get a Grid Supply Point code, including regional information.
 
@@ -99,16 +102,7 @@ async def get_gsp_code(site_id: SiteID, http_client: HttpClientDep, conn: Databa
     GSPCodeResponse
         Details about the grid supply and DNO for this site.
     """
-    postcode = await conn.fetchval(
-        r"""
-    SELECT
-        (regexp_match(address, '[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}'))[1]
-    FROM client_info.site_info
-    WHERE site_id = $1""",
-        site_id.site_id,
-    )
-    if postcode is None:
-        raise HTTPException(400, f"Could not find a postcode (and thus GSP code) for {site_id}.")
+    postcode = await get_postcode(site_id.site_id, pool=pool)
     inbound_postcode, _ = postcode.split(" ")
     ci_result = await http_client.get(f"https://api.carbonintensity.org.uk/regional/postcode/{inbound_postcode}")
     if not ci_result.status_code == 200 or "data" not in ci_result.json():
@@ -243,24 +237,19 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
     *tariff_metadata*
         Some useful metadata about the tariff entry in the database
     """
-    async with pool.acquire() as conn:
-        region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, conn=conn)).region_code
+    region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, pool=pool)).region_code
 
     if isinstance(params.tariff_name, SyntheticTariffEnum):
         provider = TariffProviderEnum.Synthetic
         if params.tariff_name == SyntheticTariffEnum.Agile:
-            logger.info(f"Generating an Agile tariff in {region_code} between {params.start_ts} and {params.end_ts}")
-            underlying_tariff = "AGILE-24-10-01"
-            # Request "None" timestamps to get as much data as we have available.
-            price_df_new = await get_octopus_tariff(
-                underlying_tariff, region_code=region_code, start_ts=None, end_ts=None, client=http_client
+            logger.info(f"Generating an Agile-like tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+            # Use these rounded dates to make sure everything resamples nicely and that we get the most recent data.
+            underlying_tariff = "RE24-NORDPOOL"
+            end_ts = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+            start_ts = end_ts - datetime.timedelta(days=365)
+            price_df = await get_re24_wholesale_tariff(
+                start_ts=start_ts, end_ts=end_ts, http_client=http_client, region_code=region_code
             )
-            # Combine with the previous agile tariff to get enough coverage
-            price_df_old = await get_octopus_tariff(
-                "AGILE-23-12-06", region_code=region_code, start_ts=None, end_ts=None, client=http_client
-            )
-            price_df = combine_tariffs([price_df_old, price_df_new])
-            price_df = resample_to_range(price_df)
             price_df = tariff_to_new_timestamps(
                 price_df, pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30))
             )
@@ -288,6 +277,22 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
             fixed_cost = await get_fixed_rates(tariff_name=underlying_tariff, region_code=region_code, client=http_client)
             price_df = create_fixed_tariff(timestamps, fixed_cost=fixed_cost)
+        elif params.tariff_name == SyntheticTariffEnum.ShapeShifter:
+            logger.info(f"Generating a ShapeShifter tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+            underlying_tariff = "BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
+            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+
+            postcode = await get_postcode(params.site_id, pool=pool)
+            shapeshifter_costs = await get_shapeshifters_rates(
+                postcode=postcode, client=http_client, underlying_tariff=underlying_tariff
+            )
+            price_df = create_shapeshifter_tariff(
+                timestamps,
+                day_cost=shapeshifter_costs["day"],
+                night_cost=shapeshifter_costs["night"],
+                peak_cost=shapeshifter_costs["peak"],
+            )
+
     else:
         logger.info(
             f"Generating a tariff with real Octopus data for {params.tariff_name} in {region_code}"
@@ -428,4 +433,6 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
                 method="nearest",
             )
 
+    # Note that the unit costs in the database are in p / kWh, but we return £ / kWh for EPOCH to use.
+    # Yes, this is very confusing.
     return EpochTariffEntry(timestamps=dfs[0].index.to_list(), data=[(df["unit_cost"] / 100).to_list() for df in dfs])
