@@ -10,7 +10,7 @@ import datetime
 import logging
 import os
 from collections.abc import Callable
-from typing import BinaryIO
+from typing import Any, BinaryIO
 
 import numpy as np
 import numpy.typing as npt
@@ -41,7 +41,7 @@ def check_if_readings_not_consumption(df: pd.DataFrame) -> bool:
     return bool(always_increasing)
 
 
-def parse_comma_float(in_str: float | int | str) -> float:
+def parse_comma_float(in_str: Any) -> float:
     """
     Parse a float that Excel helpfully put a comma into.
 
@@ -55,6 +55,11 @@ def parse_comma_float(in_str: float | int | str) -> float:
     Returns
     -------
         parsed float
+
+    Raises
+    ------
+    ValueError
+        If not parseable
     """
     if isinstance(in_str, str):
         return float(in_str.replace(",", ""))
