@@ -246,6 +246,8 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
 
     try:
         baseline = json.loads(baseline_rec["baseline"])
+        # We use this strict validate to complain if we allowed extra keys through the baseline
+        # which pydantic would normally allow
         return pydantic_strict_validate(baseline)
 
     except ValidationError as ex:
