@@ -267,6 +267,7 @@ async def get_shapeshifters_rates(
     """
     # Octopus labels their "day" rate as "offPeakRate" and their "peak" rate as "DayRate".
     # Rename them in the GraphQL query here for convenience later on.
+    # We use the pre-VAT rates for all tariffs that are charged to businesses.
     query = """
     query GetImportAndExportEnergyProduct(
         $productCode: String!,
