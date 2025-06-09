@@ -29,14 +29,14 @@ class SiteMetrics(BaseModel):
     )
     meter_balance: float | None = Field(
         description="Monetary savings from importing and exporting fuel/electricity when compared against the baseline.",
-        default=None
+        default=None,
     )
     operating_balance: float | None = Field(
         description="Monetary savings from fuel, electricity and opex when compared against the baseline.", default=None
     )
     cost_balance: float | None = Field(
         description="Monetary savings from fuel, electricity, opex and annualised cost when compared against the baseline.",
-        default=None
+        default=None,
     )
     capex: float | None = Field(description="Cost to install this scenario on this site.", default=None)
     payback_horizon: float | None = Field(
@@ -121,7 +121,7 @@ class PortfolioMetrics(BaseModel):
     carbon_balance_scope_1: float | None = Field(
         description="Direct carbon emissions saved by this entire portfolio of scenarios.",
         default=None,
-        examples=[None, math.pi]
+        examples=[None, math.pi],
     )
     carbon_balance_scope_2: float | None = Field(
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
@@ -131,17 +131,17 @@ class PortfolioMetrics(BaseModel):
     )
     meter_balance: float | None = Field(
         description="Monetary savings across the portfolio "
-                    "from importing and exporting fuel/electricity when compared against the baseline.",
-        default=None
+        "from importing and exporting fuel/electricity when compared against the baseline.",
+        default=None,
     )
     operating_balance: float | None = Field(
-        description="Monetary savings across the portfolio "
-                    "from fuel, electricity and opex when compared against the baseline.", default=None
+        description="Monetary savings across the portfolio from fuel, electricity and opex when compared against the baseline.",
+        default=None,
     )
     cost_balance: float | None = Field(
         description="Monetary savings across the portfolio "
-                    "from fuel, electricity, opex and annualised cost when compared against the baseline.",
-        default=None
+        "from fuel, electricity, opex and annualised cost when compared against the baseline.",
+        default=None,
     )
     capex: float | None = Field(description="Cost to install this scenario on entire portfolio of scenarios.", default=None)
     payback_horizon: float | None = Field(
@@ -194,8 +194,7 @@ class PortfolioMetrics(BaseModel):
         description="Baseline heat shortfall (kWh) when compared to the demand across this portfolio", default=None
     )
     baseline_gas_import_cost: float | None = Field(
-        description="Baseline spend (£) importing gas across this portfolio",
-        default=None
+        description="Baseline spend (£) importing gas across this portfolio", default=None
     )
     baseline_electricity_import_cost: float | None = Field(
         description="Baseline spend (£) importing electricity from the grid across this portfolio", default=None
@@ -205,7 +204,7 @@ class PortfolioMetrics(BaseModel):
     )
     baseline_meter_cost: float | None = Field(
         description="Baseline cost of importing fuel/electricity minus revenue from exporting across this portfolio.",
-        default=None
+        default=None,
     )
 
 

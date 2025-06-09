@@ -121,7 +121,7 @@ def assign_hh_dhw_greedy(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float)
         def calculate_loss(x: float, df: pd.DataFrame = day_df) -> float:
             return float((dhw_kwh - np.sum(np.minimum(x, df.consumption))) ** 2)
 
-        res = scipy.optimize.minimize_scalar(calculate_loss)  # type: ignore
+        res = scipy.optimize.minimize_scalar(calculate_loss)
 
         hh_gas_df.loc[day_mask, "dhw"] = np.minimum(hh_gas_df.loc[day_mask, "consumption"], float(res.x))
     hh_gas_df["heating"] = hh_gas_df["consumption"] - hh_gas_df["dhw"]

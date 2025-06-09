@@ -132,7 +132,6 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
                 total_electricity_import_cost=nan_to_num(item["metric_total_electricity_import_cost"]),
                 total_electricity_export_gain=nan_to_num(item["metric_total_electricity_export_gain"]),
                 total_meter_cost=nan_to_num(item["metric_total_meter_cost"]),
-
                 baseline_gas_used=nan_to_num(item["metric_baseline_gas_used"]),
                 baseline_electricity_imported=nan_to_num(item["metric_baseline_electricity_imported"]),
                 baseline_electricity_generated=nan_to_num(item["metric_baseline_electricity_generated"]),
@@ -142,7 +141,7 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
                 baseline_gas_import_cost=nan_to_num(item["metric_baseline_gas_import_cost"]),
                 baseline_electricity_import_cost=nan_to_num(item["metric_baseline_electricity_import_cost"]),
                 baseline_electricity_export_gain=nan_to_num(item["metric_baseline_electricity_export_gain"]),
-                baseline_meter_cost=nan_to_num(item["metric_baseline_meter_cost"])
+                baseline_meter_cost=nan_to_num(item["metric_baseline_meter_cost"]),
             ),
             site_results=[
                 SiteOptimisationResult(
@@ -170,7 +169,6 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
                         total_electricity_import_cost=nan_to_num(sub_item["metric_total_electricity_import_cost"]),
                         total_electricity_export_gain=nan_to_num(sub_item["metric_total_electricity_export_gain"]),
                         total_meter_cost=nan_to_num(sub_item["metric_total_meter_cost"]),
-
                         baseline_gas_used=nan_to_num(sub_item["metric_baseline_gas_used"]),
                         baseline_electricity_imported=nan_to_num(sub_item["metric_baseline_electricity_imported"]),
                         baseline_electricity_generated=nan_to_num(sub_item["metric_baseline_electricity_generated"]),
@@ -297,7 +295,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metrics.payback_horizon for item in opt_result.portfolio],
                         [item.metrics.annualised_cost for item in opt_result.portfolio],
                         [item.metrics.carbon_cost for item in opt_result.portfolio],
-
                         [item.metrics.total_gas_used for item in opt_result.portfolio],
                         [item.metrics.total_electricity_imported for item in opt_result.portfolio],
                         [item.metrics.total_electricity_generated for item in opt_result.portfolio],
@@ -308,7 +305,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metrics.total_electricity_import_cost for item in opt_result.portfolio],
                         [item.metrics.total_electricity_export_gain for item in opt_result.portfolio],
                         [item.metrics.total_meter_cost for item in opt_result.portfolio],
-
                         [item.metrics.baseline_gas_used for item in opt_result.portfolio],
                         [item.metrics.baseline_electricity_imported for item in opt_result.portfolio],
                         [item.metrics.baseline_electricity_generated for item in opt_result.portfolio],
@@ -333,7 +329,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_payback_horizon",
                         "metric_annualised_cost",
                         "metric_carbon_cost",
-
                         "metric_total_gas_used",
                         "metric_total_electricity_imported",
                         "metric_total_electricity_generated",
@@ -344,7 +339,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_total_electricity_import_cost",
                         "metric_total_electricity_export_gain",
                         "metric_total_meter_cost",
-
                         "metric_baseline_gas_used",
                         "metric_baseline_electricity_imported",
                         "metric_baseline_electricity_generated",
@@ -384,7 +378,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metrics.payback_horizon for item in pf.site_results],
                         [item.metrics.annualised_cost for item in pf.site_results],
                         [item.metrics.carbon_cost for item in pf.site_results],
-
                         [item.metrics.total_gas_used for item in pf.site_results],
                         [item.metrics.total_electricity_imported for item in pf.site_results],
                         [item.metrics.total_electricity_generated for item in pf.site_results],
@@ -395,7 +388,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         [item.metrics.total_electricity_import_cost for item in pf.site_results],
                         [item.metrics.total_electricity_export_gain for item in pf.site_results],
                         [item.metrics.total_meter_cost for item in pf.site_results],
-
                         [item.metrics.baseline_gas_used for item in pf.site_results],
                         [item.metrics.baseline_electricity_imported for item in pf.site_results],
                         [item.metrics.baseline_electricity_generated for item in pf.site_results],
@@ -421,7 +413,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_payback_horizon",
                         "metric_annualised_cost",
                         "metric_carbon_cost",
-
                         "metric_total_gas_used",
                         "metric_total_electricity_imported",
                         "metric_total_electricity_generated",
@@ -432,7 +423,6 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
                         "metric_total_electricity_import_cost",
                         "metric_total_electricity_export_gain",
                         "metric_total_meter_cost",
-
                         "metric_baseline_gas_used",
                         "metric_baseline_electricity_imported",
                         "metric_baseline_electricity_generated",
