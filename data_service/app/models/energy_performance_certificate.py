@@ -133,7 +133,7 @@ class NonDomesticEPCBase(pydantic.BaseModel):
             " of the external walls, i.e. the gross floor area as measured in accordance with the guidance issued from"
             " time to time by the Royal Institute of Chartered Surveyors or by a body replacing that institution. (m2)"
         ),
-        alias=pydantic.AliasChoices("floor_area", "total_floor_area", "floor-area", "total-floor-area"),  # type: ignore
+        alias=pydantic.AliasChoices("floor_area", "total_floor_area", "floor-area", "total-floor-area"),
     )
     inspection_date: pydantic.types.NaiveDatetime = pydantic.Field(
         description="The date that the inspection was actually carried out by the energy assessor"
@@ -164,7 +164,7 @@ class NonDomesticEPCBase(pydantic.BaseModel):
     )
     other_fuel_desc: str | None = pydantic.Field(  # type: ignore
         description="Text description of unspecified fuel type if 'Other' is selected for Main Heating Fuel.",
-        alias=pydantic.AliasChoices("other_fuel", "other_fuel_desc", "other-fuel", "other-fuel-desc"),  # type: ignore
+        alias=pydantic.AliasChoices("other_fuel", "other_fuel_desc", "other-fuel", "other-fuel-desc"),
     )
     posttown: str = pydantic.Field(description="Post town for the building address.")
     primary_energy: float | None = pydantic.Field(

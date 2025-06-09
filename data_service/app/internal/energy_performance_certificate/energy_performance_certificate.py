@@ -180,9 +180,15 @@ async def get_cepcs_lookup(
 
     Parameters
     ----------
+    http_client
+        AsyncClient to make requests with
     postcode
         Postcode to search for, can be either the outbound code or the full thing.
         Note that for an outbound code you'll get many results!
+        Must provide either this or address, but not both.
+    address
+        Address to search for. Note that for a general address you'll get many results.
+        Must provide either this or address, but not both.
 
     Returns
     -------
@@ -230,9 +236,15 @@ async def get_decs_lookup(
 
     Parameters
     ----------
+    http_client
+        AsyncClient to make requests with
     postcode
         Postcode to search for, can be either the outbound code or the full thing.
         Note that for an outbound code you'll get many results!
+        Must provide either this or address, but not both.
+    address
+        Address to search for. Note that for a general address you'll get many results.
+        Must provide either this or address, but not both.
 
     Returns
     -------

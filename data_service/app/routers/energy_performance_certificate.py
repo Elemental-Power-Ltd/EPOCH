@@ -23,12 +23,14 @@ async def get_epc(
     and that those certificates still exist in the external API.
     Note that we do not store the certificates, so we have to get them fresh each time.
 
-    Paramaeters
-    -----------
+    Parameters
+    ----------
     site_id
-
+        ID of the site you want to look up EPCs for
     pool
         Database pool connection to look up site metadata
+    http_client
+        HTTP client to request data from the EPC database
 
     Returns
     -------

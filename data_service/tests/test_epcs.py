@@ -1,6 +1,6 @@
 """Test getting EPCs from an external API."""
 
-# ruff: noqa: D101, D102
+# ruff: noqa: D101
 
 import httpx
 import pytest
