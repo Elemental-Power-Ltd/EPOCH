@@ -7,7 +7,6 @@ site has zero or more datasets of different kinds.
 """
 
 import json
-import logging
 import typing
 import uuid
 from logging import getLogger
