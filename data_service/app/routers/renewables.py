@@ -62,6 +62,8 @@ async def generate_renewables_generation(
 
     This uses renewables.ninja currently, so needs relatively old timestamps (2020?).
     If you don't provide specific azimuths and tilts, then we'll calculate the optimum using PVGIS.
+    Note that we store hourly data in the database as raw as we can get it from renewables.ninja.
+    The get-renewables-generation function will handle the processing into EPOCH timesteps.
 
     Parameters
     ----------
@@ -197,6 +199,24 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
     async def get_single_renewables_df(
         dataset_id: dataset_id_t, start_ts: datetime.datetime, end_ts: datetime.datetime, db_pool: DatabasePoolDep
     ) -> pd.DataFrame:
+        """
+        Get a single renewables dataframe and reindex it to be half hourly.
+
+        Parameters
+        ----------
+        dataset_id
+            The ID of teh dataset you want
+        start_ts
+            Earliest renewables data to get
+        end_ts
+            Latest renewables data to get
+        db_pool
+            Database pool with connections
+
+        Returns
+        -------
+        Single half hourly renewables DF
+        """
         async with db_pool.acquire() as conn:
             dataset = await conn.fetch(
                 """
@@ -222,8 +242,10 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
             renewables_df = renewables_df.reindex(
                 index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
             )
-            renewables_df["solar_generation"] = renewables_df["solar_generation"].interpolate(method="time").ffill().bfill()
 
+            renewables_df["solar_generation"] = renewables_df["solar_generation"].interpolate(method="time").ffill().bfill()
+            # Turn this into kWh per timestep instead of kW
+            renewables_df["solar_generation"] *= pd.Timedelta(minutes=30) / pd.Timedelta(minutes=60)
             return renewables_df
 
     try:
