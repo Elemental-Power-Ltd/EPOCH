@@ -2,6 +2,30 @@
   "version": 3,
   "configurePresets": [
     {
+      "name": "base-macos",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_POSITION_INDEPENDENT_CODE": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "python-macos",
+      "inherits": "base-macos",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "PYBIND": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "base-windows",
       "hidden": true,
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
@@ -73,6 +97,12 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "python-rel-macos",
+      "displayName": "Python Bindings (macOS)",
+      "configurePreset": "python-macos",
+      "targets": ["epoch_simulator"]
+    },
     {
       "name": "headless-rel-windows",
       "displayName": "Headless Release (Windows)",
