@@ -3,7 +3,8 @@
 from enum import StrEnum
 from typing import TypedDict
 
-from ...models.heating_load import InterventionEnum, SurveyedSizes, ThermalModelResult
+from ...models.heating_load import InterventionEnum, ThermalModelResult
+from ...models.thermal_model import SurveyedSizes
 from .building_elements import BuildingElement
 from .links import ConductiveLink
 from .network import HeatNetwork, create_structure_from_params, create_structure_from_survey

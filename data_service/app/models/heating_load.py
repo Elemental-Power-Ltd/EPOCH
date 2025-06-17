@@ -8,33 +8,7 @@ from typing import Self
 import pydantic
 from pydantic import Field
 
-# watch out for cicular imports!
-# from ..internal.thermal_model.rdsap import estimate_window_area
 from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
-
-
-class SurveyedSizes(pydantic.BaseModel):
-    n_floors: int = Field(default=2, description="Number of floors, including the ground.")
-    total_floor_area: float = Field(description="Total interior floor area across all floors in m^2")
-    exterior_wall_area: float = Field(description="Exterior surface area of the walls in m^2")
-    get_ceiling_areas_area: float = Field(
-        default_factory=lambda data: data["total_floor_area"] / data["n_floors"],
-        description="Flat interior surface area of the ceilings in m^2 where we could insulate,"
-        + "assumed to be the same as a single floor area if not provided.",
-    )
-    window_area: float = Field(
-        default_factory=lambda data: estimate_window_area(data["total_floor_area"]),
-        description="Exterior surface area of windows in m^2; will estimate from floor area if not provided.",
-    )
-    boiler_power: float = Field(
-        default_factory=lambda data: 100 * data["total_floor_area"],
-        description="Power of the boiler in W; assumed to be 100 W / m^2 if not specified.",
-    )
-    ach: float = Field(
-        description="Air changes per hour as measured by the survey"
-        + " (you may have to calculate this from the reading in litres per hour)",
-        default=2.0,
-    )
 
 
 class ThermalModelResult(pydantic.BaseModel):

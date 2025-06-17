@@ -32,7 +32,8 @@ from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
 from ...internal.thermal_model.fitting import simulate_parameters
 from ...models.core import DatasetID, SiteID, dataset_id_t, site_id_t
-from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, SurveyedSizes
+from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest
+from ...models.thermal_model import SurveyedSizes
 from ...models.weather import BaitAndModelCoefs, WeatherRequest
 from ..client_data import get_location
 from ..weather import get_weather
@@ -508,7 +509,7 @@ async def generate_thermal_model_heating_load(
         metadata.dataset_id,
         metadata.site_id,
         metadata.created_at,
-        metadata.params,
+        json.dumps(metadata.params),
         metadata.interventions,
     )
 

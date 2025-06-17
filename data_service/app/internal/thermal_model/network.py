@@ -6,7 +6,7 @@ from pathlib import Path
 import networkx as nx
 import numpy as np
 
-from ...models.heating_load import SurveyedSizes
+from ...models.thermal_model import SurveyedSizes
 from .building_elements import BuildingElement
 from .heat_capacities import (
     AIR_HEAT_CAPACITY,
