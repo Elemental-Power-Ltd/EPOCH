@@ -45,36 +45,74 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
     async def get_single_dataset(
         db_pool: DatabasePoolDep, start_ts: datetime.datetime, end_ts: datetime.datetime, dataset_id: dataset_id_t
     ) -> pd.DataFrame:
-        async with db_pool.acquire() as conn:
-            res = await conn.fetch(
-                """
-                SELECT
-                    start_ts,
-                    heating
-                FROM heating.synthesised
-                WHERE
-                    dataset_id = $1
-                    AND $2 <= start_ts
-                    AND end_ts <= $3
-                ORDER BY
-                    start_ts""",
-                dataset_id,
+        """
+        Get a single heating load dataset from the DB.
+
+        A single heating load dataset is uniquely identified by a UUID, and doesn't include DHW.
+
+        Parameters
+        ----------
+        db_pool
+            Database pool containing the heating load dataset
+        start_ts
+            Earliest part of this dataset to select
+        end_ts
+            Latest part of thtis dataset to select
+        dataset_id
+            The specific ID of the single dataset you want.
+
+        Returns
+        -------
+        pd.DataFrame
+            Heating load of start_ts and heating in kWh
+        """
+        res = await pool.fetch(
+            """
+            SELECT
                 start_ts,
-                end_ts,
-            )
+                heating
+            FROM heating.synthesised
+            WHERE
+                dataset_id = $1
+                AND $2 <= start_ts
+                AND end_ts <= $3
+            ORDER BY
+                start_ts""",
+            dataset_id,
+            start_ts,
+            end_ts,
+        )
         heating_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "heating"])
         heating_df.index = pd.to_datetime(heating_df.index)
         return heating_df
 
     async def get_heating_cost(db_pool: DatabasePoolDep, dataset_id: dataset_id_t) -> float:
+        """
+        Get the cost associated with a given heating load.
+
+        This is generally due to fabric interventions.
+        We'll try to look up the cost in the database first, and if we can't find it then estimate from a thermal model.
+        If we can't find that, return a generic cost.
+
+        Parameters
+        ----------
+        db_pool
+            Database connection pool to DB containing heating loads
+        dataset_id
+            ID of the heating load you want to look up a cost for
+
+        Returns
+        -------
+        cost in GBP of associated interventions
+        """
         metadata = await db_pool.fetchrow(
             """SELECT params, interventions FROM heating.metadata WHERE dataset_id = $1""", dataset_id
         )
-
-        # If we have a thermal model, get the heating cost based off the calculated areas.
-        # However, if we don't have a thermal model then we have no idea of the size,
-        # so look the cost up in the DB.
+        if metadata is not None and "cost" in metadata["params"]:
+            # If we've pre-calculated the cost, simply return that
+            return float(metadata["cost"])
         if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
+            # If we have a thermal model, get the heating cost based off the calculated areas.
             if isinstance(metadata["params"], str):
                 # This is horrible, but the params section could legitimately have been passed as a string
                 # so try to read it as JSON
@@ -84,6 +122,8 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_dataset_id), pool=pool)
             return await get_heating_cost_thermal_model(model, interventions=metadata["interventions"], pool=db_pool)
         else:
+            # However, if we don't have a thermal model then we have no idea of the size,
+            # so look the generic cost up in the DB.
             res = await db_pool.fetchval(
                 """
                 SELECT
@@ -118,7 +158,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
 
 
 @api_router.post("/get-dhw-load", tags=["get", "dhw"])
-async def get_dhw_load(params: DatasetIDWithTime, conn: DatabasePoolDep) -> EpochDHWEntry:
+async def get_dhw_load(params: DatasetIDWithTime, pool: DatabasePoolDep) -> EpochDHWEntry:
     """
     Get a previously generated domestic hot water load in an EPOCH friendly format.
 
@@ -126,7 +166,7 @@ async def get_dhw_load(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
 
     Parameters
     ----------
-    *params*
+    params
         Heating Load dataset ID and timestamps you're interested in (probably a whole year)
 
     Returns
@@ -134,7 +174,7 @@ async def get_dhw_load(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
     epoch_dhw_entry
         A list of timestamps and a list of DHW values.
     """
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT
             start_ts,
@@ -155,7 +195,7 @@ async def get_dhw_load(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
 
 
 @api_router.post("/get-air-temp", tags=["get", "airtemp"])
-async def get_air_temp(params: DatasetIDWithTime, conn: DatabasePoolDep) -> EpochAirTempEntry:
+async def get_air_temp(params: DatasetIDWithTime, pool: DatabasePoolDep) -> EpochAirTempEntry:
     """
     Get a previously generated air temp series in an EPOCH friendly format.
 
@@ -163,7 +203,7 @@ async def get_air_temp(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
 
     Parameters
     ----------
-    *params*
+    params
         Heating Load dataset ID and timestamps you're interested in (probably a whole year)
 
     Returns
@@ -171,7 +211,7 @@ async def get_air_temp(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
     epoch_air_temp_entry
         A list of timestamps and a list of air temp values.
     """
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT
             start_ts,
