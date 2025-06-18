@@ -267,3 +267,31 @@ class TestRenewablesErrors:
         assert results.status_code == 400
         assert "dataset_id" in results.json()["detail"]
         assert str(bad_uuid) in results.json()["detail"]
+
+class TestWindRenewables:
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    async def test_generate_renewables_wind(
+        self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
+    ) -> None:
+        result = (
+            await client.post(
+                "/generate-wind-generation",
+                json={
+                    "site_id": "demo_london",
+                    "start_ts": demo_start_ts.isoformat(),
+                    "end_ts": demo_end_ts.isoformat(),
+                    "height": 80,
+                    "turbine":"Enercon E101 3000"
+                },
+            )
+        ).json()
+        assert "dataset_id" in result
+        assert (
+            datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=1)
+            <= datetime.datetime.fromisoformat(result["created_at"])
+            <= datetime.datetime.now(datetime.UTC)
+        )
+        assert result["parameters"]["height"] == 80
+        assert result["parameters"]["turbine"] == "Enercon E101 3000"
+        assert result["site_id"] == "demo_london"

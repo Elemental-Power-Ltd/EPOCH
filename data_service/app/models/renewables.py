@@ -42,6 +42,30 @@ class RenewablesRequest(pydantic.BaseModel):
         return self
 
 
+class RenewablesWindRequest(pydantic.BaseModel):
+    site_id: site_id_t = site_id_field
+    start_ts: pydantic.AwareDatetime = pydantic.Field(
+        examples=["2020-01-01T00:00:00Z"], description="The starting time to run the renewables calculation, should be <2021."
+    )
+    end_ts: pydantic.AwareDatetime = pydantic.Field(
+        examples=["2021-01-01T00:00:00Z"],
+        description="The ending time to run the renewables calculation, should be one year on from start_ts",
+    )
+    turbine: str = pydantic.Field(
+        examples=["Acciona AW77 1500", "Enercon E101 3000"],
+        description="Name of the turbine you want to model; must exist in the RN database.",
+    )
+    height: float = pydantic.Field(examples=[10.0, 80.0, 100.0], description="Height of the hub above the ground in m.")
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self
+
+
 class RenewablesMetadata(pydantic.BaseModel):
     data_source: str = pydantic.Field(
         examples=["renewables.ninja", "PVGIS"], description="The data source we used to generate this."
