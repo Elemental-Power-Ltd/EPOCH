@@ -1,10 +1,10 @@
 BEGIN;
 
 CREATE TABLE renewables.wind (
-    dataset_id uuid,
-    start_ts timestamp with time zone NOT NULL,
-    end_ts timestamp with time zone NOT NULL,
-    solar_generation double precision NOT NULL
+    dataset_id UUID REFERENCES renewables.metadata(dataset_id),
+    start_ts TIMESTAMPTZ NOT NULL,
+    end_ts TIMESTAMPTZ NOT NULL,
+    wind DOUBLE PRECISION NOT NULL
 );
 
 END;

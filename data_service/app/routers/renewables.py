@@ -270,7 +270,7 @@ async def generate_wind_generation(
                             dataset_id,
                             start_ts,
                             end_ts,
-                            solar_generation
+                            wind
                         )
                     VALUES (
                         $1,
