@@ -23,6 +23,7 @@ struct UsageData {
 	float low_priority_revenue = 0.0f;
 
 	float total_meter_cost;
+	float total_operating_cost;
 	CapexBreakdown capex_breakdown;
 	OpexBreakdown opex_breakdown;
 

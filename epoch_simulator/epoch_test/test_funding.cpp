@@ -101,9 +101,15 @@ TEST_F(FundingTest, GeneralGrant) {
 	scenario.domestic_hot_water = DomesticHotWater();
 	scenario.domestic_hot_water->cylinder_volume = 1000.0f;
 
-	Renewables r = Renewables();
-	r.yield_scalars = { 200.0f, 100.0f };
-	scenario.renewables = r;
+	SolarData solar1;
+	solar1.yield_scalar = 200.0f;
+	solar1.yield_index = 0;
+
+	SolarData solar2;
+	solar2.yield_scalar = 100.0f;
+	solar2.yield_index = 1;
+
+	scenario.solar_panels = { solar1, solar2 };
 
 	auto capex_without_funding = calculate_capex_with_discounts(siteData, baseline, scenario);
 

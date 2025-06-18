@@ -5,8 +5,8 @@ static OpexPrices opex_prices{};
 OpexBreakdown calculate_opex(const TaskData& taskData) {
 	OpexBreakdown opex_breakdown{};
 
-	if (taskData.renewables) {
-		calculate_pv_opex(taskData.renewables.value(), opex_breakdown);
+	if (taskData.solar_panels.size()) {
+		calculate_pv_opex(taskData.solar_panels, opex_breakdown);
 	}
 
 	if (taskData.energy_storage_system) {
@@ -24,10 +24,10 @@ void calculate_ess_opex(const EnergyStorageSystem& ess, OpexBreakdown& opex_brea
 }
 
 
-void calculate_pv_opex(const Renewables& pv, OpexBreakdown& opex_breakdown) {
+void calculate_pv_opex(const std::vector<SolarData>& panels, OpexBreakdown& opex_breakdown) {
 	float pv_kWp_total = 0;
-	for (auto& scalar : pv.yield_scalars) {
-		pv_kWp_total += scalar;
+	for (auto& panel : panels) {
+		pv_kWp_total += panel.yield_scalar;
 	}
 
 	opex_breakdown.pv_opex = calculate_three_tier_costs(opex_prices.pv_prices, pv_kWp_total);

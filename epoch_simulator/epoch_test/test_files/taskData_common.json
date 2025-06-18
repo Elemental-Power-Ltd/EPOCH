@@ -2,36 +2,73 @@
   "building": {
     "scalar_heat_load": 1.0,
     "scalar_electrical_load": 1.0,
-    "fabric_intervention_index": 0
+    "fabric_intervention_index": 0,
+    "incumbent": true,
+    "age": 0,
+    "lifetime": 25
   },
   "domestic_hot_water": {
-    "cylinder_volume": 1500.0
+    "cylinder_volume": 1500.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 12
   },
   "energy_storage_system": {
     "capacity": 800.0,
     "charge_power": 300.0,
     "discharge_power": 300.0,
     "battery_mode": "CONSUME",
-    "initial_charge": 0.0
+    "initial_charge": 0.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 15
   },
   "grid": {
     "grid_export": 100.0,
     "grid_import": 160.0,
     "import_headroom": 0.4,
     "tariff_index": 0,
-    "export_tariff": 0.05
+    "export_tariff": 0.05,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 25
   },
   "heat_pump": {
     "heat_power": 130.0,
     "heat_source": "AMBIENT_AIR",
-    "send_temp": 70.0
+    "send_temp": 70.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 10
   },
-  "renewables": {
-    "yield_scalars": [ 599.2, 75.6, 60.48]
-  },
+  "solar_panels": [
+    {
+      "yield_scalar": 599.2,
+      "yield_index": 0,
+      "incumbent": false,
+      "age": 0,
+      "lifetime": 25
+    },
+    {
+      "yield_scalar": 75.6,
+      "yield_index": 1,
+      "incumbent": false,
+      "age": 0,
+      "lifetime": 25
+    },
+    {
+      "yield_scalar": 60.48,
+      "yield_index": 2,
+      "incumbent": false,
+      "age": 0,
+      "lifetime": 25
+    }
+  ],
   "config": {
     "capex_limit": 2500000.0,
     "use_boiler_upgrade_scheme": false,
-    "general_grant_funding": 0
+    "general_grant_funding": 0,
+    "npv_time_horizon": 10,
+    "npv_discount_factor": 0.0
   }
 }

@@ -43,7 +43,7 @@ private:
 
 	CostVectors extractCostVectors(const ReportData& reportData, const TaskData& taskData) const;
 
-	SimulationMetrics calculateMetrics(const ReportData& reportData, const UsageData& usage) const;
+	SimulationMetrics calculateMetrics(const SiteData& siteData, const TaskData& taskData, const ReportData& reportData, const UsageData& usage) const;
 
 	float getFixedAvailableImport(const TaskData& taskData) const;
 

@@ -68,13 +68,18 @@ inline TaskData makeValidTaskData() {
     GridData grid;
     grid.tariff_index = 0;
 
-    // We provide 2 yield_scalars to match make24HourSiteData()
-    Renewables renewables;
-    renewables.yield_scalars = { 1.0f, 1.0f };
+    // We provide 2 solar parnels to match make24HourSiteData()
+    SolarData solar1;
+    solar1.yield_scalar = 1.0f;
+    solar1.yield_index = 0;
+
+    SolarData solar2;
+    solar2.yield_scalar = 1.0f;
+    solar2.yield_index = 1;
 
     taskData.building = building;
     taskData.grid = grid;
-    taskData.renewables = renewables;
+    taskData.solar_panels = { solar1, solar2 };
 
     return taskData;
 }

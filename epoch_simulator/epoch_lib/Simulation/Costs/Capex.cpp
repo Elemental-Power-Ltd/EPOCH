@@ -29,32 +29,47 @@ CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const Ta
 CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskData) {
 	CapexBreakdown capex_breakdown{};
 
-	if (taskData.building) {
-		calculate_building_capex(siteData, taskData.building.value(), capex_breakdown);
+	if (taskData.building && !taskData.building->incumbent) {
+		capex_breakdown.building_fabric_capex = calculate_fabric_cost(siteData, taskData.building.value());
 	}
 
-	if (taskData.domestic_hot_water) {
-		calculate_dhw_capex(taskData.domestic_hot_water.value(), capex_breakdown);
+	if (taskData.domestic_hot_water && !taskData.domestic_hot_water->incumbent) {
+		capex_breakdown.dhw_capex = calculate_dhw_cost(taskData.domestic_hot_water.value());
 	}
 
-	if (taskData.electric_vehicles) {
-		calculate_ev_capex(taskData.electric_vehicles.value(), capex_breakdown);
+	if (taskData.electric_vehicles && !taskData.electric_vehicles->incumbent) {
+		EVCapex ev_capex = calculate_ev_cost(taskData.electric_vehicles.value());
+		capex_breakdown.ev_charger_cost = ev_capex.charger_cost;
+		capex_breakdown.ev_charger_install = ev_capex.charger_install;
 	}
 
-	if (taskData.energy_storage_system) {
-		calculate_ess_capex(taskData.energy_storage_system.value(), capex_breakdown);
+	if (taskData.energy_storage_system && !taskData.energy_storage_system->incumbent) {
+		ESSCapex ess_capex = calculate_ess_cost(taskData.energy_storage_system.value());
+		capex_breakdown.ess_enclosure_capex = ess_capex.enclosure_capex;
+		capex_breakdown.ess_enclosure_disposal = ess_capex.enclosure_disposal;
+		capex_breakdown.ess_pcs_capex = ess_capex.pcs_capex;
 	}
 
-	if (taskData.grid) {
-		calculate_grid_capex(taskData.grid.value(), capex_breakdown);
+	if (taskData.gas_heater && !taskData.gas_heater->incumbent) {
+		capex_breakdown.gas_heater_capex = calculate_gas_heater_cost(taskData.gas_heater.value());
 	}
 
-	if (taskData.heat_pump) {
-		calculate_heatpump_capex(taskData.heat_pump.value(), capex_breakdown);
+	if (taskData.grid && !taskData.grid->incumbent) {
+		capex_breakdown.grid_capex = calculate_grid_cost(taskData.grid.value());
 	}
 
-	if (taskData.renewables) {
-		calculate_renewables_capex(taskData.renewables.value(), capex_breakdown);
+	if (taskData.heat_pump && !taskData.heat_pump->incumbent) {
+		capex_breakdown.heatpump_capex = calculate_heatpump_cost(taskData.heat_pump.value());
+	}
+
+	for (const auto& panel : taskData.solar_panels) {
+		if (!panel.incumbent) {
+			SolarCapex solar_capex = calculate_solar_cost(panel);
+			capex_breakdown.pv_panel_capex += solar_capex.panel_capex;
+			capex_breakdown.pv_ground_capex += solar_capex.ground_capex;
+			capex_breakdown.pv_roof_capex += solar_capex.roof_capex;
+			capex_breakdown.pv_BoP_capex += solar_capex.BoP_capex;
+		}
 	}
 
 	// TODO JW
@@ -66,6 +81,8 @@ CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskDat
 
 		+ capex_breakdown.ev_charger_cost
 		+ capex_breakdown.ev_charger_install
+
+		+ capex_breakdown.gas_heater_capex
 
 		+ capex_breakdown.grid_capex
 
@@ -84,70 +101,82 @@ CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskDat
 	return capex_breakdown;
 }
 
-void calculate_building_capex(const SiteData& siteData, const Building& building, CapexBreakdown& capex_breakdown) {
+float calculate_fabric_cost(const SiteData& siteData, const Building& building) {
 	if (building.fabric_intervention_index == 0) {
-		capex_breakdown.building_fabric_capex = 0.0f;
+		return 0.0f;
 	}
 	else {
 		// we subtract one as a fabric_intervention_index of 0 corresponds to the base heating load with 0 cost
-		capex_breakdown.building_fabric_capex = siteData.fabric_interventions[building.fabric_intervention_index - 1].cost;
+		return siteData.fabric_interventions[building.fabric_intervention_index - 1].cost;
 	}
 }
 
-void calculate_dhw_capex(const DomesticHotWater& dhw, CapexBreakdown& capex_breakdown) {
-	capex_breakdown.dhw_capex = calculate_three_tier_costs(capex_prices.dhw_prices, dhw.cylinder_volume);
+float calculate_dhw_cost(const DomesticHotWater& dhw) {
+	return calculate_three_tier_costs(capex_prices.dhw_prices, dhw.cylinder_volume);
 }
 
-void calculate_ev_capex(const ElectricVehicles& ev, CapexBreakdown& capex_breakdown) {
-	capex_breakdown.ev_charger_cost = (
+EVCapex calculate_ev_cost(const ElectricVehicles& ev) {
+	EVCapex ev_capex{};
+
+	ev_capex.charger_cost = (
 		ev.small_chargers * capex_prices.ev_prices.small_cost
 		+ ev.fast_chargers * capex_prices.ev_prices.fast_cost
 		+ ev.rapid_chargers * capex_prices.ev_prices.rapid_cost
 		+ ev.ultra_chargers * capex_prices.ev_prices.ultra_cost
 	);
 
-	capex_breakdown.ev_charger_install = (
+	ev_capex.charger_install = (
 		ev.small_chargers * capex_prices.ev_prices.small_install
 		+ ev.fast_chargers * capex_prices.ev_prices.fast_install
 		+ ev.rapid_chargers * capex_prices.ev_prices.rapid_install
 		+ ev.ultra_chargers * capex_prices.ev_prices.ultra_install
 	);
+
+	return ev_capex;
 }
 
-void calculate_ess_capex(const EnergyStorageSystem& ess, CapexBreakdown& capex_breakdown) {
-
+ESSCapex calculate_ess_cost(const EnergyStorageSystem& ess) {
+	ESSCapex ess_capex{};
 	float ess_power = std::max(ess.charge_power, ess.discharge_power);
 
-	capex_breakdown.ess_pcs_capex = calculate_three_tier_costs(capex_prices.ess_pcs_prices, ess_power);
-	capex_breakdown.ess_enclosure_capex = calculate_three_tier_costs(capex_prices.ess_enclosure_prices, ess.capacity);
-	capex_breakdown.ess_enclosure_disposal = calculate_three_tier_costs(capex_prices.ess_enclosure_disposal_prices, ess.capacity);
+	ess_capex.pcs_capex = calculate_three_tier_costs(capex_prices.ess_pcs_prices, ess_power);
+	ess_capex.enclosure_capex = calculate_three_tier_costs(capex_prices.ess_enclosure_prices, ess.capacity);
+	ess_capex.enclosure_disposal = calculate_three_tier_costs(capex_prices.ess_enclosure_disposal_prices, ess.capacity);
+	return ess_capex;
 }
 
-void calculate_grid_capex(const GridData& grid, CapexBreakdown& capex_breakdown) {
+float calculate_gas_heater_cost(const GasCHData& gas) {
+	return calculate_three_tier_costs(capex_prices.gas_heater_prices, gas.maximum_output);
+}
+
+float calculate_grid_cost(const GridData& grid) {
+
 	// set Grid upgrade to zero for the moment
 	const float grid_upgrade_kw = 0.0f;
-	capex_breakdown.grid_capex = calculate_three_tier_costs(capex_prices.grid_prices, grid_upgrade_kw);
+	return calculate_three_tier_costs(capex_prices.grid_prices, grid_upgrade_kw);
 }
 
-void calculate_heatpump_capex(const HeatPumpData& hp, CapexBreakdown& capex_breakdown) {
-	capex_breakdown.heatpump_capex = calculate_three_tier_costs(capex_prices.heatpump_prices, hp.heat_power);
+float calculate_heatpump_cost(const HeatPumpData& hp) {
+	return calculate_three_tier_costs(capex_prices.heatpump_prices, hp.heat_power);
 }
 
-void calculate_renewables_capex(const Renewables& renewables, CapexBreakdown& capex_breakdown) {
-
-	float pv_kWp_total = 0;
-	for (auto& scalar : renewables.yield_scalars) {
-		pv_kWp_total += scalar;
-	}
+SolarCapex calculate_solar_cost(const SolarData& panel) {
+	SolarCapex solar_capex{};
 
 	// For now, it is assumed that all ALCHEMAI solar is roof mounted
-	float pv_kWp_roof = pv_kWp_total;
-	float pv_kWp_ground = 0.0f;
+	bool is_roof_mounted = true;
 
-	capex_breakdown.pv_panel_capex = calculate_three_tier_costs(capex_prices.pv_panel_prices, pv_kWp_total);
-	capex_breakdown.pv_roof_capex = calculate_three_tier_costs(capex_prices.pv_roof_prices, pv_kWp_roof);
-	capex_breakdown.pv_ground_capex = calculate_three_tier_costs(capex_prices.pv_ground_prices, pv_kWp_ground);
-	capex_breakdown.pv_BoP_capex = calculate_three_tier_costs(capex_prices.pv_BoP_prices, pv_kWp_total);
+	if (is_roof_mounted) {
+		solar_capex.roof_capex = calculate_three_tier_costs(capex_prices.pv_roof_prices, panel.yield_scalar);
+	}
+	else {
+		solar_capex.ground_capex = calculate_three_tier_costs(capex_prices.pv_ground_prices, panel.yield_scalar);
+	}
+
+	solar_capex.panel_capex = calculate_three_tier_costs(capex_prices.pv_panel_prices, panel.yield_scalar);
+	solar_capex.BoP_capex = calculate_three_tier_costs(capex_prices.pv_BoP_prices, panel.yield_scalar);
+
+	return solar_capex;
 }
 
 
@@ -159,6 +188,11 @@ bool is_elegible_for_boiler_upgrade_scheme(const TaskData& baseline, const TaskD
 
 	// the baseline cannot have a heatpump, the scenario must
 	if (baseline.heat_pump || !scenario.heat_pump) {
+		return false;
+	}
+
+	// the scenario heatpump must be a new install
+	if (scenario.heat_pump->incumbent) {
 		return false;
 	}
 

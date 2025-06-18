@@ -3,14 +3,17 @@
 #include <limits> 
 #include <Eigen/Core>
 
+#include "NetPresentValue.hpp"
 
-ScenarioComparison compareScenarios(const UsageData& baselineUsage, const UsageData& scenarioUsage) {
+
+ScenarioComparison compareScenarios(
+	const SiteData& siteData,
+	const UsageData& baselineUsage, const SimulationMetrics& baselineMetrics, 
+	const UsageData& scenarioUsage, const SimulationMetrics& scenarioMetrics
+) {
 	ScenarioComparison comparison{};
 
-
-	float baseline_total_annualised_costs = calculate_total_annualised_cost(baselineUsage);
-	float scenario_total_annualised_costs = calculate_total_annualised_cost(scenarioUsage);
-	comparison.total_annualised_cost = scenario_total_annualised_costs;
+	comparison.npv_balance = scenarioMetrics.total_net_present_value - baselineMetrics.total_net_present_value;
 
 	float baseline_opex = baselineUsage.opex_breakdown.ess_enclosure_opex
 		+ baselineUsage.opex_breakdown.ess_pcs_opex
@@ -25,7 +28,7 @@ ScenarioComparison compareScenarios(const UsageData& baselineUsage, const UsageD
 	// operating balance then include the OPEX difference
 	comparison.operating_balance = comparison.meter_balance + baseline_opex - scenario_opex;
 	// finally, cost balance also includes the annualised cost of the components
-	comparison.cost_balance = comparison.operating_balance + baseline_total_annualised_costs - scenario_total_annualised_costs;
+	comparison.cost_balance = comparison.operating_balance + baselineMetrics.total_annualised_cost - scenarioMetrics.total_annualised_cost;
 
 	comparison.payback_horizon_years = calculate_payback_horizon(scenarioUsage.capex_breakdown.total_capex, comparison.cost_balance);
 
@@ -39,79 +42,6 @@ ScenarioComparison compareScenarios(const UsageData& baselineUsage, const UsageD
 	comparison.carbon_balance_scope_2 = baseline_carbon_scope_2 - scenario_carbon_scope_2;
 
 	return comparison;
-}
-
-
-float calculate_ESS_annualised_cost(const UsageData& usage) {
-	float ess_capex = usage.capex_breakdown.ess_pcs_capex + usage.capex_breakdown.ess_enclosure_capex + usage.capex_breakdown.ess_enclosure_disposal;
-	float ess_opex = usage.opex_breakdown.ess_pcs_opex + usage.opex_breakdown.ess_enclosure_opex;
-
-	return (ess_capex / ESS_lifetime) + ess_opex;
-}
-
-float calculate_PV_annualised_cost(const UsageData& usage) {
-	float pv_capex = usage.capex_breakdown.pv_panel_capex + usage.capex_breakdown.pv_roof_capex + usage.capex_breakdown.pv_ground_capex + usage.capex_breakdown.pv_BoP_capex;
-
-	return (pv_capex / PV_panel_lifetime) + usage.opex_breakdown.pv_opex;
-}
-
-float calculate_EV_CP_annualised_cost(const UsageData& usage) {
-	return (usage.capex_breakdown.ev_charger_cost + usage.capex_breakdown.ev_charger_install) / EV_CP_lifetime;
-}
-
-float calculate_ASHP_annualised_cost(const UsageData& usage) {
-	return usage.capex_breakdown.heatpump_capex / ASHP_lifetime;
-}
-
-float calculate_DHW_annualised_cost(const UsageData& usage) {
-	return usage.capex_breakdown.dhw_capex / DHW_lifetime;
-}
-
-float calculate_Grid_annualised_cost(const UsageData& usage) {
-	return usage.capex_breakdown.grid_capex / grid_lifetime;
-}
-
-float calculate_Project_annualised_cost(const UsageData& usage) {
-
-	float ESS_CAPEX = usage.capex_breakdown.ess_pcs_capex + usage.capex_breakdown.ess_enclosure_capex + usage.capex_breakdown.ess_enclosure_disposal;
-	float PV_CAPEX = usage.capex_breakdown.pv_panel_capex + usage.capex_breakdown.pv_roof_capex + usage.capex_breakdown.pv_roof_capex + usage.capex_breakdown.pv_BoP_capex;
-	float EV_CP_CAPEX = usage.capex_breakdown.ev_charger_cost + usage.capex_breakdown.ev_charger_install;
-	float ASHP_CAPEX = usage.capex_breakdown.heatpump_capex;
-	float DHW_CAPEX = usage.capex_breakdown.dhw_capex;
-	float Grid_CAPEX = usage.capex_breakdown.grid_capex;
-
-	float Project_cost = (ESS_CAPEX + PV_CAPEX + EV_CP_CAPEX + ASHP_CAPEX + DHW_CAPEX) * project_plan_develop_EPC;
-	float Project_cost_grid = Grid_CAPEX * project_plan_develop_Grid;
-
-	float Project_annualised_cost = (Project_cost + Project_cost_grid) / project_lifetime;
-
-	return Project_annualised_cost;
-}
-
-// Calculate annualised costs
-
-float calculate_total_annualised_cost(const UsageData& usage) {
-
-	float ESS_annualised_cost = (
-		(usage.capex_breakdown.ess_pcs_capex + usage.capex_breakdown.ess_enclosure_capex + usage.capex_breakdown.ess_enclosure_disposal)
-		/ ESS_lifetime) + usage.opex_breakdown.ess_pcs_opex + usage.opex_breakdown.ess_enclosure_opex;
-
-	float PV_annualised_cost = (
-		(usage.capex_breakdown.pv_panel_capex + usage.capex_breakdown.pv_roof_capex + usage.capex_breakdown.pv_ground_capex + usage.capex_breakdown.pv_BoP_capex)
-		/ PV_panel_lifetime) + usage.opex_breakdown.pv_opex;
-
-	float EV_CP_annualised_cost = calculate_EV_CP_annualised_cost(usage);
-
-	float Grid_annualised_cost = calculate_Grid_annualised_cost(usage);
-
-	float ASHP_annualised_cost = calculate_ASHP_annualised_cost(usage);
-
-	float DHW_annualised_cost = calculate_DHW_annualised_cost(usage);
-
-	float Project_annualised_cost = calculate_Project_annualised_cost(usage);
-
-	float total_annualised_cost = Project_annualised_cost + ESS_annualised_cost + PV_annualised_cost + EV_CP_annualised_cost + Grid_annualised_cost + ASHP_annualised_cost + DHW_annualised_cost;
-	return total_annualised_cost;
 }
 
 

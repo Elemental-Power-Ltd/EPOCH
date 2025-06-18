@@ -75,6 +75,8 @@ UsageData calculateBaselineUsage(const SiteData& siteData, const TaskData& taskD
 	usage.capex_breakdown = calculate_capex(siteData, taskData);
 	usage.opex_breakdown = calculate_opex(taskData);
 	usage.total_meter_cost = calculate_meter_cost(usage);
+	usage.total_operating_cost = usage.total_meter_cost + 
+		usage.opex_breakdown.ess_enclosure_opex + usage.opex_breakdown.ess_pcs_opex + usage.opex_breakdown.pv_opex;
 	return usage;
 }
 
@@ -84,5 +86,7 @@ UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& basel
 	usage.capex_breakdown = calculate_capex_with_discounts(siteData, baseline, scenario);
 	usage.opex_breakdown = calculate_opex(scenario);
 	usage.total_meter_cost = calculate_meter_cost(usage);
+	usage.total_operating_cost = usage.total_meter_cost +
+		usage.opex_breakdown.ess_enclosure_opex + usage.opex_breakdown.ess_pcs_opex + usage.opex_breakdown.pv_opex;
 	return usage;
 }

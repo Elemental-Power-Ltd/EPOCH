@@ -39,11 +39,15 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("grid", &TaskData::grid)
 		.def_readwrite("heat_pump", &TaskData::heat_pump)
 		.def_readwrite("mop", &TaskData::mop)
-		.def_readwrite("renewables", &TaskData::renewables)
+		.def_readwrite("solar_panels", &TaskData::solar_panels)
 		.def_readwrite("config", &TaskData::config)
 		.def_static("from_json", [](const std::string& json_str) {
 			nlohmann::json j = nlohmann::json::parse(json_str);
 			return j.get<TaskData>();
+		})
+		.def("to_json", [](const TaskData& self) {
+			nlohmann::json j = self;
+			return j.dump();
 		})
 		.def("__repr__", &taskDataToString)
 		.def("__hash__", [](const TaskData& self){ return std::hash<TaskData>{}(self);})
@@ -53,16 +57,27 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def(pybind11::init<>())
 		.def_readwrite("scalar_heat_load", &Building::scalar_heat_load)
 		.def_readwrite("scalar_electrical_load", &Building::scalar_electrical_load)
-		.def_readwrite("fabric_intervention_index", &Building::fabric_intervention_index);
+		.def_readwrite("fabric_intervention_index", &Building::fabric_intervention_index)
+		.def_readwrite("incumbent", &Building::incumbent)
+		.def_readwrite("age", &Building::age)
+		.def_readwrite("lifetime", &Building::lifetime);
 
 	pybind11::class_<DataCentreData>(m, "DataCentre")
 		.def(pybind11::init<>())
 		.def_readwrite("maximum_load", &DataCentreData::maximum_load)
-		.def_readwrite("hotroom_temp", &DataCentreData::hotroom_temp);
+		.def_readwrite("hotroom_temp", &DataCentreData::hotroom_temp)
+		.def_readwrite("incumbent", &DataCentreData::incumbent)
+		.def_readwrite("age", &DataCentreData::age)
+		.def_readwrite("lifetime", &DataCentreData::lifetime);
+
 
 	pybind11::class_<DomesticHotWater>(m, "DomesticHotWater")
 		.def(pybind11::init<>())
-		.def_readwrite("cylinder_volume", &DomesticHotWater::cylinder_volume);
+		.def_readwrite("cylinder_volume", &DomesticHotWater::cylinder_volume)
+		.def_readwrite("incumbent", &DomesticHotWater::incumbent)
+		.def_readwrite("age", &DomesticHotWater::age)
+		.def_readwrite("lifetime", &DomesticHotWater::lifetime);
+
 
 	pybind11::class_<ElectricVehicles>(m, "ElectricVehicles")
 		.def(pybind11::init<>())
@@ -71,7 +86,11 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("fast_chargers", &ElectricVehicles::fast_chargers)
 		.def_readwrite("rapid_chargers", &ElectricVehicles::rapid_chargers)
 		.def_readwrite("ultra_chargers", &ElectricVehicles::ultra_chargers)
-		.def_readwrite("scalar_electrical_load", &ElectricVehicles::scalar_electrical_load);
+		.def_readwrite("scalar_electrical_load", &ElectricVehicles::scalar_electrical_load)
+		.def_readwrite("incumbent", &ElectricVehicles::incumbent)
+		.def_readwrite("age", &ElectricVehicles::age)
+		.def_readwrite("lifetime", &ElectricVehicles::lifetime);
+
 
 	pybind11::class_<EnergyStorageSystem>(m, "EnergyStorageSystem")
 		.def(pybind11::init<>())
@@ -79,7 +98,11 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("charge_power", &EnergyStorageSystem::charge_power)
 		.def_readwrite("discharge_power", &EnergyStorageSystem::discharge_power)
 		.def_readwrite("battery_mode", &EnergyStorageSystem::battery_mode)
-		.def_readwrite("initial_charge", &EnergyStorageSystem::initial_charge);
+		.def_readwrite("initial_charge", &EnergyStorageSystem::initial_charge)
+		.def_readwrite("incumbent", &EnergyStorageSystem::incumbent)
+		.def_readwrite("age", &EnergyStorageSystem::age)
+		.def_readwrite("lifetime", &EnergyStorageSystem::lifetime);
+
 
 	pybind11::enum_<BatteryMode>(m, "BatteryMode")
 		.value("CONSUME", BatteryMode::CONSUME)
@@ -89,7 +112,11 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def(pybind11::init<>())
 		.def_readwrite("maximum_output", &GasCHData::maximum_output)
 		.def_readwrite("gas_type", &GasCHData::gas_type)
-		.def_readwrite("boiler_efficiency", &GasCHData::boiler_efficiency);
+		.def_readwrite("boiler_efficiency", &GasCHData::boiler_efficiency)
+		.def_readwrite("incumbent", &GasCHData::incumbent)
+		.def_readwrite("age", &GasCHData::age)
+		.def_readwrite("lifetime", &GasCHData::lifetime);
+
 
 	pybind11::enum_<GasType>(m, "GasType")
 		.value("NATURAL_GAS", GasType::NATURAL_GAS)
@@ -101,13 +128,21 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("grid_import", &GridData::grid_import)
 		.def_readwrite("import_headroom", &GridData::import_headroom)
 		.def_readwrite("tariff_index", &GridData::tariff_index)
-		.def_readwrite("export_tariff", &GridData::export_tariff);
+		.def_readwrite("export_tariff", &GridData::export_tariff)
+		.def_readwrite("incumbent", &GridData::incumbent)
+		.def_readwrite("age", &GridData::age)
+		.def_readwrite("lifetime", &GridData::lifetime);
+
 
 	pybind11::class_<HeatPumpData>(m, "HeatPump")
 		.def(pybind11::init<>())
 		.def_readwrite("heat_power", &HeatPumpData::heat_power)
 		.def_readwrite("heat_source", &HeatPumpData::heat_source)
-		.def_readwrite("send_temp", &HeatPumpData::send_temp);
+		.def_readwrite("send_temp", &HeatPumpData::send_temp)
+		.def_readwrite("incumbent", &HeatPumpData::incumbent)
+		.def_readwrite("age", &HeatPumpData::age)
+		.def_readwrite("lifetime", &HeatPumpData::lifetime);
+
 
 	pybind11::enum_<HeatSource>(m, "HeatSource")
 		.value("AMBIENT_AIR", HeatSource::AMBIENT_AIR)
@@ -115,17 +150,27 @@ PYBIND11_MODULE(epoch_simulator, m) {
 
 	pybind11::class_<MopData>(m, "Mop")
 		.def(pybind11::init<>())
-		.def_readwrite("maximum_load", &MopData::maximum_load);
+		.def_readwrite("maximum_load", &MopData::maximum_load)
+		.def_readwrite("incumbent", &MopData::incumbent)
+		.def_readwrite("age", &MopData::age)
+		.def_readwrite("lifetime", &MopData::lifetime);
 
-	pybind11::class_<Renewables>(m, "Renewables")
+
+	pybind11::class_<SolarData>(m, "SolarPanel")
 		.def(pybind11::init<>())
-		.def_readwrite("yield_scalars", &Renewables::yield_scalars);
+		.def_readwrite("yield_scalar", &SolarData::yield_scalar)
+		.def_readwrite("yield_index", &SolarData::yield_index)
+		.def_readwrite("incumbent", &SolarData::incumbent)
+		.def_readwrite("age", &SolarData::age)
+		.def_readwrite("lifetime", &SolarData::lifetime);
 
 	pybind11::class_<TaskConfig>(m, "Config")
 		.def(pybind11::init<>())
 		.def_readwrite("capex_limit", &TaskConfig::capex_limit)
 		.def_readwrite("use_boiler_upgrade_scheme", &TaskConfig::use_boiler_upgrade_scheme)
-		.def_readwrite("general_grant_funding", &TaskConfig::general_grant_funding);
+		.def_readwrite("general_grant_funding", &TaskConfig::general_grant_funding)
+		.def_readwrite("npv_time_horizon", &TaskConfig::npv_time_horizon)
+		.def_readwrite("npv_discount_factor", &TaskConfig::npv_discount_factor);
 
 
 	pybind11::class_<SimulationResult>(m, "SimulationResult")
@@ -137,6 +182,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("annualised_cost", &SimulationResult::total_annualised_cost)
 		.def_readonly("meter_balance", &SimulationResult::meter_balance)
 		.def_readonly("operating_balance", &SimulationResult::operating_balance)
+		.def_readonly("npv_balance", &SimulationResult::npv_balance)
 		.def_readonly("metrics", &SimulationResult::metrics)
 		.def_readonly("baseline_metrics", &SimulationResult::baseline_metrics)
 		.def_readonly("report_data", &SimulationResult::report_data)
@@ -153,6 +199,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("total_electricity_import_cost", &SimulationMetrics::total_electricity_import_cost)
 		.def_readonly("total_electricity_export_gain", &SimulationMetrics::total_electricity_export_gain)
 		.def_readonly("total_meter_cost", &SimulationMetrics::total_meter_cost)
+		.def_readonly("total_operating_cost", &SimulationMetrics::total_operating_cost)
+		.def_readonly("total_net_present_value", &SimulationMetrics::total_net_present_value)
 		.def("__repr__", &metricsToString);
 
 	pybind11::class_<ReportData>(m, "ReportData")
@@ -195,6 +243,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("dhw_capex", &CapexBreakdown::dhw_capex)
 		.def_readonly("ev_charger_cost", &CapexBreakdown::ev_charger_cost)
 		.def_readonly("ev_charger_install", &CapexBreakdown::ev_charger_install)
+		.def_readonly("gas_heater_capex", &CapexBreakdown::gas_heater_capex)
 		.def_readonly("grid_capex", &CapexBreakdown::grid_capex)
 		.def_readonly("heatpump_capex", &CapexBreakdown::heatpump_capex)
 		.def_readonly("ess_pcs_capex", &CapexBreakdown::ess_pcs_capex)
@@ -204,6 +253,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("pv_roof_capex", &CapexBreakdown::pv_roof_capex)
 		.def_readonly("pv_ground_capex", &CapexBreakdown::pv_ground_capex)
 		.def_readonly("pv_BoP_capex", &CapexBreakdown::pv_BoP_capex)
+		.def_readonly("boiler_upgrade_scheme_funding", &CapexBreakdown::boiler_upgrade_scheme_funding)
+		.def_readonly("general_grant_funding", &CapexBreakdown::general_grant_funding)
 		.def_readonly("total_capex", &CapexBreakdown::total_capex)
 		.def("__repr__", &capexBreakdownToString);
 }

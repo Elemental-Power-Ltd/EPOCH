@@ -56,7 +56,7 @@ add_library(Epoch_lib STATIC
 	"io/ToString.hpp"
 	"io/ToString.cpp"
 	
- )
+  "Simulation/Costs/NetPresentValue.cpp")
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)

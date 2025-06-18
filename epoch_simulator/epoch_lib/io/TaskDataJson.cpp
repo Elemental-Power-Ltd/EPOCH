@@ -8,13 +8,19 @@ void from_json(const json& j, Building& building) {
 	j.at("scalar_heat_load").get_to(building.scalar_heat_load);
 	j.at("scalar_electrical_load").get_to(building.scalar_electrical_load);
 	j.at("fabric_intervention_index").get_to(building.fabric_intervention_index);
+	j.at("incumbent").get_to(building.incumbent);
+	j.at("age").get_to(building.age);
+	j.at("lifetime").get_to(building.lifetime);
 }
 
 void to_json(json& j, const Building& building) {
 	j = json{
 		{"scalar_heat_load", building.scalar_heat_load},
 		{"scalar_electrical_load", building.scalar_electrical_load},
-		{"fabric_intervention_index", building.fabric_intervention_index}
+		{"fabric_intervention_index", building.fabric_intervention_index},
+		{"incumbent", building.incumbent},
+		{"age", building.age},
+		{"lifetime", building.lifetime}
 	};
 }
 
@@ -22,23 +28,36 @@ void to_json(json& j, const Building& building) {
 void from_json(const json& j, DataCentreData& dc) {
 	j.at("maximum_load").get_to(dc.maximum_load);
 	j.at("hotroom_temp").get_to(dc.hotroom_temp);
+	j.at("incumbent").get_to(dc.incumbent);
+	j.at("age").get_to(dc.age);
+	j.at("lifetime").get_to(dc.lifetime);
+
 }
 
 void to_json(json& j, const DataCentreData& dc) {
 	j = json{
 		{"maximum_load", dc.maximum_load},
-		{"hotroom_temp", dc.hotroom_temp}
+		{"hotroom_temp", dc.hotroom_temp},
+		{"incumbent", dc.incumbent},
+		{"age", dc.age},
+		{"lifetime", dc.lifetime}
 	};
 }
 
 // DomesticHotWater
 void from_json(const json& j, DomesticHotWater& dhw) {
 	j.at("cylinder_volume").get_to(dhw.cylinder_volume);
+	j.at("incumbent").get_to(dhw.incumbent);
+	j.at("age").get_to(dhw.age);
+	j.at("lifetime").get_to(dhw.lifetime);
 }
 
 void to_json(json& j, const DomesticHotWater& dhw) {
 	j = json{
-		{"cylinder_volume", dhw.cylinder_volume}
+		{"cylinder_volume", dhw.cylinder_volume},
+		{"incumbent", dhw.incumbent},
+		{"age", dhw.age},
+		{"lifetime", dhw.lifetime}
 	};
 }
 
@@ -51,6 +70,9 @@ void from_json(const json& j, ElectricVehicles& ev) {
 	j.at("rapid_chargers").get_to(ev.rapid_chargers);
 	j.at("ultra_chargers").get_to(ev.ultra_chargers);
 	j.at("scalar_electrical_load").get_to(ev.scalar_electrical_load);
+	j.at("incumbent").get_to(ev.incumbent);
+	j.at("age").get_to(ev.age);
+	j.at("lifetime").get_to(ev.lifetime);
 }
 
 void to_json(json& j, const ElectricVehicles& ev) {
@@ -60,7 +82,10 @@ void to_json(json& j, const ElectricVehicles& ev) {
 		{"fast_chargers", ev.fast_chargers},
 		{"rapid_chargers", ev.rapid_chargers},
 		{"ultra_chargers", ev.ultra_chargers},
-		{"scalar_electrical_load", ev.scalar_electrical_load}
+		{"scalar_electrical_load", ev.scalar_electrical_load},
+		{"incumbent", ev.incumbent},
+		{"age", ev.age},
+		{"lifetime", ev.lifetime}
 	};
 }
 
@@ -90,6 +115,9 @@ void from_json(const json& j, EnergyStorageSystem& ess) {
 	j.at("discharge_power").get_to(ess.discharge_power);
 	j.at("battery_mode").get_to(ess.battery_mode);
 	j.at("initial_charge").get_to(ess.initial_charge);
+	j.at("incumbent").get_to(ess.incumbent);
+	j.at("age").get_to(ess.age);
+	j.at("lifetime").get_to(ess.lifetime);
 }
 
 void to_json(json& j, const EnergyStorageSystem& ess) {
@@ -98,7 +126,10 @@ void to_json(json& j, const EnergyStorageSystem& ess) {
 		{"charge_power", ess.charge_power},
 		{"discharge_power", ess.discharge_power},
 		{"battery_mode", ess.battery_mode},
-		{"initial_charge", ess.initial_charge}
+		{"initial_charge", ess.initial_charge},
+		{"incumbent", ess.incumbent},
+		{"age", ess.age},
+		{"lifetime", ess.lifetime}
 	};
 }
 
@@ -125,13 +156,19 @@ void from_json(const json& j, GasCHData& gas_heater) {
 	j.at("maximum_output").get_to(gas_heater.maximum_output);
 	j.at("boiler_efficiency").get_to(gas_heater.boiler_efficiency);
 	j.at("gas_type").get_to(gas_heater.gas_type);
+	j.at("incumbent").get_to(gas_heater.incumbent);
+	j.at("age").get_to(gas_heater.age);
+	j.at("lifetime").get_to(gas_heater.lifetime);
 }
 
 void to_json(json& j, const GasCHData& gas_heater) {
 	j = json{
 		{"maximum_output", gas_heater.maximum_output},
 		{"boiler_efficiency", gas_heater.boiler_efficiency},
-		{"gas_type", gas_heater.gas_type}
+		{"gas_type", gas_heater.gas_type},
+		{"incumbent", gas_heater.incumbent},
+		{"age", gas_heater.age},
+		{"lifetime", gas_heater.lifetime}
 	};
 }
 
@@ -142,6 +179,9 @@ void from_json(const json& j, GridData& grid) {
 	j.at("import_headroom").get_to(grid.import_headroom);
 	j.at("tariff_index").get_to(grid.tariff_index);
 	j.at("export_tariff").get_to(grid.export_tariff);
+	j.at("incumbent").get_to(grid.incumbent);
+	j.at("age").get_to(grid.age);
+	j.at("lifetime").get_to(grid.lifetime);
 }
 
 void to_json(json& j, const GridData& grid) {
@@ -150,7 +190,10 @@ void to_json(json& j, const GridData& grid) {
 		{"grid_import", grid.grid_import},
 		{"import_headroom", grid.import_headroom},
 		{"tariff_index", grid.tariff_index},
-		{"export_tariff", grid.export_tariff}
+		{"export_tariff", grid.export_tariff},
+		{"incumbent", grid.incumbent},
+		{"age", grid.age},
+		{"lifetime", grid.lifetime}
 	};
 }
 
@@ -178,35 +221,55 @@ void from_json(const json& j, HeatPumpData& hp) {
 	j.at("heat_power").get_to(hp.heat_power);
 	j.at("heat_source").get_to(hp.heat_source);
 	j.at("send_temp").get_to(hp.send_temp);
+	j.at("incumbent").get_to(hp.incumbent);
+	j.at("age").get_to(hp.age);
+	j.at("lifetime").get_to(hp.lifetime);
 }
 
 void to_json(json& j, const HeatPumpData& hp) {
 	j = json{
 		{"heat_power", hp.heat_power},
 		{"heat_source", hp.heat_source},
-		{"send_temp", hp.send_temp}
+		{"send_temp", hp.send_temp},
+		{"incumbent", hp.incumbent},
+		{"age", hp.age},
+		{"lifetime", hp.lifetime}
 	};
 }
 
 // Mop
 void from_json(const json& j, MopData& mop) {
 	j.at("maximum_load").get_to(mop.maximum_load);
+	j.at("incumbent").get_to(mop.incumbent);
+	j.at("age").get_to(mop.age);
+	j.at("lifetime").get_to(mop.lifetime);
 }
 
 void to_json(json& j, const MopData& mop) {
 	j = json{
-		{"maximum_load", mop.maximum_load}
+		{"maximum_load", mop.maximum_load},
+		{"incumbent", mop.incumbent},
+		{"age", mop.age},
+		{"lifetime", mop.lifetime}
 	};
 }
 
-// Renewables
-void from_json(const json& j, Renewables& renewables) {
-	j.at("yield_scalars").get_to(renewables.yield_scalars);
+// Solar
+void from_json(const json& j, SolarData& solar) {
+	j.at("yield_scalar").get_to(solar.yield_scalar);
+	j.at("yield_index").get_to(solar.yield_index);
+	j.at("incumbent").get_to(solar.incumbent);
+	j.at("age").get_to(solar.age);
+	j.at("lifetime").get_to(solar.lifetime);
 }
 
-void to_json(json& j, const Renewables& renewables) {
+void to_json(json& j, const SolarData& solar) {
 	j = json{
-		{"yield_scalars", renewables.yield_scalars}
+		{"yield_scalar", solar.yield_scalar},
+		{"yield_index", solar.yield_index},
+		{"incumbent", solar.incumbent},
+		{"age", solar.age},
+		{"lifetime", solar.lifetime}
 	};
 }
 
@@ -215,13 +278,17 @@ void from_json(const json& j, TaskConfig& config) {
 	j.at("capex_limit").get_to(config.capex_limit);
 	j.at("use_boiler_upgrade_scheme").get_to(config.use_boiler_upgrade_scheme);
 	j.at("general_grant_funding").get_to(config.general_grant_funding);
+	j.at("npv_time_horizon").get_to(config.npv_time_horizon);
+	j.at("npv_discount_factor").get_to(config.npv_discount_factor);
 }
 
 void to_json(json& j, const TaskConfig& config) {
 	j = json{
 		{"capex_limit", config.capex_limit},
 		{"use_boiler_upgrade_scheme", config.use_boiler_upgrade_scheme},
-		{"general_grant_funding", config.general_grant_funding}
+		{"general_grant_funding", config.general_grant_funding},
+		{"npv_time_horizon", config.npv_time_horizon},
+		{"npv_discount_factor", config.npv_discount_factor}
 	};
 }
 
@@ -264,8 +331,8 @@ void from_json(const json& j, TaskData& taskData) {
 		taskData.mop = j.at("mop").get<MopData>();
 	}
 
-	if (j.contains("renewables") && !j["renewables"].is_null()) {
-		taskData.renewables = j.at("renewables").get<Renewables>();
+	if (j.contains("solar_panels") && !j["solar_panels"].is_null()) {
+		taskData.solar_panels = j.at("solar_panels").get<std::vector<SolarData>>();
 	}
 
 	taskData.config = j.at("config").get<TaskConfig>();
@@ -301,18 +368,15 @@ void to_json(json& j, const TaskData& taskData) {
 		j["grid"] = taskData.grid.value();
 	}
 
+	if (taskData.heat_pump) {
+		j["heat_pump"] = taskData.heat_pump.value();
+	}
+
 	if (taskData.mop) {
 		j["mop"] = taskData.mop.value();
 	}
 
-	if (taskData.renewables) {
-		j["renewables"] = taskData.renewables.value();
-	}
-
-
-	if (taskData.building) {
-		j["building"] = taskData.building.value();
-	}
+	j["solar_panels"] = taskData.solar_panels;
 
 	j["config"] = taskData.config;
 

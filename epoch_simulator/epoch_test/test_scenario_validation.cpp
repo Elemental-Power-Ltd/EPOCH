@@ -40,22 +40,26 @@ TEST_F(SimulatorTest, ValidateScenario_TariffIndexOutOfRange_Throws) {
     EXPECT_THROW(simulator.validateScenario(taskData), std::runtime_error);
 }
 
-// test with mismatched solar
-TEST_F(SimulatorTest, ValidateScenario_TooManyYieldScalars_Throws) {
+// test with solar_index out of range
+TEST_F(SimulatorTest, ValidateScenario_SolarIndexOutOfRange_Throws) {
+    // taskData and siteData have 2 solar_yields
     TaskData taskData = makeValidTaskData();
-    // siteData has 2 solar_yields
-    taskData.renewables->yield_scalars = { 1.0f, 2.0f, 3.0f };  // mismatch, too many
+    taskData.solar_panels[1].yield_index = 2;
 
     EXPECT_THROW(simulator.validateScenario(taskData), std::runtime_error);
 }
 
 // test with mismatched solar
 TEST_F(SimulatorTest, ValidateScenario_FewerYieldScalars_NoThrow) {
+
     TaskData taskData = makeValidTaskData();
 
-    // siteData has 2 solar_yields
-    // fewer yield_scalars than solar_yields is permitted
-    taskData.renewables->yield_scalars = { 1.0f};  
+    SolarData singleSolar;
+    singleSolar.yield_scalar = 1.0f;
+    singleSolar.yield_index = 1;
+
+    // fewer solar_panels than solar_yields is permitted
+    taskData.solar_panels = {singleSolar};  
 
     EXPECT_NO_THROW(simulator.validateScenario(taskData));
 }

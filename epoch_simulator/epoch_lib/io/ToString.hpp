@@ -25,7 +25,7 @@ std::string gasHeaterToString(const GasCHData& gh);
 std::string gridToString(const GridData& grid);
 std::string heatpumpToString(const HeatPumpData& hp);
 std::string mopToString(const MopData& mop);
-std::string renewablesToString(const Renewables& renewables);
+std::string solarToString(const SolarData& solar);
 std::string configToString(const TaskConfig& config);
 
 std::string capexBreakdownToString(const CapexBreakdown& breakdown);

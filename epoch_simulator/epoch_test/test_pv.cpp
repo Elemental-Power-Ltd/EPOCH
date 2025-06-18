@@ -10,12 +10,12 @@
 class BasicPVTest : public ::testing::Test {
 protected:
     SiteData siteData;
-    Renewables renewables;
+    std::vector<SolarData> panels;
     TempSum tempsum;
 
-    BasicPVTest(): 
+    BasicPVTest() :
         siteData(make24HourSiteData()),
-        renewables(),
+        panels(),
         tempsum(siteData)
     {
         // Provide some simple solar input data with 1,2,3,4 at each timestep
@@ -26,12 +26,18 @@ protected:
             Eigen::VectorXf::Ones(24) * 4
         };
 
-        renewables.yield_scalars = { 1.0f, 1.0f, 1.0f, 1.0f };
+        for (int i = 0; i < 4; ++i) {
+            SolarData solar;
+            solar.yield_scalar = 1;
+            // one panel for each solar_yield
+            solar.yield_index = i;
+            panels.emplace_back(solar);
+        }
     }
 };
 
 TEST_F(BasicPVTest, Initialization) {
-    BasicPV pv(siteData, renewables);
+    BasicPV pv(siteData, panels);
     pv.AllCalcs(tempsum);
     // Check that PV output is initialized correctly
     auto pvOutput = pv.get_PV_AC_out();
@@ -42,7 +48,7 @@ TEST_F(BasicPVTest, Initialization) {
 }
 
 TEST_F(BasicPVTest, AllCalcs) {
-    BasicPV pv(siteData, renewables);
+    BasicPV pv(siteData, panels);
     
     // Set initial electrical demand
     tempsum.Elec_e = Eigen::VectorXf::Constant(24, 15.0f);
@@ -56,7 +62,7 @@ TEST_F(BasicPVTest, AllCalcs) {
 }
 
 TEST_F(BasicPVTest, Report) {
-    BasicPV pv(siteData, renewables);
+    BasicPV pv(siteData, panels);
     ReportData report_data;
 
     pv.AllCalcs(tempsum);   
@@ -77,7 +83,7 @@ TEST_F(BasicPVTest, ZeroGeneration) {
         siteData.solar_yields[i].setZero();
     }
     
-    BasicPV pv(siteData, renewables);
+    BasicPV pv(siteData, panels);
     
     auto pvOutput = pv.get_PV_AC_out();
     for (int i = 0; i < 24; ++i) {
@@ -87,9 +93,13 @@ TEST_F(BasicPVTest, ZeroGeneration) {
 
 TEST_F(BasicPVTest, ScalarEffects) {
     // Modify scalars
-    renewables.yield_scalars = { 2.0f, 0.5f, 1.5f, 0.0f };
+    panels[0].yield_scalar = 2.0f;
+    panels[1].yield_scalar = 0.5f;
+    panels[2].yield_scalar = 1.5f;
+    panels[3].yield_scalar = 0.0f;
 
-    BasicPV pv(siteData, renewables);
+
+    BasicPV pv(siteData, panels);
     pv.AllCalcs(tempsum);
     auto pvOutput = pv.get_PV_AC_out();
     for (int i = 0; i < 24; ++i) {
@@ -99,9 +109,9 @@ TEST_F(BasicPVTest, ScalarEffects) {
 
 TEST_F(BasicPVTest, NoScalars) {
     // a PV instance that is provided no yield_scalars should return 0 total solar
-    renewables.yield_scalars = {};
+    panels = {};
 
-    BasicPV pv(siteData, renewables);
+    BasicPV pv(siteData, panels);
     pv.AllCalcs(tempsum);
     auto pvOutput = pv.get_PV_AC_out();
 

@@ -55,12 +55,12 @@ TEST_F(EpochSimulationRun, CommonTaskData) {
 	TaskData task = readTaskData(fs::path{ "./test_files/taskData_common.json" });
 	auto result = simulator.simulateScenario(task);
 
-	EXPECT_FLOAT_EQ(result.project_CAPEX, 1355945.4f);
+	EXPECT_FLOAT_EQ(result.project_CAPEX, 1377395.4f);
 	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 102757.23f);
 	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, 71935.516f);
-	EXPECT_FLOAT_EQ(result.scenario_cost_balance, -3008.4922f);
-	EXPECT_FLOAT_EQ(result.payback_horizon_years, -450.70596f);
-	EXPECT_FLOAT_EQ(result.total_annualised_cost, 86580.258f);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, -3866.4922f);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, -356.23901f);
+	EXPECT_FLOAT_EQ(result.total_annualised_cost, 87438.258f);
 }
 
 TEST_F(EpochSimulationRun, FullTaskData) {
@@ -70,10 +70,10 @@ TEST_F(EpochSimulationRun, FullTaskData) {
 	TaskData task = readTaskData(fs::path{ "./test_files/taskData_full.json" });
 	auto result = simulator.simulateScenario(task);
 
-	EXPECT_FLOAT_EQ(result.project_CAPEX, 1249445.4f);
+	EXPECT_FLOAT_EQ(result.project_CAPEX, 1296895.4f);
 	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_1, 144888.22f);
 	EXPECT_FLOAT_EQ(result.scenario_carbon_balance_scope_2, -11637.164f);
-	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 172053.12f);
-	EXPECT_FLOAT_EQ(result.payback_horizon_years, 7.2619743f);
-	EXPECT_FLOAT_EQ(result.total_annualised_cost, 75530.258f);
+	EXPECT_FLOAT_EQ(result.scenario_cost_balance, 168595.12f);
+	EXPECT_FLOAT_EQ(result.payback_horizon_years, 7.6923656f);
+	EXPECT_FLOAT_EQ(result.total_annualised_cost, 78988.258f);
 }

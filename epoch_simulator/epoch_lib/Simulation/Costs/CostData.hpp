@@ -33,6 +33,9 @@ struct CapexPrices {
 	//EV Charger costs are in £ / charger (of each of the four types)
 	EVChargerCosts ev_prices = EVChargerCosts();
 
+	// Gas Boiler costs are in £ / kW
+	ThreeTierCostData gas_heater_prices = ThreeTierCostData(1000.0f, 100.0f, 200.0f, 250.0f, 225.0f, 200.0f);
+
 	// grid costs are in £ / kW DC
 	ThreeTierCostData grid_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 240.0f, 160.0f, 120.0f);
 
@@ -63,6 +66,25 @@ struct OpexPrices {
 };
 
 // We store the component costs as they are necessary to calculate annualised costs
+
+struct EVCapex {
+	float charger_cost;
+	float charger_install;
+};
+
+struct ESSCapex {
+	float pcs_capex;
+	float enclosure_capex;
+	float enclosure_disposal;
+};
+
+struct SolarCapex {
+	float panel_capex;
+	float roof_capex;
+	float ground_capex;
+	float BoP_capex;
+};
+
 struct CapexBreakdown {
 	float building_fabric_capex;
 
@@ -70,6 +92,8 @@ struct CapexBreakdown {
 
 	float ev_charger_cost;
 	float ev_charger_install;
+
+	float gas_heater_capex;
 
 	float grid_capex;
 

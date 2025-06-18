@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "1.10.0";
+const std::string EPOCH_VERSION = "1.11.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -88,6 +88,9 @@ struct SimulationMetrics {
 	float total_electricity_export_gain;
 
 	float total_meter_cost;
+	float total_operating_cost;
+	float total_annualised_cost;
+	float total_net_present_value;
 };
 
 struct SimulationResult {
@@ -101,6 +104,7 @@ struct SimulationResult {
 	float scenario_carbon_balance_scope_2;
 	float meter_balance;
 	float operating_balance;
+	float npv_balance;
 
 	SimulationMetrics metrics;
 	SimulationMetrics baseline_metrics;

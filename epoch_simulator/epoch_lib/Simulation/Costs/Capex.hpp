@@ -9,18 +9,24 @@ CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const Ta
 
 CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskData);
 
-void calculate_building_capex(const SiteData& siteData, const Building& building, CapexBreakdown& capex_breakdown);
+// note: these functions are named calculate_X_cost
+// this is to denote that they are not responsible for checking whether the component is incumbent
+// this check is made in calculate_capex
 
-void calculate_dhw_capex(const DomesticHotWater& dhw, CapexBreakdown& capex_breakdown);
+float calculate_fabric_cost(const SiteData& siteData, const Building& building);
 
-void calculate_ev_capex(const ElectricVehicles& ev, CapexBreakdown& capex_breakdown);
+float calculate_dhw_cost(const DomesticHotWater& dhw);
 
-void calculate_ess_capex(const EnergyStorageSystem& ess, CapexBreakdown& capex_breakdown);
+EVCapex calculate_ev_cost(const ElectricVehicles& ev);
 
-void calculate_grid_capex(const GridData& grid, CapexBreakdown& capex_breakdown);
+ESSCapex calculate_ess_cost(const EnergyStorageSystem& ess);
 
-void calculate_heatpump_capex(const HeatPumpData& hp, CapexBreakdown& capex_breakdown);
+float calculate_gas_heater_cost(const GasCHData& gas);
 
-void calculate_renewables_capex(const Renewables& renewables, CapexBreakdown& capex_breakdown);
+float calculate_grid_cost(const GridData& grid);
+
+float calculate_heatpump_cost(const HeatPumpData& hp);
+
+SolarCapex calculate_solar_cost(const SolarData& panel);
 
 bool is_elegible_for_boiler_upgrade_scheme(const TaskData& baseline, const TaskData& scenario);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Usage.hpp"
+#include "../SiteData.hpp"
 
 
 struct ScenarioComparison {
@@ -8,29 +9,17 @@ struct ScenarioComparison {
 	float meter_balance;
 	float operating_balance;
 	float payback_horizon_years;
-	float total_annualised_cost;
 	float carbon_balance_scope_1;
 	float carbon_balance_scope_2;
+	float npv_balance;
 };
 
 
-ScenarioComparison compareScenarios(const UsageData& baselineUsage, const UsageData& scenarioUsage);
-
-float calculate_ESS_annualised_cost(const UsageData& usage);
-
-float calculate_PV_annualised_cost(const UsageData& usage);
-
-float calculate_EV_CP_annualised_cost(const UsageData& usage);
-
-float calculate_ASHP_annualised_cost(const UsageData& usage);
-
-float calculate_DHW_annualised_cost(const UsageData& usage);
-
-float calculate_Grid_annualised_cost(const UsageData& usage);
-
-float calculate_Project_annualised_cost(const UsageData& usage);
-
-float calculate_total_annualised_cost(const UsageData& usage);
+ScenarioComparison compareScenarios(
+	const SiteData& siteData,
+	const UsageData& baselineUsage, const SimulationMetrics& baselineMetrics, 
+	const UsageData& scenarioUsage, const SimulationMetrics& scenarioMetrics
+);
 
 float calculate_payback_horizon(float capex, float cost_balance);
 
@@ -48,13 +37,3 @@ const float project_plan_develop_Grid = 0.1f;
 // every kWh that goes into an EV saves this much on the counterfactual of an ICE petrol vehicle
 const float petrol_displace_kg_CO2e = 0.9027f;
 
-
-// plant lifetimes in years
-
-const float ESS_lifetime = 15.0f;
-const float PV_panel_lifetime = 25.0f;
-const float EV_CP_lifetime = 15.0f;
-const float grid_lifetime = 25.0f;
-const float ASHP_lifetime = 10.0f;
-const float DHW_lifetime = 12.0f;
-const float project_lifetime = 10.0f;

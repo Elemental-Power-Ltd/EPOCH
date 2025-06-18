@@ -15,6 +15,7 @@
 
 #include "Costs/Usage.hpp"
 #include "Costs/Compare.hpp"
+#include "Costs/NetPresentValue.hpp"
 #include "DayTariffStats.hpp"
 #include "HotWaterCylinder.hpp"
 
@@ -42,17 +43,24 @@ Simulator::Simulator(SiteData siteData):
 	mBaselineTaskData.grid = GridData();
 	mBaselineTaskData.gas_heater = GasCHData();
 
-	// we construct a TaskData with oversized grid and gas capacities
+	mBaselineTaskData.building->incumbent = true;
+	mBaselineTaskData.grid->incumbent = true;
+	mBaselineTaskData.gas_heater->incumbent = true;
+
+	// we construct a TaskData with oversized grid
 	// to ensure there is no shortfall
 	mBaselineTaskData.grid->grid_import = 1000000.0f;
 	mBaselineTaskData.grid->grid_export = 1000000.0f;
-	mBaselineTaskData.gas_heater->maximum_output = 1000000.0f;
+
+	// the Gas Heater is trickier as it has a cost
+	// for now fix at 100kW
+	mBaselineTaskData.gas_heater->maximum_output = 150.0f;
 
 	auto baselineReportData = simulateTimesteps(mBaselineTaskData);
 	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, mBaselineTaskData);
 	mBaselineUsage = calculateBaselineUsage(mSiteData, mBaselineTaskData, baselineCostVectors);
 
-	mBaselineMetrics = calculateMetrics(baselineReportData, mBaselineUsage);
+	mBaselineMetrics = calculateMetrics(mSiteData, mBaselineTaskData, baselineReportData, mBaselineUsage);
 }
 
 SimulationResult Simulator::simulateScenario(const TaskData& taskData, SimulationType simulationType) const {
@@ -86,19 +94,23 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 
 	auto scenarioUsage = calculateScenarioUsage(mSiteData, mBaselineTaskData, taskData, costVectors);
 
-	auto comparison = compareScenarios(mBaselineUsage, scenarioUsage);
+	result.baseline_metrics = mBaselineMetrics;
+	result.metrics = calculateMetrics(mSiteData, taskData, result.report_data.value(), scenarioUsage);
+
+	auto comparison = compareScenarios(mSiteData, mBaselineUsage, result.baseline_metrics, scenarioUsage, result.metrics);
 
 	result.project_CAPEX = scenarioUsage.capex_breakdown.total_capex;
-	result.total_annualised_cost = comparison.total_annualised_cost;
+	// There is some redundancy here
+	//  total_annualised_cost is in both the SimulationResult and the SimulationMetrics
+	//  this is to avoid breaking the interface exposing the total_annualised_cost in the SimulationResult
+	result.total_annualised_cost = result.metrics.total_annualised_cost;
 	result.scenario_cost_balance = comparison.cost_balance;
 	result.meter_balance = comparison.meter_balance;
 	result.operating_balance = comparison.operating_balance;
 	result.payback_horizon_years = comparison.payback_horizon_years;
 	result.scenario_carbon_balance_scope_1 = comparison.carbon_balance_scope_1;
 	result.scenario_carbon_balance_scope_2 = comparison.carbon_balance_scope_2;
-
-	result.metrics = calculateMetrics(result.report_data.value(), scenarioUsage);
-	result.baseline_metrics = mBaselineMetrics;
+	result.npv_balance = comparison.npv_balance;
 
 
 	if (simulationType != SimulationType::FullReporting) {
@@ -143,12 +155,13 @@ void Simulator::validateScenario(const TaskData& taskData) const {
 		}
 	}
 
-	// check yield_scalars and solar_yields match
-	if (taskData.renewables) {
-		if (taskData.renewables->yield_scalars.size() > mSiteData.solar_yields.size()) {
+	// check the yield_index is in bounds for each solar panel
+	int num_yields = static_cast<int>(mSiteData.solar_yields.size());
+	for (const SolarData& solar : taskData.solar_panels) {
+		if (solar.yield_index >= num_yields) {
 			throw std::runtime_error(std::format(
-				"Mismatch: TaskData supplied {} yield_scalars but SiteData only supplied {} solar_yields",
-				taskData.renewables->yield_scalars.size(), mSiteData.solar_yields.size()
+				"Cannot use yield_index of {} with {} yields provided",
+				solar.yield_index, mSiteData.solar_yields.size()
 			));
 		}
 	}
@@ -179,8 +192,8 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 		hotel.Report(reportData);
 	}
 
-	if (taskData.renewables) {
-		BasicPV PV1(mSiteData, taskData.renewables.value());
+	if (taskData.solar_panels.size() > 0) {
+		BasicPV PV1(mSiteData, taskData.solar_panels);
 		PV1.AllCalcs(tempSum);
 		PV1.Report(reportData);
 	}
@@ -355,7 +368,7 @@ CostVectors Simulator::extractCostVectors(const ReportData& reportData, const Ta
 	return costVectors;
 }
 
-SimulationMetrics Simulator::calculateMetrics(const ReportData& reportData, const UsageData& usage) const {
+SimulationMetrics Simulator::calculateMetrics(const SiteData& siteData, const TaskData& taskData, const ReportData& reportData, const UsageData& usage) const {
 	SimulationMetrics metrics{};
 
 	metrics.total_gas_used = reportData.GasCH_load.sum();
@@ -371,6 +384,11 @@ SimulationMetrics Simulator::calculateMetrics(const ReportData& reportData, cons
 	metrics.total_electricity_export_gain = usage.export_revenue;
 
 	metrics.total_meter_cost = usage.total_meter_cost;
+	metrics.total_operating_cost = usage.total_operating_cost;
+
+	auto valueMetrics = calculate_npv(siteData, taskData, usage);
+	metrics.total_annualised_cost = valueMetrics.annualised_cost;
+	metrics.total_net_present_value = valueMetrics.net_present_value;
 
 	return metrics;
 }

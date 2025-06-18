@@ -1,6 +1,8 @@
 #pragma once
 
 #include <optional>
+#include <vector>
+
 #include <nlohmann/json.hpp>
 
 #include "TaskComponents.hpp"
@@ -11,11 +13,11 @@ struct TaskData {
 	std::optional<DomesticHotWater> domestic_hot_water;
 	std::optional<ElectricVehicles> electric_vehicles;
 	std::optional<EnergyStorageSystem> energy_storage_system;
+	std::optional<GasCHData> gas_heater;
 	std::optional<GridData> grid;
 	std::optional<HeatPumpData> heat_pump;
 	std::optional<MopData> mop;
-	std::optional<Renewables> renewables;
-	std::optional<GasCHData> gas_heater;
+	std::vector<SolarData> solar_panels;
 	TaskConfig config;
 
 	bool operator==(const TaskData& other) const { 
@@ -29,7 +31,7 @@ struct TaskData {
 			grid == other.grid &&
 			heat_pump == other.heat_pump &&
 			mop == other.mop &&
-			renewables == other.renewables);
+			solar_panels == other.solar_panels);
 		}
 };
 
@@ -50,7 +52,8 @@ struct std::hash<TaskData>
 			td.grid,
 			td.heat_pump,
 			td.mop,
-			td.renewables);
+			vector_hasher<SolarData>{}(td.solar_panels)
+		);
         return h;
     }
 };
