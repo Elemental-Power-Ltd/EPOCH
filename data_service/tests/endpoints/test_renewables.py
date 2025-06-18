@@ -268,6 +268,7 @@ class TestRenewablesErrors:
         assert "dataset_id" in results.json()["detail"]
         assert str(bad_uuid) in results.json()["detail"]
 
+
 class TestWindRenewables:
     @pytest.mark.asyncio
     @pytest.mark.external
@@ -282,7 +283,7 @@ class TestWindRenewables:
                     "start_ts": demo_start_ts.isoformat(),
                     "end_ts": demo_end_ts.isoformat(),
                     "height": 80,
-                    "turbine":"Enercon E101 3000"
+                    "turbine": "Enercon E101 3000",
                 },
             )
         ).json()

@@ -313,8 +313,9 @@ async def get_renewables_ninja_wind_data(
         -------
         set of valid turbine names
         """
-        rn_wind_resp = await http_client.get("https://www.renewables.ninja/api/models/wind",
-                                            headers={"Authorization": f"Token {api_key}"})
+        rn_wind_resp = await http_client.get(
+            "https://www.renewables.ninja/api/models/wind", headers={"Authorization": f"Token {api_key}"}
+        )
         assert rn_wind_resp.status_code == 200, (
             "Got a bad status code from Renewables.ninja" + f" for wind model listing: {rn_wind_resp.status_code}"
         )

@@ -302,7 +302,7 @@ class MockedHttpClient(httpx.AsyncClient):
             maybe_rn_data = await self.cache_renewables_ninja_data(url, **kwargs)
             if maybe_rn_data is not None:
                 return httpx.Response(status_code=200, json=maybe_rn_data)
-            
+
         if url.startswith("https://api.re24.energy/v1/data/prices/nordpool"):
             maybe_re24_data = await self.cache_re24_data(url, **kwargs)
             if maybe_re24_data is not None:
