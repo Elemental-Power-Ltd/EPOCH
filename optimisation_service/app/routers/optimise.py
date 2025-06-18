@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.internal.bayesian.bayesian import Bayesian
 from app.internal.constraints import apply_default_constraints
 from app.internal.datamanager import DataManagerDep
-from app.internal.epoch_utils import convert_TaskData_to_pydantic
+from app.internal.ga_utils import strip_annotations
 from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
@@ -57,7 +57,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                 SiteOptimisationResult(
                     site_id=site_id,
                     portfolio_id=portfolio_id,
-                    scenario=convert_TaskData_to_pydantic(site_solution.scenario),
+                    scenario=strip_annotations(site_solution.scenario),
                     metrics=SiteMetrics(
                         carbon_balance_scope_1=site_solution.metric_values[Metric.carbon_balance_scope_1],
                         carbon_balance_scope_2=site_solution.metric_values[Metric.carbon_balance_scope_2],

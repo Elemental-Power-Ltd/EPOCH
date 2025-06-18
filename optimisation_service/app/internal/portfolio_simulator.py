@@ -6,6 +6,7 @@ from epoch_simulator import Simulator, TaskData
 
 from app.internal.epoch_utils import convert_sim_result
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
+from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _SUMMABLE_METRICS, Metric, MetricValues
 from app.models.result import PortfolioSolution, SiteSolution
 from app.models.site_data import EpochSiteData
@@ -33,13 +34,13 @@ class PortfolioSimulator:
         """
         self.sims = {name: Simulator.from_json(epoch_data.model_dump_json()) for name, epoch_data in epoch_data_dict.items()}
 
-    def simulate_portfolio(self, portfolio_scenarios: dict[str, TaskData]) -> PortfolioSolution:
+    def simulate_portfolio(self, portfolio_scenarios: dict[str, AnnotatedTaskData]) -> PortfolioSolution:
         """
         Simulate a portfolio.
 
         Parameters
         ----------
-        portfolio_tasks
+        portfolio_scenarios
             Dictionary of building names and task data.
 
         Returns
@@ -51,10 +52,11 @@ class PortfolioSimulator:
         site_scenarios = {}
         metric_values_list = []
         for name in portfolio_scenarios.keys():
-            site_scenario = portfolio_scenarios[name]
+            annotated_task = portfolio_scenarios[name]
+            site_scenario = TaskData.from_json(annotated_task.model_dump_json(exclude_none=True))
             sim = self.sims[name]
             result = simulate_scenario(sim, name, site_scenario)
-            site_scenarios[name] = SiteSolution(scenario=site_scenario, metric_values=result)
+            site_scenarios[name] = SiteSolution(scenario=annotated_task, metric_values=result)
             metric_values_list.append(result)
         metric_values = combine_metric_values(metric_values_list)
         return PortfolioSolution(scenario=site_scenarios, metric_values=metric_values)

@@ -1,18 +1,19 @@
+import json
 from dataclasses import dataclass
 from datetime import timedelta
 
-from epoch_simulator import TaskData
-
+from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import MetricValues
 
 
 @dataclass
 class SiteSolution:
-    scenario: TaskData
+    scenario: AnnotatedTaskData
     metric_values: MetricValues
 
     def __hash__(self):
-        return hash(self.scenario)
+        json_str = json.dumps(self.scenario.model_dump(), sort_keys=True, default=str)
+        return hash(json_str)
 
     def __eq__(self, other):
         return hash(self) == hash(other)

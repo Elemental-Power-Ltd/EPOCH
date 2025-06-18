@@ -7,6 +7,7 @@ class Metric(StrEnum):
     meter_balance = "meter_balance"
     operating_balance = "operating_balance"
     cost_balance = "cost_balance"
+    npv_balance = "npv_balance"
     capex = "capex"
     payback_horizon = "payback_horizon"
     annualised_cost = "annualised_cost"
@@ -24,6 +25,8 @@ class Metric(StrEnum):
     total_electricity_import_cost = "total_electricity_import_cost"
     total_electricity_export_gain = "total_electricity_export_gain"
     total_meter_cost = "total_meter_cost"
+    total_operating_cost = "total_operating_cost"
+    total_net_present_value = "total_net_present_value"
 
     baseline_gas_used = "baseline_gas_used"
     baseline_electricity_imported = "baseline_electricity_imported"
@@ -37,6 +40,8 @@ class Metric(StrEnum):
     baseline_electricity_import_cost = "baseline_electricity_import_cost"
     baseline_electricity_export_gain = "baseline_electricity_export_gain"
     baseline_meter_cost = "baseline_meter_cost"
+    baseline_operating_cost = "baseline_operating_cost"
+    baseline_net_present_value = "baseline_net_present_value"
 
 
 # these metrics can be used as an optimisation objective
@@ -47,6 +52,7 @@ _EPOCH_NATIVE_OBJECTIVE_METRICS = [
     Metric.meter_balance,
     Metric.operating_balance,
     Metric.cost_balance,
+    Metric.npv_balance,
     Metric.annualised_cost,
     Metric.payback_horizon,
 
@@ -62,6 +68,8 @@ _EPOCH_NATIVE_OBJECTIVE_METRICS = [
     Metric.total_electricity_import_cost,
     Metric.total_electricity_export_gain,
     Metric.total_meter_cost,
+    Metric.total_operating_cost,
+    Metric.total_net_present_value,
 ]
 
 
@@ -78,7 +86,9 @@ _EPOCH_NATIVE_NON_OBJECTIVE_METRICS = [
     Metric.baseline_gas_import_cost,
     Metric.baseline_electricity_import_cost,
     Metric.baseline_electricity_export_gain,
-    Metric.baseline_meter_cost
+    Metric.baseline_meter_cost,
+    Metric.baseline_operating_cost,
+    Metric.baseline_net_present_value,
 ]
 
 _SERVICE_NATIVE_METRICS = [
@@ -97,6 +107,7 @@ _SUMMABLE_METRICS = [
     Metric.meter_balance,
     Metric.operating_balance,
     Metric.cost_balance,
+    Metric.npv_balance,
 
     Metric.total_gas_used,
     Metric.total_electricity_imported,
@@ -110,6 +121,8 @@ _SUMMABLE_METRICS = [
     Metric.total_electricity_import_cost,
     Metric.total_electricity_export_gain,
     Metric.total_meter_cost,
+    Metric.total_operating_cost,
+    Metric.total_net_present_value,
 
     Metric.baseline_gas_used,
     Metric.baseline_electricity_imported,
@@ -123,6 +136,8 @@ _SUMMABLE_METRICS = [
     Metric.baseline_electricity_import_cost,
     Metric.baseline_electricity_export_gain,
     Metric.baseline_meter_cost,
+    Metric.baseline_operating_cost,
+    Metric.baseline_net_present_value,
 ]
 
 
@@ -133,6 +148,7 @@ class MetricDirection(IntEnum):
     meter_balance = -1
     operating_balance = -1
     cost_balance = -1
+    npv_balance = -1
     capex = 1
     payback_horizon = 1
     annualised_cost = 1
@@ -150,6 +166,8 @@ class MetricDirection(IntEnum):
     total_electricity_import_cost = 1
     total_electricity_export_gain = -1
     total_meter_cost = 1
+    total_operating_cost = 1
+    total_net_present_value = -1
 
 
 MetricValues = dict[Metric, int | float]

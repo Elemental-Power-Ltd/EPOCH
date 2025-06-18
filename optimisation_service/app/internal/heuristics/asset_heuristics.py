@@ -68,9 +68,9 @@ class HeatPumpHeuristic:
         return np.quantile(elec_loads, quantile)
 
 
-class RenewablesHeuristic:
+class SolarHeuristic:
     @staticmethod
-    def yield_scalars(solar_yield: list[float], building_eload: list[float], quantile: float = 0.75) -> float:
+    def yield_scalar(solar_yield: list[float], building_eload: list[float], quantile: float = 0.75) -> float:
         """
         Estimate the solar PV array size for this site to cover a fraction of daily usage.
 
@@ -220,15 +220,17 @@ def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
     estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystemHeuristic.charge_power(
         solar_yield=solar_yield_sum,
         timestamps=timestamps,
-        solar_scale=RenewablesHeuristic.yield_scalars(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
+        solar_scale=SolarHeuristic.yield_scalar(solar_yield=solar_yield_sum, building_eload=epoch_data.building_eload),
     )
     estimates["energy_storage_system"]["discharge_power"] = EnergyStorageSystemHeuristic.discharge_power(
         building_eload=epoch_data.building_eload, timestamps=timestamps
     )
-    estimates["renewables"] = {}
-    estimates["renewables"]["yield_scalars"] = [
-        RenewablesHeuristic.yield_scalars(solar_yield=solar_yield, building_eload=epoch_data.building_eload)
-        for solar_yield in epoch_data.solar_yields
-    ]
+
+    estimates["solar_panels"] = {}
+    # for now, we choose to create an estimate based only on the first solar yield array
+    # this is likely to be an overestimate in cases where we have multiple solar arrays
+    estimates["solar_panels"]["yield_scalar"] = SolarHeuristic.yield_scalar(
+        solar_yield=epoch_data.solar_yields[0], building_eload=epoch_data.building_eload
+    )
 
     return estimates

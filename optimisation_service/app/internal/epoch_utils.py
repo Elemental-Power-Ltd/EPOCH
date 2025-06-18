@@ -1,6 +1,7 @@
 """
 Wrappers for Epoch that are more ergonomic for python.
 """
+import json
 
 from epoch_simulator import SimulationResult, TaskData
 
@@ -32,6 +33,7 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
     metric_values[Metric.meter_balance] = sim_result.meter_balance
     metric_values[Metric.operating_balance] = sim_result.operating_balance
     metric_values[Metric.cost_balance] = sim_result.cost_balance
+    metric_values[Metric.npv_balance] = sim_result.npv_balance
     metric_values[Metric.annualised_cost] = sim_result.annualised_cost
     metric_values[Metric.payback_horizon] = sim_result.payback_horizon
 
@@ -48,6 +50,8 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
     metric_values[Metric.total_electricity_import_cost] = sim_result.metrics.total_electricity_import_cost
     metric_values[Metric.total_electricity_export_gain] = sim_result.metrics.total_electricity_export_gain
     metric_values[Metric.total_meter_cost] = sim_result.metrics.total_meter_cost
+    metric_values[Metric.total_operating_cost] = sim_result.metrics.total_operating_cost
+    metric_values[Metric.total_net_present_value] = sim_result.metrics.total_net_present_value
 
     metric_values[Metric.baseline_gas_used] = sim_result.baseline_metrics.total_gas_used
     metric_values[Metric.baseline_electricity_imported] = sim_result.baseline_metrics.total_electricity_imported
@@ -61,6 +65,8 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
     metric_values[Metric.baseline_electricity_import_cost] = sim_result.baseline_metrics.total_electricity_import_cost
     metric_values[Metric.baseline_electricity_export_gain] = sim_result.baseline_metrics.total_electricity_export_gain
     metric_values[Metric.baseline_meter_cost] = sim_result.baseline_metrics.total_meter_cost
+    metric_values[Metric.baseline_operating_cost] = sim_result.baseline_metrics.total_operating_cost
+    metric_values[Metric.baseline_net_present_value] = sim_result.baseline_metrics.total_net_present_value
 
     # Derive carbon cost from capex and scope-1 carbon balance
     metric_values[Metric.carbon_cost] = calculate_carbon_cost(
@@ -85,21 +91,7 @@ def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:
     task_data_dict
         A dictionary representation of the task_data.
     """
-    task_data_dict = {}
-    task_data_fields = [field for field in dir(task_data) if not field.startswith("__") and field != "from_json"]
-    for task_data_field in task_data_fields:
-        asset = getattr(task_data, task_data_field)
-        asset_fields = [field for field in dir(asset) if not field.startswith("__") and field != "from_json"]
-        asset_dict = {}
-        if len(asset_fields) > 0:
-            for asset_field in asset_fields:
-                attr_value = getattr(asset, asset_field)
-                if asset_field in ["heat_source", "battery_mode", "gas_type"]:
-                    asset_dict[asset_field] = attr_value.name
-                else:
-                    asset_dict[asset_field] = attr_value
-            task_data_dict[task_data_field] = asset_dict
-    return task_data_dict
+    return json.loads(task_data.to_json())
 
 
 def convert_TaskData_to_pydantic(task_data: TaskData) -> TaskDataPydantic:

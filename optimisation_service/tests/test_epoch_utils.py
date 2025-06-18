@@ -9,8 +9,8 @@ from epoch_simulator import (
     GasHeater,
     Grid,
     HeatPump,
-    Renewables,
     Simulator,
+    SolarPanel,
     TaskData,
 )
 
@@ -28,7 +28,7 @@ def test_convert_sim_result() -> None:
     td = TaskData()
     td.building = Building()
     td.grid = Grid()
-    td.renewables = Renewables()
+    td.solar_panels = [SolarPanel()]
     td.heat_pump = HeatPump()
     td.data_centre = DataCentre()
     td.domestic_hot_water = DomesticHotWater()
@@ -51,7 +51,7 @@ def test_convert_TaskData_to_pydantic() -> None:
     td.config = Config()
     td.building = Building()
     td.grid = Grid()
-    td.renewables = Renewables()
+    td.solar_panels = [SolarPanel()]
     td.heat_pump = HeatPump()
     td.data_centre = DataCentre()
     td.domestic_hot_water = DomesticHotWater()
@@ -63,7 +63,7 @@ def test_convert_TaskData_to_pydantic() -> None:
     assert hasattr(res, "config")
     assert hasattr(res, "building")
     assert hasattr(res, "grid")
-    assert hasattr(res, "renewables")
+    assert hasattr(res, "solar_panels")
     assert hasattr(res, "heat_pump")
     assert hasattr(res, "data_centre")
     assert hasattr(res, "domestic_hot_water")

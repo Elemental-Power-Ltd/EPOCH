@@ -23,6 +23,8 @@ class SimulationMetrics:
     total_electricity_export_gain: float
 
     total_meter_cost: float
+    total_operating_cost: float
+    total_net_present_value: float
 
 class SimulationResult:
     carbon_balance_scope_1: float
@@ -30,6 +32,7 @@ class SimulationResult:
     meter_balance: float
     operating_balance: float
     cost_balance: float
+    npv_balance: float
     capex: float
     payback_horizon: float
     annualised_cost: float
@@ -39,18 +42,31 @@ class SimulationResult:
 
 class Config:
     capex_limit: float
+    use_boiler_upgrade_scheme: bool
+    general_grant_funding: float
+    npv_time_horizon: int
+    npv_discount_factor: float
 
 class Building:
     scalar_heat_load: float
     scalar_electrical_load: float
     fabric_intervention_index: int
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class DataCentre:
     maximum_load: float
     hotroom_temp: float
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class DomesticHotWater:
     cylinder_volume: float
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class ElectricVehicles:
     flexible_load_ratio: float
@@ -59,6 +75,9 @@ class ElectricVehicles:
     rapid_chargers: int
     ultra_chargers: int
     scalar_electrical_load: float
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class BatteryMode(Enum):
     CONSUME = "CONSUME"
@@ -70,6 +89,9 @@ class EnergyStorageSystem:
     discharge_power: float
     battery_mode: BatteryMode
     initial_charge: float
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class GasType(Enum):
     NATURAL_GAS = "NATURAL_GAS"
@@ -79,12 +101,18 @@ class GasHeater:
     maximum_output: float
     gas_type: GasType
     boiler_efficiency: float
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class Grid:
     grid_export: float
     grid_import: float
     import_headroom: float
     tariff_index: int
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class HeatSource(Enum):
     AMBIENT_AIR = "AMBIENT_AIR"
@@ -94,12 +122,22 @@ class HeatPump:
     heat_power: float
     heat_source: HeatSource
     send_temp: float
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class Mop:
     maximum_load: float
+    incumbent: bool
+    age: float
+    lifetime: float
 
-class Renewables:
-    yield_scalars: list[float]
+class SolarPanel:
+    yield_scalar: float
+    yield_index: int
+    incumbent: bool
+    age: float
+    lifetime: float
 
 class TaskData:
     config: Config
@@ -112,10 +150,11 @@ class TaskData:
     grid: Grid
     heat_pump: HeatPump
     mop: Mop
-    renewables: Renewables
+    solar_panels: list[SolarPanel]
 
     @staticmethod
     def from_json(json_str: str) -> TaskData: ...
+    def to_json(self) -> str: ...
 
 class CapexBreakdown:
     dhw_capex: float

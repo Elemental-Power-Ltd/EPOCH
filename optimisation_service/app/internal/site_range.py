@@ -1,4 +1,7 @@
-from app.models.site_range import SiteRange
+from app.models.epoch_types import SiteRange
+
+REPEAT_COMPONENTS = ["solar_panels"]
+FIXED_PARAMETERS = ["incumbent", "age", "lifetime"]
 
 
 def count_parameters_to_optimise(site_range: SiteRange) -> int:
@@ -18,20 +21,40 @@ def count_parameters_to_optimise(site_range: SiteRange) -> int:
     n = 0
 
     site_range_dict = site_range.model_dump(exclude_none=True)
+
+    # there are no varying parameters in the config
     site_range_dict.pop("config")
 
-    if "renewables" in site_range_dict.keys():
-        n += not site_range_dict["renewables"]["COMPONENT_IS_MANDATORY"]
-        for scalars in site_range_dict["renewables"]["yield_scalars"]:
-            if len(scalars) > 1:
-                n += 1
-        site_range_dict.pop("renewables")
+    for asset_name, asset in site_range_dict.items():
+        if asset_name in REPEAT_COMPONENTS:
+            for sub_asset in asset:
+                n += count_parameters_in_asset(sub_asset)
+        else:
+            n += count_parameters_in_asset(asset)
 
-    for asset in site_range_dict.values():
-        n += not asset["COMPONENT_IS_MANDATORY"]
-        asset.pop("COMPONENT_IS_MANDATORY")
-        for attr_values in asset.values():
-            if len(attr_values) > 1:
-                n += 1
+    return n
+
+
+def count_parameters_in_asset(asset: dict) -> int:
+    """
+    Count the number of parameters to optimise in an individual component.
+
+    Parameters
+    ----------
+    asset
+        An individual component within the SiteRange.
+
+    Returns
+    -------
+    n
+        Number of parameters to optimise
+
+    """
+    n = 0
+    n += not asset["COMPONENT_IS_MANDATORY"]
+    for attribute in asset.values():
+        # each list in the asset is a varying parameter
+        if isinstance(attribute, list) and len(attribute) > 1:
+            n += 1
 
     return n

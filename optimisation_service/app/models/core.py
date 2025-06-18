@@ -6,11 +6,10 @@ from typing import Annotated
 from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 
 from app.models.constraints import Constraints
-from app.models.epoch_types import TaskDataPydantic
+from app.models.epoch_types import SiteRange, TaskDataPydantic
 from app.models.metrics import Metric
 from app.models.optimisers import OptimiserTypes
 from app.models.site_data import EpochSiteData, SiteMetaData
-from app.models.site_range import SiteRange
 
 logger = logging.getLogger("default")
 

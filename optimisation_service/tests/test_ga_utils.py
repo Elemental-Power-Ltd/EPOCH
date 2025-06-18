@@ -4,14 +4,23 @@ import numpy as np
 import pytest
 
 from app.internal.constraints import count_constraints
-from app.internal.epoch_utils import convert_TaskData_to_pydantic
 from app.internal.ga_utils import ProblemInstance, RoundingAndDegenerateRepair, SimpleIntMutation, evaluate_excess
-from app.internal.site_range import count_parameters_to_optimise
+from app.internal.site_range import REPEAT_COMPONENTS, count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
+from app.models.epoch_types.site_range_type import (
+    Building,
+    Config,
+    DomesticHotWater,
+    Grid,
+    HeatPump,
+    HeatSourceEnum,
+    SiteRange,
+    SolarPanel,
+)
+from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _METRICS, _OBJECTIVES, Metric, MetricValues
 from app.models.result import PortfolioSolution
-from app.models.site_range import Building, Config, DomesticHotWater, Grid, HeatPump, HeatSourceEnum, Renewables, SiteRange
 
 from .conftest import site_generator
 
@@ -32,13 +41,27 @@ class TestProblemInstance:
     def test_convert_chromosome_to_site_scenario(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
-            res = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
-            td_pydantic = convert_TaskData_to_pydantic(res)
+            td_pydantic = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
             for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
-                if not x_value and asset_name != "config" and not asset["COMPONENT_IS_MANDATORY"]:
-                    assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
+                if asset_name == "config":
+                    pass
+                elif asset_name in REPEAT_COMPONENTS:
+                    # for repeat components, we count how many subcomponents we expect to find then check this matches
+                    repeat_count = 0
+                    for sub_asset in asset:
+                        if x_value or sub_asset["COMPONENT_IS_MANDATORY"]:
+                            repeat_count += 1
+                    assert (
+                        (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count)
+                        or
+                        (repeat_count == 0 and not hasattr(td_pydantic, asset_name))
+                    )
                 else:
-                    assert hasattr(td_pydantic, asset_name)
+                    # for singleton components, we check whether the component should be present or not
+                    if not x_value and not asset["COMPONENT_IS_MANDATORY"]:
+                        assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
+                    else:
+                        assert hasattr(td_pydantic, asset_name)
 
     @pytest.mark.parametrize("x_value", [0, 1])
     def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance):
@@ -54,12 +77,25 @@ class TestProblemInstance:
         x = np.array([x_value] * sum(count_parameters_to_optimise(site.site_range) for site in portfolio))
         res = default_problem_instance.simulate_portfolio(x)
         for site in portfolio:
-            td_pydantic = convert_TaskData_to_pydantic(res.scenario[site.name].scenario)
+            td_pydantic: AnnotatedTaskData = res.scenario[site.name].scenario
             for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
-                if not x_value and asset_name != "config" and not asset["COMPONENT_IS_MANDATORY"]:
-                    assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
+                if asset_name == "config":
+                    pass
+                elif asset_name in REPEAT_COMPONENTS:
+                    repeat_count = 0
+                    for sub_asset in asset:
+                        if x_value or sub_asset["COMPONENT_IS_MANDATORY"]:
+                            repeat_count += 1
+                    assert (
+                        (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count)
+                        or
+                        (repeat_count == 0 and not hasattr(td_pydantic, asset_name))
+                    )
                 else:
-                    assert hasattr(td_pydantic, asset_name)
+                    if not x_value and not asset["COMPONENT_IS_MANDATORY"]:
+                        assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
+                    else:
+                        assert hasattr(td_pydantic, asset_name)
 
     def test_apply_directions(self, default_problem_instance: ProblemInstance):
         metric_values: MetricValues = dict.fromkeys(_OBJECTIVES, 10)
@@ -123,9 +159,21 @@ class TestSimpleIntMutation:
 class TestRoundingAndDegenerateRepair:
     def test_rounding(self, default_objectives: list[Metric], default_constraints: Constraints):
         building = Building(
-            COMPONENT_IS_MANDATORY=True, scalar_heat_load=[1], scalar_electrical_load=[1], fabric_intervention_index=[0]
+            COMPONENT_IS_MANDATORY=True,
+            scalar_heat_load=[1],
+            scalar_electrical_load=[1],
+            fabric_intervention_index=[0],
+            incumbent=False,
+            age=0,
+            lifetime=30
         )
-        domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
+        domestic_hot_water = DomesticHotWater(
+            COMPONENT_IS_MANDATORY=False,
+            cylinder_volume=[100, 200],
+            incumbent=False,
+            age=0,
+            lifetime=12
+        )
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
             grid_export=[60],
@@ -133,11 +181,26 @@ class TestRoundingAndDegenerateRepair:
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
             export_tariff=[0.05],
+            incumbent=False,
+            age=0,
+            lifetime=25
         )
         heat_pump = HeatPump(
-            COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
+            COMPONENT_IS_MANDATORY=False,
+            heat_power=[100, 200],
+            heat_source=[HeatSourceEnum.AMBIENT_AIR],
+            send_temp=[70],
+            incumbent=False,
+            age=0,
+            lifetime=10
         )
-        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
+        config = Config(
+            capex_limit=99999999999,
+            use_boiler_upgrade_scheme=False,
+            general_grant_funding=0,
+            npv_time_horizon=10,
+            npv_discount_factor=0.0
+        )
         site_range = SiteRange(
             building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
         )
@@ -154,9 +217,21 @@ class TestRoundingAndDegenerateRepair:
 
     def test_degeneracy(self, default_objectives: list[Metric], default_constraints: Constraints):
         building = Building(
-            COMPONENT_IS_MANDATORY=True, scalar_heat_load=[1], scalar_electrical_load=[1], fabric_intervention_index=[0]
+            COMPONENT_IS_MANDATORY=True,
+            scalar_heat_load=[1],
+            scalar_electrical_load=[1],
+            fabric_intervention_index=[0],
+            incumbent=False,
+            age=0,
+            lifetime=30
         )
-        domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
+        domestic_hot_water = DomesticHotWater(
+            COMPONENT_IS_MANDATORY=False,
+            cylinder_volume=[100, 200],
+            incumbent=False,
+            age=0,
+            lifetime=12
+        )
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
             grid_export=[60],
@@ -164,11 +239,26 @@ class TestRoundingAndDegenerateRepair:
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
             export_tariff=[0.05],
+            incumbent=False,
+            age=0,
+            lifetime=25
         )
         heat_pump = HeatPump(
-            COMPONENT_IS_MANDATORY=False, heat_power=[100, 200], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
+            COMPONENT_IS_MANDATORY=False,
+            heat_power=[100, 200],
+            heat_source=[HeatSourceEnum.AMBIENT_AIR],
+            send_temp=[70],
+            incumbent=False,
+            age=0,
+            lifetime=10
         )
-        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
+        config = Config(
+            capex_limit=99999999999,
+            use_boiler_upgrade_scheme=False,
+            general_grant_funding=0,
+            npv_time_horizon=10,
+            npv_discount_factor=0.0
+        )
         site_range = SiteRange(
             building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
         )
@@ -185,9 +275,21 @@ class TestRoundingAndDegenerateRepair:
 
     def test_degeneracy_with_renewables(self, default_objectives: list[Metric], default_constraints: Constraints):
         building = Building(
-            COMPONENT_IS_MANDATORY=True, scalar_heat_load=[1], scalar_electrical_load=[1], fabric_intervention_index=[0, 1]
+            COMPONENT_IS_MANDATORY=True,
+            scalar_heat_load=[1],
+            scalar_electrical_load=[1],
+            fabric_intervention_index=[0, 1],
+            incumbent=False,
+            age=0,
+            lifetime=30
         )
-        domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200])
+        domestic_hot_water = DomesticHotWater(
+            COMPONENT_IS_MANDATORY=False,
+            cylinder_volume=[100, 200],
+            incumbent=False,
+            age=0,
+            lifetime=12
+        )
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
             grid_export=[60],
@@ -195,15 +297,25 @@ class TestRoundingAndDegenerateRepair:
             import_headroom=[0.5],
             tariff_index=[0, 1, 2, 3],
             export_tariff=[0.05],
+            incumbent=False,
+            age=0,
+            lifetime=25
         )
         config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
-        renewables = Renewables(COMPONENT_IS_MANDATORY=False, yield_scalars=[[100, 200]])
+        panel = SolarPanel(
+            COMPONENT_IS_MANDATORY=False,
+            yield_scalar=[100, 200],
+            yield_index=[0],
+            incumbent=False,
+            age=0,
+            lifetime=25)
+
         site_range = SiteRange(
             building=building,
             domestic_hot_water=domestic_hot_water,
             grid=grid,
             config=config,
-            renewables=renewables,
+            solar_panels=[panel],
         )
         portfolio = [site_generator("amcott_house", site_range)]
         pi = ProblemInstance(default_objectives, default_constraints, portfolio)

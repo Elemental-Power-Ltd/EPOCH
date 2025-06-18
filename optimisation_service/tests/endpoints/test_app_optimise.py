@@ -7,8 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
 from app.models.core import Task
-from app.models.result import OptimisationResult
-from app.models.site_range import (
+from app.models.epoch_types.site_range_type import (
     BatteryModeEnum,
     Building,
     Config,
@@ -17,9 +16,10 @@ from app.models.site_range import (
     Grid,
     HeatPump,
     HeatSourceEnum,
-    Renewables,
     SiteRange,
+    SolarPanel,
 )
+from app.models.result import OptimisationResult
 from app.routers.optimise import process_results
 
 
@@ -39,9 +39,21 @@ class TestSubmitPortfolioTask:
         Test /submit-portfolio-task endpoint.
         """
         building = Building(
-            COMPONENT_IS_MANDATORY=True, scalar_heat_load=[1], scalar_electrical_load=[1], fabric_intervention_index=[0]
+            COMPONENT_IS_MANDATORY=True,
+            scalar_heat_load=[1],
+            scalar_electrical_load=[1],
+            fabric_intervention_index=[0],
+            incumbent=False,
+            age=0,
+            lifetime=30
         )
-        domestic_hot_water = DomesticHotWater(COMPONENT_IS_MANDATORY=True, cylinder_volume=[100])
+        domestic_hot_water = DomesticHotWater(
+            COMPONENT_IS_MANDATORY=True,
+            cylinder_volume=[100],
+            incumbent=False,
+            age=0,
+            lifetime=12
+        )
         energy_storage_system = EnergyStorageSystem(
             COMPONENT_IS_MANDATORY=True,
             capacity=[100],
@@ -49,6 +61,9 @@ class TestSubmitPortfolioTask:
             discharge_power=[100],
             battery_mode=[BatteryModeEnum.CONSUME],
             initial_charge=[0],
+            incumbent=False,
+            age=0,
+            lifetime=15
         )
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
@@ -56,13 +71,35 @@ class TestSubmitPortfolioTask:
             grid_import=[60],
             import_headroom=[0.5],
             tariff_index=[0],
-            export_tariff=[0.05]
+            export_tariff=[0.05],
+            incumbent=False,
+            age=0,
+            lifetime=25
         )
         heat_pump = HeatPump(
-            COMPONENT_IS_MANDATORY=True, heat_power=[100], heat_source=[HeatSourceEnum.AMBIENT_AIR], send_temp=[70]
+            COMPONENT_IS_MANDATORY=True,
+            heat_power=[100],
+            heat_source=[HeatSourceEnum.AMBIENT_AIR],
+            send_temp=[70],
+            incumbent=False,
+            age=0,
+            lifetime=10
         )
-        renewables = Renewables(COMPONENT_IS_MANDATORY=True, yield_scalars=[[100]])
-        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
+        panel = SolarPanel(
+            COMPONENT_IS_MANDATORY=True,
+            yield_scalar=[100],
+            yield_index=[0],
+            incumbent=False,
+            age=0,
+            lifetime=25
+        )
+        config = Config(
+            capex_limit=99999999999,
+            use_boiler_upgrade_scheme=False,
+            general_grant_funding=0,
+            npv_time_horizon=10,
+            npv_discount_factor=0.0
+        )
 
         empty_site_range = SiteRange(
             building=building,
@@ -70,7 +107,7 @@ class TestSubmitPortfolioTask:
             energy_storage_system=energy_storage_system,
             grid=grid,
             heat_pump=heat_pump,
-            renewables=renewables,
+            solar_panels=[panel],
             config=config,
         )
 

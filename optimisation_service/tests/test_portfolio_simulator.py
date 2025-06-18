@@ -7,6 +7,7 @@ from epoch_simulator import Building, Simulator, TaskData
 from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.internal.portfolio_simulator import PortfolioSimulator, combine_metric_values, simulate_scenario
+from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _METRICS, _SUMMABLE_METRICS, Metric, MetricValues
 from app.models.result import PortfolioSolution
 from tests.conftest import _DATA_PATH
@@ -32,7 +33,8 @@ class TestPortfolioSimulator:
                 "bircotes_leisure_centre": epoch_data_blc,
             }
         )
-        portfolio_scenarios = {"amcott_house": TaskData(), "bircotes_leisure_centre": TaskData()}
+        atd = AnnotatedTaskData.model_validate_json(TaskData().to_json())
+        portfolio_scenarios = {"amcott_house": atd, "bircotes_leisure_centre": atd}
         portfolio_solution = ps.simulate_portfolio(portfolio_scenarios)
         assert isinstance(portfolio_solution, PortfolioSolution)
         assert all(site_name in list(portfolio_solution.scenario.keys()) for site_name in portfolio_scenarios.keys())
@@ -86,6 +88,7 @@ class TestCombineMetricValues:
             Metric.meter_balance: 10,
             Metric.operating_balance: 10,
             Metric.cost_balance: 10,
+            Metric.npv_balance: 10,
             Metric.carbon_cost: 10,
             Metric.total_gas_used: 10,
             Metric.total_electricity_imported: 10,
@@ -97,6 +100,8 @@ class TestCombineMetricValues:
             Metric.total_electricity_import_cost: 10,
             Metric.total_electricity_export_gain: 10,
             Metric.total_meter_cost: 10,
+            Metric.total_operating_cost: 10,
+            Metric.total_net_present_value: 10,
             Metric.baseline_gas_used: 10,
             Metric.baseline_electricity_imported: 10,
             Metric.baseline_electricity_generated: 10,
@@ -107,6 +112,8 @@ class TestCombineMetricValues:
             Metric.baseline_electricity_import_cost: 10,
             Metric.baseline_electricity_export_gain: 10,
             Metric.baseline_meter_cost: 10,
+            Metric.baseline_operating_cost: 10,
+            Metric.baseline_net_present_value: 10
         }
         metric_values[Metric.payback_horizon] = calculate_payback_horizon(
             capex=metric_values[Metric.capex], cost_balance=metric_values[Metric.cost_balance]

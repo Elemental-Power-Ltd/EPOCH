@@ -1,6 +1,5 @@
 import pytest
 import torch
-from epoch_simulator import TaskData
 
 from app.internal.bayesian.bayesian import (
     _TKWARGS,
@@ -16,6 +15,7 @@ from app.internal.bayesian.bayesian import (
 )
 from app.models.constraints import Constraints
 from app.models.core import Site
+from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import Metric
 from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
@@ -118,11 +118,11 @@ class TestExtractSubPortfolioCapexAllocations:
         capex_a, capex_b, capex_c, capex_d, capex_e = 10, 20, 30, 40, 50
         solution = PortfolioSolution(
             scenario={
-                "a": SiteSolution(TaskData(), {Metric.capex: capex_a}),
-                "b": SiteSolution(TaskData(), {Metric.capex: capex_b}),
-                "c": SiteSolution(TaskData(), {Metric.capex: capex_c}),
-                "d": SiteSolution(TaskData(), {Metric.capex: capex_d}),
-                "e": SiteSolution(TaskData(), {Metric.capex: capex_e}),
+                "a": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_a}),
+                "b": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_b}),
+                "c": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_c}),
+                "d": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_d}),
+                "e": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_e}),
             },
             metric_values={},
         )
@@ -139,11 +139,11 @@ class TestConvertSolutionListToTensor:
         carbon_balance_scope_1 = 66
         solution = PortfolioSolution(
             scenario={
-                "a": SiteSolution(TaskData(), {Metric.capex: capex_a}),
-                "b": SiteSolution(TaskData(), {Metric.capex: capex_b}),
-                "c": SiteSolution(TaskData(), {Metric.capex: capex_c}),
-                "d": SiteSolution(TaskData(), {Metric.capex: capex_d}),
-                "e": SiteSolution(TaskData(), {Metric.capex: capex_e}),
+                "a": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_a}),
+                "b": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_b}),
+                "c": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_c}),
+                "d": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_d}),
+                "e": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_e}),
             },
             metric_values={Metric.cost_balance: cost_balance, Metric.carbon_balance_scope_1: carbon_balance_scope_1},
         )
