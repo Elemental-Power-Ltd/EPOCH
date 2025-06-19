@@ -408,13 +408,15 @@ def create_structure_from_survey(surveyed_sizes: SurveyedSizes, u_values_path: P
     This wraps around create_simple_structure, and then changes the parameters of the links
     directly afterwards.
 
-    You should use this if you want to get exactly the same structure as you'd get oufr om
+    You should use this if you want to get exactly the same structure as you'd get from
     `simulate_parameters`.
 
     Parameters
     ----------
     surveyed_sizes
         Sizes of the walls, floor, loft etc from a survey.
+    u_values_path
+        Path to the file containing U-values (careful if using a notebook!)
 
     Returns
     -------

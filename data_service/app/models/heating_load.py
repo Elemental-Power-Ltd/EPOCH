@@ -101,10 +101,12 @@ class HeatingLoadModelEnum(StrEnum):
 
 class HeatingLoadRequest(DatasetIDWithTime):
     interventions: list[InterventionEnum] | list[str] = Field(
-        examples=[[InterventionEnum.Loft], []],
+        examples=[[InterventionEnum.Loft], [], ["Internal Insulation to external solid wall", "Secondary Glazing"]],
         default=[],
-        description="Single energy saving intervention to make for this site.  "
-        "Either a InterventionEnum for the thermal model or a THIRD_PARTY title for survey results.",
+        description="List of energy saving intervention to make for this site.  "
+        "Either a InterventionEnum for the thermal model or a THIRD_PARTY title for survey results; "
+        + " THIRD_PARTY interventions can be found in costs.py."
+        + " If an empty list, apply no interventions.",
     )
     apply_bait: bool = True
     dhw_fraction: float = Field(
