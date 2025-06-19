@@ -89,6 +89,9 @@ class SiteMetrics(BaseModel):
         description="Monetary savings from fuel, electricity, opex and annualised cost when compared against the baseline.",
         default=None
     )
+    npv_balance: float | None = Field(
+        description="The change in Net Present Value between the baseline and the scenario for this site.", default=None
+    )
     capex: float | None = Field(description="Cost to install this scenario on this site.", default=None)
     payback_horizon: float | None = Field(
         description="Years for this scenario to pay back on this site (if very large, represents no payback ever.)",
@@ -123,6 +126,13 @@ class SiteMetrics(BaseModel):
     total_meter_cost: float | None = Field(
         description="Total cost of importing fuel/electricity minus revenue from exporting.", default=None
     )
+    total_operating_cost: float | None = Field(
+        description="Total meter cost minus operating costs for components for this site.", default=None
+    )
+    total_net_present_value: float | None = Field(
+        description="Net Present Value after repeating the simulation for the configured number of years for this site.",
+        default=None
+    )
 
     baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) for this site", default=None)
     baseline_electricity_imported: float | None = Field(
@@ -149,6 +159,15 @@ class SiteMetrics(BaseModel):
     )
     baseline_meter_cost: float | None = Field(
         description="Baseline cost of importing fuel/electricity minus revenue from exporting.", default=None
+    )
+    baseline_operating_cost: float | None = Field(
+        description="Baseline meter cost minus operating costs for components for this site.",
+        default=None
+    )
+    baseline_net_present_value: float | None = Field(
+        description="Baseline Net Present Value after repeating the simulation for the configured number of years "
+                    "for this site.",
+        default=None
     )
 
 
@@ -193,6 +212,9 @@ class PortfolioMetrics(BaseModel):
                     "from fuel, electricity, opex and annualised cost when compared against the baseline.",
         default=None
     )
+    npv_balance: float | None = Field(
+        description="The change in Net Present Value between the baseline and the scenario over the portfolio.", default=None
+    )
     capex: float | None = Field(description="Cost to install this scenario on entire portfolio of scenarios.", default=None)
     payback_horizon: float | None = Field(
         description="Years for these scenarios to pay back across this portfolio.", default=None
@@ -227,6 +249,15 @@ class PortfolioMetrics(BaseModel):
         description="Total cost of importing fuel/electricity minus revenue from exporting across this portfolio.",
         default=None
     )
+    total_operating_cost: float | None = Field(
+        description="Total meter cost minus operating costs for components across this portfolio.",
+        default=None
+    )
+    total_net_present_value: float | None = Field(
+        description="Net Present Value after repeating the simulation for the configured number of years "
+                    "across this portfolio.",
+        default=None
+    )
 
     baseline_gas_used: float | None = Field(
         description="Baseline gas imported (kWh) across this portfolio",
@@ -258,6 +289,15 @@ class PortfolioMetrics(BaseModel):
     )
     baseline_meter_cost: float | None = Field(
         description="Baseline cost of importing fuel/electricity minus revenue from exporting across this portfolio.",
+        default=None
+    )
+    baseline_operating_cost: float | None = Field(
+        description="Baseline meter cost minus operating costs for components across this portfolio.",
+        default=None
+    )
+    baseline_net_present_value: float | None = Field(
+        description="Baseline Net Present Value after repeating the simulation for the configured number of years "
+                    "across this portfolio.",
         default=None
     )
 

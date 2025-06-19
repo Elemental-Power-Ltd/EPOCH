@@ -65,6 +65,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                         meter_balance=site_solution.metric_values[Metric.meter_balance],
                         operating_balance=site_solution.metric_values[Metric.operating_balance],
                         cost_balance=site_solution.metric_values[Metric.cost_balance],
+                        npv_balance=site_solution.metric_values[Metric.npv_balance],
                         capex=site_solution.metric_values[Metric.capex],
                         payback_horizon=site_solution.metric_values[Metric.payback_horizon],
                         annualised_cost=site_solution.metric_values[Metric.annualised_cost],
@@ -79,6 +80,8 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                         total_electricity_import_cost=site_solution.metric_values[Metric.total_electricity_import_cost],
                         total_electricity_export_gain=site_solution.metric_values[Metric.total_electricity_export_gain],
                         total_meter_cost=site_solution.metric_values[Metric.total_meter_cost],
+                        total_operating_cost=site_solution.metric_values[Metric.total_operating_cost],
+                        total_net_present_value=site_solution.metric_values[Metric.total_net_present_value],
 
                         baseline_gas_used=site_solution.metric_values[Metric.baseline_gas_used],
                         baseline_electricity_imported=site_solution.metric_values[Metric.baseline_electricity_imported],
@@ -90,6 +93,8 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                         baseline_electricity_import_cost=site_solution.metric_values[Metric.baseline_electricity_import_cost],
                         baseline_electricity_export_gain=site_solution.metric_values[Metric.baseline_electricity_export_gain],
                         baseline_meter_cost=site_solution.metric_values[Metric.baseline_meter_cost],
+                        baseline_operating_cost=site_solution.metric_values[Metric.baseline_operating_cost],
+                        baseline_net_present_value=site_solution.metric_values[Metric.baseline_net_present_value],
                     ),
                 )
             )
@@ -104,6 +109,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     meter_balance=portfolio_solution.metric_values[Metric.meter_balance],
                     operating_balance=portfolio_solution.metric_values[Metric.operating_balance],
                     cost_balance=portfolio_solution.metric_values[Metric.cost_balance],
+                    npv_balance=portfolio_solution.metric_values[Metric.npv_balance],
                     capex=portfolio_solution.metric_values[Metric.capex],
                     payback_horizon=portfolio_solution.metric_values[Metric.payback_horizon],
                     annualised_cost=portfolio_solution.metric_values[Metric.annualised_cost],
@@ -118,6 +124,8 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     total_electricity_import_cost=portfolio_solution.metric_values[Metric.total_electricity_import_cost],
                     total_electricity_export_gain=portfolio_solution.metric_values[Metric.total_electricity_export_gain],
                     total_meter_cost=portfolio_solution.metric_values[Metric.total_meter_cost],
+                    total_operating_cost=portfolio_solution.metric_values[Metric.total_operating_cost],
+                    total_net_present_value=portfolio_solution.metric_values[Metric.total_net_present_value],
 
                     baseline_gas_used=portfolio_solution.metric_values[Metric.baseline_gas_used],
                     baseline_electricity_imported=portfolio_solution.metric_values[Metric.baseline_electricity_imported],
@@ -129,6 +137,8 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     baseline_electricity_import_cost=portfolio_solution.metric_values[Metric.baseline_electricity_import_cost],
                     baseline_electricity_export_gain=portfolio_solution.metric_values[Metric.baseline_electricity_export_gain],
                     baseline_meter_cost=portfolio_solution.metric_values[Metric.baseline_meter_cost],
+                    baseline_operating_cost=portfolio_solution.metric_values[Metric.baseline_operating_cost],
+                    baseline_net_present_value=portfolio_solution.metric_values[Metric.baseline_net_present_value],
                 ),
                 site_results=site_results,
             )
