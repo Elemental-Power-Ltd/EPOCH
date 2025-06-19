@@ -73,14 +73,30 @@ export const ComponentWidget: FC<ComponentWidgetProps> = ({
 // We only pass in the part of the schema that corresponds to this component
 // We do this by swapping the top-level properties and required fields for those inside the target component
 const getSingleComponentSchema = (schema: any, componentKey: string) => {
-    return {
-        ...schema,
-        properties: {
-            ...schema.properties[componentKey].properties
-        },
-        required: schema.properties[componentKey].required || [],
 
-        // we also unset the title, purely for display purposes
-        title: undefined
-    };
+    const componentType = schema.properties[componentKey].type;
+
+    if (componentType === "array") {
+        return {
+            ...schema,
+            type: "array",
+            items: schema.properties[componentKey].items,
+            // remove all of the other properties from the definition
+            properties: undefined,
+            // unset the title, purely for display purposes
+            title: undefined
+        }
+    } else {
+        // this is an object
+        return {
+            ...schema,
+            properties: {
+                ...schema.properties[componentKey].properties
+            },
+            required: schema.properties[componentKey].required || [],
+
+            // we also unset the title, purely for display purposes
+            title: undefined
+        };
+    }
 }

@@ -6,6 +6,7 @@ export interface TaskObjectives {
     carbon_balance_scope_2: boolean;
     carbon_cost: boolean;
     cost_balance: boolean;
+    npv_balance: boolean;
     payback_horizon: boolean;
     annualised_cost: boolean;
 }
@@ -41,6 +42,7 @@ export interface SiteMetrics {
     capex?: number;
     payback_horizon?: number;
     annualised_cost?: number;
+    npv_balance?: number;
     total_gas_used?: number;
     total_electricity_imported?: number;
     total_electricity_generated?: number;
@@ -67,6 +69,7 @@ export interface PortfolioMetrics {
     capex?: number;
     payback_horizon?: number;
     annualised_cost?: number;
+    npv_balance?: number;
     total_gas_used?: number;
     total_electricity_imported?: number;
     total_electricity_generated?: number;

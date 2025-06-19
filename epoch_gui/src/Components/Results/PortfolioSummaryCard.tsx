@@ -77,6 +77,10 @@ export const PortfolioSummaryCard: React.FC<{
                             <TableCell align="right">{formatPounds(metrics.cost_balance)}</TableCell>
                         </TableRow>
                         <TableRow>
+                            <TableCell><strong>NPV Balance</strong></TableCell>
+                            <TableCell align="right">{formatPounds(metrics.npv_balance)}</TableCell>
+                        </TableRow>
+                        <TableRow>
                             <TableCell><strong>Capex</strong></TableCell>
                             <TableCell align="right">{formatPounds(metrics.capex)}</TableCell>
                         </TableRow>

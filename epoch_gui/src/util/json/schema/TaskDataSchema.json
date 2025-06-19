@@ -28,9 +28,36 @@
           "minimum": 0,
           "description": "Index mapping to a fabric intervention option specified in the SiteData.",
           "default": 0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 30,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
-      "required": ["scalar_heat_load", "scalar_electrical_load", "fabric_intervention_index"]
+      "required": [
+        "scalar_heat_load",
+        "scalar_electrical_load",
+        "fabric_intervention_index",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "data_centre": {
       "type": "object",
@@ -49,9 +76,35 @@
           "title": "Hotroom Temperature",
           "description": "Operating temperature of the Data Centre in degrees Celsius.",
           "default": 43.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
-      "required": ["maximum_load", "hotroom_temp"]
+      "required": [
+        "maximum_load",
+        "hotroom_temp",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "domestic_hot_water": {
       "type": "object",
@@ -63,9 +116,34 @@
           "description": "The volume of the cylinder in metres cubed",
           "minimum": 0,
           "default": 100.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 12,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
-      "required": ["cylinder_volume"]
+      "required": [
+        "cylinder_volume",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "electric_vehicles": {
       "type": "object",
@@ -113,6 +191,26 @@
           "description": "Scalar multiplier for the EV Charging load.",
           "minimum": 0,
           "default": 3.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 15,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
       "required": [
@@ -121,7 +219,10 @@
         "fast_chargers",
         "rapid_chargers",
         "ultra_chargers",
-        "scalar_electrical_load"
+        "scalar_electrical_load",
+        "incumbent",
+        "age",
+        "lifetime"
       ]
     },
     "energy_storage_system": {
@@ -162,6 +263,26 @@
           "description": "Initial charge of the battery in kWh.",
           "minimum": 0,
           "default": 0.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 15,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
       "required": [
@@ -169,7 +290,10 @@
         "charge_power",
         "discharge_power",
         "battery_mode",
-        "initial_charge"
+        "initial_charge",
+        "incumbent",
+        "age",
+        "lifetime"
       ]
     },
     "gas_heater": {
@@ -197,12 +321,35 @@
           "exclusiveMinimum": 0,
           "maximum": 1,
           "default": 0.9
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
       "required": [
         "maximum_output",
         "gas_type",
-        "boiler_efficiency"
+        "boiler_efficiency",
+        "incumbent",
+        "age",
+        "lifetime"
       ]
     },
     "grid": {
@@ -243,6 +390,26 @@
           "title": "Export Tariff",
           "description": "Fixed price export tariff in £/kWh.",
           "default": 0.05
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 25,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
       "required": [
@@ -250,7 +417,10 @@
         "grid_import",
         "import_headroom",
         "tariff_index",
-        "export_tariff"
+        "export_tariff",
+        "incumbent",
+        "age",
+        "lifetime"
       ]
     },
     "heat_pump": {
@@ -276,9 +446,36 @@
           "title": "Send Temperature",
           "description": "The flow temperature the heat pump operates at in degrees Celsius.",
           "default": 70.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
-      "required": ["heat_power", "heat_source", "send_temp"]
+      "required": [
+        "heat_power",
+        "heat_source",
+        "send_temp",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "mop": {
       "type": "object",
@@ -291,26 +488,85 @@
           "description": "The maximum heat power this component will draw in kW.",
           "minimum": 0,
           "default": 300.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "The typical length of time this component will last before it needs replacing."
         }
       },
-      "required": ["maximum_load"]
+      "required": [
+        "maximum_load",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
-    "renewables": {
-      "type": "object",
-      "title": "Renewables",
-      "properties": {
-        "yield_scalars": {
-          "type": "array",
-          "title": "Yield Scalars",
-          "description": "The peak solar generation capability of each set of panels in kW.",
-          "items": {
+    "solar_panels": {
+      "type": "array",
+      "title": "Solar Panels",
+      "items": {
+        "type": "object",
+        "title": "Solar Panel",
+        "properties": {
+          "yield_scalar": {
             "type": "number",
-            "minimum": 0
+            "title": "Yield Scalar",
+            "description": "The peak solar generation capability of these panels in kW.",
+            "minimum": 0,
+            "default": 20.0
           },
-          "default": [20.0]
-        }
-      },
-      "required": ["yield_scalars"]
+          "yield_index": {
+            "type": "integer",
+            "title": "Yield Index",
+            "description": "Index mapping to a solar yield array in SiteData.",
+            "minimum": 0,
+            "default": 0
+          },
+          "incumbent": {
+            "type": "boolean",
+            "title": "Incumbent",
+            "default": false,
+            "description": "Whether this component has already been installed and paid for or not."
+          },
+          "age": {
+            "type": "number",
+            "title": "Age",
+            "minimum": 0,
+            "default": 0,
+            "description": "The age of this component."
+          },
+          "lifetime": {
+            "type": "number",
+            "title": "Lifetime",
+            "exclusiveMinimum": 0,
+            "default": 25,
+            "description": "The typical length of time this component will last before it needs replacing."
+          }
+        },
+        "required": [
+          "yield_scalar",
+          "yield_index",
+          "incumbent",
+          "age",
+          "lifetime"
+        ]
+      }
     },
     "config": {
       "type": "object",
@@ -335,9 +591,28 @@
           "description": "Apply unconditional funding up to this value in £.",
           "minimum": 0,
           "default": 0
+        },
+        "npv_time_horizon": {
+          "type": "integer",
+          "title": "NPV time horizon",
+          "description": "The number of years to forecast over for the net-present-value calculations.",
+          "minimum": 1,
+          "default": 10
+        },
+        "npv_discount_factor": {
+          "type": "number",
+          "title": "NPV discount factor",
+          "description": "The decimal discount factor to apply to future years in the net-present-value calculations.",
+          "default": 0.0
         }
       },
-      "required": ["capex_limit", "use_boiler_upgrade_scheme", "general_grant_funding"]
+      "required": [
+        "capex_limit",
+        "use_boiler_upgrade_scheme",
+        "general_grant_funding",
+        "npv_time_horizon",
+        "npv_discount_factor"
+      ]
     }
   }
 }

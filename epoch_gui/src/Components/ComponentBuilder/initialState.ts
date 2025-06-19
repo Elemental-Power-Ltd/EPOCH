@@ -55,10 +55,10 @@ export const getInitialComponentsMap = (mode: BuilderMode): ComponentsMap => {
             selected: false,
             data: defaultData["mop"]
         },
-        renewables: {
-            displayName: "Renewables",
+        solar_panels: {
+            displayName: "Solar Panels",
             selected: false,
-            data: defaultData["renewables"]
+            data: defaultData["solar_panels"]
         },
         config: {
             displayName: "Config",

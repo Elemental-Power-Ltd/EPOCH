@@ -6,6 +6,7 @@ export const objectiveNames = {
     "carbon_balance_scope_2": "Scope 2 Savings",
     "carbon_cost": "Carbon Cost",
     "cost_balance": "Cost Balance",
+    "npv_balance": "NPV Balance",
     "payback_horizon": "Payback Horizon",
     "annualised_cost": "Annualised Cost",
     "total_gas_used": "Gas Used",

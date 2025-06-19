@@ -84,8 +84,9 @@ export const getAnnotatedSeries = (taskData: any, siteData: EpochSiteData, repor
 
     // add the solar yields from SiteData
     siteData.solar_yields.forEach((yieldSeries, idx) => {
-        const numYieldsUsed = taskData.renewables ? taskData.renewables.length : 0;
-        const used = idx < numYieldsUsed;
+        // a yield array is used if any of the SolarPanel entries have it as their yield_index
+        const used = taskData.solar_panels.some((panel: any) => panel.yield_index === idx);
+
         // idx + 1: use 1-based indexing for display
         const name = used ? `Solar Yield ${idx + 1}` : `Solar Yield ${idx + 1} (unused)`;
 

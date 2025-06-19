@@ -75,8 +75,9 @@ export interface Mop {
   maximum_load: number;
 }
 
-export interface Renewables {
-  yield_scalars: number[];
+export interface SolarPanel {
+  yield_scalar: number;
+  yield_index: number;
 }
 
 export interface TaskData {
@@ -90,5 +91,5 @@ export interface TaskData {
   grid?: Grid;
   heat_pump?: HeatPump;
   mop?: Mop;
-  renewables?: Renewables;
+  solar_panels?: SolarPanel[];
 }

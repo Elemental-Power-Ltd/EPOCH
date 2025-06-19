@@ -71,7 +71,7 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
         grid: true,
         heat_pump: true,
         mop: true,
-        renewables: true,
+        solar_panels: true,
         config: true
     });
 

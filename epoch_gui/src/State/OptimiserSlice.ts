@@ -20,6 +20,7 @@ const defaultTaskConfig: TaskConfig = {
     carbon_balance_scope_1: false,
     carbon_balance_scope_2: false,
     carbon_cost: false,
+    npv_balance: false,
     cost_balance: false,
     payback_horizon: false,
     annualised_cost: false

@@ -56,9 +56,9 @@ export const componentInfoLookup: Record<
     icon: <Icon path={mdiGreenhouse} size={2}/>,
     displayName: "MOP",
   },
-  renewables: {
+  solar_panels: {
     icon: <Icon path={mdiSolarPowerVariant} size={2}/>,
-    displayName: "Renewables",
+    displayName: "Solar Panels",
   },
   // note: we don't use this - we display the config in a different place
   config: {

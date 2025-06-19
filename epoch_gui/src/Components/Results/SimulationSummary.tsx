@@ -81,6 +81,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         carbon_balance_scope_2,
         carbon_cost,
         cost_balance,
+        npv_balance,
         capex,
         payback_horizon,
         annualised_cost,
@@ -126,6 +127,11 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
           icon: <PoundIcon sx={{ fontSize: 40 }} color="action" />,
           label: objectiveNames["cost_balance"],
           value: formatPounds(cost_balance),
+        },
+        {
+          icon: <PoundIcon sx={{ fontSize: 40 }} color="action" />,
+          label: objectiveNames["npv_balance"],
+          value: formatPounds(npv_balance),
         },
         {
           icon: <PoundIcon sx={{ fontSize: 40 }} color="action" />,

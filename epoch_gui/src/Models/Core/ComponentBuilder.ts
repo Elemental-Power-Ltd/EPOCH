@@ -10,7 +10,7 @@ export type ComponentType =
     | "grid"
     | "heat_pump"
     | "mop"
-    | "renewables"
+    | "solar_panels"
     | "config";
 
 // a list of components to exclude from selection by default

@@ -7,47 +7,152 @@
       "type": "object",
       "title": "Building",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "scalar_heat_load": {"$ref": "#/definitions/paramRangeFloat", "title":  "Scalar Heat Load"},
-        "scalar_electrical_load": {"$ref": "#/definitions/paramRangeFloat", "title":  "Scalar Electrical Load"},
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "scalar_heat_load": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Scalar Heat Load"
+        },
+        "scalar_electrical_load": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Scalar Electrical Load"
+        },
         "fabric_intervention_index": {
           "type": "array",
-          "items": {"type": "integer", "minimum": 0},
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
           "title": "Fabric Intervention Index"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 30
         }
       },
-      "required": ["COMPONENT_IS_MANDATORY", "scalar_heat_load", "scalar_electrical_load", "fabric_intervention_index"]
+      "required": [
+        "COMPONENT_IS_MANDATORY",
+        "scalar_heat_load",
+        "scalar_electrical_load",
+        "fabric_intervention_index",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "data_centre": {
       "type": "object",
       "title": "Data Centre",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "maximum_load": {"$ref": "#/definitions/paramRangeFloat", "title":  "Maximum Load"},
-        "hotroom_temp": {"$ref": "#/definitions/paramRangeFloat", "title": "Hotroom Temperature"}
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "maximum_load": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Maximum Load"
+        },
+        "hotroom_temp": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Hotroom Temperature"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 10
+        }
       },
-      "required": ["COMPONENT_IS_MANDATORY","maximum_load", "hotroom_temp"]
+      "required": [
+        "COMPONENT_IS_MANDATORY",
+        "maximum_load",
+        "hotroom_temp",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "domestic_hot_water": {
       "type": "object",
       "title": "Domestic Hot Water",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "cylinder_volume": {"$ref": "#/definitions/paramRangeFloat", "title": "Cylinder Volume"}
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "cylinder_volume": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Cylinder Volume"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 12
+        }
       },
-      "required": ["COMPONENT_IS_MANDATORY","cylinder_volume"]
+      "required": [
+        "COMPONENT_IS_MANDATORY",
+        "cylinder_volume",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "electric_vehicles": {
       "type": "object",
       "title": "EV Chargers",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "flexible_load_ratio": {"$ref": "#/definitions/paramRangeFloat", "title":  "Flexible Load Ratio"},
-        "small_chargers": {"$ref": "#/definitions/paramRangeInt", "title":  "Small Chargers"},
-        "fast_chargers": {"$ref": "#/definitions/paramRangeInt", "title":  "Fast Chargers"},
-        "rapid_chargers": {"$ref": "#/definitions/paramRangeInt", "title": "Rapid Chargers"},
-        "ultra_chargers": {"$ref": "#/definitions/paramRangeInt", "title":  "Ultra Chargers"},
-        "scalar_electrical_load": {"$ref": "#/definitions/paramRangeFloat", "title": "Scalar Electrical Load"}
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "flexible_load_ratio": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Flexible Load Ratio"
+        },
+        "small_chargers": {
+          "$ref": "#/definitions/paramRangeInt",
+          "title": "Small Chargers"
+        },
+        "fast_chargers": {
+          "$ref": "#/definitions/paramRangeInt",
+          "title": "Fast Chargers"
+        },
+        "rapid_chargers": {
+          "$ref": "#/definitions/paramRangeInt",
+          "title": "Rapid Chargers"
+        },
+        "ultra_chargers": {
+          "$ref": "#/definitions/paramRangeInt",
+          "title": "Ultra Chargers"
+        },
+        "scalar_electrical_load": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Scalar Electrical Load"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 15
+        }
       },
       "required": [
         "COMPONENT_IS_MANDATORY",
@@ -56,23 +161,56 @@
         "fast_chargers",
         "rapid_chargers",
         "ultra_chargers",
-        "scalar_electrical_load"
+        "scalar_electrical_load",
+        "incumbent",
+        "age",
+        "lifetime"
       ]
     },
     "energy_storage_system": {
       "type": "object",
       "title": "Energy Storage System",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "capacity": {"$ref": "#/definitions/paramRangeFloat", "title": "Capacity"},
-        "charge_power": {"$ref": "#/definitions/paramRangeFloat", "title":  "Charge Power"},
-        "discharge_power": {"$ref": "#/definitions/paramRangeFloat", "title":  "Discharge Power"},
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "capacity": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Capacity"
+        },
+        "charge_power": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Charge Power"
+        },
+        "discharge_power": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Discharge Power"
+        },
         "battery_mode": {
           "type": "array",
-          "items": {"type": "string", "enum": ["CONSUME", "CONSUME_PLUS"]},
+          "items": {
+            "type": "string",
+            "enum": [
+              "CONSUME",
+              "CONSUME_PLUS"
+            ]
+          },
           "title": "Battery Mode"
         },
-        "initial_charge": {"$ref": "#/definitions/paramRangeFloat", "title":  "Initial Charge"}
+        "initial_charge": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Initial Charge"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 15
+        }
       },
       "required": [
         "COMPONENT_IS_MANDATORY",
@@ -80,82 +218,238 @@
         "charge_power",
         "discharge_power",
         "battery_mode",
-        "initial_charge"
+        "initial_charge",
+        "incumbent",
+        "age",
+        "lifetime"
       ]
     },
     "gas_heater": {
       "type": "object",
       "title": "Gas Heater",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "maximum_output": {"$ref": "#/definitions/paramRangeFloat", "title": "Maximum Output"},
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "maximum_output": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Maximum Output"
+        },
         "gas_type": {
           "type": "array",
-          "items": {"type": "string", "enum": ["NATURAL_GAS", "LIQUID_PETROLEUM_GAS"]},
+          "items": {
+            "type": "string",
+            "enum": [
+              "NATURAL_GAS",
+              "LIQUID_PETROLEUM_GAS"
+            ]
+          },
           "title": "Gas Type"
         },
-        "boiler_efficiency": {"$ref": "#/definitions/paramRangeFloat", "title": "Boiler Efficiency"}
-      }
+        "boiler_efficiency": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Boiler Efficiency"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 10
+        }
+      },
+      "required": [
+        "COMPONENT_IS_MANDATORY",
+        "gas_type",
+        "boiler_efficiency",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "grid": {
       "type": "object",
       "title": "Grid",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "grid_export": {"$ref": "#/definitions/paramRangeFloat", "title": "Grid Export"},
-        "grid_import": {"$ref": "#/definitions/paramRangeFloat", "title": "Grid Import"},
-        "import_headroom": {"$ref": "#/definitions/paramRangeFloat", "title": "Import Headroom"},
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "grid_export": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Grid Export"
+        },
+        "grid_import": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Grid Import"
+        },
+        "import_headroom": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Import Headroom"
+        },
         "tariff_index": {
           "type": "array",
-          "items": {"type": "integer", "minimum": 0},
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
           "title": "Tariff Index"
         },
-        "export_tariff": {"$ref":  "#/definitions/paramRangeFloat", "title":  "Export Tariff"}
+        "export_tariff": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Export Tariff"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 25
+        }
       },
       "required": [
         "COMPONENT_IS_MANDATORY",
         "grid_export",
         "grid_import",
         "import_headroom",
-        "tariff_index"
+        "tariff_index",
+        "incumbent",
+        "age",
+        "lifetime"
       ]
     },
     "heat_pump": {
       "type": "object",
       "title": "Heat Pump",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "heat_power": {"$ref": "#/definitions/paramRangeFloat", "title":  "Heat Power"},
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "heat_power": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Heat Power"
+        },
         "heat_source": {
           "type": "array",
-          "items": {"type": "string", "enum": ["AMBIENT_AIR", "HOTROOM"]},
+          "items": {
+            "type": "string",
+            "enum": [
+              "AMBIENT_AIR",
+              "HOTROOM"
+            ]
+          },
           "title": "Heat Source"
         },
-        "send_temp": {"$ref": "#/definitions/paramRangeFloat", "title": "Send Temperature"}
+        "send_temp": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Send Temperature"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 10
+        }
       },
-      "required": ["COMPONENT_IS_MANDATORY","heat_power", "heat_source", "send_temp"]
+      "required": [
+        "COMPONENT_IS_MANDATORY",
+        "heat_power",
+        "heat_source",
+        "send_temp",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
     },
     "mop": {
       "type": "object",
       "title": "Mop",
       "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "maximum_load": {"$ref": "#/definitions/paramRangeFloat", "title": "Maximum Load"}
-      },
-      "required": ["COMPONENT_IS_MANDATORY", "maximum_load"]
-    },
-    "renewables": {
-      "type": "object",
-      "title": "Renewables",
-      "properties": {
-        "COMPONENT_IS_MANDATORY": {"$ref":  "#/definitions/isMandatory"},
-        "yield_scalars": {
-          "type": "array",
-          "items": {"$ref": "#/definitions/paramRangeFloat"},
-          "title": "Yield Scalars"
+        "COMPONENT_IS_MANDATORY": {
+          "$ref": "#/definitions/isMandatory"
+        },
+        "maximum_load": {
+          "$ref": "#/definitions/paramRangeFloat",
+          "title": "Maximum Load"
+        },
+        "incumbent": {
+          "$ref": "#/definitions/incumbent"
+        },
+        "age": {
+          "$ref": "#/definitions/age"
+        },
+        "lifetime": {
+          "$ref": "#/definitions/lifetime",
+          "default": 10
         }
       },
-      "required": ["COMPONENT_IS_MANDATORY", "yield_scalars"]
+      "required": [
+        "COMPONENT_IS_MANDATORY",
+        "maximum_load",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "solar_panels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "title": "Solar Panel",
+        "properties": {
+          "COMPONENT_IS_MANDATORY": {
+            "$ref": "#/definitions/isMandatory",
+            "default": true
+          },
+          "yield_scalar": {
+            "$ref": "#/definitions/paramRangeFloat",
+            "minimum": 0,
+            "default": {
+              "min": 10,
+              "max": 40,
+              "step": 10
+            }
+          },
+          "yield_index": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "title": "Yield Index",
+            "default": [
+              0
+            ]
+          },
+          "incumbent": {
+            "$ref": "#/definitions/incumbent"
+          },
+          "age": {
+            "$ref": "#/definitions/age"
+          },
+          "lifetime": {
+            "$ref": "#/definitions/lifetime",
+            "default": 25
+          }
+        },
+        "required": [
+          "COMPONENT_IS_MANDATORY",
+          "yield_scalar",
+          "yield_index",
+          "incumbent",
+          "age",
+          "lifetime"
+        ]
+      }
     },
     "config": {
       "type": "object",
@@ -180,35 +474,101 @@
           "description": "Apply unconditional funding up to this value in £.",
           "minimum": 0,
           "default": 0
+        },
+        "npv_time_horizon": {
+          "type": "integer",
+          "title": "NPV time horizon",
+          "description": "The number of years to forecast over for the net-present-value calculations.",
+          "minimum": 1,
+          "default": 10
+        },
+        "npv_discount_factor": {
+          "type": "number",
+          "title": "NPV discount factor",
+          "description": "The decimal discount factor to apply to future years in the net-present-value calculations.",
+          "default": 0.0
         }
       },
-      "required": ["capex_limit", "use_boiler_upgrade_scheme", "general_grant_funding"]
+      "required": [
+        "capex_limit",
+        "use_boiler_upgrade_scheme",
+        "general_grant_funding",
+        "npv_time_horizon",
+        "npv_discount_factor"
+      ]
     }
   },
-  "required": ["config"],
-
+  "required": [
+    "config"
+  ],
   "definitions": {
     "paramRangeInt": {
       "type": "object",
       "properties": {
-        "min": {"type": "integer", "title": "Min"},
-        "max": {"type": "integer", "title": "Max"},
-        "step": {"type": "integer", "title": "Step"}
+        "min": {
+          "type": "integer",
+          "title": "Min"
+        },
+        "max": {
+          "type": "integer",
+          "title": "Max"
+        },
+        "step": {
+          "type": "integer",
+          "title": "Step"
+        }
       },
-      "required": ["min", "max", "step"]
+      "required": [
+        "min",
+        "max",
+        "step"
+      ]
     },
     "paramRangeFloat": {
       "type": "object",
       "properties": {
-        "min": {"type": "number", "title": "Min"},
-        "max": {"type": "number", "title": "Max"},
-        "step": {"type": "number", "title": "Step"}
+        "min": {
+          "type": "number",
+          "title": "Min"
+        },
+        "max": {
+          "type": "number",
+          "title": "Max"
+        },
+        "step": {
+          "type": "number",
+          "title": "Step"
+        }
       },
-      "required": ["min", "max", "step"]
+      "required": [
+        "min",
+        "max",
+        "step"
+      ]
     },
     "isMandatory": {
       "type": "boolean",
       "title": "Mandatory Component"
+    },
+    "incumbent": {
+      "type": "boolean",
+      "title": "Incumbent",
+      "default": false,
+      "description": "Whether this component has already been installed and paid for or not."
+    },
+    "age": {
+      "type": "number",
+      "title": "Age",
+      "minimum": 0,
+      "default": 0,
+      "description": "The age of this component."
+    },
+    "lifetime": {
+      "type": "number",
+      "title": "Lifetime",
+      "exclusiveMinimum": 0,
+      "default": 10,
+      "description": "The typical length of time this component will last before it needs replacing."
     }
   }
 }

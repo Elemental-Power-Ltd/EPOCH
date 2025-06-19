@@ -18,7 +18,7 @@ import {
   Grid as GridComponent,
   HeatPump,
   Mop,
-  Renewables,
+  SolarPanel,
 } from './TaskData';
 
 import {formatField} from "../../util/displayFunctions.ts";
@@ -35,7 +35,7 @@ const componentNames: Record<keyof TaskData, string> = {
   grid:                  'Grid',
   heat_pump:             'Heat Pump',
   mop:                   'MOP',
-  renewables:            'Renewables',
+  solar_panels:          'Solar Panels',
 };
 
 
@@ -58,7 +58,7 @@ const fieldMappings: {
   grid: Record<keyof GridComponent, FieldInfo>;
   heat_pump: Record<keyof HeatPump, FieldInfo>;
   mop: Record<keyof Mop, FieldInfo>;
-  renewables: Record<keyof Renewables, FieldInfo>;
+  solar_panels: Record<keyof SolarPanel, FieldInfo>; // solar_panels is an array of SolarPanel
 } = {
   config: {
     capex_limit: { label: 'CAPEX Limit', unit: '£' },
@@ -112,8 +112,9 @@ const fieldMappings: {
   mop: {
     maximum_load: { label: 'Maximum Load', unit: 'kW' },
   },
-  renewables: {
-    yield_scalars: { label: 'Yield Scalars' },
+  solar_panels: {
+    yield_scalar: { label: 'Yield Scalar', unit: 'kW' },
+    yield_index: {label: 'Yield Index'},
   },
 };
 
@@ -127,7 +128,8 @@ const fieldMappings: {
 const ComponentDetails: React.FC<{
   componentKey: keyof TaskData;
   componentData: any;
-}> = ({ componentKey, componentData }) => {
+  titleOverride?: string; // solar_panels may supply a numbered title
+}> = ({ componentKey, componentData, titleOverride }) => {
   const fieldsDef = fieldMappings[componentKey];
   if (!fieldsDef) return null;
 
@@ -149,7 +151,7 @@ const ComponentDetails: React.FC<{
             fontWeight: 'bold',
           }}
         >
-          {componentNames[componentKey]}
+          {titleOverride ?? componentNames[componentKey]}
         </Typography>
 
         {Object.entries(fieldsDef).map(([fieldName, info]) => {
@@ -201,9 +203,21 @@ export const TaskDataViewer: React.FC<{ data: TaskData }> = ({ data }) => {
             paddingY: 1,
           }}
         >
-          {orderedComponentKeys.map((key) => {
+          {orderedComponentKeys.flatMap((key) => {
             const componentData = data[key];
-            if (!componentData) return null;
+            if (!componentData) return [];
+
+            // solar_panels is an array; render each panel separately
+            if (Array.isArray(componentData)) {
+              return componentData.map((item, idx) => (
+                <ComponentDetails
+                  key={`${key}-${idx}`}
+                  componentKey={key}
+                  componentData={item}
+                  titleOverride={`${componentNames[key]} ${idx + 1}`} // solar_panels numbering
+                />
+              ));
+            }
 
             return (
               <ComponentDetails

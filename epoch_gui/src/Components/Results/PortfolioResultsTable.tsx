@@ -103,6 +103,15 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ results, 
                         </TableCell>
                         <TableCell>
                             <TableSortLabel
+                                active={orderBy === 'npv_balance'}
+                                direction={orderBy === 'npv_balance' ? order : 'asc'}
+                                onClick={() => handleRequestSort('npv_balance')}
+                            >
+                                NPV Balance
+                            </TableSortLabel>
+                        </TableCell>
+                        <TableCell>
+                            <TableSortLabel
                                 active={orderBy === 'capex'}
                                 direction={orderBy === 'capex' ? order : 'asc'}
                                 onClick={() => handleRequestSort('capex')}

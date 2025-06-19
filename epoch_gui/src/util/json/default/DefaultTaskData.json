@@ -2,14 +2,23 @@
   "building": {
     "scalar_heat_load": 1.0,
     "scalar_electrical_load": 1.0,
-    "fabric_intervention_index": 0
+    "fabric_intervention_index": 0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 30
   },
   "data_centre": {
     "maximum_load": 50.0,
-    "hotroom_temp": 43.0
+    "hotroom_temp": 43.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 10
   },
   "domestic_hot_water": {
-    "cylinder_volume": 100.0
+    "cylinder_volume": 100.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 12
   },
   "electric_vehicles": {
     "flexible_load_ratio": 0.5,
@@ -17,41 +26,61 @@
     "fast_chargers": 3,
     "rapid_chargers": 0,
     "ultra_chargers": 0,
-    "scalar_electrical_load": 3.0
+    "scalar_electrical_load": 3.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 15
   },
   "energy_storage_system": {
     "capacity": 20.0,
     "charge_power": 10.0,
     "discharge_power": 10.0,
     "battery_mode": "CONSUME",
-    "initial_charge": 0.0
+    "initial_charge": 0.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 15
   },
   "gas_heater": {
     "maximum_output": 40,
     "gas_type": "NATURAL_GAS",
-    "boiler_efficiency": 0.9
+    "boiler_efficiency": 0.9,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 10
   },
   "grid": {
     "grid_export": 23.0,
     "grid_import": 23.0,
     "import_headroom": 0.4,
     "tariff_index": 0,
-    "export_tariff": 0.05
+    "export_tariff": 0.05,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 25
   },
   "heat_pump": {
     "heat_power": 20.0,
     "heat_source": "AMBIENT_AIR",
-    "send_temp": 70.0
+    "send_temp": 70.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 10
   },
   "mop": {
-    "maximum_load": 300.0
+    "maximum_load": 300.0,
+    "incumbent": false,
+    "age": 0,
+    "lifetime": 10
   },
-  "renewables": {
-    "yield_scalars": [ 20 ]
-  },
+  "solar_panels": [
+    {"yield_scalar": 20, "yield_index":  0, "incumbent": false, "age": 0, "lifetime": 25}
+  ],
   "config": {
     "capex_limit": 100000000,
     "use_boiler_upgrade_scheme": false,
-    "general_grant_funding": 0
+    "general_grant_funding": 0,
+    "npv_time_horizon": 10,
+    "npv_discount_factor": 0.0
   }
 }

@@ -62,7 +62,7 @@ const expandSiteRange = (siteRange: any): ExpandSiteRangeSuccess | ExpandSiteRan
 
 interface ExpandComponentSuccess {
   success: true
-  data: Record<string, any>
+  data: Record<string, any> | Record<string, any>[]
 }
 
 interface ExpandComponentFailure {
@@ -76,6 +76,28 @@ interface ExpandComponentFailure {
  * @param component the component data
  */
 const expandComponent = (componentName: string, component: Record<string,any>): ExpandComponentSuccess | ExpandComponentFailure => {
+
+  if (Array.isArray(component)) {
+    const expandedArrayComponent: Record<string, any>[] = [];
+    const componentErrors: string[] = [];
+
+    for (let i = 0; i < component.length; i++) {
+
+      const comp = component[i];
+      const compName = `${componentName}[${i}]`;
+      const tryExpand = expandComponent(compName, comp);
+      if (tryExpand.success) {
+        expandedArrayComponent.push(tryExpand.data);
+      } else {
+        componentErrors.push(...tryExpand.errors)
+      }
+    }
+    if (componentErrors.length > 0) {
+      return {success: false, errors: componentErrors};
+    }
+    return {success: true, data: expandedArrayComponent};
+  }
+
   const expandedComponent: Record<string, any> = {};
   const componentErrors: string[] = [];
 
