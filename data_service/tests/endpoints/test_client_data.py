@@ -134,7 +134,7 @@ class TestSiteBaseline:
         """Test that we retrieve the stored baseline correctly."""
         baseline = {
             "grid": {"grid_import": 100, "grid_export": 100},
-            "renewables": {"yield_scalars": [100, 200]},
+            "solar_panels": [{"yield_scalar": 100, "yield_index": 0}, {"yield_scalar": 200, "yield_index": 1}],
             "heat_pump": {"heat_power": 300},
         }
         response = await client.post(
@@ -146,9 +146,16 @@ class TestSiteBaseline:
         returned_baseline = response.json()
         for key, val in baseline.items():
             assert key in returned_baseline
-            for subkey, subval in val.items():  # type: ignore
-                assert subkey in returned_baseline[key]
-                assert returned_baseline[key][subkey] == subval
+
+            if isinstance(val, list):
+                for i, component in enumerate(val):
+                    for subkey, subval in component.items():
+                        assert subkey in returned_baseline[key][i]
+                        assert returned_baseline[key][i][subkey] == subval
+            else:
+                for subkey, subval in val.items():  # type: ignore
+                    assert subkey in returned_baseline[key]
+                    assert returned_baseline[key][subkey] == subval
 
     @pytest.mark.asyncio
     async def test_cant_retrieve_bad_baseline(self, client: AsyncClient) -> None:
