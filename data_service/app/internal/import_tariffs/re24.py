@@ -75,7 +75,12 @@ async def get_re24_wholesale_tariff(
         # Looks like they only do a year in the past?
         raise HTTPException(status_code=400, detail=f"Error from re24: {resp.status_code} - {resp.text}")
 
-    wholesale_df = pd.DataFrame.from_records(resp.json()["data"])
+    returned_json = resp.json()
+    if "data" not in returned_json and returned_json.get("message") == "Forbidden":
+        raise ValueError(f"Error from RE24: {returned_json['message']}. Check your API key?")
+    elif "data" not in returned_json and "message" in returned_json:
+        raise ValueError(f"Didn't get data in JSON from RE24: {returned_json['message']}")
+    wholesale_df = pd.DataFrame.from_records(returned_json["data"])
     wholesale_df["timestamp"] = pd.to_datetime(wholesale_df["timestamp"])
     wholesale_df = wholesale_df.set_index("timestamp").rename(columns={"price": "cost"})
     wholesale_df["cost"] /= 10.0  # convert from £ / MWh to p / kWh
