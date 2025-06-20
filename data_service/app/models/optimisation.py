@@ -80,7 +80,7 @@ class SiteMetrics(BaseModel):
     )
     total_net_present_value: float | None = Field(
         description="Net Present Value after repeating the simulation for the configured number of years for this site.",
-        default=None
+        default=None,
     )
 
     baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) for this site", default=None)
@@ -110,13 +110,12 @@ class SiteMetrics(BaseModel):
         description="Baseline cost of importing fuel/electricity minus revenue from exporting.", default=None
     )
     baseline_operating_cost: float | None = Field(
-        description="Baseline meter cost minus operating costs for components for this site.",
-        default=None
+        description="Baseline meter cost minus operating costs for components for this site.", default=None
     )
     baseline_net_present_value: float | None = Field(
         description="Baseline Net Present Value after repeating the simulation for the configured number of years "
-                    "for this site.",
-        default=None
+        "for this site.",
+        default=None,
     )
 
 
@@ -199,13 +198,12 @@ class PortfolioMetrics(BaseModel):
         description="Total cost of importing fuel/electricity minus revenue from exporting across this portfolio.", default=None
     )
     total_operating_cost: float | None = Field(
-        description="Total meter cost minus operating costs for components across this portfolio.",
-        default=None
+        description="Total meter cost minus operating costs for components across this portfolio.", default=None
     )
     total_net_present_value: float | None = Field(
         description="Net Present Value after repeating the simulation for the configured number of years "
-                    "across this portfolio.",
-        default=None
+        "across this portfolio.",
+        default=None,
     )
 
     baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) across this portfolio", default=None)
@@ -238,13 +236,12 @@ class PortfolioMetrics(BaseModel):
         default=None,
     )
     baseline_operating_cost: float | None = Field(
-        description="Baseline meter cost minus operating costs for components across this portfolio.",
-        default=None
+        description="Baseline meter cost minus operating costs for components across this portfolio.", default=None
     )
     baseline_net_present_value: float | None = Field(
         description="Baseline Net Present Value after repeating the simulation for the configured number of years "
-                    "across this portfolio.",
-        default=None
+        "across this portfolio.",
+        default=None,
     )
 
 
