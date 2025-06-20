@@ -28,7 +28,8 @@ ScenarioComparison compareScenarios(
 	// operating balance then include the OPEX difference
 	comparison.operating_balance = comparison.meter_balance + baseline_opex - scenario_opex;
 	// finally, cost balance also includes the annualised cost of the components
-	comparison.cost_balance = comparison.operating_balance + baselineMetrics.total_annualised_cost - scenarioMetrics.total_annualised_cost;
+	// (note that opex is a part of the total_annualised_cost along with the annualised_capex)
+	comparison.cost_balance = comparison.meter_balance + baselineMetrics.total_annualised_cost - scenarioMetrics.total_annualised_cost;
 
 	comparison.payback_horizon_years = calculate_payback_horizon(scenarioUsage.capex_breakdown.total_capex, comparison.operating_balance);
 
