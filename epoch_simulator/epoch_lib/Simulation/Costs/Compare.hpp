@@ -21,7 +21,7 @@ ScenarioComparison compareScenarios(
 	const UsageData& scenarioUsage, const SimulationMetrics& scenarioMetrics
 );
 
-float calculate_payback_horizon(float capex, float cost_balance);
+float calculate_payback_horizon(float capex, float operating_balance);
 
 float calculate_carbon_usage_scope_1(const UsageData& usage);
 

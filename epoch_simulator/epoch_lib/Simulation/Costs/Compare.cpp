@@ -30,7 +30,7 @@ ScenarioComparison compareScenarios(
 	// finally, cost balance also includes the annualised cost of the components
 	comparison.cost_balance = comparison.operating_balance + baselineMetrics.total_annualised_cost - scenarioMetrics.total_annualised_cost;
 
-	comparison.payback_horizon_years = calculate_payback_horizon(scenarioUsage.capex_breakdown.total_capex, comparison.cost_balance);
+	comparison.payback_horizon_years = calculate_payback_horizon(scenarioUsage.capex_breakdown.total_capex, comparison.operating_balance);
 
 	float baseline_carbon_scope_1 = calculate_carbon_usage_scope_1(baselineUsage);
 	float scenario_carbon_scope_1 = calculate_carbon_usage_scope_1(scenarioUsage);
@@ -48,23 +48,24 @@ ScenarioComparison compareScenarios(
 /**
 * Calculate the payback hoizon of a scenario.
 *
-* This is the capex divided by the yearly cost balance.
+* This is the capex divided by the yearly operating balance.
+* This does not include the annualised cost of the components.
 *
 * Note: we deliberately allow for negative payback horizons.
 * These should be considered invalid (as the scenario will never pay back)
 * but is useful to provide gradient information for optimisation.
 */
-float calculate_payback_horizon(float capex, float cost_balance) {
+float calculate_payback_horizon(float capex, float operating_balance) {
 	if (capex <= 0) {
 		// if we haven't spend any money then the payback horizon is 0
 		return 0.0f;
 	}
-	else if (cost_balance == 0.0f) {
+	else if (operating_balance == 0.0f) {
 		// return the smallest possible negative number
 		return -1.0f / std::numeric_limits<float>::max();
 	}
 	else {
-		return capex / cost_balance;
+		return capex / operating_balance;
 	}
 };
 
