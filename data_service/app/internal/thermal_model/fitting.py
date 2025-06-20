@@ -153,7 +153,7 @@ def simulate_parameters(
     start_ts: datetime.datetime,
     end_ts: datetime.datetime,
     dt: datetime.timedelta | None = None,
-    interventions: list[InterventionEnum] | None = None,
+    interventions: list[InterventionEnum] | list[str] | None = None,
     u_values_path: Path = U_VALUES_PATH,
 ) -> pd.DataFrame:
     """
