@@ -91,7 +91,7 @@ struct GasCHData {
 struct GridData {
     float grid_export = 23.0;
     float grid_import = 23.0;
-    float import_headroom = 0.4f;
+    float import_headroom = 0.25f;
     size_t tariff_index = 0;
     float export_tariff = 0.05f;
     bool incumbent = false;

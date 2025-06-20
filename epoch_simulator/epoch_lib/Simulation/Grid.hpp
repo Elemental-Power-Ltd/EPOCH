@@ -14,9 +14,9 @@ public:
 		// Initilaise results data vectors with all values to zero
 		Imp_e(Eigen::VectorXf::Zero(siteData.timesteps)),
 		Exp_e(Eigen::VectorXf::Zero(siteData.timesteps)),
-		ImpHeadroom(gridData.import_headroom * building.scalar_electrical_load * siteData.building_eload.maxCoeff()),
-		// Following are Import and Export Max kWh per timestep (adjusted for Power Factor & Headroom)
-		ImpMax_e((gridData.grid_import - ImpHeadroom) * siteData.timestep_hours),
+		// Calculate the Import and Export capacity (in kWh) per timestep
+		// The import capacity is reduced by the import_headroom
+		ImpMax_e(gridData.grid_import * (1.0f - gridData.import_headroom) * siteData.timestep_hours),
 		ExpMax_e(gridData.grid_export * siteData.timestep_hours)
 	{}
 
@@ -47,7 +47,6 @@ public:
 	// Can't go direct to Acc values for 'SimulationResult' as Import & Export vectors required for Supplier ToU costs
 
 private:
-	const float ImpHeadroom;
 	const float ImpMax_e;
 	const float ExpMax_e;
 

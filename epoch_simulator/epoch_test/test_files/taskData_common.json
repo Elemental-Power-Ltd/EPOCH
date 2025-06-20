@@ -25,8 +25,8 @@
   },
   "grid": {
     "grid_export": 100.0,
-    "grid_import": 160.0,
-    "import_headroom": 0.4,
+    "grid_import": 170.0,
+    "import_headroom": 0.25,
     "tariff_index": 0,
     "export_tariff": 0.05,
     "incumbent": false,
