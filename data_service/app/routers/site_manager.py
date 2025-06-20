@@ -193,7 +193,8 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
                     key=created_at_or_epoch,
                     default=None,
                 )
-                for solar_locn in potential_locations
+                # Get these in a consistent order sorted alphabetically by their location ID
+                for solar_locn in sorted(potential_locations, key=str)
             )
             if item is not None
         ]
