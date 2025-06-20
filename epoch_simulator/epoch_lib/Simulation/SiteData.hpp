@@ -69,7 +69,7 @@ struct SiteData {
 	// This must be converted to kg for most of our metrics
 	year_TS grid_co2;
 
-	// The solar yields in kW / kWp
+	// The solar yields per timestep for a 1kW peak panel
 	std::vector<year_TS> solar_yields;
 	// The electrical import prices in pounds / kWh
 	std::vector<year_TS> import_tariffs;
