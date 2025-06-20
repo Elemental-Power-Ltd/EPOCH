@@ -187,8 +187,9 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
             for item in (
                 max(
                     filter(
-                        lambda ds: bool(ds.dataset_subtype == solar_locn), all_datasets[DatasetTypeEnum.RenewablesGeneration]
-                    ),  # type: ignore
+                        lambda ds: bool(ds.dataset_subtype == solar_locn),  # type: ignore
+                        all_datasets[DatasetTypeEnum.RenewablesGeneration],
+                    ),
                     key=created_at_or_epoch,
                     default=None,
                 )

@@ -217,7 +217,7 @@ class TestSolarLocations:
         got_data = get_response.json()[0]
         for key, val in solar_data.items():
             assert key in got_data
-            assert val == got_data
+            assert val == got_data[key]
 
     @pytest.mark.asyncio
     async def test_cant_add_bad_id(self, client: AsyncClient) -> None:
