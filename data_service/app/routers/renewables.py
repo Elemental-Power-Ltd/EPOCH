@@ -283,6 +283,8 @@ async def disaggregate_electricity_dataframe(
     ----------
     elec_df
         Dataset of the electricity readings with `start_ts`, `end_ts` and `consumption_kwh`.
+    http_client
+        HTTP connection client used to contact Renewables.Ninja
     latitude
         Latitude of site in degrees
     longitude
@@ -291,10 +293,6 @@ async def disaggregate_electricity_dataframe(
         Angle between the solar panels and true north in degrees. If None, we'll estimate this.
     tilt
         Angle between the solar panels and the surface normal in degrees. If None, we'll estimate this.
-    pool
-        Database containing electrical meter readings
-    http_client
-        HTTP connection client used to contact Renewables.Ninja
     system_size
         Rated size of the system in kWp
 
@@ -328,9 +326,15 @@ async def disaggregate_electricity_dataframe(
     for start_ts, end_ts in zip(elec_df.start_ts, elec_df.end_ts, strict=False):
         within_mask = np.logical_and(renewables_df.index >= start_ts, renewables_df.index < end_ts)
         total_pv.append(renewables_df.loc[within_mask, "pv"].sum())
+
     elec_df["generation"] = total_pv
-    elec_df["import"] = elec_df["consumption_kwh"]
-    elec_df["consumption_kwh"] = elec_df["import"] + elec_df["generation"]
+    # We've assumed that the data we've been provided is the net import / export of electricity.
+    # Positive values are imports, negative values are exports
+    elec_df["import"] = elec_df["consumption_kwh"].clip(0)
+    elec_df["export"] = (-elec_df["consumption_kwh"]).clip(0)
+
+    # The total consumption is then the provided net import/export plus the on-site generation
+    elec_df["consumption_kwh"] += elec_df["generation"]
     return elec_df
 
 

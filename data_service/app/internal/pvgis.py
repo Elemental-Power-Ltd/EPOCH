@@ -27,13 +27,18 @@ async def get_pvgis_optima(
 
     Parameters
     ----------
+    client
+        HTTP connection pool used to contact PVGIS
     latitude
-
+        Latitude of this site in degrees
     longitude
+        Longitude of this site in degrees
+    tracking
+        Whether we install tracking panels or not (mostly no)
 
     Returns
     -------
-        Dictionary with optima and some useful parameters
+        Dictionary with optima and some useful parameters calculated by PVGIS
     """
     base_url = "https://re.jrc.ec.europa.eu/api/PVcalc"
 
