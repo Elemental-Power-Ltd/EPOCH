@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from pydantic_core._pydantic_core import ValidationError
 
 from ..dependencies import DatabaseDep, DatabasePoolDep
+from ..models.client_data import SolarLocation
 from ..models.core import (
     ClientData,
     ClientID,
@@ -410,6 +411,123 @@ async def list_sites(client_id: ClientID, conn: DatabaseDep) -> list[SiteIdNameP
         client_id.client_id,
     )
     return [SiteIdNamePair(site_id=site_id_t(item[0]), name=str(item[1])) for item in res]
+
+
+@router.post("/get-solar-locations", tags=["db", "pv"])
+async def get_solar_locations(site_id: SiteID, pool: DatabasePoolDep) -> list[SolarLocation]:
+    """
+    Get all the possible locations for solar arrays on this site.
+
+    One site will have zero to many potential solar arrays, each with a maximum size, a tilt, an azimuth and
+    a indication of roof / ground mounted.
+    The maximum size is in kWp assuming 1x2m 440W panels laid out as densely as practical.
+    The azimuth and tilt are the optimal arrangements of panels for that bit of roof or ground and are
+    in degrees from true North and the surface normal respectively.
+    For flat roofs, this may be split into two separate East/West locations.
+
+    Each location is tagged with a human readable name so you know what it refers to.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site you want to get the potential solar locations of
+    pool
+        Database connection pool to look these up in
+
+    Returns
+    -------
+    list[SolarLocation]
+        List of all potential solar locations at the site, ordered alphabetically by their location ID
+    """
+    res: list[asyncpg.Record] | None = await pool.fetch(
+        """
+        SELECT
+            site_id,
+            renewables_location_id,
+            name,
+            tilt,
+            azimuth,
+            maxpower,
+            mounting_type
+        FROM
+            client_info.solar_locations
+        WHERE site_id = $1
+        ORDER BY renewables_location_id
+        """,
+        site_id.site_id,
+    )
+    if res is None:
+        return []
+    return [
+        SolarLocation(
+            site_id=item["site_id"],
+            renewables_location_id=item["renewables_location_id"],
+            name=item["name"],
+            tilt=item["tilt"],
+            azimuth=item["azimuth"],
+            maxpower=item["maxpower"],
+        )
+        for item in res
+    ]
+
+
+@router.post("/add-solar-location", tags=["db", "solar_pv", "add"])
+async def add_solar_locations(location: SolarLocation, pool: DatabasePoolDep) -> SolarLocation:
+    """
+    Get all the possible locations for solar arrays on this site.
+
+    One site will have zero to many potential solar arrays, each with a maximum size, a tilt, an azimuth and
+    a indication of roof / ground mounted.
+    The maximum size is in kWp assuming 1x2m 440W panels laid out as densely as practical.
+    The azimuth and tilt are the optimal arrangements of panels for that bit of roof or ground and are
+    in degrees from true North and the surface normal respectively.
+    For flat roofs, this may be split into two separate East/West locations.
+
+    Each location is tagged with a human readable name so you know what it refers to.
+
+    Parameters
+    ----------
+    location
+        A solar location with a unique site name
+    pool
+        Database connection pool to add this to
+
+    Returns
+    -------
+    location
+        The location just added to the database
+    """
+    if location.site_id not in location.renewables_location_id:
+        raise HTTPException(
+            422,
+            f"Location ID {location.renewables_location_id} must include  site ID {location.site_id} for uniqueness (sorry!)",
+        )
+    try:
+        res = await pool.execute(
+            """
+            INSERT INTO client_info.solar_locations (
+                site_id,
+                renewables_location_id,
+                name,
+                tilt,
+                azimuth,
+                maxpower,
+                mounting_type
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            """,
+            location.site_id,
+            location.renewables_location_id,
+            location.name,
+            location.tilt,
+            location.azimuth,
+            location.maxpower,
+            location.mounting_type,
+        )
+    except asyncpg.exceptions.UniqueViolationError as ex:
+        raise HTTPException(400, f"Non-unique renewables location ID: {location.renewables_location_id} already exists") from ex
+    if res:
+        return location
+    raise HTTPException(400, "Error in adding solar location")
 
 
 @router.post("/get-location", tags=["db"])

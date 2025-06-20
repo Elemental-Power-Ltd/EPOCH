@@ -46,7 +46,7 @@ async def get_pv_optima(request: Request, site_id: SiteID, conn: DatabaseDep) ->
     information about the optimal azimuth, tilt, and some metadata about the technologies used.
     """
     latitude, longitude = await conn.fetchval(
-        """SELECT coordinates FROM client_info.site_info WHERE site_id = $1""",
+        """SELECT coordinates FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
         site_id.site_id,
     )
     optima = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=request.state.http_client)
@@ -79,8 +79,7 @@ async def generate_renewables_generation(
     """
     async with pool.acquire() as conn:
         result = await conn.fetchrow(
-            """
-            SELECT
+            """SELECT
                 location,
                 coordinates
             FROM client_info.site_info AS s
@@ -124,29 +123,32 @@ async def generate_renewables_generation(
         dataset_id=uuid.uuid4(),
         site_id=params.site_id,
         parameters=json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
+        renewables_location_id=params.renewables_location_id,
     )
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
-                """
-                INSERT INTO
+                """INSERT INTO
                     renewables.metadata (
                         dataset_id,
                         site_id,
                         created_at,
                         data_source,
-                        parameters)
+                        parameters,
+                        renewables_location_id)
                 VALUES (
                         $1,
                         $2,
                         $3,
                         $4,
-                        $5)""",
+                        $5,
+                        $6)""",
                 metadata.dataset_id,
                 metadata.site_id,
                 metadata.created_at,
                 metadata.data_source,
                 json.dumps(metadata.parameters),
+                metadata.renewables_location_id,
             )
 
             await conn.executemany(

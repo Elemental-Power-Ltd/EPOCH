@@ -20,12 +20,13 @@ from ..internal.site_manager import (
     list_thermal_models,
 )
 from ..internal.site_manager.site_manager import fetch_all_input_data
-from ..models.client_data import SiteDataEntries
+from ..models.client_data import SiteDataEntries, SolarLocation
 from ..models.core import (
     DatasetEntry,
     DatasetIDWithTime,
     DatasetTypeEnum,
     MultipleDatasetIDWithTime,
+    SiteID,
     SiteIDWithTime,
     dataset_id_t,
 )
@@ -36,7 +37,7 @@ from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetList, RemoteMetaData
 from ..models.weather import WeatherRequest
 from .carbon_intensity import generate_grid_co2
-from .client_data import get_location
+from .client_data import get_location, get_solar_locations
 from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
 from .import_tariffs import generate_import_tariffs, get_import_tariffs
@@ -170,6 +171,34 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         )
         if item is not None
     ]
+
+    # Get one renewables
+    potential_locations: set[str | None] = {item.dataset_subtype for item in all_datasets[DatasetTypeEnum.RenewablesGeneration]}
+    if "default" in potential_locations:
+        # Relabel the 'default' entry as None for consistency
+        potential_locations.remove("default")
+        potential_locations.add(None)
+    # However, if we've got multiple legitimate locations then we should remove the None location
+    if len(potential_locations) >= 2 and None in potential_locations:
+        potential_locations.remove(None)
+    if DatasetTypeEnum.RenewablesGeneration in all_datasets and all_datasets[DatasetTypeEnum.RenewablesGeneration] is not None:
+        renewables_generations = [
+            item
+            for item in (
+                max(
+                    filter(
+                        lambda ds: bool(ds.dataset_subtype == solar_locn), all_datasets[DatasetTypeEnum.RenewablesGeneration]
+                    ),  # type: ignore
+                    key=created_at_or_epoch,
+                    default=None,
+                )
+                for solar_locn in potential_locations
+            )
+            if item is not None
+        ]
+    else:
+        renewables_generations = []
+
     return DatasetList(
         site_id=params.site_id,
         start_ts=params.start_ts,
@@ -196,10 +225,7 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         GasMeterData=max(all_datasets[DatasetTypeEnum.GasMeterData], key=lambda x: x.created_at)
         if all_datasets.get(DatasetTypeEnum.GasMeterData)
         else None,
-        # RenewablesGeneration are a MultipleDatasetIDWithTime, so wrap them into a list here.
-        RenewablesGeneration=[max(all_datasets[DatasetTypeEnum.RenewablesGeneration], key=lambda x: x.created_at)]
-        if all_datasets.get(DatasetTypeEnum.RenewablesGeneration)
-        else None,
+        RenewablesGeneration=renewables_generations,
         ThermalModel=[max(all_datasets[DatasetTypeEnum.ThermalModel], key=lambda x: x.created_at)]
         if all_datasets.get(DatasetTypeEnum.ThermalModel)
         else None,
@@ -457,13 +483,34 @@ async def generate_all(
             http_client=http_client,
         )
 
-    background_tasks.add_task(
-        generate_renewables_generation,
-        RenewablesRequest(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts, azimuth=None, tilt=None),
-        pool=pool,
-        http_client=http_client,
-        secrets_env=secrets_env,
-    )
+    solar_locns = await get_solar_locations(SiteID(site_id=params.site_id), pool=pool)
+    if not solar_locns:
+        # This site doesn't have any solar locations specified so use a sensible default.
+        DEFAULT_SOLAR_LOCN = SolarLocation(
+            site_id=params.site_id,
+            name="Default",
+            renewables_location_id="default",
+            azimuth=None,
+            tilt=None,
+            maxpower=float("inf"),
+        )
+        solar_locns = [DEFAULT_SOLAR_LOCN]
+
+    for solar_location in solar_locns:
+        background_tasks.add_task(
+            generate_renewables_generation,
+            RenewablesRequest(
+                site_id=params.site_id,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+                azimuth=solar_location.azimuth,
+                tilt=solar_location.tilt,
+                renewables_location_id=solar_location.renewables_location_id,
+            ),
+            pool=pool,
+            http_client=http_client,
+            secrets_env=secrets_env,
+        )
 
     background_tasks.add_task(
         generate_electricity_load,
@@ -512,15 +559,19 @@ async def generate_all(
             )
             for tariff_type in SyntheticTariffEnum
         ],
-        DatasetTypeEnum.RenewablesGeneration: DatasetEntry(
-            dataset_id=NULL_UUID,
-            dataset_type=DatasetTypeEnum.RenewablesGeneration,
-            created_at=datetime.datetime.now(tz=datetime.UTC),
-            resolution=RESOLUTION,
-            start_ts=params.start_ts,
-            end_ts=params.end_ts,
-            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
-        ),
+        # Renewables generation is one series per potential location
+        DatasetTypeEnum.RenewablesGeneration: [
+            DatasetEntry(
+                dataset_id=NULL_UUID,
+                dataset_type=DatasetTypeEnum.RenewablesGeneration,
+                created_at=datetime.datetime.now(tz=datetime.UTC),
+                resolution=RESOLUTION,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+                num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
+            )
+            for _ in solar_locns
+        ],
         DatasetTypeEnum.ElectricityMeterData: elec_meter_dataset,
         DatasetTypeEnum.ElectricityMeterDataSynthesised: DatasetEntry(
             dataset_id=NULL_UUID,

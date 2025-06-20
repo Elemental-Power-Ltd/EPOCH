@@ -194,7 +194,6 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
                         baseline_meter_cost=nan_to_num(sub_item["metric_baseline_meter_cost"]),
                         baseline_operating_cost=nan_to_num(sub_item["metric_baseline_operating_cost"]),
                         baseline_net_present_value=nan_to_num(sub_item["metric_baseline_net_present_value"]),
-
                     ),
                 )
                 for sub_item in item["site_results"]
