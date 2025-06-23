@@ -150,6 +150,7 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ results, 
                             <TableCell>{formatCarbon(portfolio_result.metrics.carbon_balance_scope_2)}</TableCell>
                             <TableCell>{formatCarbonCost(portfolio_result.metrics.carbon_cost)}</TableCell>
                             <TableCell>{formatPounds(portfolio_result.metrics.cost_balance)}</TableCell>
+                            <TableCell>{formatPounds(portfolio_result.metrics.npv_balance)}</TableCell>
                             <TableCell>{formatPounds(portfolio_result.metrics.capex)}</TableCell>
                             <TableCell>{formatYears(portfolio_result.metrics.payback_horizon)}</TableCell>
                             <TableCell>{formatPounds(portfolio_result.metrics.annualised_cost)}</TableCell>
