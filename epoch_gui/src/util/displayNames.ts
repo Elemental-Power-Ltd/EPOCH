@@ -17,6 +17,6 @@ export const objectiveNames = {
     "total_heat_shortfall": "Heat Shortfall",
     "total_gas_import_cost": "Gas Import Cost",
     "total_electricity_import_cost": "Electricity Import Cost",
-    "total_electricity_export_gain": "Electrcity Export Gain",
+    "total_electricity_export_gain": "Electricity Export Gain",
 }
 
