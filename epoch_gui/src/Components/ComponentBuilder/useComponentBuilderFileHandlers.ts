@@ -12,6 +12,27 @@ export const useComponentBuilderFileHandlers = ({mode, setData}: UseFileHandlerP
   const CamelCaseName = (mode === "TaskDataMode") ? "TaskData" : "SiteRange";
   const validate = (mode === "TaskDataMode") ? validateTaskData : validateSiteRange;
 
+  /**
+   * Remove any top-level null fields from a JSON object
+   * This is used as a helper to provide a clean version of TaskData / SiteRange when uploading & downloading
+   */
+  const removeTopLevelNulls = (json: any): any => {
+    if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+      return json;
+    }
+
+    const result: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(json)) {
+      if (value !== null) {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  };
+
+
   const onUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -19,7 +40,8 @@ export const useComponentBuilderFileHandlers = ({mode, setData}: UseFileHandlerP
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const json = JSON.parse(e.target?.result as string);
+        const jsonWithNulls = JSON.parse(e.target?.result as string);
+        const json = removeTopLevelNulls(jsonWithNulls);
         const validation = validate(json);
 
         if (validation.valid) {
