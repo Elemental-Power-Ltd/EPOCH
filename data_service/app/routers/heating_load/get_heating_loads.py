@@ -110,7 +110,11 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         )
         if metadata is not None and "cost" in metadata["params"]:
             # If we've pre-calculated the cost, simply return that
+            # However, it might have come out of the database as a string.
+            if isinstance(metadata["params"], str):
+                return float(json.loads(metadata["params"])["cost"])
             return float(metadata["params"]["cost"])
+
         if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
             # If we have a thermal model, get the heating cost based off the calculated areas.
             if isinstance(metadata["params"], str):
