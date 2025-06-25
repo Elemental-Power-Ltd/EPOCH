@@ -56,7 +56,6 @@ class Database:
 
         self.user = user
         self.database = database
-        print(self.host, self.user, self.password, self.dsn, self.database)
         self.pool: asyncpg.Pool | None = None
 
     async def create_pool(self) -> None:

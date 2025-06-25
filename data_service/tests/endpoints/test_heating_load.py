@@ -92,6 +92,43 @@ class TestHeatingLoad:
     @pytest.mark.asyncio
     @pytest.mark.external
     @pytest.mark.slow
+    async def test_generate_THIRD_PARTY(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
+        dataset_id = uploaded_meter_data["dataset_id"]
+
+        with_intervention_metadata = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": ["Fineo Glazing"],
+                "savings_percentage": 0.12,
+                "surveyed_sizes": {"floor_area": 200},
+            },
+        )
+
+        with_intervention_result = await client.post(
+            "/get-heating-load", json={"dataset_id": with_intervention_metadata.json()["dataset_id"]}
+        )
+        assert with_intervention_result.status_code == 200, with_intervention_result.text
+        data = with_intervention_result.json()
+        assert len(data["data"][0]["reduced_hload"]) == 1488
+
+        listed_metadata = await client.post(
+            "/list-latest-datasets",
+            json={
+                "site_id": "demo_london",
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+            },
+        )
+        assert listed_metadata.status_code == 200, listed_metadata.text
+        final_id = with_intervention_metadata.json()["dataset_id"]
+        assert final_id in listed_metadata.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    @pytest.mark.slow
     async def test_heating_load_right_length(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         """Check that we've got the right length of dataset and haven't dropped the last entry."""
         dataset_id = uploaded_meter_data["dataset_id"]

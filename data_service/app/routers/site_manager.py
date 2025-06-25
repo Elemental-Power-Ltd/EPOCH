@@ -136,6 +136,13 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
 
         return False
 
+    heating_subtypes = [None, InterventionEnum.Loft, InterventionEnum.DoubleGlazing, InterventionEnum.Cladding]
+    heating_subtypes.extend(
+        item.dataset_subtype
+        for item in all_datasets[DatasetTypeEnum.HeatingLoad]
+        if not isinstance(item.dataset_subtype, InterventionEnum) and item.dataset_subtype is not None
+    )
+
     heating_loads = [
         item
         for item in (
@@ -147,7 +154,7 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
                 key=created_at_or_epoch,
                 default=None,
             )
-            for intervention_subtype in [None, InterventionEnum.Loft, InterventionEnum.DoubleGlazing, InterventionEnum.Cladding]
+            for intervention_subtype in heating_subtypes
         )
         if item is not None
     ]
