@@ -33,6 +33,7 @@ class TestHeatingLoad:
             "/generate-heating-load",
             json={"dataset_id": dataset_id, "start_ts": "2023-01-01T00:00:00Z", "end_ts": "2023-02-01T00:00:00Z"},
         )
+        assert generated_metadata.status_code == 200, generated_metadata.text
         heating_load_result = await client.post(
             "/get-heating-load", json={"dataset_id": generated_metadata.json()["dataset_id"]}
         )
@@ -95,15 +96,28 @@ class TestHeatingLoad:
     async def test_generate_THIRD_PARTY(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         dataset_id = uploaded_meter_data["dataset_id"]
 
+        no_intervention_result = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": [],
+                "savings_percentage": 0.0,
+                "model_type": "regression",
+                "surveyed_sizes": {"total_floor_area": 200, "exterior_wall_area": 100},
+            },
+        )
+        assert no_intervention_result.status_code == 200, no_intervention_result.text
         with_intervention_metadata = await client.post(
             "/generate-heating-load",
             json={
                 "dataset_id": dataset_id,
                 "start_ts": "2023-01-01T00:00:00Z",
                 "end_ts": "2023-02-01T00:00:00Z",
-                "interventions": ["Fineo Glazing"],
+                "interventions": ["Fineo Glazing", "Insulation to ceiling void"],
                 "savings_percentage": 0.12,
-                "surveyed_sizes": {"floor_area": 200},
+                "surveyed_sizes": {"total_floor_area": 88, "exterior_wall_area": 100},
             },
         )
 
@@ -113,6 +127,7 @@ class TestHeatingLoad:
         assert with_intervention_result.status_code == 200, with_intervention_result.text
         data = with_intervention_result.json()
         assert len(data["data"][0]["reduced_hload"]) == 1488
+        assert data["data"][0]["cost"] > 1000
 
         listed_metadata = await client.post(
             "/list-latest-datasets",
@@ -125,6 +140,22 @@ class TestHeatingLoad:
         assert listed_metadata.status_code == 200, listed_metadata.text
         final_id = with_intervention_metadata.json()["dataset_id"]
         assert final_id in listed_metadata.text
+
+        got_metadata = await client.post(
+            "/get-latest-datasets",
+            json={
+                "site_id": "demo_london",
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+            },
+        )
+        assert got_metadata.status_code == 200, got_metadata.text
+        got_datasets = got_metadata.json()
+        assert "heat" in got_datasets, got_datasets.keys()
+        print(got_metadata.json()["heat"]["data"])
+        assert len(got_datasets["heat"]["data"]) == 2
+        assert got_datasets["heat"]["data"][1]["cost"] > 100
+        assert len(got_datasets["heat"]["data"][1]["reduced_hload"]) == 1488
 
     @pytest.mark.asyncio
     @pytest.mark.external

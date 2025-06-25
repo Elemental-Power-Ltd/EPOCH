@@ -5,7 +5,7 @@
 import pydantic
 
 # watch out for cicular imports!
-from ..internal.thermal_model.rdsap import estimate_window_area
+from ..internal.rdsap.rdsap import estimate_window_area
 from .core import DatasetID, SiteIDWithTime
 
 
@@ -25,7 +25,7 @@ class SurveyedSizes(pydantic.BaseModel):
     n_floors: int = pydantic.Field(default=2, description="Number of floors, including the ground.")
     total_floor_area: float = pydantic.Field(description="Total interior floor area across all floors in m^2")
     exterior_wall_area: float = pydantic.Field(description="Exterior surface area of the walls in m^2")
-    get_ceiling_areas_area: float = pydantic.Field(
+    ceiling_area: float = pydantic.Field(
         default_factory=lambda data: data["total_floor_area"] / data["n_floors"],
         description="Flat interior surface area of the ceilings in m^2 where we could insulate,"
         + "assumed to be the same as a single floor area if not provided.",

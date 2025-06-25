@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import logging
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
@@ -136,13 +137,20 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
 
         return False
 
+    def is_single_enum_entry(item: Any) -> bool:
+        """Check if this is a list with a single InterventionEnum."""
+        if isinstance(item, list) and len(item) == 1 and isinstance(item[0], InterventionEnum):
+            return True
+        return False
+
     heating_subtypes = [None, InterventionEnum.Loft, InterventionEnum.DoubleGlazing, InterventionEnum.Cladding]
     heating_subtypes.extend(
         item.dataset_subtype
         for item in all_datasets[DatasetTypeEnum.HeatingLoad]
-        if not isinstance(item.dataset_subtype, InterventionEnum) and item.dataset_subtype is not None
+        if not isinstance(item.dataset_subtype, InterventionEnum)
+        and item.dataset_subtype is not None
+        and not is_single_enum_entry(item.dataset_subtype)
     )
-
     heating_loads = [
         item
         for item in (
