@@ -33,7 +33,6 @@ from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_c
 from ...internal.thermal_model.fitting import simulate_parameters
 from ...models.core import DatasetID, SiteID, dataset_id_t, site_id_t
 from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest
-from ...models.thermal_model import SurveyedSizes
 from ...models.weather import BaitAndModelCoefs, WeatherRequest
 from ..client_data import get_location
 from ..weather import get_weather
@@ -113,6 +112,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         model_type=HeatingLoadModelEnum.Regression,
         site_id=site_id,
         thermal_model_dataset_id=None,
+        surveyed_sizes=params.surveyed_sizes,
     )
 
     available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
@@ -162,12 +162,13 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         model_type=HeatingLoadModelEnum.ThermalModel,
         site_id=site_id,
         thermal_model_dataset_id=most_recent_id,
+        surveyed_sizes=params.surveyed_sizes,
     )
 
 
 @api_router.post("/generate-heating-load", tags=["generate", "heating"])
 async def generate_heating_load(
-    params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep, surveyed_sizes: SurveyedSizes | None = None
+    params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> HeatingLoadMetadata:
     """
     Generate a heating load based on the model type specified in an argument.
@@ -193,11 +194,9 @@ async def generate_heating_load(
             # a new heating load request, then all that.
             new_heatload_params = await select_regression_or_thermal(params=params, pool=pool)
             logger.info(f"Generating heat load for {new_heatload_params.site_id} with {new_heatload_params.model_type}.")
-            return await generate_heating_load(new_heatload_params, pool, http_client, surveyed_sizes=surveyed_sizes)
+            return await generate_heating_load(new_heatload_params, pool, http_client)
         case HeatingLoadModelEnum.Regression:
-            return await generate_heating_load_regression(
-                params=params, pool=pool, http_client=http_client, surveyed_sizes=surveyed_sizes
-            )
+            return await generate_heating_load_regression(params=params, pool=pool, http_client=http_client)
         case HeatingLoadModelEnum.ThermalModel:
             return await generate_thermal_model_heating_load(pool=pool, http_client=http_client, params=params)
 
@@ -332,7 +331,7 @@ async def generate_heating_load_regression_impl(
 
 @api_router.post("/generate-heating-load-regression", tags=["generate", "heating"])
 async def generate_heating_load_regression(
-    params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep, surveyed_sizes: SurveyedSizes | None = None
+    params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> HeatingLoadMetadata:
     """
     Generate a heating load for this specific site, using regression analysis.
@@ -379,10 +378,9 @@ async def generate_heating_load_regression(
     heating_df, changed_coefs = await generate_heating_load_regression_impl(params, pool, http_client)
 
     metadata_params = {"source_dataset_id": str(params.dataset_id), **changed_coefs.model_dump()}
-    if surveyed_sizes is not None:
-        cost = calculate_THIRD_PARTY_intervention_costs(surveyed_sizes, interventions=params.interventions)
+    if params.surveyed_sizes is not None:
+        cost = calculate_THIRD_PARTY_intervention_costs(params.surveyed_sizes, interventions=params.interventions)
         metadata_params["cost"] = cost
-    print(surveyed_sizes, metadata_params)
 
     metadata = HeatingLoadMetadata(
         dataset_id=uuid.uuid4(),

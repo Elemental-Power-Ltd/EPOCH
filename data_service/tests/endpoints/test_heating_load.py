@@ -33,6 +33,7 @@ class TestHeatingLoad:
             "/generate-heating-load",
             json={"dataset_id": dataset_id, "start_ts": "2023-01-01T00:00:00Z", "end_ts": "2023-02-01T00:00:00Z"},
         )
+        assert generated_metadata.status_code == 200, generated_metadata.text
         heating_load_result = await client.post(
             "/get-heating-load", json={"dataset_id": generated_metadata.json()["dataset_id"]}
         )
@@ -98,14 +99,12 @@ class TestHeatingLoad:
         no_intervention_result = await client.post(
             "/generate-heating-load",
             json={
-                "params": {
-                    "dataset_id": dataset_id,
-                    "start_ts": "2023-01-01T00:00:00Z",
-                    "end_ts": "2023-02-01T00:00:00Z",
-                    "interventions": [],
-                    "savings_percentage": 0.0,
-                    "model_type": "regression",
-                },
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": [],
+                "savings_percentage": 0.0,
+                "model_type": "regression",
                 "surveyed_sizes": {"total_floor_area": 200, "exterior_wall_area": 100},
             },
         )
@@ -113,13 +112,11 @@ class TestHeatingLoad:
         with_intervention_metadata = await client.post(
             "/generate-heating-load",
             json={
-                "params": {
-                    "dataset_id": dataset_id,
-                    "start_ts": "2023-01-01T00:00:00Z",
-                    "end_ts": "2023-02-01T00:00:00Z",
-                    "interventions": ["Fineo Glazing", "Insulation to ceiling void"],
-                    "savings_percentage": 0.12,
-                },
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": ["Fineo Glazing", "Insulation to ceiling void"],
+                "savings_percentage": 0.12,
                 "surveyed_sizes": {"total_floor_area": 88, "exterior_wall_area": 100},
             },
         )

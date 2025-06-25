@@ -7,6 +7,7 @@ import networkx as nx
 import numpy as np
 
 from ...models.thermal_model import SurveyedSizes
+from ..rdsap.rdsap import estimate_window_area
 from .building_elements import BuildingElement
 from .heat_capacities import (
     AIR_HEAT_CAPACITY,
@@ -26,7 +27,6 @@ from .links import (
     ThermalNodeAttrDict,
     ThermalRadiativeLink,
 )
-from .rdsap import estimate_window_area
 
 
 class HeatNetwork(nx.DiGraph):
@@ -429,7 +429,7 @@ def create_structure_from_survey(surveyed_sizes: SurveyedSizes, u_values_path: P
         wall_height=np.sqrt(surveyed_sizes.exterior_wall_area) / 4,
         # Assuming about 20% window to floor area ratio
         window_area=surveyed_sizes.window_area,
-        floor_area=surveyed_sizes.total_floor_area / surveyed_sizes.window_area,
+        floor_area=surveyed_sizes.total_floor_area / surveyed_sizes.n_floors,
         u_values_path=u_values_path,
     )
 

@@ -5,7 +5,7 @@
 import pydantic
 
 # watch out for cicular imports!
-from ..internal.thermal_model.rdsap import estimate_window_area
+from ..internal.rdsap.rdsap import estimate_window_area
 from .core import DatasetID, SiteIDWithTime
 
 

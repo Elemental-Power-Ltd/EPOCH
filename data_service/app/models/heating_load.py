@@ -9,6 +9,7 @@ import pydantic
 from pydantic import Field
 
 from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
+from .thermal_model import SurveyedSizes
 
 
 class ThermalModelResult(pydantic.BaseModel):
@@ -130,6 +131,8 @@ class HeatingLoadRequest(DatasetIDWithTime):
         default=0.0,
         description="Fraction of savings on the hetaing due to this interventions (leave as 0 if using estimated fabric).",
     )
+
+    surveyed_sizes: SurveyedSizes | None = pydantic.Field(description="Surveyed sizes of the building in m2", default=None)
 
     @pydantic.model_validator(mode="after")
     def check_timestamps_valid(self) -> Self:
