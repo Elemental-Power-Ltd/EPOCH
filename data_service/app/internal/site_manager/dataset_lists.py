@@ -299,6 +299,14 @@ async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> 
                 cm.dataset_id""",
             site_id.site_id,
         )
+
+    def maybe_convert_subtype(subtype: str) -> InterventionEnum | str:
+        """Try to turn a given subtype into an enum, returning string if not."""
+        try:
+            return InterventionEnum(subtype)
+        except ValueError:
+            return subtype
+
     return [
         DatasetEntry(
             dataset_id=item["dataset_id"],
@@ -308,7 +316,9 @@ async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> 
             end_ts=item["end_ts"],
             num_entries=item["num_entries"],
             resolution=item["resolution"],
-            dataset_subtype=[InterventionEnum(subtype) for subtype in item["interventions"]] if item["interventions"] else None,
+            dataset_subtype=[maybe_convert_subtype(subtype) for subtype in item["interventions"]]
+            if item["interventions"]
+            else None,
         )
         for item in res
     ]
