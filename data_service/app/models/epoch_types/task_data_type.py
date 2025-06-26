@@ -210,7 +210,7 @@ class GasHeater(BaseModel):
         title='Maximum Output',
     )
     gas_type: GasType = Field(
-        default='NATURAL_GAS',
+        default=GasType.NATURAL_GAS,
         description='The type of gas used to power this boiler.',
         title='Gas Type',
     )
@@ -297,7 +297,7 @@ class HeatPump(BaseModel):
         title='Heat Power',
     )
     heat_source: HeatSource = Field(
-        default='AMBIENT_AIR',
+        default=HeatSource.AMBIENT_AIR,
         description='The source of the air the heat pump draws from.',
         title='Heat Source',
     )

@@ -239,7 +239,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
                         expected_mdl = subtype()
                         # Check that we got a valid pydantic Model here to rule out None and NoneType, which have
                         # a habit of sneaking through (and can be surprisingly hard to construct!)
-                        if isinstance(expected_mdl, BaseModel) and subkey in expected_mdl.model_fields:
+                        if isinstance(expected_mdl, BaseModel) and subkey in type(expected_mdl).model_fields:
                             found_in_any = True
                     if not found_in_any:
                         raise HTTPException(400, f"Bad component subvalue in stored baseline: {key}[{subkey}]")
