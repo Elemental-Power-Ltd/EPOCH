@@ -343,7 +343,7 @@ class TestListAllDatasets:
         get_result = await client.post("/get-specific-datasets", json=list_result.json())
         assert get_result.status_code == 200
         data = get_result.json()
-        assert len(data) == 9
+        assert len(data) == 10
         assert data["eload"] is not None
         assert len(data["eload"]["data"]) > 0
 
@@ -362,6 +362,6 @@ class TestListAllDatasets:
         )
         assert get_result.status_code == 200, get_result.text
         data = get_result.json()
-        assert len(data) == 9
+        assert len(data) == 10
         assert data["eload"] is not None
         assert len(data["eload"]["data"]) > 0

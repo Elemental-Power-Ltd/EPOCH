@@ -368,3 +368,31 @@ async def list_ashp_datasets() -> list[DatasetEntry]:
             dataset_id=uuid.uuid4(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC)
         )
     ]
+
+
+async def list_baseline_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List all baselines we have defined for this site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site we want a baseline for.
+    """
+    async with pool.acquire() as conn:
+        res = await conn.fetch(
+            """
+            SELECT sb.baseline_id, sb.created_at
+            FROM client_info.site_baselines AS sb
+            WHERE sb.site_id = $1
+            ORDER BY sb.created_at
+            """, site_id.site_id
+        )
+    return [
+        DatasetEntry(
+            dataset_id=item["baseline_id"],
+            dataset_type=DatasetTypeEnum.SiteBaseline,
+            created_at=item["created_at"]
+        )
+        for item in res
+    ]

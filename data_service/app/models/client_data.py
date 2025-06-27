@@ -7,11 +7,14 @@ from app.models import EpochRenewablesEntry
 from app.models.air_source_heat_pump import ASHPCOPResponse
 from app.models.carbon_intensity import EpochCarbonEntry
 from app.models.electricity_load import EpochElectricityEntry
+from app.models.epoch_types.task_data_type import TaskData
 from app.models.heating_load import EpochAirTempEntry, EpochDHWEntry, EpochHeatingEntry
 from app.models.import_tariffs import EpochTariffEntry
 
 
 class SiteDataEntries(pydantic.BaseModel):
+    baseline: TaskData
+
     dhw: EpochDHWEntry | None
     air_temp: EpochAirTempEntry | None
     eload: EpochElectricityEntry | None

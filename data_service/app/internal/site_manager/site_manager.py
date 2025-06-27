@@ -7,9 +7,10 @@ from fastapi import HTTPException
 
 from app.dependencies import DatabasePoolDep
 from app.models.client_data import SiteDataEntries
-from app.models.core import DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime
+from app.models.core import DatasetID, DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime
 from app.routers.air_source_heat_pump import get_ashp_input, get_ashp_output
 from app.routers.carbon_intensity import get_grid_co2
+from app.routers.client_data import get_baseline, get_default_baseline
 from app.routers.electricity_load import get_blended_electricity_load
 from app.routers.heating_load.get_heating_loads import get_air_temp, get_dhw_load, get_heating_load
 from app.routers.import_tariffs import get_import_tariffs
@@ -44,6 +45,19 @@ async def fetch_all_input_data(
 
     try:
         async with asyncio.TaskGroup() as tg:
+            baseline_task = (
+                tg.create_task(
+                    get_baseline(
+                        site_or_dataset_id=DatasetID(
+                            dataset_id=site_data_ids[DatasetTypeEnum.SiteBaseline].dataset_id
+                        ),
+                        pool=pool,
+                    )
+                )
+                if site_data_ids.get(DatasetTypeEnum.SiteBaseline) is not None
+                else tg.create_task(get_default_baseline())
+            )
+
             # We create a blended electricity load if we got either a real set of data or a blended set of data.
             eload_task = (
                 tg.create_task(
@@ -142,6 +156,7 @@ async def fetch_all_input_data(
         raise HTTPException(500, detail=str(list(excgroup.exceptions))) from excgroup
 
     return SiteDataEntries(
+        baseline=baseline_task.result(),
         eload=eload_task.result(),
         heat=heat_task.result(),
         air_temp=air_temp_task.result(),
