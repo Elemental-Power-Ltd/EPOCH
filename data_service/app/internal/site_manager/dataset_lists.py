@@ -208,6 +208,7 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             """
             SELECT
                 tm.dataset_id,
+                tm.renewables_location_id AS renewables_location_id,
                 MAX(tm.created_at) AS created_at,
                 MIN(te.start_ts) AS start_ts,
                 MAX(te.end_ts) AS end_ts,
@@ -230,6 +231,7 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             end_ts=item["end_ts"],
             num_entries=item["num_entries"],
             resolution=item["resolution"],
+            dataset_subtype=str(item["renewables_location_id"]) if item["renewables_location_id"] is not None else None,
         )
         for item in res
     ]
