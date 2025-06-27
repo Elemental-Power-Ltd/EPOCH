@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from sklearn.base import TransformerMixin  # type: ignore
-from sklearn.preprocessing import StandardScaler  # type: ignore
+from sklearn.preprocessing import MinMaxScaler, StandardScaler  # type: ignore
 from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction  # type: ignore
 
 
@@ -20,6 +20,13 @@ class ScalerTypeEnum(StrEnum):
     Aggregate = "aggregate"
     StartTime = "start_time"
     EndTime = "end_time"
+    Train = "train"
+    Val = "val"
+    Test = "test"
+
+
+class CustomMinMaxScaler(MinMaxScaler):  # noqa: D101
+    pass
 
 
 class RBFTimestampEncoder(TransformerMixin):
@@ -113,28 +120,28 @@ class RBFTimestampEncoder(TransformerMixin):
         return self.transform(X)
 
 
-def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScaler:
+def load_scaler(path: pathlib.Path, refresh: bool = False) -> StandardScaler:
     """
     Load a saved StandardScaler from a file.
 
     Parameters
     ----------
-    path (str):
+    path (str)
         Path to the saved StandardScaler file.
-    refresh:
+    refresh
         Whether we should re-save these to a file after loading.
         This is useful if you have updated scikit learn and it's complaining!
 
     Returns
     -------
-    StandardScaler:
+    StandardScaler
         The loaded StandardScaler object.
 
     Raises
     ------
-    FileNotFoundError:
+    FileNotFoundError
         If the specified file does not exist.
-    ValueError:
+    ValueError
         If the loaded object is not a StandardScaler.
     """
     try:
@@ -153,7 +160,7 @@ def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScal
 
 
 def load_all_scalers(
-    directory: str | pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = False
+    directory: pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = False, use_new: bool = True
 ) -> dict[ScalerTypeEnum, StandardScaler]:
     """
     Load all the scalers found within a specific directory.
@@ -171,9 +178,18 @@ def load_all_scalers(
     Dictionary of scalers with the type as the key and the scaler object as the value.
 
     """
+    if use_new:
+        return {
+            ScalerTypeEnum.Data: load_scaler(directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh),
+            ScalerTypeEnum.Val: load_scaler(directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh),
+            ScalerTypeEnum.Test: load_scaler(directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh),
+            ScalerTypeEnum.Aggregate: load_scaler(directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh),
+            ScalerTypeEnum.StartTime: load_scaler(directory / "elecTransformerVAE_start_time_scaler.joblib", refresh=refresh),
+            ScalerTypeEnum.EndTime: load_scaler(directory / "elecTransformerVAE_end_time_scaler.joblib", refresh=refresh),
+        }
     return {
-        ScalerTypeEnum.Data: load_scaler(pathlib.Path(directory) / "elecVAE_data_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.Aggregate: load_scaler(pathlib.Path(directory) / "elecVAE_aggregate_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.StartTime: load_scaler(pathlib.Path(directory) / "elecVAE_start_time_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.EndTime: load_scaler(pathlib.Path(directory) / "elecVAE_end_time_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.Data: load_scaler(directory / "elecVAE_data_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.Aggregate: load_scaler(directory / "elecVAE_aggregate_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.StartTime: load_scaler(directory / "elecVAE_start_time_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.EndTime: load_scaler(directory / "elecVAE_end_time_scaler.joblib", refresh=refresh),
     }

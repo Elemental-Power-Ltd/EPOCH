@@ -13,6 +13,7 @@ from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFram
 
 from .model_utils import ScalerTypeEnum, load_all_scalers
 from .vae import VAE
+from .vae_2_0 import VAE as VAE_2_0
 
 
 class DayTypeEnum(int, enum.Enum):
@@ -153,6 +154,85 @@ def daily_to_hh_eload(
         result_scaled = model.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
 
         # but as we used scaled data all the way through, unscale it here.
+        result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
+
+    # The scaled data is almost certainly wrong, but we know the daily usages! So re-calibrate the model's outputs
+    # to those usages (in an ideal world, the weighting factors are all 1, but alas)
+    predicted_daily = result.sum(axis=1)
+    actual_daily = daily_df["consumption_kwh"].to_numpy()
+    weighting_factors = (actual_daily / predicted_daily)[:, np.newaxis]
+    result *= weighting_factors
+
+    start_ts = pd.date_range(daily_df.start_ts.min(), daily_df.end_ts.max(), freq=pd.Timedelta(minutes=30), inclusive="left")
+    return HHDataFrame(
+        pd.DataFrame(
+            index=pd.DatetimeIndex(
+                start_ts,
+                name="start_ts",
+            ),
+            # Each row is one day, so we could also express this
+            # as a concat over [i, :], but this saves some memory and mucking around.
+            data={
+                "consumption_kwh": np.ravel(result, order="C"),
+                "end_ts": start_ts + pd.Timedelta(minutes=30),
+                "start_ts": start_ts,
+            },
+        )
+    )
+
+
+def daily_to_hh_eload_2_0(
+    daily_df: DailyDataFrame, scalers: dict[ScalerTypeEnum, sklearn.preprocessing.StandardScaler], model: VAE_2_0
+) -> HHDataFrame:
+    """
+    Turn a set of daily electricity usages into half hourly meter data.
+
+    This works by randomly sampling some point in a latent space and augmenting with a series of conditioning variables,
+    including the start and end dates of the period that we're sampling.
+    If you've only got monthly data, try resampling to daily using `monthly_to_daily_eload` or similar.
+
+    Parameters
+    ----------
+    daily_df
+        Dataframe with start_ts, end_ts and electricity consumption readings in kWh
+    scalers
+        A dictionary of Aggregate, StartTime, EndTime and Data scalers used to normalise the data
+    model
+        A model, probably a VAE, with a decode method and some latent dimension.
+
+    Returns
+    -------
+    Pandas dataframe with halfhourly electricity consumptions. Watch out, as we've put these back into UTC times.
+    """
+    if daily_df.empty:
+        return HHDataFrame(daily_df)
+    with torch.no_grad():
+        consumption_scaled = torch.from_numpy(
+            scalers[ScalerTypeEnum.Aggregate]
+            .transform(daily_df["consumption_kwh"].to_numpy().reshape(-1, 1))
+            .astype(np.float32)
+        )
+        start_date_scaled = torch.from_numpy(
+            scalers[ScalerTypeEnum.StartTime]
+            .transform(daily_df["start_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
+            .astype(np.float32)
+        )
+        end_date_scaled = torch.from_numpy(
+            scalers[ScalerTypeEnum.EndTime]
+            .transform(daily_df["end_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
+            .astype(np.float32)
+        )
+        # Sample from the latent space, which is ideally given by a normal distribution with mean 0 and variance 1.
+        # This should be [days in dataset, latent_dim] size
+        batch_size, n_days = 1, daily_df.shape[0]
+        zs = torch.randn(size=[batch_size, n_days, model.latent_dim], dtype=torch.float32)
+
+        # Use the decoder part of the LSTM, with random latent space (so it's not always the same)
+        # and some conditioning variables.
+        result_scaled = model.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
+
+        # but as we used scaled data all the way through, unscale it here.
+        print(result_scaled.squeeze().detach().numpy().shape)
         result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
 
     # The scaled data is almost certainly wrong, but we know the daily usages! So re-calibrate the model's outputs

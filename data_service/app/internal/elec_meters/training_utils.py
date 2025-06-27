@@ -11,11 +11,7 @@ from torch.utils.data import Dataset
 
 from ..utils.bank_holidays import get_bank_holidays_sync
 
-# from tslearn.clustering import TimeSeriesKMeans
-# from tslearn.metrics import dtw
 
-
-# classes
 # Custom dataset class
 class TimeSeriesDataset(Dataset):  # noqa: D101
     def __init__(self, data: torch.Tensor, aggregate: torch.Tensor, start_times: torch.Tensor, end_times: torch.Tensor):

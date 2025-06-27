@@ -1,14 +1,16 @@
 """Model definition for a variational autoencoder for time series data."""
 
+from typing import cast
+
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class ResidualMLP(nn.Module):
     """A residual multi-layer perceptron (MLP) block."""
 
-    def __init__(self, dim, hid_dim=None):
+    def __init__(self, dim: int, hid_dim: int | None = None):
         super().__init__()
         hid_dim = hid_dim or dim
         self.net = nn.Sequential(
@@ -17,7 +19,7 @@ class ResidualMLP(nn.Module):
             nn.Linear(hid_dim, dim),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through the residual MLP block.
 
@@ -29,15 +31,21 @@ class ResidualMLP(nn.Module):
         -------
             Tensor: Output tensor of the same shape as input.
         """
-        return x + self.net(x)
+        return cast(torch.Tensor, x + self.net(x))
 
 
 class VAE(nn.Module):  # noqa: D101
     def __init__(
-        self, input_dim: int, aggregate_dim: int, date_dim: int, latent_dim: int,
-        hidden_dim_encoder: int = 64, hidden_dim_decoder: int = 64,
-        num_layers_encoder: int = 1, num_layers_decoder: int = 1,
-        dropout_decoder: float | None = None
+        self,
+        input_dim: int,
+        aggregate_dim: int,
+        date_dim: int,
+        latent_dim: int,
+        hidden_dim_encoder: int = 64,
+        hidden_dim_decoder: int = 64,
+        num_layers_encoder: int = 1,
+        num_layers_decoder: int = 1,
+        dropout_decoder: float | None = None,
     ) -> None:
         """
         Initialise the VAE Class.
@@ -66,16 +74,16 @@ class VAE(nn.Module):  # noqa: D101
         self.lstm_encoder = nn.LSTM(input_dim, hidden_dim_encoder, num_layers_encoder, batch_first=True)
 
         # Residual FC block for increasing depth of encoder
-        self.residual_mlp_block = ResidualMLP(dim=hidden_dim_encoder, hid_dim=2*hidden_dim_encoder)
+        self.residual_mlp_block = ResidualMLP(dim=hidden_dim_encoder, hid_dim=2 * hidden_dim_encoder)
 
         # Fully connected layer to produce mean and log variance for the latent space
-        self.encoder_fc = nn.Sequential(nn.Linear(hidden_dim_encoder + 1, latent_dim*2), nn.ReLU())
-            # Combine LSTM output with non-temporal features
-            # input here will be concatenated output of self.lstm_encoder() and aggregate
-            # use ReLU as activation functions -- output will be the mean / variance of the latent space
+        self.encoder_fc = nn.Sequential(nn.Linear(hidden_dim_encoder + 1, latent_dim * 2), nn.ReLU())
+        # Combine LSTM output with non-temporal features
+        # input here will be concatenated output of self.lstm_encoder() and aggregate
+        # use ReLU as activation functions -- output will be the mean / variance of the latent space
 
         # LSTM Decoder for generating the reconstructed time series
-        self.lstm_decoder = nn.LSTM(latent_dim+2, hidden_dim_decoder, num_layers_decoder, batch_first=True)
+        self.lstm_decoder = nn.LSTM(latent_dim + 2, hidden_dim_decoder, num_layers_decoder, batch_first=True)
 
         # Fully connected layers for initialising the LSTM hidden state, cell state and input sequence
         # Use LeakyReLU as activation function here -- more robust version of ReLU (fewer dead)
@@ -87,10 +95,10 @@ class VAE(nn.Module):  # noqa: D101
             self.dropout_layer = nn.Dropout(dropout_decoder)
 
         # Fully connected layer to produce the final output (reconstructed time series)
-        self.decoder_fc = nn.Sequential(nn.Linear(hidden_dim_decoder, input_dim), nn.LeakyReLU()) # no final activation
+        self.decoder_fc = nn.Sequential(nn.Linear(hidden_dim_decoder, input_dim), nn.LeakyReLU())  # no final activation
 
         self.latent_dim = latent_dim  # save the latent dimension for extracting mu, log_var from output of self.encoder_fc()
-        self.dropout_decoder_flag = dropout_decoder is not None # whether we're using dropout in the decoder module
+        self.dropout_decoder_flag = dropout_decoder is not None  # whether we're using dropout in the decoder module
 
     def encode(
         self, x: torch.Tensor, aggregate: torch.Tensor, start_date: torch.Tensor, end_date: torch.Tensor
@@ -188,28 +196,33 @@ class VAE(nn.Module):  # noqa: D101
 
         # Combine z with the aggregate to form the context vector
         context_vector = torch.cat([z, aggregate], dim=1)
-            # Shape: (batch_size * n_days, latent_dim + 1)
+        # Shape: (batch_size * n_days, latent_dim + 1)
 
         # Initialize the LSTM hidden state and cell state using the context vector
-            # h0 and c0 should be projected versions of both the latent and the conditioning variable
-            # input to the lstm should be tiled latent concatenated with the conditioning variable
+        # h0 and c0 should be projected versions of both the latent and the conditioning variable
+        # input to the lstm should be tiled latent concatenated with the conditioning variable
         h_0 = self.fc_init_hidden(context_vector).unsqueeze(0)  # Shape: (1, batch_size * n_days, hidden_dim)
         c_0 = self.fc_init_cell(context_vector).unsqueeze(0)  # Shape: (1, batch_size * n_days, hidden_dim)
 
         # Initial input to the LSTM (tiled context vector)
         lstm_input = context_vector.unsqueeze(1).repeat(1, seq_len, 1)
-            # Shape: (batch_size * n_days, seq_len, latent_dim + 1)
+        # Shape: (batch_size * n_days, seq_len, latent_dim + 1)
 
         # Concatenate time step embedding to each input iteration
-        lstm_input = torch.cat([lstm_input,
-                                torch.Tensor(np.arange(1, seq_len+1, dtype=np.float64)/seq_len)
-                                .unsqueeze(0).unsqueeze(2)          # Shape: (1, seq_len, 1)
-                                .expand(lstm_input.shape[0],-1,-1)  # Shape: (batch_size * n_days, seq_len, 1)
-                                .to(z.device)
-                                ], dim=2)                           # Shape: (batch_size * n_days, seq_len, latent_dim + 2)
+        lstm_input = torch.cat(
+            [
+                lstm_input,
+                torch.Tensor(np.arange(1, seq_len + 1, dtype=np.float64) / seq_len)
+                .unsqueeze(0)
+                .unsqueeze(2)  # Shape: (1, seq_len, 1)
+                .expand(lstm_input.shape[0], -1, -1)  # Shape: (batch_size * n_days, seq_len, 1)
+                .to(z.device),
+            ],
+            dim=2,
+        )  # Shape: (batch_size * n_days, seq_len, latent_dim + 2)
 
         # If dropout parameter activated, apply dropout to (only) the LSTM input sequence
-            # dropout for h0,c0 introduces randomness at the core of the sequence dynamics, which can destabilize training
+        # dropout for h0,c0 introduces randomness at the core of the sequence dynamics, which can destabilize training
         if self.dropout_decoder_flag:
             lstm_input = self.dropout_layer(lstm_input)
 
@@ -220,8 +233,8 @@ class VAE(nn.Module):  # noqa: D101
         output = self.decoder_fc(decoded_seq)  # Shape: (batch_size * n_days, seq_len, input_dim)
 
         # Reshape outputs to correspond to input dimensions
-        output = output.reshape(batch_size, n_days, seq_len, -1) # Shape: (batch_size, n_days, seq_len, input_dim)
-        return output
+        output = output.reshape(batch_size, n_days, seq_len, -1)  # Shape: (batch_size, n_days, seq_len, input_dim)
+        return cast(torch.Tensor, output)
 
     def forward(
         self, x: torch.Tensor, aggregate: torch.Tensor, start_date: torch.Tensor, end_date: torch.Tensor
@@ -250,8 +263,4 @@ class VAE(nn.Module):  # noqa: D101
         mu, log_var = self.encode(x, aggregate, start_date, end_date)
         z = self.reparameterize(mu, log_var)
 
-        return {
-            'reconstructed': self.decode(z, aggregate, start_date, end_date, x.shape[2]),
-            'mu': mu,
-            'logvar': log_var
-        }
+        return {"reconstructed": self.decode(z, aggregate, start_date, end_date, x.shape[2]), "mu": mu, "logvar": log_var}
