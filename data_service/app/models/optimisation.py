@@ -414,7 +414,6 @@ class TaskConfig(pydantic.BaseModel):
     )
 
 
-
 class ResultReproConfig(pydantic.BaseModel):
     portfolio_id: pydantic.UUID4
     task_data: dict[site_id_t, TaskDataPydantic]
