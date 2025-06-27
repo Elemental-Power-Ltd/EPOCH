@@ -17,6 +17,7 @@ import json
 import logging
 import operator
 import uuid
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -28,18 +29,45 @@ from ...internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, ge
 from ...internal.site_manager import list_thermal_models
 from ...internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
+from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
 from ...internal.thermal_model.fitting import simulate_parameters
-from ...models.core import DatasetID, SiteID
-from ...models.heating_load import (
-    HeatingLoadMetadata,
-    HeatingLoadModelEnum,
-    HeatingLoadRequest,
-)
-from ...models.weather import WeatherRequest
+from ...models.core import DatasetID, SiteID, dataset_id_t, site_id_t
+from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest
+from ...models.weather import BaitAndModelCoefs, WeatherRequest
 from ..client_data import get_location
 from ..weather import get_weather
 from .router import api_router
 from .thermal_model import get_thermal_model
+
+
+async def get_site_id_for_heating_load(dataset_id: dataset_id_t, pool: DatabasePoolDep) -> site_id_t:
+    """
+    Get the site ID associated with a given gas meter dataset.
+
+    Parameters
+    ----------
+    dataset_id
+        Gas meter dataset to look up
+    pool
+        Database to look up in
+
+    Returns
+    -------
+    site_id_t
+        Site ID associated with those meter readings
+
+    Raises
+    ------
+    ValueError
+        If site ID not found or is None
+    """
+    site_id = await pool.fetchval(
+        "SELECT site_id FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1",
+        dataset_id,
+    )
+    if site_id is None:
+        raise ValueError(f"Could not find a site ID for {dataset_id}")
+    return cast(site_id_t, site_id)
 
 
 async def select_regression_or_thermal(params: HeatingLoadRequest, pool: DatabasePoolDep) -> HeatingLoadRequest:
@@ -67,9 +95,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         # Old versions of the HeatingLoadRequest only needed a dataset ID for the source gas data,
         # and not the site ID.
         # If we got no site ID, look it up here.
-        site_id = await pool.fetchval(
-            """SELECT site_id FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""", params.dataset_id
-        )
+        site_id = await get_site_id_for_heating_load(params.dataset_id, pool)
     else:
         site_id = params.site_id
 
@@ -86,13 +112,8 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         model_type=HeatingLoadModelEnum.Regression,
         site_id=site_id,
         thermal_model_dataset_id=None,
+        surveyed_sizes=params.surveyed_sizes,
     )
-
-    # If for some reason the site ID lookup failed, then we have to use regression.
-    # Otherwise, try to use the thermal model.
-    if site_id is None:
-        logger.debug("Using regression instead of thermal as we didn't get a site_id.")
-        return default_regression_request
 
     available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
 
@@ -141,6 +162,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         model_type=HeatingLoadModelEnum.ThermalModel,
         site_id=site_id,
         thermal_model_dataset_id=most_recent_id,
+        surveyed_sizes=params.surveyed_sizes,
     )
 
 
@@ -179,74 +201,59 @@ async def generate_heating_load(
             return await generate_thermal_model_heating_load(pool=pool, http_client=http_client, params=params)
 
 
-@api_router.post("/generate-heating-load-regression", tags=["generate", "heating"])
-async def generate_heating_load_regression(
+async def generate_heating_load_regression_impl(
     params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep
-) -> HeatingLoadMetadata:
-    """Generate a heating load for this specific site, using regression analysis.
-
-    Given a specific dataset, this will look up the associated site and get some weather data.
-    Then, it will use the heating degree days over that time period and regress them against the
-    actual gas usage.
-    The regression will then provide a measure of domestic hot water and heating load for the building,
-    which we can reconstruct into a demand curve (which is different to the heating that was actually provided).
-
-    It might be helpful to have called `get-weather` for this location beforehand to make sure the relevant weather
-    is cached in the database (otherwise we can do it here, but it might be inconveniently slow).
-
-    Be aware that this will take a few seconds to complete.
+) -> tuple[HHDataFrame, BaitAndModelCoefs]:
+    """
+    Generate a heating load by regression.
 
     Parameters
     ----------
-    *params*
-        Dataset (linked to a site), and timestamps you're interested in.
-        This dataset ID is the gas dataset you want to use for the calculation, and shouldn't be confused
-        with the returned dataset ID that you'll get at the end of this function.
-        The timestamps do not select the timestamps of data that you want, but instead the period of time
-        that you want to resample to (e.g. you may request a dataset from 2020 and provide timestamps for 2024, and
-        you'll get 2024 data out).
+    params
+        Heating load request including fabric interventions and savings
+    pool
+        Database connection pool to grab gas meter data from
+    http_client
+        HTTP connection pool to get weather data
 
     Returns
     -------
-    heating_load_metadata
-        Some useful information about the heating load we've inserted into the database.
+    HHDataFrame, BaitAndModelCoefs
+        The half hourly heating load data and the associated parameters from the regression.
     """
-    async with pool.acquire() as conn:
-        res = await conn.fetchrow(
-            """
-            SELECT
-                location,
-                s.site_id,
-                m.fuel_type
-            FROM client_meters.metadata AS m
-            LEFT JOIN client_info.site_info AS s
-            ON s.site_id = m.site_id WHERE dataset_id = $1
-            LIMIT 1""",
-            params.dataset_id,
-        )
+    fuel_res = await pool.fetchrow(
+        """
+        SELECT
+            location,
+            m.fuel_type
+        FROM client_meters.metadata AS m
+        LEFT JOIN client_info.site_info AS s
+        ON s.site_id = m.site_id WHERE dataset_id = $1
+        LIMIT 1""",
+        params.dataset_id,
+    )
 
-        if res is None:
-            raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
+    if fuel_res is None:
+        raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
 
-        location, site_id, fuel_type = res
-        if location is None:
-            raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
+    location, fuel_type = fuel_res
+    if location is None:
+        raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
 
-        if fuel_type != "gas":
-            raise HTTPException(400, f"Dataset ID {params.dataset_id} is for fuel type {fuel_type}, not gas.")
-        res = await conn.fetch(
-            """
-            SELECT
-                start_ts,
-                end_ts,
-                consumption_kwh as consumption
-            FROM client_meters.gas_meters
-            WHERE dataset_id = $1
-            ORDER BY start_ts ASC""",
-            params.dataset_id,
-        )
-
-    gas_df = pd.DataFrame.from_records(res, columns=["start_ts", "end_ts", "consumption"], index="start_ts")
+    if fuel_type != "gas":
+        raise HTTPException(400, f"Dataset ID {params.dataset_id} is for fuel type {fuel_type}, not gas.")
+    gas_res = await pool.fetch(
+        """
+        SELECT
+            start_ts,
+            end_ts,
+            consumption_kwh as consumption
+        FROM client_meters.gas_meters
+        WHERE dataset_id = $1
+        ORDER BY start_ts ASC""",
+        params.dataset_id,
+    )
+    gas_df = pd.DataFrame.from_records(gas_res, columns=["start_ts", "end_ts", "consumption"], index="start_ts")
     gas_df["start_ts"] = gas_df.index
     if gas_df.empty:
         raise HTTPException(
@@ -273,7 +280,7 @@ async def generate_heating_load_regression(
         )
 
         fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df, apply_bait=params.apply_bait)
-        changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions)
+        changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions, params.savings_fraction)
         forecast_weather_df = weather_dataset_to_dataframe(
             await get_weather(
                 WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
@@ -319,14 +326,70 @@ async def generate_heating_load_regression(
         hdd_kwh=changed_coefs.heating_kwh,
         flat_heating_kwh=flat_heating_kwh,
     )
+    return heating_df, changed_coefs
 
-    metadata = {
-        "dataset_id": uuid.uuid4(),
-        "site_id": site_id,
-        "created_at": datetime.datetime.now(datetime.UTC),
-        "params": json.dumps({"source_dataset_id": str(params.dataset_id), **changed_coefs.model_dump()}),
-        "interventions": [item.value for item in params.interventions],
-    }
+
+@api_router.post("/generate-heating-load-regression", tags=["generate", "heating"])
+async def generate_heating_load_regression(
+    params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep
+) -> HeatingLoadMetadata:
+    """
+    Generate a heating load for this specific site, using regression analysis.
+
+    Given a specific dataset, this will look up the associated site and get some weather data.
+    Then, it will use the heating degree days over that time period and regress them against the
+    actual gas usage.
+    The regression will then provide a measure of domestic hot water and heating load for the building,
+    which we can reconstruct into a demand curve (which is different to the heating that was actually provided).
+
+    It might be helpful to have called `get-weather` for this location beforehand to make sure the relevant weather
+    is cached in the database (otherwise we can do it here, but it might be inconveniently slow).
+
+    Be aware that this will take a few seconds to complete.
+
+    If you've surveyed the site, this will estimate the costs and savings due to your proposed fabric interventions.
+
+    Parameters
+    ----------
+    params
+        Dataset (linked to a site), and timestamps you're interested in.
+        This dataset ID is the gas dataset you want to use for the calculation, and shouldn't be confused
+        with the returned dataset ID that you'll get at the end of this function.
+        The timestamps do not select the timestamps of data that you want, but instead the period of time
+        that you want to resample to (e.g. you may request a dataset from 2020 and provide timestamps for 2024, and
+        you'll get 2024 data out).
+    pool
+        Database connection pool to the DB that you'll read / write from
+    http_client
+        HTTP connection pool for weather data requests
+    surveyed_sizes
+        Surveyed sizes of the building used to calculate costs.
+
+    Returns
+    -------
+    heating_load_metadata
+        Some useful information about the heating load we've inserted into the database.
+    """
+    if params.site_id is None:
+        site_id = await get_site_id_for_heating_load(params.dataset_id, pool)
+    else:
+        site_id = params.site_id
+
+    heating_df, changed_coefs = await generate_heating_load_regression_impl(params, pool, http_client)
+
+    metadata_params = {"source_dataset_id": str(params.dataset_id), **changed_coefs.model_dump()}
+    if params.surveyed_sizes is not None:
+        cost = calculate_THIRD_PARTY_intervention_costs(params.surveyed_sizes, interventions=params.interventions)
+        metadata_params["cost"] = cost
+
+    metadata = HeatingLoadMetadata(
+        dataset_id=uuid.uuid4(),
+        site_id=site_id,
+        created_at=datetime.datetime.now(datetime.UTC),
+        params=json.dumps(metadata_params),
+        interventions=params.interventions,
+    )
+
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
@@ -340,11 +403,11 @@ async def generate_heating_load_regression(
                         interventions
                         )
                 VALUES ($1, $2, $3, $4, $5)""",
-                metadata["dataset_id"],
-                metadata["site_id"],
-                metadata["created_at"],
-                metadata["params"],
-                metadata["interventions"],
+                metadata.dataset_id,
+                metadata.site_id,
+                metadata.created_at,
+                json.dumps(metadata.params),
+                metadata.interventions,
             )
 
             await conn.copy_records_to_table(
@@ -352,7 +415,7 @@ async def generate_heating_load_regression(
                 table_name="synthesised",
                 columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
                 records=zip(
-                    itertools.repeat(metadata["dataset_id"], len(heating_df.index)),
+                    itertools.repeat(metadata.dataset_id, len(heating_df.index)),
                     heating_df.index,
                     heating_df.index + pd.Timedelta(minutes=30),
                     heating_df["heating"],
@@ -361,7 +424,7 @@ async def generate_heating_load_regression(
                     strict=True,
                 ),
             )
-    return HeatingLoadMetadata(**metadata)
+    return metadata
 
 
 @api_router.post("/generate-thermal-model-heating-load")
@@ -391,7 +454,7 @@ async def generate_thermal_model_heating_load(
         ID of the generated thermal model dataset.
     """
     if params.thermal_model_dataset_id is None:
-        raise HTTPException(400, "Must have provided a thermal model dataset ID to generat a heating load")
+        raise HTTPException(400, "Must have provided a thermal model dataset ID to generate a heating load")
     thermal_model = await get_thermal_model(pool, dataset_id=DatasetID(dataset_id=params.thermal_model_dataset_id))
 
     async with pool.acquire() as conn:
@@ -431,19 +494,24 @@ async def generate_thermal_model_heating_load(
     hh_heating_load_df["start_ts"] = hh_heating_load_df.index
     hh_heating_load_df["end_ts"] = hh_heating_load_df.index + pd.Timedelta(minutes=30)
 
-    dataset_id = uuid.uuid4()
-    created_at = datetime.datetime.now(datetime.UTC)
+    metadata = HeatingLoadMetadata(
+        dataset_id=uuid.uuid4(),
+        site_id=params.site_id,
+        created_at=datetime.datetime.now(datetime.UTC),
+        params=json.dumps({"thermal_model_dataset_id": str(params.thermal_model_dataset_id)}),
+        interventions=params.interventions,
+    )
 
     await pool.execute(
         """
         INSERT INTO heating.metadata
         (dataset_id, site_id, created_at, params, interventions)
         VALUES ($1, $2, $3, $4, $5)""",
-        dataset_id,
-        params.site_id,
-        created_at,
-        json.dumps({"thermal_model_dataset_id": str(params.thermal_model_dataset_id)}),
-        params.interventions,
+        metadata.dataset_id,
+        metadata.site_id,
+        metadata.created_at,
+        json.dumps(metadata.params),
+        metadata.interventions,
     )
 
     await pool.copy_records_to_table(
@@ -451,7 +519,7 @@ async def generate_thermal_model_heating_load(
         table_name="synthesised",
         columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
         records=zip(
-            itertools.repeat(dataset_id, len(hh_heating_load_df)),
+            itertools.repeat(metadata.dataset_id, len(hh_heating_load_df)),
             hh_heating_load_df.start_ts,
             hh_heating_load_df.end_ts,
             hh_heating_load_df.heating_usage,
@@ -461,10 +529,4 @@ async def generate_thermal_model_heating_load(
         ),
     )
 
-    return HeatingLoadMetadata(
-        dataset_id=dataset_id,
-        site_id=params.site_id,
-        created_at=created_at,
-        params=json.dumps({"thermal_model_dataset_id": str(params.thermal_model_dataset_id)}),
-        interventions=params.interventions,
-    )
+    return metadata

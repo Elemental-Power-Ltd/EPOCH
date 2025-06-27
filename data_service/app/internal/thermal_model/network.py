@@ -6,6 +6,8 @@ from pathlib import Path
 import networkx as nx
 import numpy as np
 
+from ...models.thermal_model import SurveyedSizes
+from ..rdsap.rdsap import estimate_window_area
 from .building_elements import BuildingElement
 from .heat_capacities import (
     AIR_HEAT_CAPACITY,
@@ -25,7 +27,6 @@ from .links import (
     ThermalNodeAttrDict,
     ThermalRadiativeLink,
 )
-from .rdsap import estimate_window_area
 
 
 class HeatNetwork(nx.DiGraph):
@@ -397,4 +398,50 @@ def create_structure_from_params(
     hm.edges[BuildingElement.InternalAir, BuildingElement.ExternalAir]["convective"].ach = ach
     for v in [BuildingElement.WallEast, BuildingElement.WallSouth, BuildingElement.WallNorth, BuildingElement.WallWest]:
         hm.edges[BuildingElement.InternalAir, v]["conductive"].heat_transfer = u_value
+    return hm
+
+
+def create_structure_from_survey(surveyed_sizes: SurveyedSizes, u_values_path: Path = U_VALUES_PATH) -> HeatNetwork:
+    """
+    Create a simple structure with some fitted parameters.
+
+    This wraps around create_simple_structure, and then changes the parameters of the links
+    directly afterwards.
+
+    You should use this if you want to get exactly the same structure as you'd get from
+    `simulate_parameters`.
+
+    Parameters
+    ----------
+    surveyed_sizes
+        Sizes of the walls, floor, loft etc from a survey.
+    u_values_path
+        Path to the file containing U-values (careful if using a notebook!)
+
+    Returns
+    -------
+    HeatNetwork
+        Simple structure with the values changed.
+    """
+    hm = create_simple_structure(
+        # Walls are 2D, so scale them appropriately.
+        wall_width=np.sqrt(surveyed_sizes.exterior_wall_area) / 4,
+        wall_height=np.sqrt(surveyed_sizes.exterior_wall_area) / 4,
+        # Assuming about 20% window to floor area ratio
+        window_area=surveyed_sizes.window_area,
+        floor_area=surveyed_sizes.total_floor_area / surveyed_sizes.n_floors,
+        u_values_path=u_values_path,
+    )
+
+    hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].power = surveyed_sizes.boiler_power
+
+    # Radiators are assumed to be slightly undersized compared to the boiler.
+    hm.edges[BuildingElement.HeatingSystem, BuildingElement.InternalAir]["radiative"].power = surveyed_sizes.boiler_power
+
+    # Scale up the thermal mass of the heating system according to the boiler size
+    hm.nodes[BuildingElement.HeatingSystem]["thermal_mass"] *= (
+        surveyed_sizes.boiler_power / hm.edges[BuildingElement.HeatSource, BuildingElement.HeatingSystem]["radiative"].power
+    )
+
+    hm.edges[BuildingElement.InternalAir, BuildingElement.ExternalAir]["convective"].ach = surveyed_sizes.ach
     return hm

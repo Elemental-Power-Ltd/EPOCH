@@ -270,8 +270,8 @@ class TestGetMultipleHeatLoads:
         gas_meter_result, _ = upload_meter_data
         POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
         background_tasks = []
-        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
-        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        start_ts = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC)
 
         # If we allow the background tasks to get the weather, then they'll overwrite each
         # other and cause terrible trouble, so let's get it here first.
@@ -283,10 +283,11 @@ class TestGetMultipleHeatLoads:
             "/get-weather",
             json={
                 "location": "London",
-                "start_ts": gas_meter_result["start_ts"],
-                "end_ts": gas_meter_result["end_ts"],
+                "start_ts": "2023-10-01T00:00:00Z",
+                "end_ts": "2024-08-13T00:00:00Z",
             },
         )
+
         async with asyncio.TaskGroup() as tg:
             for intervention in POTENTIAL_INTERVENTIONS:
                 background_tasks.append(  # noqa: PERF401
@@ -304,8 +305,8 @@ class TestGetMultipleHeatLoads:
                 )
         # keep references to the tasks to avoid a horrible Heisenbug (argh!)
         # then wait for them all to be done.
-        _ = [task.result() for task in background_tasks]
-
+        results = [task.result() for task in background_tasks]
+        print([result.text for result in results])
         listed_datasets_result = await client.post(
             "/list-latest-datasets",
             json={
