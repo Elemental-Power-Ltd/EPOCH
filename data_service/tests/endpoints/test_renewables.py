@@ -332,6 +332,8 @@ class TestWindRenewables:
         assert result["parameters"]["height"] == 80
         assert result["parameters"]["turbine"] == "Enercon E101 3000"
         assert result["site_id"] == "demo_london"
+
+
 class TestDisaggregate:
     @pytest.mark.external
     @pytest.mark.asyncio
