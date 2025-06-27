@@ -172,7 +172,16 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         if item is not None
     ]
 
-    # Get one renewables
+    # The labelling of dataset_subtypes for solar locations is a bit of a mess, sorry!
+    # The subtypes are generally chosen to be the string ID of the solar_location on that site.
+    # However, some sites don't have locations assigned: these are given the location "default"
+    # Which is a south-ish facing roof with optimal tilt and azimuth for that location.
+    # Some sites have had solar generations in the database from before this change to track location
+    # was made. These are given the location None to mark that they pre-date the solar locations,
+    # this is mostly equivalent to the "default" location but not necessarily.
+    # In the case where we get some real solar locations, we ignore the None/"default" data
+    # because they've been replaced with actual data, but keep the None/"default" field where
+    # we don't have anything better.
     potential_locations: set[str | None] = {item.dataset_subtype for item in all_datasets[DatasetTypeEnum.RenewablesGeneration]}
     if "default" in potential_locations:
         # Relabel the 'default' entry as None for consistency

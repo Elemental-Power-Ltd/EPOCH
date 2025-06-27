@@ -497,10 +497,16 @@ async def add_solar_locations(location: SolarLocation, pool: DatabasePoolDep) ->
     location
         The location just added to the database
     """
-    if location.site_id not in location.renewables_location_id:
+    if not location.renewables_location_id.startswith(location.site_id):
         raise HTTPException(
             422,
             f"Location ID {location.renewables_location_id} must include  site ID {location.site_id} for uniqueness (sorry!)",
+        )
+    
+    if location.renewables_location_id == location.site_id:
+        raise HTTPException(
+            422,
+            f"Location ID {location.renewables_location_id} must not be equal to {location.site_id} to avoid confusion.",
         )
     try:
         res = await pool.execute(
