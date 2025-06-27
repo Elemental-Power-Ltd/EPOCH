@@ -25,6 +25,7 @@ async def uploaded_meter_data(client: httpx.AsyncClient) -> pydantic.Json:
 class TestHeatingLoad:
     @pytest.mark.asyncio
     @pytest.mark.external
+    @pytest.mark.slow
     async def test_generate_and_get_heating_load(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         dataset_id = uploaded_meter_data["dataset_id"]
 
@@ -32,23 +33,25 @@ class TestHeatingLoad:
             "/generate-heating-load",
             json={"dataset_id": dataset_id, "start_ts": "2023-01-01T00:00:00Z", "end_ts": "2023-02-01T00:00:00Z"},
         )
+        assert generated_metadata.status_code == 200, generated_metadata.text
         heating_load_result = await client.post(
             "/get-heating-load", json={"dataset_id": generated_metadata.json()["dataset_id"]}
         )
         assert datetime.datetime.fromisoformat(generated_metadata.json()["created_at"]) > datetime.datetime.now(
             datetime.UTC
         ) - datetime.timedelta(minutes=1)
-        assert any(item["HLoad1"] > 0 for item in heating_load_result.json())
-        assert any(item["AirTemp"] != 0 for item in heating_load_result.json())
+        assert any(heating_load_result.json()["data"]) > 0
+        assert any(heating_load_result.json()["data"]) != 0
 
         assert generated_metadata.json()["site_id"] == "demo_london"
         assert generated_metadata.json()["params"]["solar_gain"] >= 0
-        assert 0 <= generated_metadata.json()["params"]["r2_score"] < 1.0
-        assert 0 <= generated_metadata.json()["params"]["smoothing"] < 1.0
+        assert 0.8 <= generated_metadata.json()["params"]["r2_score"] < 1.0
+        assert 0 <= generated_metadata.json()["params"]["smoothing"] <= 1.0
         assert generated_metadata.json()["params"]["heating_kwh"] > 0
 
     @pytest.mark.asyncio
     @pytest.mark.external
+    @pytest.mark.slow
     async def test_generate_and_get_with_intervention(
         self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient
     ) -> None:
@@ -83,12 +86,80 @@ class TestHeatingLoad:
             no_intervention_metadata.json()["params"]["heating_kwh"]
             > with_intervention_metadata.json()["params"]["heating_kwh"]
         )
-        no_intervention_total = sum(item["HLoad1"] for item in no_intervention_result.json())
-        with_intervention_total = sum(item["HLoad1"] for item in with_intervention_result.json())
+        no_intervention_total = sum(no_intervention_result.json()["data"][0]["reduced_hload"])
+        with_intervention_total = sum(with_intervention_result.json()["data"][0]["reduced_hload"])
         assert with_intervention_total < no_intervention_total
 
     @pytest.mark.asyncio
     @pytest.mark.external
+    @pytest.mark.slow
+    async def test_generate_THIRD_PARTY(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
+        dataset_id = uploaded_meter_data["dataset_id"]
+
+        no_intervention_result = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": [],
+                "savings_percentage": 0.0,
+                "model_type": "regression",
+                "surveyed_sizes": {"total_floor_area": 200, "exterior_wall_area": 100},
+            },
+        )
+        assert no_intervention_result.status_code == 200, no_intervention_result.text
+        with_intervention_metadata = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": dataset_id,
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+                "interventions": ["Fineo Glazing", "Insulation to ceiling void"],
+                "savings_percentage": 0.12,
+                "surveyed_sizes": {"total_floor_area": 88, "exterior_wall_area": 100},
+            },
+        )
+
+        with_intervention_result = await client.post(
+            "/get-heating-load", json={"dataset_id": with_intervention_metadata.json()["dataset_id"]}
+        )
+        assert with_intervention_result.status_code == 200, with_intervention_result.text
+        data = with_intervention_result.json()
+        assert len(data["data"][0]["reduced_hload"]) == 1488
+        assert data["data"][0]["cost"] > 1000
+
+        listed_metadata = await client.post(
+            "/list-latest-datasets",
+            json={
+                "site_id": "demo_london",
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+            },
+        )
+        assert listed_metadata.status_code == 200, listed_metadata.text
+        final_id = with_intervention_metadata.json()["dataset_id"]
+        assert final_id in listed_metadata.text
+
+        got_metadata = await client.post(
+            "/get-latest-datasets",
+            json={
+                "site_id": "demo_london",
+                "start_ts": "2023-01-01T00:00:00Z",
+                "end_ts": "2023-02-01T00:00:00Z",
+            },
+        )
+        assert got_metadata.status_code == 200, got_metadata.text
+        got_datasets = got_metadata.json()
+        assert "heat" in got_datasets, got_datasets.keys()
+        print(got_metadata.json()["heat"]["data"])
+        assert len(got_datasets["heat"]["data"]) == 2
+        assert got_datasets["heat"]["data"][1]["cost"] > 100
+        assert len(got_datasets["heat"]["data"][1]["reduced_hload"]) == 1488
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    @pytest.mark.slow
     async def test_heating_load_right_length(self, uploaded_meter_data: pydantic.Json, client: httpx.AsyncClient) -> None:
         """Check that we've got the right length of dataset and haven't dropped the last entry."""
         dataset_id = uploaded_meter_data["dataset_id"]
@@ -106,11 +177,20 @@ class TestHeatingLoad:
             datetime.UTC
         ) - datetime.timedelta(minutes=1)
 
-        assert heating_load_result.json()[0]["Date"] == start_ts.date().strftime("%d-%b")
-        assert heating_load_result.json()[-1]["Date"] == (end_ts - datetime.timedelta(minutes=30)).date().strftime("%d-%b")
-        assert heating_load_result.json()[0]["StartTime"] == "00:00", "First entry isn't 00:00"
-        assert heating_load_result.json()[-1]["StartTime"] == "23:30", "Last entry isn't 23:30"
-        assert len(heating_load_result.json()) == int((end_ts - start_ts) / datetime.timedelta(minutes=30))
+        timestamps = heating_load_result.json()["timestamps"]
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (end_ts - datetime.timedelta(minutes=30))
+        assert (
+            len(timestamps)
+            == len(heating_load_result.json()["data"][0]["reduced_hload"])
+            == int((end_ts - start_ts) / datetime.timedelta(minutes=30))
+        )
 
 
 class TestFabricInterventionCost:

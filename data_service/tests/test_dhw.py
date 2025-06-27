@@ -1,6 +1,5 @@
 """Test Domestic Hot Water assigning through various methods."""
 
-# ruff: noqa: D101, D102
 import numpy as np
 import pandas as pd
 import pytest

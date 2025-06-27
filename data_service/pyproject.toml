@@ -18,7 +18,7 @@ classifiers = [
 ]
 
 [tool.ruff]
-extend-include = ["*.ipynb"]
+exclude = ["*ipynb", "app/models/epoch_types/"]
 line-length = 128
 
 [tool.ruff.lint.pydocstyle]
@@ -41,12 +41,28 @@ select = [
     "RUF", # ruff
     "FAST", # fastAPI
     "D", # pydocstyle
+    "PLR",
+    #"NPY",
+    #"ICN",
+    #"LOG",
+    "FURB",
+    "TRY",
+    # "DOC", # docstring contents
 ]
 ignore = [
     "PD008", # at instead of loc
     "PD901", # pandas df variable name
     "PT011", # pytest raises too broad
     "RUF029", # declared async but doesn't use
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "PLR2004", # magic value used in comparison
+    "PLR6301", # could be a function, class method, ... (complains about tests)
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0913",  # too many arguments
+    "PLR0914", # too many local variables
+    "PLR0915", # too many statements
+    "PLR0917", # too many positional arguments
 ]
 
 [tool.ruff.lint.flake8-pytest-style]
@@ -65,3 +81,23 @@ asyncio_default_fixture_loop_scope = "function"
 check_untyped_defs = true
 warn_redundant_casts = true
 warn_unreachable = true
+plugins = ["numpy.typing.mypy_plugin"]
+
+[[tool.mypy.overrides]]
+module = "app.models.epoch_types.task_data_type"
+ignore_errors = true
+
+[tool.sqlfluff.core]
+dialect = "postgres"
+max_line_length = 128
+templater = "python"
+large_file_skip_byte_limit = 20000 # ignore the big first file
+
+[tool.sqlfluff.rules.capitalisation.keywords]
+capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.capitalisation.identifiers]
+extended_capitalisation_policy = "lower"
+
+[tool.sqlfluff.rules.capitalisation.types]
+extended_capitalisation_policy = "upper"

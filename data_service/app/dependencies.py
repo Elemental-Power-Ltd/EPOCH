@@ -7,9 +7,11 @@ function and FastAPI will figure it out through magic.
 """
 
 import logging
+import multiprocessing
 import os
 import typing
 from collections.abc import AsyncGenerator, AsyncIterator
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Never
@@ -44,14 +46,17 @@ class Database:
         self.dsn = dsn  # might be None
 
         self.host = host
+
         if password is None:
             # If we didn't get a password from the environment, it might be None anyway
             # (this can sometimes bite us when importing, as we'll do this bit first!)
             self.password = get_secrets_environment().get("EP_POSTGRES_PASSWORD", None)
         else:
             self.password = password
+
         self.user = user
         self.database = database
+        self.pool: asyncpg.Pool | None = None
 
     async def create_pool(self) -> None:
         """
@@ -60,8 +65,13 @@ class Database:
         For a given endpoint, use `pool.acquire()` to get an entry from this pool
         and speed things up.
         """
+        if self.pool is not None:
+            logger.warning("Pool aready created for DB")
+            return None
+
         try:
             if self.dsn is not None:
+                # Use this for the local tests, where the DSN is provided by the testing framework
                 self.pool = await asyncpg.create_pool(dsn=self.dsn)
             else:
                 self.pool = await asyncpg.create_pool(
@@ -87,7 +97,7 @@ DBConnection = asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
 HTTPClient = httpx.AsyncClient
 
 
-async def get_http_client() -> AsyncGenerator[HTTPClient, None]:
+async def get_http_client() -> AsyncGenerator[HTTPClient]:
     """
     Get a shared HTTP client.
 
@@ -97,7 +107,7 @@ async def get_http_client() -> AsyncGenerator[HTTPClient, None]:
     yield http_client
 
 
-async def get_db_conn() -> AsyncGenerator[DBConnection, None]:
+async def get_db_conn() -> AsyncGenerator[DBConnection]:
     """
     Get a connection to the database.
 
@@ -112,7 +122,7 @@ async def get_db_conn() -> AsyncGenerator[DBConnection, None]:
         await db.pool.release(conn)
 
 
-async def get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
+async def get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
     """
     Get access to the database connection pool directly.
 
@@ -139,11 +149,30 @@ async def get_secrets_dependency() -> SecretDict:
     return get_secrets_environment()
 
 
+_PROCESS_POOL: ProcessPoolExecutor | None = None
+
+
+async def get_process_pool() -> ProcessPoolExecutor:
+    """
+    Dependency Injection for background process pools.
+
+    Will initialise the process pool the first time it is called.
+    """
+    global _PROCESS_POOL
+    if _PROCESS_POOL is None:
+        # We use the "spawn" multiprocessing context as
+        # "fork" can cause trouble with FastAPI's multithreading.
+        mp_context = multiprocessing.get_context("spawn")
+        _PROCESS_POOL = ProcessPoolExecutor(mp_context=mp_context)
+    return _PROCESS_POOL
+
+
 SecretsDep = typing.Annotated[SecretDict, Depends(get_secrets_dependency)]
 DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
 DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
 VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
+ProcessPoolDep = typing.Annotated[ProcessPoolExecutor, Depends(get_process_pool)]
 
 
 def find_model_path(base_dir: Path = Path(".")) -> Path:

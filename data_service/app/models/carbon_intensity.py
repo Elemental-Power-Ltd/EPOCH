@@ -52,6 +52,6 @@ class CarbonIntensityEntry(pydantic.BaseModel):
 
 
 class EpochCarbonEntry(EpochEntry):
-    GridCO2: float = pydantic.Field(
-        examples=[32.4, 14.6], description="Carbon intensity during this time period in g CO2 / kWh."
+    data: list[float] = pydantic.Field(
+        examples=[[32.4, 14.6, 7.2, 13.3]], description="List of carbon intensities during this time period in g CO2 / kWh."
     )

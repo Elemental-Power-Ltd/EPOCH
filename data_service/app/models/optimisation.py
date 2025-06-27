@@ -2,17 +2,121 @@
 
 # ruff: noqa: D101
 import datetime
+import math
 import uuid
 from enum import StrEnum
-from typing import Any
 
 import pydantic
+from pydantic import BaseModel, Field
 
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
+from .epoch_types import TaskDataPydantic
 from .site_manager import SiteDataEntry
 from .site_range import SiteRange
 
-type SiteScenario = dict[str, Any]
+
+class SiteMetrics(BaseModel):
+    """Metrics for a single site within a portfolio."""
+
+    carbon_balance_scope_1: float | None = Field(
+        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, math.pi]
+    )
+    carbon_balance_scope_2: float | None = Field(
+        description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
+    )
+    carbon_cost: float | None = Field(
+        description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
+    )
+    meter_balance: float | None = Field(
+        description="Monetary savings from importing and exporting fuel/electricity when compared against the baseline.",
+        default=None,
+    )
+    operating_balance: float | None = Field(
+        description="Monetary savings from fuel, electricity and opex when compared against the baseline.", default=None
+    )
+    cost_balance: float | None = Field(
+        description="Monetary savings from fuel, electricity, opex and annualised cost when compared against the baseline.",
+        default=None,
+    )
+    npv_balance: float | None = Field(
+        description="The change in Net Present Value between the baseline and the scenario for this site.", default=None
+    )
+    capex: float | None = Field(description="Cost to install this scenario on this site.", default=None)
+    payback_horizon: float | None = Field(
+        description="Years for this scenario to pay back on this site (if very large, represents no payback ever.)",
+        default=None,
+    )
+    annualised_cost: float | None = Field(
+        description="Cost of running this scenario (including amortised deprecation) on this site.", default=None
+    )
+    total_gas_used: float | None = Field(description="Total gas imported (kWh) for this site", default=None)
+    total_electricity_imported: float | None = Field(
+        description="Total electricity imported from the grid (kWh) for this site", default=None
+    )
+    total_electricity_generated: float | None = Field(
+        description="Total electricity generated on-site (kWh) for this site", default=None
+    )
+    total_electricity_exported: float | None = Field(
+        description="Total electricity exported to the grid (kWh) for this site", default=None
+    )
+    total_electrical_shortfall: float | None = Field(
+        description="Total electrical shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    total_heat_shortfall: float | None = Field(
+        description="Total heat shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
+    total_electricity_import_cost: float | None = Field(
+        description="Total spend (£) importing electricity from the grid for this site", default=None
+    )
+    total_electricity_export_gain: float | None = Field(
+        description="Total income (£) exporting electricity to this grid for this site", default=None
+    )
+    total_meter_cost: float | None = Field(
+        description="Total cost of importing fuel/electricity minus revenue from exporting.", default=None
+    )
+    total_operating_cost: float | None = Field(
+        description="Total meter cost minus operating costs for components for this site.", default=None
+    )
+    total_net_present_value: float | None = Field(
+        description="Net Present Value after repeating the simulation for the configured number of years for this site.",
+        default=None,
+    )
+
+    baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) for this site", default=None)
+    baseline_electricity_imported: float | None = Field(
+        description="Baseline electricity imported from the grid (kWh) for this site", default=None
+    )
+    baseline_electricity_generated: float | None = Field(
+        description="Baseline electricity generated on-site (kWh) for this site", default=None
+    )
+    baseline_electricity_exported: float | None = Field(
+        description="Baseline electricity exported to the grid (kWh) for this site", default=None
+    )
+    baseline_electrical_shortfall: float | None = Field(
+        description="Baseline electrical shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    baseline_heat_shortfall: float | None = Field(
+        description="Baseline heat shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    baseline_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
+    baseline_electricity_import_cost: float | None = Field(
+        description="Baseline spend (£) importing electricity from the grid for this site", default=None
+    )
+    baseline_electricity_export_gain: float | None = Field(
+        description="Baseline income (£) exporting electricity to this grid for this site", default=None
+    )
+    baseline_meter_cost: float | None = Field(
+        description="Baseline cost of importing fuel/electricity minus revenue from exporting.", default=None
+    )
+    baseline_operating_cost: float | None = Field(
+        description="Baseline meter cost minus operating costs for components for this site.", default=None
+    )
+    baseline_net_present_value: float | None = Field(
+        description="Baseline Net Present Value after repeating the simulation for the configured number of years "
+        "for this site.",
+        default=None,
+    )
 
 
 class SiteOptimisationResult(pydantic.BaseModel):
@@ -23,28 +127,121 @@ class SiteOptimisationResult(pydantic.BaseModel):
         description="The portfolio pareto front entry this site is linked to."
         + " A single site result is uniquely identified by a (portfolio_id, site_id) pair."
     )
-    scenario: SiteScenario = pydantic.Field(
+    scenario: TaskDataPydantic = pydantic.Field(
         description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
     )
-    metric_carbon_balance_scope_1: float | None = pydantic.Field(
-        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, 3.14]
+    metrics: SiteMetrics = pydantic.Field(description="The metrics calculated for this site.")
+
+
+class PortfolioMetrics(BaseModel):
+    """Metrics for the whole portfolio."""
+
+    carbon_balance_scope_1: float | None = Field(
+        description="Direct carbon emissions saved by this entire portfolio of scenarios.",
+        default=None,
+        examples=[None, math.pi],
     )
-    metric_carbon_balance_scope_2: float | None = pydantic.Field(
-        description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
+    carbon_balance_scope_2: float | None = Field(
+        description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
     )
-    metric_carbon_cost: float | None = pydantic.Field(
+    carbon_cost: float | None = Field(
         description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
     )
-    metric_cost_balance: float | None = pydantic.Field(
-        description="Net monetary cost (opex - returns) over the lifetime of these interventions on this site.", default=None
-    )
-    metric_capex: float | None = pydantic.Field(description="Cost to install this scenario on this site.", default=None)
-    metric_payback_horizon: float | None = pydantic.Field(
-        description="Years for this scenario to pay back on this site (if very large, represents no payback ever.)",
+    meter_balance: float | None = Field(
+        description="Monetary savings across the portfolio "
+        "from importing and exporting fuel/electricity when compared against the baseline.",
         default=None,
     )
-    metric_annualised_cost: float | None = pydantic.Field(
-        description="Cost of running this scenario (including amortised deprecation) on this site.", default=None
+    operating_balance: float | None = Field(
+        description="Monetary savings across the portfolio from fuel, electricity and opex when compared against the baseline.",
+        default=None,
+    )
+    cost_balance: float | None = Field(
+        description="Monetary savings across the portfolio "
+        "from fuel, electricity, opex and annualised cost when compared against the baseline.",
+        default=None,
+    )
+    npv_balance: float | None = Field(
+        description="The change in Net Present Value between the baseline and the scenario over the portfolio.", default=None
+    )
+    capex: float | None = Field(description="Cost to install this scenario on entire portfolio of scenarios.", default=None)
+    payback_horizon: float | None = Field(
+        description="Years for these scenarios to pay back across this portfolio.", default=None
+    )
+    annualised_cost: float | None = Field(
+        description="Cost of running these scenario (including amortised deprecation) across this portfolio", default=None
+    )
+    total_gas_used: float | None = Field(description="Total gas imported (kWh) across this portfolio", default=None)
+    total_electricity_imported: float | None = Field(
+        description="Total electricity imported from the grid (kWh) across this portfolio", default=None
+    )
+    total_electricity_generated: float | None = Field(
+        description="Total electricity generated on-site (kWh) across this portfolio", default=None
+    )
+    total_electricity_exported: float | None = Field(
+        description="Total electricity exported to the grid (kWh) across this portfolio", default=None
+    )
+    total_electrical_shortfall: float | None = Field(
+        description="Total electrical shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    total_heat_shortfall: float | None = Field(
+        description="Total heat shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas across this portfolio", default=None)
+    total_electricity_import_cost: float | None = Field(
+        description="Total spend (£) importing electricity from the grid across this portfolio", default=None
+    )
+    total_electricity_export_gain: float | None = Field(
+        description="Total income (£) exporting electricity to this grid across this portfolio", default=None
+    )
+    total_meter_cost: float | None = Field(
+        description="Total cost of importing fuel/electricity minus revenue from exporting across this portfolio.", default=None
+    )
+    total_operating_cost: float | None = Field(
+        description="Total meter cost minus operating costs for components across this portfolio.", default=None
+    )
+    total_net_present_value: float | None = Field(
+        description="Net Present Value after repeating the simulation for the configured number of years "
+        "across this portfolio.",
+        default=None,
+    )
+
+    baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) across this portfolio", default=None)
+    baseline_electricity_imported: float | None = Field(
+        description="Baseline electricity imported from the grid (kWh) across this portfolio", default=None
+    )
+    baseline_electricity_generated: float | None = Field(
+        description="Baseline electricity generated on-site (kWh) across this portfolio", default=None
+    )
+    baseline_electricity_exported: float | None = Field(
+        description="Baseline electricity exported to the grid (kWh) across this portfolio", default=None
+    )
+    baseline_electrical_shortfall: float | None = Field(
+        description="Baseline electrical shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    baseline_heat_shortfall: float | None = Field(
+        description="Baseline heat shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    baseline_gas_import_cost: float | None = Field(
+        description="Baseline spend (£) importing gas across this portfolio", default=None
+    )
+    baseline_electricity_import_cost: float | None = Field(
+        description="Baseline spend (£) importing electricity from the grid across this portfolio", default=None
+    )
+    baseline_electricity_export_gain: float | None = Field(
+        description="Baseline income (£) exporting electricity to this grid across this portfolio", default=None
+    )
+    baseline_meter_cost: float | None = Field(
+        description="Baseline cost of importing fuel/electricity minus revenue from exporting across this portfolio.",
+        default=None,
+    )
+    baseline_operating_cost: float | None = Field(
+        description="Baseline meter cost minus operating costs for components across this portfolio.", default=None
+    )
+    baseline_net_present_value: float | None = Field(
+        description="Baseline Net Present Value after repeating the simulation for the configured number of years "
+        "across this portfolio.",
+        default=None,
     )
 
 
@@ -56,31 +253,37 @@ class PortfolioOptimisationResult(pydantic.BaseModel):
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
-    metric_carbon_balance_scope_1: float | None = pydantic.Field(
-        description="Direct carbon emissions saved by this entire portfolio of scenarios.", default=None, examples=[None, 3.14]
-    )
-    metric_carbon_balance_scope_2: float | None = pydantic.Field(
-        description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
-    )
-    metric_carbon_cost: float | None = pydantic.Field(
-        description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
-    )
-    metric_cost_balance: float | None = pydantic.Field(
-        description="Net change in annual running cost due to this entire portfolio of scenarios.", default=None
-    )
-    metric_capex: float | None = pydantic.Field(
-        description="Cost to install this scenario on entire portfolio of scenarios.", default=None
-    )
-    metric_payback_horizon: float | None = pydantic.Field(
-        description="Years for these scenarios to pay back across this portfolio.", default=None
-    )
-    metric_annualised_cost: float | None = pydantic.Field(
-        description="Cost of running these scenario (including amortised deprecation) across this portfolio", default=None
-    )
+    metrics: PortfolioMetrics = pydantic.Field(description="The metrics calculated across the whole portfolio.")
     site_results: list[SiteOptimisationResult] | None = pydantic.Field(
         default=None,
         description="Individual site results for this Portfolio."
         + " Not provided when requesting a specific portfolio from the DB.",
+    )
+
+
+class HighlightReason(StrEnum):
+    BestCostBalance = "best_cost_balance"
+    BestCarbonBalance = "best_carbon_balance"
+    BestPaybackHorizon = "best_payback_horizon"
+
+
+class HighlightedResult(pydantic.BaseModel):
+    """A portfolio result we want to draw attention to and a reason why."""
+
+    portfolio_id: pydantic.UUID4 = pydantic.Field(
+        description="Individual ID representing this entry in the portfolio pareto front."
+    )
+    reason: HighlightReason = pydantic.Field(description="The reason the portfolio result is highlighted.")
+
+
+class OptimisationResultsResponse(pydantic.BaseModel):
+    """Response containing all saved results for a given task_id and some highlighted results."""
+
+    portfolio_results: list[PortfolioOptimisationResult] = pydantic.Field(
+        description="Result for a whole portfolio optimisation task, often one entry in the Pareto front."
+    )
+    highlighted_results: list[HighlightedResult] = pydantic.Field(
+        description="A list of highlighted results, containing a portfolio_id and the reason the result is highlighted."
     )
 
 
@@ -130,14 +333,18 @@ class OptimisationResultEntry(pydantic.BaseModel):
 class OptimiserEnum(StrEnum):
     GridSearch = "GridSearch"
     NSGA2 = "NSGA2"
-    GeneticAlgorithm = "GeneticAlgorithm"
-    BayesianOptimisation = "BayesianOptimisation"
+    Bayesian = "Bayesian"
+    SeparatedNSGA2 = "SeparatedNSGA2"
+    SeparatedNSGA2xNSGA2 = "SeparatedNSGA2xNSGA2"
+
+
+type hyperparams_t = dict[str, float | int | str | hyperparams_t]
 
 
 class Optimiser(pydantic.BaseModel):
-    name: OptimiserEnum = pydantic.Field(default=None, description="Name of optimiser.")
-    hyperparameters: dict[str, float | int | str] | None = pydantic.Field(
-        default=None, description="Hyperparameters provided to the optimiser, especially interesting for Genetic algorithms."
+    name: OptimiserEnum = pydantic.Field(default=OptimiserEnum.NSGA2, description="Name of optimiser.")
+    hyperparameters: hyperparams_t | None = pydantic.Field(
+        default=None, description="Hyperparameters provided to the optimiser."
     )
 
 
@@ -205,11 +412,18 @@ class TaskConfig(pydantic.BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
+    baseline_id: dataset_id_t | None = pydantic.Field(
+        default=None,
+        description=(
+            "ID of the baseline scenario for this site."
+            + " If None, use the default baseline scenario, but be wary of changes to that default."
+        ),
+    )
 
 
 class ResultReproConfig(pydantic.BaseModel):
     portfolio_id: pydantic.UUID4
-    task_data: dict[site_id_t, SiteScenario]
+    task_data: dict[site_id_t, TaskDataPydantic]
     site_data: dict[site_id_t, SiteDataEntry]
 
 

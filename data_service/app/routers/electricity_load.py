@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
 from ..internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
 from ..internal.epl_typing import DailyDataFrame, MonthlyDataFrame
-from ..internal.utils import add_epoch_fields, get_bank_holidays
+from ..internal.utils import get_bank_holidays
 from ..models.core import DatasetIDWithTime, FuelEnum
 from ..models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
 
@@ -162,7 +162,7 @@ async def generate_electricity_load(
 
 
 @router.post("/get-electricity-load", tags=["get", "electricity"])
-async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> list[EpochElectricityEntry]:
+async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> EpochElectricityEntry:
     """
     Get a (possibly synthesised) half hourly electricity load dataset.
 
@@ -236,32 +236,25 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
         res, columns=["start_ts", "end_ts", "consumption_kwh"], coerce_float=["consumption_kwh"], index="start_ts"
     )
     elec_df["start_ts"] = elec_df.index
-    print(params.start_ts, params.end_ts)
     in_timestamps_mask = np.logical_and(elec_df.start_ts >= params.start_ts, elec_df.end_ts <= params.end_ts)
     elec_df = elec_df[in_timestamps_mask]
     if elec_df.empty:
         logging.warning(
             f"Got an empty electricity meter dataset for {params.dataset_id} between {params.start_ts} and {params.end_ts}"
         )
-        return []
+        return EpochElectricityEntry(timestamps=[], data=[])
 
     assert isinstance(elec_df.index, pd.DatetimeIndex), "Heating dataframe must have a DatetimeIndex"
     # Now restructure for EPOCH
     elec_df = elec_df[["consumption_kwh"]].interpolate(method="time").ffill().bfill()
-    elec_df = add_epoch_fields(elec_df)
 
-    return [
-        EpochElectricityEntry(
-            Date=item["Date"], StartTime=item["StartTime"], HourOfYear=item["HourOfYear"], FixLoad1=item["consumption_kwh"]
-        )
-        for item in elec_df.to_dict(orient="records")
-    ]
+    return EpochElectricityEntry(timestamps=elec_df.index.to_list(), data=elec_df["consumption_kwh"].to_list())
 
 
 @router.post("/get-blended-electricity-load", tags=["get", "electricity"])
 async def get_blended_electricity_load(
     real_params: DatasetIDWithTime | None, synthetic_params: DatasetIDWithTime | None, pool: DatabasePoolDep
-) -> list[EpochElectricityEntry]:
+) -> EpochElectricityEntry:
     """
     Fetch a combination of real and synthetic electricity data across a time period.
 
@@ -292,7 +285,7 @@ async def get_blended_electricity_load(
                 real_data = await get_electricity_load(real_params, conn=conn)
             except HTTPException as ex:
                 logger.warning(f"Couldn't get electricity load data for {real_params}, returning only synthetic. Due to {ex}")
-                real_data = []
+                real_data = EpochElectricityEntry(timestamps=[], data=[])
 
         if synthetic_params is not None:
             synth_data = await get_electricity_load(synthetic_params, conn=conn)
@@ -304,9 +297,8 @@ async def get_blended_electricity_load(
     # The EPOCH format makes it a bit hard to just zip these together, so
     # assume each entry is uniquely identified by a (Date, StartTime) pair
     # and go from there.
-    real_records = {(row.Date, row.StartTime): row for row in real_data}
-    for idx, row in enumerate(synth_data):
-        maybe_real = real_records.get((row.Date, row.StartTime))
-        if maybe_real is not None:
-            synth_data[idx] = row
+    for idx, timestamp in enumerate(synth_data.timestamps):
+        if timestamp in real_data.timestamps:
+            synth_data.data[idx] = real_data.data[real_data.timestamps.index(timestamp)]
+
     return synth_data

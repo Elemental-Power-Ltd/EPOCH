@@ -1,9 +1,9 @@
 """Building Adjusted Internal Temperature and feelslike calculations."""
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
+from ...models.weather import WeatherDatasetEntry
 from ..epl_typing import WeatherDataFrame
 from ..utils import relative_to_specific_humidity
 
@@ -14,7 +14,7 @@ def building_adjusted_internal_temperature(
     wind_chill: float = -0.20,
     humidity_discomfort: float = 0.05,
     smoothing: float = 0.5,
-) -> npt.NDArray[np.floating]:
+) -> pd.Series:
     r"""
     Calculate a "building adjusted internal temperature" via Staffell et al's methodology.
 
@@ -99,4 +99,40 @@ def building_adjusted_internal_temperature(
     blend_diff = blend_hi - blend_lo
     blend = 10.0 * (weather_df["temp"].to_numpy() - blend_mid) / blend_diff
     blend = blend_weight / (1.0 + np.exp(-blend))
-    return (bait * (1.0 - blend)) + (weather_df["temp"].to_numpy() * blend)  # type: ignore
+
+    res = (bait * (1.0 - blend)) + (weather_df["temp"].to_numpy() * blend)
+    assert isinstance(res, pd.Series), str(type(res))
+    return res
+
+
+def weather_dataset_to_dataframe(records: list[WeatherDatasetEntry]) -> WeatherDataFrame:
+    """
+    Convert a set of Weather Dataset Entries to a nice pandas dataframe.
+
+    We re-use the endpoint for getting weather in some of these functions, so
+    it's useful to convert out of the network JSON format into something friendly.
+
+    Parameters
+    ----------
+    records
+        The data you get from the `get-weather` endpoint
+
+    Returns
+    -------
+    WeatherDataFrame
+        Nice friendly pandas dataframe with datetime index
+    """
+    return WeatherDataFrame(
+        pd.DataFrame.from_records(
+            [item.model_dump() for item in records],
+            columns=[
+                "timestamp",
+                "temp",
+                "humidity",
+                "solarradiation",
+                "windspeed",
+                "pressure",
+            ],
+            index="timestamp",
+        )
+    )

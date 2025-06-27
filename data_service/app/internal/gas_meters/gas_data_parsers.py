@@ -10,7 +10,7 @@ import datetime
 import logging
 import os
 from collections.abc import Callable
-from typing import BinaryIO
+from typing import Any, BinaryIO
 
 import numpy as np
 import numpy.typing as npt
@@ -41,7 +41,7 @@ def check_if_readings_not_consumption(df: pd.DataFrame) -> bool:
     return bool(always_increasing)
 
 
-def parse_comma_float(in_str: float | int | str) -> float:
+def parse_comma_float(in_str: Any) -> float:
     """
     Parse a float that Excel helpfully put a comma into.
 
@@ -55,6 +55,11 @@ def parse_comma_float(in_str: float | int | str) -> float:
     Returns
     -------
         parsed float
+
+    Raises
+    ------
+    ValueError
+        If not parseable
     """
     if isinstance(in_str, str):
         return float(in_str.replace(",", ""))
@@ -116,6 +121,7 @@ def parse_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame:
     consumption_df = pd.read_csv(fname, skipinitialspace=True).rename(
         columns={
             "Consumption (kWh)": "consumption",
+            "Consumption (kwh)": "consumption",
             "HH Read (kwh)": "consumption",
             "HH Read (kWh)": "consumption",
             "kWh": "consumption",
@@ -244,7 +250,7 @@ def parse_be_st_format(fname: os.PathLike | BinaryIO | str) -> MonthlyDataFrame:
     last_year, last_month = None, None
     year_idx = 0
 
-    start_timestamps: list[pd.Timestamp | pd._libs.tslibs.nattype.NaTType] = []  # type: ignore
+    start_timestamps: list[pd.Timestamp | pd._libs.tslibs.nattype.NaTType] = []
     for year, month in zip(df.Year, df.Month, strict=False):
         # Throw out the entries with no year or month information
         if pd.isna(year) or pd.isna(month):
@@ -329,6 +335,41 @@ def parse_horizontal_monthly_both_years(fname: os.PathLike | str | BinaryIO) -> 
 
     gas_df = pd.DataFrame.from_records(readings).set_index("start_ts")
     return MonthlyDataFrame(gas_df[["end_ts", "consumption"]])
+
+
+def parse_ideal(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame | HHDataFrame:
+    """
+    Try to parse the ideal dataframe format, which has start_ts, end_ts and consumption_kwh columns.
+
+    Parameters
+    ----------
+    fname
+        CSV-like object to parse
+
+    Returns
+    -------
+    MonthlyDataFrame | HHDataFrame
+        Checks the frequency of readings and assigns the correct type
+    """
+    df = pd.read_csv(fname, skipinitialspace=True)
+    expected_columns = {"start_ts", "end_ts", "consumption_kwh"}
+    assert set(df.columns).issuperset(expected_columns), f"Missing expected columns from {df.columns}"
+
+    df["start_ts"] = pd.to_datetime(df["start_ts"], utc=True)
+    df["end_ts"] = pd.to_datetime(df["end_ts"], utc=True)
+    df["consumption_kwh"] = df["consumption_kwh"].astype(float)
+
+    assert any(~pd.isna(df["consumption_kwh"])), "All NaN values in consumption_kwh"
+
+    df = df.set_index("start_ts")
+    # Check if the most common spacing is exactly 30 minutes; if so, this is likely HH
+    average_spacing = (df["end_ts"] - df.index).mode().iloc[0]
+
+    # we call this just consumption once we're out of the file as we know the units
+    df = df.rename(columns={"consumption_kwh": "consumption"})
+    if average_spacing == pd.Timedelta(minutes=30):
+        return HHDataFrame(df[["end_ts", "consumption"]])
+    return MonthlyDataFrame(df[["end_ts", "consumption"]])
 
 
 def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame:
@@ -491,9 +532,13 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
     NotImplementedError
         If we couldn't find a parser
     """
+    type csv_file_t = os.PathLike | str | BinaryIO
     possible_parsers: list[
-        Callable[[os.PathLike | str | BinaryIO], MonthlyDataFrame] | Callable[[os.PathLike | str | BinaryIO], HHDataFrame]
+        Callable[[csv_file_t], MonthlyDataFrame]
+        | Callable[[csv_file_t], HHDataFrame]
+        | Callable[[csv_file_t], HHDataFrame | MonthlyDataFrame]
     ] = [
+        parse_ideal,
         parse_be_st_format,
         parse_daily_readings,
         parse_half_hourly,
@@ -523,4 +568,5 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
         except AssertionError as ex:
             encountered_exceptions.append(ex)
             continue
+
     raise NotImplementedError("No parser available for this file.")  # from encountered_exceptions

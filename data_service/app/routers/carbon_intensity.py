@@ -7,6 +7,7 @@ varies over time as the grid changes.
 
 import datetime
 import logging
+import operator
 import typing
 import uuid
 
@@ -17,7 +18,8 @@ import pydantic
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
-from ..internal.utils import chunk_time_period, hour_of_year
+from ..internal.client_data import get_postcode
+from ..internal.utils import chunk_time_period
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
 
@@ -234,8 +236,10 @@ async def fetch_carbon_intensity(
     async with aiometer.amap(
         lambda ts_pair: fetch_carbon_intensity_batch(client=client, postcode=postcode, timestamps=ts_pair),
         time_pairs,
-        max_at_once=1,
-        max_per_second=1,
+        # This is a horrible bodge, but for testing we have a mocked client
+        # where we want to do
+        max_at_once=1 if getattr(client, "DO_RATE_LIMIT", True) else None,
+        max_per_second=1 if getattr(client, "DO_RATE_LIMIT", True) else None,
     ) as results:
         async for result in results:
             all_data.extend(result)
@@ -245,7 +249,7 @@ async def fetch_carbon_intensity(
 
     # Now we've got the data, we should tidy it up.
     # This involves sorting, filter and interpolate it
-    all_data = sorted(all_data, key=lambda x: x["start_ts"])
+    all_data = sorted(all_data, key=operator.itemgetter("start_ts"))
     new_times = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     all_data = interpolate_carbon_intensity(new_times, all_data)
     return all_data
@@ -277,17 +281,10 @@ async def generate_grid_co2(
     *metadata*
         Metadata about the grid CO2 information we've just put into the database.
     """
-    async with pool.acquire() as conn:
-        postcode = await conn.fetchval(
-            r"""
-            SELECT
-                (regexp_match(address, '[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}'))[1]
-            FROM client_info.site_info
-            WHERE site_id = $1""",
-            params.site_id,
-        )
-
-    if postcode is None:
+    try:
+        postcode = await get_postcode(site_id=params.site_id, pool=pool)
+    except ValueError:
+        postcode = None
         logger.warning(f"No postcode found for {params.site_id}, using National data.")
 
     all_data = await fetch_carbon_intensity(
@@ -364,7 +361,7 @@ async def generate_grid_co2(
 
 
 @router.post("/get-grid-co2", tags=["co2", "get"])
-async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> list[EpochCarbonEntry]:
+async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> EpochCarbonEntry:
     """
     Get a specific grid carbon itensity dataset that we generated with `generate-grid-co2`.
 
@@ -399,8 +396,8 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> list
         params.start_ts,
         params.end_ts,
     )
-    carbon_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "forecast", "actual"], coerce_float=True)
-    carbon_df.index = pd.to_datetime(carbon_df.index)
+    carbon_df = pd.DataFrame.from_records(res, columns=["start_ts", "forecast", "actual"], coerce_float=True)
+    carbon_df.index = pd.to_datetime(carbon_df["start_ts"])  # type: ignore
 
     # TODO (2025-01-09 MHJB): fix this awful pandas repeated interpolation, reindexing and resampling, it's a mess
     # carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().infer_objects().interpolate(method="time")
@@ -410,7 +407,4 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> list
 
     carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))
     carbon_df["GridCO2"] = carbon_df["GridCO2"].interpolate(method="time")
-    return [
-        EpochCarbonEntry(Date=ts.strftime("%d-%b"), HourOfYear=hour_of_year(ts), StartTime=ts.strftime("%H:%M"), GridCO2=val)
-        for ts, val in zip(carbon_df.index, carbon_df["GridCO2"], strict=True)
-    ]
+    return EpochCarbonEntry(timestamps=carbon_df["start_ts"].tolist(), data=carbon_df["GridCO2"].to_list())

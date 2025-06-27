@@ -87,9 +87,7 @@ class SiteID(BaseModel):
 
 
 class EpochEntry(pydantic.BaseModel):
-    Date: str = epoch_date_field
-    StartTime: str = epoch_start_time_field
-    HourOfYear: float = epoch_hour_of_year_field
+    timestamps: list[pydantic.AwareDatetime]
 
 
 class SiteIDWithTime(SiteID):
@@ -154,7 +152,6 @@ class MultipleDatasetIDWithTime(BaseModel):
         """Check if we've got a list of datasets, and if we got just one, make it a list."""
         if not isinstance(v, list):
             v = [v]
-        assert len(v) <= 4, "Can only request up to 4 datasets."
         return v
 
     @pydantic.model_validator(mode="after")
@@ -183,6 +180,7 @@ class DatasetTypeEnum(StrEnum):
     HeatingLoad = "HeatingLoad"
     ASHPData = "ASHPData"
     ImportTariff = "ImportTariff"
+    ThermalModel = "ThermalModel"
 
 
 class DatasetEntry(pydantic.BaseModel):
@@ -226,4 +224,10 @@ class SiteData(pydantic.BaseModel):
     )
     address: str = pydantic.Field(
         examples=["27 Mill Close, London, SW1A 0AA", "Queens Buildings, Potter Street, Worksop, S80 2AH"]
+    )
+    epc_lmk: str | None = pydantic.Field(
+        description="LMK for the latest Commercial Energy Performance Certificate for this building", default=None
+    )
+    dec_lmk: str | None = pydantic.Field(
+        description="LMK for the latest Commercial Display Energy Certificate for this building", default=None
     )

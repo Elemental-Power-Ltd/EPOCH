@@ -21,6 +21,7 @@ async def demo_end_ts() -> datetime.datetime:
 
 class TestSyntheticTariffs:
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_generate_agile(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -36,9 +37,22 @@ class TestSyntheticTariffs:
         assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
         assert result.status_code == 200, result.text
-        assert result.json()[-1]["StartTime"] == "23:30"
-        assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() // pd.Timedelta(minutes=30).total_seconds()
-        assert len({item["Tariff"] for item in result.json()}) > 10
+
+        timestamps = result.json()["timestamps"]
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == demo_start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (demo_end_ts - datetime.timedelta(minutes=30))
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in result.json()["data"]
+        )
+
+        assert all(len(set(data)) > 10 for data in result.json()["data"])
 
     @pytest.mark.asyncio
     async def test_generate_fixed(
@@ -56,9 +70,22 @@ class TestSyntheticTariffs:
         assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
         assert result.status_code == 200, result.text
-        assert result.json()[-1]["StartTime"] == "23:30"
-        assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() // pd.Timedelta(minutes=30).total_seconds()
-        assert len({item["Tariff"] for item in result.json()}) == 1
+
+        timestamps = result.json()["timestamps"]
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == demo_start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (demo_end_ts - datetime.timedelta(minutes=30))
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in result.json()["data"]
+        )
+
+        assert all(len(set(data)) == 1 for data in result.json()["data"])
 
     @pytest.mark.asyncio
     async def test_generate_overnight(
@@ -76,9 +103,22 @@ class TestSyntheticTariffs:
         assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
         assert result.status_code == 200, result.text
-        assert result.json()[-1]["StartTime"] == "23:30"
-        assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() // pd.Timedelta(minutes=30).total_seconds()
-        assert len({item["Tariff"] for item in result.json()}) == 2
+
+        timestamps = result.json()["timestamps"]
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == demo_start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (demo_end_ts - datetime.timedelta(minutes=30))
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in result.json()["data"]
+        )
+
+        assert all(len(set(data)) == 2 for data in result.json()["data"])
 
     @pytest.mark.asyncio
     async def test_generate_peak(
@@ -96,13 +136,27 @@ class TestSyntheticTariffs:
         assert metadata.status_code == 200, metadata.text
         result = await client.post("/get-import-tariffs", json={"dataset_id": metadata.json()["dataset_id"]})
         assert result.status_code == 200, result.text
-        assert result.json()[-1]["StartTime"] == "23:30"
-        assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() // pd.Timedelta(minutes=30).total_seconds()
-        assert len({item["Tariff"] for item in result.json()}) == 3
+
+        timestamps = result.json()["timestamps"]
+        first_ts = datetime.datetime.fromisoformat(timestamps[0])
+        assert first_ts.hour == 0, "First entry isn't 00:00"
+        assert first_ts.minute == 0, "First entry isn't 00:00"
+        assert first_ts == demo_start_ts
+        last_ts = datetime.datetime.fromisoformat(timestamps[-1])
+        assert last_ts.hour == 23, "Last entry isn't 23:30"
+        assert last_ts.minute == 30, "Last entry isn't 23:30"
+        assert last_ts == (demo_end_ts - datetime.timedelta(minutes=30))
+        assert (
+            len(timestamps) == len(item) == int((demo_end_ts - demo_start_ts) / datetime.timedelta(minutes=30))
+            for item in result.json()["data"]
+        )
+
+        assert all(len(set(data)) == 3 for data in result.json()["data"])
 
 
 class TestImportTariffs:
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_generate_import_tariff(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -120,6 +174,7 @@ class TestImportTariffs:
         assert metadata["site_id"] == "demo_london"
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_generate_and_get_import_tariff(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -144,12 +199,13 @@ class TestImportTariffs:
                 },
             )
         ).json()
-        assert (
-            len(tariff_result) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        )
-        assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
+        expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
+        assert len(tariff_result["timestamps"]) == expected_len
+        assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_generate_and_get_agile(
         self,
         client: httpx.AsyncClient,
@@ -177,12 +233,12 @@ class TestImportTariffs:
                 },
             )
         ).json()
-        assert len(tariff_result) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
-        assert len({item["Tariff"] for item in tariff_result}) > 48
-        assert all(pd.isna(item["Tariff1"]) for item in tariff_result)
-        assert all(pd.isna(item["Tariff2"]) for item in tariff_result)
-        assert all(pd.isna(item["Tariff3"]) for item in tariff_result)
+        expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        assert len(tariff_result["timestamps"]) == expected_len
+        assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
+        for data in tariff_result["data"]:
+            assert len(set(data)) >= 23
 
     @pytest.mark.asyncio
     async def test_generate_and_get_peak(
@@ -212,17 +268,17 @@ class TestImportTariffs:
                 },
             )
         ).json()
-        assert len(tariff_result) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
-        unique_costs = {item["Tariff"] for item in tariff_result}
-        assert len(unique_costs) == 3
 
-        lo, mid, hi = sorted(unique_costs)
-        assert hi == pytest.approx(mid * 1.5)
-        assert lo == pytest.approx(mid * 0.49)
-        assert all(pd.isna(item["Tariff1"]) for item in tariff_result)
-        assert all(pd.isna(item["Tariff2"]) for item in tariff_result)
-        assert all(pd.isna(item["Tariff3"]) for item in tariff_result)
+        expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        assert len(tariff_result["timestamps"]) == expected_len
+        assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
+        assert all(len(set(data)) == 3 for data in tariff_result["data"])
+
+        for data in tariff_result["data"]:
+            lo, mid, hi = sorted(set(data))
+            assert hi == pytest.approx(mid * 1.5)
+            assert lo == pytest.approx(mid * 0.49)
 
     @pytest.mark.asyncio
     async def test_list_import_tariffs(self, client: httpx.AsyncClient) -> None:
@@ -283,10 +339,14 @@ class TestImportTariffs:
                 },
             )
         ).json()
-        assert len(tariff_result) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
+
+        expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        assert len(tariff_result["timestamps"]) == expected_len
+        assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_get_one_of_each(self, client: httpx.AsyncClient) -> None:
         start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
@@ -305,6 +365,7 @@ class TestImportTariffs:
             metadata = response.json()
             tariff_uuids[tariff_type] = metadata["dataset_id"]
 
+        assert len(tariff_uuids) == 4
         tariff_response = await client.post(
             "/get-import-tariffs",
             json={
@@ -315,9 +376,7 @@ class TestImportTariffs:
         )
         assert tariff_response.status_code == 200
         tariff_result = tariff_response.json()
-        # print(tariff_result)
-        assert len(tariff_result) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(not pd.isna(item["Tariff"]) for item in tariff_result)
-        assert all(not pd.isna(item["Tariff1"]) for item in tariff_result)
-        assert all(not pd.isna(item["Tariff2"]) for item in tariff_result)
-        assert all(not pd.isna(item["Tariff3"]) for item in tariff_result)
+        expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        assert len(tariff_result["timestamps"]) == expected_len
+        assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])

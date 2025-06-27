@@ -1,11 +1,11 @@
 """Tests for the currently janky building fabric savings."""
 
-# ruff: noqa: D101, D102
+# ruff: noqa: D101
 import copy
 
 import pytest
 
-from app.internal.heating import apply_fabric_interventions
+from app.internal.thermal_model import apply_fabric_interventions
 from app.models.heating_load import InterventionEnum
 from app.models.weather import BaitAndModelCoefs
 
@@ -35,7 +35,7 @@ class TestApplySavings:
         coefs = copy.deepcopy(default_coefs)
         mutated = apply_fabric_interventions(coefs, [InterventionEnum.Loft])
         assert mutated != coefs
-        assert coefs == coefs
+        assert coefs == default_coefs
 
     def test_can_apply_many_in_sequence(self, default_coefs: BaitAndModelCoefs) -> None:
         """Test that we can apply multiple interventions after one another."""

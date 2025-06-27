@@ -6,6 +6,8 @@ ratios depending on the input and output temperatures.
 These endpoints should provide quick look-up tables for those coefficients of performance.
 """
 
+from typing import cast
+
 import pandas as pd
 from fastapi import APIRouter
 
@@ -39,17 +41,10 @@ async def get_ashp_input(params: DatasetIDWithTime) -> ASHPCOPResponse:
     """
     _ = params  # we ignore these, but mark them as used.
 
-    dataframe = pd.read_csv("./data/CSVASHPinput.csv").set_index("0")
-    dataframe.index.name = "temperature"
-
-    results = dataframe.to_dict(orient="tight")
-    return ASHPCOPResponse(
-        index=results["index"],
-        columns=results["columns"],
-        data=results["data"],
-        index_names=results["index_names"],
-        column_names=results["column_names"],
-    )
+    dataframe = pd.read_csv("./data/CSVASHPinput.csv", header=None)
+    # Some versions of mypy and numpy have `.tolist()` here incorrectly returning a str, so
+    # let's override that for now.
+    return ASHPCOPResponse(data=cast(list[list[float]], dataframe.to_numpy().tolist()))
 
 
 @router.post("/get-ashp-output")
@@ -76,14 +71,5 @@ async def get_ashp_output(params: DatasetIDWithTime) -> ASHPCOPResponse:
     """
     _ = params  # we ignore these, but mark them as used.
 
-    dataframe = pd.read_csv("./data/CSVASHPoutput.csv").set_index("0")
-    dataframe.index.name = "temperature"
-
-    results = dataframe.to_dict(orient="tight")
-    return ASHPCOPResponse(
-        index=results["index"],
-        columns=results["columns"],
-        data=results["data"],
-        index_names=results["index_names"],
-        column_names=results["column_names"],
-    )
+    dataframe = pd.read_csv("./data/CSVASHPoutput.csv", header=None)
+    return ASHPCOPResponse(data=cast(list[list[float]], dataframe.to_numpy().tolist()))

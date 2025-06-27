@@ -4,10 +4,22 @@ import asyncio
 import datetime
 import logging
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
+from ..internal.site_manager import (
+    list_ashp_datasets,
+    list_carbon_intensity_datasets,
+    list_elec_datasets,
+    list_elec_synthesised_datasets,
+    list_gas_datasets,
+    list_heating_load_datasets,
+    list_import_tariff_datasets,
+    list_renewables_generation_datasets,
+    list_thermal_models,
+)
 from ..internal.site_manager.site_manager import fetch_all_input_data
 from ..models.client_data import SiteDataEntries
 from ..models.core import (
@@ -15,346 +27,27 @@ from ..models.core import (
     DatasetIDWithTime,
     DatasetTypeEnum,
     MultipleDatasetIDWithTime,
-    SiteID,
     SiteIDWithTime,
     dataset_id_t,
 )
 from ..models.electricity_load import ElectricalLoadRequest
-from ..models.heating_load import HeatingLoadRequest
+from ..models.heating_load import HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetList, RemoteMetaData
+from ..models.weather import WeatherRequest
 from .carbon_intensity import generate_grid_co2
+from .client_data import get_location
 from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
 from .import_tariffs import generate_import_tariffs, get_import_tariffs
 from .renewables import generate_renewables_generation
+from .weather import get_weather
 
 router = APIRouter()
 
 MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
 NULL_UUID = uuid.UUID(int=0, version=4)
-
-
-async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the gas meter datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-                SELECT
-                    cm.dataset_id,
-                    MAX(cm.created_at) AS created_at,
-                    MIN(gm.start_ts) AS start_ts,
-                    MAX(gm.end_ts) AS end_ts,
-                    COUNT(*) AS num_entries,
-                    AVG(end_ts - start_ts) AS resolution
-                FROM client_meters.metadata AS cm
-                LEFT JOIN
-                    client_meters.gas_meters AS gm
-                ON gm.dataset_id = cm.dataset_id
-                WHERE
-                    (cm.is_synthesised = false)
-                    AND cm.fuel_type = 'gas'
-                    AND site_id = $1
-                GROUP BY
-                    cm.dataset_id
-                """,
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.GasMeterData,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-        )
-        for item in res
-    ]
-
-
-async def list_elec_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the true electricity meter datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                cm.dataset_id,
-                MAX(cm.created_at) AS created_at,
-                MIN(em.start_ts) AS start_ts,
-                MAX(em.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution
-            FROM client_meters.metadata AS cm
-            LEFT JOIN
-                client_meters.electricity_meters AS em
-            ON em.dataset_id = cm.dataset_id
-            WHERE
-                (cm.is_synthesised = false)
-                AND cm.fuel_type = 'elec'
-                AND site_id = $1
-            GROUP BY
-                cm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.ElectricityMeterData,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-        )
-        for item in res
-    ]
-
-
-async def list_elec_synthesised_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the synthetic electricity datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                cm.dataset_id,
-                MAX(cm.created_at) AS created_at,
-                MIN(em.start_ts) AS start_ts,
-                MAX(em.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution
-            FROM client_meters.metadata AS cm
-            LEFT JOIN
-                client_meters.electricity_meters_synthesised AS em
-            ON em.dataset_id = cm.dataset_id
-            WHERE
-                (cm.is_synthesised = true)
-                AND cm.fuel_type = 'elec'
-                AND site_id = $1
-            GROUP BY
-                cm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-        )
-        for item in res
-        if item["num_entries"] > 1  # filter out bad entries here
-    ]
-
-
-async def list_import_tariff_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the import tariff datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                tm.dataset_id,
-                MAX(tm.created_at) AS created_at,
-                MIN(te.start_ts) AS start_ts,
-                MAX(te.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                (MAX(te.end_ts) - MIN(te.start_ts)) / (COUNT(*) - 1) AS resolution,
-                ANY_VALUE(provider) AS provider,
-                ANY_VALUE(product_name) AS product_name
-            FROM tariffs.metadata AS tm
-            LEFT JOIN
-                tariffs.electricity AS te
-            ON tm.dataset_id = te.dataset_id
-            WHERE site_id = $1
-            GROUP BY tm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.ImportTariff,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-            dataset_subtype=SyntheticTariffEnum(item["product_name"]) if item["provider"] == "synthetic" else None,
-        )
-        for item in res
-    ]
-
-
-async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the renewables generation (solar) datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                tm.dataset_id,
-                MAX(tm.created_at) AS created_at,
-                MIN(te.start_ts) AS start_ts,
-                MAX(te.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                (MAX(te.end_ts) - MIN(te.start_ts)) / (COUNT(*) - 1) AS resolution
-            FROM renewables.metadata AS tm
-            LEFT JOIN
-                renewables.solar_pv AS te
-            ON tm.dataset_id = te.dataset_id
-            WHERE site_id = $1
-            GROUP BY tm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.RenewablesGeneration,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-        )
-        for item in res
-    ]
-
-
-async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the heating load datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                cm.dataset_id,
-                MAX(cm.created_at) AS created_at,
-                MIN(em.start_ts) AS start_ts,
-                MAX(em.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution
-            FROM heating.metadata AS cm
-            LEFT JOIN
-                heating.synthesised AS em
-            ON em.dataset_id = cm.dataset_id
-            WHERE
-                site_id = $1
-            GROUP BY
-                cm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.HeatingLoad,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-        )
-        for item in res
-    ]
-
-
-async def list_carbon_intensity_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the Carbon Intensity datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                cm.dataset_id,
-                MAX(cm.created_at) AS created_at,
-                MIN(em.start_ts) AS start_ts,
-                MAX(em.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution
-            FROM carbon_intensity.metadata AS cm
-            LEFT JOIN
-                carbon_intensity.grid_co2 AS em
-            ON em.dataset_id = cm.dataset_id
-            WHERE
-                site_id = $1
-            GROUP BY
-                cm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.CarbonIntensity,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-        )
-        for item in res
-    ]
-
-
-async def list_ashp_datasets() -> list[DatasetEntry]:
-    """
-    List the ASHP datasets we have in the database.
-
-    This is a dummy function as we don't actually store them, but it returns a reasonable looking response.
-    """
-    return [
-        DatasetEntry(
-            dataset_id=uuid.uuid4(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC)
-        )
-    ]
 
 
 @router.post("/list-datasets", tags=["db", "list"])
@@ -385,6 +78,7 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
         heating_load_task = tg.create_task(list_heating_load_datasets(site_id, pool))
         carbon_intensity_task = tg.create_task(list_carbon_intensity_datasets(site_id, pool))
         ashp_task = tg.create_task(list_ashp_datasets())
+        thermal_model_task = tg.create_task(list_thermal_models(site_id, pool))
 
     res = {
         DatasetTypeEnum.GasMeterData: gas_task.result(),
@@ -394,6 +88,7 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
         DatasetTypeEnum.RenewablesGeneration: renewables_generation_task.result(),
         DatasetTypeEnum.HeatingLoad: heating_load_task.result(),
         DatasetTypeEnum.CarbonIntensity: carbon_intensity_task.result(),
+        DatasetTypeEnum.ThermalModel: thermal_model_task.result(),
     }
     # If we didn't get any real datasets, then
     # don't insert a dummy ASHP dataset
@@ -424,35 +119,78 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
     """
     all_datasets = await list_datasets(params, pool)
 
+    def created_at_or_epoch(ts: DatasetEntry | None) -> datetime.datetime:
+        """Return the created_at date or the EPOCH."""
+        if ts is None:
+            return datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC)
+        return ts.created_at
+
+    def subtype_contains(ds: DatasetEntry | None, subtype: InterventionEnum | SyntheticTariffEnum | None) -> bool:
+        if ds is None:
+            return False
+
+        if ds.dataset_subtype == subtype:
+            return True
+
+        if hasattr(ds.dataset_subtype, "__contains__") and subtype in ds.dataset_subtype:  # type: ignore
+            return True
+
+        return False
+
+    def is_single_enum_entry(item: Any) -> bool:
+        """Check if this is a list with a single InterventionEnum."""
+        if isinstance(item, list) and len(item) == 1 and isinstance(item[0], InterventionEnum):
+            return True
+        return False
+
+    heating_subtypes = [None, InterventionEnum.Loft, InterventionEnum.DoubleGlazing, InterventionEnum.Cladding]
+    heating_subtypes.extend(
+        item.dataset_subtype
+        for item in all_datasets[DatasetTypeEnum.HeatingLoad]
+        if not isinstance(item.dataset_subtype, InterventionEnum)
+        and item.dataset_subtype is not None
+        and not is_single_enum_entry(item.dataset_subtype)
+    )
+    heating_loads = [
+        item
+        for item in (
+            max(
+                filter(
+                    lambda ds: subtype_contains(ds, intervention_subtype),
+                    all_datasets[DatasetTypeEnum.HeatingLoad],
+                ),
+                key=created_at_or_epoch,
+                default=None,
+            )
+            for intervention_subtype in heating_subtypes
+        )
+        if item is not None
+    ]
+
+    import_tariffs = [
+        item
+        for item in (
+            max(
+                filter(lambda ds: subtype_contains(ds, tariff_type), all_datasets[DatasetTypeEnum.ImportTariff]),
+                key=created_at_or_epoch,
+                default=None,
+            )
+            for tariff_type in [
+                SyntheticTariffEnum.Fixed,
+                SyntheticTariffEnum.Agile,
+                SyntheticTariffEnum.Overnight,
+                SyntheticTariffEnum.Peak,
+                SyntheticTariffEnum.ShapeShifter,
+            ]
+        )
+        if item is not None
+    ]
     return DatasetList(
         site_id=params.site_id,
         start_ts=params.start_ts,
         end_ts=params.end_ts,
-        # HeatingLoads are a MultipleDatasetIDWithTime, so wrap them into a list here.
-        HeatingLoad=[max(all_datasets[DatasetTypeEnum.HeatingLoad], key=lambda x: x.created_at)]
-        if all_datasets.get(DatasetTypeEnum.HeatingLoad)
-        else None,
-        ImportTariff=[
-            item
-            for item in (
-                max(
-                    filter(
-                        lambda x: x is not None and x.dataset_subtype == tariff_type, all_datasets[DatasetTypeEnum.ImportTariff]
-                    ),
-                    key=lambda y: (
-                        y.created_at if y is not None else datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC)
-                    ),
-                    default=None,
-                )
-                for tariff_type in [
-                    SyntheticTariffEnum.Fixed,
-                    SyntheticTariffEnum.Agile,
-                    SyntheticTariffEnum.Overnight,
-                    SyntheticTariffEnum.Peak,
-                ]
-            )
-            if item is not None
-        ],
+        HeatingLoad=heating_loads,
+        ImportTariff=import_tariffs,
         ASHPData=max(all_datasets[DatasetTypeEnum.ASHPData], key=lambda x: x.created_at)
         if all_datasets.get(DatasetTypeEnum.ASHPData)
         else None,
@@ -476,6 +214,9 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         # RenewablesGeneration are a MultipleDatasetIDWithTime, so wrap them into a list here.
         RenewablesGeneration=[max(all_datasets[DatasetTypeEnum.RenewablesGeneration], key=lambda x: x.created_at)]
         if all_datasets.get(DatasetTypeEnum.RenewablesGeneration)
+        else None,
+        ThermalModel=[max(all_datasets[DatasetTypeEnum.ThermalModel], key=lambda x: x.created_at)]
+        if all_datasets.get(DatasetTypeEnum.ThermalModel)
         else None,
     )
 
@@ -541,7 +282,7 @@ async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: D
 
 
 @router.post("/get-latest-tariffs", tags=["db", "tariff"])
-async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -> list[EpochTariffEntry]:
+async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -> EpochTariffEntry:
     """
     Get the latest Import Tariff entries for a given site.
 
@@ -565,14 +306,14 @@ async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -
 
     Returns
     -------
-    list[EpochTariffEntry]
-        List of tariff entries with fields Tariff, Tariff1, Tariff2, etc. filled.
+    EpochTariffEntry
+        Tariff entries in an EPOCH friendly format.
     """
     site_data_info = await list_latest_datasets(site_data, pool=pool)
     if site_data_info.ImportTariff is None:
         logger = logging.getLogger(__name__)
         logger.warning(f"Requested latest tariffs for {site_data.site_id} but None were available.")
-        return []
+        return EpochTariffEntry(timestamps=[], data=[])
     params = MultipleDatasetIDWithTime(
         dataset_id=[item.dataset_id for item in site_data_info.ImportTariff]
         if isinstance(site_data_info.ImportTariff, list)
@@ -675,18 +416,50 @@ async def generate_all(
     assert isinstance(elec_meter_dataset, DatasetEntry), (
         f"Expecting a DatasetEntry for elec_meter_dataset but got {type(elec_meter_dataset)}"
     )
-    background_tasks.add_task(
-        generate_heating_load,
-        HeatingLoadRequest(dataset_id=gas_meter_dataset.dataset_id, start_ts=params.start_ts, end_ts=params.end_ts),
-        pool=pool,
-        http_client=http_client,
-    )
+
+    # We have to get the weather into the database before we try to do any fitting,
+    # especially over the requested and gas meter time periods.
+    async with pool.acquire() as conn:
+        location = await get_location(params, conn)
+        await get_weather(
+            WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+            conn=conn,
+            http_client=http_client,
+        )
+        if gas_meter_dataset.start_ts is not None and gas_meter_dataset.end_ts is not None:
+            await get_weather(
+                WeatherRequest(location=location, start_ts=gas_meter_dataset.start_ts, end_ts=gas_meter_dataset.end_ts),
+                conn=conn,
+                http_client=http_client,
+            )
+
+    POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
+    for interventions in POTENTIAL_INTERVENTIONS:
+        background_tasks.add_task(
+            generate_heating_load,
+            HeatingLoadRequest(
+                dataset_id=gas_meter_dataset.dataset_id,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+                interventions=interventions,
+                model_type=HeatingLoadModelEnum.Auto,
+            ),
+            pool=pool,
+            http_client=http_client,
+        )
 
     background_tasks.add_task(generate_grid_co2, params, pool=pool, http_client=http_client)
 
-    # We generate four different types of tariff, here done manually to keep track of the
+    # We generate five different types of tariff, here done manually to keep track of the
     # tasks and not lose the handle to the task (which causes mysterious bugs)
-    for tariff_type in SyntheticTariffEnum:
+    # Note that the order here doesn't matter, we just explicitly list them so it's clear what is going on.
+    for tariff_type in [
+        SyntheticTariffEnum.Fixed,
+        SyntheticTariffEnum.Agile,
+        SyntheticTariffEnum.Peak,
+        SyntheticTariffEnum.Overnight,
+        SyntheticTariffEnum.ShapeShifter,
+    ]:
         background_tasks.add_task(
             generate_import_tariffs,
             TariffRequest(
@@ -719,15 +492,19 @@ async def generate_all(
     # Return the background tasks immediately with null-ish data.
     # The UUIDs will have to be collected later (unless we assign them in this function in future?)
     return {
-        DatasetTypeEnum.HeatingLoad: DatasetEntry(
-            dataset_id=NULL_UUID,
-            dataset_type=DatasetTypeEnum.HeatingLoad,
-            created_at=datetime.datetime.now(tz=datetime.UTC),
-            resolution=RESOLUTION,
-            start_ts=params.start_ts,
-            end_ts=params.end_ts,
-            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
-        ),
+        DatasetTypeEnum.HeatingLoad: [
+            DatasetEntry(
+                dataset_id=NULL_UUID,
+                dataset_type=DatasetTypeEnum.HeatingLoad,
+                created_at=datetime.datetime.now(tz=datetime.UTC),
+                resolution=RESOLUTION,
+                start_ts=params.start_ts,
+                end_ts=params.end_ts,
+                num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
+                dataset_subtype=intervention,
+            )
+            for intervention in POTENTIAL_INTERVENTIONS
+        ],
         DatasetTypeEnum.CarbonIntensity: DatasetEntry(
             dataset_id=NULL_UUID,
             dataset_type=DatasetTypeEnum.CarbonIntensity,

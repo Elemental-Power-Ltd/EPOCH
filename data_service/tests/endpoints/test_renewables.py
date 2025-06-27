@@ -2,10 +2,46 @@
 
 # ruff: noqa: D101, D102, D103
 import datetime
+import json
 import uuid
+from typing import cast
+from uuid import UUID
 
 import httpx
+import numpy as np
+import pandas as pd
 import pytest
+import pytest_asyncio
+
+from app.dependencies import get_db_pool, get_http_client
+from app.internal.gas_meters import parse_half_hourly
+from app.models.site_range import Jsonable
+from app.routers.renewables import disaggregate_readings
+
+
+@pytest_asyncio.fixture
+async def upload_hh_meter_data(client: httpx.AsyncClient) -> dict[str, Jsonable]:
+    elec_data = parse_half_hourly("./tests/data/test_elec.csv")
+    elec_data["start_ts"] = elec_data.index
+    metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
+    records = json.loads(elec_data.to_json(orient="records"))
+    elec_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
+
+    return cast(dict[str, Jsonable], elec_result)
+
+
+@pytest_asyncio.fixture
+async def upload_monthly_meter_data(client: httpx.AsyncClient) -> dict[str, Jsonable]:
+    elec_data = parse_half_hourly("./tests/data/test_elec.csv")
+
+    elec_data = elec_data.resample(pd.Timedelta(days=28)).sum(numeric_only=True)
+    elec_data["start_ts"] = elec_data.index
+    elec_data["end_ts"] = elec_data.index + pd.Timedelta(days=28)
+    metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "manual"}
+    records = json.loads(elec_data.to_json(orient="records"))
+    elec_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
+
+    return cast(dict[str, Jsonable], elec_result)
 
 
 @pytest.fixture
@@ -104,8 +140,13 @@ class TestRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(item["RGen1"] >= 0 for item in results)
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(all(item) >= 0 for item in results["data"])
 
     @pytest.mark.asyncio
     @pytest.mark.external
@@ -138,8 +179,13 @@ class TestRenewables:
             )
         ).json()
 
-        assert len(results) == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(item["RGen1"] >= 0 for item in results)
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(results["data"][0]) >= 0
 
 
 class TestMultipleRenewables:
@@ -173,9 +219,14 @@ class TestMultipleRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(item["RGen1"] >= 0 for item in results)
-        assert all(item["RGen1"] == item["RGen2"] == item["RGen3"] == item["RGen4"] for item in results)
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(all(item) >= 0 for item in results["data"])
+        assert all(item == results["data"][0] for item in results["data"])
 
     @pytest.mark.asyncio
     @pytest.mark.external
@@ -221,12 +272,15 @@ class TestMultipleRenewables:
             )
         ).json()
 
-        assert len(results) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        assert all(item["RGen1"] >= 0 for item in results)
-        assert any(item["RGen1"] > 0 for item in results)
-        assert all(item["RGen2"] >= 0 for item in results)
-        assert any(item["RGen2"] > 0 for item in results)
-        assert not all(item["RGen1"] == item["RGen2"] for item in results)
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(all(item) >= 0 for item in results["data"])
+        assert all(any(item) > 0 for item in results["data"])
+        assert not all(item == results["data"][0] for item in results["data"])
 
 
 class TestRenewablesErrors:
@@ -249,3 +303,87 @@ class TestRenewablesErrors:
         assert results.status_code == 400
         assert "dataset_id" in results.json()["detail"]
         assert str(bad_uuid) in results.json()["detail"]
+
+
+class TestDisaggregate:
+    @pytest.mark.external
+    @pytest.mark.asyncio
+    async def test_can_disaggregate_hh(self, client: httpx.AsyncClient, upload_hh_meter_data: dict[str, Jsonable]) -> None:
+        """Test that we can do sensible disaggregration for halfhourly data."""
+        elec_meter_meta = upload_hh_meter_data
+
+        # The HTTP client we pass as a fixture is only useful for accessing endpoints and creates
+        # a mocked HTTP client for external use; the pool is spun up per test.
+        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+        external_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        disaggregated_df = await disaggregate_readings(
+            elec_meter_dataset_id=cast(UUID, elec_meter_meta["dataset_id"]),
+            azimuth=None,
+            tilt=None,
+            pool=pool,
+            http_client=external_client,
+            system_size=1.0,
+        )
+        assert not disaggregated_df.empty
+        assert ~np.any(np.isnan(disaggregated_df["consumption_kwh"])), "Disaggregated entry is NaN"
+        assert np.any(disaggregated_df["consumption_kwh"] > disaggregated_df["import"]), "At least one reading must be higher"
+        assert np.all(disaggregated_df["consumption_kwh"] >= disaggregated_df["import"]), "No readings may be lower"
+
+    @pytest.mark.external
+    @pytest.mark.asyncio
+    async def test_can_disaggregate_monthly(
+        self, client: httpx.AsyncClient, upload_monthly_meter_data: dict[str, Jsonable]
+    ) -> None:
+        """Test that we get monthly disaggregation correct."""
+        elec_meter_meta = upload_monthly_meter_data
+
+        # The HTTP client we pass as a fixture is only useful for accessing endpoints and creates
+        # a mocked HTTP client for external use; the pool is spun up per test.
+        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+        external_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        disaggregated_df = await disaggregate_readings(
+            elec_meter_dataset_id=cast(UUID, elec_meter_meta["dataset_id"]),
+            azimuth=None,
+            tilt=None,
+            pool=pool,
+            http_client=external_client,
+            system_size=1.0,
+        )
+        assert not disaggregated_df.empty
+        assert ~np.any(np.isnan(disaggregated_df["consumption_kwh"])), "Disaggregated entry is NaN"
+        assert np.any(disaggregated_df["consumption_kwh"] > disaggregated_df["import"]), "At least one reading must be higher"
+        assert np.all(disaggregated_df["consumption_kwh"] >= disaggregated_df["import"]), "No readings may be lower"
+
+    @pytest.mark.external
+    @pytest.mark.asyncio
+    async def test_disagg_scales(self, client: httpx.AsyncClient, upload_monthly_meter_data: dict[str, Jsonable]) -> None:
+        """Test that the disaggregation scales with the system size."""
+        elec_meter_meta = upload_monthly_meter_data
+
+        # The HTTP client we pass as a fixture is only useful for accessing endpoints and creates
+        # a mocked HTTP client for external use; the pool is spun up per test.
+        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+        external_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        disaggregated_df = await disaggregate_readings(
+            elec_meter_dataset_id=cast(UUID, elec_meter_meta["dataset_id"]),
+            azimuth=None,
+            tilt=None,
+            pool=pool,
+            http_client=external_client,
+            system_size=1.0,
+        )
+        disaggregated_big_df = await disaggregate_readings(
+            elec_meter_dataset_id=cast(UUID, elec_meter_meta["dataset_id"]),
+            azimuth=None,
+            tilt=None,
+            pool=pool,
+            http_client=external_client,
+            system_size=10.0,
+        )
+        assert not disaggregated_df.empty
+        assert np.any(disaggregated_big_df["consumption_kwh"] > disaggregated_df["consumption_kwh"]), (
+            "At least one reading must be higher"
+        )
+        assert np.all(disaggregated_big_df["consumption_kwh"] >= disaggregated_df["consumption_kwh"]), (
+            "At least one reading must be higher"
+        )

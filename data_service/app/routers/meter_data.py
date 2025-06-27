@@ -5,13 +5,13 @@ These functions provider wrappers to get it in more sensible formats.
 """
 
 import datetime
-import itertools
 import uuid
+from typing import cast
 
 import numpy as np
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from ..dependencies import DatabaseDep
+from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
 from ..models.core import (
@@ -19,7 +19,8 @@ from ..models.core import (
     FuelEnum,
     site_id_t,
 )
-from ..models.meter_data import GasDatasetEntry, MeterEntries, MeterMetadata
+from ..models.meter_data import DisaggregationRequest, GasDatasetEntry, MeterEntries, MeterEntry, MeterMetadata, ReadingTypeEnum
+from .renewables import disaggregate_electricity_dataframe
 
 router = APIRouter()
 
@@ -29,14 +30,19 @@ async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> Mete
     """
     Upload some pre-parsed meter data to the database.
 
+    These meter entries have to be fully processed into individual records and already disaggregated.
+
     Parameters
     ----------
-    *entries*
+    entries
         Pre-parsed meter entries and associated metadata
+    conn
+        Database connection to upload the entries through
 
     Returns
     -------
-    HTTP Status Code
+    MeterMetadata
+        Information about the meter data you just uploaded.
 
     Raises
     ------
@@ -89,24 +95,18 @@ async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> Mete
             columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
-    return MeterMetadata(
-        dataset_id=entries.metadata.dataset_id,
-        created_at=entries.metadata.created_at,
-        site_id=entries.metadata.site_id,
-        fuel_type=entries.metadata.fuel_type,
-        reading_type=entries.metadata.reading_type,
-        filename=entries.metadata.filename,
-        is_synthesised=entries.metadata.is_synthesised,
-    )
+    return entries.metadata
 
 
 @router.post("/upload-meter-file", tags=["db", "add", "meter"])
 async def upload_meter_file(
-    conn: DatabaseDep,
+    pool: DatabasePoolDep,
+    http_client: HttpClientDep,
     file: UploadFile,
     site_id: site_id_t = Form(...),  # noqa
     fuel_type: FuelEnum = Form(...),  # noqa
-) -> dict[str, str | int]:
+    disaggregation_info: DisaggregationRequest | None = None,
+) -> MeterMetadata:
     """
     Upload a file of meter data to the database.
 
@@ -119,17 +119,18 @@ async def upload_meter_file(
 
     Parameters
     ----------
-    *request*
-        FastAPI request object that is handled automatically. This contains a database connection pool object.
-
-    *file*
+    pool
+        Database connection pool to upload the meter data via
+    http_client
+        HTTP Connection client for external connections to disaggregate
+    file
         Uploaded file, e.g. "consumption.csv" or "gas_meters.xlsx".
-
-    *site_id*
+    site_id
         Name of the site that this dataset should be associated with. This will complain if that site doesn't already exist.
-
-    *fuel_type*
+    fuel_type
         The type of fuel that the dataset is measuring. Currently accepts `{"gas", "elec"}`.
+    disaggregration_info
+        If this is not None, we'll attempt to separate out the influence of on-site solar arrays.
 
     Returns
     -------
@@ -146,6 +147,7 @@ async def upload_meter_file(
         raise HTTPException(400, f"Could not parse {file.filename} due to an unknown format.") from ex
 
     def is_half_hourly(hh_or_monthly_df: HHDataFrame | MonthlyDataFrame) -> bool:
+        """Check if this dataframe is half hourly by seeing how far apart the index is."""
         timedeltas = np.ediff1d(hh_or_monthly_df.index).astype(np.timedelta64)
         timedeltas_mask = np.logical_and(
             timedeltas > np.timedelta64(datetime.timedelta(seconds=1)),
@@ -153,79 +155,50 @@ async def upload_meter_file(
         )
         return bool(np.mean(timedeltas_mask.astype(float)) > 0.5)
 
-    if is_half_hourly(df):
-        reading_type = "halfhourly"
-    else:
-        reading_type = "manual"
-
-    metadata = {
-        "dataset_id": uuid.uuid4(),
-        "created_at": datetime.datetime.now(tz=datetime.UTC),
-        "site_id": site_id,
-        "fuel_type": fuel_type,
-        "reading_type": reading_type,
-        "filename": file.filename,
-        "is_synthesised": False,
-    }
-
-    if fuel_type == "gas":
-        table_name = "gas_meters"
-    elif fuel_type == "elec":
-        table_name = "electricity_meters"
-    else:
-        raise HTTPException(
-            400,
-            f"Fuel type {fuel_type} is not supported. Please select from ('gas', 'elec')",
-        )
-
     df["start_ts"] = df.index
-    async with conn.transaction():
-        await conn.execute(
-            """
-            INSERT INTO
-                client_meters.metadata (
-                    dataset_id,
-                    created_at,
-                    site_id,
-                    fuel_type,
-                    reading_type,
-                    filename,
-                    is_synthesised)
-            VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6,
-                    $7)""",
-            metadata["dataset_id"],
-            metadata["created_at"],
-            metadata["site_id"],
-            metadata["fuel_type"],
-            metadata["reading_type"],
-            metadata["filename"],
-            metadata["is_synthesised"],
-        )
 
-        await conn.copy_records_to_table(
-            table_name=table_name,
-            schema_name="client_meters",
-            records=zip(
-                itertools.repeat(metadata["dataset_id"], len(df)),
-                df["start_ts"].dt.to_pydatetime(),
-                df["end_ts"].dt.to_pydatetime(),
-                df["consumption"],
-                strict=True,
+    if disaggregation_info is not None:
+        coords = await pool.fetchval("SELECT coordinates FROM client_info.site_info WHERE site_id = $1 LIMIT 1", site_id)
+        if coords is not None:
+            latitude, longitude = coords
+        else:
+            raise ValueError(f"Couldn't get coordinates for {site_id}")
+        df = cast(
+            HHDataFrame | MonthlyDataFrame,
+            await disaggregate_electricity_dataframe(
+                elec_df=df,
+                http_client=http_client,
+                latitude=latitude,
+                longitude=longitude,
+                azimuth=disaggregation_info.azimuth,
+                tilt=disaggregation_info.tilt,
+                system_size=disaggregation_info.system_size,
             ),
-            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
-    return {"rows_uploaded": len(df), "reading_type": reading_type}
+    metadata = MeterMetadata(
+        dataset_id=uuid.uuid4(),
+        created_at=datetime.datetime.now(tz=datetime.UTC),
+        site_id=site_id,
+        fuel_type=fuel_type,
+        reading_type=ReadingTypeEnum.HalfHourly if is_half_hourly(df) else ReadingTypeEnum.Customer,
+        filename=file.filename,
+        is_synthesised=False,
+        start_ts=df.start_ts.min(),
+        end_ts=df.end_ts.max(),
+    )
+
+    entries = [
+        MeterEntry(start_ts=start_ts, end_ts=end_ts, consumption=consumption)
+        for start_ts, end_ts, consumption in zip(df.start_ts, df.end_ts, df.consumption, strict=False)
+    ]
+
+    async with pool.acquire() as conn:
+        return await upload_meter_entries(conn=conn, entries=MeterEntries(metadata=metadata, data=entries))
 
 
 @router.post("/get-meter-data", tags=["db", "meter"])
-async def get_meter_data(dataset_id: DatasetID, conn: DatabaseDep) -> list[GasDatasetEntry]:
+async def get_meter_data(dataset_id: DatasetID, pool: DatabasePoolDep) -> list[GasDatasetEntry]:
     """
     Get a specific set of meter data associated with a single dataset ID.
 
@@ -244,13 +217,13 @@ async def get_meter_data(dataset_id: DatasetID, conn: DatabaseDep) -> list[GasDa
     list of records in the form `[{"start_ts": ..., "end_ts": ..., "consumption": ...}, ...]`
     """
     # TODO (2024-08-05 MHJB): make this return an EPOCH oriented object
-    fuel_type = await conn.fetchval(
+    fuel_type = await pool.fetchval(
         """SELECT fuel_type FROM client_meters.metadata WHERE dataset_id = $1""", dataset_id.dataset_id
     )
     if not fuel_type:
         raise HTTPException(400, f"Dataset {dataset_id} not found in meter datasets. Could it be an ID for another type?")
     table_name = "gas_meters" if fuel_type == "gas" else "electricity_meters"
-    res = await conn.fetch(
+    res = await pool.fetch(
         f"""
         SELECT
             start_ts,

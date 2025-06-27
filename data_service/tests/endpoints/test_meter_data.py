@@ -1,6 +1,6 @@
 """Tests for uploading and parsing meter data."""
 
-# ruff: noqa: D101, D102, D103
+# ruff: noqa: D101, D102
 import datetime
 import json
 import uuid
@@ -8,7 +8,7 @@ import uuid
 import httpx
 import pytest
 
-from app.internal.gas_meters import parse_half_hourly
+from app.internal.gas_meters import parse_half_hourly, try_meter_parsing
 
 
 class TestUploadMeterData:
@@ -81,8 +81,8 @@ class TestUploadMeterData:
                 },
             )
         ).json()
-        assert len(result) > 100
-        assert any(item["FixLoad1"] > 0 for item in result)
+        assert len(result["data"]) > 100
+        assert any(value > 0 for value in result["data"])
 
     @pytest.mark.asyncio
     async def test_upload_and_get_electricity_load_non_hh(self, client: httpx.AsyncClient) -> None:
@@ -101,3 +101,24 @@ class TestUploadMeterData:
             },
         )
         assert result.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_upload_ideal(self, client: httpx.AsyncClient) -> None:
+        """Test that we can parse something in the ideal format."""
+        data = try_meter_parsing("./tests/data/test_elec_ideal.csv")[0]
+        data["start_ts"] = data.index
+        metadata = {
+            "created_at": "2025-05-13T10:31:00Z",
+            "dataset_id": "1db34dd6-0e3a-4ed1-8a2a-a84e74550ae6",
+            "fuel_type": "elec",
+            "site_id": "demo_london",
+            "reading_type": "manual",
+            "is_synthetic": False,
+        }
+        records = json.loads(data.to_json(orient="records"))
+        result = await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
+
+        assert result.status_code == 200, result.text
+        assert result.json()["dataset_id"] == "1db34dd6-0e3a-4ed1-8a2a-a84e74550ae6"
+        assert result.json()["created_at"] == "2025-05-13T10:31:00Z"
+        assert result.json()["fuel_type"] == "elec"

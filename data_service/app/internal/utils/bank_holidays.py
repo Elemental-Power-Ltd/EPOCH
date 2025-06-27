@@ -37,7 +37,7 @@ async def get_bank_holidays(
     list[datetime.date]
         List of public holiday dates for that country.
     """
-    if country == UKCountryEnum.England or country == UKCountryEnum.Wales:
+    if country in {UKCountryEnum.England, UKCountryEnum.Wales}:
         key = "england-and-wales"
     elif country == UKCountryEnum.Scotland:
         key = "scotland"
@@ -48,7 +48,7 @@ async def get_bank_holidays(
     if http_client is not None:
         response = await http_client.get("https://www.gov.uk/bank-holidays.json")
     else:
-        async with httpx.AsyncClient() as http_client:
+        async with httpx.AsyncClient() as http_client:  # noqa: PLR1704
             response = await http_client.get("https://www.gov.uk/bank-holidays.json")
     if response.status_code != 200:
         raise HTTPException(response.status_code, "Could not get bank holiday information from gov.uk")
@@ -78,7 +78,7 @@ def get_bank_holidays_sync(
     list[datetime.date]
         List of public holiday dates for that country.
     """
-    if country == UKCountryEnum.England or country == UKCountryEnum.Wales:
+    if country in {UKCountryEnum.England, UKCountryEnum.Wales}:
         key = "england-and-wales"
     elif country == UKCountryEnum.Scotland:
         key = "scotland"
@@ -89,7 +89,7 @@ def get_bank_holidays_sync(
     if http_client is not None:
         response = http_client.get("https://www.gov.uk/bank-holidays.json")
     else:
-        with httpx.Client() as http_client:
+        with httpx.Client() as http_client:  # noqa: PLR1704
             response = http_client.get("https://www.gov.uk/bank-holidays.json")
     if response.status_code != 200:
         raise HTTPException(response.status_code, "Could not get bank holiday information from gov.uk")

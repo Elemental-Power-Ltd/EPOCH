@@ -1,6 +1,5 @@
 """Tests for gas meter conversion and sampling functions."""
 
-# ruff: noqa: D101, D102
 import numpy as np
 import pandas as pd
 import pytest
@@ -19,7 +18,11 @@ def gas_df() -> HHDataFrame:
     consumption = rng.uniform(1, 100, size=len(timestamps))
     hdd = rng.uniform(1, 20, size=len(timestamps))
 
-    return HHDataFrame(pd.DataFrame({"consumption": consumption, "hdd": hdd}, index=timestamps))
+    return HHDataFrame(
+        pd.DataFrame(
+            {"consumption": consumption, "hdd": hdd, "end_ts": timestamps + pd.Timedelta(minutes=30)}, index=timestamps
+        )
+    )
 
 
 @pytest.fixture

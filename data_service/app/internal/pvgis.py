@@ -15,7 +15,10 @@ from .utils import check_latitude_longitude
 
 
 async def get_pvgis_optima(
-    latitude: float, longitude: float, tracking: bool = False, client: httpx.AsyncClient | None = None
+    client: httpx.AsyncClient,
+    latitude: float,
+    longitude: float,
+    tracking: bool = False,
 ) -> PVOptimaResult:
     """
     Use PVGIS to calculate optimal tilts and azimuths for a solar setup at this location.
@@ -24,13 +27,18 @@ async def get_pvgis_optima(
 
     Parameters
     ----------
+    client
+        HTTP connection pool used to contact PVGIS
     latitude
-
+        Latitude of this site in degrees
     longitude
+        Longitude of this site in degrees
+    tracking
+        Whether we install tracking panels or not (mostly no)
 
     Returns
     -------
-        Dictionary with optima and some useful parameters
+        Dictionary with optima and some useful parameters calculated by PVGIS
     """
     base_url = "https://re.jrc.ec.europa.eu/api/PVcalc"
 
@@ -49,16 +57,11 @@ async def get_pvgis_optima(
         "header": int(False),
     }
 
-    # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
-    # for connection pooling. However, if weren't given one we'll have to make one.
     try:
-        if client is not None:
-            res = await client.get(base_url, params=params)
-        else:
-            async with httpx.AsyncClient() as client:
-                res = await client.get(base_url, params=params)
+        res = await client.get(base_url, params=params)
     except httpx.TimeoutException as ex:
         raise HTTPException(400, f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
+    assert res.status_code == 200, f"Failed to get PVGIS optima: {res.status_code}, {res.text}"
     data = res.json()
 
     if tracking:
@@ -82,7 +85,7 @@ async def get_pvgis_data(
     lon: float,
     start_year: datetime.datetime | int,
     end_year: datetime.datetime | int,
-    client: httpx.AsyncClient | None = None,
+    client: httpx.AsyncClient,
 ) -> pd.DataFrame:
     """
     Get solar data from the PVGIS service, and put it into a handy pandas dataframe.
@@ -138,14 +141,7 @@ async def get_pvgis_data(
         "components": int(True),
         "pvtechchoice": "crystSi",
     }
-
-    # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
-    # for connection pooling. However, if weren't given one we'll have to make one.
-    if client is not None:
-        req = await client.get(base_url, params=params)
-    else:
-        async with httpx.AsyncClient() as client:
-            req = await client.get(base_url, params=params)
+    req = await client.get(base_url, params=params)
 
     try:
         df = pd.DataFrame.from_records(req.json()["outputs"]["hourly"])
@@ -163,10 +159,10 @@ async def get_renewables_ninja_data(
     longitude: float,
     start_ts: datetime.datetime,
     end_ts: datetime.datetime,
+    client: httpx.AsyncClient,
     azimuth: float | None = None,
     tilt: float | None = None,
     tracking: bool = False,
-    client: httpx.AsyncClient | None = None,
     api_key: str | None = None,
 ) -> pd.DataFrame:
     """
@@ -208,7 +204,7 @@ async def get_renewables_ninja_data(
     if not check_latitude_longitude(latitude=latitude, longitude=longitude):
         raise ValueError("Latitude and longitude provided the wrong way round.")
     if azimuth is None or tilt is None:
-        optimal_params = await get_pvgis_optima(latitude, longitude, tracking)
+        optimal_params = await get_pvgis_optima(client=client, latitude=latitude, longitude=longitude, tracking=tracking)
         azimuth = float(optimal_params.azimuth)
         tilt = float(optimal_params.tilt)
     params: dict[str, str | float | int] = {
@@ -224,13 +220,7 @@ async def get_renewables_ninja_data(
         "capacity": 1.0,
         "format": "json",
     }
-    # this slightly odd construct is because we might receive a client as an argument, which we'd want to use
-    # for connection pooling. However, if weren't given one we'll have to make one.
-    if client is not None:
-        req = await client.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
-    else:
-        async with httpx.AsyncClient() as aclient:
-            req = await aclient.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
+    req = await client.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
             columns={"electricity": "pv"}
@@ -242,5 +232,8 @@ async def get_renewables_ninja_data(
     renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
     renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)
-    within_timestamps_mask = np.logical_and(renewables_df.index >= start_ts, renewables_df.index < end_ts)  # type: ignore
-    return renewables_df[within_timestamps_mask]
+    within_timestamps_mask = np.logical_and(
+        renewables_df.index >= pd.Timestamp(start_ts), renewables_df.index < pd.Timestamp(end_ts)
+    )
+    masked_df: pd.DataFrame = renewables_df[within_timestamps_mask]
+    return masked_df
