@@ -502,7 +502,7 @@ async def add_solar_locations(location: SolarLocation, pool: DatabasePoolDep) ->
             422,
             f"Location ID {location.renewables_location_id} must include  site ID {location.site_id} for uniqueness (sorry!)",
         )
-    
+
     if location.renewables_location_id == location.site_id:
         raise HTTPException(
             422,
