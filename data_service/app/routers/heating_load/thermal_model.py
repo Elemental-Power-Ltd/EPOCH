@@ -199,8 +199,8 @@ async def fit_thermal_model_endpoint(
     ]
 
     async with pool.acquire() as conn, httpx.AsyncClient() as client:
-        gas_meter_records = await get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), conn=conn)
-        elec_meter_records = await get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), conn=conn)
+        gas_meter_records = await get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), pool=pool)
+        elec_meter_records = await get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool)
         location = await get_location(params, conn=conn)
         weather_records = await get_weather(
             weather_request=WeatherRequest(

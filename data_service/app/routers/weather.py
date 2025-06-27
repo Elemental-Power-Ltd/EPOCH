@@ -301,6 +301,7 @@ async def get_weather(
                     for item in vc_recs
                 ],
             )
+
     # Now re-query the data we just fetched for a consistent view
     res = await conn.fetch(
         """
