@@ -49,7 +49,7 @@ async def fetch_all_input_data(
                 tg.create_task(
                     get_baseline(
                         site_or_dataset_id=DatasetID(
-                            dataset_id=site_data_ids[DatasetTypeEnum.SiteBaseline].dataset_id
+                            dataset_id=cast(DatasetIDWithTime, site_data_ids[DatasetTypeEnum.SiteBaseline]).dataset_id
                         ),
                         pool=pool,
                     )
