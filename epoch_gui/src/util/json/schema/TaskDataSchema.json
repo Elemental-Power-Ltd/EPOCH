@@ -376,7 +376,7 @@
           "description": "The decimal fraction of the peak electrical load that must be reserved.",
           "minimum": 0,
           "maximum": 1,
-          "default": 0.4
+          "default": 0.25
         },
         "tariff_index": {
           "type": "integer",
