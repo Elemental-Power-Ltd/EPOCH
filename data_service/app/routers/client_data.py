@@ -116,7 +116,6 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
     TaskData
         Single-scenario task data representing the baseline configuration of what infrastructure is already at the site.
     """
-    print("%", site_or_dataset_id)
     DEFAULT_CONFIG = await get_default_baseline()
 
     async def get_baseline_from_site_id(site_id: SiteID) -> asyncpg.Record | None:
