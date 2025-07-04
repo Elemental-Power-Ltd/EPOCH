@@ -17,21 +17,32 @@ export interface Config {
   capex_limit: number;
   use_boiler_upgrade_scheme: boolean;
   general_grant_funding: number;
+  npv_time_horizon: number;
+  npv_discount_factor: number;
 }
 
 export interface Building {
   scalar_heat_load: number;
   scalar_electrical_load: number;
   fabric_intervention_index: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface DataCentre {
   maximum_load: number;
   hotroom_temp: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface DomesticHotWater {
   cylinder_volume: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface ElectricVehicles {
@@ -41,6 +52,9 @@ export interface ElectricVehicles {
   rapid_chargers: number;
   ultra_chargers: number;
   scalar_electrical_load: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface EnergyStorageSystem {
@@ -49,12 +63,18 @@ export interface EnergyStorageSystem {
   discharge_power: number;
   battery_mode: BatteryMode;
   initial_charge: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface GasHeater {
   maximum_output: number;
   gas_type: GasType;
   boiler_efficiency: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface Grid {
@@ -63,21 +83,33 @@ export interface Grid {
   import_headroom: number;
   tariff_index: number;
   export_tariff: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface HeatPump {
   heat_power: number;
   heat_source: HeatSource;
   send_temp: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface Mop {
   maximum_load: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface SolarPanel {
   yield_scalar: number;
   yield_index: number;
+  incumbent: boolean;
+  age: number;
+  lifetime: number;
 }
 
 export interface TaskData {

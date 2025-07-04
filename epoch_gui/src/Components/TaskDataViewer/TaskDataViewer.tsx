@@ -63,19 +63,30 @@ const fieldMappings: {
   config: {
     capex_limit: { label: 'CAPEX Limit', unit: '£' },
     use_boiler_upgrade_scheme: {label: 'Boiler Scheme'},
-    general_grant_funding: {label: 'General Funding', unit: '£'}
+    general_grant_funding: {label: 'General Funding', unit: '£'},
+    npv_time_horizon: {label: 'NPV Time Horizon'},
+    npv_discount_factor: {label: 'NPV Discount Factor'}
   },
   building: {
     scalar_heat_load:          { label: 'Heat Load'},
     scalar_electrical_load:    { label: 'Electrical Load'},
     fabric_intervention_index: { label: 'Fabric Intervention Index' },
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   data_centre: {
     maximum_load: { label: 'Maximum Load', unit: 'kW' },
     hotroom_temp: { label: 'Hotroom Temperature', unit: '°C' },
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   domestic_hot_water: {
     cylinder_volume: { label: 'Cylinder Volume', unit: 'litres' },
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   electric_vehicles: {
     flexible_load_ratio:   { label: 'Flexible Load Ratio', unit: 'decimal %' },
@@ -84,6 +95,9 @@ const fieldMappings: {
     rapid_chargers:        { label: 'Rapid Chargers'},
     ultra_chargers:        { label: 'Ultra Chargers'},
     scalar_electrical_load:{ label: 'EV Load Scalar'},
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   energy_storage_system: {
     capacity:        { label: 'Battery Capacity', unit: 'kWh' },
@@ -91,33 +105,50 @@ const fieldMappings: {
     discharge_power: { label: 'Discharge Power', unit: 'kW' },
     battery_mode:    { label: 'Battery Mode' },
     initial_charge:  { label: 'Initial Charge', unit: 'kWh' },
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   gas_heater: {
     maximum_output:    { label: 'Maximum Output', unit: 'kW' },
     gas_type:          { label: 'Gas Type' },
     boiler_efficiency: { label: 'Boiler Efficiency', unit: 'decimal %'},
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   grid: {
     grid_export:     { label: 'Grid Export', unit: 'kW' },
     grid_import:     { label: 'Grid Import', unit: 'kW' },
     import_headroom: { label: 'Import Headroom', unit: 'decimal %'},
     tariff_index:    { label: 'Tariff Index' },
-    export_tariff: { label: 'Export Tariff', unit: '£/kWh' }
+    export_tariff: { label: 'Export Tariff', unit: '£/kWh' },
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   heat_pump: {
     heat_power: { label: 'Heat Power', unit: 'kW' },
     heat_source:{ label: 'Heat Source' },
     send_temp:  { label: 'Flow Temperature', unit: '°C' },
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   mop: {
     maximum_load: { label: 'Maximum Load', unit: 'kW' },
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
   solar_panels: {
     yield_scalar: { label: 'Yield Scalar', unit: 'kW' },
     yield_index: {label: 'Yield Index'},
+    incumbent: {label: 'Incumbent'},
+    age: {label: 'Age'},
+    lifetime: {label: 'Lifetime'},
   },
 };
-
 
 
 
