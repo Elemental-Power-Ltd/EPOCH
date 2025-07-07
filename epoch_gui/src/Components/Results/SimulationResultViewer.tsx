@@ -23,7 +23,12 @@ const SimulationResultViewer: React.FC<SimulationResultViewerProps> = ({isLoadin
     return (
         <>
             <Container maxWidth={"lg"}>
-                <SimulationSummary result={result} isLoading={isLoading} error={error}/>
+                <SimulationSummary
+                    result={result}
+                    scenario={result?.task_data}
+                    baseline={result?.site_data?.baseline}
+                    isLoading={isLoading}
+                    error={error}/>
             </Container>
             {(!isLoading && !error && result) &&
                 <>

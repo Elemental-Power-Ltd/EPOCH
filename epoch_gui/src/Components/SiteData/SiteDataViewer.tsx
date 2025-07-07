@@ -8,6 +8,7 @@ import {DateRangeControls} from "../DataViz/DateRangeControls";
 import DownloadIcon from "@mui/icons-material/Download";
 import {downloadCSV, downloadJSON} from "./donwloadSiteData";
 import {aggregateSiteData} from "./aggregateSiteData";
+import {TaskDataViewer} from "../TaskDataViewer/TaskDataViewer.tsx";
 
 interface SiteDataViewerProps {
     siteData: EpochSiteData
@@ -41,6 +42,7 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
     const rangedSiteData: EpochSiteData = {
         start_ts: selectedSiteData.start_ts,
         end_ts: selectedSiteData.end_ts,
+        baseline: selectedSiteData.baseline,
 
         building_eload: selectedSiteData.building_eload.slice(startIndex, endIndex + 1),
         building_hload: selectedSiteData.building_hload.slice(startIndex, endIndex + 1),
@@ -143,6 +145,10 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
                     yLabel={"gCO₂/kWh"}
                 />
             </Grid>
+
+            <TaskDataViewer
+                data={siteData.baseline}
+            />
 
             <Container maxWidth={"sm"}>
                 <Button variant="outlined" onClick={handleDownloadJSON} startIcon={<DownloadIcon/>}>

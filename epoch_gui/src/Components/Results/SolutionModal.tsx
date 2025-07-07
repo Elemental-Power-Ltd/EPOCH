@@ -56,7 +56,13 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, siteResult
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>Solution Details</DialogTitle>
             <DialogContent dividers>
-                <SimulationSummary result={SimResult} isLoading={false} error={null}/>
+                <SimulationSummary
+                    result={SimResult}
+                    scenario={null}
+                    baseline={null}
+                    isLoading={false}
+                    error={null}
+                />
                 <TaskDataViewer data={scenario as TaskData}/>
             </DialogContent>
             <DialogActions>

@@ -27,10 +27,14 @@ import {
 } from '../../util/displayFunctions';
 
 import {SimulationResult} from "../../Models/Endpoints";
+import {TaskData} from "../TaskDataViewer/TaskData.ts";
+import { TaskDataViewer } from '../TaskDataViewer/TaskDataViewer.tsx';
 
 
 interface SimulationSummaryProps {
   result: SimulationResult | null;
+  baseline: TaskData | null;
+  scenario: TaskData | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -60,7 +64,7 @@ const ObjectiveItem: React.FC<{
   </Box>
 );
 
-const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading, error }) => {
+const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario, baseline, isLoading, error }) => {
 
   const [tabValue, setTabValue] = React.useState(0);
 
@@ -235,6 +239,20 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
 
             </Grid>
           )}
+
+          {tabValue === 2 && (
+              <TaskDataViewer
+                  data={scenario!}
+              />
+          )}
+
+          {tabValue === 3 && (
+              <TaskDataViewer
+                  data={baseline!}
+              />
+          )}
+
+
         </Box>
       )
     }
@@ -250,6 +268,8 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, isLoading
         <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
           <Tab label={"Overview"}/>
           <Tab label={"Totals"}/>
+          {scenario !== null && <Tab label={"Scenario"}/>}
+          {baseline !== null && <Tab label={"Baseline"}/>}
         </Tabs>
         {getContent()}
       </CardContent>

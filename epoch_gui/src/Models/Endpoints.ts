@@ -33,6 +33,8 @@ export interface EpochSiteData {
     start_ts: string;
     end_ts: string;
 
+    baseline: any;
+
     building_eload: number[];
     building_hload: number[];
     ev_eload: number[];

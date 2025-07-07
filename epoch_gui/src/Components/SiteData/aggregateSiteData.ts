@@ -28,6 +28,7 @@ export const aggregateSiteData = (siteData: EpochSiteData): EpochSiteData => {
     return {
         start_ts: siteData.start_ts,
         end_ts: siteData.end_ts,
+        baseline: siteData.baseline,
 
         building_eload: aggregate(siteData.building_eload, timestepsInADay, "sum"),
         building_hload: aggregate(siteData.building_hload, timestepsInADay, "sum"),
