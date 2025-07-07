@@ -30,7 +30,7 @@ from ..models.core import (
     location_t,
     site_id_t,
 )
-from ..models.epoch_types.task_data_type import Building, GasHeater, Grid, TaskData
+from ..models.epoch_types.task_data_type import Building, Config, GasHeater, Grid, TaskData
 
 router = APIRouter()
 
@@ -74,6 +74,22 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
         raise HTTPException(400, f"Site {site_id.site_id} not found in the database.") from ex
 
 
+async def get_default_baseline() -> TaskData:
+    """
+    Provide a default baseline for sites where there is no baseline in the database.
+
+    Returns
+    -------
+        A default baseline
+    """
+    return TaskData(
+        building=Building(incumbent=True),
+        grid=Grid(grid_import=1e3, grid_export=1e3, incumbent=True),
+        gas_heater=GasHeater(maximum_output=1e3, incumbent=True),  # this is unusually large to meet all the heat demand.
+        config=Config(),
+    )
+
+
 @router.post("/get-site-baseline", tags=["db", "baseline", "get"])
 async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoolDep) -> TaskData:
     """
@@ -101,11 +117,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
     TaskData
         Single-scenario task data representing the baseline configuration of what infrastructure is already at the site.
     """
-    DEFAULT_CONFIG = TaskData(
-        building=Building(),
-        grid=Grid(grid_import=1e3, grid_export=1e3),
-        gas_heater=GasHeater(maximum_output=1e3),  # this is unusually large to meet all the heat demand.
-    )
+    DEFAULT_CONFIG = await get_default_baseline()
 
     async def get_baseline_from_site_id(site_id: SiteID) -> asyncpg.Record | None:
         """
@@ -175,7 +187,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
         is_valid_dataset = await pool.fetchval(
             """
             SELECT exists (
-                SELECT 1 FROM client_info.site_baselines WHERE dataset_id = $1 LIMIT 1
+                SELECT 1 FROM client_info.site_baselines WHERE baseline_id = $1 LIMIT 1
             )""",
             dataset_id.dataset_id,
         )
@@ -190,7 +202,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
                 baseline
             FROM
                 client_info.site_baselines
-            WHERE dataset_id = $1""",
+            WHERE baseline_id = $1""",
             dataset_id.dataset_id,
         )
         return baseline_rec

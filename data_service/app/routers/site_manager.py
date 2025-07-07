@@ -20,6 +20,7 @@ from ..internal.site_manager import (
     list_renewables_generation_datasets,
     list_thermal_models,
 )
+from ..internal.site_manager.dataset_lists import list_baseline_datasets
 from ..internal.site_manager.site_manager import fetch_all_input_data
 from ..models.client_data import SiteDataEntries, SolarLocation
 from ..models.core import (
@@ -71,6 +72,7 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
     """
     logger = logging.getLogger(__name__)
     async with asyncio.TaskGroup() as tg:
+        baseline_task = tg.create_task(list_baseline_datasets(site_id, pool))
         gas_task = tg.create_task(list_gas_datasets(site_id, pool))
         elec_task = tg.create_task(list_elec_datasets(site_id, pool))
         elec_synth_task = tg.create_task(list_elec_synthesised_datasets(site_id, pool))
@@ -82,6 +84,7 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
         thermal_model_task = tg.create_task(list_thermal_models(site_id, pool))
 
     res = {
+        DatasetTypeEnum.SiteBaseline: baseline_task.result(),
         DatasetTypeEnum.GasMeterData: gas_task.result(),
         DatasetTypeEnum.ElectricityMeterData: elec_task.result(),
         DatasetTypeEnum.ElectricityMeterDataSynthesised: elec_synth_task.result(),
@@ -229,6 +232,9 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
         site_id=params.site_id,
         start_ts=params.start_ts,
         end_ts=params.end_ts,
+        SiteBaseline=max(all_datasets[DatasetTypeEnum.SiteBaseline], key=lambda x: x.created_at)
+        if all_datasets[DatasetTypeEnum.SiteBaseline]
+        else None,
         HeatingLoad=heating_loads,
         ImportTariff=import_tariffs,
         ASHPData=max(all_datasets[DatasetTypeEnum.ASHPData], key=lambda x: x.created_at)

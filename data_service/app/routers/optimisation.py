@@ -527,8 +527,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
                     created_at,
                     objectives,
                     portfolio_constraints,
-                    site_constraints,
-                    baseline_id)
+                    site_constraints)
                 VALUES (
                 $1,
                 $2,
@@ -540,8 +539,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
                 $8,
                 $9,
                 $10,
-                $11,
-                $12)""",
+                $11)""",
             task_config.task_id,
             task_config.client_id,
             task_config.task_name,
@@ -553,7 +551,6 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
             json.dumps(jsonable_encoder(task_config.objectives)),
             json.dumps(jsonable_encoder(task_config.portfolio_constraints)),
             json.dumps(jsonable_encoder(task_config.site_constraints)),
-            task_config.baseline_id,
         )
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex

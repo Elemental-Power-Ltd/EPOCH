@@ -171,6 +171,7 @@ class ClientIdNamePair(pydantic.BaseModel):
 
 
 class DatasetTypeEnum(StrEnum):
+    SiteBaseline = "SiteBaseline"
     GasMeterData = "GasMeterData"
     ElectricityMeterData = "ElectricityMeterData"
     ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"
