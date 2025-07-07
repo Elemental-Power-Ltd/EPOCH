@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Annotated
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field
@@ -20,15 +19,3 @@ class DatasetIDWithTime(BaseModel):
         examples=["2024-05-31T00:00:00Z"],
         description="The latest time (exclusive) to retrieve data for.",
     )
-
-
-class DatasetTypeEnum(StrEnum):
-    GasMeterData = "GasMeterData"
-    ElectricityMeterData = "ElectricityMeterData"
-    ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"
-    RenewablesGeneration = "RenewablesGeneration"
-    Weather = "Weather"
-    CarbonIntensity = "CarbonIntensity"
-    HeatingLoad = "HeatingLoad"
-    ASHPData = "ASHPData"
-    ImportTariff = "ImportTariff"

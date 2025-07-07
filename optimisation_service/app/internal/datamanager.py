@@ -13,9 +13,8 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import UUID4
 
 from ..models.core import OptimisationResultEntry, Task
-from ..models.database import DatasetTypeEnum
 from ..models.simulate import EpochInputData, ResultReproConfig
-from ..models.site_data import EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
+from ..models.site_data import DatasetTypeEnum, EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
 
 logger = logging.getLogger("default")
 
@@ -190,6 +189,7 @@ class DataManager:
         site_data = EpochSiteData(
             start_ts=start_ts,
             end_ts=end_ts,
+            baseline=site_data_entries.baseline,
             building_eload=site_data_entries.eload.data,
             building_hload=site_data_entries.heat.data[0].reduced_hload,  # First heat_load is Baseline
             ev_eload=[0 for _ in site_data_entries.eload.data],  # EV_load unsupported by DB
@@ -332,6 +332,9 @@ def validate_for_necessary_datasets(site_data: RemoteMetaData) -> None:
     -------
 
     """
+
+    # note that we don't define the SiteBaseline as necessary
+    # when this is not provided, we allow the Data Service to provide a default baseline
     necessary_datasets = [
         DatasetTypeEnum.GasMeterData,
         DatasetTypeEnum.RenewablesGeneration,

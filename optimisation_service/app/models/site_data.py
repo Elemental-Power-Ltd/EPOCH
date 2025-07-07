@@ -4,6 +4,8 @@ from typing import Annotated, Literal
 
 from pydantic import UUID4, AwareDatetime, BaseModel, Field
 
+from app.models.epoch_types.task_data_type import TaskData
+
 
 class FileLoc(StrEnum):
     remote = "remote"
@@ -33,6 +35,7 @@ class RemoteMetaData(BaseModel):
         examples=["2023-01-01T00:00:00Z"],
         description="The latest time (exclusive) to retrieve data for.",
     )
+    SiteBaseline: dataset_id_t | None = Field(default=None)
     HeatingLoad: dataset_id_t | list[dataset_id_t] | None = Field(default=None)
     ASHPData: dataset_id_t | None = Field(default=None)
     CarbonIntensity: dataset_id_t | None = Field(default=None)
@@ -122,6 +125,7 @@ class EpochCarbonEntry(EpochEntry):
 
 
 class SiteDataEntries(BaseModel):
+    baseline: TaskData
     dhw: EpochDHWEntry
     air_temp: EpochAirTempEntry
     eload: EpochElectricityEntry
@@ -137,6 +141,8 @@ class SiteDataEntries(BaseModel):
 class EpochSiteData(BaseModel):
     start_ts: AwareDatetime
     end_ts: AwareDatetime
+
+    baseline: TaskData
 
     building_eload: list[float]
     building_hload: list[float]
@@ -157,6 +163,7 @@ SiteMetaData = RemoteMetaData | LocalMetaData
 
 
 class DatasetTypeEnum(StrEnum):
+    SiteBaseline = "SiteBaseline"
     GasMeterData = "GasMeterData"
     ElectricityMeterData = "ElectricityMeterData"
     ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"
