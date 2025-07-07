@@ -55,6 +55,8 @@ async def fetch_all_input_data(
                     )
                 )
                 if site_data_ids.get(DatasetTypeEnum.SiteBaseline) is not None
+                # The baseline is a special case
+                # we always return a baseline, returning the default baseline if no specific baseline is requested
                 else tg.create_task(get_default_baseline())
             )
 
