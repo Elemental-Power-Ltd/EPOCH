@@ -52,19 +52,39 @@ class CustomMinMaxScaler(MinMaxScaler):
     transform() method of the MinMax class.
     """
 
-    feature_range: tuple
+    feature_range: tuple[float, float]
     copy: bool
     clip: bool
     n: int
     axis: int
+    scale_: npt.NDArray[np.floating]
+    min_: npt.NDArray[np.floating]
 
-    def __init__(self, n: int = 9, feature_range: tuple = (0, 1), copy: bool = True, clip: bool = False, axis: int = 0):
+    def __init__(
+        self, n: int = 9, feature_range: tuple[float, float] = (0.0, 1.0), copy: bool = True, clip: bool = False, axis: int = 0
+    ):
+        """
+        Set up the additional features for the minmax scaler.
+
+        Parameters
+        ----------
+        n
+            Number of initial values to take to set the scale for
+        axis
+            Which axis to operate on
+        feature_range
+            Desired range of the transformed data
+        copy
+            Whether to copy the input data
+        clip
+            Whether to clip the input data to the feature range
+        """
         # first 9 values corresponds to 00:00-04:00 inclusive for
         self.n = n
         self.axis = axis
         super().__init__(feature_range=feature_range, copy=copy, clip=clip)
 
-    def fit(self, X, y=None):
+    def fit(self, X: npt.NDArray[np.floating], y: npt.NDArray[np.floating] | None = None) -> Self:
         """
         Fit the instance: perform any preprocessing and calculate the custom min and standard max.
 
@@ -94,26 +114,28 @@ class CustomMinMaxScaler(MinMaxScaler):
 
         return self
 
-    def transform(self, X):
+    def transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Transform the data using the custom-fitted MinMaxScaler."""
         X = np.asarray(X)
         if self.axis == 1:
-            return (X.T * self.scale_ + self.min_).T
+            return cast(npt.NDArray[np.floating], (X.T * self.scale_ + self.min_).T)
         else:
-            return X * self.scale_ + self.min_
+            return cast(npt.NDArray[np.floating], X * self.scale_ + self.min_)
 
-    def inverse_transform(self, X):
+    def inverse_transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Perform the inverse transformation on the data using the custom-fitted MinMaxScaler."""
         X = np.asarray(X)
         if self.axis == 1:
-            return ((X.T - self.min_) / self.scale_).T
+            return cast(npt.NDArray[np.floating], ((X.T - self.min_) / self.scale_).T)
         else:
-            return (X - self.min_) / self.scale_
+            return cast(npt.NDArray[np.floating], (X - self.min_) / self.scale_)
 
-    def fit_transform(self, X, y=None, **fit_params):
+    def fit_transform(
+        self, X: npt.NDArray[np.floating], y: npt.NDArray[np.floating] | None = None, **fit_params: dict
+    ) -> npt.NDArray[np.floating]:
         """Fit the custom MinMaxScaler and perform the resulting transformation."""
         X = np.asarray(X)
-        return super().fit_transform(X, y, **fit_params)
+        return cast(npt.NDArray[np.floating], super().fit_transform(X, y, **fit_params))
 
 
 class RBFTimestampEncoder(TransformerMixin):

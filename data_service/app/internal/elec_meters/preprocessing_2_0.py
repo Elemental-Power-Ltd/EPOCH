@@ -6,7 +6,7 @@ including loading, cleaning and sequence preparation.
 """
 
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import TypedDict
 
 import numpy as np
 import numpy.typing as npt
@@ -433,8 +433,8 @@ def split_data(
         # hh_train = data_scaler.fit_transform(hh_train.reshape(train_end, 48*n_features))
         # hh_train = data_scaler.fit_transform(hh_train.reshape(train_end*48*n_features, 1))
         hh_train = data_scaler_train.fit_transform(hh_train.reshape(train_end, 48 * n_features))
-        hh_train_scales = cast(npt.NDArray[np.floating], data_scaler_train.scale_)
-        hh_train_mins = cast(npt.NDArray[np.floating], data_scaler_train.min_)
+        hh_train_scales = data_scaler_train.scale_
+        hh_train_mins = data_scaler_train.min_
         hh_train = hh_train.reshape(train_end, 48, n_features)
         daily_train = aggregate_scaler.fit_transform(daily_train.reshape(train_end, n_features))
         daily_train = daily_train.reshape(train_end, 1, n_features)
@@ -444,8 +444,8 @@ def split_data(
         # hh_val = data_scaler.transform(hh_val.reshape((val_end-train_end)*48*n_features, 1))
         data_scaler_val = CustomMinMaxScaler(axis=1)
         hh_val = data_scaler_val.fit_transform(hh_val.reshape((val_end - train_end), 48 * n_features))
-        hh_val_scales = cast(npt.NDArray[np.floating], data_scaler_val.scale_)
-        hh_val_mins = cast(npt.NDArray[np.floating], data_scaler_val.min_)
+        hh_val_scales = data_scaler_val.scale_
+        hh_val_mins = data_scaler_val.min_
         hh_val = hh_val.reshape((val_end - train_end), 48, n_features)
         daily_val = aggregate_scaler.transform(daily_val.reshape((val_end - train_end), n_features))
         daily_val = daily_val.reshape((val_end - train_end), 1, n_features)
