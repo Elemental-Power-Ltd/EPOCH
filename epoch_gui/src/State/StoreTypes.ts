@@ -26,7 +26,7 @@ export type OptimiserSlice = {
     optimise: OptimiseState;
     setOptimiser: (optimiser: OptimisationApproach) => void;
     setHyperparameters: (optimiser: OptimisationApproach, form: any) => void;
-    addSiteRange: (site_id: string) => void;
+    addSiteRange: (site_id: string, baseline: any) => void;
     removeSiteRange: (site_id: string) => void;
     addComponent: (site_id: string, componentKey: string) => void;
     removeComponent: (site_id: string, componentKey: string) => void;

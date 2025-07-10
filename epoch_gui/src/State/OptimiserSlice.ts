@@ -70,13 +70,13 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
     })),
 
   // add a new ComponentBuilderState to the portfolio for a given site_id
-  addSiteRange: (site_id: string) =>
+  addSiteRange: (site_id: string, baseline: any) =>
     set((state) => ({
       optimise: {
         ...state.optimise,
         portfolioMap: {
           ...state.optimise.portfolioMap,
-          [site_id]: getInitialComponentsMap("SiteRangeMode")
+          [site_id]: getInitialComponentsMap("SiteRangeMode", baseline)
         }
       }
     })),

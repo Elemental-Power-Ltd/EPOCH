@@ -21,8 +21,8 @@ export interface ComponentBuilderState {
  * Default values for each component are set upon initialisation.
  * Add/Removing components simply specifies whether that component should be included or not.
  */
-export const useComponentBuilderState = (mode: BuilderMode): ComponentBuilderState => {
-  const initialState = getInitialComponentsMap(mode);
+export const useComponentBuilderState = (mode: BuilderMode, baseline: any): ComponentBuilderState => {
+  const initialState = getInitialComponentsMap(mode, baseline);
   const schema = (mode === "TaskDataMode") ? TaskDataSchema : SiteRangeSchema;
 
   const [componentsState, setComponentsState] = useState<ComponentsMap>(initialState);

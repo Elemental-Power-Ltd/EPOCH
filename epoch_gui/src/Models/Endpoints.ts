@@ -102,3 +102,4 @@ export interface OptimisationResultsResponse {
     portfolio_results: PortfolioOptimisationResult[];
     highlighted_results: HighlightedResult[];
 }
+

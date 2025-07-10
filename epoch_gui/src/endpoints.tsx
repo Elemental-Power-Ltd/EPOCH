@@ -9,6 +9,7 @@ import {
     SubmitSimulationRequest
 } from "./Models/Endpoints";
 import {Dayjs} from "dayjs";
+import {TaskData} from "./Components/TaskDataViewer/TaskData.ts";
 
 
 export const submitOptimisationJob = async(request: SubmitOptimisationRequest): Promise<ApiResponse<SubmitOptimisationResponse>> => {
@@ -251,6 +252,32 @@ export const getLatestSiteData = async (site_id: string, start_ts: Dayjs, end_ts
 
     } catch (error) {
         console.error("Failed to fetch site data", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const getSiteBaseline = async (site_id: string): Promise<ApiResponse<TaskData>> => {
+    const payload = {
+        site_id: site_id
+    }
+
+    try {
+        const response = await fetch("/api/data/get-site-baseline", {
+            method: "POST",
+            "headers": {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const baseline: TaskData = await response.json();
+        return {success: true, data: baseline};
+    } catch (error) {
+        console.error("Failed to get site baseline", error);
         return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 }
