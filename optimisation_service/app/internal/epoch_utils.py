@@ -1,6 +1,7 @@
 """
 Wrappers for Epoch that are more ergonomic for python.
 """
+
 import json
 
 from epoch_simulator import SimulationResult, TaskData
@@ -29,6 +30,7 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
     # Top-level fields
     metric_values[Metric.carbon_balance_scope_1] = sim_result.carbon_balance_scope_1
     metric_values[Metric.carbon_balance_scope_2] = sim_result.carbon_balance_scope_2
+
     metric_values[Metric.capex] = sim_result.capex
     metric_values[Metric.meter_balance] = sim_result.meter_balance
     metric_values[Metric.operating_balance] = sim_result.operating_balance
@@ -70,9 +72,14 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
 
     # Derive carbon cost from capex and scope-1 carbon balance
     metric_values[Metric.carbon_cost] = calculate_carbon_cost(
-        capex=metric_values[Metric.capex],
-        carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
+        capex=metric_values[Metric.capex], carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
     )
+
+    # Derive the total carbon balance from the individual fields if they're both good
+    if sim_result.carbon_balance_scope_1 is not None and sim_result.carbon_balance_scope_2 is not None:
+        metric_values[Metric.carbon_balance_total] = sim_result.carbon_balance_scope_1 + sim_result.carbon_balance_scope_2
+    else:
+        metric_values[Metric.carbon_balance_total] = None
 
     return metric_values
 
