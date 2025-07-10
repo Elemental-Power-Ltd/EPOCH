@@ -75,19 +75,25 @@ class SiteMetrics(BaseModel):
     carbon_balance_scope_2: float | None = Field(
         description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
     )
+    carbon_balance_total: float | None = Field(
+        description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
+        default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
+        if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
+        else None,
+    )
     carbon_cost: float | None = Field(
         description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
     )
     meter_balance: float | None = Field(
         description="Monetary savings from importing and exporting fuel/electricity when compared against the baseline.",
-        default=None
+        default=None,
     )
     operating_balance: float | None = Field(
         description="Monetary savings from fuel, electricity and opex when compared against the baseline.", default=None
     )
     cost_balance: float | None = Field(
         description="Monetary savings from fuel, electricity, opex and annualised cost when compared against the baseline.",
-        default=None
+        default=None,
     )
     npv_balance: float | None = Field(
         description="The change in Net Present Value between the baseline and the scenario for this site.", default=None
@@ -131,7 +137,7 @@ class SiteMetrics(BaseModel):
     )
     total_net_present_value: float | None = Field(
         description="Net Present Value after repeating the simulation for the configured number of years for this site.",
-        default=None
+        default=None,
     )
 
     baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) for this site", default=None)
@@ -161,13 +167,12 @@ class SiteMetrics(BaseModel):
         description="Baseline cost of importing fuel/electricity minus revenue from exporting.", default=None
     )
     baseline_operating_cost: float | None = Field(
-        description="Baseline meter cost minus operating costs for components for this site.",
-        default=None
+        description="Baseline meter cost minus operating costs for components for this site.", default=None
     )
     baseline_net_present_value: float | None = Field(
         description="Baseline Net Present Value after repeating the simulation for the configured number of years "
-                    "for this site.",
-        default=None
+        "for this site.",
+        default=None,
     )
 
 
@@ -195,22 +200,29 @@ class PortfolioMetrics(BaseModel):
     carbon_balance_scope_2: float | None = Field(
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
     )
+    carbon_balance_total: float | None = Field(
+        description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
+        default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
+        if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
+        else None,
+    )
     carbon_cost: float | None = Field(
         description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
     )
     meter_balance: float | None = Field(
         description="Monetary savings across the portfolio "
-                    "from importing and exporting fuel/electricity when compared against the baseline.",
-        default=None
+        "from importing and exporting fuel/electricity when compared against the baseline.",
+        default=None,
     )
     operating_balance: float | None = Field(
         description="Monetary savings across the portfolio "
-                    "from fuel, electricity and opex when compared against the baseline.", default=None
+        "from fuel, electricity and opex when compared against the baseline.",
+        default=None,
     )
     cost_balance: float | None = Field(
         description="Monetary savings across the portfolio "
-                    "from fuel, electricity, opex and annualised cost when compared against the baseline.",
-        default=None
+        "from fuel, electricity, opex and annualised cost when compared against the baseline.",
+        default=None,
     )
     npv_balance: float | None = Field(
         description="The change in Net Present Value between the baseline and the scenario over the portfolio.", default=None
@@ -246,23 +258,18 @@ class PortfolioMetrics(BaseModel):
         description="Total income (£) exporting electricity to this grid across this portfolio", default=None
     )
     total_meter_cost: float | None = Field(
-        description="Total cost of importing fuel/electricity minus revenue from exporting across this portfolio.",
-        default=None
+        description="Total cost of importing fuel/electricity minus revenue from exporting across this portfolio.", default=None
     )
     total_operating_cost: float | None = Field(
-        description="Total meter cost minus operating costs for components across this portfolio.",
-        default=None
+        description="Total meter cost minus operating costs for components across this portfolio.", default=None
     )
     total_net_present_value: float | None = Field(
         description="Net Present Value after repeating the simulation for the configured number of years "
-                    "across this portfolio.",
-        default=None
+        "across this portfolio.",
+        default=None,
     )
 
-    baseline_gas_used: float | None = Field(
-        description="Baseline gas imported (kWh) across this portfolio",
-        default=None
-    )
+    baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) across this portfolio", default=None)
     baseline_electricity_imported: float | None = Field(
         description="Baseline electricity imported from the grid (kWh) across this portfolio", default=None
     )
@@ -273,14 +280,14 @@ class PortfolioMetrics(BaseModel):
         description="Baseline electricity exported to the grid (kWh) across this portfolio", default=None
     )
     baseline_electrical_shortfall: float | None = Field(
-        description="Baseline electrical shortfall (kWh) when compared to the demand across this portfolio",
-        default=None
+        description="Baseline electrical shortfall (kWh) when compared to the demand across this portfolio", default=None
     )
     baseline_heat_shortfall: float | None = Field(
         description="Baseline heat shortfall (kWh) when compared to the demand across this portfolio", default=None
     )
     baseline_gas_import_cost: float | None = Field(
-        description="Baseline spend (£) importing gas across this portfolio", default=None)
+        description="Baseline spend (£) importing gas across this portfolio", default=None
+    )
     baseline_electricity_import_cost: float | None = Field(
         description="Baseline spend (£) importing electricity from the grid across this portfolio", default=None
     )
@@ -289,16 +296,15 @@ class PortfolioMetrics(BaseModel):
     )
     baseline_meter_cost: float | None = Field(
         description="Baseline cost of importing fuel/electricity minus revenue from exporting across this portfolio.",
-        default=None
+        default=None,
     )
     baseline_operating_cost: float | None = Field(
-        description="Baseline meter cost minus operating costs for components across this portfolio.",
-        default=None
+        description="Baseline meter cost minus operating costs for components across this portfolio.", default=None
     )
     baseline_net_present_value: float | None = Field(
         description="Baseline Net Present Value after repeating the simulation for the configured number of years "
-                    "across this portfolio.",
-        default=None
+        "across this portfolio.",
+        default=None,
     )
 
 
