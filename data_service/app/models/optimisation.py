@@ -24,6 +24,12 @@ class SiteMetrics(BaseModel):
     carbon_balance_scope_2: float | None = Field(
         description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
     )
+    carbon_balance_total: float | None = Field(
+        description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
+        default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
+        if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
+        else None,
+    )
     carbon_cost: float | None = Field(
         description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
     )
@@ -143,6 +149,12 @@ class PortfolioMetrics(BaseModel):
     )
     carbon_balance_scope_2: float | None = Field(
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
+    )
+    carbon_balance_total: float | None = Field(
+        description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
+        default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
+        if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
+        else None,
     )
     carbon_cost: float | None = Field(
         description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
