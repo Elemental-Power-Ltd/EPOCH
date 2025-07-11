@@ -4,6 +4,7 @@ from enum import IntEnum, StrEnum
 class Metric(StrEnum):
     carbon_balance_scope_1 = "carbon_balance_scope_1"
     carbon_balance_scope_2 = "carbon_balance_scope_2"
+    carbon_balance_total = "carbon_balance_total"
     meter_balance = "meter_balance"
     operating_balance = "operating_balance"
     cost_balance = "cost_balance"
@@ -55,15 +56,12 @@ _EPOCH_NATIVE_OBJECTIVE_METRICS = [
     Metric.npv_balance,
     Metric.annualised_cost,
     Metric.payback_horizon,
-
     Metric.total_gas_used,
     Metric.total_electricity_imported,
     Metric.total_electricity_generated,
     Metric.total_electricity_exported,
-
     Metric.total_electrical_shortfall,
     Metric.total_heat_shortfall,
-
     Metric.total_gas_import_cost,
     Metric.total_electricity_import_cost,
     Metric.total_electricity_export_gain,
@@ -78,10 +76,8 @@ _EPOCH_NATIVE_NON_OBJECTIVE_METRICS = [
     Metric.baseline_gas_used,
     Metric.baseline_electricity_imported,
     Metric.baseline_electricity_generated,
-
     Metric.baseline_electricity_exported,
     Metric.baseline_electrical_shortfall,
-
     Metric.baseline_heat_shortfall,
     Metric.baseline_gas_import_cost,
     Metric.baseline_electricity_import_cost,
@@ -93,6 +89,7 @@ _EPOCH_NATIVE_NON_OBJECTIVE_METRICS = [
 
 _SERVICE_NATIVE_METRICS = [
     Metric.carbon_cost,
+    Metric.carbon_balance_total,
 ]
 
 _OBJECTIVES = _EPOCH_NATIVE_OBJECTIVE_METRICS + _SERVICE_NATIVE_METRICS
@@ -104,34 +101,29 @@ _SUMMABLE_METRICS = [
     Metric.capex,
     Metric.carbon_balance_scope_1,
     Metric.carbon_balance_scope_2,
+    Metric.carbon_balance_total,
     Metric.meter_balance,
     Metric.operating_balance,
     Metric.cost_balance,
     Metric.npv_balance,
-
     Metric.total_gas_used,
     Metric.total_electricity_imported,
     Metric.total_electricity_generated,
     Metric.total_electricity_exported,
-
     Metric.total_electrical_shortfall,
     Metric.total_heat_shortfall,
-
     Metric.total_gas_import_cost,
     Metric.total_electricity_import_cost,
     Metric.total_electricity_export_gain,
     Metric.total_meter_cost,
     Metric.total_operating_cost,
     Metric.total_net_present_value,
-
     Metric.baseline_gas_used,
     Metric.baseline_electricity_imported,
     Metric.baseline_electricity_generated,
     Metric.baseline_electricity_exported,
-
     Metric.baseline_electrical_shortfall,
     Metric.baseline_heat_shortfall,
-
     Metric.baseline_gas_import_cost,
     Metric.baseline_electricity_import_cost,
     Metric.baseline_electricity_export_gain,
@@ -145,6 +137,7 @@ _SUMMABLE_METRICS = [
 class MetricDirection(IntEnum):
     carbon_balance_scope_1 = -1
     carbon_balance_scope_2 = -1
+    carbon_balance_total = -1
     meter_balance = -1
     operating_balance = -1
     cost_balance = -1

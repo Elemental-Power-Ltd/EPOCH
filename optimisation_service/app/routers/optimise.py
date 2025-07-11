@@ -61,6 +61,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     metrics=SiteMetrics(
                         carbon_balance_scope_1=site_solution.metric_values[Metric.carbon_balance_scope_1],
                         carbon_balance_scope_2=site_solution.metric_values[Metric.carbon_balance_scope_2],
+                        carbon_balance_total=site_solution.metric_values[Metric.carbon_balance_total],
                         carbon_cost=site_solution.metric_values[Metric.carbon_cost],
                         meter_balance=site_solution.metric_values[Metric.meter_balance],
                         operating_balance=site_solution.metric_values[Metric.operating_balance],
@@ -69,7 +70,6 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                         capex=site_solution.metric_values[Metric.capex],
                         payback_horizon=site_solution.metric_values[Metric.payback_horizon],
                         annualised_cost=site_solution.metric_values[Metric.annualised_cost],
-
                         total_gas_used=site_solution.metric_values[Metric.total_gas_used],
                         total_electricity_imported=site_solution.metric_values[Metric.total_electricity_imported],
                         total_electricity_generated=site_solution.metric_values[Metric.total_electricity_generated],
@@ -82,7 +82,6 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                         total_meter_cost=site_solution.metric_values[Metric.total_meter_cost],
                         total_operating_cost=site_solution.metric_values[Metric.total_operating_cost],
                         total_net_present_value=site_solution.metric_values[Metric.total_net_present_value],
-
                         baseline_gas_used=site_solution.metric_values[Metric.baseline_gas_used],
                         baseline_electricity_imported=site_solution.metric_values[Metric.baseline_electricity_imported],
                         baseline_electricity_generated=site_solution.metric_values[Metric.baseline_electricity_generated],
@@ -105,6 +104,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                 metrics=PortfolioMetrics(
                     carbon_balance_scope_1=portfolio_solution.metric_values[Metric.carbon_balance_scope_1],
                     carbon_balance_scope_2=portfolio_solution.metric_values[Metric.carbon_balance_scope_2],
+                    carbon_balance_total=portfolio_solution.metric_values[Metric.carbon_balance_total],
                     carbon_cost=portfolio_solution.metric_values[Metric.carbon_cost],
                     meter_balance=portfolio_solution.metric_values[Metric.meter_balance],
                     operating_balance=portfolio_solution.metric_values[Metric.operating_balance],
@@ -113,7 +113,6 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     capex=portfolio_solution.metric_values[Metric.capex],
                     payback_horizon=portfolio_solution.metric_values[Metric.payback_horizon],
                     annualised_cost=portfolio_solution.metric_values[Metric.annualised_cost],
-
                     total_gas_used=portfolio_solution.metric_values[Metric.total_gas_used],
                     total_electricity_imported=portfolio_solution.metric_values[Metric.total_electricity_imported],
                     total_electricity_generated=portfolio_solution.metric_values[Metric.total_electricity_generated],
@@ -126,7 +125,6 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     total_meter_cost=portfolio_solution.metric_values[Metric.total_meter_cost],
                     total_operating_cost=portfolio_solution.metric_values[Metric.total_operating_cost],
                     total_net_present_value=portfolio_solution.metric_values[Metric.total_net_present_value],
-
                     baseline_gas_used=portfolio_solution.metric_values[Metric.baseline_gas_used],
                     baseline_electricity_imported=portfolio_solution.metric_values[Metric.baseline_electricity_imported],
                     baseline_electricity_generated=portfolio_solution.metric_values[Metric.baseline_electricity_generated],

@@ -274,10 +274,7 @@ class ProblemInstance(ElementwiseProblem):
                     x.append(1)
                 else:
                     # we know this instance is present, find it and read from the appropriate index in SiteRange
-                    repeat_instance = next(
-                        rc for rc in td_dict[param.asset_name]
-                        if rc["index_tracker"] == param.repeat_index
-                    )
+                    repeat_instance = next(rc for rc in td_dict[param.asset_name] if rc["index_tracker"] == param.repeat_index)
                     value = repeat_instance[param.attr_name]
                     x.append(site_range[param.asset_name][param.repeat_index][param.attr_name].index(value))
 
@@ -409,9 +406,9 @@ class EstimateBasedSampling(Sampling):
                 epoch_data=site._epoch_data,
                 pop_size=n_samples,
             )
-            site_pops.append(
-                [problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios]
-            )
+            site_pops.append([
+                problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios
+            ])
         portfolio_pop = np.concatenate(site_pops, axis=1)
         return portfolio_pop
 
