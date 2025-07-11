@@ -85,6 +85,7 @@ class TestCombineMetricValues:
             Metric.capex: 10,
             Metric.carbon_balance_scope_1: 10,
             Metric.carbon_balance_scope_2: 10,
+            Metric.carbon_balance_total: 20,
             Metric.meter_balance: 10,
             Metric.operating_balance: 10,
             Metric.cost_balance: 10,
@@ -113,7 +114,7 @@ class TestCombineMetricValues:
             Metric.baseline_electricity_export_gain: 10,
             Metric.baseline_meter_cost: 10,
             Metric.baseline_operating_cost: 10,
-            Metric.baseline_net_present_value: 10
+            Metric.baseline_net_present_value: 10,
         }
         metric_values[Metric.payback_horizon] = calculate_payback_horizon(
             capex=metric_values[Metric.capex], cost_balance=metric_values[Metric.cost_balance]

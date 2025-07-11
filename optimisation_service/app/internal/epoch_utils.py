@@ -76,10 +76,7 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
     )
 
     # Derive the total carbon balance from the individual fields if they're both good
-    if sim_result.carbon_balance_scope_1 is not None and sim_result.carbon_balance_scope_2 is not None:
-        metric_values[Metric.carbon_balance_total] = sim_result.carbon_balance_scope_1 + sim_result.carbon_balance_scope_2
-    else:
-        metric_values[Metric.carbon_balance_total] = None
+    metric_values[Metric.carbon_balance_total] = sim_result.carbon_balance_scope_1 + sim_result.carbon_balance_scope_2
 
     return metric_values
 

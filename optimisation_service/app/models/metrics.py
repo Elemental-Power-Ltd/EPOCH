@@ -137,6 +137,7 @@ _SUMMABLE_METRICS = [
 class MetricDirection(IntEnum):
     carbon_balance_scope_1 = -1
     carbon_balance_scope_2 = -1
+    carbon_balance_total = -1
     meter_balance = -1
     operating_balance = -1
     cost_balance = -1

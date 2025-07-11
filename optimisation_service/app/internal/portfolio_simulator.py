@@ -124,4 +124,9 @@ def combine_metric_values(metric_values_list: list[MetricValues]) -> MetricValue
             carbon_balance_scope_1=combined_metric_values[Metric.carbon_balance_scope_1],
         )
 
+    if Metric.carbon_balance_scope_1 in combined_metric_values and Metric.carbon_balance_scope_2 in combined_metric_values:
+        combined_metric_values[Metric.carbon_balance_total] = (
+            combined_metric_values[Metric.carbon_balance_scope_1] + combined_metric_values[Metric.carbon_balance_scope_2]
+        )
+
     return combined_metric_values

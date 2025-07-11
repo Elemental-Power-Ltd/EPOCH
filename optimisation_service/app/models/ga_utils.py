@@ -31,10 +31,11 @@ class AssetParameter(BaseModel):
 class RepeatAnnotatedSolarPanel(SolarPanel):
     index_tracker: int = Field(
         description="Index used within the genetic algorithm code to re-associate a partial TaskData Solar Panel "
-                    "with the correct SiteRange Solar Panel"
+        "with the correct SiteRange Solar Panel"
     )
 
 
 class AnnotatedTaskData(TaskData):
     """An annotated TaskData to allow re-associating repeat parameters with their SiteRange equivalent."""
+
     solar_panels: list[RepeatAnnotatedSolarPanel] | None = None  # type: ignore
