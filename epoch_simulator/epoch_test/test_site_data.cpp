@@ -16,6 +16,7 @@ TEST(SiteDataValidationTest, InvalidStartEndTimestamps) {
         SiteData broken(
             sdBase.end_ts, // start_ts > end_ts
             sdBase.start_ts,
+            TaskData{},
             sdBase.building_eload,
             sdBase.building_hload,
             sdBase.ev_eload,
@@ -40,6 +41,7 @@ TEST(SiteDataValidationTest, MismatchedVectorSizes) {
         SiteData broken(
             sdBase.start_ts,
             sdBase.end_ts,
+            TaskData{},
             sdBase.building_eload,
             badHLoad, // wrong size
             sdBase.ev_eload,
@@ -65,6 +67,7 @@ TEST(SiteDataValidationTest, MismatchedSolarYields) {
         SiteData broken(
             sdBase.start_ts,
             sdBase.end_ts,
+            TaskData{},
             sdBase.building_eload,
             sdBase.building_hload,
             sdBase.ev_eload,
@@ -89,6 +92,7 @@ TEST(SiteDataValidationTest, EmptyImportTariffs) {
         SiteData broken(
             sdBase.start_ts,
             sdBase.end_ts,
+            TaskData{},
             sdBase.building_eload,
             sdBase.building_hload,
             sdBase.ev_eload,
@@ -114,6 +118,7 @@ TEST(SiteDataValidationTest, MismatchedImportTariffs) {
         SiteData broken(
             sdBase.start_ts,
             sdBase.end_ts,
+            TaskData{},
             sdBase.building_eload,
             sdBase.building_hload,
             sdBase.ev_eload,
@@ -140,6 +145,7 @@ TEST(SiteDataValidationTest, MismatchedFabricInterventions) {
         SiteData broken(
             sdBase.start_ts,
             sdBase.end_ts,
+            TaskData{},
             sdBase.building_eload,
             sdBase.building_hload,
             sdBase.ev_eload,
@@ -169,6 +175,7 @@ TEST(SiteDataValidationTest, MismatchedLookupTables) {
         SiteData broken(
             sdBase.start_ts,
             sdBase.end_ts,
+            TaskData{},
             sdBase.building_eload,
             sdBase.building_hload,
             sdBase.ev_eload,
@@ -194,6 +201,7 @@ TEST(SiteDataValidationTest, TooSmallTables) {
         SiteData broken(
             sdBase.start_ts,
             sdBase.end_ts,
+            TaskData{},
             sdBase.building_eload,
             sdBase.building_hload,
             sdBase.ev_eload,

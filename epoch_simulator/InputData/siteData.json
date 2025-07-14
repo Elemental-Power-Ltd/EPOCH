@@ -1,6 +1,41 @@
 {
   "start_ts": "2022-01-01T00:00:00Z",
   "end_ts": "2023-01-01T00:00:00Z",
+  "baseline": {
+    "building": {
+      "scalar_heat_load": 1,
+      "scalar_electrical_load": 1,
+      "fabric_intervention_index": 0,
+      "incumbent": true,
+      "age": 0,
+      "lifetime": 30
+    },
+    "gas_heater": {
+      "maximum_output": 40,
+      "gas_type": "NATURAL_GAS",
+      "boiler_efficiency": 0.9,
+      "incumbent": true,
+      "age": 0,
+      "lifetime": 10
+    },
+    "grid": {
+      "grid_export": 23,
+      "grid_import": 23,
+      "import_headroom": 0.25,
+      "tariff_index": 0,
+      "export_tariff": 0.05,
+      "incumbent": true,
+      "age": 0,
+      "lifetime": 25
+    },
+    "config": {
+      "capex_limit": 100000000,
+      "use_boiler_upgrade_scheme": false,
+      "general_grant_funding": 0,
+      "npv_time_horizon": 10,
+      "npv_discount_factor": 0
+    }
+  },
   "building_eload": [
     0.7031078934669495,
     0.6447016000747681,

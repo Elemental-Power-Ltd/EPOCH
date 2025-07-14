@@ -83,6 +83,7 @@ TEST(TariffStats, TimestepsNonHourly) {
 	SiteData sd(
 		sdBase.start_ts,
 		newEnd,
+		TaskData{},
 		sdBase.building_eload,
 		sdBase.building_hload,
 		sdBase.ev_eload,

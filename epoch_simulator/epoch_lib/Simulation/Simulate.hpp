@@ -48,7 +48,6 @@ private:
 	float getFixedAvailableImport(const TaskData& taskData) const;
 
 	const SiteData mSiteData;
-	TaskData mBaselineTaskData;
 	UsageData mBaselineUsage;
 	SimulationMetrics mBaselineMetrics;
 

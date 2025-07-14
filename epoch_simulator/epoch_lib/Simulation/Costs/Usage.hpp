@@ -30,6 +30,6 @@ struct UsageData {
 };
 
 float calculate_meter_cost(const UsageData& usage);
-UsageData calculateBaselineUsage(const SiteData& siteData, const TaskData& taskData, const CostVectors& costVectors);
-UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& baseline, const TaskData& scenario, const CostVectors& costVectors);
+UsageData calculateBaselineUsage(const SiteData& siteData, const CostVectors& costVectors);
+UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& scenario, const CostVectors& costVectors);
 

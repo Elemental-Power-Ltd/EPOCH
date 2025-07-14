@@ -22,6 +22,7 @@ struct SiteData {
 	SiteData(
 		std::chrono::system_clock::time_point start_ts,
 		std::chrono::system_clock::time_point end_ts,
+		TaskData baseline,
 		year_TS building_eload,
 		year_TS building_hload,
 		year_TS ev_eload,
@@ -36,6 +37,7 @@ struct SiteData {
 	)
 		: start_ts(start_ts),
 		end_ts(end_ts),
+		baseline(baseline),
 		building_eload(std::move(building_eload)),
 		building_hload(std::move(building_hload)),
 		ev_eload(std::move(ev_eload)),
@@ -54,6 +56,9 @@ struct SiteData {
 
 	std::chrono::system_clock::time_point start_ts;
 	std::chrono::system_clock::time_point end_ts;
+
+	// The baseline components for this site
+	const TaskData baseline;
 
 	// The electrical demand in kWh/timestep
 	year_TS building_eload;

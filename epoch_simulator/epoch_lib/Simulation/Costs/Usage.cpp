@@ -70,10 +70,10 @@ float calculate_meter_cost(const UsageData& usage) {
 }
 
 
-UsageData calculateBaselineUsage(const SiteData& siteData, const TaskData& taskData, const CostVectors& costVectors) {
-	auto usage = sumUsage(siteData, taskData, costVectors);
-	usage.capex_breakdown = calculate_capex(siteData, taskData);
-	usage.opex_breakdown = calculate_opex(taskData);
+UsageData calculateBaselineUsage(const SiteData& siteData, const CostVectors& costVectors) {
+	auto usage = sumUsage(siteData, siteData.baseline, costVectors);
+	usage.capex_breakdown = calculate_capex(siteData, siteData.baseline);
+	usage.opex_breakdown = calculate_opex(siteData.baseline);
 	usage.total_meter_cost = calculate_meter_cost(usage);
 	usage.total_operating_cost = usage.total_meter_cost + 
 		usage.opex_breakdown.ess_enclosure_opex + usage.opex_breakdown.ess_pcs_opex + usage.opex_breakdown.pv_opex;
@@ -81,9 +81,9 @@ UsageData calculateBaselineUsage(const SiteData& siteData, const TaskData& taskD
 }
 
 
-UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& baseline, const TaskData& scenario, const CostVectors& costVectors) {
+UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& scenario, const CostVectors& costVectors) {
 	auto usage = sumUsage(siteData, scenario, costVectors);
-	usage.capex_breakdown = calculate_capex_with_discounts(siteData, baseline, scenario);
+	usage.capex_breakdown = calculate_capex_with_discounts(siteData, scenario);
 	usage.opex_breakdown = calculate_opex(scenario);
 	usage.total_meter_cost = calculate_meter_cost(usage);
 	usage.total_operating_cost = usage.total_meter_cost +

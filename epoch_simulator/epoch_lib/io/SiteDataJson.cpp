@@ -5,6 +5,7 @@
 
 #include "FileHandling.hpp"
 #include "../Simulation/SiteData.hpp"
+#include "TaskDataJson.hpp"
 
 using json = nlohmann::json;
 
@@ -52,6 +53,9 @@ namespace nlohmann {
         auto start_ts = fromIso8601(start_iso);
         auto end_ts = fromIso8601(end_iso);
 
+        // read in the site baseline
+        TaskData baseline = j.at("baseline").get<TaskData>();
+
         // top-level vector fields
         year_TS building_eload = toEigen(j.at("building_eload").get<std::vector<float>>());
         year_TS building_hload = toEigen(j.at("building_hload").get<std::vector<float>>());
@@ -77,6 +81,7 @@ namespace nlohmann {
         return SiteData(
             start_ts,
             end_ts,
+            std::move(baseline),
             std::move(building_eload),
             std::move(building_hload),
             std::move(ev_eload),
@@ -96,6 +101,7 @@ namespace nlohmann {
         j = json{
             {"start_ts", toIso8601(sd.start_ts)},
             {"end_ts", toIso8601(sd.end_ts)},
+            {"baseline", sd.baseline},
 
             // Year_TS fields
             {"building_eload", toStdVec(sd.building_eload)},

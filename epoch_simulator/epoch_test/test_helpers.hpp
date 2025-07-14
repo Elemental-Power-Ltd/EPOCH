@@ -10,7 +10,7 @@
 * Make a Generic SiteData of Eigen::Ones of length n
 * With a start_ts and end_ts 
 */
-inline SiteData makeNHourSiteData(int n) {
+inline SiteData makeNHourSiteData(int n, TaskData baseline) {
     FabricIntervention fi;
     fi.cost = 999.0f;
     fi.reduced_hload = Eigen::VectorXf::Ones(n);
@@ -28,6 +28,7 @@ inline SiteData makeNHourSiteData(int n) {
     return SiteData(
         start,
         end,
+        baseline,
         Eigen::VectorXf::Ones(n), // building_eload
         Eigen::VectorXf::Ones(n), // building_hload
         Eigen::VectorXf::Ones(n), // ev_eload
@@ -48,8 +49,32 @@ inline SiteData makeNHourSiteData(int n) {
     );
 }
 
+/**
+* Overload of makeNHourSiteData to construct a default baseline
+*/
+inline SiteData makeNHourSiteData(int n) {
+    TaskData baseline = {};
+
+    baseline.building = Building();
+    baseline.grid = GridData();
+    baseline.gas_heater = GasCHData();
+
+    return makeNHourSiteData(n, baseline);
+}
+
 /*
 * Construct a SiteData over 24 hours where every vector is made using Eigen::Ones
+* Overload with a configurable baseline
+*/
+inline SiteData make24HourSiteData(TaskData baseline) {
+    return makeNHourSiteData(24, baseline);
+}
+
+
+
+/*
+* Construct a SiteData over 24 hours where every vector is made using Eigen::Ones
+* Overload for a default baseline
 */
 inline SiteData make24HourSiteData() {
     return makeNHourSiteData(24);

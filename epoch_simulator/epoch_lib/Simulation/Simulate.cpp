@@ -38,29 +38,11 @@ Simulator::Simulator(SiteData siteData):
 	mSiteData(siteData)
 {
 
-	mBaselineTaskData = TaskData{};
-	mBaselineTaskData.building = Building();
-	mBaselineTaskData.grid = GridData();
-	mBaselineTaskData.gas_heater = GasCHData();
+	auto baselineReportData = simulateTimesteps(mSiteData.baseline);
+	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, mSiteData.baseline);
+	mBaselineUsage = calculateBaselineUsage(mSiteData, baselineCostVectors);
 
-	mBaselineTaskData.building->incumbent = true;
-	mBaselineTaskData.grid->incumbent = true;
-	mBaselineTaskData.gas_heater->incumbent = true;
-
-	// we construct a TaskData with oversized grid
-	// to ensure there is no shortfall
-	mBaselineTaskData.grid->grid_import = 1000000.0f;
-	mBaselineTaskData.grid->grid_export = 1000000.0f;
-
-	// the Gas Heater is trickier as it has a cost
-	// for now fix at 100kW
-	mBaselineTaskData.gas_heater->maximum_output = 150.0f;
-
-	auto baselineReportData = simulateTimesteps(mBaselineTaskData);
-	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, mBaselineTaskData);
-	mBaselineUsage = calculateBaselineUsage(mSiteData, mBaselineTaskData, baselineCostVectors);
-
-	mBaselineMetrics = calculateMetrics(mSiteData, mBaselineTaskData, baselineReportData, mBaselineUsage);
+	mBaselineMetrics = calculateMetrics(mSiteData, mSiteData.baseline, baselineReportData, mBaselineUsage);
 }
 
 SimulationResult Simulator::simulateScenario(const TaskData& taskData, SimulationType simulationType) const {
@@ -92,7 +74,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 
 	const CostVectors& costVectors = extractCostVectors(result.report_data.value(), taskData);
 
-	auto scenarioUsage = calculateScenarioUsage(mSiteData, mBaselineTaskData, taskData, costVectors);
+	auto scenarioUsage = calculateScenarioUsage(mSiteData, taskData, costVectors);
 
 	result.baseline_metrics = mBaselineMetrics;
 	result.metrics = calculateMetrics(mSiteData, taskData, result.report_data.value(), scenarioUsage);
@@ -168,7 +150,7 @@ void Simulator::validateScenario(const TaskData& taskData) const {
 }
 
 CapexBreakdown Simulator::calculateCapexWithDiscounts(const TaskData& taskData) const {
-	return calculate_capex_with_discounts(mSiteData, mBaselineTaskData, taskData);
+	return calculate_capex_with_discounts(mSiteData, taskData);
 }
 
 ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType simulationType) const {

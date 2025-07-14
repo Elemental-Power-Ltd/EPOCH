@@ -5,7 +5,7 @@
 #include "../TaskData.hpp"
 #include "../TaskComponents.hpp"
 
-CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const TaskData& baseline, const TaskData& scenario);
+CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const TaskData& scenario);
 
 CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskData);
 
