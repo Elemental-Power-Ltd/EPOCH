@@ -6,10 +6,10 @@
 enum class EVFlag { NOT_PRESENT, NON_BALANCING, BALANCING };
 enum class DataCentreFlag {NOT_PRESENT, NON_BALANCING, BALANCING };
 
-class Config
+class Flags
 {
 public:
-	Config(const TaskData& taskData)
+	Flags(const TaskData& taskData)
 	{
 		if (taskData.electric_vehicles) {
 			if (taskData.electric_vehicles->flexible_load_ratio > 0) {

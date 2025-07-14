@@ -19,7 +19,7 @@
 #include "DayTariffStats.hpp"
 #include "HotWaterCylinder.hpp"
 
-#include "Config.hpp"
+#include "Flags.hpp"
 #include "TempSum.hpp"
 
 #include "Hotel.hpp"
@@ -155,7 +155,7 @@ CapexBreakdown Simulator::calculateCapexWithDiscounts(const TaskData& taskData) 
 
 ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType simulationType) const {
 	/* INITIALISE classes that support energy sums and object precedence */
-	Config config(taskData);	// flags energy component presence in TaskData & balancing modes
+	Flags flags(taskData);	// flags energy component presence in TaskData & balancing modes
 	TempSum tempSum(mSiteData);		// class of arrays for running totals (replace ESUM and Heat)
 
 	ReportData reportData{};
@@ -180,7 +180,7 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 		PV1.Report(reportData);
 	}
 
-	if (config.getEVFlag() == EVFlag::NON_BALANCING) {
+	if (flags.getEVFlag() == EVFlag::NON_BALANCING) {
 		BasicElectricVehicle EV1(mSiteData, taskData.electric_vehicles.value());
 		EV1.AllCalcs(tempSum);
 		EV1.Report(reportData);
@@ -234,7 +234,7 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 		ambientController->AllCalcs(tempSum);
 	}
 
-	if (config.getDataCentreFlag() == DataCentreFlag::NON_BALANCING) {
+	if (flags.getDataCentreFlag() == DataCentreFlag::NON_BALANCING) {
 		dataCentre->AllCalcs(tempSum);
 	}
 
@@ -245,8 +245,8 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 	const float availableGridImport = getFixedAvailableImport(taskData);
 
 
-	auto dcFlag = config.getDataCentreFlag();
-	auto evFlag = config.getEVFlag();
+	auto dcFlag = flags.getDataCentreFlag();
+	auto evFlag = flags.getEVFlag();
 
 	if (dcFlag == DataCentreFlag::BALANCING && evFlag == EVFlag::BALANCING) {
 		// This represents the logic in M-VEST v0-7:
@@ -302,7 +302,7 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 
 	tempSum.Report(reportData);
 	ESSmain->Report(reportData);
-	if (config.dataCentrePresent()) {
+	if (flags.dataCentrePresent()) {
 		dataCentre->Report(reportData);
 	}
 
