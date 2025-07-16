@@ -94,7 +94,7 @@ async def generate_renewables_generation(
     location, coords = result
     if location is None or coords is None:
         raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
-    
+
     latitude, longitude = coords
     if params.azimuth is None or params.tilt is None:
         logger.info("Got no azimuth or tilt data, so getting optima from PVGIS.")

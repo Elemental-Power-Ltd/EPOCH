@@ -153,19 +153,18 @@ class TestRenewables:
     async def test_generate_default_location(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
-        """
-        Test that we can generate a solar array in the `default` location.
-        """
+        """Test that we can generate a solar array in the `default` location."""
         locn_metadata = await client.post(
-                "/add-solar-location",
-                json={
-                    "site_id": "demo_london",
-                    "renewables_location_id": "demo_london_southroof",
-                    "name": "Matt's South Roof",
-                    "azimuth": 153,
-                    "tilt": 35,
-                    "maxpower": 5.0
-                })
+            "/add-solar-location",
+            json={
+                "site_id": "demo_london",
+                "renewables_location_id": "demo_london_southroof",
+                "name": "Matt's South Roof",
+                "azimuth": 153,
+                "tilt": 35,
+                "maxpower": 5.0,
+            },
+        )
         assert locn_metadata.status_code == 200
 
         metadata = (
@@ -178,7 +177,7 @@ class TestRenewables:
                     "azimuth": None,
                     "tilt": None,
                     "tracking": False,
-                    "renewables_location_id": "demo_london_southroof"
+                    "renewables_location_id": "demo_london_southroof",
                 },
             )
         ).json()
@@ -200,7 +199,6 @@ class TestRenewables:
             for item in results["data"]
         )
         assert all(all(item) >= 0 for item in results["data"])
-
 
     @pytest.mark.asyncio
     @pytest.mark.external

@@ -71,9 +71,11 @@ class HeatingLoadMetadata(pydantic.BaseModel):
 class FabricIntervention(pydantic.BaseModel):
     cost: float = pydantic.Field(description="Cost associated with this fabric intervention in £")
     reduced_hload: list[float] = pydantic.Field(
-        examples=[[0.123, 4.56]], description="heating demand in kWh for this time period."
+        examples=[[0.123, 4.56]], description="Heating demand in kWh th for this time period."
     )
-    peak_hload: float = pydantic.Field(default=0.0, description="Peak heating demand from a survey in kWth")
+    peak_hload: float = pydantic.Field(
+        description="Peak heating demand from a survey in kWth", default_factory=lambda data: max(data["reduced_hload"])
+    )
 
 
 class EpochHeatingEntry(EpochEntry):

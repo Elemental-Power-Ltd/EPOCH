@@ -402,13 +402,10 @@ async def list_baseline_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list
         FROM client_info.site_baselines AS sb
         WHERE sb.site_id = $1
         ORDER BY sb.created_at
-        """, site_id.site_id
+        """,
+        site_id.site_id,
     )
     return [
-        DatasetEntry(
-            dataset_id=item["baseline_id"],
-            dataset_type=DatasetTypeEnum.SiteBaseline,
-            created_at=item["created_at"]
-        )
+        DatasetEntry(dataset_id=item["baseline_id"], dataset_type=DatasetTypeEnum.SiteBaseline, created_at=item["created_at"])
         for item in res
     ]

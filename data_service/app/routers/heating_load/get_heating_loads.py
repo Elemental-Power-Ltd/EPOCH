@@ -142,7 +142,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             if res is None:
                 return 0.0
         return float(res)
-    
+
     async def get_peak_hload(db_pool: DatabasePoolDep, dataset_id: dataset_id_t) -> float:
         res = await db_pool.fetchval("SELECT peak_hload FROM heating.metadata WHERE dataset_id = $1 LIMIT 1", dataset_id)
         if res is None:
@@ -157,13 +157,17 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             for dataset_id in params.dataset_id
         ]
         all_costs = [tg.create_task(get_heating_cost(db_pool=pool, dataset_id=dataset_id)) for dataset_id in params.dataset_id]
-        all_peak_hloads = [tg.create_task(get_peak_hload(db_pool=pool, dataset_id=dataset_id)) for dataset_id in params.dataset_id]
+        all_peak_hloads = [
+            tg.create_task(get_peak_hload(db_pool=pool, dataset_id=dataset_id)) for dataset_id in params.dataset_id
+        ]
 
     return EpochHeatingEntry(
         timestamps=all_dfs[0].result().index.to_list(),
         data=[
-            FabricIntervention(cost=cost.result(), reduced_hload=df.result()["heating"].to_list())
-            for cost, df in zip(all_costs, all_dfs, strict=False)
+            FabricIntervention(
+                cost=cost.result(), reduced_hload=df.result()["heating"].to_list(), peak_hload=peak_hload.result()
+            )
+            for cost, df, peak_hload in zip(all_costs, all_dfs, all_peak_hloads, strict=True)
         ],
     )
 
