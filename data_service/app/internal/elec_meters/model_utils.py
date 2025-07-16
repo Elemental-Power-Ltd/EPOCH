@@ -3,7 +3,7 @@
 import logging
 import pathlib
 from enum import StrEnum
-from typing import Self, cast
+from typing import Any, Self, cast, overload
 
 import joblib
 import numpy as np
@@ -28,11 +28,77 @@ class ScalerTypeEnum(StrEnum):
     Test = "test"
 
 
-class CustomMinMaxScaler(MinMaxScaler):  # noqa: D101
-    def inverse_transform(self, x: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
-        """Shim inverse transform to get tests to pass."""
-        logger.warning("USING BAD CUSTOMMINMAXSCALER")
-        return cast(npt.NDArray[np.floating], (x + self.min_[: x.shape[0], np.newaxis]) / self.scale_[: x.shape[0], np.newaxis])
+class CustomMinMaxScaler(MinMaxScaler):
+    """
+    A wrapper class around the MinMaxScaler class from scikit-learn.
+
+    This class performs preprocessing on the input X before calling the
+    transform() method of the MinMax class.
+    """
+
+    feature_range: tuple
+    copy: bool
+    clip: bool
+    n: int
+    axis: int
+
+    def __init__(self, n: int = 9, feature_range: tuple = (0, 1),
+                 copy: bool = True, clip: bool = False, axis: int = 0):
+        # first 9 values corresponds to 00:00-04:00 inclusive for
+        self.n = n
+        self.axis = axis
+        super().__init__(feature_range=feature_range, copy=copy, clip=clip)
+
+    def fit(self, X, y=None):
+        """
+        Fit the instance: perform any preprocessing and calculate the custom min and standard max.
+
+        Args:
+            X (numpy.ndarray): The input data.
+
+        Returns
+        -------
+            self
+        """
+        X = np.asarray(X)
+        if self.axis == 1:
+            X = X.T
+
+        # Compute custom min (mean of first n values) and max (global max)
+        mean_val = np.mean(X[:self.n], axis=0)
+        max_val = np.max(X, axis=0)
+
+        self.data_min_ = mean_val
+        self.data_max_ = max_val
+        self.data_range_ = self.data_max_ - self.data_min_
+        self.data_range_[self.data_range_ == 0.0] = 1.0
+
+        scale_range = self.feature_range[1] - self.feature_range[0]
+        self.scale_ = scale_range / self.data_range_
+        self.min_ = self.feature_range[0] - self.data_min_ * self.scale_
+
+        return self
+
+    def transform(self, X):
+        """Transform the data using the custom-fitted MinMaxScaler."""
+        X = np.asarray(X)
+        if self.axis == 1:
+            return (X.T * self.scale_ + self.min_).T
+        else:
+            return X * self.scale_ + self.min_
+
+    def inverse_transform(self, X):
+        """Perform the inverse transformation on the data using the custom-fitted MinMaxScaler."""
+        X = np.asarray(X)
+        if self.axis == 1:
+            return ((X.T - self.min_) / self.scale_).T
+        else:
+            return (X - self.min_) / self.scale_
+
+    def fit_transform(self, X, y=None, **fit_params):
+        """Fit the custom MinMaxScaler and perform the resulting transformation."""
+        X = np.asarray(X)
+        return super().fit_transform(X, y, **fit_params)
 
 
 class RBFTimestampEncoder(TransformerMixin):
@@ -107,10 +173,15 @@ class RBFTimestampEncoder(TransformerMixin):
         if not self.is_fitted:
             raise ValueError("The model needs to be fitted before transforming data.")
         X_preprocessed = self._preprocess(X)
-        result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed)
+        result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed) # type: ignore
         return result
 
-    def fit_transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+    @overload
+    def fit_transform(self, X: npt.NDArray[np.floating], y: None = ..., **fit_params: Any) -> npt.NDArray[np.floating]: ...
+    @overload
+    def fit_transform(self, X: Any, y: Any = None, **fit_params: Any): ...
+
+    def fit_transform(self, X: Any, y=None, **fit_params):
         """
         Fit the RepeatingBasisFunction instance and transform the input data.
 
@@ -126,7 +197,7 @@ class RBFTimestampEncoder(TransformerMixin):
         return self.transform(X)
 
 
-def load_scaler(path: pathlib.Path, refresh: bool = False) -> StandardScaler:
+def load_StandardScaler(path: pathlib.Path, refresh: bool = False) -> StandardScaler:
     """
     Load a saved StandardScaler from a file.
 
@@ -140,7 +211,7 @@ def load_scaler(path: pathlib.Path, refresh: bool = False) -> StandardScaler:
 
     Returns
     -------
-    StandardScaler
+    scaler
         The loaded StandardScaler object.
 
     Raises
@@ -152,10 +223,8 @@ def load_scaler(path: pathlib.Path, refresh: bool = False) -> StandardScaler:
     """
     try:
         scaler = joblib.load(path)
-        # if not isinstance(scaler, StandardScaler):
-        #     raise ValueError("Loaded object is not a StandardScaler")
-        # TODO (2024-09-16 JSM) This was commented out as the new time scaler (for rbf encoding months) is not a StandardScaler
-        # Reintroduce scaler typechecking for time scalers.
+        if not isinstance(scaler, StandardScaler):
+            raise TypeError("Loaded object is not a StandardScaler")
 
         if refresh:
             joblib.dump(scaler, path)
@@ -164,10 +233,81 @@ def load_scaler(path: pathlib.Path, refresh: bool = False) -> StandardScaler:
 
     return scaler
 
+def load_CustomMinMaxScaler(path: pathlib.Path, refresh: bool = False) -> CustomMinMaxScaler:
+    """
+    Load a saved instance of CustomMinMaxScaler from a joblib file.
+
+    Parameters
+    ----------
+    path (str)
+        Path to the saved joblib file.
+    refresh
+        Whether we should re-save these to a file after loading.
+        This is useful if you have updated scikit learn and it's complaining!
+
+    Returns
+    -------
+    scaler
+        The loaded CustomMinMaxScaler object.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified file does not exist.
+    ValueError
+        If the loaded object is not a CustomMinMaxScaler.
+    """
+    try:
+        scaler = joblib.load(path)
+        if not isinstance(scaler, CustomMinMaxScaler):
+            raise TypeError("Loaded object is not a CustomMinMaxScaler")
+
+        if refresh:
+            joblib.dump(scaler, path)
+    except FileNotFoundError as ex:
+        raise FileNotFoundError(f"No scaler found at {path}") from ex
+
+    return scaler
+
+def load_RBFTimestampEncoder(path: pathlib.Path, refresh: bool = False) -> RBFTimestampEncoder:
+    """
+    Load a saved instance of RBFTimestampEncoder (which we treat as a scaler) from a joblib file.
+
+    Parameters
+    ----------
+    path (str)
+        Path to the saved joblib file.
+    refresh
+        Whether we should re-save these to a file after loading.
+        This is useful if you have updated scikit learn and it's complaining!
+
+    Returns
+    -------
+    scaler
+        The loaded RBFTimestampEncoder object.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified file does not exist.
+    ValueError
+        If the loaded object is not a RBFTimestampEncoder.
+    """
+    try:
+        scaler = joblib.load(path)
+        if not isinstance(scaler, RBFTimestampEncoder):
+            raise TypeError("Loaded object is not an RBFTimestampEncoder")
+
+        if refresh:
+            joblib.dump(scaler, path)
+    except FileNotFoundError as ex:
+        raise FileNotFoundError(f"No scaler found at {path}") from ex
+
+    return scaler
 
 def load_all_scalers(
     directory: pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = False, use_new: bool = True
-) -> dict[ScalerTypeEnum, StandardScaler]:
+) -> dict[ScalerTypeEnum, CustomMinMaxScaler | RBFTimestampEncoder | StandardScaler]:
     """
     Load all the scalers found within a specific directory.
 
@@ -186,16 +326,16 @@ def load_all_scalers(
     """
     if use_new:
         return {
-            ScalerTypeEnum.Data: load_scaler(directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh),
-            ScalerTypeEnum.Val: load_scaler(directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh),
-            ScalerTypeEnum.Test: load_scaler(directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh),
-            ScalerTypeEnum.Aggregate: load_scaler(directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh),
-            ScalerTypeEnum.StartTime: load_scaler(directory / "elecTransformerVAE_start_time_scaler.joblib", refresh=refresh),
-            ScalerTypeEnum.EndTime: load_scaler(directory / "elecTransformerVAE_end_time_scaler.joblib", refresh=refresh),
+            ScalerTypeEnum.Train: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh),
+            ScalerTypeEnum.Val: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh),
+            ScalerTypeEnum.Test: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh),
+            ScalerTypeEnum.Aggregate: load_StandardScaler(directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh),
+            ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(directory / "elecTransformerVAE_start_time_scaler.joblib", refresh=refresh),
+            ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(directory / "elecTransformerVAE_end_time_scaler.joblib", refresh=refresh),
         }
     return {
-        ScalerTypeEnum.Data: load_scaler(directory / "elecVAE_data_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.Aggregate: load_scaler(directory / "elecVAE_aggregate_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.StartTime: load_scaler(directory / "elecVAE_start_time_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.EndTime: load_scaler(directory / "elecVAE_end_time_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.Data: load_StandardScaler(directory / "elecVAE_data_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.Aggregate: load_StandardScaler(directory / "elecVAE_aggregate_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(directory / "elecVAE_start_time_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(directory / "elecVAE_end_time_scaler.joblib", refresh=refresh),
     }
