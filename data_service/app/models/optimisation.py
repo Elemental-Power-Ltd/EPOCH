@@ -151,11 +151,7 @@ class PortfolioMetrics(BaseModel):
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
     )
     carbon_balance_total: float | None = Field(
-<<<<<<< HEAD
-        description="Total of scope 1 + scope 2 emissions in kg CO2e, if we have calculated both, or None if either is unset.",
-=======
         description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
->>>>>>> main
         default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
         if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
         else None,
