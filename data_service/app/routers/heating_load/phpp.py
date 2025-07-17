@@ -10,6 +10,7 @@ import pydantic
 from fastapi import Form, UploadFile
 
 from ...dependencies import DatabasePoolDep
+from ...internal.thermal_model.phpp.interventions import THIRD_PARTY_INTERVENTIONS, CostedIntervention
 from ...internal.thermal_model.phpp.parse_phpp import phpp_to_dataframe
 from ...models.core import SiteID, dataset_id_t, site_id_t
 from .router import api_router
@@ -209,3 +210,24 @@ async def get_phpp_dataframe_from_database(
         structure_id=metadata["structure_id"],
         created_at=metadata["created_at"],
     )
+
+
+@api_router.post("/list-interventions")
+async def list_interventions() -> dict[str, CostedIntervention]:
+    """
+    List the available fabric interventions, including their cost and what areas they affect.
+
+    This is a hard-coded list in the python code, but may change to a database lookup in future.
+    An intervention has a name, which you can pass to other PHPP heat load endpoints,
+    a cost in £/m^2, an affected area e.g. windows or walls, and a new U-value for those areas.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    dict[str, CostedIntervention]
+        Dictionary keyed by intervention name with details in the values
+    """
+    return THIRD_PARTY_INTERVENTIONS
