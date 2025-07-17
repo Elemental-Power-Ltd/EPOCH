@@ -539,6 +539,7 @@ async def generate_thermal_model_heating_load(
 
     return metadata
 
+
 @api_router.post("/generate-phpp-load")
 async def generate_heating_load_phpp(
     pool: DatabasePoolDep, http_client: HttpClientDep, params: HeatingLoadRequest
