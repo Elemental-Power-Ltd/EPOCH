@@ -100,6 +100,7 @@ class EpochDHWEntry(EpochEntry):
 class HeatingLoadModelEnum(StrEnum):
     Regression = "regression"
     ThermalModel = "thermal_model"
+    PHPP = "phpp"
     Auto = "auto"
 
 
@@ -126,7 +127,7 @@ class HeatingLoadRequest(DatasetIDWithTime):
         default=HeatingLoadModelEnum.Auto,
     )
     site_id: site_id_t | None = pydantic.Field(description="The site ID you want to analyse", default=None)
-    thermal_model_dataset_id: dataset_id_t | None = Field(
+    structure_id: dataset_id_t | None = Field(
         description="Which underlying thermal model to use if in thermal model mode", default=None
     )
     savings_fraction: float = Field(

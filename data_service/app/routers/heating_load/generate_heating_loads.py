@@ -31,11 +31,17 @@ from ...internal.thermal_model import apply_fabric_interventions, building_adjus
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
 from ...internal.thermal_model.fitting import simulate_parameters
+from ...internal.thermal_model.phpp.parse_phpp import (
+    apply_phpp_intervention,
+    phpp_fabric_intervention_cost,
+    phpp_total_heat_loss,
+)
 from ...models.core import DatasetID, SiteID, dataset_id_t, site_id_t
-from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest
+from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
 from ...models.weather import BaitAndModelCoefs, WeatherRequest
 from ..client_data import get_location
 from ..weather import get_weather
+from .phpp import get_phpp_dataframe_from_database
 from .router import api_router
 from .thermal_model import get_thermal_model
 
@@ -111,7 +117,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         apply_bait=True,
         model_type=HeatingLoadModelEnum.Regression,
         site_id=site_id,
-        thermal_model_dataset_id=None,
+        structure_id=None,
         surveyed_sizes=params.surveyed_sizes,
     )
 
@@ -161,7 +167,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         interventions=params.interventions,
         model_type=HeatingLoadModelEnum.ThermalModel,
         site_id=site_id,
-        thermal_model_dataset_id=most_recent_id,
+        structure_id=most_recent_id,
         surveyed_sizes=params.surveyed_sizes,
     )
 
@@ -199,6 +205,8 @@ async def generate_heating_load(
             return await generate_heating_load_regression(params=params, pool=pool, http_client=http_client)
         case HeatingLoadModelEnum.ThermalModel:
             return await generate_thermal_model_heating_load(pool=pool, http_client=http_client, params=params)
+        case HeatingLoadModelEnum.PHPP:
+            return await generate_heating_load_phpp(pool=pool, http_client=http_client, params=params)
 
 
 async def generate_heating_load_regression_impl(
@@ -453,9 +461,9 @@ async def generate_thermal_model_heating_load(
     DatasetEntry
         ID of the generated thermal model dataset.
     """
-    if params.thermal_model_dataset_id is None:
+    if params.structure_id is None:
         raise HTTPException(400, "Must have provided a thermal model dataset ID to generate a heating load")
-    thermal_model = await get_thermal_model(pool, dataset_id=DatasetID(dataset_id=params.thermal_model_dataset_id))
+    thermal_model = await get_thermal_model(pool, dataset_id=DatasetID(dataset_id=params.structure_id))
 
     async with pool.acquire() as conn:
         if params.site_id is None:
@@ -498,7 +506,7 @@ async def generate_thermal_model_heating_load(
         dataset_id=uuid.uuid4(),
         site_id=params.site_id,
         created_at=datetime.datetime.now(datetime.UTC),
-        params=json.dumps({"thermal_model_dataset_id": str(params.thermal_model_dataset_id)}),
+        params=json.dumps({"thermal_model_dataset_id": str(params.structure_id)}),
         interventions=params.interventions,
     )
 
@@ -530,3 +538,125 @@ async def generate_thermal_model_heating_load(
     )
 
     return metadata
+
+@api_router.post("/generate-phpp-load")
+async def generate_heating_load_phpp(
+    pool: DatabasePoolDep, http_client: HttpClientDep, params: HeatingLoadRequest
+) -> HeatingLoadMetadata:
+    """
+    Generate a heating load from the PHPP.
+
+    This is actually a regression implementation, but we'll apply fabric savings based on the PHPP peak heat load.
+
+    Parameters
+    ----------
+    pool
+        Database connection pool containing the PHPP data
+    http_client
+        HTTP Client for requests to VisualCrossing to get weather datas
+    params
+        request for the heating load including a structure ID (filed under the thermal model dataset ID for nnow)
+
+    Returns
+    -------
+    HeatingLoadMetadata
+        Information about the heating load we just generated
+    """
+    if params.structure_id is None:
+        # Note that we don't check if this is a real structure here, just that it was provided.
+        # We trust the user to have sent a legitimate request
+        raise HTTPException(422, "Need to provide a dataset ID in thermal_model_dataset_id corresponding to a structure.")
+
+    if params.site_id is None:
+        site_id = await get_site_id_for_heating_load(params.dataset_id, pool)
+    else:
+        site_id = params.site_id
+
+    new_params = params.model_copy()
+
+    new_params.site_id = site_id
+
+    if params.savings_fraction < 1.0:
+        # If we've got a provided savings fraction, we'll override that with our calculations later.
+        # For now, return that error noisily so callers know what's happened
+        raise HTTPException(
+            422, "Provided a <1 savings fraction to the PHPP generation; must provide 1.0 as we'll overwrite it."
+        )
+
+    structure_df, metadata = await get_phpp_dataframe_from_database(pool, params.structure_id)
+    # TODO (2025-07-17 MHJB): this mismatch between typed dict and pydantic is very annoying
+    peak_hload = phpp_total_heat_loss(
+        structure_df=structure_df,
+        metadata={"air_changes": 4.0, "floor_area": metadata.floor_area, "internal_volume": metadata.internal_volume},
+    )
+
+    new_structure_df = structure_df.copy()
+    for intervention in params.interventions:
+        # Repeatedly apply interventions to the same dataframe. This does some unnecessary copying but is cleanest
+        new_structure_df = apply_phpp_intervention(new_structure_df, intervention_name=intervention)
+
+    # TODO (2025-05-17 MHJB): read the air changes from the PHPP?
+    final_peak_hload = phpp_total_heat_loss(
+        structure_df=new_structure_df,
+        metadata={"air_changes": 4.0, "floor_area": metadata.floor_area, "internal_volume": metadata.internal_volume},
+    )
+
+    # Override the existing percentage saving with the new one, which we then send to the regression implementation.
+    percentage_saving = 1.0 - (final_peak_hload / peak_hload)  # this might be 1.0 if there were no interventions
+    new_params.savings_fraction = percentage_saving
+
+    heating_df, changed_coefs = await generate_heating_load_regression_impl(new_params, pool, http_client)
+
+    metadata_params = {
+        "source_dataset_id": str(params.dataset_id),
+        "structure_id": str(params.structure_id),
+        **changed_coefs.model_dump(),
+    }
+    # Do this type wrangling in case we got genericised interventions (some of which, like double glazing, might pass)
+    metadata_params["cost"] = phpp_fabric_intervention_cost(
+        structure_df, [item.value if isinstance(item, InterventionEnum) else str(item) for item in params.interventions]
+    )
+
+    hload_metadata = HeatingLoadMetadata(
+        dataset_id=uuid.uuid4(),
+        site_id=site_id,
+        created_at=datetime.datetime.now(datetime.UTC),
+        params=json.dumps(metadata_params),
+        interventions=params.interventions,
+    )
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO
+                    heating.metadata (
+                        dataset_id,
+                        site_id,
+                        created_at,
+                        params,
+                        interventions
+                        )
+                VALUES ($1, $2, $3, $4, $5)""",
+                hload_metadata.dataset_id,
+                hload_metadata.site_id,
+                hload_metadata.created_at,
+                json.dumps(hload_metadata.params),
+                hload_metadata.interventions,
+            )
+
+            await conn.copy_records_to_table(
+                schema_name="heating",
+                table_name="synthesised",
+                columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
+                records=zip(
+                    itertools.repeat(hload_metadata.dataset_id, len(heating_df.index)),
+                    heating_df.index,
+                    heating_df.index + pd.Timedelta(minutes=30),
+                    heating_df["heating"],
+                    heating_df["dhw"],
+                    heating_df["air_temperature"],
+                    strict=True,
+                ),
+            )
+    return hload_metadata

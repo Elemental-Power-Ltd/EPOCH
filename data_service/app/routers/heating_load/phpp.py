@@ -1,17 +1,21 @@
 """PHPP database entry endpoints."""
 
+import asyncio
 import datetime
 import itertools
 import logging
 import uuid
 
+import asyncpg
 import pandas as pd
 import pydantic
 from fastapi import Form, UploadFile
 
 from ...dependencies import DatabasePoolDep
 from ...internal.thermal_model.phpp.interventions import THIRD_PARTY_INTERVENTIONS, CostedIntervention
-from ...internal.thermal_model.phpp.parse_phpp import phpp_to_dataframe
+from ...internal.thermal_model.phpp.parse_phpp import (
+    phpp_to_dataframe,
+)
 from ...models.core import SiteID, dataset_id_t, site_id_t
 from .router import api_router
 
@@ -52,7 +56,7 @@ async def upload_phpp(
     Returns
     -------
     PhppMetadata
-        ???
+        Details about the PHPP survey you've just added to the database
     """
     logger = logging.getLogger(__name__)
     parsed_df, structure_info = phpp_to_dataframe(file.file)
@@ -164,43 +168,62 @@ async def list_phpp(pool: DatabasePoolDep, site_id: SiteID) -> list[PhppMetadata
 
 
 async def get_phpp_dataframe_from_database(
-    pool: DatabasePoolDep, structure_id: dataset_id_t
+    pool: asyncpg.pool.Pool, structure_id: dataset_id_t
 ) -> tuple[pd.DataFrame, PhppMetadata]:
     """
     Get a PHPP from the database and some metadata.
 
-    TODO: tidy up the return type.
-    """
-    records = await pool.fetch(
-        """
-        SELECT
-            element_id,
-            element_name,
-            element_group,
-            area,
-            angle,
-            u_value,
-            area_type
-        FROM heating.structure_elements
-        WHERE structure_id = $1
-        ORDER BY element_id ASC""",
-        structure_id,
-    )
+    This isn't an endpoint, but is here because it requires access to the database.
 
-    metadata = await pool.fetchrow(
-        """
-        SELECT
-            site_id,
-            structure_id,
-            internal_volume,
-            floor_area,
-            filename,
-            created_at
-        FROM heating.structure_metadata
-        WHERE structure_id = $1
-        LIMIT 1""",
-        structure_id,
-    )
+    Parameters
+    ----------
+    pool
+        Database connection pool to look up PHPP values in
+    structure_id
+        Unique ID of the structure to look at (not a site ID, but PHPP structure ID)
+
+    Returns
+    -------
+    tuple[pd.DataFrame, PhppMetadata]
+        Structural elements dataframe and associated metadata
+    """
+    async with asyncio.TaskGroup() as tg:
+        records_task = tg.create_task(
+            pool.fetch(
+                """
+            SELECT
+                element_id,
+                element_name,
+                element_group,
+                area,
+                angle,
+                u_value,
+                area_type
+            FROM heating.structure_elements
+            WHERE structure_id = $1
+            ORDER BY element_id ASC""",
+                structure_id,
+            )
+        )
+
+        metadata_task = tg.create_task(
+            pool.fetchrow(
+                """
+            SELECT
+                site_id,
+                structure_id,
+                internal_volume,
+                floor_area,
+                filename,
+                created_at
+            FROM heating.structure_metadata
+            WHERE structure_id = $1
+            LIMIT 1""",
+                structure_id,
+            )
+        )
+
+    metadata, records = metadata_task.result(), records_task.result()
     assert metadata is not None, "Got None metadata"
     return pd.DataFrame.from_records(dict(item) for item in records), PhppMetadata(
         filename=metadata["filename"],
