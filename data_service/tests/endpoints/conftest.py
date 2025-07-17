@@ -310,7 +310,7 @@ class MockedHttpClient(httpx.AsyncClient):
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
+async def client() -> AsyncGenerator[AsyncClient]:
     """
     Get a FastAPI client for a single test.
 
@@ -324,7 +324,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     await db.create_pool()
     assert db.pool is not None, "Could not create database pool"
 
-    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
+    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
         """
         Override the database creation with our database from this file.
 
@@ -334,7 +334,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         assert db.pool is not None, "Database pool not yet created."
         yield db.pool
 
-    async def override_get_db_conn() -> AsyncGenerator[DBConnection, None]:
+    async def override_get_db_conn() -> AsyncGenerator[DBConnection]:
         """
         Override the database creation with our database from this file.
 

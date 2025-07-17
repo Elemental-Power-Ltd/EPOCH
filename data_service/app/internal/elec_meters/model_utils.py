@@ -153,7 +153,7 @@ def load_scaler(path: str | pathlib.Path, refresh: bool = False) -> StandardScal
 
 
 def load_all_scalers(
-    directory: str | pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = False
+    directory: str | pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = True
 ) -> dict[ScalerTypeEnum, StandardScaler]:
     """
     Load all the scalers found within a specific directory.

@@ -6,16 +6,15 @@ import datetime
 import httpx
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 
-@pytest_asyncio.fixture
-async def demo_start_ts() -> datetime.datetime:
+@pytest.fixture
+def demo_start_ts() -> datetime.datetime:
     return datetime.datetime(year=2024, month=1, day=1, hour=0, minute=0, second=0, tzinfo=datetime.UTC)
 
 
-@pytest_asyncio.fixture
-async def demo_end_ts() -> datetime.datetime:
+@pytest.fixture
+def demo_end_ts() -> datetime.datetime:
     return datetime.datetime(year=2024, month=6, day=30, hour=0, minute=0, second=0, tzinfo=datetime.UTC)
 
 
