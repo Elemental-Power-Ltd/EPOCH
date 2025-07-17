@@ -20,13 +20,14 @@ PYBIND11_MODULE(epoch_simulator, m) {
 	m.attr("__version__") = EPOCH_VERSION;
 
 	pybind11::class_<Simulator_py>(m, "Simulator")
-		.def_static("from_file", &Simulator_py::from_file, pybind11::arg("filepath"))
-		.def_static("from_json", &Simulator_py::from_json, pybind11::arg("json_str"))
+		.def_static("from_file", &Simulator_py::from_file, pybind11::arg("site_data_path"), pybind11::arg("config_path"))
+		.def_static("from_json", &Simulator_py::from_json, pybind11::arg("site_data_json_str"), pybind11::arg("config_json_str"))
 		.def("simulate_scenario", &Simulator_py::simulateScenario,
 			pybind11::arg("taskData"),
 			pybind11::arg("fullReporting") = false)
 		.def("is_valid", &Simulator_py::isValid, pybind11::arg("taskData"))
-		.def("calculate_capex", &Simulator_py::calculateCapexWithDiscounts, pybind11::arg("taskData"));
+		.def("calculate_capex", &Simulator_py::calculateCapexWithDiscounts, pybind11::arg("taskData"))
+		.def_readonly("config", &Simulator_py::config);
 
 	pybind11::class_<TaskData>(m, "TaskData")
 		.def(pybind11::init<>())
@@ -40,7 +41,6 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("heat_pump", &TaskData::heat_pump)
 		.def_readwrite("mop", &TaskData::mop)
 		.def_readwrite("solar_panels", &TaskData::solar_panels)
-		.def_readwrite("config", &TaskData::config)
 		.def_static("from_json", [](const std::string& json_str) {
 			nlohmann::json j = nlohmann::json::parse(json_str);
 			return j.get<TaskData>();
@@ -170,7 +170,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("use_boiler_upgrade_scheme", &TaskConfig::use_boiler_upgrade_scheme)
 		.def_readwrite("general_grant_funding", &TaskConfig::general_grant_funding)
 		.def_readwrite("npv_time_horizon", &TaskConfig::npv_time_horizon)
-		.def_readwrite("npv_discount_factor", &TaskConfig::npv_discount_factor);
+		.def_readwrite("npv_discount_factor", &TaskConfig::npv_discount_factor)
+		.def("__repr__", &configToString);
 
 
 	pybind11::class_<SimulationResult>(m, "SimulationResult")

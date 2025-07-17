@@ -12,7 +12,7 @@ protected:
 
     // These tests all work with a boring but technically valid set of SiteData
     SimulatorTest():
-        simulator(make24HourSiteData())
+        simulator(make24HourSiteData(), TaskConfig{})
     {}
 };
 

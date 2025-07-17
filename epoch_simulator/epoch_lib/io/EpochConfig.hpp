@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "../Exceptions.hpp"
+#include "../Simulation/TaskComponents.hpp"
 
 struct OptimiserConfig {
 	int leagueTableCapacity;
@@ -13,11 +14,12 @@ struct OptimiserConfig {
 
 struct EpochConfig {
 	OptimiserConfig optimiserConfig;
+	TaskConfig taskConfig;
 };
 
 class ConfigHandler {
 public:
-	ConfigHandler(std::filesystem::path configDir);
+	ConfigHandler(std::filesystem::path configPath);
 	EpochConfig getConfig() const;
 
 private:
@@ -25,7 +27,7 @@ private:
 	OptimiserConfig parseOptimiserSection(nlohmann::json optimiserJson);
 
 
-	std::filesystem::path mConfigDir;
+	std::filesystem::path mConfigPath;
 	EpochConfig mConfig;
 };
 

@@ -31,8 +31,9 @@ TEST_F(FabricInterventionTest, calculateCapex) {
 	// 1 based indexing here, 0 is the base building_hload
 	taskData.building->fabric_intervention_index = 1;
 
+	TaskConfig config{};
 
-	Simulator sim{ siteData };
+	Simulator sim{ siteData, config };
 	auto capex = sim.calculateCapexWithDiscounts(taskData);
 
 	EXPECT_EQ(capex.building_fabric_capex, 100.0f);

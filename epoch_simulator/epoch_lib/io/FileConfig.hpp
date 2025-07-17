@@ -12,16 +12,15 @@ public:
     // Simple Constructor allowing control of the names of the directories but not any of the files
     FileConfig(
         std::filesystem::path inputDir,
-        std::filesystem::path outputDir,
-        std::filesystem::path configDir
+        std::filesystem::path outputDir
     )
         : mInputDir(inputDir),
         mOutputDir(outputDir),
-        mConfigDir(configDir),
       
         inputParameters("inputParameters.json"),
         taskData("taskData.json"),
         siteData("siteData.json"),
+        epochConfig("epochConfig.json"),
         resultsFilename("AllResults.csv"),
         outputJsonFilename("outputParameters.json")
     {
@@ -61,6 +60,10 @@ public:
         return mOutputDir / outputJsonFilename;
     }
 
+    std::filesystem::path getConfigFilepath() const {
+        return mInputDir / epochConfig;
+    }
+
     // for more fine-grained controlled, get the directory
     // and then choose the filename at the call site
     std::filesystem::path getInputDir() const {
@@ -69,10 +72,6 @@ public:
 
     std::filesystem::path getOutputDir() const {
         return mOutputDir;
-    }
-
-    std::filesystem::path getConfigDir() const {
-        return mConfigDir;
     }
 
 private:
@@ -84,6 +83,7 @@ private:
     std::filesystem::path inputParameters;
     std::filesystem::path taskData;
     std::filesystem::path siteData;
+    std::filesystem::path epochConfig;
 
     // outputDir files
     std::filesystem::path resultsFilename;

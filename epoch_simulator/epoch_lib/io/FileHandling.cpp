@@ -133,14 +133,11 @@ void writeObjectiveResultHeader(std::ofstream& outFile) {
 	outFile << "send_temp" << ",";
 
 	// mop
-	outFile << "mop_maximum_load" << ",";
+	outFile << "mop_maximum_load";  // no trailing comma
 
 	// FIXME
 	// skip renewables for now because their arbitrary size makes it hard to know how many columns we want
 	
-	// Config
-	outFile << "capex_limit";  // no trailing comma
-
 	outFile << "\n";
 }
 
@@ -224,16 +221,11 @@ void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& resu
 	}
 
 	if (taskData.mop) {
-		outFile << taskData.mop->maximum_load << ",";
-	}
-	else {
-		outFile << ",";
+		outFile << taskData.mop->maximum_load;  // no trailing comma
 	}
 
 	// FIXME
 	// renewables skipped as dynamic sized
-
-	outFile << taskData.config.capex_limit; // no trailing comma
 	
 	outFile << "\n";
 }

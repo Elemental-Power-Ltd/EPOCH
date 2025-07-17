@@ -2,11 +2,11 @@
 
 #include <cmath>
 
-ValueMetrics calculate_npv(const SiteData& siteData, const TaskData& scenario, const UsageData& usage) {
+ValueMetrics calculate_npv(const SiteData& siteData, const TaskConfig& config, const TaskData& scenario, const UsageData& usage) {
 	ValueMetrics valueMetrics{};
 
-	int horizon = scenario.config.npv_time_horizon;
-	float discount_factor = scenario.config.npv_discount_factor;
+	int horizon = config.npv_time_horizon;
+	float discount_factor = config.npv_discount_factor;
 
 	std::vector<ComponentView> components{};
 

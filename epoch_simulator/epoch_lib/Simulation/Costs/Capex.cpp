@@ -3,12 +3,12 @@
 
 static CapexPrices capex_prices{};
 
-CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const TaskData& scenario) {
+CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const TaskConfig& config, const TaskData& scenario) {
 
 	// first calculate the unadjusted capex of the scenario
 	auto capex_breakdown = calculate_capex(siteData, scenario);
 
-	if (scenario.config.use_boiler_upgrade_scheme) {
+	if (config.use_boiler_upgrade_scheme) {
 		if (is_elegible_for_boiler_upgrade_scheme(siteData.baseline, scenario)) {
 			// discount the lower amount of the total heatpump cost and the maximum funding
 			capex_breakdown.boiler_upgrade_scheme_funding = std::min(capex_prices.max_boiler_upgrade_scheme_funding, capex_breakdown.heatpump_capex);
@@ -17,8 +17,8 @@ CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const Ta
 	}
 
 	// catch-all grant funding. Reduce the capex unconditionally down towards 0
-	if (scenario.config.general_grant_funding > 0) {
-		capex_breakdown.general_grant_funding = std::min(capex_breakdown.total_capex, scenario.config.general_grant_funding);;
+	if (config.general_grant_funding > 0) {
+		capex_breakdown.general_grant_funding = std::min(capex_breakdown.total_capex, config.general_grant_funding);;
 		capex_breakdown.total_capex -= capex_breakdown.general_grant_funding;
 	}
 

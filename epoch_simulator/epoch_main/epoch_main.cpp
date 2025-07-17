@@ -20,8 +20,8 @@ int main(int argc, char* argv[]) {
 			spdlog::debug("Verbose logging enabled");
 		}
 
-		FileConfig fileConfig{ args.inputDir, args.outputDir, args.configDir };
-		ConfigHandler configHandler(fileConfig.getConfigDir());
+		FileConfig fileConfig{ args.inputDir, args.outputDir };
+		ConfigHandler configHandler(fileConfig.getConfigFilepath());
 		const EpochConfig config = configHandler.getConfig();
 
 		if (args.commandlineMode == CommandlineMode::INTERACTIVE_CHOICE) {
@@ -90,7 +90,7 @@ void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 	SiteData siteData = readSiteData(fileConfig.getSiteDataFilepath());
 	TaskData taskData = readTaskData(fileConfig.getTaskDataFilepath());
 
-	Simulator simulator{ siteData };
+	Simulator simulator{ siteData, config.taskConfig };
 
 	auto result = simulator.simulateScenario(taskData, SimulationType::FullReporting);
 

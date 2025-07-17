@@ -20,7 +20,7 @@ protected:
 	Simulator simulator;
 
 	EpochSimulationRun() :
-		simulator(readSiteData(fs::path{ "./test_files/siteData_MountHotel.json" }))
+		simulator(readSiteData(fs::path{ "./test_files/siteData_MountHotel.json" }), TaskConfig{})
 	{}
 };
 

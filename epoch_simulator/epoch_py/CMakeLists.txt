@@ -21,4 +21,3 @@ install(FILES $<TARGET_RUNTIME_DLLS:epoch_simulator> TYPE BIN)
 
 # copy the InputData and Config directories into the install folder
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/InputData" DESTINATION "bin")
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/Config" DESTINATION "bin")

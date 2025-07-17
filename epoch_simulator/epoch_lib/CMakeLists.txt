@@ -5,6 +5,11 @@ add_library(Epoch_lib STATIC
 	"io/FileHandling.hpp"
 	"io/EnumToString.cpp"
 	"io/EnumToString.hpp"
+	"io/TaskConfigJson.cpp"
+	"io/TaskDataJson.cpp"
+	"io/ToString.hpp"
+	"io/ToString.cpp"
+
 	"Optimisation/LeagueTable.cpp"
 	"Optimisation/LeagueTable.hpp"
 	"Optimisation/Optimiser.cpp"
@@ -50,13 +55,10 @@ add_library(Epoch_lib STATIC
 	"Simulation/Costs/Compare.hpp"
 	"Simulation/Costs/Compare.cpp"
 	"Simulation/Costs/CostData.cpp"
+	"Simulation/Costs/NetPresentValue.cpp"
 	"Simulation/Costs/Usage.cpp"
 	"Simulation/Costs/Usage.hpp"
-	"io/TaskDataJson.cpp"
-	"io/ToString.hpp"
-	"io/ToString.cpp"
-	
-  "Simulation/Costs/NetPresentValue.cpp")
+)
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)

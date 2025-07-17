@@ -18,7 +18,6 @@ struct TaskData {
 	std::optional<HeatPumpData> heat_pump;
 	std::optional<MopData> mop;
 	std::vector<SolarData> solar_panels;
-	TaskConfig config;
 
 	bool operator==(const TaskData& other) const { 
 		return (

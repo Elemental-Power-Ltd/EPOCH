@@ -81,9 +81,9 @@ UsageData calculateBaselineUsage(const SiteData& siteData, const CostVectors& co
 }
 
 
-UsageData calculateScenarioUsage(const SiteData& siteData, const TaskData& scenario, const CostVectors& costVectors) {
+UsageData calculateScenarioUsage(const SiteData& siteData, const TaskConfig& config, const TaskData& scenario, const CostVectors& costVectors) {
 	auto usage = sumUsage(siteData, scenario, costVectors);
-	usage.capex_breakdown = calculate_capex_with_discounts(siteData, scenario);
+	usage.capex_breakdown = calculate_capex_with_discounts(siteData, config, scenario);
 	usage.opex_breakdown = calculate_opex(scenario);
 	usage.total_meter_cost = calculate_meter_cost(usage);
 	usage.total_operating_cost = usage.total_meter_cost +
