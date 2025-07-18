@@ -49,25 +49,6 @@ class HeatingLoadEntry(pydantic.BaseModel):
     hdd: float | None = Field(examples=[0.01], description="Heating degree days due to external weather in this period.")
 
 
-class HeatingLoadMetadata(pydantic.BaseModel):
-    site_id: site_id_t = site_id_field
-    dataset_id: dataset_id_t = Field(description="UUID for heating load")
-    created_at: pydantic.AwareDatetime = Field(
-        default_factory=lambda: datetime.datetime.now(datetime.UTC),
-        examples=["2024-07-30T14:13:00Z"],
-        description="The time this dataset was created",
-    )
-    params: pydantic.Json = Field(
-        examples=["{'source_dataset': '...'}"],
-        description="Parameters used to generate this dataset, for example the original dataset.",
-    )
-    interventions: list[InterventionEnum] | list[str] = Field(
-        examples=["Loft"],
-        default=[],
-        description="List of interventions to apply, either generic ones for us to estimate or THIRD_PARTY-provided names",
-    )
-
-
 class FabricIntervention(pydantic.BaseModel):
     cost: float = pydantic.Field(description="Cost associated with this fabric intervention in £")
     reduced_hload: list[float] = pydantic.Field(
@@ -187,6 +168,29 @@ class HeatingLoadRequest(DatasetIDWithTime):
             # We converted all of them
             return converted
         raise ValueError(f"Got mixed specific interventions and generic interventions in {interventions}")
+
+
+class HeatingLoadMetadata(pydantic.BaseModel):
+    site_id: site_id_t = site_id_field
+    dataset_id: dataset_id_t = Field(description="UUID for heating load")
+    created_at: pydantic.AwareDatetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
+        examples=["2024-07-30T14:13:00Z"],
+        description="The time this dataset was created",
+    )
+    params: pydantic.Json = Field(
+        examples=["{'source_dataset': '...'}"],
+        description="Parameters used to generate this dataset, for example the original dataset.",
+    )
+    interventions: list[InterventionEnum] | list[str] = Field(
+        examples=["Loft"],
+        default=[],
+        description="List of interventions to apply, either generic ones for us to estimate or THIRD_PARTY-provided names",
+    )
+    generation_method: HeatingLoadModelEnum = Field(
+        examples=[HeatingLoadModelEnum.Regression, HeatingLoadModelEnum.PHPP],
+        description="Which method was used to generate this heating load",
+    )
 
 
 class InterventionCostRequest(pydantic.BaseModel):

@@ -103,7 +103,8 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
 
         Returns
         -------
-        cost in GBP of associated interventions
+        float
+            cost in GBP of associated interventions
         """
         metadata = await db_pool.fetchrow(
             """SELECT params, interventions FROM heating.metadata WHERE dataset_id = $1""", dataset_id

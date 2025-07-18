@@ -13,7 +13,7 @@ from app.internal.thermal_model.phpp.parse_phpp import apply_phpp_intervention, 
 @pytest.fixture(scope="module")
 def parsed_phpp() -> pd.DataFrame:
     """Load a PHPP into a dataframe and re-use it for each test."""
-    fpath = Path("tests", "data", "phpp", "PHPP_EN_V10.3_Retford Baseline.xlsx").absolute()
+    fpath = Path("tests", "data", "phpp", "PHPP_demo.xlsx").absolute()
     return phpp_to_dataframe(fpath)[0]
 
 
