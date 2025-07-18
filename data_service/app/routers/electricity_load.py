@@ -2,7 +2,6 @@
 
 import datetime
 import logging
-import uuid
 
 import numpy as np
 import pandas as pd
@@ -12,6 +11,7 @@ from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
 from ..internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
 from ..internal.epl_typing import DailyDataFrame, MonthlyDataFrame
 from ..internal.utils import get_bank_holidays
+from ..internal.utils.uuid import uuid7
 from ..models.core import DatasetIDWithTime, FuelEnum
 from ..models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
 
@@ -110,7 +110,7 @@ async def generate_electricity_load(
     synthetic_daily_df["end_ts"] = synthetic_daily_df.index + pd.Timedelta(days=1)
     synthetic_hh_df = daily_to_hh_eload(synthetic_daily_df, scalers=load_all_scalers(), model=vae)
 
-    new_dataset_id = uuid.uuid4()
+    new_dataset_id = uuid7()
     metadata = {
         "dataset_id": new_dataset_id,
         "created_at": datetime.datetime.now(tz=datetime.UTC),

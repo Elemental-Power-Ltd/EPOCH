@@ -16,7 +16,6 @@ import asyncio
 import datetime
 import json
 import operator
-import uuid
 
 import httpx
 import pandas as pd
@@ -27,6 +26,7 @@ from fastapi.encoders import jsonable_encoder
 from ...dependencies import DatabasePoolDep, ProcessPoolDep
 from ...internal.site_manager.dataset_lists import list_elec_datasets, list_gas_datasets, list_thermal_models
 from ...internal.thermal_model.fitting import fit_to_gas_usage
+from ...internal.utils.uuid import uuid7
 from ...models.core import DatasetID, DatasetTypeEnum
 from ...models.heating_load import ThermalModelResult
 from ...models.thermal_model import ThermalModelRequest
@@ -40,9 +40,9 @@ from .router import api_router
 async def file_params_with_db(
     pool: DatabasePoolDep,
     site_id: str,
-    task_id: pydantic.UUID4,
+    task_id: pydantic.UUID7,
     results: ThermalModelResult,
-    datasets: dict[DatasetTypeEnum, pydantic.UUID4],
+    datasets: dict[DatasetTypeEnum, pydantic.UUID7],
 ) -> None:
     """
     Write the parameters for the thermal model to the database.
@@ -85,8 +85,8 @@ async def thermal_fitting_process_wrapper(
     executor: ProcessPoolDep,
     pool: DatabasePoolDep,
     site_id: str,
-    task_id: pydantic.UUID4,
-    datasets: dict[DatasetTypeEnum, pydantic.UUID4],
+    task_id: pydantic.UUID7,
+    datasets: dict[DatasetTypeEnum, pydantic.UUID7],
     gas_df: pd.DataFrame,
     weather_df: pd.DataFrame,
     elec_df: pd.DataFrame | None,
@@ -160,7 +160,7 @@ async def get_thermal_model(pool: DatabasePoolDep, dataset_id: DatasetID) -> The
 @api_router.post("/fit-thermal-model")
 async def fit_thermal_model_endpoint(
     pool: DatabasePoolDep, process_pool: ProcessPoolDep, bgt: BackgroundTasks, params: ThermalModelRequest
-) -> dict[str, pydantic.UUID4]:
+) -> dict[str, pydantic.UUID7]:
     """
     Fit thermal model parameters via a background task.
 
@@ -226,7 +226,7 @@ async def fit_thermal_model_endpoint(
         gas_df["start_ts"] = gas_df.index
     weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records], index="timestamp")
     weather_df["timestamp"] = weather_df.index
-    task_id = uuid.uuid4()
+    task_id = uuid7()
     bgt.add_task(
         thermal_fitting_process_wrapper,
         process_pool,

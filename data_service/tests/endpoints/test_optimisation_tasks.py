@@ -3,13 +3,13 @@
 import copy
 import datetime
 import json
-import uuid
 
 import httpx
 import numpy as np
 import pydantic
 import pytest
 
+from app.internal.utils.uuid import uuid7
 from app.models.epoch_types import TaskDataPydantic
 from app.models.epoch_types.task_data_type import Building, Grid
 from app.models.optimisation import (
@@ -33,7 +33,7 @@ class TestOptimisationTaskDatabase:
     def sample_task_config(self) -> TaskConfig:
         """Create a sample task to put in our database."""
         return TaskConfig(
-            task_id=uuid.uuid4(),
+            task_id=uuid7(),
             task_name="test_task_config",
             client_id="demo",
             portfolio_constraints={"capex": {"max": 1e5}},
@@ -57,7 +57,7 @@ class TestOptimisationTaskDatabase:
                     site_id="demo_london",
                     start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
                     end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid.uuid4(),
+                    HeatingLoad=uuid7(),
                 )
             },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
@@ -78,7 +78,7 @@ class TestOptimisationTaskDatabase:
     def sample_portfolio_optimisation_result(self, sample_task_config: TaskConfig) -> PortfolioOptimisationResult:
         """Create a sample result for the whole small portfolio."""
         return PortfolioOptimisationResult(
-            portfolio_id=uuid.uuid4(),
+            portfolio_id=uuid7(),
             task_id=sample_task_config.task_id,
             metrics=PortfolioMetrics(
                 carbon_balance_scope_1=1.0,
@@ -138,7 +138,7 @@ class TestOptimisationTaskDatabase:
         """Test that we can add two task configs successfully."""
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert result.status_code == 200, result.text
-        sample_task_config.task_id = uuid.uuid4()  # generate a new UUID
+        sample_task_config.task_id = uuid7()  # generate a new UUID
         result_2 = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert result_2.status_code == 200, result.text
 
@@ -361,7 +361,7 @@ class TestOptimisationTaskDatabase:
         assert result.status_code == 200, result.text
 
         empty_portfolio_result = PortfolioOptimisationResult(
-            portfolio_id=uuid.uuid4(),
+            portfolio_id=uuid7(),
             task_id=sample_task_config.task_id,
             metrics=PortfolioMetrics(),  # no metrics recorded
             site_results=[],
@@ -461,8 +461,8 @@ class TestOptimisationTaskDatabase:
         task_response = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert task_response.status_code == 200, task_response.text
 
-        portfolio_result_1 = sample_portfolio_optimisation_result.model_copy(update={"portfolio_id": uuid.uuid4()})
-        portfolio_result_2 = sample_portfolio_optimisation_result.model_copy(update={"portfolio_id": uuid.uuid4()})
+        portfolio_result_1 = sample_portfolio_optimisation_result.model_copy(update={"portfolio_id": uuid7()})
+        portfolio_result_2 = sample_portfolio_optimisation_result.model_copy(update={"portfolio_id": uuid7()})
 
         opt_result = OptimisationResultEntry(portfolio=[portfolio_result_1, portfolio_result_2])
         result_response = await client.post("/add-optimisation-results", content=opt_result.model_dump_json())

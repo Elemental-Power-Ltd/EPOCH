@@ -16,7 +16,6 @@ import itertools
 import json
 import logging
 import operator
-import uuid
 from typing import cast
 
 import numpy as np
@@ -31,6 +30,7 @@ from ...internal.thermal_model import apply_fabric_interventions, building_adjus
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
 from ...internal.thermal_model.fitting import simulate_parameters
+from ...internal.utils.uuid import uuid7
 from ...models.core import DatasetID, SiteID, dataset_id_t, site_id_t
 from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest
 from ...models.weather import BaitAndModelCoefs, WeatherRequest
@@ -383,7 +383,7 @@ async def generate_heating_load_regression(
         metadata_params["cost"] = cost
 
     metadata = HeatingLoadMetadata(
-        dataset_id=uuid.uuid4(),
+        dataset_id=uuid7(),
         site_id=site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps(metadata_params),
@@ -495,7 +495,7 @@ async def generate_thermal_model_heating_load(
     hh_heating_load_df["end_ts"] = hh_heating_load_df.index + pd.Timedelta(minutes=30)
 
     metadata = HeatingLoadMetadata(
-        dataset_id=uuid.uuid4(),
+        dataset_id=uuid7(),
         site_id=params.site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps({"thermal_model_dataset_id": str(params.thermal_model_dataset_id)}),

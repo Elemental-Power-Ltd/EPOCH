@@ -6,7 +6,6 @@ Currently just uses Octopus data, but will likely use RE24 data in future.
 
 import datetime
 import logging
-import uuid
 
 import numpy as np
 import pandas as pd
@@ -27,6 +26,7 @@ from ..internal.import_tariffs import (
     resample_to_range,
     tariff_to_new_timestamps,
 )
+from ..internal.utils.uuid import uuid7
 from ..models.core import MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.import_tariffs import (
     EpochTariffEntry,
@@ -311,7 +311,7 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             price_df = create_day_and_night_tariff(timestamps, day_cost=max(price_df["cost"]), night_cost=min(price_df["cost"]))
         # Otherwise we got a varying tariff that we can resample.
         price_df = resample_to_range(price_df, freq=pd.Timedelta(minutes=30), start_ts=params.start_ts, end_ts=params.end_ts)
-    dataset_id = uuid.uuid4()
+    dataset_id = uuid7()
 
     if price_df.empty:
         raise HTTPException(400, f"Got an empty dataframe for {params.tariff_name}")

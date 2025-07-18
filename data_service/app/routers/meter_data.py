@@ -5,7 +5,6 @@ These functions provider wrappers to get it in more sensible formats.
 """
 
 import datetime
-import uuid
 from typing import cast
 
 import numpy as np
@@ -14,6 +13,7 @@ from fastapi import APIRouter, Form, HTTPException, UploadFile
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
+from ..internal.utils.uuid import uuid7
 from ..models.core import (
     DatasetID,
     FuelEnum,
@@ -177,7 +177,7 @@ async def upload_meter_file(
         )
 
     metadata = MeterMetadata(
-        dataset_id=uuid.uuid4(),
+        dataset_id=uuid7(),
         created_at=datetime.datetime.now(tz=datetime.UTC),
         site_id=site_id,
         fuel_type=fuel_type,

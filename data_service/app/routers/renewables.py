@@ -9,7 +9,6 @@ import asyncio
 import datetime
 import json
 import logging
-import uuid
 
 import asyncpg
 import httpx
@@ -19,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, SecretsDep
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
+from ..internal.utils.uuid import uuid7
 from ..models.core import MultipleDatasetIDWithTime, SiteID, dataset_id_t
 from ..models.renewables import EpochRenewablesEntry, PVOptimaResult, RenewablesMetadata, RenewablesRequest
 
@@ -122,7 +122,7 @@ async def generate_renewables_generation(
     metadata = RenewablesMetadata(
         data_source="renewables.ninja",
         created_at=datetime.datetime.now(datetime.UTC),
-        dataset_id=uuid.uuid4(),
+        dataset_id=uuid7(),
         site_id=params.site_id,
         parameters=json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
         renewables_location_id=params.renewables_location_id,
