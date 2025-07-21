@@ -3,6 +3,7 @@
 # ruff: noqa: D101, D102, D103
 import datetime
 import json
+from typing import cast
 
 import httpx
 import pytest
@@ -19,7 +20,7 @@ async def uploaded_meter_data(client: httpx.AsyncClient) -> dict[str, Jsonable]:
     metadata = {"fuel_type": "gas", "site_id": "demo_london", "reading_type": "halfhourly"}
     records = json.loads(data.to_json(orient="records"))
     upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
-    return upload_result
+    return cast(dict[str, Jsonable], upload_result)
 
 
 class TestHeatingLoad:
@@ -259,7 +260,7 @@ class TestPHPPHeatingLoad:
                 data={"site_id": "demo_london"},
             )
         assert resp.status_code == 200
-        return resp.json()
+        return cast(dict[str, Jsonable], resp.json())
 
     @pytest.mark.asyncio
     async def test_auto_phpp(

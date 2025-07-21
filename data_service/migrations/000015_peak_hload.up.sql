@@ -3,7 +3,7 @@ BEGIN;
 ALTER TABLE heating.metadata ADD COLUMN peak_hload FLOAT;
 
 CREATE TABLE heating.structure_metadata (
-    structure_id uuid PRIMARY KEY,
+    structure_id UUID PRIMARY KEY,
     site_id TEXT NOT NULL REFERENCES client_info.site_info (site_id),
     internal_volume DOUBLE PRECISION,
     floor_area DOUBLE PRECISION,
@@ -12,7 +12,7 @@ CREATE TABLE heating.structure_metadata (
 );
 
 CREATE TABLE heating.structure_elements (
-    structure_id uuid REFERENCES heating.structure_metadata (structure_id),
+    structure_id UUID REFERENCES heating.structure_metadata (structure_id),
     element_id INTEGER,
     element_name TEXT,
     element_group TEXT,

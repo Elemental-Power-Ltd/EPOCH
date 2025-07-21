@@ -14,8 +14,8 @@ import pytest
 import pytest_asyncio
 
 from app.dependencies import get_db_pool, get_http_client
+from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
-from app.models.site_range import Jsonable
 from app.routers.renewables import disaggregate_readings
 
 

@@ -24,10 +24,10 @@ import testing.postgresql  # type: ignore
 from httpx import ASGITransport, AsyncClient
 
 from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
+from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
 from app.main import app
-from app.models.site_range import Jsonable
 
 # apply a windows-specific patch for database termination (we can't use SIGINT)
 if sys.platform.startswith("win"):
