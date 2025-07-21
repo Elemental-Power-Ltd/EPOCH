@@ -50,6 +50,8 @@ class ProblemInstance(ElementwiseProblem):
             n_ieq_constr += sum(len(bounds) for bounds in site.constraints.values())
 
         epoch_data_dict = {}
+        epoch_config_dict = {}
+
         self.default_parameters: dict[str, dict] = {}
         self.site_ranges: dict[str, dict] = {}
         self.asset_parameters: dict[str, list[AssetParameter]] = {}
@@ -107,8 +109,9 @@ class ProblemInstance(ElementwiseProblem):
             n_var += n_parameters_to_optimise
 
             epoch_data_dict[site_name] = site._epoch_data
+            epoch_config_dict[site_name] = site.site_range.config
 
-        self.sim = PortfolioSimulator(epoch_data_dict=epoch_data_dict)
+        self.sim = PortfolioSimulator(epoch_data_dict, epoch_config_dict)
 
         super().__init__(
             n_var=n_var,

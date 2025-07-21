@@ -6,6 +6,7 @@ from epoch_simulator import Simulator, TaskData
 
 from app.internal.epoch_utils import convert_sim_result
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
+from app.models.epoch_types.site_range_type import Config as PydanticConfig
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _SUMMABLE_METRICS, Metric, MetricValues
 from app.models.result import PortfolioSolution, SiteSolution
@@ -19,7 +20,7 @@ class PortfolioSimulator:
     Provides portfolio simulation by initialising multiple EPOCH simulator's.
     """
 
-    def __init__(self, epoch_data_dict: dict[str, EpochSiteData]) -> None:
+    def __init__(self, epoch_data_dict: dict[str, EpochSiteData], epoch_config_dict: dict[str, PydanticConfig]) -> None:
         """
         Initialise the various EPOCH simulators.
 
@@ -27,12 +28,18 @@ class PortfolioSimulator:
         ----------
         epoch_data_dict
             Dictionary of Epoch ingestable datasets. One for each site in the portfolio.
+        epoch_config_dict
+            Dictionary of Epoch configurations. One for each site in the portfolio.
 
         Returns
         -------
         None
         """
-        self.sims = {name: Simulator.from_json(epoch_data.model_dump_json()) for name, epoch_data in epoch_data_dict.items()}
+        self.sims = {
+            name: Simulator.from_json(epoch_data.model_dump_json(), epoch_config_dict[name].model_dump_json())
+            for
+            name, epoch_data in epoch_data_dict.items()
+        }
 
     def simulate_portfolio(self, portfolio_scenarios: dict[str, AnnotatedTaskData]) -> PortfolioSolution:
         """

@@ -8,7 +8,8 @@ from app.models.result import PortfolioSolution
 
 def do_nothing_scenario(portfolio: list[Site]) -> PortfolioSolution:
     epoch_data_dict = {site.site_data.site_id: site._epoch_data for site in portfolio}
-    ps = PortfolioSimulator(epoch_data_dict=epoch_data_dict)
+    epoch_config_dict = {site.site_data.site_id: site.site_range.config for site in portfolio}
+    ps = PortfolioSimulator(epoch_data_dict=epoch_data_dict, epoch_config_dict=epoch_config_dict)
 
     do_nothing_td = TaskData()
     do_nothing_td.building = Building()

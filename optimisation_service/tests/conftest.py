@@ -159,6 +159,11 @@ def default_problem_instance(default_objectives, default_constraints, default_po
     return ProblemInstance(default_objectives, default_constraints, default_portfolio)
 
 
+@pytest.fixture
+def default_config() -> Config:
+    return Config()
+
+
 def gen_dummy_site_solution(site: Site) -> SiteSolution:
     site_scenario = {}
     site_range = site.site_range

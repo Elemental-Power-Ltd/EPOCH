@@ -123,7 +123,8 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> Ful
     -------
 
     """
-    sim = Simulator.from_json(epoch_data.model_dump_json())
+    assert task_data.config is not None
+    sim = Simulator.from_json(epoch_data.model_dump_json(), task_data.config.model_dump_json())
     pytd = TaskData.from_json(task_data.model_dump_json())
 
     res = sim.simulate_scenario(pytd, fullReporting=True)

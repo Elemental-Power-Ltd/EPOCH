@@ -2,7 +2,6 @@ from pathlib import Path
 
 from epoch_simulator import (
     Building,
-    Config,
     DataCentre,
     DomesticHotWater,
     EnergyStorageSystem,
@@ -19,12 +18,13 @@ from app.internal.epoch_utils import (
     convert_sim_result,
     convert_TaskData_to_pydantic,
 )
+from app.models.epoch_types.site_range_type import Config
 from app.models.metrics import _METRICS
 
 from .conftest import _DATA_PATH
 
 
-def test_convert_sim_result() -> None:
+def test_convert_sim_result(default_config: Config) -> None:
     td = TaskData()
     td.building = Building()
     td.grid = Grid()
@@ -36,7 +36,7 @@ def test_convert_sim_result() -> None:
 
     site_name = "amcott_house"
     epoch_data = load_epoch_data_from_file(Path(_DATA_PATH, site_name, "epoch_data.json"))
-    sim = Simulator.from_json(epoch_data.model_dump_json())
+    sim = Simulator.from_json(epoch_data.model_dump_json(), default_config.model_dump_json())
 
     sim_result = sim.simulate_scenario(td)
 
@@ -48,7 +48,6 @@ def test_convert_sim_result() -> None:
 
 def test_convert_TaskData_to_pydantic() -> None:
     td = TaskData()
-    td.config = Config()
     td.building = Building()
     td.grid = Grid()
     td.solar_panels = [SolarPanel()]
@@ -60,7 +59,6 @@ def test_convert_TaskData_to_pydantic() -> None:
 
     res = convert_TaskData_to_pydantic(td)
 
-    assert hasattr(res, "config")
     assert hasattr(res, "building")
     assert hasattr(res, "grid")
     assert hasattr(res, "solar_panels")
