@@ -9,6 +9,7 @@ import pydantic
 from pydantic import Field
 
 from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field, site_id_field, site_id_t
+from .thermal_model import SurveyedSizes
 
 
 class ThermalModelResult(pydantic.BaseModel):
@@ -60,7 +61,11 @@ class HeatingLoadMetadata(pydantic.BaseModel):
         examples=["{'source_dataset': '...'}"],
         description="Parameters used to generate this dataset, for example the original dataset.",
     )
-    interventions: list[InterventionEnum] = Field(examples=["Loft"], default=[])
+    interventions: list[InterventionEnum] | list[str] = Field(
+        examples=["Loft"],
+        default=[],
+        description="List of interventions to apply, either generic ones for us to estimate or THIRD_PARTY-provided names",
+    )
 
 
 class FabricIntervention(pydantic.BaseModel):
@@ -96,10 +101,13 @@ class HeatingLoadModelEnum(StrEnum):
 
 
 class HeatingLoadRequest(DatasetIDWithTime):
-    interventions: list[InterventionEnum] = Field(
-        examples=[[InterventionEnum.Loft], []],
+    interventions: list[InterventionEnum] | list[str] = Field(
+        examples=[[InterventionEnum.Loft], [], ["Internal Insulation to external solid wall", "Secondary Glazing"]],
         default=[],
-        description="Single energy saving intervention to make for this site.",
+        description="List of energy saving intervention to make for this site.  "
+        "Either a InterventionEnum for the thermal model or a THIRD_PARTY title for survey results; "
+        + " THIRD_PARTY interventions can be found in costs.py."
+        + " If an empty list, apply no interventions.",
     )
     apply_bait: bool = True
     dhw_fraction: float = Field(
@@ -119,6 +127,13 @@ class HeatingLoadRequest(DatasetIDWithTime):
         description="Which underlying thermal model to use if in thermal model mode", default=None
     )
     final_uuid: dataset_id_t = final_uuid_field
+    savings_fraction: float = Field(
+        examples=[0.0, 1.0, 0.15],
+        default=0.0,
+        description="Fraction of savings on the hetaing due to this interventions (leave as 0 if using estimated fabric).",
+    )
+
+    surveyed_sizes: SurveyedSizes | None = pydantic.Field(description="Surveyed sizes of the building in m2", default=None)
 
     @pydantic.model_validator(mode="after")
     def check_timestamps_valid(self) -> Self:
@@ -127,6 +142,48 @@ class HeatingLoadRequest(DatasetIDWithTime):
         assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
         assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
         return self
+
+    @pydantic.field_validator("interventions", mode="after")
+    @classmethod
+    def check_all_enum_interventions(
+        cls, interventions: list[str] | list[InterventionEnum]
+    ) -> list[str] | list[InterventionEnum]:
+        """Check if all the interventions are generic or specific.
+
+        If all the interventions are specific (given as a str), then return the list of strings.
+        If they're all generic (given as an entry in InterventionEnum) then pydantic might misread them as strings
+        because that's how they come over the wire. We have to manually convert them here.
+
+        If there's a mixture of generic and specific interventions, then error out -- we assume that everything is
+        the same type elsewhere.
+
+        Parameters
+        ----------
+        cls
+            HeatingLoadRequest or similar
+        interventions
+            List of interventions, likely a list of generic or specific strings
+
+        Returns
+        -------
+        list[str]
+            If all the entries are specific interventions
+        list[InterventionEnum]
+            If all the entries are generic interventions
+
+        Raises
+        ------
+        ValueError
+            If there's a mix of generic and specific
+        """
+        converted = [InterventionEnum(item) for item in interventions if item in InterventionEnum]
+        if not converted:
+            # We couldn't convert any of them, so they're all strings
+            return interventions
+        if len(converted) == len(interventions):
+            # We converted all of them
+            return converted
+        raise ValueError(f"Got mixed specific interventions and generic interventions in {interventions}")
 
 
 class InterventionCostRequest(pydantic.BaseModel):

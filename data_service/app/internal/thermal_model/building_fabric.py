@@ -31,7 +31,9 @@ FABRIC_SAVINGS = {
 FABRIC_WINDCHILL = {InterventionEnum.Loft: 1.00, InterventionEnum.Cladding: 0.95, InterventionEnum.DoubleGlazing: 0.90}
 
 
-def apply_fabric_interventions(bait_coefs: BaitAndModelCoefs, interventions: list[InterventionEnum]) -> BaitAndModelCoefs:
+def apply_fabric_interventions(
+    bait_coefs: BaitAndModelCoefs, interventions: list[InterventionEnum] | list[str], savings_percentage: float = 0.0
+) -> BaitAndModelCoefs:
     """
     Apply some fabric interventions to the BAIT and model coefficients to mimic energy savings.
 
@@ -48,6 +50,8 @@ def apply_fabric_interventions(bait_coefs: BaitAndModelCoefs, interventions: lis
         Some building fabric interventions you would like to do.
         Currently assumes that these are multiplicative
         (e.g. two interventions with 10% saving lead to 19% total saving)
+    savings_percentage
+        Total savings percentage to apply on top of any fabric interventions
 
     Returns
     -------
@@ -55,14 +59,19 @@ def apply_fabric_interventions(bait_coefs: BaitAndModelCoefs, interventions: lis
     """
     # make sure we don't mutate the original
     new_coefs = copy.deepcopy(bait_coefs)
+
     for intervention in interventions:
+        if not isinstance(intervention, InterventionEnum):
+            continue
         new_coefs.heating_kwh *= FABRIC_SAVINGS[intervention]
         new_coefs.wind_chill *= FABRIC_WINDCHILL[intervention]
+
+    new_coefs.heating_kwh *= 1.0 - savings_percentage
     return new_coefs
 
 
 def apply_interventions_to_structure(
-    structure: HeatNetwork, interventions: list[InterventionEnum], u_values_path: Path = U_VALUES_PATH
+    structure: HeatNetwork, interventions: list[InterventionEnum] | list[str], u_values_path: Path = U_VALUES_PATH
 ) -> HeatNetwork:
     """
     Apply a list of interventions to a pre-constructed HeatNetwork representing a structure.
@@ -74,7 +83,7 @@ def apply_interventions_to_structure(
     HeatNetwork
         A thermal network representing heat flows in a given building. This is copied, and not modified.
     interventions
-        A list of interventions you would like to apply, e.g. InterventionEnum.Loft
+        A list of interventions you would like to apply, e.g. InterventionEnum.Loft. Ignores string interventions.
     u_values_path
         Path to a JSON file containing U-values for interventions (you may wish to change this if importing from a notebook)
 

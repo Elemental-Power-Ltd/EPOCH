@@ -12,20 +12,20 @@ from httpx import AsyncClient
 from app.routers.carbon_intensity import fetch_carbon_intensity
 
 
-@pytest_asyncio.fixture
-async def demo_start_ts() -> datetime.datetime:
+@pytest.fixture
+def demo_start_ts() -> datetime.datetime:
     """Provide a boring start datetime with good data around it."""
     return datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
 
 
-@pytest_asyncio.fixture
-async def demo_end_ts() -> datetime.datetime:
+@pytest.fixture
+def demo_end_ts() -> datetime.datetime:
     """Provide a boring end datetime with good data around it, more than 14 days after the start."""
     return datetime.datetime(year=2024, month=2, day=11, tzinfo=datetime.UTC)
 
 
-@pytest_asyncio.fixture
-async def demo_site_id() -> str:
+@pytest.fixture
+def demo_site_id() -> str:
     """Provide a site ID with a postcode in the database for regional data."""
     return "demo_london"
 

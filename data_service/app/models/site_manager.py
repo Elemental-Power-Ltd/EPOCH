@@ -45,6 +45,7 @@ class DatasetList(pydantic.BaseModel):
     site_id: site_id_t
     start_ts: pydantic.AwareDatetime
     end_ts: pydantic.AwareDatetime
+    SiteBaseline: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     HeatingLoad: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     ASHPData: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     CarbonIntensity: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
@@ -74,6 +75,7 @@ class RemoteMetaData(pydantic.BaseModel):
     site_id: site_id_t
     start_ts: pydantic.AwareDatetime = pydantic.Field(default=datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC))
     end_ts: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    SiteBaseline: dataset_id_t | None = pydantic.Field(default=None)
     HeatingLoad: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
     ASHPData: dataset_id_t | None = pydantic.Field(default=None)
     CarbonIntensity: dataset_id_t | None = pydantic.Field(default=None)

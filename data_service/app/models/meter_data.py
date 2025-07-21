@@ -9,6 +9,12 @@ import pydantic
 from .core import FuelEnum, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
+class DisaggregationRequest(pydantic.BaseModel):
+    azimuth: float | None = pydantic.Field(default=None, description="Azimuth of existing solar array in degrees")
+    tilt: float | None = pydantic.Field(default=None, description="Tilt of existing solar array in degrees")
+    system_size: float = pydantic.Field(default=1, description="Peak power output of existing array in kW")
+
+
 class ReadingTypeEnum(StrEnum):
     Customer = "manual"
     Automatic = "automatic"

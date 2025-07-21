@@ -61,11 +61,13 @@ async def apply_migrations(database: testing.postgresql.Database) -> None:
         If there's an issue with a migration file.
     """
     conn = await asyncpg.connect(dsn=database.url())
-    for fname in get_migration_files(Path("migrations"), end=999998):
+    for fname in get_migration_files(Path("migrations"), end=999):
         try:
             await conn.execute(fname.read_text())
         except asyncpg.PostgresSyntaxError as ex:
             raise asyncpg.PostgresSyntaxError(f"Postgres syntax error in {fname}: {ex}") from ex
+        except asyncpg.exceptions.UniqueViolationError as ex:
+            raise asyncpg.exceptions.UniqueViolationError(f"Unique violation error {fname}: {ex}") from ex
 
 
 db_factory = testing.postgresql.PostgresqlFactory(
@@ -308,7 +310,7 @@ class MockedHttpClient(httpx.AsyncClient):
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
+async def client() -> AsyncGenerator[AsyncClient]:
     """
     Get a FastAPI client for a single test.
 
@@ -322,7 +324,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     await db.create_pool()
     assert db.pool is not None, "Could not create database pool"
 
-    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
+    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
         """
         Override the database creation with our database from this file.
 
@@ -332,7 +334,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         assert db.pool is not None, "Database pool not yet created."
         yield db.pool
 
-    async def override_get_db_conn() -> AsyncGenerator[DBConnection, None]:
+    async def override_get_db_conn() -> AsyncGenerator[DBConnection]:
         """
         Override the database creation with our database from this file.
 

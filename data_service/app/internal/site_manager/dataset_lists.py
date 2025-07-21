@@ -208,6 +208,7 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             """
             SELECT
                 tm.dataset_id,
+                tm.renewables_location_id AS renewables_location_id,
                 MAX(tm.created_at) AS created_at,
                 MIN(te.start_ts) AS start_ts,
                 MAX(te.end_ts) AS end_ts,
@@ -230,6 +231,7 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             end_ts=item["end_ts"],
             num_entries=item["num_entries"],
             resolution=item["resolution"],
+            dataset_subtype=str(item["renewables_location_id"]) if item["renewables_location_id"] is not None else None,
         )
         for item in res
     ]
@@ -299,6 +301,14 @@ async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> 
                 cm.dataset_id""",
             site_id.site_id,
         )
+
+    def maybe_convert_subtype(subtype: str) -> InterventionEnum | str:
+        """Try to turn a given subtype into an enum, returning string if not."""
+        try:
+            return InterventionEnum(subtype)
+        except ValueError:
+            return subtype
+
     return [
         DatasetEntry(
             dataset_id=item["dataset_id"],
@@ -308,7 +318,9 @@ async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> 
             end_ts=item["end_ts"],
             num_entries=item["num_entries"],
             resolution=item["resolution"],
-            dataset_subtype=[InterventionEnum(subtype) for subtype in item["interventions"]] if item["interventions"] else None,
+            dataset_subtype=[maybe_convert_subtype(subtype) for subtype in item["interventions"]]
+            if item["interventions"]
+            else None,
         )
         for item in res
     ]
@@ -367,4 +379,36 @@ async def list_ashp_datasets() -> list[DatasetEntry]:
         DatasetEntry(
             dataset_id=uuid.uuid4(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC)
         )
+    ]
+
+
+async def list_baseline_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List all baselines we have defined for this site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site we want a baseline for.
+
+    Returns
+    -------
+        a DatasetEntry for each baseline_id in the database for this site.
+
+    """
+    res = await pool.fetch(
+        """
+        SELECT sb.baseline_id, sb.created_at
+        FROM client_info.site_baselines AS sb
+        WHERE sb.site_id = $1
+        ORDER BY sb.created_at
+        """, site_id.site_id
+    )
+    return [
+        DatasetEntry(
+            dataset_id=item["baseline_id"],
+            dataset_type=DatasetTypeEnum.SiteBaseline,
+            created_at=item["created_at"]
+        )
+        for item in res
     ]

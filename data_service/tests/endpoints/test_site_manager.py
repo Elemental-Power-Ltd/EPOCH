@@ -116,6 +116,29 @@ class TestGenerateAll:
         _, _ = upload_meter_data
         demo_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
         demo_end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+
+        solar_data = {
+            "site_id": "demo_london",
+            "name": "Main Roof",
+            "renewables_location_id": "demo_london_mainroof",
+            "tilt": 35,
+            "azimuth": 178,
+            "maxpower": 6.0,
+        }
+        add_response = await client.post("/add-solar-location", json=solar_data)
+        assert add_response.status_code == 200, add_response.text
+
+        solar_data_2 = {
+            "site_id": "demo_london",
+            "name": "North Roof",
+            "renewables_location_id": "demo_london_northroof",
+            "tilt": 35,
+            "azimuth": 345,
+            "maxpower": 6.0,
+        }
+        add_response = await client.post("/add-solar-location", json=solar_data_2)
+        assert add_response.status_code == 200, add_response.text
+
         generate_result = await client.post(
             "/generate-all",
             json={
@@ -178,6 +201,11 @@ class TestGenerateAll:
         tariff_data = data_json["import_tariffs"]
 
         assert all(all(np.isfinite(item)) for item in tariff_data["data"]), "Tariff is empty or NaN"
+
+        # rgendata is of the form {"timestamps": [...], "data": [ [..., ] , ...}
+        rgen_data = data_json["rgen"]
+        assert len(rgen_data["data"]) == 2
+        assert all(all(np.isfinite(item)) for item in rgen_data["data"]), "Renewables is empty or NaN"
 
         assert len(set(tariff_data["data"][0])) == 1, "First tariff must be fixed"
         assert len(set(tariff_data["data"][1])) >= 23, "Second tariff must be agile"
@@ -257,8 +285,8 @@ class TestGetMultipleHeatLoads:
         gas_meter_result, _ = upload_meter_data
         POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
         background_tasks = []
-        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
-        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        start_ts = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC)
 
         # If we allow the background tasks to get the weather, then they'll overwrite each
         # other and cause terrible trouble, so let's get it here first.
@@ -270,10 +298,11 @@ class TestGetMultipleHeatLoads:
             "/get-weather",
             json={
                 "location": "London",
-                "start_ts": gas_meter_result["start_ts"],
-                "end_ts": gas_meter_result["end_ts"],
+                "start_ts": "2023-10-01T00:00:00Z",
+                "end_ts": "2024-08-13T00:00:00Z",
             },
         )
+
         async with asyncio.TaskGroup() as tg:
             for intervention in POTENTIAL_INTERVENTIONS:
                 background_tasks.append(  # noqa: PERF401
@@ -291,8 +320,8 @@ class TestGetMultipleHeatLoads:
                 )
         # keep references to the tasks to avoid a horrible Heisenbug (argh!)
         # then wait for them all to be done.
-        _ = [task.result() for task in background_tasks]
-
+        results = [task.result() for task in background_tasks]
+        print([result.text for result in results])
         listed_datasets_result = await client.post(
             "/list-latest-datasets",
             json={
@@ -358,7 +387,7 @@ class TestListAllDatasets:
         get_result = await client.post("/get-specific-datasets", json=list_result.json())
         assert get_result.status_code == 200
         data = get_result.json()
-        assert len(data) == 9
+        assert len(data) == 10
         assert data["eload"] is not None
         assert len(data["eload"]["data"]) > 0
 
@@ -377,7 +406,7 @@ class TestListAllDatasets:
         )
         assert get_result.status_code == 200, get_result.text
         data = get_result.json()
-        assert len(data) == 9
+        assert len(data) == 10
         assert data["eload"] is not None
         assert len(data["eload"]["data"]) > 0
 
