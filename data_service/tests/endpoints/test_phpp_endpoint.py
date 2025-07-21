@@ -1,5 +1,6 @@
 """Tests for uploading and parsing of PHPP files via the endpoint."""
 
+from pathlib import Path
 from typing import cast
 
 import httpx
@@ -42,9 +43,9 @@ class TestUploadPHPP:
     """Test that we can upload a PHPP file."""
 
     @pytest.mark.asyncio
-    async def test_upload_phpp(self, client: httpx.AsyncClient) -> None:
+    async def test_upload_phpp(self, client: httpx.AsyncClient, phpp_fpath: Path) -> None:
         """Test that we can upload a PHPP and get a good response."""
-        with open("./data/phpp/PHPP_EN_V10.3_Retford Baseline.xlsx", "rb") as fi:
+        with phpp_fpath.open("rb") as fi:
             resp = await client.post(
                 "/upload-phpp",
                 files={
@@ -55,14 +56,14 @@ class TestUploadPHPP:
         assert resp.status_code == 200, resp.text
 
     @pytest.mark.asyncio
-    async def test_can_list_phpp(self, client: httpx.AsyncClient) -> None:
+    async def test_can_list_phpp(self, client: httpx.AsyncClient, phpp_fpath: Path) -> None:
         """Test that we can list the PHPPs added to the database."""
         # test that there are none to start
         resp = await client.post("/list-phpp", json={"site_id": "demo_london"})
         assert resp.status_code == 200
         assert not resp.json()
 
-        with open("./data/phpp/PHPP_EN_V10.3_Retford Baseline.xlsx", "rb") as fi:
+        with phpp_fpath.open("rb") as fi:
             resp = await client.post(
                 "/upload-phpp",
                 files={

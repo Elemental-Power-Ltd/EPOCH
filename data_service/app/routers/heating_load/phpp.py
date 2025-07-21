@@ -24,10 +24,11 @@ class PhppMetadata(pydantic.BaseModel):
     """Metadata for a PHPP, including the file it came from and some non-element data that might be useful."""
 
     filename: str | None
-    site_id: str
-    internal_volume: float
+    site_id: site_id_t
+    internal_volume: float = pydantic.Field(description="Air volume in m3 within the envelope of this building.")
+    air_changes: float = pydantic.Field(description="Air changes per hour in this building as estimated during survey.")
     floor_area: float
-    structure_id: pydantic.UUID4
+    structure_id: dataset_id_t
     created_at: pydantic.AwareDatetime
 
 
@@ -65,6 +66,7 @@ async def upload_phpp(
         filename=file.filename,
         site_id=site_id,
         internal_volume=structure_info["internal_volume"],
+        air_changes=structure_info["air_changes"],
         floor_area=structure_info["floor_area"],
         structure_id=uuid.uuid4(),
         created_at=datetime.datetime.now(datetime.UTC),
@@ -80,12 +82,14 @@ async def upload_phpp(
                     structure_id,
                     site_id,
                     internal_volume,
+                    air_changes,
                     floor_area,
                     filename,
-                    created_at) VALUES ($1, $2, $3, $4, $5, $6)""",
+                    created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)""",
                 metadata.structure_id,
                 metadata.site_id,
                 metadata.internal_volume,
+                metadata.air_changes,
                 metadata.floor_area,
                 metadata.filename,
                 metadata.created_at,
@@ -142,6 +146,7 @@ async def list_phpp(pool: DatabasePoolDep, site_id: SiteID) -> list[PhppMetadata
          SELECT
             structure_id,
             internal_volume,
+            air_changes,
             floor_area,
             filename,
             created_at
@@ -159,6 +164,7 @@ async def list_phpp(pool: DatabasePoolDep, site_id: SiteID) -> list[PhppMetadata
             filename=item["filename"],
             site_id=site_id.site_id,
             internal_volume=item["internal_volume"],
+            air_changes=item["air_changes"],
             floor_area=item["floor_area"],
             structure_id=item["structure_id"],
             created_at=item["created_at"],
@@ -213,6 +219,7 @@ async def get_phpp_dataframe_from_database(
                 site_id,
                 structure_id,
                 internal_volume,
+                air_changes,
                 floor_area,
                 filename,
                 created_at
@@ -229,6 +236,7 @@ async def get_phpp_dataframe_from_database(
         filename=metadata["filename"],
         site_id=metadata["site_id"],
         internal_volume=metadata["internal_volume"],
+        air_changes=metadata["air_changes"],
         floor_area=metadata["floor_area"],
         structure_id=metadata["structure_id"],
         created_at=metadata["created_at"],

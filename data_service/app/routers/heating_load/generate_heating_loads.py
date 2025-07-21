@@ -629,7 +629,11 @@ async def generate_heating_load_phpp(
     # TODO (2025-05-17 MHJB): read the air changes from the PHPP?
     final_peak_hload = phpp_total_heat_loss(
         structure_df=new_structure_df,
-        metadata={"air_changes": 4.0, "floor_area": metadata.floor_area, "internal_volume": metadata.internal_volume},
+        metadata={
+            "air_changes": metadata.air_changes,
+            "floor_area": metadata.floor_area,
+            "internal_volume": metadata.internal_volume,
+        },
     )
 
     # Override the existing percentage saving with the new one, which we then send to the regression implementation.

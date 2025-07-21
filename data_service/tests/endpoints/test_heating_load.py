@@ -3,6 +3,7 @@
 # ruff: noqa: D101, D102, D103
 import datetime
 import json
+from pathlib import Path
 from typing import cast
 
 import httpx
@@ -249,13 +250,13 @@ class TestPHPPHeatingLoad:
     """Test generating heating loads from a PHPP."""
 
     @pytest_asyncio.fixture
-    async def uploaded_phpp(self, client: httpx.AsyncClient) -> dict[str, Jsonable]:
+    async def uploaded_phpp(self, client: httpx.AsyncClient, phpp_fpath: Path) -> dict[str, Jsonable]:
         """Upload a PHPP for use elsewhere."""
-        with open("./data/phpp/PHPP_demo.xlsx", "rb") as fi:
+        with phpp_fpath.open("rb") as fi:
             resp = await client.post(
                 "/upload-phpp",
                 files={
-                    "file": ("PHPP_demo.xlsx", fi, "application/vnd.ms-excel"),
+                    "file": (phpp_fpath.stem, fi, "application/vnd.ms-excel"),
                 },
                 data={"site_id": "demo_london"},
             )

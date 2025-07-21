@@ -76,51 +76,35 @@ def maybe_cell_to_int(cell: Cell | MergedCell) -> int | None:
     return None
 
 
-def find_area_header(worksheet: Worksheet) -> Cell:
+def maybe_cell_to_float(cell: Cell | MergedCell) -> float | None:
     """
-    Find the cell that represents the top left of the area table.
-
-    This takes in a worksheet and looks for a cell that contains the text 'Area input'.
-    This is the top left of the cell and marks where we'll start scanning for the rest.
+    Try converting the contents of this cell to a floating point number.
 
     Parameters
     ----------
-    worksheet
-        A worksheet from a PHPP workbook for Areas (not windows)
+    cell
+        A cell with a value which is maybe a float
 
     Returns
     -------
-    Cell
-        The cell representing the top left corner of the areas table.
+    float
+        If the contents could be converted
+    None
+        If the contents are not float-like
     """
-    for row in worksheet.iter_rows():
-        for cell in row:
-            if isinstance(cell.value, str) and "Area input" in cell.value:
-                return cell
-    raise ValueError("Couldn't find 'Area input'")
+    if isinstance(cell.value, str):
+        try:
+            # We often get indices like "001" which are technically strings
+            # so let's turn them into an int
+            return float(cell.value)
+        except (ValueError, TypeError):
+            # Couldn't convert this value to an int
+            return None
 
+    if isinstance(cell.value, float | int | Decimal):
+        return float(cell.value)
 
-def find_area_column(worksheet: Worksheet, area_header_cell: Cell) -> Cell:
-    """
-    Find the relevant column that contains useful areas in this worksheet.
-
-    Parameters
-    ----------
-    worksheet
-        The worksheet, probably "Areas" to inspect
-    area_header_cell
-        The cell marking the top left of the areas table, found by `find_area_header`
-
-    Returns
-    -------
-    Cell
-        The cell at the top of the useful areas column
-    """
-    # Go backwards over these to avoid returning the entry in the same column as the header
-    for cell in worksheet[area_header_cell.row + 1][::-1]:
-        if isinstance(cell.value, str) and "Angle of inclination from the horizontal" in cell.value:
-            return cell
-    raise ValueError("Couldn't find area column header")
+    return None
 
 
 def parse_phpp_area_row(row: ExcelRow) -> StructuralRow | None:
@@ -182,51 +166,48 @@ def parse_phpp_area_row(row: ExcelRow) -> StructuralRow | None:
     }
 
 
-def find_window_start_cell(ws: Worksheet) -> Cell:
+def find_cell(
+    ws: Worksheet,
+    cell_contents: str,
+    start_row: int = 0,
+    end_row: int | None = None,
+    start_col: int = 0,
+    end_col: int | None = None,
+) -> Cell:
     """
-    Find the cell marking the top left of the Windows area table.
+    Find a cell with a given contents in this worksheet.
 
-    This is the cell that contains the text "Description".
+    This searches row-by-row and column-by-column, returning the first entry we find in order.
+    e.g. if there is that value in row 1, column 5 we will return that before we find the value in
+    row 2, column 3. If you want to find all of these, re-run the search with start row > returned cell.row
 
     Parameters
     ----------
     ws
-        The "Windows" worksheet from a PHPP
+        Worksheet to scan thoruggh
+    cell contents
+        The string contents of the cell to check
+    start_row
+        Index of the first row to check (starts at 0)
+    end_row
+        Index of the last row to check (covers all rows by default)
+    start_col
+        Index of the first column to check (starts at 0)
+    end_col
+        Index of the last colimn to check (covers all columns by default)
 
     Returns
     -------
     Cell
-        The top left corner cell of the Windows area table
+        The cell we found, with a .row and .col_idx that you can use elsewhere.
     """
-    for row in ws.iter_rows():
+    for row in ws.iter_rows(min_row=start_row, max_row=end_row, min_col=start_col, max_col=end_col, values_only=False):
         for cell in row:
-            if isinstance(cell.value, str) and "Description" in cell.value:
+            if cell.value == cell_contents:
+                # This check is actually fine, as MergedCells only have None cotnents
+                assert isinstance(cell, Cell), "Must find value in a Cell not a MergedCell"
                 return cell
-    raise ValueError("Couldn't find window start row")
-
-
-def find_thermal_bridge_start_cell(ws: Worksheet) -> Cell:
-    """
-    Find the cell marking the top left of the Thermal Bridge area table.
-
-    This is the cell that contains the text "Description".
-
-    Parameters
-    ----------
-    ws
-        The "Areas" worksheet from a PHPP
-
-    Returns
-    -------
-    Cell
-        The top left corner cell of the Windows area table
-    """
-    for row in ws.iter_rows():
-        for cell in row:
-            # This is a load bearing hyphen, do not remove
-            if isinstance(cell.value, str) and "Thermal bridge input" in cell.value:
-                return cell
-    raise ValueError("Couldn't find thermal bridge start row")
+    raise ValueError(f"Couldn't find cell contents {cell_contents} in {ws.title}")
 
 
 def parse_phpp_window_row(row: ExcelRow) -> StructuralRow | None:
@@ -322,71 +303,34 @@ def parse_phpp_thermal_bridge_row(row: ExcelRow) -> StructuralRow | None:
     }
 
 
-def phpp_to_dataframe(fpath: Path | BinaryIO) -> tuple[pd.DataFrame, StructuralInfo]:
+def extract_phpp_ventilation(ws: Worksheet) -> tuple[float, float]:
     """
-    Turn a PHPP stored in an Excel file into a pandas dataframe with useful information extracted.
-
-    The PHPP format is expected to be v10.3 and the process is relatively fragile: we use hard coded indices to get
-    the right columns from each sheet.
-    Currently just extracts windows, roof, floor, and walls.
+    Extract ventilation data including the total air volume and air change rate from this survey.
 
     Parameters
     ----------
-    fpath
-        Path to the PHPP excel file, or file-like object with it already opened in binary mode
+    ws
+        The worksheet, probably titled "Ventilation"
 
     Returns
     -------
-    pd.DataFrame
-        Pandas dataframe with "element_id", "name", "group", "angle", "area" and "u_value" columns.
-    StructuralInfo
-        other stuff about a structure that isn't necessarily a fabric element, like volume and ACH
+    tuple[float, float]
+        Air volume in m^3m air changes per hour
     """
-    with warnings.catch_warnings(category=UserWarning, action="ignore"):
-        wb = load_workbook(fpath, data_only=True, keep_links=False)
-    ws = wb["Areas"]
-    area_header = find_area_header(ws)
+    vent_left_cell = find_cell(ws, "Reference volume for the ventilation system (ATFA*h) =")
+    volume_cell = ws[vent_left_cell.row][vent_left_cell.col_idx + 3]
+    if isinstance(volume_cell.value, str | float | int):
+        air_volume = float(volume_cell.value)
+    else:
+        raise TypeError(f"Got bad value for volume {volume_cell.value}")
 
-    window_sheet = wb["Windows"]
-    window_start = find_window_start_cell(window_sheet)
-
-    all_rows: list[StructuralRow] = []
-    for row in ws.iter_rows(min_row=area_header.row, min_col=area_header.col_idx):
-        if row[area_header.col_idx].value == "<End of designPH import!>":
-            break
-
-        try:
-            parsed_row = parse_phpp_area_row(row)
-        except ValueError:
-            # We got a bad entry
-            parsed_row = None
-        if parsed_row is not None:
-            all_rows.append(parsed_row)
-
-    for row in window_sheet.iter_rows(min_row=window_start.row + 2, min_col=window_start.col_idx):
-        try:
-            parsed_row = parse_phpp_window_row(row)
-        except ValueError:
-            # This row isn't parseable, so we've run out of good windows
-            break
-        if parsed_row is not None:
-            all_rows.append(parsed_row)
-
-    thermal_bridge_start = find_thermal_bridge_start_cell(wb["Areas"])
-    # This off by one is very annoying, but the thermal bridge start index is actually
-    for row in ws.iter_rows(min_row=thermal_bridge_start.row, min_col=thermal_bridge_start.col_idx):
-        if row[0].value == "<End of designPH import!>":
-            break
-
-        try:
-            parsed_row = parse_phpp_thermal_bridge_row(row)
-        except ValueError:
-            parsed_row = None
-
-        if parsed_row is not None:
-            all_rows.append(parsed_row)
-    df = pd.DataFrame.from_records(all_rows).set_index("element_id")
-    return (df, StructuralInfo(floor_area=1.0, internal_volume=2.0, air_changes=3.0))
+    ach_left_cell = find_cell(ws, "Air change rate from pressurisation test")
+    ach_cell = ws[ach_left_cell.row][ach_left_cell.col_idx + 3]
+    if isinstance(ach_cell.value, str | float | int):
+        ach = float(ach_cell.value)
+    else:
+        raise TypeError(f"Got bad value for ACH {ach_cell.value}")
+    return air_volume, ach
 
 
 def apply_phpp_intervention(structure_df: pd.DataFrame, intervention_name: str) -> pd.DataFrame:
@@ -460,6 +404,74 @@ def phpp_fabric_intervention_cost(structure_df: pd.DataFrame, interventions: lis
         new_df.loc[both_mask, "cost"] = intervention_cost
 
     return float((new_df["area"] * new_df["cost"]).sum())
+
+
+def phpp_to_dataframe(fpath: Path | BinaryIO) -> tuple[pd.DataFrame, StructuralInfo]:
+    """
+    Turn a PHPP stored in an Excel file into a pandas dataframe with useful information extracted.
+
+    The PHPP format is expected to be v10.3 and the process is relatively fragile: we use hard coded indices to get
+    the right columns from each sheet.
+    Currently just extracts windows, roof, floor, and walls.
+
+    Parameters
+    ----------
+    fpath
+        Path to the PHPP excel file, or file-like object with it already opened in binary mode
+
+    Returns
+    -------
+    pd.DataFrame
+        Pandas dataframe with "element_id", "name", "group", "angle", "area" and "u_value" columns.
+    StructuralInfo
+        other stuff about a structure that isn't necessarily a fabric element, like volume and ACH
+    """
+    with warnings.catch_warnings(category=UserWarning, action="ignore"):
+        wb = load_workbook(fpath, data_only=True, keep_links=False)
+
+    ws = wb["Areas"]
+
+    area_header = find_cell(ws, "Area input")
+    all_rows: list[StructuralRow] = []
+    for row in ws.iter_rows(min_row=area_header.row, min_col=area_header.col_idx):
+        if row[area_header.col_idx].value == "<End of designPH import!>":
+            break
+
+        try:
+            parsed_row = parse_phpp_area_row(row)
+        except ValueError:
+            # We got a bad entry
+            parsed_row = None
+        if parsed_row is not None:
+            all_rows.append(parsed_row)
+
+    window_sheet = wb["Windows"]
+    window_start = find_cell(window_sheet, "Description")
+    for row in window_sheet.iter_rows(min_row=window_start.row + 2, min_col=window_start.col_idx):
+        try:
+            parsed_row = parse_phpp_window_row(row)
+        except ValueError:
+            # This row isn't parseable, so we've run out of good windows
+            break
+        if parsed_row is not None:
+            all_rows.append(parsed_row)
+
+    thermal_bridge_start = find_cell(wb["Areas"], "Thermal bridge input")
+    # This off by one is very annoying, but the thermal bridge start index is actually
+    for row in ws.iter_rows(min_row=thermal_bridge_start.row, min_col=thermal_bridge_start.col_idx):
+        if row[0].value == "<End of designPH import!>":
+            break
+
+        try:
+            parsed_row = parse_phpp_thermal_bridge_row(row)
+        except ValueError:
+            parsed_row = None
+
+        if parsed_row is not None:
+            all_rows.append(parsed_row)
+    df = pd.DataFrame.from_records(all_rows).set_index("element_id")
+    internal_volume, ach = extract_phpp_ventilation(wb["Ventilation"])
+    return (df, StructuralInfo(floor_area=1.0, internal_volume=internal_volume, air_changes=ach))
 
 
 def phpp_fabric_heat_loss(structure_df: pd.DataFrame, internal_t: float = 21, external_t: float = -2.3) -> float:
