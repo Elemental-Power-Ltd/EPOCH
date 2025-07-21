@@ -264,6 +264,7 @@ class TestPHPPHeatingLoad:
         return cast(dict[str, Jsonable], resp.json())
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_auto_phpp(
         self, client: httpx.AsyncClient, uploaded_meter_data: dict[str, Jsonable], uploaded_phpp: dict[str, Jsonable]
     ) -> None:
@@ -288,6 +289,7 @@ class TestPHPPHeatingLoad:
         assert all(item >= 0 for item in hload_data["reduced_hload"])
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_auto_phpp_intervention(
         self, client: httpx.AsyncClient, uploaded_meter_data: dict[str, Jsonable], uploaded_phpp: dict[str, Jsonable]
     ) -> None:
