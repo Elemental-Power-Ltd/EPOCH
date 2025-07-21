@@ -10,7 +10,6 @@ enum class CommandlineMode {INTERACTIVE_CHOICE, OPTIMISATION, SIMULATION};
 struct CommandlineArgs {
 	std::string inputDir;
 	std::string outputDir;
-	std::string configDir;
 	CommandlineMode commandlineMode;
 	bool verbose;
 };
@@ -41,10 +40,6 @@ CommandlineArgs handleArgs(int argc, char* argv[]) {
 		.help("The directory to write all output files to")
 		.default_value(std::string("./OutputData"));
 
-	argParser.add_argument("--config", "-c")
-		.help("The directory containing the config files")
-		.default_value(std::string("./Config"));
-
 	// Enable verbose logging
 	argParser.add_argument("--verbose")
 		.help("Set logging to verbose")
@@ -65,7 +60,6 @@ CommandlineArgs handleArgs(int argc, char* argv[]) {
 
 	args.inputDir = argParser.get<std::string>("--input");
 	args.outputDir = argParser.get<std::string>("--output");
-	args.configDir = argParser.get<std::string>("--config");
 	args.verbose = argParser.get<bool>("--verbose");
 
 	return args;

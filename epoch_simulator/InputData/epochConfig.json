@@ -1,0 +1,13 @@
+{
+  "optimiser": {
+    "leagueTableCapacity": 400,
+    "produceExhaustiveOutput": false
+  },
+  "simulator": {
+    "capex_limit": 100000000,
+    "use_boiler_upgrade_scheme": false,
+    "general_grant_funding": 0,
+    "npv_time_horizon": 10,
+    "npv_discount_factor": 0
+  }
+}

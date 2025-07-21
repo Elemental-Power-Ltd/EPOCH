@@ -14,7 +14,7 @@ import epoch_simulator as eps
 print(eps.__version__)
 
 # Create a simulator and task
-sim = eps.Simulator.from_file("./InputData/siteData.json")
+sim = eps.Simulator.from_file("./InputData/siteData.json", "./InputData/epochConfig.json")
 task = eps.TaskData()
 
 # Add some components to the task
@@ -51,10 +51,10 @@ TaskData also contains a static `from_json` method to create an instance from a 
 `Simulator()`
 
 Simulators can be instantiated via one of two factory methods:
-- `sim = Simulator.from_json(json_str)`
-- `sim = Simulator.from_file(file_path)`
+- `sim = Simulator.from_json(site_data_json_str, config_json_str)`
+- `sim = Simulator.from_file(site_data_filepath, config_filepath_)`
 
-Both methods accept SiteData represented as json, as a json string or a path to siteData.json respectively.
+Both methods accept SiteData and a config represented as json; as a json string or a path to siteData.json respectively.
 
 `simulate_scenario(task)`
 

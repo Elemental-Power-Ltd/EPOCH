@@ -60,10 +60,6 @@ void to_json(json& j, const MopData& mop);
 void from_json(const json& j, Renewables& renewables);
 void to_json(json& j, const Renewables& renewables);
 
-// Config
-void from_json(const json& j, TaskConfig& config);
-void to_json(json& j, const TaskConfig& config);
-
 // TaskData
 void from_json(const json& j, TaskData& taskData);
 void to_json(json& j, const TaskData& taskData);

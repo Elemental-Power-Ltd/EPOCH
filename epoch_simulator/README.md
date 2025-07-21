@@ -23,8 +23,6 @@ The following Commandline arguments are accepted
 
 `--output`:    specify a path to a directory to write the output files to
 
-`--config`:    specify a path to a directory containing configuration files for Epoch
-
 ##### Operation
 
 `-sim` / `--simulation`:        run a single simulation, as defined by `taskData.json`

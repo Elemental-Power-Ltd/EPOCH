@@ -1,8 +1,9 @@
 #include "EpochConfig.hpp"
 #include "FileHandling.hpp"
+#include "TaskConfigJson.hpp"
 
-ConfigHandler::ConfigHandler(std::filesystem::path configDir)
-	: mConfigDir(configDir),
+ConfigHandler::ConfigHandler(std::filesystem::path configPath)
+	: mConfigPath(configPath),
 	mConfig(parseConfig())
 {
 }
@@ -15,11 +16,13 @@ EpochConfig ConfigHandler::getConfig() const {
 EpochConfig ConfigHandler::parseConfig()
 {
 	// Load the config from json
-	nlohmann::json jsonConfig = readJsonFromFile(mConfigDir / "EpochConfig.json");
+	nlohmann::json jsonConfig = readJsonFromFile(mConfigPath);
 
 
 	EpochConfig epochConfig{};
 	epochConfig.optimiserConfig = parseOptimiserSection(jsonConfig["optimiser"]);
+
+	epochConfig.taskConfig = jsonConfig["simulator"].get<TaskConfig>();
 
 	return epochConfig;
 }

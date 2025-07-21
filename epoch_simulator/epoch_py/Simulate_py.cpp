@@ -1,29 +1,36 @@
 #include "Simulate_py.hpp"
+
+#include "../epoch_lib/io/EpochConfig.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
 #include "../epoch_lib/io/SiteDataJson.hpp"
-
+#include "../epoch_lib/io/TaskConfigJson.hpp"
 
 /**
-* Factory method for a Simulator that accepts a filepath to a SiteData.json file
+* Factory method for a Simulator that accepts filepaths to a SiteData.json and epochConfig.json
 */
-Simulator_py Simulator_py::from_file(const std::filesystem::path& siteDataPath)
+Simulator_py Simulator_py::from_file(const std::filesystem::path& siteDataPath, const std::filesystem::path& configPath)
 {
 	SiteData sd = readSiteData(siteDataPath);
-	return Simulator_py(std::move(sd));
+
+	ConfigHandler configHandler(configPath);
+	
+	return Simulator_py(std::move(sd), configHandler.getConfig().taskConfig);
 }
 
 /**
 * Factory method for a Simulator that accepts the site data as a json string
 */
-Simulator_py Simulator_py::from_json(const std::string& json_str)
+Simulator_py Simulator_py::from_json(const std::string& site_data_json_str, const std::string& config_json_str)
 {
-	SiteData sd = nlohmann::json::parse(json_str).get<SiteData>();
-	return Simulator_py(std::move(sd));
+	SiteData sd = nlohmann::json::parse(site_data_json_str).get<SiteData>();
+	TaskConfig config = nlohmann::json::parse(config_json_str).get<TaskConfig>();
+	return Simulator_py(std::move(sd), config);
 }
 
 
-Simulator_py::Simulator_py(SiteData&& siteData) :
-	mSimulator{ std::move(siteData) }
+Simulator_py::Simulator_py(SiteData&& siteData, TaskConfig taskConfig) :
+	config(taskConfig),
+	mSimulator{ std::move(siteData), config }
 {
 }
 

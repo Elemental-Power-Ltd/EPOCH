@@ -41,7 +41,7 @@ OutputValues Optimiser::runOptimisation(nlohmann::json inputJson)
 		workers.emplace_back([this, &leagueTable]() {
 			TaskWithIndex taskWithIndex{};
 
-			Simulator sim{mSiteData};
+			Simulator sim{mSiteData, mConfig.taskConfig};
 
 			while (mTaskGenerator->nextTask(taskWithIndex)) {
 				SimulationResult result = sim.simulateScenario(taskWithIndex.task);
@@ -165,7 +165,7 @@ ObjectiveResult Optimiser::reproduceResult(uint64_t paramIndex) const {
 
 	TaskData taskData = mTaskGenerator->getTask(paramIndex);
 
-	Simulator sim{mSiteData};
+	Simulator sim{mSiteData, mConfig.taskConfig};
 
 	SimulationResult simResult = sim.simulateScenario(taskData, SimulationType::ResultOnly);
 

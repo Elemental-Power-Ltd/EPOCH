@@ -19,7 +19,7 @@
 #include "DayTariffStats.hpp"
 #include "HotWaterCylinder.hpp"
 
-#include "Config.hpp"
+#include "Flags.hpp"
 #include "TempSum.hpp"
 
 #include "Hotel.hpp"
@@ -34,15 +34,16 @@
 #include "Components/DataCentre.hpp"
 #include "Components/ESS/ESS.hpp"
 
-Simulator::Simulator(SiteData siteData):
-	mSiteData(siteData)
+Simulator::Simulator(SiteData siteData, TaskConfig config):
+	mSiteData(siteData),
+	mConfig(config)
 {
 
 	auto baselineReportData = simulateTimesteps(mSiteData.baseline);
 	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, mSiteData.baseline);
 	mBaselineUsage = calculateBaselineUsage(mSiteData, baselineCostVectors);
 
-	mBaselineMetrics = calculateMetrics(mSiteData, mSiteData.baseline, baselineReportData, mBaselineUsage);
+	mBaselineMetrics = calculateMetrics(mSiteData.baseline, baselineReportData, mBaselineUsage);
 }
 
 SimulationResult Simulator::simulateScenario(const TaskData& taskData, SimulationType simulationType) const {
@@ -60,7 +61,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
 	const CapexBreakdown capex = calculateCapexWithDiscounts(taskData);
 
-	if (taskData.config.capex_limit < capex.total_capex) {
+	if (mConfig.capex_limit < capex.total_capex) {
 		auto simulationResult = makeInvalidResult(taskData);
 
 		// but this invalid result can still have a valid CAPEX
@@ -74,10 +75,10 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 
 	const CostVectors& costVectors = extractCostVectors(result.report_data.value(), taskData);
 
-	auto scenarioUsage = calculateScenarioUsage(mSiteData, taskData, costVectors);
+	auto scenarioUsage = calculateScenarioUsage(mSiteData, mConfig, taskData, costVectors);
 
 	result.baseline_metrics = mBaselineMetrics;
-	result.metrics = calculateMetrics(mSiteData, taskData, result.report_data.value(), scenarioUsage);
+	result.metrics = calculateMetrics(taskData, result.report_data.value(), scenarioUsage);
 
 	auto comparison = compareScenarios(mSiteData, mBaselineUsage, result.baseline_metrics, scenarioUsage, result.metrics);
 
@@ -150,12 +151,12 @@ void Simulator::validateScenario(const TaskData& taskData) const {
 }
 
 CapexBreakdown Simulator::calculateCapexWithDiscounts(const TaskData& taskData) const {
-	return calculate_capex_with_discounts(mSiteData, taskData);
+	return calculate_capex_with_discounts(mSiteData, mConfig, taskData);
 }
 
 ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType simulationType) const {
 	/* INITIALISE classes that support energy sums and object precedence */
-	Config config(taskData);	// flags energy component presence in TaskData & balancing modes
+	Flags flags(taskData);	// flags energy component presence in TaskData & balancing modes
 	TempSum tempSum(mSiteData);		// class of arrays for running totals (replace ESUM and Heat)
 
 	ReportData reportData{};
@@ -180,7 +181,7 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 		PV1.Report(reportData);
 	}
 
-	if (config.getEVFlag() == EVFlag::NON_BALANCING) {
+	if (flags.getEVFlag() == EVFlag::NON_BALANCING) {
 		BasicElectricVehicle EV1(mSiteData, taskData.electric_vehicles.value());
 		EV1.AllCalcs(tempSum);
 		EV1.Report(reportData);
@@ -234,7 +235,7 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 		ambientController->AllCalcs(tempSum);
 	}
 
-	if (config.getDataCentreFlag() == DataCentreFlag::NON_BALANCING) {
+	if (flags.getDataCentreFlag() == DataCentreFlag::NON_BALANCING) {
 		dataCentre->AllCalcs(tempSum);
 	}
 
@@ -245,8 +246,8 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 	const float availableGridImport = getFixedAvailableImport(taskData);
 
 
-	auto dcFlag = config.getDataCentreFlag();
-	auto evFlag = config.getEVFlag();
+	auto dcFlag = flags.getDataCentreFlag();
+	auto evFlag = flags.getEVFlag();
 
 	if (dcFlag == DataCentreFlag::BALANCING && evFlag == EVFlag::BALANCING) {
 		// This represents the logic in M-VEST v0-7:
@@ -302,7 +303,7 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 
 	tempSum.Report(reportData);
 	ESSmain->Report(reportData);
-	if (config.dataCentrePresent()) {
+	if (flags.dataCentrePresent()) {
 		dataCentre->Report(reportData);
 	}
 
@@ -350,7 +351,7 @@ CostVectors Simulator::extractCostVectors(const ReportData& reportData, const Ta
 	return costVectors;
 }
 
-SimulationMetrics Simulator::calculateMetrics(const SiteData& siteData, const TaskData& taskData, const ReportData& reportData, const UsageData& usage) const {
+SimulationMetrics Simulator::calculateMetrics(const TaskData& taskData, const ReportData& reportData, const UsageData& usage) const {
 	SimulationMetrics metrics{};
 
 	metrics.total_gas_used = reportData.GasCH_load.sum();
@@ -368,7 +369,7 @@ SimulationMetrics Simulator::calculateMetrics(const SiteData& siteData, const Ta
 	metrics.total_meter_cost = usage.total_meter_cost;
 	metrics.total_operating_cost = usage.total_operating_cost;
 
-	auto valueMetrics = calculate_npv(siteData, taskData, usage);
+	auto valueMetrics = calculate_npv(mSiteData, mConfig, taskData, usage);
 	metrics.total_annualised_cost = valueMetrics.annualised_cost;
 	metrics.total_net_present_value = valueMetrics.net_present_value;
 

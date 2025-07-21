@@ -28,4 +28,4 @@ struct ValueMetrics {
 };
 
 
-ValueMetrics calculate_npv(const SiteData& siteData, const TaskData& scenario, const UsageData& usage);
+ValueMetrics calculate_npv(const SiteData& siteData, const TaskConfig& config, const TaskData& scenario, const UsageData& usage);

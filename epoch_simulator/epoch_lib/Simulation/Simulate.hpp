@@ -20,7 +20,7 @@ enum class SimulationType {
 
 class Simulator {
 public:
-	explicit Simulator(SiteData siteData);
+	explicit Simulator(SiteData siteData, TaskConfig config);
 
 	SimulationResult simulateScenario(const TaskData& taskData, SimulationType simulationType = SimulationType::ResultOnly) const;
 
@@ -43,11 +43,12 @@ private:
 
 	CostVectors extractCostVectors(const ReportData& reportData, const TaskData& taskData) const;
 
-	SimulationMetrics calculateMetrics(const SiteData& siteData, const TaskData& taskData, const ReportData& reportData, const UsageData& usage) const;
+	SimulationMetrics calculateMetrics(const TaskData& taskData, const ReportData& reportData, const UsageData& usage) const;
 
 	float getFixedAvailableImport(const TaskData& taskData) const;
 
 	const SiteData mSiteData;
+	const TaskConfig mConfig;
 	UsageData mBaselineUsage;
 	SimulationMetrics mBaselineMetrics;
 

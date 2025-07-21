@@ -105,8 +105,6 @@ std::string taskDataToString(const TaskData& taskData) {
 		oss << solarToString(solar) << '\n';
 	}
 
-	oss << configToString(taskData.config);
-
 	return oss.str();
 
 }
