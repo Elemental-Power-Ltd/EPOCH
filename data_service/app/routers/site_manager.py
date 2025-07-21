@@ -284,7 +284,7 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
             for item in (
                 max(
                     filter(
-                        lambda ds: bool(ds.dataset_subtype == solar_locn),  # type: ignore
+                        lambda ds: bool(ds.dataset_subtype == solar_locn),
                         all_datasets[DatasetTypeEnum.RenewablesGeneration],
                     ),
                     key=created_at_or_epoch,
@@ -679,7 +679,7 @@ async def generate_all(
             start_ts=params.start_ts,
             end_ts=params.end_ts,
         )
-    
+
         background_tasks.add_task(
             generate_import_tariffs,
             tariff_req,

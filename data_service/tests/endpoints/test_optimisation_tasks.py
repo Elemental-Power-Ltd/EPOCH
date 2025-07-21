@@ -1,6 +1,5 @@
 """Integration tests for adding and querying optimisation tasks."""
 
-# ruff: noqa: D102
 import copy
 import datetime
 import json
