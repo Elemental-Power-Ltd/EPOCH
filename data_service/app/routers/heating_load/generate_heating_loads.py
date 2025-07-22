@@ -26,6 +26,7 @@ from ...dependencies import DatabasePoolDep, HttpClientDep
 from ...internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ...internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
 from ...internal.site_manager import list_thermal_models
+from ...internal.site_manager.bundles import file_self_with_bundle
 from ...internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
@@ -112,6 +113,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         site_id=site_id,
         thermal_model_dataset_id=None,
         surveyed_sizes=params.surveyed_sizes,
+        final_uuid=params.final_uuid,
     )
 
     available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
@@ -162,6 +164,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         site_id=site_id,
         thermal_model_dataset_id=most_recent_id,
         surveyed_sizes=params.surveyed_sizes,
+        final_uuid=params.final_uuid,
     )
 
 
@@ -425,6 +428,8 @@ async def generate_heating_load_regression(
                     strict=True,
                 ),
             )
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
     return metadata
 
 
@@ -503,31 +508,35 @@ async def generate_thermal_model_heating_load(
         interventions=params.interventions,
     )
 
-    await pool.execute(
-        """
-        INSERT INTO heating.metadata
-        (dataset_id, site_id, created_at, params, interventions)
-        VALUES ($1, $2, $3, $4, $5)""",
-        metadata.dataset_id,
-        metadata.site_id,
-        metadata.created_at,
-        json.dumps(metadata.params),
-        metadata.interventions,
-    )
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO heating.metadata
+                (dataset_id, site_id, created_at, params, interventions)
+                VALUES ($1, $2, $3, $4, $5)""",
+                metadata.dataset_id,
+                metadata.site_id,
+                metadata.created_at,
+                json.dumps(metadata.params),
+                metadata.interventions,
+            )
 
-    await pool.copy_records_to_table(
-        schema_name="heating",
-        table_name="synthesised",
-        columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
-        records=zip(
-            itertools.repeat(metadata.dataset_id, len(hh_heating_load_df)),
-            hh_heating_load_df.start_ts,
-            hh_heating_load_df.end_ts,
-            hh_heating_load_df.heating_usage,
-            hh_heating_load_df.dhw,
-            hh_heating_load_df.external_temperatures,
-            strict=True,
-        ),
-    )
+            await conn.copy_records_to_table(
+                schema_name="heating",
+                table_name="synthesised",
+                columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
+                records=zip(
+                    itertools.repeat(metadata.dataset_id, len(hh_heating_load_df)),
+                    hh_heating_load_df.start_ts,
+                    hh_heating_load_df.end_ts,
+                    hh_heating_load_df.heating_usage,
+                    hh_heating_load_df.dhw,
+                    hh_heating_load_df.external_temperatures,
+                    strict=True,
+                ),
+            )
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
 
     return metadata

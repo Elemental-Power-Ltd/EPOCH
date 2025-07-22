@@ -4,12 +4,12 @@
 
 import pydantic
 
-from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field
+from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field, RequestBase
 from .meter_data import MeterMetadata
 
 
-class ElectricalLoadRequest(DatasetIDWithTime):
-    final_uuid: dataset_id_t = final_uuid_field
+class ElectricalLoadRequest(RequestBase):
+    dataset_id: dataset_id_t
 
 
 class ElectricalLoadMetadata(MeterMetadata):

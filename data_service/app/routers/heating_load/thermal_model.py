@@ -27,7 +27,7 @@ from fastapi.encoders import jsonable_encoder
 from ...dependencies import DatabasePoolDep, ProcessPoolDep
 from ...internal.site_manager.dataset_lists import list_elec_datasets, list_gas_datasets, list_thermal_models
 from ...internal.thermal_model.fitting import fit_to_gas_usage
-from ...models.core import DatasetID, DatasetTypeEnum
+from ...models.core import DatasetID, DatasetTypeEnum, SiteID
 from ...models.heating_load import ThermalModelResult
 from ...models.thermal_model import ThermalModelRequest
 from ...models.weather import WeatherRequest
@@ -181,19 +181,19 @@ async def fit_thermal_model_endpoint(
     -------
         The ID that this dataset will eventually get.
     """
-    all_gas_datasets = await list_gas_datasets(params, pool)
+    all_gas_datasets = await list_gas_datasets(SiteID(site_id=params.site_id), pool)
     if not all_gas_datasets:
         raise HTTPException(400, f"No gas datasets available for `{params.site_id}` to fit to.")
     latest_gas_dataset_id = max(all_gas_datasets, key=operator.attrgetter("created_at")).dataset_id
 
-    all_elec_datasets = await list_elec_datasets(params, pool)
+    all_elec_datasets = await list_elec_datasets(SiteID(site_id=params.site_id), pool)
     if not all_elec_datasets:
         raise HTTPException(400, f"No gas datasets available for `{params.site_id}` to fit to.")
     latest_elec_dataset_id = max(all_elec_datasets, key=operator.attrgetter("created_at")).dataset_id
 
     # We use the existing thermal models as probe points for the new model.
     # If we've changed the limits, watch out as some of these might end up being thrown out.
-    all_thermal_metadata = await list_thermal_models(params, pool)
+    all_thermal_metadata = await list_thermal_models(SiteID(site_id=params.site_id), pool)
     all_thermal_models = [
         await get_thermal_model(pool=pool, dataset_id=DatasetID(dataset_id=item.dataset_id)) for item in all_thermal_metadata
     ]
@@ -201,7 +201,7 @@ async def fit_thermal_model_endpoint(
     async with pool.acquire() as conn, httpx.AsyncClient() as client:
         gas_meter_records = await get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), pool=pool)
         elec_meter_records = await get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool)
-        location = await get_location(params, conn=conn)
+        location = await get_location(SiteID(site_id=params.site_id), conn=conn)
         weather_records = await get_weather(
             weather_request=WeatherRequest(
                 location=location,

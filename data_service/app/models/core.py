@@ -237,3 +237,26 @@ class SiteData(pydantic.BaseModel):
     dec_lmk: str | None = pydantic.Field(
         description="LMK for the latest Commercial Display Energy Certificate for this building", default=None
     )
+
+
+class BundleEntryMetadata(pydantic.BaseModel):
+    bundle_id: dataset_id_t
+    dataset_id: dataset_id_t
+    dataset_type: DatasetTypeEnum
+    dataset_subtype: str
+
+
+class RequestBase(pydantic.BaseModel):
+    start_ts: pydantic.AwareDatetime
+    end_ts: pydantic.AwareDatetime
+    final_uuid: dataset_id_t
+
+    bundle_metadata: BundleEntryMetadata | None = None
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self

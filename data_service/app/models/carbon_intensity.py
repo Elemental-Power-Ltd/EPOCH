@@ -5,7 +5,7 @@ import datetime
 
 import pydantic
 
-from .core import EpochEntry, SiteIDWithTime, dataset_id_t, final_uuid_field, site_id_field, site_id_t
+from .core import EpochEntry, SiteIDWithTime, dataset_id_t, final_uuid_field, site_id_field, site_id_t, RequestBase
 
 
 class CarbonIntensityMetadata(pydantic.BaseModel):
@@ -53,5 +53,5 @@ class EpochCarbonEntry(EpochEntry):
     )
 
 
-class GridCO2Request(SiteIDWithTime):
-    final_uuid: dataset_id_t = final_uuid_field
+class GridCO2Request(RequestBase):
+    site_id: site_id_t

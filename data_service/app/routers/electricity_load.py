@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
 from ..internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
 from ..internal.epl_typing import DailyDataFrame, MonthlyDataFrame
+from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils import get_bank_holidays
 from ..models.core import DatasetIDWithTime, FuelEnum
 from ..models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
@@ -150,6 +151,9 @@ async def generate_electricity_load(
             columns=synthetic_hh_df.columns.to_list(),
             timeout=10,
         )
+
+        if params.bundle_metadata is not None:
+            await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
     return ElectricalLoadMetadata(
         dataset_id=metadata["dataset_id"],
         created_at=metadata["created_at"],

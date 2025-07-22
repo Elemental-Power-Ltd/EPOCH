@@ -7,22 +7,15 @@ from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, dataset_id_t, final_uuid_field, site_id_field, site_id_t
+from .core import EpochEntry, dataset_id_field, dataset_id_t, final_uuid_field, site_id_field, site_id_t, RequestBase
 
 
-class RenewablesRequest(pydantic.BaseModel):
+class RenewablesRequest(RequestBase):
     site_id: site_id_t = site_id_field
     renewables_location_id: str | None = pydantic.Field(
         default=None,
         examples=["demo_matts_house_southroof"],
         description="Database ID of the site-associated solar location e.g. southroof",
-    )
-    start_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=["2020-01-01T00:00:00Z"], description="The starting time to run the renewables calculation, should be <2021."
-    )
-    end_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=["2021-01-01T00:00:00Z"],
-        description="The ending time to run the renewables calculation, should be one year on from start_ts",
     )
     azimuth: float | None = pydantic.Field(
         default=None,
@@ -37,15 +30,6 @@ class RenewablesRequest(pydantic.BaseModel):
     tracking: bool = pydantic.Field(
         default=False, examples=[False, True], description="Whether these panels use single axis tracking."
     )
-    final_uuid: dataset_id_t = final_uuid_field
-
-    @pydantic.model_validator(mode="after")
-    def check_timestamps_valid(self) -> Self:
-        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
-        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
-        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
-        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
-        return self
 
 
 class RenewablesMetadata(pydantic.BaseModel):

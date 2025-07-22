@@ -19,6 +19,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, SecretsDep
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
+from ..internal.site_manager.bundles import file_self_with_bundle
 from ..models.core import MultipleDatasetIDWithTime, SiteID, dataset_id_t
 from ..models.renewables import EpochRenewablesEntry, PVOptimaResult, RenewablesMetadata, RenewablesRequest
 
@@ -153,20 +154,9 @@ async def generate_renewables_generation(
                 metadata.renewables_location_id,
             )
 
-            await conn.executemany(
-                """INSERT INTO
-                        renewables.solar_pv (
-                            dataset_id,
-                            start_ts,
-                            end_ts,
-                            solar_generation
-                        )
-                    VALUES (
-                        $1,
-                        $2,
-                        $3,
-                        $4)""",
-                zip(
+            await conn.copy_records_to_table(schema_name="renewables", table_name="solar_pv",
+                                             columns=["dataset_id", "start_ts", "end_ts", "solar_generation"],
+                records=zip(
                     [metadata.dataset_id for _ in renewables_df.index],
                     renewables_df.index,
                     renewables_df.index + pd.Timedelta(hours=1),  # assume that we got consistent data from RN
@@ -174,6 +164,9 @@ async def generate_renewables_generation(
                     strict=True,
                 ),
             )
+
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
     return metadata
 
 

@@ -6,10 +6,11 @@ import pydantic
 
 # watch out for cicular imports!
 from ..internal.rdsap.rdsap import estimate_window_area
-from .core import DatasetID, SiteIDWithTime
+from .core import DatasetID, SiteIDWithTime, RequestBase, site_id_t, dataset_id_t
 
 
-class ThermalModelRequest(SiteIDWithTime):
+class ThermalModelRequest(RequestBase):
+    site_id: site_id_t
     n_iter: pydantic.PositiveInt = pydantic.Field(
         default=10,
         description="Number of Bayesian optimisation iterations to try in the fitting process",
@@ -17,8 +18,9 @@ class ThermalModelRequest(SiteIDWithTime):
     )
 
 
-class ThermalModelHeatingLoadRequest(SiteIDWithTime, DatasetID):
-    pass
+class ThermalModelHeatingLoadRequest(RequestBase):
+    site_id: site_id_t
+    dataset_id_t: dataset_id_t
 
 
 class SurveyedSizes(pydantic.BaseModel):

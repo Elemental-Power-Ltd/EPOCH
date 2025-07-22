@@ -133,10 +133,12 @@ class TestThermalModelEndpoint:
             "/generate-thermal-model-heating-load",
             json=json.loads(
                 HeatingLoadRequest(
+                    dataset_id=uuid.uuid4(),
                     site_id="demo_london",
                     start_ts=start_ts,
                     end_ts=end_ts,
                     thermal_model_dataset_id=task_id,
+                    final_uuid=uuid.uuid4(),
                 ).model_dump_json()
             ),
         )

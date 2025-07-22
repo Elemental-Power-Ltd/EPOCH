@@ -27,6 +27,9 @@ from ..internal.import_tariffs import (
     resample_to_range,
     tariff_to_new_timestamps,
 )
+
+from ..internal.site_manager.bundles import file_self_with_bundle
+
 from ..models.core import MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.import_tariffs import (
     EpochTariffEntry,
@@ -374,7 +377,9 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
                 records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["end_ts"], price_df["cost"], strict=True),
                 columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
             )
-
+            
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
     return metadata
 
 

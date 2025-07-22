@@ -8,7 +8,7 @@ from typing import Self
 import pydantic
 from pydantic import Field
 
-from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field, site_id_field, site_id_t
+from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field, site_id_field, site_id_t, RequestBase
 from .thermal_model import SurveyedSizes
 
 
@@ -100,7 +100,8 @@ class HeatingLoadModelEnum(StrEnum):
     Auto = "auto"
 
 
-class HeatingLoadRequest(DatasetIDWithTime):
+class HeatingLoadRequest(RequestBase):
+    dataset_id: dataset_id_t
     interventions: list[InterventionEnum] | list[str] = Field(
         examples=[[InterventionEnum.Loft], [], ["Internal Insulation to external solid wall", "Secondary Glazing"]],
         default=[],
@@ -126,7 +127,6 @@ class HeatingLoadRequest(DatasetIDWithTime):
     thermal_model_dataset_id: dataset_id_t | None = Field(
         description="Which underlying thermal model to use if in thermal model mode", default=None
     )
-    final_uuid: dataset_id_t = final_uuid_field
     savings_fraction: float = Field(
         examples=[0.0, 1.0, 0.15],
         default=0.0,
