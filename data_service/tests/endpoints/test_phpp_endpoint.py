@@ -36,7 +36,7 @@ class TestListInterventions:
         for name, value in list_response.items():
             assert "cost" in value, "Item missing a cost"
             assert value["cost"] is None or isinstance(value["cost"], float), f"Got wrong type for {name} cost"
-            assert value["cost"] is None or value["cost"] > 0, f"Got a negative cost for {name}"
+            assert value["cost"] is None or value["cost"] >= 0, f"Got a negative cost for {name}"
 
 
 class TestUploadPHPP:

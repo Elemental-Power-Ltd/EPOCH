@@ -76,37 +76,6 @@ def maybe_cell_to_int(cell: Cell | MergedCell) -> int | None:
     return None
 
 
-def maybe_cell_to_float(cell: Cell | MergedCell) -> float | None:
-    """
-    Try converting the contents of this cell to a floating point number.
-
-    Parameters
-    ----------
-    cell
-        A cell with a value which is maybe a float
-
-    Returns
-    -------
-    float
-        If the contents could be converted
-    None
-        If the contents are not float-like
-    """
-    if isinstance(cell.value, str):
-        try:
-            # We often get indices like "001" which are technically strings
-            # so let's turn them into an int
-            return float(cell.value)
-        except (ValueError, TypeError):
-            # Couldn't convert this value to an int
-            return None
-
-    if isinstance(cell.value, float | int | Decimal):
-        return float(cell.value)
-
-    return None
-
-
 def parse_phpp_area_row(row: ExcelRow) -> StructuralRow | None:
     """
     Parse a row from the PHPP areas sheet into a useful python dictionary.
@@ -452,12 +421,12 @@ def phpp_to_dataframe(fpath: Path | BinaryIO) -> tuple[pd.DataFrame, StructuralI
             parsed_row = parse_phpp_window_row(row)
         except ValueError:
             # This row isn't parseable, so we've run out of good windows
+            # This is an expected outcome, it's cheaper to throw an exception once we fail to get a single cell
             break
         if parsed_row is not None:
             all_rows.append(parsed_row)
 
     thermal_bridge_start = find_cell(wb["Areas"], "Thermal bridge input")
-    # This off by one is very annoying, but the thermal bridge start index is actually
     for row in ws.iter_rows(min_row=thermal_bridge_start.row, min_col=thermal_bridge_start.col_idx):
         if row[0].value == "<End of designPH import!>":
             break
