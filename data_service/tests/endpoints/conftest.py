@@ -19,15 +19,16 @@ from typing import Any, Self, cast
 
 import asyncpg
 import httpx
+import pytest
 import pytest_asyncio
 import testing.postgresql  # type: ignore
 from httpx import ASGITransport, AsyncClient
 
 from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
+from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
 from app.main import app
-from app.models.site_range import Jsonable
 
 # apply a windows-specific patch for database termination (we can't use SIGINT)
 if sys.platform.startswith("win"):
@@ -374,3 +375,9 @@ async def client() -> AsyncGenerator[AsyncClient]:
     del app.dependency_overrides[get_db_conn]
     del app.dependency_overrides[get_db_pool]
     del app.dependency_overrides[get_http_client]
+
+
+@pytest.fixture
+def phpp_fpath() -> Path:
+    """Load a PHPP into a dataframe and re-use it for each test."""
+    return Path("tests", "data", "phpp", "PHPP_demo.xlsx").absolute()

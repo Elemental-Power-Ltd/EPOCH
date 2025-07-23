@@ -13,11 +13,11 @@ import pytest
 import pytest_asyncio
 
 from app.dependencies import get_db_pool, get_http_client
+from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.utils.uuid import uuid7
 from app.models.site_range import Jsonable
 from app.internal.solar_pv.disaggregate import disaggregate_readings
-
 
 @pytest_asyncio.fixture
 async def upload_hh_meter_data(client: httpx.AsyncClient) -> dict[str, Jsonable]:
@@ -126,6 +126,58 @@ class TestRenewables:
                     "azimuth": None,
                     "tilt": None,
                     "tracking": False,
+                },
+            )
+        ).json()
+        results = (
+            await client.post(
+                "/get-renewables-generation",
+                json={
+                    "dataset_id": metadata["dataset_id"],
+                    "start_ts": demo_start_ts.isoformat(),
+                    "end_ts": demo_end_ts.isoformat(),
+                },
+            )
+        ).json()
+
+        assert all(
+            len(results["timestamps"])
+            == len(item)
+            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+            for item in results["data"]
+        )
+        assert all(all(item) >= 0 for item in results["data"])
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    async def test_generate_default_location(
+        self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
+    ) -> None:
+        """Test that we can generate a solar array in the `default` location."""
+        locn_metadata = await client.post(
+            "/add-solar-location",
+            json={
+                "site_id": "demo_london",
+                "renewables_location_id": "demo_london_southroof",
+                "name": "Matt's South Roof",
+                "azimuth": 153,
+                "tilt": 35,
+                "maxpower": 5.0,
+            },
+        )
+        assert locn_metadata.status_code == 200
+
+        metadata = (
+            await client.post(
+                "/generate-renewables-generation",
+                json={
+                    "site_id": "demo_london",
+                    "start_ts": demo_start_ts.isoformat(),
+                    "end_ts": demo_end_ts.isoformat(),
+                    "azimuth": None,
+                    "tilt": None,
+                    "tracking": False,
+                    "renewables_location_id": "demo_london_southroof",
                 },
             )
         ).json()

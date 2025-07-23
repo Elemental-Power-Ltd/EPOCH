@@ -137,7 +137,7 @@ class TestThermalModelEndpoint:
                     site_id="demo_london",
                     start_ts=start_ts,
                     end_ts=end_ts,
-                    thermal_model_dataset_id=task_id,
+                    structure_id=task_id,
                 ).model_dump_json()
             ),
         )
