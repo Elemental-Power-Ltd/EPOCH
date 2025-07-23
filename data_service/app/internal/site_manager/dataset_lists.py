@@ -1,7 +1,6 @@
 """Database connection utilities to list various types of dataset."""
 
 import datetime
-import uuid
 
 from ...dependencies import DatabasePoolDep
 from ...models.core import (
@@ -11,6 +10,7 @@ from ...models.core import (
 )
 from ...models.heating_load import InterventionEnum
 from ...models.import_tariffs import SyntheticTariffEnum
+from ..utils.uuid import uuid7
 
 
 async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
@@ -208,6 +208,7 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             """
             SELECT
                 tm.dataset_id,
+                tm.renewables_location_id AS renewables_location_id,
                 MAX(tm.created_at) AS created_at,
                 MIN(te.start_ts) AS start_ts,
                 MAX(te.end_ts) AS end_ts,
@@ -230,6 +231,7 @@ async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoo
             end_ts=item["end_ts"],
             num_entries=item["num_entries"],
             resolution=item["resolution"],
+            dataset_subtype=str(item["renewables_location_id"]) if item["renewables_location_id"] is not None else None,
         )
         for item in res
     ]
@@ -374,7 +376,34 @@ async def list_ashp_datasets() -> list[DatasetEntry]:
     This is a dummy function as we don't actually store them, but it returns a reasonable looking response.
     """
     return [
-        DatasetEntry(
-            dataset_id=uuid.uuid4(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC)
-        )
+        DatasetEntry(dataset_id=uuid7(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC))
+    ]
+
+
+async def list_baseline_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+    """
+    List all baselines we have defined for this site.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site we want a baseline for.
+
+    Returns
+    -------
+        a DatasetEntry for each baseline_id in the database for this site.
+
+    """
+    res = await pool.fetch(
+        """
+        SELECT sb.baseline_id, sb.created_at
+        FROM client_info.site_baselines AS sb
+        WHERE sb.site_id = $1
+        ORDER BY sb.created_at
+        """,
+        site_id.site_id,
+    )
+    return [
+        DatasetEntry(dataset_id=item["baseline_id"], dataset_type=DatasetTypeEnum.SiteBaseline, created_at=item["created_at"])
+        for item in res
     ]

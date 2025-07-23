@@ -2,27 +2,27 @@
 
 import datetime
 import json
-import uuid
-from collections.abc import Awaitable
 
 import httpx
 import pytest
+import pytest_asyncio
 
 from app.dependencies import get_db_pool
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetTypeEnum
 from app.models.heating_load import HeatingLoadRequest, ThermalModelResult
 from app.routers.heating_load.thermal_model import file_params_with_db
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def uploaded_elec_data(client: httpx.AsyncClient) -> httpx.Response:
     """Upload elec meter as a fixture."""
     data = parse_half_hourly("./tests/data/test_elec.csv")
     data["start_ts"] = data.index
     metadata = {
         "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        "dataset_id": str(uuid.uuid4()),
+        "dataset_id": str(uuid7()),
         "fuel_type": "elec",
         "site_id": "demo_london",
         "reading_type": "halfhourly",
@@ -32,14 +32,14 @@ async def uploaded_elec_data(client: httpx.AsyncClient) -> httpx.Response:
     return await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def uploaded_gas_data(client: httpx.AsyncClient) -> httpx.Response:
     """Upload gas meter as a fixture."""
     data = parse_half_hourly("./tests/data/test_gas.csv")
     data["start_ts"] = data.index
     metadata = {
         "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        "dataset_id": str(uuid.uuid4()),
+        "dataset_id": str(uuid7()),
         "fuel_type": "gas",
         "site_id": "demo_london",
         "reading_type": "halfhourly",
@@ -62,12 +62,12 @@ def thermal_model_result() -> ThermalModelResult:
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def uploaded_meter_data(
-    uploaded_elec_data: Awaitable[httpx.Response], uploaded_gas_data: Awaitable[httpx.Response]
+    uploaded_elec_data: httpx.Response, uploaded_gas_data: httpx.Response
 ) -> tuple[httpx.Response, httpx.Response]:
     """Upload gas and electricity meter as a fixture."""
-    return (await uploaded_elec_data, await uploaded_gas_data)
+    return (uploaded_elec_data, uploaded_gas_data)
 
 
 class TestThermalModelEndpoint:
@@ -76,10 +76,10 @@ class TestThermalModelEndpoint:
     @pytest.mark.asyncio
     @pytest.mark.slow
     async def test_send_request(
-        self, client: httpx.AsyncClient, uploaded_meter_data: Awaitable[tuple[httpx.Response, httpx.Response]]
+        self, client: httpx.AsyncClient, uploaded_meter_data: tuple[httpx.Response, httpx.Response]
     ) -> None:
         """Test that we can fit a simple thermal model of Matt's house."""
-        _, _ = await uploaded_meter_data
+        _, _ = uploaded_meter_data
 
         response = await client.post(
             "/fit-thermal-model",
@@ -107,15 +107,15 @@ class TestThermalModelEndpoint:
     async def test_create_heat_load(
         self,
         client: httpx.AsyncClient,
-        uploaded_meter_data: Awaitable[tuple[httpx.Response, httpx.Response]],
+        uploaded_meter_data: tuple[httpx.Response, httpx.Response],
         thermal_model_result: ThermalModelResult,
     ) -> None:
         """Test that we can fit a simple thermal model of Matt's house."""
-        gas, elec = await uploaded_meter_data
+        gas, elec = uploaded_meter_data
 
         start_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC)
-        task_id = uuid.uuid4()
+        task_id = uuid7()
         # TODO (2025-03-03): This is an absolutely filthy way to get the testing database
         # pool connection! Do it properly with a DB fixture or a called endpoint.
         pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore

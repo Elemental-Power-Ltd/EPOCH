@@ -7,11 +7,16 @@ from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, site_id_field, site_id_t
+from .core import EpochEntry, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
 class RenewablesRequest(pydantic.BaseModel):
     site_id: site_id_t = site_id_field
+    renewables_location_id: str | None = pydantic.Field(
+        default=None,
+        examples=["demo_matts_house_southroof"],
+        description="Database ID of the site-associated solar location e.g. southroof",
+    )
     start_ts: pydantic.AwareDatetime = pydantic.Field(
         examples=["2020-01-01T00:00:00Z"], description="The starting time to run the renewables calculation, should be <2021."
     )
@@ -73,9 +78,12 @@ class RenewablesMetadata(pydantic.BaseModel):
     created_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC), description="The time we generated this dataset at"
     )
-    dataset_id: pydantic.UUID4 = dataset_id_field
+    dataset_id: dataset_id_t = dataset_id_field
     site_id: site_id_t = site_id_field
     parameters: pydantic.Json = pydantic.Field(description="The parameters we sent to the data source in generating this.")
+    renewables_location_id: str | None = pydantic.Field(
+        description="Database ID for the on-site location of this installation", default=None
+    )
 
 
 class EpochRenewablesEntry(EpochEntry):
@@ -101,6 +109,13 @@ class PvgisMountingSystemEnum(StrEnum):
 
 
 class PvgisTypeEnum(StrEnum):
+    """
+    Type of solar installation (where is mounted).
+
+    PVGIS uses "building-integrated" to mean roof mounted
+    and "free" to mean ground mounted, so we adopt that convention.
+    """
+
     building_integrated = "building-integrated"
     freestanding = "free"
 

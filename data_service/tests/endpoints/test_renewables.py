@@ -3,7 +3,6 @@
 # ruff: noqa: D101, D102, D103
 import datetime
 import json
-import uuid
 from typing import cast
 from uuid import UUID
 
@@ -15,6 +14,7 @@ import pytest_asyncio
 
 from app.dependencies import get_db_pool, get_http_client
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.utils.uuid import uuid7
 from app.models.site_range import Jsonable
 from app.routers.renewables import disaggregate_readings
 
@@ -290,7 +290,7 @@ class TestRenewablesErrors:
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
         """Test that we can get many copies of the same dataset."""
-        bad_uuid = uuid.uuid4()
+        bad_uuid = uuid7()
         results = await client.post(
             "/get-renewables-generation",
             json={

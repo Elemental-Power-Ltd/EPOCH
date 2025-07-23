@@ -9,7 +9,6 @@ import datetime
 import logging
 import operator
 import typing
-import uuid
 
 import aiometer
 import numpy as np
@@ -20,6 +19,7 @@ from fastapi import APIRouter, HTTPException
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.client_data import get_postcode
 from ..internal.utils import chunk_time_period
+from ..internal.utils.uuid import uuid7
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry
 from ..models.core import DatasetIDWithTime, SiteIDWithTime
 
@@ -292,7 +292,7 @@ async def generate_grid_co2(
     )
 
     metadata = CarbonIntensityMetadata(
-        dataset_id=uuid.uuid4(),
+        dataset_id=uuid7(),
         created_at=datetime.datetime.now(datetime.UTC),
         data_source="api.carbonintensity.org.uk",
         is_regional=(postcode is not None),

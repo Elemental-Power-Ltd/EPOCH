@@ -7,17 +7,21 @@ centralise it in here.
 
 # ruff: noqa: D101
 import datetime
-import uuid
 from enum import StrEnum
 from typing import Annotated, Any, Self
 
 import pydantic
 from pydantic import BaseModel, Field
 
-dataset_id_t = Annotated[pydantic.UUID4, "String serialised UUID"]
-client_id_t = str
-site_id_t = str
-location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
+from app.internal.utils.uuid import uuid7
+
+# We have to support either UUID4 for historic datasets or UUID7 for more recent dataset
+type uuid_t = pydantic.UUID4 | pydantic.UUID7
+type dataset_id_t = Annotated[uuid_t, "String serialised UUID"]
+type client_id_t = str
+type site_id_t = str
+type location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
+
 
 example_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
 example_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
@@ -36,7 +40,7 @@ client_id_field = Field(
 dataset_id_field = Field(
     examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"],
     description="Unique ID (generally a UUIDv4) of a dataset.",
-    default_factory=uuid.uuid4,
+    default_factory=uuid7,
 )
 
 epoch_start_time_field = Field(
@@ -134,7 +138,7 @@ class DatasetIDWithTime(BaseModel):
 
 
 class MultipleDatasetIDWithTime(BaseModel):
-    dataset_id: list[dataset_id_t] = pydantic.Field(examples=[uuid.uuid4(), [uuid.uuid4() for _ in range(4)]])
+    dataset_id: list[dataset_id_t] = pydantic.Field(examples=[uuid7(), [uuid7() for _ in range(4)]])
     start_ts: pydantic.AwareDatetime = Field(
         examples=["2024-01-01T00:00:00Z"],
         description="The earliest time (inclusive) to retrieve data for.",
@@ -171,6 +175,7 @@ class ClientIdNamePair(pydantic.BaseModel):
 
 
 class DatasetTypeEnum(StrEnum):
+    SiteBaseline = "SiteBaseline"
     GasMeterData = "GasMeterData"
     ElectricityMeterData = "ElectricityMeterData"
     ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"

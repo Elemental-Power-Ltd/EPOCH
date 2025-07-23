@@ -1,6 +1,6 @@
 aiometer
 asyncpg
-bayes_opt
+bayesian-optimization
 fastapi[standard]
 httpx
 matplotlib

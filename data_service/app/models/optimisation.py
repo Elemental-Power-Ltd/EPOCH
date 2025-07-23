@@ -3,12 +3,12 @@
 # ruff: noqa: D101
 import datetime
 import math
-import uuid
 from enum import StrEnum
 
 import pydantic
 from pydantic import BaseModel, Field
 
+from ..internal.utils.uuid import uuid7
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
 from .epoch_types import TaskDataPydantic
 from .site_manager import SiteDataEntry
@@ -23,6 +23,12 @@ class SiteMetrics(BaseModel):
     )
     carbon_balance_scope_2: float | None = Field(
         description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
+    )
+    carbon_balance_total: float | None = Field(
+        description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
+        default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
+        if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
+        else None,
     )
     carbon_cost: float | None = Field(
         description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
@@ -65,6 +71,12 @@ class SiteMetrics(BaseModel):
     total_heat_shortfall: float | None = Field(
         description="Total heat shortfall (kWh) when compared to the demand for this site", default=None
     )
+    total_ch_shortfall: float | None = Field(
+        description="Total central heating (CH) shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    total_dhw_shortfall: float | None = Field(
+        description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand for this site", default=None
+    )
     total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
     total_electricity_import_cost: float | None = Field(
         description="Total spend (£) importing electricity from the grid for this site", default=None
@@ -99,6 +111,12 @@ class SiteMetrics(BaseModel):
     baseline_heat_shortfall: float | None = Field(
         description="Baseline heat shortfall (kWh) when compared to the demand for this site", default=None
     )
+    baseline_ch_shortfall: float | None = Field(
+        description="Baseline central heating (CH) shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    baseline_dhw_shortfall: float | None = Field(
+        description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand for this site", default=None
+    )
     baseline_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
     baseline_electricity_import_cost: float | None = Field(
         description="Baseline spend (£) importing electricity from the grid for this site", default=None
@@ -123,7 +141,7 @@ class SiteOptimisationResult(pydantic.BaseModel):
     """Result for a single site within a portfolio result."""
 
     site_id: site_id_t = site_id_field
-    portfolio_id: pydantic.UUID4 = pydantic.Field(
+    portfolio_id: pydantic.UUID7 = pydantic.Field(
         description="The portfolio pareto front entry this site is linked to."
         + " A single site result is uniquely identified by a (portfolio_id, site_id) pair."
     )
@@ -143,6 +161,12 @@ class PortfolioMetrics(BaseModel):
     )
     carbon_balance_scope_2: float | None = Field(
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
+    )
+    carbon_balance_total: float | None = Field(
+        description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
+        default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
+        if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
+        else None,
     )
     carbon_cost: float | None = Field(
         description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
@@ -187,6 +211,13 @@ class PortfolioMetrics(BaseModel):
     total_heat_shortfall: float | None = Field(
         description="Total heat shortfall (kWh) when compared to the demand across this portfolio", default=None
     )
+    total_ch_shortfall: float | None = Field(
+        description="Total central heating (CH) shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    total_dhw_shortfall: float | None = Field(
+        description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
+        default=None
+    )
     total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas across this portfolio", default=None)
     total_electricity_import_cost: float | None = Field(
         description="Total spend (£) importing electricity from the grid across this portfolio", default=None
@@ -222,6 +253,14 @@ class PortfolioMetrics(BaseModel):
     baseline_heat_shortfall: float | None = Field(
         description="Baseline heat shortfall (kWh) when compared to the demand across this portfolio", default=None
     )
+    baseline_ch_shortfall: float | None = Field(
+        description="Baseline central heating (CH) shortfall (kWh) when compared to the demand across this portfolio",
+        default=None
+    )
+    baseline_dhw_shortfall: float | None = Field(
+        description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
+        default=None
+    )
     baseline_gas_import_cost: float | None = Field(
         description="Baseline spend (£) importing gas across this portfolio", default=None
     )
@@ -248,8 +287,8 @@ class PortfolioMetrics(BaseModel):
 class PortfolioOptimisationResult(pydantic.BaseModel):
     """Result for a whole portfolio optimisation task, often one entry in the Pareto front."""
 
-    task_id: pydantic.UUID4
-    portfolio_id: pydantic.UUID4 = pydantic.Field(
+    task_id: pydantic.UUID7
+    portfolio_id: pydantic.UUID7 = pydantic.Field(
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
@@ -270,7 +309,7 @@ class HighlightReason(StrEnum):
 class HighlightedResult(pydantic.BaseModel):
     """A portfolio result we want to draw attention to and a reason why."""
 
-    portfolio_id: pydantic.UUID4 = pydantic.Field(
+    portfolio_id: pydantic.UUID7 = pydantic.Field(
         description="Individual ID representing this entry in the portfolio pareto front."
     )
     reason: HighlightReason = pydantic.Field(description="The reason the portfolio result is highlighted.")
@@ -290,7 +329,7 @@ class OptimisationResultsResponse(pydantic.BaseModel):
 class TaskResult(pydantic.BaseModel):
     """Result for metadata about an optimisation task."""
 
-    task_id: pydantic.UUID4
+    task_id: pydantic.UUID7
     n_evals: pydantic.PositiveInt = pydantic.Field(
         description="Number of site scenarios evaluated during this task.", examples=[1, 9999]
     )
@@ -349,7 +388,7 @@ class Optimiser(pydantic.BaseModel):
 
 
 class TaskConfig(pydantic.BaseModel):
-    task_id: pydantic.UUID4 = pydantic.Field(description="Unique ID for this specific task.")
+    task_id: pydantic.UUID7 = pydantic.Field(description="Unique ID for this specific task.")
     client_id: client_id_t = pydantic.Field(
         examples=["demo"],
         description="The database ID for a client, all lower case, joined by underscores.",
@@ -399,7 +438,7 @@ class TaskConfig(pydantic.BaseModel):
                     "site_id": "demo_london",
                     "start_ts": "2025-01-01T00:00:00Z",
                     "duration": "1Y",
-                    "dataset_ids": {"HeatingLoad": uuid.uuid4()},
+                    "dataset_ids": {"HeatingLoad": uuid7()},
                 }
             }
         ],
@@ -412,17 +451,10 @@ class TaskConfig(pydantic.BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
-    baseline_id: dataset_id_t | None = pydantic.Field(
-        default=None,
-        description=(
-            "ID of the baseline scenario for this site."
-            + " If None, use the default baseline scenario, but be wary of changes to that default."
-        ),
-    )
 
 
 class ResultReproConfig(pydantic.BaseModel):
-    portfolio_id: pydantic.UUID4
+    portfolio_id: dataset_id_t
     task_data: dict[site_id_t, TaskDataPydantic]
     site_data: dict[site_id_t, SiteDataEntry]
 

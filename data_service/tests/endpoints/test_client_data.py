@@ -3,12 +3,12 @@
 # ruff: noqa: D101, D102
 
 import json
-import uuid
 
 import pytest
 from httpx import AsyncClient
 
 from app.dependencies import get_db_pool
+from app.internal.utils.uuid import uuid7
 from app.models.core import ClientData, SiteData
 
 
@@ -166,7 +166,7 @@ class TestSiteBaseline:
         pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
         await pool.execute(
             """INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
-            uuid.uuid4(),
+            uuid7(),
             "demo_london",
             json.dumps(baseline),
         )
@@ -182,9 +182,70 @@ class TestSiteBaseline:
         pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
         await pool.execute(
             """INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
-            uuid.uuid4(),
+            uuid7(),
             "demo_london",
             json.dumps(baseline),
         )
         response = await client.post("/get-site-baseline", json={"site_id": "demo_london"})
         assert response.status_code == 400
+
+
+class TestSolarLocations:
+    @pytest.mark.asyncio
+    async def test_get_none_locations(self, client: AsyncClient) -> None:
+        """Test that we get an empty list if there are no locations."""
+        response = await client.post("/get-solar-locations", json={"site_id": "demo_london"})
+        assert response.status_code == 200
+        assert response.json() == []
+
+    @pytest.mark.asyncio
+    async def test_add_and_get_locations(self, client: AsyncClient) -> None:
+        """Test that we can add and retrieve a location."""
+        solar_data = {
+            "site_id": "demo_london",
+            "name": "Main Roof",
+            "renewables_location_id": "demo_london_mainroof",
+            "tilt": 35,
+            "azimuth": 178,
+            "maxpower": 6.0,
+        }
+        add_response = await client.post("/add-solar-location", json=solar_data)
+        assert add_response.status_code == 200, add_response.text
+
+        get_response = await client.post("/get-solar-locations", json={"site_id": "demo_london"})
+        assert get_response.status_code == 200, get_response.text
+        got_data = get_response.json()[0]
+        for key, val in solar_data.items():
+            assert key in got_data
+            assert val == got_data[key]
+
+    @pytest.mark.asyncio
+    async def test_cant_add_bad_id(self, client: AsyncClient) -> None:
+        """Test that we can't add a site with a bad ID."""
+        solar_data = {
+            "site_id": "demo_london",
+            "name": "Main Roof",
+            "renewables_location_id": "BAD_LOCATION_ID",
+            "tilt": 35,
+            "azimuth": 178,
+            "maxpower": 6.0,
+        }
+        add_response = await client.post("/add-solar-location", json=solar_data)
+        assert add_response.status_code == 422, add_response.text
+
+    @pytest.mark.asyncio
+    async def test_cant_add_repeated(self, client: AsyncClient) -> None:
+        """Test that we can't add a site twice."""
+        solar_data = {
+            "site_id": "demo_london",
+            "name": "Main Roof",
+            "renewables_location_id": "demo_london_mainroof",
+            "tilt": 35,
+            "azimuth": 178,
+            "maxpower": 6.0,
+        }
+        add_response = await client.post("/add-solar-location", json=solar_data)
+        assert add_response.status_code == 200, add_response.text
+
+        add_response_2 = await client.post("/add-solar-location", json=solar_data)
+        assert add_response_2.status_code == 400, add_response.text
