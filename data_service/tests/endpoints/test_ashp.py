@@ -2,7 +2,6 @@
 
 # ruff: noqa: D101, D102
 import itertools
-import uuid
 
 import numpy as np
 import pytest
@@ -10,11 +9,13 @@ import pytest_asyncio
 from httpx import AsyncClient
 from pydantic import Json
 
+from app.internal.utils.uuid import uuid7
+
 
 @pytest.fixture
 def demo_ashp_uuid() -> str:
     """Get an (ignored) UUID for an ASHP dataset."""
-    return str(uuid.uuid4())
+    return str(uuid7())
 
 
 @pytest_asyncio.fixture

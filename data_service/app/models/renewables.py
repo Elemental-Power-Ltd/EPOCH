@@ -7,7 +7,7 @@ from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, site_id_field, site_id_t
+from .core import EpochEntry, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
 class RenewablesRequest(pydantic.BaseModel):
@@ -54,7 +54,7 @@ class RenewablesMetadata(pydantic.BaseModel):
     created_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC), description="The time we generated this dataset at"
     )
-    dataset_id: pydantic.UUID4 = dataset_id_field
+    dataset_id: dataset_id_t = dataset_id_field
     site_id: site_id_t = site_id_field
     parameters: pydantic.Json = pydantic.Field(description="The parameters we sent to the data source in generating this.")
     renewables_location_id: str | None = pydantic.Field(
