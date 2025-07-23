@@ -3,6 +3,7 @@ import {BatteryMode, GasType, HeatSource} from "../Components/TaskDataViewer/Tas
 // we don't want to display anything greater than a trillion
 // (likely float max or similar)
 const one_trillion = 1000000000000
+const neg_one_trillion = -1000000000000
 
 
 // Human-readable labels for enum values
@@ -73,7 +74,7 @@ export const formatField = (value: unknown, unit?: string): string => {
 
 // Display prices to the nearest £100
 export const formatPounds = (value: number | undefined): string => {
-    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion || value < neg_one_trillion) {
         return "-"
     }
 
@@ -84,7 +85,7 @@ export const formatPounds = (value: number | undefined): string => {
 
 // Display carbon emissions to the nearest 10kg CO2e
 export const formatCarbon = (value: number | undefined): string => {
-    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion || value < neg_one_trillion ) {
         return "-"
     }
 

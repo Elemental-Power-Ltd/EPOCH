@@ -32,7 +32,7 @@ const SimulationResultViewer: React.FC<SimulationResultViewerProps> = ({isLoadin
             </Container>
             {(!isLoading && !error && result) &&
                 <>
-                    <Button onClick={toggleAnalysis} variant="outlined">
+                    <Button onClick={toggleAnalysis} variant="outlined" disabled={result.report_data === null}>
                         {showAnalysis ? "Hide Analysis" : "Show Analysis"}
                     </Button>
                     {showAnalysis && <DataViz result={result}/>}

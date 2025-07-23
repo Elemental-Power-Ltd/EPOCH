@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Button} from '@mui/material';
+import {Alert, Button} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import dayjs, {Dayjs} from 'dayjs';
 
@@ -16,6 +16,10 @@ interface DataVizProps {
 }
 
 const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
+    if (result.report_data === null) {
+        return <Alert severity="error">Result contains no time series!</Alert>
+    }
+
 
     const reportData = removeEmptyVectors(getNonNullReportData(result.report_data));
 
