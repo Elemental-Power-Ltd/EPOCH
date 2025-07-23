@@ -2,11 +2,9 @@
 
 import json
 
-import asyncpg
-
-from ...models.core import BundleEntryMetadata
-
-type db_conn_t = asyncpg.pool.Pool | asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
+from ...models.core import BundleEntryMetadata, dataset_id_t
+from ...models.site_manager import DatasetBundleMetadata
+from ..epl_typing import db_conn_t
 
 
 async def file_self_with_bundle(pool: db_conn_t, bundle_metadata: BundleEntryMetadata) -> None:
@@ -42,3 +40,46 @@ async def file_self_with_bundle(pool: db_conn_t, bundle_metadata: BundleEntryMet
         bundle_metadata.dataset_id,
         bundle_metadata.dataset_order,
     )
+
+
+async def insert_dataset_bundle(bundle_metadata: DatasetBundleMetadata, pool: db_conn_t) -> dataset_id_t:
+    """
+    Insert metadata about a dataset bundle into the database.
+
+    A dataset bundle is a collection of datasets applying to the same site, created at the same time.
+    This will generally include heating loads, electrical loads, carbon intensity, renewables etc.
+    There is no guarantee that a given bundle is complete.
+    Bundles are stored in a top level metadata table showing which sites they are for, and a below dataset links table.
+    This only inserts that top level metadata, and the associated datasets will file themselves via
+    `file_self_with_bundle` (note that this means a given bundle can change over time, or be empty)
+
+    Parameters
+    ----------
+    bundle_metadata
+        Dataset bundle metadata, including site ID, human readable name, and start / end times.
+    pool
+        Connection pool to the database that we want these to be filed in
+
+    Returns
+    -------
+    dataset_id_t
+        The bundle ID for this bundle of datasets, in case you want it later.
+    """
+    await pool.execute(
+        """
+        INSERT INTO data_bundles.metadata (
+            bundle_id,
+            name,
+            site_id,
+            start_ts,
+            end_ts,
+            created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6)""",
+        bundle_metadata.bundle_id,
+        bundle_metadata.name,
+        bundle_metadata.site_id,
+        bundle_metadata.start_ts,
+        bundle_metadata.end_ts,
+        bundle_metadata.created_at,
+    )
+    return bundle_metadata.bundle_id

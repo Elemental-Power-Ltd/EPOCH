@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import logging
 import uuid
+import warnings
 from asyncio import Task
 from collections.abc import Sequence
 from typing import Any, cast
@@ -22,9 +23,9 @@ from ..internal.site_manager import (
     list_renewables_generation_datasets,
     list_thermal_models,
 )
-from ..internal.site_manager.bundles import file_self_with_bundle
+from ..internal.site_manager.bundles import file_self_with_bundle, insert_dataset_bundle
 from ..internal.site_manager.dataset_lists import list_baseline_datasets
-from ..internal.site_manager.site_manager import fetch_all_input_data
+from ..internal.site_manager.fetch_data import fetch_all_input_data
 from ..models.carbon_intensity import GridCO2Request
 from ..models.client_data import SiteDataEntries, SolarLocation
 from ..models.core import (
@@ -57,55 +58,6 @@ router = APIRouter()
 MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
 NULL_UUID = uuid.UUID(int=0, version=4)
 type to_generate_t = dict[DatasetTypeEnum, RequestBase | Sequence[RequestBase]]
-
-
-async def insert_dataset_bundle(bundle_metadata: DatasetBundleMetadata, pool: DatabasePoolDep) -> dataset_id_t:
-    """
-    Insert a dataset bundle into the database.
-
-    A dataset bundle is a collection of datasets applying to the same site, created at the same time.
-    This will generally include heating loads, electrical loads, carbon intensity, renewables etc.
-    There is no guarantee that a given bundle is complete.
-
-    Bundles are stored in a top level metadata table showing which sites they are for, and a below dataset links table.
-    Note that there isn't a foreign key constraint on the dataset links table -- this is because we do the admin now,
-    but actual datasets take some time to generate.
-    This means that you can potentially end up with ghost entries in the dataset links table.
-
-    Parameters
-    ----------
-    bundle
-        Dictionary of dataset types and associated dataset IDs; these are what is filed in the database.
-    bundle_metadata
-        Dataset bundle metadata, including site ID, human readable name, and start / end times.
-    pool
-        Connection pool to the database that we want these to be filed in
-    name
-        A human readable name for the data bundle, if provided.
-
-    Returns
-    -------
-    dataset_id_t
-        The bundle ID for this bundle of datasets, in case you want it later.
-    """
-    await pool.execute(
-        """
-        INSERT INTO data_bundles.metadata (
-            bundle_id,
-            name,
-            site_id,
-            start_ts,
-            end_ts,
-            created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6)""",
-        bundle_metadata.bundle_id,
-        bundle_metadata.name,
-        bundle_metadata.site_id,
-        bundle_metadata.start_ts,
-        bundle_metadata.end_ts,
-        bundle_metadata.created_at,
-    )
-    return bundle_metadata.bundle_id
 
 
 @router.post("/list-datasets", tags=["db", "list"])
@@ -441,7 +393,7 @@ async def list_dataset_bundles(site_id: SiteIDWithTime, pool: DatabasePoolDep) -
     ]
 
 
-# @warnings.deprecated("Prefer get-dataset-bundle.")
+@warnings.deprecated("Prefer get-dataset-bundle.")
 @router.post("/get-specific-datasets", tags=["db", "get"])
 async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
     """
@@ -699,7 +651,7 @@ async def generate_all(
         site_id=params.site_id,
         start_ts=params.start_ts,
         end_ts=params.end_ts,
-        available_datasets=[],
+        available_datasets=[],  # Leave this empty to start and we'll fill it in as we go along
     )
     # File the metadata before we do anything else
     await insert_dataset_bundle(bundle_metadata=bundle_metadata, pool=pool)

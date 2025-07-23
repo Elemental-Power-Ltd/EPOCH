@@ -32,7 +32,7 @@ from ...internal.thermal_model import apply_fabric_interventions, building_adjus
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
 from ...internal.thermal_model.fitting import simulate_parameters
-from ...models.core import DatasetID, SiteID, dataset_id_t, site_id_t
+from ...models.core import DatasetID, DatasetTypeEnum, SiteID, dataset_id_t, site_id_t
 from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest
 from ...models.weather import BaitAndModelCoefs, WeatherRequest
 from ..client_data import get_location
@@ -541,6 +541,12 @@ async def generate_thermal_model_heating_load(
             )
             if params.bundle_metadata is not None:
                 await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+
+                # We also file the thermal model in the database as part of this bundle
+                thermal_bundle_metadata = params.bundle_metadata.model_copy()
+                thermal_bundle_metadata.dataset_type = DatasetTypeEnum.ThermalModel
+                thermal_bundle_metadata.dataset_id = params.thermal_model_dataset_id
+                await file_self_with_bundle(conn, bundle_metadata=thermal_bundle_metadata)
     logger = logging.getLogger(__name__)
     logger.info(f"Thermal Model heat load generation {metadata.dataset_id} completed.")
     return metadata

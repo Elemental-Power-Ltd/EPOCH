@@ -13,10 +13,10 @@ import pytest
 import pytest_asyncio
 
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.site_manager.bundles import insert_dataset_bundle
 from app.models.core import DatasetTypeEnum
 from app.models.heating_load import InterventionEnum
 from app.models.site_manager import DatasetBundleMetadata
-from app.routers.site_manager import insert_dataset_bundle
 
 
 async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
