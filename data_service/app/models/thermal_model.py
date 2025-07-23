@@ -6,7 +6,7 @@ import pydantic
 
 # watch out for cicular imports!
 from ..internal.rdsap.rdsap import estimate_window_area
-from .core import DatasetID, SiteIDWithTime, RequestBase, site_id_t, dataset_id_t
+from .core import RequestBase, dataset_id_t, site_id_t
 
 
 class ThermalModelRequest(RequestBase):

@@ -8,7 +8,7 @@ from typing import Self
 import pydantic
 from pydantic import Field
 
-from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field, site_id_field, site_id_t, RequestBase
+from .core import EpochEntry, RequestBase, dataset_id_t, site_id_field, site_id_t
 from .thermal_model import SurveyedSizes
 
 

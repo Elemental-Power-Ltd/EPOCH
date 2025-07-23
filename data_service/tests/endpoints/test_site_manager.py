@@ -426,7 +426,7 @@ class TestDatasetBundles:
             end_ts=datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC),
             site_id="demo_london",
         )
-        res = await insert_dataset_bundle(bundle={}, bundle_metadata=test_bundle, pool=pool)
+        res = await insert_dataset_bundle(bundle_metadata=test_bundle, pool=pool)
         assert res == DEMO_UUID
 
     @pytest.mark.asyncio
@@ -442,10 +442,6 @@ class TestDatasetBundles:
             site_id="demo_london",
         )
         res = await insert_dataset_bundle(
-            bundle={
-                DatasetTypeEnum.HeatingLoad: [uuid.UUID(int=2, version=4), uuid.UUID(int=3, version=4)],
-                DatasetTypeEnum.ElectricityMeterData: uuid.UUID(int=4, version=4),
-            },
             bundle_metadata=test_bundle,
             pool=pool,
         )
@@ -464,10 +460,6 @@ class TestDatasetBundles:
             site_id="demo_london",
         )
         _ = await insert_dataset_bundle(
-            bundle={
-                DatasetTypeEnum.HeatingLoad: [uuid.UUID(int=2, version=4), uuid.UUID(int=3, version=4)],
-                DatasetTypeEnum.ElectricityMeterData: uuid.UUID(int=4, version=4),
-            },
             bundle_metadata=test_bundle,
             pool=pool,
         )
@@ -481,10 +473,6 @@ class TestDatasetBundles:
             site_id="demo_london",
         )
         _ = await insert_dataset_bundle(
-            bundle={
-                DatasetTypeEnum.HeatingLoad: [uuid.UUID(int=12, version=4), uuid.UUID(int=113, version=4)],
-                DatasetTypeEnum.ElectricityMeterData: uuid.UUID(int=14, version=4),
-            },
             bundle_metadata=test_bundle,
             pool=pool,
         )

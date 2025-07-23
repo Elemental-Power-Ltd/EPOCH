@@ -123,7 +123,7 @@ async def generate_renewables_generation(
     metadata = RenewablesMetadata(
         data_source="renewables.ninja",
         created_at=datetime.datetime.now(datetime.UTC),
-        dataset_id=uuid.uuid4(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
         site_id=params.site_id,
         parameters=json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
         renewables_location_id=params.renewables_location_id,
@@ -154,8 +154,10 @@ async def generate_renewables_generation(
                 metadata.renewables_location_id,
             )
 
-            await conn.copy_records_to_table(schema_name="renewables", table_name="solar_pv",
-                                             columns=["dataset_id", "start_ts", "end_ts", "solar_generation"],
+            await conn.copy_records_to_table(
+                schema_name="renewables",
+                table_name="solar_pv",
+                columns=["dataset_id", "start_ts", "end_ts", "solar_generation"],
                 records=zip(
                     [metadata.dataset_id for _ in renewables_df.index],
                     renewables_df.index,
@@ -167,6 +169,8 @@ async def generate_renewables_generation(
 
             if params.bundle_metadata is not None:
                 await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+
+    logger.info(f"Solar PV generation {metadata.dataset_id} at {params.renewables_location_id} completed.")
     return metadata
 
 

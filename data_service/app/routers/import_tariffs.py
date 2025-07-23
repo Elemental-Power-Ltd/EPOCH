@@ -5,6 +5,7 @@ Currently just uses Octopus data, but will likely use RE24 data in future.
 """
 
 import datetime
+import itertools
 import logging
 import uuid
 
@@ -27,9 +28,7 @@ from ..internal.import_tariffs import (
     resample_to_range,
     tariff_to_new_timestamps,
 )
-
 from ..internal.site_manager.bundles import file_self_with_bundle
-
 from ..models.core import MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.import_tariffs import (
     EpochTariffEntry,
@@ -314,29 +313,28 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             price_df = create_day_and_night_tariff(timestamps, day_cost=max(price_df["cost"]), night_cost=min(price_df["cost"]))
         # Otherwise we got a varying tariff that we can resample.
         price_df = resample_to_range(price_df, freq=pd.Timedelta(minutes=30), start_ts=params.start_ts, end_ts=params.end_ts)
-    dataset_id = uuid.uuid4()
 
     if price_df.empty:
         raise HTTPException(400, f"Got an empty dataframe for {params.tariff_name}")
+
+    metadata = TariffMetadata(
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
+        site_id=params.site_id,
+        created_at=datetime.datetime.now(datetime.UTC),
+        provider=provider,
+        product_name=params.tariff_name,
+        tariff_name=underlying_tariff,
+        valid_from=None,
+        valid_to=None,
+    )
 
     mask = np.logical_and(price_df.index >= params.start_ts, price_df.index < params.end_ts)
     price_df = price_df[mask]
     price_df["start_ts"] = price_df.index
     price_df["end_ts"] = price_df.index + pd.Timedelta(minutes=30)
-    price_df["dataset_id"] = dataset_id
     # Note that it doesn't matter that we've got "too  much" tariff data here, as we'll sort it out when we get it.
     async with pool.acquire() as conn:
         async with conn.transaction():
-            metadata = TariffMetadata(
-                dataset_id=dataset_id,
-                site_id=params.site_id,
-                created_at=datetime.datetime.now(datetime.UTC),
-                provider=provider,
-                product_name=params.tariff_name,
-                tariff_name=underlying_tariff,
-                valid_from=None,
-                valid_to=None,
-            )
             # We insert the dataset ID into metadata, but we must wait to validate the
             # actual data insert until the end
             await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
@@ -374,12 +372,19 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
             await conn.copy_records_to_table(
                 table_name="electricity",
                 schema_name="tariffs",
-                records=zip(price_df["dataset_id"], price_df["start_ts"], price_df["end_ts"], price_df["cost"], strict=True),
+                records=zip(
+                    itertools.repeat(metadata.dataset_id, len(price_df)),
+                    price_df["start_ts"],
+                    price_df["end_ts"],
+                    price_df["cost"],
+                    strict=True,
+                ),
                 columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
             )
-            
+
             if params.bundle_metadata is not None:
                 await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+    logger.info(f"Import tariff generation {metadata.dataset_id} of type {params.tariff_name} completed.")
     return metadata
 
 

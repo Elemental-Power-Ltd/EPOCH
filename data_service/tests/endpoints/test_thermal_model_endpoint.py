@@ -138,7 +138,6 @@ class TestThermalModelEndpoint:
                     start_ts=start_ts,
                     end_ts=end_ts,
                     thermal_model_dataset_id=task_id,
-                    final_uuid=uuid.uuid4(),
                 ).model_dump_json()
             ),
         )

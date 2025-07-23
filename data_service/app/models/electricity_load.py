@@ -4,7 +4,7 @@
 
 import pydantic
 
-from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, final_uuid_field, RequestBase
+from .core import EpochEntry, RequestBase, dataset_id_t
 from .meter_data import MeterMetadata
 
 

@@ -16,6 +16,7 @@ import itertools
 import json
 import logging
 import operator
+import uuid
 from typing import cast
 
 import numpy as np
@@ -113,7 +114,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         site_id=site_id,
         thermal_model_dataset_id=None,
         surveyed_sizes=params.surveyed_sizes,
-        final_uuid=params.final_uuid,
+        bundle_metadata=params.bundle_metadata,
     )
 
     available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
@@ -164,7 +165,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         site_id=site_id,
         thermal_model_dataset_id=most_recent_id,
         surveyed_sizes=params.surveyed_sizes,
-        final_uuid=params.final_uuid,
+        bundle_metadata=params.bundle_metadata,
     )
 
 
@@ -387,7 +388,7 @@ async def generate_heating_load_regression(
         metadata_params["cost"] = cost
 
     metadata = HeatingLoadMetadata(
-        dataset_id=params.final_uuid,
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
         site_id=site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps(metadata_params),
@@ -430,6 +431,8 @@ async def generate_heating_load_regression(
             )
             if params.bundle_metadata is not None:
                 await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Regression heat load generation {metadata.dataset_id} completed.")
     return metadata
 
 
@@ -501,7 +504,7 @@ async def generate_thermal_model_heating_load(
     hh_heating_load_df["end_ts"] = hh_heating_load_df.index + pd.Timedelta(minutes=30)
 
     metadata = HeatingLoadMetadata(
-        dataset_id=params.final_uuid,
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
         site_id=params.site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps({"thermal_model_dataset_id": str(params.thermal_model_dataset_id)}),
@@ -538,5 +541,6 @@ async def generate_thermal_model_heating_load(
             )
             if params.bundle_metadata is not None:
                 await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
-
+    logger = logging.getLogger(__name__)
+    logger.info(f"Thermal Model heat load generation {metadata.dataset_id} completed.")
     return metadata

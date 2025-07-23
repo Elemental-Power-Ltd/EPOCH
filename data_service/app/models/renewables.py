@@ -3,11 +3,10 @@
 # ruff: noqa: D101
 import datetime
 from enum import StrEnum
-from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, dataset_id_t, final_uuid_field, site_id_field, site_id_t, RequestBase
+from .core import EpochEntry, RequestBase, dataset_id_field, site_id_field, site_id_t
 
 
 class RenewablesRequest(RequestBase):

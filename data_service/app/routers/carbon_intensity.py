@@ -6,9 +6,11 @@ varies over time as the grid changes.
 """
 
 import datetime
+import itertools
 import logging
 import operator
 import typing
+import uuid
 
 import aiometer
 import numpy as np
@@ -18,6 +20,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.client_data import get_postcode
+from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils import chunk_time_period
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry, GridCO2Request
 from ..models.core import DatasetIDWithTime
@@ -186,8 +189,8 @@ async def fetch_carbon_intensity_batch(
 async def fetch_carbon_intensity(
     client: HTTPClient,
     postcode: str | None,
-    start_ts: pydantic.AwareDatetime | str,
-    end_ts: pydantic.AwareDatetime | str,
+    start_ts: pydantic.AwareDatetime,
+    end_ts: pydantic.AwareDatetime,
 ) -> list[CarbonIntensityRawEntry]:
     """
     Fetch data from the carbon intensity API, doing the cleaning and interpolation as necessary.
@@ -219,11 +222,6 @@ async def fetch_carbon_intensity(
         A list of carbon intensity readings and their times. These have been sorted and interpolated between
         the times.
     """
-    if isinstance(start_ts, str):
-        start_ts = datetime.datetime.fromisoformat(start_ts)
-    if isinstance(end_ts, str):
-        end_ts = datetime.datetime.fromisoformat(end_ts)
-
     # There's a bug in the CarbonIntensity API that doesn't like non-zero seconds, especially not closely spaced ones.
     # Instead, let's just grab the period 1 day either side and sort it out in the interpolation.
     rounded_start_ts = pd.Timestamp(start_ts).floor("1h").to_pydatetime()
@@ -295,7 +293,7 @@ async def generate_grid_co2(
     )
 
     metadata = CarbonIntensityMetadata(
-        dataset_id=params.final_uuid,
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
         created_at=datetime.datetime.now(datetime.UTC),
         data_source="api.carbonintensity.org.uk",
         is_regional=(postcode is not None),
@@ -321,29 +319,27 @@ async def generate_grid_co2(
                 metadata.site_id,
             )
 
-            await conn.executemany(
-                """
-                INSERT INTO
-                    carbon_intensity.grid_co2 (
-                        dataset_id,
-                        start_ts,
-                        end_ts,
-                        forecast,
-                        actual,
-                        gas,
-                        coal,
-                        biomass,
-                        nuclear,
-                        hydro,
-                        imports,
-                        other,
-                        wind,
-                        solar
-                    ) VALUES (
-                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
-                    )""",
-                zip(
-                    [metadata.dataset_id for _ in all_data],
+            await conn.copy_records_to_table(
+                schema_name="carbon_intensity",
+                table_name="grid_co2",
+                columns=[
+                    "dataset_id",
+                    "start_ts",
+                    "end_ts",
+                    "forecast",
+                    "actual",
+                    "gas",
+                    "coal",
+                    "biomass",
+                    "nuclear",
+                    "hydro",
+                    "imports",
+                    "other",
+                    "wind",
+                    "solar",
+                ],
+                records=zip(
+                    itertools.repeat(metadata.dataset_id, len(all_data)),
                     [item["start_ts"] for item in all_data],
                     [item["end_ts"] for item in all_data],
                     [item.get("forecast") for item in all_data],
@@ -357,14 +353,19 @@ async def generate_grid_co2(
                     [item.get("other") for item in all_data],
                     [item.get("wind") for item in all_data],
                     [item.get("solar") for item in all_data],
-                    strict=False,
+                    strict=True,
                 ),
             )
+
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(pool=pool, bundle_metadata=params.bundle_metadata)
+
+    logger.info(f"Grid CO2 generation {metadata.dataset_id} completed.")
     return metadata
 
 
 @router.post("/get-grid-co2", tags=["co2", "get"])
-async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> EpochCarbonEntry:
+async def get_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> EpochCarbonEntry:
     """
     Get a specific grid carbon itensity dataset that we generated with `generate-grid-co2`.
 
@@ -378,15 +379,15 @@ async def get_grid_co2(params: DatasetIDWithTime, conn: DatabasePoolDep) -> Epoc
 
     Parameters
     ----------
-    *params*
+    params
         Database ID for a specific grid CO2 set, and the timestamps you're interested in.
 
     Returns
     -------
-    *carbon_itensity_entries*
+    carbon_intensity_entriesn
         A list of JSONed carbon intensity entries, maybe forecast or maybe actual.
     """
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT
             start_ts, forecast, actual

@@ -1,3 +1,7 @@
+"""Minor functions for bundle handling."""
+
+import json
+
 import asyncpg
 
 from ...models.core import BundleEntryMetadata
@@ -8,6 +12,8 @@ type db_conn_t = asyncpg.pool.Pool | asyncpg.Connection | asyncpg.pool.PoolConne
 async def file_self_with_bundle(pool: db_conn_t, bundle_metadata: BundleEntryMetadata) -> None:
     """
     File the completed generation of a dataset generation task with the database.
+
+    This should be called at the end of any given process that creates a dataset which might be part of a bundle.
 
     Parameters
     ----------
@@ -27,10 +33,12 @@ async def file_self_with_bundle(pool: db_conn_t, bundle_metadata: BundleEntryMet
             bundle_id,
             dataset_type,
             dataset_subtype,
-            dataset_id
-        ) VALUES ($1, $2, $3, $4);""",
+            dataset_id,
+            dataset_order
+        ) VALUES ($1, $2, $3, $4, $5);""",
         bundle_metadata.bundle_id,
         bundle_metadata.dataset_type,
-        bundle_metadata.dataset_subtype,
+        json.dumps(bundle_metadata.dataset_subtype),
         bundle_metadata.dataset_id,
+        bundle_metadata.dataset_order,
     )
