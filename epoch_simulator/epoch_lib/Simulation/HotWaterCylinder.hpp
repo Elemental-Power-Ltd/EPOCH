@@ -19,7 +19,7 @@ public:
 		mDHW_discharging(siteData.dhw_demand),
 		mCylinderStartSoC_h(calculate_Capacity_h()), // set start SoC to full for now
 		mDHW_charging(Eigen::VectorXf::Zero(siteData.timesteps)),
-		mDHW_shortfall_e(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_local_shortfall(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mDHW_standby_losses(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mDHW_SoC_history(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mDHW_ave_temperature(Eigen::VectorXf::Zero(siteData.timesteps)),
@@ -75,7 +75,7 @@ public:
 		if (mCylEnergy_h < 0)
 		{
 			// record shortfall in absolute terms
-		    mDHW_shortfall_e[timestep] = -mCylEnergy_h;
+		    mDHW_local_shortfall[timestep] = -mCylEnergy_h;
 		    mCylEnergy_h = 0;
 		}
 
@@ -137,7 +137,11 @@ public:
 		};
 
 		// update tempSum to apply the electrical loads
-		tempSum.Elec_e += mDHW_shortfall_e;
+		// 
+		// we assume that any localised shortfall to the cylinder is met by immersion / resistive heating
+		// so we transfer any 'shortfall' to the electrical load
+		// crucially, this is not (yet?) a system-wide shortfall
+		tempSum.Elec_e += mDHW_local_shortfall;
 		tempSum.Elec_e += mDHW_diverter_load_e;
 
 		tempSum.DHW_load_h = mDHW_heat_pump_load_h;
@@ -154,7 +158,7 @@ public:
 		reportData.DHW_SoC = mDHW_SoC_history;
 		reportData.DHW_Standby_loss = mDHW_standby_losses;
 		reportData.DHW_ave_temperature = mDHW_ave_temperature;
-		reportData.DHW_Shortfall = mDHW_shortfall_e;
+		reportData.DHW_immersion_top_up = mDHW_local_shortfall;
 	}
 
 
@@ -187,7 +191,7 @@ private:
 	year_TS mDHW_charging; // member timeseries for calculated charging
 	year_TS mDHW_discharging;  // member timeseries for discharging from historical data
 	year_TS mDHW_standby_losses;
-	year_TS mDHW_shortfall_e;
+	year_TS mDHW_local_shortfall;
 	year_TS mDHW_SoC_history;
 	year_TS mDHW_ave_temperature;
 	year_TS mDHW_heat_pump_load_h;

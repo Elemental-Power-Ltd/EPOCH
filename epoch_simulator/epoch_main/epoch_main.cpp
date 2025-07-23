@@ -116,7 +116,9 @@ void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 		" - Electricity generated = {}\n"
 		" - Electricity exported = {}\n"
 		" - Electrical shortfall = {}\n"
-		" - Heat shortfall = {}\n\n"
+		" - Heat shortfall = {}\n"
+		" - CH shortfall = {}\n"
+		" - DHW shortfall = {}\n\n"
 		"Financial totals (£):\n"
 		" - Gas import cost = {}\n"
 		" - Electricity import cost = {}\n"
@@ -130,6 +132,8 @@ void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 		result.metrics.total_electricity_exported,
 		result.metrics.total_electrical_shortfall,
 		result.metrics.total_heat_shortfall,
+		result.metrics.total_ch_shortfall,
+		result.metrics.total_dhw_shortfall,
 		result.metrics.total_gas_import_cost,
 		result.metrics.total_electricity_import_cost,
 		result.metrics.total_electricity_export_gain,

@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "2.1.0";
+const std::string EPOCH_VERSION = "2.2.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -19,6 +19,8 @@ struct ReportData {
 	year_TS Actual_import_shortfall;
 	year_TS Actual_curtailed_export;
 	year_TS Heat_shortfall;
+	year_TS CH_shortfall;
+	year_TS DHW_Shortfall;
 	year_TS Heat_surplus;
 
 	// Hotel
@@ -62,7 +64,7 @@ struct ReportData {
 	year_TS DHW_SoC;
 	year_TS DHW_Standby_loss;
 	year_TS DHW_ave_temperature;
-	year_TS DHW_Shortfall;
+	year_TS DHW_immersion_top_up;
 
 	// ASHP
 	year_TS ASHP_elec_load;
@@ -81,6 +83,8 @@ struct SimulationMetrics {
 
 	float total_electrical_shortfall;
 	float total_heat_shortfall;
+	float total_ch_shortfall;
+	float total_dhw_shortfall;
 
 	// financial totals in £
 	float total_gas_import_cost;

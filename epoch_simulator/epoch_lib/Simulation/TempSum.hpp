@@ -33,6 +33,8 @@ public:
 		reportData.Actual_curtailed_export = reportData.Actual_curtailed_export.cwiseMax(0.0f);
 		// Any remaining heat load = a heat shortfall
 		reportData.Heat_shortfall = Heat_h + DHW_load_h + Pool_h;
+		reportData.DHW_Shortfall = DHW_load_h;
+		reportData.CH_shortfall = Heat_h;
 		// Any surplus heat generated is wasted (conservation of energy checksum)
 		reportData.Heat_surplus = Waste_h;
 

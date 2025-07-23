@@ -361,6 +361,8 @@ SimulationMetrics Simulator::calculateMetrics(const TaskData& taskData, const Re
 
 	metrics.total_electrical_shortfall = reportData.Actual_import_shortfall.sum();
 	metrics.total_heat_shortfall = reportData.Heat_shortfall.sum();
+	metrics.total_ch_shortfall = reportData.CH_shortfall.sum();
+	metrics.total_dhw_shortfall = reportData.DHW_Shortfall.sum();
 
 	metrics.total_gas_import_cost = usage.fuel_cost;
 	metrics.total_electricity_import_cost = usage.elec_cost;
