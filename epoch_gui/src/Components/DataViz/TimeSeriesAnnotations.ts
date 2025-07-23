@@ -39,7 +39,7 @@ const staticAnnotationsMap: AnnotationMap = {
     "ASHP_free_heat": {name: "ASHP Free Heat", units: "kWh", type: "Output"},
     "ASHP_used_hotroom_heat": {name: "ASHP Used Hotroom Heat", units: "kWh", type: "Output"},
     "Actual_import_shortfall": {name: "Import Shortfall", units: "kWh", type: "Output"},
-    "DHW_Shortfall": {name: "DHW Shortfall", units: "kWh", type: "Output"},
+    "DHW_immersion_top_up": {name: "DHW Immersion Top Up", units: "kWh", type: "Output"},
     "DHW_SoC": {name: "DHW State of Charge", units: "kWh", type: "Output"},
     "DHW_Standby_loss": {name: "DHW Standby Loss", units: "kWh", type: "Output"},
     "DHW_ave_temperature": {name: "DHW Average Temperature", units: "Deg (c)", type: "Output"},
@@ -47,6 +47,8 @@ const staticAnnotationsMap: AnnotationMap = {
     "ESS_resulting_SoC": {name: "ESS State of Charge", units: "kWh", type: "Output"},
     "Heat_surplus": {name: "Heat Surplus", units: "kWh", type: "Output"},
     "Heat_shortfall": {name: "Heat Shortfall", units: "kWh", type: "Output"},
+    "CH_shortfall": {name: "CH Shortfall", units: "kWh", type: "Output"},
+    "DHW_Shortfall": {name: "DHW Shortfall", units: "kWh", type: "Output"},
     "Heatload": {name: "Heat Load", units: "kWh", type: "Output"},
     "GasCH_load": {name: "Gas CH Load", units: "kWh", type: "Output"},
 

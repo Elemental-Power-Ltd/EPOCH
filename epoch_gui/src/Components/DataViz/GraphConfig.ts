@@ -24,13 +24,15 @@ export const color_map = {
     'GasCH_load':                   ' #ff6347', // *Tomato red 
     'Heatload':                     ' #964B00', // Brown-red (as in M-VEST)
     'Heat_shortfall':               ' #ff0000', // Red (as in M-VEST)
+    'CH_shortfall':                 ' #c70039',
+    'DHW_Shortfall':                ' #ff5733',
     'Heat_surplus':                 ' #5a5b5b', // Dark grey (as in M-VEST)
     'DHW_charging':                 ' #f57200', // *Bright Orange (similar to DHW_load)
     'DHW_load':                     ' #f57200', // *Bright Orange (similar to GasCH_load)
     'DHW_Standby_loss':             ' #ffb347', // *Light orange (similar to DHW_load)
     'DHW_SoC':                      ' #fabc7e', // *Peach (similar to DHW charging/loss)
     'DHW_ave_temperature':          ' #b77b1a', // *Orange/brown (similar to DHW_Standby_loss)
-    'DHW_Shortfall':                ' #cb6363', // *Pastel pink (contrast with DHW_load)
+    'DHW_immersion_top_up':         ' #cb6363', // *Pastel pink (contrast with DHW_load)
     'ASHP_elec_load':               ' #405f3d', // *Olive green (similar to MOP_load, implying energy usage)
     'ASHP_DHW_output':              ' #ffA500', // *Orange (similar to DHW_load, implying hot water output)
     'ASHP_CH_output':               ' #6a3601', // *Brown (similar to Heatload)
@@ -52,7 +54,7 @@ export const heat_draw_stackbars = ['GasCH_load', 'Data_centre_available_hot_hea
     'ASHP_DHW_output', 'ASHP_CH_output']
 
 export const elec_shortfall_stackbars = ['Actual_import_shortfall'];
-export const heat_shortfall_stackbars = ['Heat_shortfall', 'DHW_Shortfall'];
+export const heat_shortfall_stackbars = ['CH_shortfall', 'DHW_Shortfall'];
 
 export const elec_surplus_stackbars = ['Actual_curtailed_export'];
 export const heat_surplus_stackbars = ['Heat_surplus'];
