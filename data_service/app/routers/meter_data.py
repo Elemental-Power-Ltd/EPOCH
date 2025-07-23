@@ -13,6 +13,7 @@ from fastapi import APIRouter, Form, HTTPException, UploadFile
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
+from ..internal.solar_pv.disaggregate import disaggregate_electricity_dataframe
 from ..internal.utils.uuid import uuid7
 from ..models.core import (
     DatasetID,
@@ -20,7 +21,6 @@ from ..models.core import (
     site_id_t,
 )
 from ..models.meter_data import DisaggregationRequest, GasDatasetEntry, MeterEntries, MeterEntry, MeterMetadata, ReadingTypeEnum
-from ..internal.solar_pv.disaggregate import disaggregate_electricity_dataframe
 
 router = APIRouter()
 

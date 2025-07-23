@@ -15,9 +15,9 @@ import pytest_asyncio
 from app.dependencies import get_db_pool, get_http_client
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
-from app.internal.utils.uuid import uuid7
-from app.models.site_range import Jsonable
 from app.internal.solar_pv.disaggregate import disaggregate_readings
+from app.internal.utils.uuid import uuid7
+
 
 @pytest_asyncio.fixture
 async def upload_hh_meter_data(client: httpx.AsyncClient) -> dict[str, Jsonable]:

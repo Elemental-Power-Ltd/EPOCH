@@ -581,7 +581,7 @@ async def generate_thermal_model_heating_load(
                 # We also file the thermal model in the database as part of this bundle
                 thermal_bundle_metadata = params.bundle_metadata.model_copy()
                 thermal_bundle_metadata.dataset_type = DatasetTypeEnum.ThermalModel
-                thermal_bundle_metadata.dataset_id = params.thermal_model_dataset_id
+                thermal_bundle_metadata.dataset_id = params.structure_id
                 await file_self_with_bundle(conn, bundle_metadata=thermal_bundle_metadata)
     logger = logging.getLogger(__name__)
     logger.info(f"Thermal Model heat load generation {metadata.dataset_id} completed.")
