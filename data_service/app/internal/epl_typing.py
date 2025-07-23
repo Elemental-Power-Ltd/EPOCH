@@ -36,3 +36,4 @@ HHDataFrame = NewType("HHDataFrame", pd.DataFrame)
 DailyDataFrame = NewType("DailyDataFrame", pd.DataFrame)
 MonthlyDataFrame = NewType("MonthlyDataFrame", pd.DataFrame)
 WeatherDataFrame = NewType("WeatherDataFrame", pd.DataFrame)
+type Jsonable = dict[str, Jsonable] | list[Jsonable] | str | int | float | bool | None

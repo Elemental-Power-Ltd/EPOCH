@@ -135,7 +135,9 @@ async def generate_renewables_generation(
         dataset_id=uuid7(),
         site_id=params.site_id,
         parameters=json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
-        renewables_location_id=params.renewables_location_id,
+        # We can't insert "default" into the database as it isn't a real location
+        # associated with a site
+        renewables_location_id=params.renewables_location_id if params.renewables_location_id != "default" else None,
     )
     async with pool.acquire() as conn:
         async with conn.transaction():

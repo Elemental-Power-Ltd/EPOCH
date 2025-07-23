@@ -1,89 +1,11 @@
 """Calculate costs from the size of the components and THIRD_PARTY's cost table."""
 
-from enum import StrEnum
-from typing import TypedDict
-
 from ...models.heating_load import InterventionEnum, ThermalModelResult
 from ...models.thermal_model import SurveyedSizes
 from .building_elements import BuildingElement
 from .links import ConductiveLink
 from .network import HeatNetwork, create_structure_from_params, create_structure_from_survey
-
-
-class StructuralArea(StrEnum):
-    """Different parts of a building an intervention could act on."""
-
-    ExteriorWallArea = "exterior_wall_area"
-    FloorArea = "floor_area"
-    WindowArea = "window_area"
-    RoofArea = "roof_area"
-
-
-class CostedIntervention(TypedDict):
-    """TypedDict representing an intervention with a cost and the associated part of a building it acts on."""
-
-    acts_on: StructuralArea
-    cost: float
-
-
-THIRD_PARTY_INTERVENTIONS = {
-    # External Fabric - Wall Interventions
-    "Internal Insulation to external solid wall": CostedIntervention(acts_on=StructuralArea.ExteriorWallArea, cost=118.38),
-    "External Insulation to external solid wall (EWI)": CostedIntervention(
-        acts_on=StructuralArea.ExteriorWallArea, cost=415.68
-    ),
-    "Internal Insulation to external cavity wall": CostedIntervention(acts_on=StructuralArea.ExteriorWallArea, cost=118.38),
-    "External Insulation to external cavity wall": CostedIntervention(acts_on=StructuralArea.ExteriorWallArea, cost=415.68),
-    "External Overbuild": CostedIntervention(acts_on=StructuralArea.ExteriorWallArea, cost=884.66),
-    "Cavity Wall insulation (Full fill)": CostedIntervention(acts_on=StructuralArea.ExteriorWallArea, cost=33.70),
-    # External Fabric - Roof Interventions
-    "Pitched Roof Insulation (between and over roof structure)": CostedIntervention(
-        acts_on=StructuralArea.RoofArea, cost=487.42
-    ),
-    "Pitched Roof Insulation (between and under roof structure)": CostedIntervention(
-        acts_on=StructuralArea.RoofArea, cost=411.50
-    ),
-    "Flat Roof Insulation (Between and over roof structure)": CostedIntervention(acts_on=StructuralArea.RoofArea, cost=487.42),
-    "Flat Roof Insulation (Between and under roof structure)": CostedIntervention(acts_on=StructuralArea.RoofArea, cost=411.50),
-    "Insulation to ceiling void": CostedIntervention(acts_on=StructuralArea.RoofArea, cost=150.00),
-    # External Fabric - Floor Interventions
-    "Ground Floor Insulation (Suspended)": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=170.07),
-    "Ground Floor Insulation (Solid/ ground bearing)": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=92.41),
-    # External Fabric - Window and Door Interventions
-    "Replacement External Doors": CostedIntervention(acts_on=StructuralArea.WindowArea, cost=1888.21),
-    "Replacement External Windows": CostedIntervention(acts_on=StructuralArea.WindowArea, cost=1001.83),
-    "Secondary Glazing": CostedIntervention(acts_on=StructuralArea.WindowArea, cost=275.37),
-    "Fineo Glazing": CostedIntervention(acts_on=StructuralArea.WindowArea, cost=586.74),
-    # Airtightness Interventions
-    "Air tightness to external building fabric": CostedIntervention(acts_on=StructuralArea.ExteriorWallArea, cost=86.26),
-    "Air tightness to external doors and windows": CostedIntervention(acts_on=StructuralArea.WindowArea, cost=129.52),
-    "Air tightness to external voids and penetrations": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=21.59),
-    # Heating Interventions (per floor area)
-    "Boiler Replacement": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=72.37),
-    "Boiler Repair": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=1562.50),
-    "Radiator panel Replacement": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=197.90),
-    "Radiator Control value replacement": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=72.19),
-    "Underfloor heating": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=221.44),
-    "Waste water heat recovery": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=946.95),
-    "Solar water heating": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=67.85),
-    # Ventilation Interventions
-    "Air source heat exchanger": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=77.87),
-    "Mechanical heating and cooling": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=77.87),
-    "Mechanical Ventilation and Heat Recovery": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=117.59),
-    "Single room heat recovery ventilators": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=101.33),
-    # Energy Interventions
-    "Solar Photovoltaics": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=46.88),
-    # Lighting Interventions
-    "Energy efficient lighting": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=70.25),
-    "Proximity Detection": CostedIntervention(acts_on=StructuralArea.FloorArea, cost=64.76),
-    # Solar Gain Control
-    "External Blinds or Louvers": CostedIntervention(acts_on=StructuralArea.WindowArea, cost=148.70),
-    "Increase glazing specification": CostedIntervention(acts_on=StructuralArea.WindowArea, cost=78.80),
-    "Internal Blinds and controls": CostedIntervention(acts_on=StructuralArea.WindowArea, cost=148.70),
-}
-
-# Make it case insensitive
-THIRD_PARTY_INTERVENTIONS |= {key.lower(): value for key, value in THIRD_PARTY_INTERVENTIONS.items()}
+from .phpp.interventions import THIRD_PARTY_INTERVENTIONS, StructuralArea
 
 
 def get_wall_areas(structure: HeatNetwork) -> float:
