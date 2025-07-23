@@ -10,7 +10,6 @@ import itertools
 import logging
 import operator
 import typing
-import uuid
 
 import aiometer
 import numpy as np
@@ -24,6 +23,7 @@ from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils import chunk_time_period
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry, GridCO2Request
 from ..models.core import DatasetIDWithTime
+from ..internal.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -293,7 +293,7 @@ async def generate_grid_co2(
     )
 
     metadata = CarbonIntensityMetadata(
-        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         created_at=datetime.datetime.now(datetime.UTC),
         data_source="api.carbonintensity.org.uk",
         is_regional=(postcode is not None),

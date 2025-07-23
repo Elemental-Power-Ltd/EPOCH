@@ -2,7 +2,6 @@
 
 import datetime
 import logging
-import uuid
 
 import numpy as np
 import pandas as pd
@@ -13,6 +12,7 @@ from ..internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers
 from ..internal.epl_typing import DailyDataFrame, MonthlyDataFrame
 from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils import get_bank_holidays
+from ..internal.utils.uuid import uuid7
 from ..models.core import DatasetIDWithTime, FuelEnum
 from ..models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
 from ..models.meter_data import ReadingTypeEnum
@@ -113,7 +113,7 @@ async def generate_electricity_load(
     synthetic_hh_df = daily_to_hh_eload(synthetic_daily_df, scalers=load_all_scalers(), model=vae)
 
     metadata = ElectricalLoadMetadata(
-        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         created_at=datetime.datetime.now(tz=datetime.UTC),
         site_id=site_id,
         fuel_type=FuelEnum.elec,

@@ -2,7 +2,6 @@
 
 import datetime
 import json
-import uuid
 
 import httpx
 import pytest
@@ -10,6 +9,7 @@ import pytest_asyncio
 
 from app.dependencies import get_db_pool
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetTypeEnum
 from app.models.heating_load import HeatingLoadRequest, ThermalModelResult
 from app.routers.heating_load.thermal_model import file_params_with_db
@@ -22,7 +22,7 @@ async def uploaded_elec_data(client: httpx.AsyncClient) -> httpx.Response:
     data["start_ts"] = data.index
     metadata = {
         "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        "dataset_id": str(uuid.uuid4()),
+        "dataset_id": str(uuid7()),
         "fuel_type": "elec",
         "site_id": "demo_london",
         "reading_type": "halfhourly",
@@ -39,7 +39,7 @@ async def uploaded_gas_data(client: httpx.AsyncClient) -> httpx.Response:
     data["start_ts"] = data.index
     metadata = {
         "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        "dataset_id": str(uuid.uuid4()),
+        "dataset_id": str(uuid7()),
         "fuel_type": "gas",
         "site_id": "demo_london",
         "reading_type": "halfhourly",
@@ -115,7 +115,7 @@ class TestThermalModelEndpoint:
 
         start_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC)
-        task_id = uuid.uuid4()
+        task_id = uuid7()
         # TODO (2025-03-03): This is an absolutely filthy way to get the testing database
         # pool connection! Do it properly with a DB fixture or a called endpoint.
         pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore

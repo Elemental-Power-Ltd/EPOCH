@@ -9,7 +9,6 @@ import asyncio
 import datetime
 import json
 import logging
-import uuid
 
 import asyncpg
 import httpx
@@ -18,10 +17,17 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, SecretsDep
-from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data
 from ..internal.site_manager.bundles import file_self_with_bundle
+from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data, get_renewables_ninja_wind_data
+from ..internal.utils.uuid import uuid7
 from ..models.core import MultipleDatasetIDWithTime, SiteID, dataset_id_t
-from ..models.renewables import EpochRenewablesEntry, PVOptimaResult, RenewablesMetadata, RenewablesRequest
+from ..models.renewables import (
+    EpochRenewablesEntry,
+    PVOptimaResult,
+    RenewablesMetadata,
+    RenewablesRequest,
+    RenewablesWindRequest,
+)
 
 router = APIRouter()
 
@@ -70,10 +76,14 @@ async def generate_renewables_generation(
 
     Parameters
     ----------
-    *request*
-        Internal FastAPI request object
-    *params*
-        Details about the site and PV array. This may include azimuth and tilt, but not necessarily.
+    params
+        Data about the solar array you wish to install, maybe including azimuth and tilt.
+    pool
+        Connection pool to the database that you want to write these data to
+    http_client
+        HTTP connection pool for external connections to renewables.ninja
+    secrets_env
+        Secrets environment featuring the API key
 
     Returns
     -------
@@ -96,7 +106,7 @@ async def generate_renewables_generation(
     if location is None or coords is None:
         raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
 
-    latitude, longitude = coords
+    latitude, longitude = result
     if params.azimuth is None or params.tilt is None:
         logger.info("Got no azimuth or tilt data, so getting optima from PVGIS.")
         optimal_params = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=http_client)
@@ -118,12 +128,12 @@ async def generate_renewables_generation(
         raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex
 
     if len(renewables_df) < (params.end_ts - params.start_ts).total_seconds() / (60 * 60):
-        raise HTTPException(500, f"Got too small a renewables dataset for {location}. Try requesting an older dataset?")
+        raise HTTPException(500, "Got too small a renewables dataset for this site. Try requesting an older dataset?")
 
     metadata = RenewablesMetadata(
         data_source="renewables.ninja",
         created_at=datetime.datetime.now(datetime.UTC),
-        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         site_id=params.site_id,
         parameters=json.dumps({"azimuth": azimuth, "tilt": tilt, "tracking": params.tracking}),
         renewables_location_id=params.renewables_location_id,
@@ -171,6 +181,116 @@ async def generate_renewables_generation(
                 await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
 
     logger.info(f"Solar PV generation {metadata.dataset_id} at {params.renewables_location_id} completed.")
+    return metadata
+
+
+@router.post("/generate-wind-generation", tags=["generate", "wind"])
+async def generate_wind_generation(
+    params: RenewablesWindRequest, pool: DatabasePoolDep, http_client: HttpClientDep, secrets_env: SecretsDep
+) -> RenewablesMetadata:
+    """
+    Calculate wind turbine eneration in kW / kWp for this site.
+
+    Note that we store hourly data in the database as raw as we can get it from renewables.ninja.
+
+    Parameters
+    ----------
+    params
+        Data about the wind turbine you wish to install
+    pool
+        Connection pool to the database that you want to write these data to
+    http_client
+        HTTP connection pool for external connections to renewables.ninja
+    secrets_env
+        Secrets environment featuring the API key
+
+    Returns
+    -------
+    renewables_metadata
+        Metadata about the wind generation we've put into the database.
+    """
+    result = await pool.fetchval(
+        """
+        SELECT
+            coordinates
+        FROM client_info.site_info
+        WHERE site_id = $1
+        LIMIT 1""",
+        params.site_id,
+    )
+    if result is None:
+        raise HTTPException(400, f"Did not find a location for dataset {params.site_id}.")
+
+    latitude, longitude = result
+
+    try:
+        renewables_df = await get_renewables_ninja_wind_data(
+            client=http_client,
+            latitude=latitude,
+            longitude=longitude,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            turbine=params.turbine,
+            height=params.height,
+        )
+    except httpx.ReadTimeout as ex:
+        raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex
+
+    if len(renewables_df) < (params.end_ts - params.start_ts).total_seconds() / (60 * 60):
+        raise HTTPException(500, "Got too small a renewables dataset for this site. Try requesting an older dataset?")
+
+    metadata = RenewablesMetadata(
+        data_source="renewables.ninja wind",
+        created_at=datetime.datetime.now(datetime.UTC),
+        dataset_id=uuid7(),
+        site_id=params.site_id,
+        parameters=params.model_dump_json(),
+    )
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO
+                    renewables.metadata (
+                        dataset_id,
+                        site_id,
+                        created_at,
+                        data_source,
+                        parameters)
+                VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5)""",
+                metadata.dataset_id,
+                metadata.site_id,
+                metadata.created_at,
+                metadata.data_source,
+                json.dumps(metadata.parameters),
+            )
+
+            await conn.executemany(
+                """INSERT INTO
+                        renewables.wind (
+                            dataset_id,
+                            start_ts,
+                            end_ts,
+                            wind
+                        )
+                    VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4)""",
+                zip(
+                    [metadata.dataset_id for _ in renewables_df.index],
+                    renewables_df.index,
+                    renewables_df.index + pd.Timedelta(hours=1),  # assume that we got consistent data from RN
+                    renewables_df.wind,
+                    strict=True,
+                ),
+            )
     return metadata
 
 

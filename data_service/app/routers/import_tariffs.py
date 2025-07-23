@@ -7,7 +7,6 @@ Currently just uses Octopus data, but will likely use RE24 data in future.
 import datetime
 import itertools
 import logging
-import uuid
 
 import numpy as np
 import pandas as pd
@@ -29,6 +28,7 @@ from ..internal.import_tariffs import (
     tariff_to_new_timestamps,
 )
 from ..internal.site_manager.bundles import file_self_with_bundle
+from ..internal.utils.uuid import uuid7
 from ..models.core import MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.import_tariffs import (
     EpochTariffEntry,
@@ -318,7 +318,7 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
         raise HTTPException(400, f"Got an empty dataframe for {params.tariff_name}")
 
     metadata = TariffMetadata(
-        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid.uuid4(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         site_id=params.site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         provider=provider,

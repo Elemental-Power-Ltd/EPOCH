@@ -1,7 +1,6 @@
 """Database connection utilities to list various types of dataset."""
 
 import datetime
-import uuid
 
 from ...dependencies import DatabasePoolDep
 from ...models.core import (
@@ -11,6 +10,7 @@ from ...models.core import (
 )
 from ...models.heating_load import InterventionEnum
 from ...models.import_tariffs import SyntheticTariffEnum
+from ..utils.uuid import uuid7
 
 
 async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
@@ -376,9 +376,7 @@ async def list_ashp_datasets() -> list[DatasetEntry]:
     This is a dummy function as we don't actually store them, but it returns a reasonable looking response.
     """
     return [
-        DatasetEntry(
-            dataset_id=uuid.uuid4(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC)
-        )
+        DatasetEntry(dataset_id=uuid7(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC))
     ]
 
 

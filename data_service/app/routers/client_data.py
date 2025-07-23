@@ -8,7 +8,6 @@ site has zero or more datasets of different kinds.
 
 import json
 import typing
-import uuid
 from logging import getLogger
 
 import asyncpg
@@ -17,6 +16,7 @@ from pydantic import BaseModel
 from pydantic_core._pydantic_core import ValidationError
 
 from ..dependencies import DatabaseDep, DatabasePoolDep
+from ..internal.utils.uuid import uuid7
 from ..models.client_data import SolarLocation
 from ..models.core import (
     ClientData,
@@ -64,7 +64,7 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
         await pool.execute(
             """
             INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
-            uuid.uuid4(),
+            uuid7(),
             site_id.site_id,
             baseline.model_dump_json(),
         )

@@ -5,11 +5,11 @@ import datetime
 
 import pydantic
 
-from .core import EpochEntry, RequestBase, site_id_field, site_id_t
+from .core import EpochEntry, RequestBase, site_id_field, site_id_t, dataset_id_t
 
 
 class CarbonIntensityMetadata(pydantic.BaseModel):
-    dataset_id: pydantic.UUID4 = pydantic.Field(description="Unique database ID for the carbon intensity readings.")
+    dataset_id: dataset_id_t = pydantic.Field(description="Unique database ID for the carbon intensity readings.")
     created_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC), description="The time this dataset was created"
     )
