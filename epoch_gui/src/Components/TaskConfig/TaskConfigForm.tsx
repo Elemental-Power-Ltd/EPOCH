@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import { useEpochStore } from "../../State/Store";
 import { TaskConfig } from "../../State/types";
-import {objectiveNames} from "../../util/displayNames";
+import {metricDefs} from "../../util/MetricDefinitions.ts";
 
 import TimeRangeForm from "./TimeRangeForm";
 import HyperParamForm from "../HyperParams/OptimiserConfig.tsx";
@@ -85,7 +85,7 @@ const TaskConfigForm = () => {
                                 name={objectiveKey}
                             />
                           }
-                          label={objectiveNames[objectiveKey as keyof typeof objectiveNames]}
+                          label={metricDefs[objectiveKey as keyof typeof metricDefs].label}
                       />
                     </Grid>
                 ))}

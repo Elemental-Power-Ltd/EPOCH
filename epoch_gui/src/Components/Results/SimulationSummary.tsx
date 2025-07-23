@@ -1,4 +1,4 @@
-import React, {ReactElement} from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -10,25 +10,13 @@ import {
   Tabs,
   Tab
 } from '@mui/material';
-import BoltIcon from '@mui/icons-material/Bolt';
-import Co2Icon from '@mui/icons-material/Co2';
-import FireIcon from '@mui/icons-material/LocalFireDepartment';
-import PoundIcon from '@mui/icons-material/CurrencyPound';
-import TimelineIcon from '@mui/icons-material/Timeline';
 
-import {objectiveNames} from "../../util/displayNames";
-
-import {
-  formatPounds,
-  formatCarbon,
-  formatYears,
-  formatCarbonCost,
-  formatEnergy
-} from '../../util/displayFunctions';
 
 import {SimulationResult} from "../../Models/Endpoints";
 import {TaskData} from "../TaskDataViewer/TaskData.ts";
 import { TaskDataViewer } from '../TaskDataViewer/TaskDataViewer.tsx';
+import { MetricKey } from '../../util/MetricDefinitions.ts';
+import {Metric} from "./Metric.tsx";
 
 
 interface SimulationSummaryProps {
@@ -39,30 +27,6 @@ interface SimulationSummaryProps {
   error: string | null;
 }
 
-export interface MetricDisplay {
-  icon: ReactElement;
-  label: string;
-  value: string;
-}
-
-// A reusable component for displaying a single objective item
-const ObjectiveItem: React.FC<{
-  icon: React.ReactElement;
-  label: string;
-  value: string | number;
-}> = ({ icon, label, value }) => (
-  <Box display="flex" alignItems="center" justifyContent="center">
-    <Box sx={{ fontSize: 40, mr: 2 }}>{icon}</Box>
-    <Box>
-      <Typography variant="body2" color="text.secondary" gutterBottom>
-        {label}
-      </Typography>
-      <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
-        {value}
-      </Typography>
-    </Box>
-  </Box>
-);
 
 const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario, baseline, isLoading, error }) => {
 
@@ -78,181 +42,103 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
       return (<ErrorSummaryBox error={error} />)
     } else if (isLoading) {
       return (<LoadingSummaryBox/>)
+    } else if (!result) {
+      return <ErrorSummaryBox error={"No Results"} />
     } else {
 
-      const {
-        carbon_balance_scope_1,
-        carbon_balance_scope_2,
-        carbon_cost,
-        cost_balance,
-        npv_balance,
-        capex,
-        payback_horizon,
-        annualised_cost,
-        total_gas_used,
-        total_electricity_imported,
-        total_electricity_generated,
-        total_electricity_exported,
-        total_electrical_shortfall,
-        total_heat_shortfall,
-        total_gas_import_cost,
-        total_electricity_import_cost,
-        total_electricity_export_gain
-      } = result!.metrics;
-
-
-      // we split the objectives into two rows so that the card can be displayed nicely
-      // this may need to change as we introduce more information
-      const carbonObjectives: MetricDisplay[] = [
-        {
-          icon: <Co2Icon sx={{ fontSize: 40 }} color="action" />,
-          label: objectiveNames["carbon_balance_scope_1"],
-          value: formatCarbon(carbon_balance_scope_1),
-        },
-        {
-          icon: <Co2Icon sx={{ fontSize: 40 }} color="action" />,
-          label: objectiveNames["carbon_balance_scope_2"],
-          value: formatCarbon(carbon_balance_scope_2),
-        },
-        {
-          icon: <Co2Icon sx={{ fontSize: 40 }} color="action" />,
-          label: objectiveNames["carbon_cost"],
-          value: formatCarbonCost(carbon_cost),
-        },
+      const overviewCarbon: MetricKey[] = [
+        "carbon_balance_scope_1",
+        "carbon_balance_scope_2",
+        "carbon_balance_total",
+        "carbon_cost",
       ];
 
-      const costObjectives: MetricDisplay[] = [
-        {
-          icon: <PoundIcon sx={{ fontSize: 40 }} color="action" />,
-          label: objectiveNames["capex"],
-          value: formatPounds(capex),
-        },
-        {
-          icon: <PoundIcon sx={{ fontSize: 40 }} color="action" />,
-          label: objectiveNames["cost_balance"],
-          value: formatPounds(cost_balance),
-        },
-        {
-          icon: <PoundIcon sx={{ fontSize: 40 }} color="action" />,
-          label: objectiveNames["npv_balance"],
-          value: formatPounds(npv_balance),
-        },
-        {
-          icon: <PoundIcon sx={{ fontSize: 40 }} color="action" />,
-          label: objectiveNames["annualised_cost"],
-          value: formatPounds(annualised_cost),
-        },
-        {
-          icon: <TimelineIcon sx={{ fontSize: 40 }} color="action" />,
-          label: objectiveNames["payback_horizon"],
-          value: formatYears(payback_horizon),
-        },
-      ];
-
-      const usageTotals: MetricDisplay[] = [
-        {
-          icon: <FireIcon sx={{fontSize: 40}} color="action"/>,
-          label: objectiveNames["total_gas_used"],
-          value: formatEnergy(total_gas_used, 100),
-        },
-        {
-          icon: <BoltIcon sx={{fontSize: 40}} color="action"/>,
-          label: objectiveNames["total_electricity_imported"],
-          value: formatEnergy(total_electricity_imported, 100),
-        },
-        {
-          icon: <BoltIcon sx={{fontSize: 40}} color="action"/>,
-          label: objectiveNames["total_electricity_generated"],
-          value: formatEnergy(total_electricity_generated, 100),
-        },
-        {
-          icon: <BoltIcon sx={{fontSize: 40}} color="action"/>,
-          label: objectiveNames["total_electricity_exported"],
-          value: formatEnergy(total_electricity_exported, 100),
-        },
+      const overviewFinancial: MetricKey[] = [
+          "operating_balance",
+          "npv_balance",
+          "capex",
+          "payback_horizon",
       ]
 
-      const shortfallTotals: MetricDisplay[] = [
-        {
-          icon: <BoltIcon sx={{fontSize: 40}} color={(total_electrical_shortfall ?? 0) > 0 ? "error" : "action"}/>,
-          label: objectiveNames["total_electrical_shortfall"],
-          value: formatEnergy(total_electrical_shortfall, 100),
-        },
-        {
-          icon: <FireIcon sx={{fontSize: 40}} color={(total_heat_shortfall ?? 0) > 0 ? "error" : "action"}/>,
-          label: objectiveNames["total_heat_shortfall"],
-          value: formatEnergy(total_heat_shortfall, 100),
-        },
+      const scenarioEnergy: MetricKey[] = [
+          "total_gas_used",
+          "total_electricity_imported",
+          "total_electricity_imported",
+          "total_electricity_imported",
       ]
 
-      const costTotals: MetricDisplay[] = [
-        {
-          icon: <PoundIcon sx={{fontSize: 40}} color="action"/>,
-          label: objectiveNames["total_gas_import_cost"],
-          value: formatPounds(total_gas_import_cost),
-        },
-        {
-          icon: <PoundIcon sx={{fontSize: 40}} color="action"/>,
-          label: objectiveNames["total_electricity_import_cost"],
-          value: formatPounds(total_electricity_import_cost),
-        },
-        {
-          icon: <PoundIcon sx={{fontSize: 40}} color="action"/>,
-          label: objectiveNames["total_electricity_export_gain"],
-          value: formatPounds(total_electricity_export_gain),
-        },
+      const baselineEnergy: MetricKey[] = [
+          "baseline_gas_used",
+          "baseline_electricity_imported",
+          "baseline_electricity_imported",
+          "baseline_electricity_imported",
       ]
 
-      const renderObjectives = (objectives: MetricDisplay[]) =>
-        objectives.map((obj, index) => (
-          <Grid item key={index}>
-            <ObjectiveItem icon={obj.icon} label={obj.label} value={obj.value} />
+      const shortfalls: MetricKey[] = [
+          "total_electrical_shortfall",
+          "total_heat_shortfall",
+          "total_ch_shortfall",
+          "total_dhw_shortfall",
+      ]
+
+      const scenarioMeter: MetricKey[] = [
+          "total_gas_import_cost",
+          "total_electricity_import_cost",
+          "total_electricity_export_gain",
+          "total_meter_cost",
+          "total_operating_cost"
+      ]
+
+      const baselineMeter: MetricKey[] = [
+          "baseline_gas_import_cost",
+          "baseline_electricity_import_cost",
+          "baseline_electricity_export_gain",
+          "baseline_meter_cost",
+          "baseline_operating_cost"
+      ]
+
+      const financial1: MetricKey[] = [
+          "meter_balance",
+          "operating_balance",
+          "cost_balance",
+          "annualised_cost"
+      ]
+
+      const financial2: MetricKey[] = [
+          "total_net_present_value",
+          "baseline_net_present_value",
+          "capex",
+          "payback_horizon",
+      ]
+
+      const renderMetricRow = (metricRow: MetricKey[]) => (
+        metricRow.map((metric, index) => (
+            <Grid item key={index}>
+              <Metric name={metric} metrics={result.metrics}/>
+            </Grid>
+      )))
+
+      const renderTab = (rows: MetricKey[][]) => (
+          <Grid container spacing={3}>
+            {rows.map(row => (
+              <Grid container item xs={12} justifyContent="space-evenly" spacing={2}>
+                {renderMetricRow(row)}
+              </Grid>
+            ))}
           </Grid>
-        ));
+      )
 
 
       return (
         <Box>
-          {tabValue === 0 && (
-            <Grid container spacing={3}>
-              <Grid container item xs={12} justifyContent="space-evenly" spacing={2}>
-                {renderObjectives(carbonObjectives)}
-              </Grid>
-
-              <Grid container item xs={12} justifyContent="space-evenly" spacing={2}>
-                {renderObjectives(costObjectives)}
-              </Grid>
-            </Grid>
-          )}
-
-          {tabValue === 1 && (
-            <Grid container spacing={3}>
-              <Grid container item xs={12} justifyContent="space-evenly" spacing={2}>
-                {renderObjectives(usageTotals)}
-              </Grid>
-
-              <Grid container item xs={12} justifyContent="space-evenly" spacing={2}>
-                {/* place the shortfall and cost totals in the same row to keep it to two rows*/}
-                {renderObjectives(shortfallTotals)}
-                {renderObjectives(costTotals)}
-              </Grid>
-
-            </Grid>
-          )}
-
-          {tabValue === 2 && (
-              <TaskDataViewer
-                  data={scenario!}
-              />
-          )}
-
-          {tabValue === 3 && (
-              <TaskDataViewer
-                  data={baseline!}
-              />
-          )}
+          {tabValue === 0 && (renderTab([overviewCarbon, overviewFinancial]))}
+          {tabValue === 1 && (renderTab([scenarioEnergy, baselineEnergy, shortfalls]))}
+          {tabValue === 2 && (renderTab([scenarioMeter, baselineMeter]))}
+          {tabValue === 3 && (renderTab([financial1, financial2]))}
 
 
+          {tabValue === 4 && (<TaskDataViewer data={scenario!}/>)}
+          {tabValue === 5 && (<TaskDataViewer data={baseline!}/>)}
         </Box>
       )
     }
@@ -267,7 +153,9 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
 
         <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
           <Tab label={"Overview"}/>
-          <Tab label={"Totals"}/>
+          <Tab label={"Energy"}/>
+          <Tab label={"Meter"}/>
+          <Tab label={"Financial"}/>
           {scenario !== null && <Tab label={"Scenario"}/>}
           {baseline !== null && <Tab label={"Baseline"}/>}
         </Tabs>
@@ -285,8 +173,13 @@ export const LoadingSummaryBox: React.FC = () => {
   return (
       <Box>
         <Grid container spacing={3}>
-          {/* Top row (3 placeholders, matching carbonObjectives count) */}
+          {/* Top row (4 placeholders, matching overviewCarbon) */}
           <Grid container item xs={12} justifyContent="space-evenly" spacing={2}>
+            <Grid item>
+              <Box display="flex" alignItems="center" justifyContent="center">
+                <Skeleton variant="rectangular" width={150} height={80}/>
+              </Box>
+            </Grid>
             <Grid item>
               <Box display="flex" alignItems="center" justifyContent="center">
                 <Skeleton variant="rectangular" width={150} height={80}/>
@@ -304,7 +197,7 @@ export const LoadingSummaryBox: React.FC = () => {
             </Grid>
           </Grid>
 
-          {/* Bottom row (4 placeholders, matching costObjectives count) */}
+          {/* Bottom row (4 placeholders, matching overviewFinancial count) */}
           <Grid container item xs={12} justifyContent="space-evenly" spacing={2}>
             <Grid item>
               <Box display="flex" alignItems="center" justifyContent="center">
