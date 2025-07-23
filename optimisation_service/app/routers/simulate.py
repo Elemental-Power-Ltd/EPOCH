@@ -129,7 +129,11 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> Ful
 
     res = sim.simulate_scenario(pytd, fullReporting=True)
 
-    report_data_pydantic = report_data_to_pydantic(res.report_data)
+    if res.report_data is not None:
+        report_data_pydantic = report_data_to_pydantic(res.report_data)
+    else:
+        report_data_pydantic = None
+
     objectives = convert_sim_result(res)
 
     return FullResult(

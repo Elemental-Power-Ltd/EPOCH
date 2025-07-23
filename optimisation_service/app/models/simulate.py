@@ -35,7 +35,7 @@ class EpochInputData(BaseModel):
 
 class FullResult(BaseModel):
     metrics: MetricValues
-    report_data: ReportData
+    report_data: ReportData | None
 
     # we also return the TaskData,SiteData pair used to produce this result
     # (in some contexts, the gui may not be aware of what those are)
