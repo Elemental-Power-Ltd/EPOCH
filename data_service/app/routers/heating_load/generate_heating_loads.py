@@ -16,7 +16,6 @@ import itertools
 import json
 import logging
 import operator
-import uuid
 from typing import cast
 
 import numpy as np
@@ -36,6 +35,7 @@ from ...internal.thermal_model.phpp.parse_phpp import (
     phpp_fabric_intervention_cost,
     phpp_total_heat_loss,
 )
+from ...internal.utils.uuid import uuid7
 from ...models.core import DatasetID, SiteID, dataset_id_t, site_id_t
 from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
 from ...models.weather import BaitAndModelCoefs, WeatherRequest
@@ -414,7 +414,7 @@ async def generate_heating_load_regression(
         metadata_params["cost"] = cost
 
     metadata = HeatingLoadMetadata(
-        dataset_id=uuid.uuid4(),
+        dataset_id=uuid7(),
         site_id=site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps(metadata_params),
@@ -527,7 +527,7 @@ async def generate_thermal_model_heating_load(
     hh_heating_load_df["end_ts"] = hh_heating_load_df.index + pd.Timedelta(minutes=30)
 
     metadata = HeatingLoadMetadata(
-        dataset_id=uuid.uuid4(),
+        dataset_id=uuid7(),
         site_id=params.site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps({
@@ -654,7 +654,7 @@ async def generate_heating_load_phpp(
     )
 
     hload_metadata = HeatingLoadMetadata(
-        dataset_id=uuid.uuid4(),
+        dataset_id=uuid7(),
         site_id=site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps(metadata_params),

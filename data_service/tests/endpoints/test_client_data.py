@@ -3,12 +3,12 @@
 # ruff: noqa: D101, D102
 
 import json
-import uuid
 
 import pytest
 from httpx import AsyncClient
 
 from app.dependencies import get_db_pool
+from app.internal.utils.uuid import uuid7
 from app.models.core import ClientData, SiteData
 
 
@@ -166,7 +166,7 @@ class TestSiteBaseline:
         pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
         await pool.execute(
             """INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
-            uuid.uuid4(),
+            uuid7(),
             "demo_london",
             json.dumps(baseline),
         )
@@ -182,7 +182,7 @@ class TestSiteBaseline:
         pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
         await pool.execute(
             """INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
-            uuid.uuid4(),
+            uuid7(),
             "demo_london",
             json.dumps(baseline),
         )

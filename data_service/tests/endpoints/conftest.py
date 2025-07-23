@@ -264,6 +264,7 @@ class MockedHttpClient(httpx.AsyncClient):
         -------
             HTTPX status, 200 if file found, 404 otherwise.
         """
+        print("Getting via mocked client", url)
         url = str(url)
         if url.startswith("https://api.octopus.energy/v1/products/"):
             maybe_tariff_data = await self.get_tariff_from_file(url, **kwargs)
@@ -298,7 +299,7 @@ class MockedHttpClient(httpx.AsyncClient):
             if maybe_pvgis_data is not None:
                 return httpx.Response(status_code=200, json=maybe_pvgis_data)
 
-        if url.startswith("https://www.renewables.ninja/api/data/pv"):
+        if url.startswith("https://www.renewables.ninja/api/"):
             maybe_rn_data = await self.cache_renewables_ninja_data(url, **kwargs)
             if maybe_rn_data is not None:
                 return httpx.Response(status_code=200, json=maybe_rn_data)

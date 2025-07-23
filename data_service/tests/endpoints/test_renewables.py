@@ -3,7 +3,6 @@
 # ruff: noqa: D101, D102, D103
 import datetime
 import json
-import uuid
 from typing import cast
 from uuid import UUID
 
@@ -16,6 +15,8 @@ import pytest_asyncio
 from app.dependencies import get_db_pool, get_http_client
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.utils.uuid import uuid7
+from app.models.site_range import Jsonable
 from app.routers.renewables import disaggregate_readings
 
 
@@ -342,7 +343,7 @@ class TestRenewablesErrors:
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
         """Test that we can get many copies of the same dataset."""
-        bad_uuid = uuid.uuid4()
+        bad_uuid = uuid7()
         results = await client.post(
             "/get-renewables-generation",
             json={
@@ -355,6 +356,35 @@ class TestRenewablesErrors:
         assert results.status_code == 400
         assert "dataset_id" in results.json()["detail"]
         assert str(bad_uuid) in results.json()["detail"]
+
+
+class TestWindRenewables:
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    async def test_generate_renewables_wind(
+        self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
+    ) -> None:
+        result = (
+            await client.post(
+                "/generate-wind-generation",
+                json={
+                    "site_id": "demo_london",
+                    "start_ts": demo_start_ts.isoformat(),
+                    "end_ts": demo_end_ts.isoformat(),
+                    "height": 80,
+                    "turbine": "Enercon E101 3000",
+                },
+            )
+        ).json()
+        assert "dataset_id" in result
+        assert (
+            datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=1)
+            <= datetime.datetime.fromisoformat(result["created_at"])
+            <= datetime.datetime.now(datetime.UTC)
+        )
+        assert result["parameters"]["height"] == 80
+        assert result["parameters"]["turbine"] == "Enercon E101 3000"
+        assert result["site_id"] == "demo_london"
 
 
 class TestDisaggregate:

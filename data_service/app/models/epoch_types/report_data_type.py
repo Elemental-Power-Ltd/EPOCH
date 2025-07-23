@@ -7,7 +7,10 @@ class ReportData(BaseModel):
     # TempSum
     Actual_import_shortfall: list[float] | None = Field(default=None, description="Time series of electrical import shortfall in kWh.")
     Actual_curtailed_export: list[float] | None = Field(default=None, description="Time series of curtailed exports in kWh.")
-    Heat_shortfall: list[float] | None = Field(default=None, description="Time series of heat shortfall in kWh.")
+    Heat_shortfall: list[float] | None = Field(default=None, description="Time series of the total heat shortfall in kWh.")
+    DHW_Shortfall: list[float] | None = Field(default=None, description="Time series of the domestic hot water (DHW) shortfall in kWh.")
+    CH_shortfall: list[float] | None = Field(default=None, description="Time series of the central heating (CH) shortfall in kWh.")
+
     Heat_surplus: list[float] | None = Field(default=None, description="Time series of heat surplus in kWh.")
 
     # Hotel
@@ -51,7 +54,7 @@ class ReportData(BaseModel):
     DHW_SoC: list[float] | None = Field(default=None, description="Time series of the state of charge of the Hot Water Cylinder in kWh.")
     DHW_Standby_loss: list[float] | None = Field(default=None, description="Time series of the heat wasted to standby loss in the Hot Water Cylinder at each timestep in kWh.")
     DHW_ave_temperature: list[float] | None = Field(default=None, description="Time series of average temperature of the Hot Water Cylinder in degrees Celsius.")
-    DHW_Shortfall: list[float] | None = Field(default=None, description="Time series of the Hot Water Cylinder heat shortfall in kWh.")
+    DHW_immersion_top_up: list[float] | None = Field(default=None, description="Time series of the DHW demand that the Hot Water Cylinder was unable to meet; requiring an immersion heater.")
 
     # ASHP
     ASHP_elec_load: list[float] | None = Field(default=None, description="Time series of the heat pump's electrical load in kWh.")
