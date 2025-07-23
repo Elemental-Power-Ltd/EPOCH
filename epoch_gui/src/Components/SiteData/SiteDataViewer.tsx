@@ -113,7 +113,7 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
                     title={"Solar Yields"}
                     xData={x_hh}
                     yData={rangedSiteData.solar_yields.map((solar, index) => (
-                        {name: `Solar Yield ${index + 1}`, data: solar}
+                        {name: `Solar Yield #${index}`, data: solar}
                     ))}
                     yLabel={"Energy (kWh)"}
                 />
@@ -122,7 +122,7 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
                     title={"Import Tariffs"}
                     xData={x_hh}
                     yData={rangedSiteData.import_tariffs.map((tariff, index) => (
-                        {name: `Import Tariff ${index + 1}`, data: tariff}
+                        {name: `Import Tariff #${index}`, data: tariff}
                     ))}
                     yLabel={"£/kWh"}
                 />

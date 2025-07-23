@@ -87,15 +87,15 @@ export const getAnnotatedSeries = (taskData: any, siteData: EpochSiteData, repor
         // a yield array is used if any of the SolarPanel entries have it as their yield_index
         const used = taskData.solar_panels?.some((panel: any) => panel.yield_index === idx);
 
-        // idx + 1: use 1-based indexing for display
-        const name = used ? `Solar Yield ${idx + 1}` : `Solar Yield ${idx + 1} (unused)`;
+        // This maps to SiteData, use 0-based indexing for display to keep things simple
+        const name = used ? `Solar Yield #${idx}` : `Solar Yield #${idx} (unused)`;
 
         annotatedSeries[name] = {name: name, units: "kWh", type: "Input", data: yieldSeries}
     })
 
     // add the fabric interventions
     siteData.fabric_interventions.forEach((intervention, idx) => {
-        // fabric_intervention_index is a 1-based index
+        // fabric_intervention_index is a 1-based index, 0 is the default building_hload
         const used = idx + 1 === taskData.building?.fabric_intervention_index;
         const name = used ? `Reduced Heating Demand` : `Reduced Heating Demand ${idx + 1} (unused)`;
 
@@ -105,8 +105,8 @@ export const getAnnotatedSeries = (taskData: any, siteData: EpochSiteData, repor
     // add the import tariffs
     siteData.import_tariffs.forEach((tariff, idx) => {
         const used = idx === taskData.grid?.tariff_index;
-        // idx + 1: use 1-based indexing for display
-        const name = used ? `Import Tariff ${idx + 1}` : `Import Tariff ${idx + 1} (unused)`;
+        // This maps to SiteData, use 0-based indexing for display to keep things simple
+        const name = used ? `Import Tariff #${idx}` : `Import Tariff #${idx} (unused)`;
 
         annotatedSeries[name] = {name: name, units: "£/KwH", type: "Input", data: tariff}
     })
