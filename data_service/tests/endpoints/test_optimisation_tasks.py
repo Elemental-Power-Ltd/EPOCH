@@ -384,6 +384,7 @@ class TestOptimisationTaskDatabase:
         # All metrics should be None, check a few of them
         assert portfolio_results[0]["metrics"]["carbon_cost"] is None
         assert portfolio_results[0]["metrics"]["total_heat_shortfall"] is None
+        assert portfolio_results[0]["metrics"]["total_dhw_shortfall"] is None
         assert portfolio_results[0]["metrics"]["total_electricity_export_gain"] is None
 
     @pytest.mark.asyncio
