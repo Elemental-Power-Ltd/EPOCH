@@ -26,9 +26,7 @@ from ..models.core import (
     SiteData,
     SiteID,
     SiteIdNamePair,
-    client_id_t,
     location_t,
-    site_id_t,
 )
 from ..models.epoch_types.task_data_type import Building, Config, GasHeater, Grid, TaskData
 
@@ -395,7 +393,7 @@ async def list_clients(conn: DatabaseDep) -> list[ClientIdNamePair]:
             client_id,
             name
         FROM client_info.clients""")
-    return [ClientIdNamePair(client_id=client_id_t(item[0]), name=str(item[1])) for item in res]
+    return [ClientIdNamePair(client_id=item[0], name=item[1]) for item in res]
 
 
 @router.post("/list-sites", tags=["db", "list"])
@@ -422,7 +420,7 @@ async def list_sites(client_id: ClientID, conn: DatabaseDep) -> list[SiteIdNameP
         ORDER BY site_id ASC""",
         client_id.client_id,
     )
-    return [SiteIdNamePair(site_id=site_id_t(item[0]), name=str(item[1])) for item in res]
+    return [SiteIdNamePair(site_id=item[0], name=item[1]) for item in res]
 
 
 @router.post("/get-solar-locations", tags=["db", "pv"])
@@ -557,8 +555,6 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
 
     Parameters
     ----------
-    request
-
     site_id
         Database ID of the site you are interested in.
 

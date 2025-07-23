@@ -14,10 +14,10 @@ from typing import Annotated, Any, Self
 import pydantic
 from pydantic import BaseModel, Field
 
-dataset_id_t = Annotated[pydantic.UUID4, "String serialised UUID"]
-client_id_t = str
-site_id_t = str
-location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
+type dataset_id_t = Annotated[pydantic.UUID4, "String serialised UUID"]
+type client_id_t = str
+type site_id_t = str
+type location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
 
 example_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
 example_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
@@ -36,31 +36,6 @@ client_id_field = Field(
 dataset_id_field = Field(
     examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"],
     description="Unique ID (generally a UUIDv4) of a dataset.",
-    default_factory=uuid.uuid4,
-)
-
-epoch_start_time_field = Field(
-    examples=["00:00", "11:30"],
-    description="Starting time for this data, often 30 mins or 1 hour long from now.",
-    pattern=r"[0-2][0-9]:[0-6][0-9]",
-)
-
-epoch_hour_of_year_field = Field(
-    examples=[1, 365 * 24 - 1],
-    description="Hour of the year, 1-indexed for EPOCH. Counts up even over timezone changes."
-    + "For example, Jan 1st 00:00 is 1.",
-)
-
-epoch_date_field = Field(
-    examples=["01-Jan", "31-Dec"],
-    description="Date string for EPOCH to consume, zero padded day first"
-    + "and 3 letter month abbreviation second."
-    + "No year information is provided (be careful!). This is originally Excel-like.",
-    pattern=r"[0-9][0-9]-[A-Za-z]*",
-)
-
-final_uuid_field = pydantic.Field(
-    description=("The final UUID you want the generated dataset to have." + "If unspecified, generate a random UUID4."),
     default_factory=uuid.uuid4,
 )
 
