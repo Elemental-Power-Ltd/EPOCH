@@ -20,7 +20,7 @@ from ..models.core import (
     site_id_t,
 )
 from ..models.meter_data import DisaggregationRequest, GasDatasetEntry, MeterEntries, MeterEntry, MeterMetadata, ReadingTypeEnum
-from .renewables import disaggregate_electricity_dataframe
+from ..internal.solar_pv.disaggregate import disaggregate_electricity_dataframe
 
 router = APIRouter()
 

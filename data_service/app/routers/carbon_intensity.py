@@ -21,9 +21,9 @@ from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.client_data import get_postcode
 from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils import chunk_time_period
+from ..internal.utils.uuid import uuid7
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry, GridCO2Request
 from ..models.core import DatasetIDWithTime
-from ..internal.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

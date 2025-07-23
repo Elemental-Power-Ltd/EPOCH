@@ -26,6 +26,7 @@ from ..internal.site_manager import (
 from ..internal.site_manager.bundles import file_self_with_bundle, insert_dataset_bundle
 from ..internal.site_manager.dataset_lists import list_baseline_datasets
 from ..internal.site_manager.fetch_data import fetch_all_input_data
+from ..internal.utils.uuid import uuid7
 from ..models.carbon_intensity import GridCO2Request
 from ..models.client_data import SiteDataEntries, SolarLocation
 from ..models.core import (
@@ -646,7 +647,7 @@ async def generate_all(
         Note that this will return immediately, but block this thread until the calculations are done.
     """
     bundle_metadata = DatasetBundleMetadata(
-        bundle_id=uuid.uuid4(),
+        bundle_id=uuid7(),
         name=None,
         site_id=params.site_id,
         start_ts=params.start_ts,
@@ -744,7 +745,7 @@ async def generate_all(
             interventions=interventions,
             bundle_metadata=BundleEntryMetadata(
                 bundle_id=bundle_metadata.bundle_id,
-                dataset_id=uuid.uuid4(),
+                dataset_id=uuid7(),
                 dataset_type=DatasetTypeEnum.HeatingLoad,
                 dataset_subtype=interventions,
                 dataset_order=idx,
@@ -759,7 +760,7 @@ async def generate_all(
         end_ts=params.end_ts,
         bundle_metadata=BundleEntryMetadata(
             bundle_id=bundle_metadata.bundle_id,
-            dataset_id=uuid.uuid4(),
+            dataset_id=uuid7(),
             dataset_type=DatasetTypeEnum.CarbonIntensity,
             dataset_subtype=None,
         ),
@@ -786,7 +787,7 @@ async def generate_all(
                 end_ts=params.end_ts,
                 bundle_metadata=BundleEntryMetadata(
                     bundle_id=bundle_metadata.bundle_id,
-                    dataset_id=uuid.uuid4(),
+                    dataset_id=uuid7(),
                     dataset_type=DatasetTypeEnum.ImportTariff,
                     dataset_subtype=tariff_type,
                     dataset_order=idx,
@@ -819,7 +820,7 @@ async def generate_all(
             renewables_location_id=solar_location.renewables_location_id,
             bundle_metadata=BundleEntryMetadata(
                 bundle_id=bundle_metadata.bundle_id,
-                dataset_id=uuid.uuid4(),
+                dataset_id=uuid7(),
                 dataset_type=DatasetTypeEnum.RenewablesGeneration,
                 dataset_subtype=solar_location.renewables_location_id,
                 dataset_order=idx,
@@ -834,7 +835,7 @@ async def generate_all(
         end_ts=params.end_ts,
         bundle_metadata=BundleEntryMetadata(
             bundle_id=bundle_metadata.bundle_id,
-            dataset_id=uuid.uuid4(),
+            dataset_id=uuid7(),
             dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
             dataset_subtype=None,
         ),

@@ -5,7 +5,7 @@ import datetime
 
 import pydantic
 
-from .core import EpochEntry, RequestBase, site_id_field, site_id_t, dataset_id_t
+from .core import EpochEntry, RequestBase, dataset_id_t, site_id_field, site_id_t
 
 
 class CarbonIntensityMetadata(pydantic.BaseModel):
