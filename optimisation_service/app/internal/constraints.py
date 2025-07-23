@@ -1,5 +1,3 @@
-import numpy as np
-
 from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
@@ -123,20 +121,6 @@ def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01) -> Const
     return constraints
 
 
-def get_capex_constraints() -> Constraints:
-    """
-    Get the minimum CAPEX.
-    We force CAPEX to be greater than 0, since a scenario with 0 CAPEX is uninteresting to us.
-
-    Returns
-    -------
-    constraints
-        Constraints dict, containing a minimum constraint on CAPEX.
-    """
-    constraints = {Metric.capex: Bounds(min=float(np.finfo(np.float32).tiny))}
-    return constraints
-
-
 def apply_default_constraints(
     exsiting_portfolio: list[Site], existing_constraints: Constraints
 ) -> tuple[list[Site], Constraints]:
@@ -145,7 +129,6 @@ def apply_default_constraints(
     These are:
     - Electrical and Heat shortfall upper bounds on the sites.
       We want to make sure that the solutions provided are viable energetically.
-    - CAPEX lower bound on the portfolio. We want to exclude the £0 scenario since it is of no interest.
 
     Parameters
     ----------
@@ -168,7 +151,4 @@ def apply_default_constraints(
         site.constraints = merge_constraints([exsiting_site_constraints, shortfall_constraints])
         portfolio.append(site)
 
-    capex_constraints = get_capex_constraints()
-    constraints = merge_constraints([existing_constraints, capex_constraints])
-
-    return portfolio, constraints
+    return portfolio, existing_constraints
