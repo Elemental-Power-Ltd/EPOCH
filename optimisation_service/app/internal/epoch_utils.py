@@ -47,6 +47,8 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
 
     metric_values[Metric.total_electrical_shortfall] = sim_result.metrics.total_electrical_shortfall
     metric_values[Metric.total_heat_shortfall] = sim_result.metrics.total_heat_shortfall
+    metric_values[Metric.total_ch_shortfall] = sim_result.metrics.total_ch_shortfall
+    metric_values[Metric.total_dhw_shortfall] = sim_result.metrics.total_dhw_shortfall
 
     metric_values[Metric.total_gas_import_cost] = sim_result.metrics.total_gas_import_cost
     metric_values[Metric.total_electricity_import_cost] = sim_result.metrics.total_electricity_import_cost
@@ -62,6 +64,8 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
 
     metric_values[Metric.baseline_electrical_shortfall] = sim_result.baseline_metrics.total_electrical_shortfall
     metric_values[Metric.baseline_heat_shortfall] = sim_result.baseline_metrics.total_heat_shortfall
+    metric_values[Metric.baseline_ch_shortfall] = sim_result.baseline_metrics.total_ch_shortfall
+    metric_values[Metric.baseline_dhw_shortfall] = sim_result.baseline_metrics.total_dhw_shortfall
 
     metric_values[Metric.baseline_gas_import_cost] = sim_result.baseline_metrics.total_gas_import_cost
     metric_values[Metric.baseline_electricity_import_cost] = sim_result.baseline_metrics.total_electricity_import_cost

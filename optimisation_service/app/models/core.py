@@ -122,6 +122,12 @@ class SiteMetrics(BaseModel):
     total_heat_shortfall: float | None = Field(
         description="Total heat shortfall (kWh) when compared to the demand for this site", default=None
     )
+    total_ch_shortfall: float | None = Field(
+        description="Total central heating (CH) shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    total_dhw_shortfall: float | None = Field(
+        description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand for this site", default=None
+    )
     total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
     total_electricity_import_cost: float | None = Field(
         description="Total spend (£) importing electricity from the grid for this site", default=None
@@ -155,6 +161,12 @@ class SiteMetrics(BaseModel):
     )
     baseline_heat_shortfall: float | None = Field(
         description="Baseline heat shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    baseline_ch_shortfall: float | None = Field(
+        description="Baseline central heating (CH) shortfall (kWh) when compared to the demand for this site", default=None
+    )
+    baseline_dhw_shortfall: float | None = Field(
+        description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand for this site", default=None
     )
     baseline_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
     baseline_electricity_import_cost: float | None = Field(
@@ -250,6 +262,13 @@ class PortfolioMetrics(BaseModel):
     total_heat_shortfall: float | None = Field(
         description="Total heat shortfall (kWh) when compared to the demand across this portfolio", default=None
     )
+    total_ch_shortfall: float | None = Field(
+        description="Total central heating (CH) shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    total_dhw_shortfall: float | None = Field(
+        description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
+        default=None
+    )
     total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas across this portfolio", default=None)
     total_electricity_import_cost: float | None = Field(
         description="Total spend (£) importing electricity from the grid across this portfolio", default=None
@@ -284,6 +303,14 @@ class PortfolioMetrics(BaseModel):
     )
     baseline_heat_shortfall: float | None = Field(
         description="Baseline heat shortfall (kWh) when compared to the demand across this portfolio", default=None
+    )
+    baseline_ch_shortfall: float | None = Field(
+        description="Baseline central heating (CH) shortfall (kWh) when compared to the demand across this portfolio",
+        default=None
+    )
+    baseline_dhw_shortfall: float | None = Field(
+        description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
+        default=None
     )
     baseline_gas_import_cost: float | None = Field(
         description="Baseline spend (£) importing gas across this portfolio", default=None

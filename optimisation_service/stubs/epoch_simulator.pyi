@@ -17,6 +17,8 @@ class SimulationMetrics:
 
     total_electrical_shortfall: float
     total_heat_shortfall: float
+    total_ch_shortfall: float
+    total_dhw_shortfall: float
 
     total_gas_import_cost: float
     total_electricity_import_cost: float

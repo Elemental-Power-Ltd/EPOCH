@@ -21,6 +21,8 @@ class Metric(StrEnum):
 
     total_electrical_shortfall = "total_electrical_shortfall"
     total_heat_shortfall = "total_heat_shortfall"
+    total_ch_shortfall = "total_ch_shortfall"
+    total_dhw_shortfall = "total_dhw_shortfall"
 
     total_gas_import_cost = "total_gas_import_cost"
     total_electricity_import_cost = "total_electricity_import_cost"
@@ -36,6 +38,8 @@ class Metric(StrEnum):
 
     baseline_electrical_shortfall = "baseline_electrical_shortfall"
     baseline_heat_shortfall = "baseline_heat_shortfall"
+    baseline_ch_shortfall = "baseline_ch_shortfall"
+    baseline_dhw_shortfall = "baseline_dhw_shortfall"
 
     baseline_gas_import_cost = "baseline_gas_import_cost"
     baseline_electricity_import_cost = "baseline_electricity_import_cost"
@@ -62,6 +66,8 @@ _EPOCH_NATIVE_OBJECTIVE_METRICS = [
     Metric.total_electricity_exported,
     Metric.total_electrical_shortfall,
     Metric.total_heat_shortfall,
+    Metric.total_ch_shortfall,
+    Metric.total_dhw_shortfall,
     Metric.total_gas_import_cost,
     Metric.total_electricity_import_cost,
     Metric.total_electricity_export_gain,
@@ -79,6 +85,8 @@ _EPOCH_NATIVE_NON_OBJECTIVE_METRICS = [
     Metric.baseline_electricity_exported,
     Metric.baseline_electrical_shortfall,
     Metric.baseline_heat_shortfall,
+    Metric.baseline_ch_shortfall,
+    Metric.baseline_dhw_shortfall,
     Metric.baseline_gas_import_cost,
     Metric.baseline_electricity_import_cost,
     Metric.baseline_electricity_export_gain,
@@ -112,6 +120,8 @@ _SUMMABLE_METRICS = [
     Metric.total_electricity_exported,
     Metric.total_electrical_shortfall,
     Metric.total_heat_shortfall,
+    Metric.total_ch_shortfall,
+    Metric.total_dhw_shortfall,
     Metric.total_gas_import_cost,
     Metric.total_electricity_import_cost,
     Metric.total_electricity_export_gain,
@@ -124,6 +134,8 @@ _SUMMABLE_METRICS = [
     Metric.baseline_electricity_exported,
     Metric.baseline_electrical_shortfall,
     Metric.baseline_heat_shortfall,
+    Metric.baseline_ch_shortfall,
+    Metric.baseline_dhw_shortfall,
     Metric.baseline_gas_import_cost,
     Metric.baseline_electricity_import_cost,
     Metric.baseline_electricity_export_gain,
@@ -154,6 +166,8 @@ class MetricDirection(IntEnum):
 
     total_electrical_shortfall = 1
     total_heat_shortfall = 1
+    total_ch_shortfall = 1
+    total_dhw_shortfall = 1
 
     total_gas_import_cost = 1
     total_electricity_import_cost = 1
