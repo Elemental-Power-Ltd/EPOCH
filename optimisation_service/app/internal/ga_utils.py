@@ -322,7 +322,7 @@ class ProblemInstance(ElementwiseProblem):
             metric_values[metric] *= MetricDirection[metric]
         return metric_values
 
-    def calculate_infeasibility(self, portfolio_solution: PortfolioSolution) -> list[float]:
+    def evaluate_constraint_violations(self, portfolio_solution: PortfolioSolution) -> list[float]:
         """
         Calculate the infeasibility of a portfolio solution given the problem's portfolio constraints.
 
@@ -336,16 +336,17 @@ class ProblemInstance(ElementwiseProblem):
         excess
             List of values that indicate by how much the metric values exceed the constraints.
         """
-        # evaluate portfolio level constraints first
-        excess = evaluate_excess(portfolio_solution.metric_values, constraints=self.constraints)
+        # evaluate portfolio level constraints
+        constraint_violations = evaluate_constraints(portfolio_solution.metric_values, constraints=self.constraints)
 
         # evaluate site constraints
         for site in self.portfolio:
             site_solution = portfolio_solution.scenario[site.site_data.site_id]
-            excess.extend(evaluate_excess(metric_values=site_solution.metric_values, constraints=site.constraints))
-            excess.append(evaluate_peak_hload(site_scenario=site_solution.scenario, site_data=site._epoch_data))
+            constraint_violations.extend(
+                evaluate_constraints(metric_values=site_solution.metric_values, constraints=site.constraints)
+            )
 
-        return excess
+        return constraint_violations
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[float]]) -> None:
         """
@@ -362,14 +363,29 @@ class ProblemInstance(ElementwiseProblem):
         -------
         None
         """
-        portfolio_solution = self.simulate_portfolio(x=x)
-        out["G"] = self.calculate_infeasibility(portfolio_solution)
-        selected_results = {metric: portfolio_solution.metric_values[metric] for metric in self.objectives}
-        directed_results = self.apply_directions(selected_results)
-        out["F"] = list(directed_results.values())
+        x_dict = self.split_solution(x)
+        portfolio_scenarios = {name: self.convert_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
+
+        constraint_violations = []
+        for site in self.portfolio:
+            site_scenario = portfolio_scenarios[site.site_data.site_id]
+            constraint_violations.append(evaluate_peak_hload(site_scenario=site_scenario, site_data=site._epoch_data))
+
+        if max(constraint_violations) > 0:
+            out["G"] = constraint_violations + [0] * (self.n_ieq_constr - len(constraint_violations))
+            out["F"] = [0] * self.n_obj
+
+        else:
+            portfolio_solution = self.sim.simulate_portfolio(portfolio_scenarios=portfolio_scenarios)
+            constraint_violations += self.evaluate_constraint_violations(portfolio_solution)
+
+            out["G"] = constraint_violations
+            selected_results = {metric: portfolio_solution.metric_values[metric] for metric in self.objectives}
+            directed_results = self.apply_directions(selected_results)
+            out["F"] = list(directed_results.values())
 
 
-def evaluate_excess(metric_values: MetricValues, constraints: Constraints) -> list[float]:
+def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) -> list[float]:
     """
     Measures by how much the metric values exceed the constraints.
     Returns a list of floats, one for each constraint.

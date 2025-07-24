@@ -8,7 +8,7 @@ from app.internal.ga_utils import (
     ProblemInstance,
     RoundingAndDegenerateRepair,
     SimpleIntMutation,
-    evaluate_excess,
+    evaluate_constraints,
     evaluate_peak_hload,
 )
 from app.internal.site_range import REPEAT_COMPONENTS, count_parameters_to_optimise
@@ -126,15 +126,14 @@ class TestProblemInstance:
         assert res[Metric.carbon_balance_scope_2] == -metric_values[Metric.carbon_balance_scope_2]
         assert res[Metric.cost_balance] == -metric_values[Metric.cost_balance]
 
-    def test_calculate_infeasibility(
+    def test_evaluate_constraint_violations(
         self, default_problem_instance: ProblemInstance, dummy_portfolio_solution: PortfolioSolution
     ):
         n_constraints = count_constraints(default_problem_instance.constraints)
         for site in default_problem_instance.portfolio:
             n_constraints += count_constraints(site.constraints)
-            n_constraints += 1  # peak_hload constraints
 
-        assert len(default_problem_instance.calculate_infeasibility(dummy_portfolio_solution)) == n_constraints
+        assert len(default_problem_instance.evaluate_constraint_violations(dummy_portfolio_solution)) == n_constraints
 
 
 class TestEvaluateExcess:
@@ -157,7 +156,7 @@ class TestEvaluateExcess:
                 metric_values[metric] = max_value + 1
                 excess.append(1.0)
 
-        assert evaluate_excess(metric_values=metric_values, constraints=default_constraints) == excess
+        assert evaluate_constraints(metric_values=metric_values, constraints=default_constraints) == excess
 
 
 class TestEvaluatePeakHload:
