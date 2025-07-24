@@ -65,6 +65,9 @@ class EpochEntry(BaseModel):
 class FabricIntervention(BaseModel):
     cost: float
     reduced_hload: list[float]
+    peak_hload: float = Field(
+        description="Peak heating demand from a survey in kWth", default_factory=lambda data: max(data["reduced_hload"])
+    )
 
 
 class EpochHeatingEntry(EpochEntry):
@@ -146,6 +149,7 @@ class EpochSiteData(BaseModel):
 
     building_eload: list[float]
     building_hload: list[float]
+    peak_hload: float
     ev_eload: list[float]
     dhw_demand: list[float]
     air_temperature: list[float]
