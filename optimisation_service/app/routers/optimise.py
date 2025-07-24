@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import logging
 import subprocess
-import uuid
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
@@ -17,6 +16,7 @@ from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.site_range import count_parameters_to_optimise
+from app.internal.uuid7 import uuid7
 from app.models.core import (
     EndpointTask,
     OptimisationResultEntry,
@@ -50,7 +50,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
     logger.info(f"Postprocessing results of {task.task_id}.")
     portfolios = []
     for portfolio_solution in results.solutions:
-        portfolio_id = uuid.uuid4()
+        portfolio_id = uuid7()
         site_results = []
         for site_id, site_solution in portfolio_solution.scenario.items():
             site_results.append(

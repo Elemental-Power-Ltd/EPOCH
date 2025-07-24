@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 from enum import StrEnum
 
-from pydantic import UUID4, BaseModel, Field
+from pydantic import BaseModel, Field
 
 from app.internal.datamanager import DataManager
 from app.models.core import Task
+from app.models.database import dataset_id_t
 
 
 class task_state(StrEnum):
@@ -22,7 +23,7 @@ class QueueElem(BaseModel):
 
 
 class QueueStatus(BaseModel):
-    queue: dict[UUID4, QueueElem] = Field(
+    queue: dict[dataset_id_t, QueueElem] = Field(
         examples=[{"805fb659-1cac-44f3-a1f9-85dc82178f53": "queued"}], description="Overview of queue elements."
     )
     service_uptime: timedelta = Field(description="Service uptime.")

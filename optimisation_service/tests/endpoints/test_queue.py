@@ -1,4 +1,3 @@
-import uuid
 from collections import OrderedDict
 
 import pytest
@@ -6,6 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
 from app.internal.datamanager import DataManager
+from app.internal.uuid7 import uuid7
 from app.main import app
 from app.models.core import Task
 from app.routers.epl_queue import IQueue, task_state
@@ -26,9 +26,9 @@ class TestQueueEndpoint:
         Test /cancel-task endpoint.
         """
         _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
-        default_task.task_id = uuid.uuid4()
+        default_task.task_id = uuid7()
         _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
-        default_task.task_id = uuid.uuid4()
+        default_task.task_id = uuid7()
         _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
         response = client.post("/cancel-task", params={"task_id": str(default_task.task_id)})
         assert response.status_code == 200, response.text
