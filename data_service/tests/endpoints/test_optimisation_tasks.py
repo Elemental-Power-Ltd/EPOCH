@@ -63,6 +63,7 @@ class TestOptimisationTaskDatabase:
             },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
+            epoch_version="1.2.3"
         )
 
     @pytest.fixture
@@ -515,6 +516,7 @@ class TestOptimisationTaskDatabaseUUID4:
             },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
+            epoch_version="v1.2.3"
         )
 
     @pytest.fixture
