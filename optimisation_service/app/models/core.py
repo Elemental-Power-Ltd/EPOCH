@@ -60,6 +60,7 @@ class Task(BaseModel):
         default_factory=uuid.uuid4,
         description="Unique ID (generally a UUIDv4) of an optimisation task.",
     )
+    epoch_version: str  | None = Field(description="EPOCH version that this task was submitted for")
 
 
 class TaskResponse(BaseModel):
