@@ -130,7 +130,7 @@ class TestCombineMetricValues:
             Metric.baseline_net_present_value: 10,
         }
         metric_values[Metric.payback_horizon] = calculate_payback_horizon(
-            capex=metric_values[Metric.capex], cost_balance=metric_values[Metric.cost_balance]
+            capex=metric_values[Metric.capex], operating_balance=metric_values[Metric.cost_balance]
         )
         metric_values[Metric.carbon_cost] = calculate_carbon_cost(
             capex=metric_values[Metric.capex], carbon_balance_scope_1=metric_values[Metric.carbon_balance_scope_1]
@@ -145,7 +145,7 @@ class TestCombineMetricValues:
             assert res[metric] == metric_values[metric] * 2
         assert res[Metric.cost_balance] == metric_values[Metric.cost_balance] * 2
         assert res[Metric.payback_horizon] == calculate_payback_horizon(
-            capex=metric_values[Metric.capex] * 2, cost_balance=metric_values[Metric.cost_balance] * 2
+            capex=metric_values[Metric.capex] * 2, operating_balance=metric_values[Metric.cost_balance] * 2
         )
         assert res[Metric.carbon_cost] == calculate_carbon_cost(
             capex=metric_values[Metric.capex] * 2,
@@ -159,14 +159,12 @@ class TestCombineMetricValues:
             Metric.capex: 10,
             Metric.carbon_balance_scope_1: carbon_balance_scope_1,
             Metric.carbon_balance_scope_2: 10,
-            Metric.cost_balance: 10,
         }
         metric_values_2: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: 10,
             Metric.carbon_balance_scope_1: 10,
             Metric.carbon_balance_scope_2: 10,
-            Metric.cost_balance: 10,
         }
         res = combine_metric_values([metric_values_1, metric_values_1])
         assert res[Metric.carbon_cost] == float(np.finfo(np.float32).max)
@@ -177,28 +175,30 @@ class TestCombineMetricValues:
             + metric_values_2[Metric.carbon_balance_scope_1],
         )
 
-    @pytest.mark.parametrize("cost_balance", [0, -10])
-    def test_null_and_negative_cost_balance(self, cost_balance):
+    @pytest.mark.parametrize("operating_balance", [0, -10])
+    def test_null_and_negative_operating_balance(self, operating_balance):
         metric_values_1: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: 10,
             Metric.carbon_balance_scope_1: 10,
             Metric.carbon_balance_scope_2: 10,
-            Metric.cost_balance: cost_balance,
+            Metric.cost_balance: 13,
+            Metric.operating_balance: operating_balance,
         }
         metric_values_2: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: 10,
             Metric.carbon_balance_scope_1: 10,
             Metric.carbon_balance_scope_2: 10,
-            Metric.cost_balance: 10,
+            Metric.cost_balance: 13,
+            Metric.operating_balance: 10,
         }
         res = combine_metric_values([metric_values_1, metric_values_1])
         assert res[Metric.payback_horizon] < 0
         res = combine_metric_values([metric_values_1, metric_values_2])
         assert res[Metric.payback_horizon] == calculate_payback_horizon(
             capex=metric_values_1[Metric.capex] + metric_values_2[Metric.capex],
-            cost_balance=metric_values_1[Metric.cost_balance] + metric_values_2[Metric.cost_balance],
+            operating_balance=metric_values_1[Metric.operating_balance] + metric_values_2[Metric.operating_balance],
         )
 
     @pytest.mark.parametrize("capex", [0, -10])
@@ -208,14 +208,14 @@ class TestCombineMetricValues:
             Metric.capex: capex,
             Metric.carbon_balance_scope_1: 10,
             Metric.carbon_balance_scope_2: 10,
-            Metric.cost_balance: 10,
+            Metric.operating_balance: 10,
         }
         metric_values_2: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: 10,
             Metric.carbon_balance_scope_1: 10,
             Metric.carbon_balance_scope_2: 10,
-            Metric.cost_balance: 10,
+            Metric.operating_balance: 10,
         }
         res = combine_metric_values([metric_values_1, metric_values_1])
         assert res[Metric.payback_horizon] == 0
@@ -223,7 +223,7 @@ class TestCombineMetricValues:
         res = combine_metric_values([metric_values_1, metric_values_2])
         assert res[Metric.payback_horizon] == calculate_payback_horizon(
             capex=metric_values_1[Metric.capex] + metric_values_2[Metric.capex],
-            cost_balance=metric_values_1[Metric.cost_balance] + metric_values_2[Metric.cost_balance],
+            operating_balance=metric_values_1[Metric.operating_balance] + metric_values_2[Metric.operating_balance],
         )
         assert res[Metric.carbon_cost] == calculate_carbon_cost(
             capex=metric_values_1[Metric.capex] + metric_values_2[Metric.capex],
