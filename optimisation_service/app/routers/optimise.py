@@ -155,9 +155,14 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
     return OptimisationResultEntry(portfolio=portfolios, tasks=tasks)
 
 
-def check_epoch_versions():
+def check_epoch_versions() -> tuple[str | None, str | None]:
     """
     Checks the versions of EPOCH's headless exe and EPOCH's python bindings.
+
+    Returns
+    -------
+    tuple[str | None, str | None]
+        Headless version (if available, None otherwise) and pybind version (if available, None otherwise)
     """
     has_headless = False
     has_bindings = False
@@ -168,6 +173,7 @@ def check_epoch_versions():
         headless_version = result.stdout.splitlines()[-1]
         has_headless = True
     except Exception as e:
+        headless_version = None
         logger.debug(f"Failed to fetch headless version! {e}")
 
     try:
@@ -176,6 +182,7 @@ def check_epoch_versions():
         pybind_version = epoch_simulator.__version__  # type: ignore
         has_bindings = True
     except Exception as e:
+        pybind_version = None
         logger.debug(f"Failed to fetch epoch_simulator version! {e}")
 
     if has_headless and has_bindings:
@@ -192,6 +199,8 @@ def check_epoch_versions():
 
     else:
         logger.warning("Failed to fetch both headless and epoch_simulator!")
+
+    return headless_version, pybind_version
 
 
 async def process_requests(q: IQueue) -> None:
@@ -243,7 +252,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
         Optimisation task to be added to queue.
     """
     site = Site(name=endpoint_task.site_data.site_id, site_range=endpoint_task.site_range, site_data=endpoint_task.site_data)
-
+    _, pybind_version = check_epoch_versions()
     epp_task = Task(
         name=endpoint_task.name,
         optimiser=endpoint_task.optimiser,
@@ -252,6 +261,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
         portfolio=[site],
         client_id=endpoint_task.client_id,
         portfolio_constraints={},
+        epoch_version=pybind_version,
     )
 
     response = await submit_portfolio(request=request, task=epp_task, data_manager=data_manager)
