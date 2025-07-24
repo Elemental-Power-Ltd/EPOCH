@@ -418,7 +418,7 @@ def evaluate_peak_hload(site_scenario: AnnotatedTaskData, site_data: EpochSiteDa
     if site_scenario.building is None:
         return 0
 
-    site_heat_generation = 0
+    site_heat_generation = 0.0
     if site_scenario.gas_heater is not None:
         site_heat_generation += site_scenario.gas_heater.maximum_output
     if site_scenario.heat_pump is not None:
