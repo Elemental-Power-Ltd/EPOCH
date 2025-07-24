@@ -63,7 +63,7 @@ class TestProblemInstance:
     def test_convert_chromosome_to_site_scenario(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
-            td_pydantic = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
+            td_pydantic = default_problem_instance.convert_site_chromosome_to_site_scenario(x, site.name)
             for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
                 if asset_name == "config":
                     pass
@@ -87,17 +87,19 @@ class TestProblemInstance:
     def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance):
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
-            site_scenario = default_problem_instance.convert_chromosome_to_site_scenario(x, site.name)
+            site_scenario = default_problem_instance.convert_site_chromosome_to_site_scenario(x, site.name)
             chromosome = default_problem_instance.convert_site_scenario_to_chromosome(site_scenario, site.name)
             assert all(chromosome == x)
 
     @pytest.mark.parametrize("x_value", [0, 1])
-    def test_simulate_portfolio(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
+    def test_convert_portfolio_chromosome_to_portfolio_scenario(
+        self, x_value: int, default_problem_instance: ProblemInstance
+    ) -> None:
         portfolio = default_problem_instance.portfolio
         x = np.array([x_value] * sum(count_parameters_to_optimise(site.site_range) for site in portfolio))
-        res = default_problem_instance.simulate_portfolio(x)
+        portfolio_scenario = default_problem_instance.convert_portfolio_chromosome_to_portfolio_scenario(x)
         for site in portfolio:
-            td_pydantic: AnnotatedTaskData = res.scenario[site.name].scenario
+            td_pydantic: AnnotatedTaskData = portfolio_scenario[site.name]
             for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
                 if asset_name == "config":
                     pass

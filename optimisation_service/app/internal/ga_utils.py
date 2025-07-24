@@ -179,9 +179,9 @@ class ProblemInstance(ElementwiseProblem):
         """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
-    def convert_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> AnnotatedTaskData:
+    def convert_site_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> AnnotatedTaskData:
         """
-        Convert a candidate solution from an array of indeces to a site scenario.
+        Convert a site's candidate solution from an array of indeces to a site scenario.
 
         Parameters
         ----------
@@ -238,6 +238,25 @@ class ProblemInstance(ElementwiseProblem):
 
         return AnnotatedTaskData.model_validate(site_scenario)
 
+    def convert_portfolio_chromosome_to_portfolio_scenario(self, x: npt.NDArray) -> dict[str, AnnotatedTaskData]:
+        """
+        Convert a portfolio's candidate solution from an array of indeces to dictionnary of site scenarios.
+
+        Parameters
+        ----------
+        x
+            A pymoo compatible portfolio solution (array of indeces).
+
+        Returns
+        -------
+        portfolio_scenarios
+            A dictionnary of site solutions indexed on the site ids.
+        """
+        x_dict = self.split_solution(x)
+        portfolio_scenarios = {name: self.convert_site_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
+
+        return portfolio_scenarios
+
     def convert_site_scenario_to_chromosome(self, site_scenario: AnnotatedTaskData, site_name: str) -> npt.NDArray:
         """
         Convert a candidate solution from a site scenario to an array of indeces.
@@ -284,24 +303,6 @@ class ProblemInstance(ElementwiseProblem):
                     x.append(site_range[param.asset_name][param.repeat_index][param.attr_name].index(value))
 
         return np.array(x)
-
-    def simulate_portfolio(self, x: npt.NDArray) -> PortfolioSolution:
-        """
-        Simulate a candidate portfolio solution.
-
-        Parameters
-        ----------
-        x
-            A candidate portfolio solution (array of parameter values).
-
-        Returns
-        -------
-        PortfolioSolution
-            The evaluated candidate solution.
-        """
-        x_dict = self.split_solution(x)
-        portfolio_pytd = {name: self.convert_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
-        return self.sim.simulate_portfolio(portfolio_pytd)
 
     def apply_directions(self, metric_values: MetricValues) -> MetricValues:
         """
@@ -363,8 +364,7 @@ class ProblemInstance(ElementwiseProblem):
         -------
         None
         """
-        x_dict = self.split_solution(x)
-        portfolio_scenarios = {name: self.convert_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
+        portfolio_scenarios = self.convert_portfolio_chromosome_to_portfolio_scenario(x=x)
 
         constraint_violations = []
         for site in self.portfolio:
