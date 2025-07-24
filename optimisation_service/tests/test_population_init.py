@@ -33,7 +33,7 @@ class TestGenerateSiteScenariosFromHeuristics:
             send_temp=[65],
             incumbent=False,
             age=0,
-            lifetime=10
+            lifetime=10,
         )
 
         asset = generate_asset_from_heuristics("heat_pump", heat_pump_range.model_dump(), estimates)

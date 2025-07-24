@@ -10,11 +10,11 @@ from typing import Any
 import httpx
 from fastapi import Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
-from pydantic import UUID4
 
-from ..models.core import OptimisationResultEntry, Task
-from ..models.simulate import EpochInputData, ResultReproConfig
-from ..models.site_data import DatasetTypeEnum, EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
+from app.models.core import OptimisationResultEntry, Task
+from app.models.database import dataset_id_t
+from app.models.simulate import EpochInputData, ResultReproConfig
+from app.models.site_data import DatasetTypeEnum, EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
 
 logger = logging.getLogger("default")
 
@@ -73,7 +73,7 @@ class DataManager:
 
         return epoch_data
 
-    async def get_saved_epoch_input(self, portfolio_id: UUID4, site_id: str) -> EpochInputData:
+    async def get_saved_epoch_input(self, portfolio_id: dataset_id_t, site_id: str) -> EpochInputData:
         """
         Get the SiteData and TaskData that was used to produce a specific result in the database.
 
@@ -276,7 +276,7 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-task", data=data)
 
-    async def get_result_configuration(self, portfolio_id: UUID4) -> ResultReproConfig:
+    async def get_result_configuration(self, portfolio_id: dataset_id_t) -> ResultReproConfig:
         """
         Get the configuration that was used to generate a portfolio result that is stored in the database
 

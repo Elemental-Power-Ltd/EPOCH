@@ -51,10 +51,8 @@ class TestProblemInstance:
                     for sub_asset in asset:
                         if x_value or sub_asset["COMPONENT_IS_MANDATORY"]:
                             repeat_count += 1
-                    assert (
-                        (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count)
-                        or
-                        (repeat_count == 0 and not hasattr(td_pydantic, asset_name))
+                    assert (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count) or (
+                        repeat_count == 0 and not hasattr(td_pydantic, asset_name)
                     )
                 else:
                     # for singleton components, we check whether the component should be present or not
@@ -86,10 +84,8 @@ class TestProblemInstance:
                     for sub_asset in asset:
                         if x_value or sub_asset["COMPONENT_IS_MANDATORY"]:
                             repeat_count += 1
-                    assert (
-                        (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count)
-                        or
-                        (repeat_count == 0 and not hasattr(td_pydantic, asset_name))
+                    assert (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count) or (
+                        repeat_count == 0 and not hasattr(td_pydantic, asset_name)
                     )
                 else:
                     if not x_value and not asset["COMPONENT_IS_MANDATORY"]:
@@ -165,14 +161,10 @@ class TestRoundingAndDegenerateRepair:
             fabric_intervention_index=[0],
             incumbent=False,
             age=0,
-            lifetime=30
+            lifetime=30,
         )
         domestic_hot_water = DomesticHotWater(
-            COMPONENT_IS_MANDATORY=False,
-            cylinder_volume=[100, 200],
-            incumbent=False,
-            age=0,
-            lifetime=12
+            COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
         )
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
@@ -183,7 +175,7 @@ class TestRoundingAndDegenerateRepair:
             export_tariff=[0.05],
             incumbent=False,
             age=0,
-            lifetime=25
+            lifetime=25,
         )
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=False,
@@ -192,14 +184,14 @@ class TestRoundingAndDegenerateRepair:
             send_temp=[70],
             incumbent=False,
             age=0,
-            lifetime=10
+            lifetime=10,
         )
         config = Config(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
             npv_time_horizon=10,
-            npv_discount_factor=0.0
+            npv_discount_factor=0.0,
         )
         site_range = SiteRange(
             building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
@@ -223,14 +215,10 @@ class TestRoundingAndDegenerateRepair:
             fabric_intervention_index=[0],
             incumbent=False,
             age=0,
-            lifetime=30
+            lifetime=30,
         )
         domestic_hot_water = DomesticHotWater(
-            COMPONENT_IS_MANDATORY=False,
-            cylinder_volume=[100, 200],
-            incumbent=False,
-            age=0,
-            lifetime=12
+            COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
         )
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
@@ -241,7 +229,7 @@ class TestRoundingAndDegenerateRepair:
             export_tariff=[0.05],
             incumbent=False,
             age=0,
-            lifetime=25
+            lifetime=25,
         )
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=False,
@@ -250,14 +238,14 @@ class TestRoundingAndDegenerateRepair:
             send_temp=[70],
             incumbent=False,
             age=0,
-            lifetime=10
+            lifetime=10,
         )
         config = Config(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
             npv_time_horizon=10,
-            npv_discount_factor=0.0
+            npv_discount_factor=0.0,
         )
         site_range = SiteRange(
             building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
@@ -281,14 +269,10 @@ class TestRoundingAndDegenerateRepair:
             fabric_intervention_index=[0, 1],
             incumbent=False,
             age=0,
-            lifetime=30
+            lifetime=30,
         )
         domestic_hot_water = DomesticHotWater(
-            COMPONENT_IS_MANDATORY=False,
-            cylinder_volume=[100, 200],
-            incumbent=False,
-            age=0,
-            lifetime=12
+            COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
         )
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
@@ -299,16 +283,12 @@ class TestRoundingAndDegenerateRepair:
             export_tariff=[0.05],
             incumbent=False,
             age=0,
-            lifetime=25
+            lifetime=25,
         )
         config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
         panel = SolarPanel(
-            COMPONENT_IS_MANDATORY=False,
-            yield_scalar=[100, 200],
-            yield_index=[0],
-            incumbent=False,
-            age=0,
-            lifetime=25)
+            COMPONENT_IS_MANDATORY=False, yield_scalar=[100, 200], yield_index=[0], incumbent=False, age=0, lifetime=25
+        )
 
         site_range = SiteRange(
             building=building,
@@ -322,29 +302,25 @@ class TestRoundingAndDegenerateRepair:
 
         rdr = RoundingAndDegenerateRepair()
 
-        X = np.array(
-            [
-                [0, 1, 1, 1, 1, 1],
-                [1, 0, 1, 1, 1, 1],
-                [1, 1, 0, 1, 1, 1],
-                [1, 1, 1, 0, 1, 1],
-                [1, 1, 1, 1, 0, 1],
-                [1, 1, 1, 1, 1, 0],
-            ]
-        )
+        X = np.array([
+            [0, 1, 1, 1, 1, 1],
+            [1, 0, 1, 1, 1, 1],
+            [1, 1, 0, 1, 1, 1],
+            [1, 1, 1, 0, 1, 1],
+            [1, 1, 1, 1, 0, 1],
+            [1, 1, 1, 1, 1, 0],
+        ])
 
         res = rdr._do(pi, X)
         assert res.shape == X.shape
         assert (
             res
-            == np.array(
-                [
-                    [0, 0, 1, 1, 1, 1],
-                    [1, 0, 1, 1, 1, 1],
-                    [1, 1, 0, 1, 1, 1],
-                    [1, 1, 1, 0, 0, 1],
-                    [1, 1, 1, 1, 0, 1],
-                    [1, 1, 1, 1, 1, 0],
-                ]
-            )
+            == np.array([
+                [0, 0, 1, 1, 1, 1],
+                [1, 0, 1, 1, 1, 1],
+                [1, 1, 0, 1, 1, 1],
+                [1, 1, 1, 0, 0, 1],
+                [1, 1, 1, 1, 0, 1],
+                [1, 1, 1, 1, 1, 0],
+            ])
         ).all

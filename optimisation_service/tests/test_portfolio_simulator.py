@@ -26,7 +26,7 @@ class TestPortfolioSimulator:
             epoch_config_dict={
                 "amcott_house": default_config,
                 "bircotes_leisure_centre": default_config,
-            }
+            },
         )
 
     def test_simulate_portfolio(self, default_config: Config) -> None:
@@ -40,7 +40,7 @@ class TestPortfolioSimulator:
             epoch_config_dict={
                 "amcott_house": default_config,
                 "bircotes_leisure_centre": default_config,
-            }
+            },
         )
         atd = AnnotatedTaskData.model_validate_json(TaskData().to_json())
         portfolio_scenarios = {"amcott_house": atd, "bircotes_leisure_centre": atd}

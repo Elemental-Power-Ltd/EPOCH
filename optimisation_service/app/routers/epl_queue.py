@@ -4,9 +4,10 @@ import logging
 from collections import OrderedDict
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import UUID4, PositiveInt
+from pydantic import PositiveInt
 
 from app.models.core import Task
+from app.models.database import dataset_id_t
 from app.models.epl_queue import QueueElem, QueueStatus, TaskWDataManager, task_state
 
 logger = logging.getLogger("default")
@@ -81,7 +82,7 @@ class IQueue(asyncio.Queue):
         del self.q[task.task_id]
         super().task_done()
 
-    def cancel(self, task_id: UUID4) -> None:
+    def cancel(self, task_id: dataset_id_t) -> None:
         """
         Cancel a task in queue.
 
@@ -135,7 +136,7 @@ async def get_queue_status(request: Request) -> QueueStatus:
 
 
 @router.post("/cancel-task")
-async def cancel_task_in_queue(request: Request, task_id: UUID4) -> str:
+async def cancel_task_in_queue(request: Request, task_id: dataset_id_t) -> str:
     """
     Cancels task in queue.
     Can not be used to cancel tasks already running.

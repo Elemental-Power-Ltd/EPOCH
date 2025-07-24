@@ -1,12 +1,13 @@
 from typing import Annotated
+from uuid import UUID
 
-from pydantic import UUID4, AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 
 dataset_id_field = Field(
-    examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv4) of a dataset."
+    examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"], description="Unique ID (generally a UUIDv7) of a dataset."
 )
-dataset_id_t = Annotated[UUID4, "String serialised UUID"]
-site_id_t = str
+type dataset_id_t = Annotated[UUID, "String serialised UUID, either UUIDv4 or UUIDv7"]
+type site_id_t = str
 
 
 class DatasetIDWithTime(BaseModel):

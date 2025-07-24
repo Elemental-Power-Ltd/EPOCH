@@ -45,14 +45,10 @@ class TestSubmitPortfolioTask:
             fabric_intervention_index=[0],
             incumbent=False,
             age=0,
-            lifetime=30
+            lifetime=30,
         )
         domestic_hot_water = DomesticHotWater(
-            COMPONENT_IS_MANDATORY=True,
-            cylinder_volume=[100],
-            incumbent=False,
-            age=0,
-            lifetime=12
+            COMPONENT_IS_MANDATORY=True, cylinder_volume=[100], incumbent=False, age=0, lifetime=12
         )
         energy_storage_system = EnergyStorageSystem(
             COMPONENT_IS_MANDATORY=True,
@@ -63,7 +59,7 @@ class TestSubmitPortfolioTask:
             initial_charge=[0],
             incumbent=False,
             age=0,
-            lifetime=15
+            lifetime=15,
         )
         grid = Grid(
             COMPONENT_IS_MANDATORY=True,
@@ -74,7 +70,7 @@ class TestSubmitPortfolioTask:
             export_tariff=[0.05],
             incumbent=False,
             age=0,
-            lifetime=25
+            lifetime=25,
         )
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=True,
@@ -83,22 +79,17 @@ class TestSubmitPortfolioTask:
             send_temp=[70],
             incumbent=False,
             age=0,
-            lifetime=10
+            lifetime=10,
         )
         panel = SolarPanel(
-            COMPONENT_IS_MANDATORY=True,
-            yield_scalar=[100],
-            yield_index=[0],
-            incumbent=False,
-            age=0,
-            lifetime=25
+            COMPONENT_IS_MANDATORY=True, yield_scalar=[100], yield_index=[0], incumbent=False, age=0, lifetime=25
         )
         config = Config(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
             npv_time_horizon=10,
-            npv_discount_factor=0.0
+            npv_discount_factor=0.0,
         )
 
         empty_site_range = SiteRange(
