@@ -60,7 +60,7 @@ class Task(BaseModel):
         default_factory=uuid.uuid4,
         description="Unique ID (generally a UUIDv4) of an optimisation task.",
     )
-    epoch_version: str  | None = Field(description="EPOCH version that this task was submitted for")
+    epoch_version: str | None = Field(description="EPOCH version that this task was submitted for")
 
 
 class TaskResponse(BaseModel):
@@ -228,8 +228,7 @@ class PortfolioMetrics(BaseModel):
         default=None,
     )
     operating_balance: float | None = Field(
-        description="Monetary savings across the portfolio "
-        "from fuel, electricity and opex when compared against the baseline.",
+        description="Monetary savings across the portfolio from fuel, electricity and opex when compared against the baseline.",
         default=None,
     )
     cost_balance: float | None = Field(
@@ -268,7 +267,7 @@ class PortfolioMetrics(BaseModel):
     )
     total_dhw_shortfall: float | None = Field(
         description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None
+        default=None,
     )
     total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas across this portfolio", default=None)
     total_electricity_import_cost: float | None = Field(
@@ -307,11 +306,11 @@ class PortfolioMetrics(BaseModel):
     )
     baseline_ch_shortfall: float | None = Field(
         description="Baseline central heating (CH) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None
+        default=None,
     )
     baseline_dhw_shortfall: float | None = Field(
         description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None
+        default=None,
     )
     baseline_gas_import_cost: float | None = Field(
         description="Baseline spend (£) importing gas across this portfolio", default=None

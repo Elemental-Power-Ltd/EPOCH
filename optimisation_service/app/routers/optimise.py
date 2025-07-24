@@ -202,6 +202,7 @@ def check_epoch_versions() -> tuple[str | None, str | None]:
 
     return headless_version, pybind_version
 
+
 async def process_requests(q: IQueue) -> None:
     """
     Loop to process tasks in queue.
@@ -260,7 +261,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
         portfolio=[site],
         client_id=endpoint_task.client_id,
         portfolio_constraints={},
-        epoch_version=pybind_version
+        epoch_version=pybind_version,
     )
 
     response = await submit_portfolio(request=request, task=epp_task, data_manager=data_manager)
