@@ -117,6 +117,7 @@ class TestProblemInstance:
         n_constraints = count_constraints(default_problem_instance.constraints)
         for site in default_problem_instance.portfolio:
             n_constraints += count_constraints(site.constraints)
+            n_constraints += 1  # peak_hload constraints
 
         assert len(default_problem_instance.calculate_infeasibility(dummy_portfolio_solution)) == n_constraints
 

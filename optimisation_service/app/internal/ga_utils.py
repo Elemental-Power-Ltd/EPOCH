@@ -49,6 +49,7 @@ class ProblemInstance(ElementwiseProblem):
         n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
         for site in portfolio:
             n_ieq_constr += sum(len(bounds) for bounds in site.constraints.values())
+            n_ieq_constr += 1  # peak_hload constraints
 
         epoch_data_dict = {}
         epoch_config_dict = {}
@@ -342,7 +343,7 @@ class ProblemInstance(ElementwiseProblem):
         for site in self.portfolio:
             site_solution = portfolio_solution.scenario[site.site_data.site_id]
             excess.extend(evaluate_excess(metric_values=site_solution.metric_values, constraints=site.constraints))
-            excess.extend(evaluate_peak_hload(scenario=site_solution.scenario, site_data=site._epoch_data))
+            excess.append(evaluate_peak_hload(site_scenario=site_solution.scenario, site_data=site._epoch_data))
 
         return excess
 
