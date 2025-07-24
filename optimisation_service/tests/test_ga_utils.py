@@ -15,15 +15,30 @@ from app.internal.site_range import REPEAT_COMPONENTS, count_parameters_to_optim
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.epoch_types.site_range_type import (
-    Building,
-    Config,
-    DomesticHotWater,
-    Grid,
-    HeatPump,
-    HeatSourceEnum,
-    SiteRange,
-    SolarPanel,
+    Building as BuildingRange,
 )
+from app.models.epoch_types.site_range_type import (
+    Config as ConfigRange,
+)
+from app.models.epoch_types.site_range_type import (
+    DomesticHotWater as DomesticHotWaterRange,
+)
+from app.models.epoch_types.site_range_type import (
+    Grid as GridRange,
+)
+from app.models.epoch_types.site_range_type import (
+    HeatPump as HeatPumpRange,
+)
+from app.models.epoch_types.site_range_type import (
+    HeatSourceEnum as HeatSourceEnumRange,
+)
+from app.models.epoch_types.site_range_type import (
+    SiteRange,
+)
+from app.models.epoch_types.site_range_type import (
+    SolarPanel as SolarPanelRange,
+)
+from app.models.epoch_types.task_data_type import Building, GasHeater, HeatPump
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _METRICS, _OBJECTIVES, Metric, MetricValues
 from app.models.result import PortfolioSolution, SiteSolution
@@ -149,6 +164,80 @@ class TestEvaluatePeakHload:
     def test_it_works(self, default_epoch_data: EpochSiteData, dummy_site_solution: SiteSolution):
         evaluate_peak_hload(site_scenario=dummy_site_solution.scenario, site_data=default_epoch_data)
 
+    def test_undersized_heat_pump(self, default_epoch_data: EpochSiteData):
+        scenario = AnnotatedTaskData()
+        scenario.building = Building()
+
+        peak_hload = default_epoch_data.peak_hload
+
+        scenario.heat_pump = HeatPump(heat_power=peak_hload - 1)
+
+        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 1
+
+    def test_undersized_gas_heater(self, default_epoch_data: EpochSiteData):
+        scenario = AnnotatedTaskData()
+        scenario.building = Building()
+
+        peak_hload = default_epoch_data.peak_hload
+
+        scenario.gas_heater = GasHeater(maximum_output=peak_hload - 1)
+
+        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 1
+
+    def test_undersized_gas_heater_and_heat_pump(self, default_epoch_data: EpochSiteData):
+        scenario = AnnotatedTaskData()
+        scenario.building = Building()
+
+        peak_hload = default_epoch_data.peak_hload
+
+        scenario.gas_heater = GasHeater(maximum_output=peak_hload / 2 - 1)
+        scenario.heat_pump = HeatPump(heat_power=peak_hload / 2 - 1)
+
+        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 2
+
+    def test_oversized_heat_pump(self, default_epoch_data: EpochSiteData):
+        scenario = AnnotatedTaskData()
+        scenario.building = Building()
+
+        peak_hload = default_epoch_data.peak_hload
+
+        scenario.heat_pump = HeatPump(heat_power=peak_hload + 1)
+
+        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -1
+
+    def test_oversized_gas_heater(self, default_epoch_data: EpochSiteData):
+        scenario = AnnotatedTaskData()
+        scenario.building = Building()
+
+        peak_hload = default_epoch_data.peak_hload
+
+        scenario.gas_heater = GasHeater(maximum_output=peak_hload + 1)
+
+        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -1
+
+    def test_oversized_gas_heater_and_heat_pump(self, default_epoch_data: EpochSiteData):
+        scenario = AnnotatedTaskData()
+        scenario.building = Building()
+
+        peak_hload = default_epoch_data.peak_hload
+
+        scenario.gas_heater = GasHeater(maximum_output=peak_hload / 2 + 1)
+        scenario.heat_pump = HeatPump(heat_power=peak_hload / 2 + 1)
+
+        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -2
+
+    def test_fabric_intervention_peak_hload(self, default_epoch_data: EpochSiteData):
+        scenario = AnnotatedTaskData()
+        scenario.building = Building()
+        scenario.heat_pump = HeatPump(heat_power=50)
+
+        scenario.building.fabric_intervention_index = 1
+        res_w_fabric = evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data)
+
+        scenario.building.fabric_intervention_index = 0
+        res_wo_fabric = evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data)
+        assert res_w_fabric <= res_wo_fabric
+
 
 class TestSimpleIntMutation:
     def test_mut_simple_int_works(self):
@@ -167,7 +256,7 @@ class TestSimpleIntMutation:
 
 class TestRoundingAndDegenerateRepair:
     def test_rounding(self, default_objectives: list[Metric], default_constraints: Constraints):
-        building = Building(
+        building = BuildingRange(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1],
             scalar_electrical_load=[1],
@@ -176,10 +265,10 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=30,
         )
-        domestic_hot_water = DomesticHotWater(
+        domestic_hot_water = DomesticHotWaterRange(
             COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
         )
-        grid = Grid(
+        grid = GridRange(
             COMPONENT_IS_MANDATORY=True,
             grid_export=[60],
             grid_import=[60],
@@ -190,16 +279,16 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=25,
         )
-        heat_pump = HeatPump(
+        heat_pump = HeatPumpRange(
             COMPONENT_IS_MANDATORY=False,
             heat_power=[100, 200],
-            heat_source=[HeatSourceEnum.AMBIENT_AIR],
+            heat_source=[HeatSourceEnumRange.AMBIENT_AIR],
             send_temp=[70],
             incumbent=False,
             age=0,
             lifetime=10,
         )
-        config = Config(
+        config = ConfigRange(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
@@ -221,7 +310,7 @@ class TestRoundingAndDegenerateRepair:
         assert res.shape == X.shape
 
     def test_degeneracy(self, default_objectives: list[Metric], default_constraints: Constraints):
-        building = Building(
+        building = BuildingRange(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1],
             scalar_electrical_load=[1],
@@ -230,10 +319,10 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=30,
         )
-        domestic_hot_water = DomesticHotWater(
+        domestic_hot_water = DomesticHotWaterRange(
             COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
         )
-        grid = Grid(
+        grid = GridRange(
             COMPONENT_IS_MANDATORY=True,
             grid_export=[60],
             grid_import=[60],
@@ -244,16 +333,16 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=25,
         )
-        heat_pump = HeatPump(
+        heat_pump = HeatPumpRange(
             COMPONENT_IS_MANDATORY=False,
             heat_power=[100, 200],
-            heat_source=[HeatSourceEnum.AMBIENT_AIR],
+            heat_source=[HeatSourceEnumRange.AMBIENT_AIR],
             send_temp=[70],
             incumbent=False,
             age=0,
             lifetime=10,
         )
-        config = Config(
+        config = ConfigRange(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
@@ -275,7 +364,7 @@ class TestRoundingAndDegenerateRepair:
         assert (res == np.array([[0, 0, 1, 1, 1], [1, 0, 1, 1, 1], [1, 1, 0, 1, 1], [1, 1, 1, 0, 0], [1, 1, 1, 1, 0]])).all
 
     def test_degeneracy_with_renewables(self, default_objectives: list[Metric], default_constraints: Constraints):
-        building = Building(
+        building = BuildingRange(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1],
             scalar_electrical_load=[1],
@@ -284,10 +373,10 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=30,
         )
-        domestic_hot_water = DomesticHotWater(
+        domestic_hot_water = DomesticHotWaterRange(
             COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
         )
-        grid = Grid(
+        grid = GridRange(
             COMPONENT_IS_MANDATORY=True,
             grid_export=[60],
             grid_import=[60],
@@ -298,8 +387,8 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=25,
         )
-        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
-        panel = SolarPanel(
+        config = ConfigRange(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
+        panel = SolarPanelRange(
             COMPONENT_IS_MANDATORY=False, yield_scalar=[100, 200], yield_index=[0], incumbent=False, age=0, lifetime=25
         )
 
