@@ -141,7 +141,7 @@ class SiteOptimisationResult(pydantic.BaseModel):
     """Result for a single site within a portfolio result."""
 
     site_id: site_id_t = site_id_field
-    portfolio_id: pydantic.UUID7 = pydantic.Field(
+    portfolio_id: dataset_id_t = pydantic.Field(
         description="The portfolio pareto front entry this site is linked to."
         + " A single site result is uniquely identified by a (portfolio_id, site_id) pair."
     )
@@ -287,8 +287,8 @@ class PortfolioMetrics(BaseModel):
 class PortfolioOptimisationResult(pydantic.BaseModel):
     """Result for a whole portfolio optimisation task, often one entry in the Pareto front."""
 
-    task_id: pydantic.UUID7
-    portfolio_id: pydantic.UUID7 = pydantic.Field(
+    task_id: dataset_id_t
+    portfolio_id: dataset_id_t = pydantic.Field(
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
@@ -309,7 +309,7 @@ class HighlightReason(StrEnum):
 class HighlightedResult(pydantic.BaseModel):
     """A portfolio result we want to draw attention to and a reason why."""
 
-    portfolio_id: pydantic.UUID7 = pydantic.Field(
+    portfolio_id: dataset_id_t = pydantic.Field(
         description="Individual ID representing this entry in the portfolio pareto front."
     )
     reason: HighlightReason = pydantic.Field(description="The reason the portfolio result is highlighted.")
@@ -329,7 +329,7 @@ class OptimisationResultsResponse(pydantic.BaseModel):
 class TaskResult(pydantic.BaseModel):
     """Result for metadata about an optimisation task."""
 
-    task_id: pydantic.UUID7
+    task_id: dataset_id_t
     n_evals: pydantic.PositiveInt = pydantic.Field(
         description="Number of site scenarios evaluated during this task.", examples=[1, 9999]
     )
@@ -388,7 +388,7 @@ class Optimiser(pydantic.BaseModel):
 
 
 class TaskConfig(pydantic.BaseModel):
-    task_id: pydantic.UUID7 = pydantic.Field(description="Unique ID for this specific task.")
+    task_id: dataset_id_t = pydantic.Field(description="Unique ID for this specific task.")
     client_id: client_id_t = pydantic.Field(
         examples=["demo"],
         description="The database ID for a client, all lower case, joined by underscores.",
