@@ -451,6 +451,9 @@ class TaskConfig(pydantic.BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC),
         description="The time this Task was created and added to the queue.",
     )
+    epoch_version: str | None = pydantic.Field(
+        default=None, description="The EPOCH version this task was created with; None if unknown"
+    )
 
 
 class ResultReproConfig(pydantic.BaseModel):
