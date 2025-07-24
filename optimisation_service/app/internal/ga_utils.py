@@ -19,6 +19,7 @@ from app.models.core import Site
 from app.models.epoch_types import TaskDataPydantic
 from app.models.ga_utils import AnnotatedTaskData, AssetParameter, ParsedAsset, asset_t, value_t
 from app.models.metrics import Metric, MetricDirection, MetricValues
+from app.models.site_data import EpochSiteData
 
 logger = logging.getLogger("default")
 
@@ -339,8 +340,9 @@ class ProblemInstance(ElementwiseProblem):
 
         # evaluate site constraints
         for site in self.portfolio:
-            metric_values = portfolio_solution.scenario[site.site_data.site_id].metric_values
-            excess.extend(evaluate_excess(metric_values=metric_values, constraints=site.constraints))
+            site_solution = portfolio_solution.scenario[site.site_data.site_id]
+            excess.extend(evaluate_excess(metric_values=site_solution.metric_values, constraints=site.constraints))
+            excess.extend(evaluate_peak_hload(scenario=site_solution.scenario, site_data=site._epoch_data))
 
         return excess
 
@@ -395,6 +397,41 @@ def evaluate_excess(metric_values: MetricValues, constraints: Constraints) -> li
     return excess
 
 
+def evaluate_peak_hload(site_scenario: AnnotatedTaskData, site_data: EpochSiteData) -> float:
+    """
+    Evaluate a site scenario's maximum heat generation against its peak heat load requirement.
+
+    Parameters
+    ----------
+    site_scenario
+        The site scenario to evaluate.
+    site_data
+        The input data for the site.
+
+    Returns
+    -------
+        Difference between the peak heat load requirement and the site scenario's maximum heat generation.
+        A negative value indicates that the maximum heat generation is greater than the peak heat load requirement.
+        A positive value indicates that the maximum heat generation is smaller than the peak heat load requirement.
+    """
+    if site_scenario.building is None:
+        return 0
+
+    site_heat_generation = 0
+    if site_scenario.gas_heater is not None:
+        site_heat_generation += site_scenario.gas_heater.maximum_output
+    if site_scenario.heat_pump is not None:
+        site_heat_generation += site_scenario.heat_pump.heat_power
+
+    fabric_intervention_index = site_scenario.building.fabric_intervention_index
+    if fabric_intervention_index == 0:
+        peak_hload_req = site_data.peak_hload
+    else:
+        peak_hload_req = site_data.fabric_interventions[fabric_intervention_index - 1].peak_hload
+
+    return peak_hload_req - site_heat_generation
+
+
 class EstimateBasedSampling(Sampling):
     """
     Generate a population of solutions by estimating some parameter values from data.
@@ -409,9 +446,9 @@ class EstimateBasedSampling(Sampling):
                 epoch_data=site._epoch_data,
                 pop_size=n_samples,
             )
-            site_pops.append([
-                problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios
-            ])
+            site_pops.append(
+                [problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios]
+            )
         portfolio_pop = np.concatenate(site_pops, axis=1)
         return portfolio_pop
 
