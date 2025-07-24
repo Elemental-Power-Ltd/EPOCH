@@ -41,14 +41,10 @@ def default_siterange() -> SiteRange:
         fabric_intervention_index=[0],
         incumbent=False,
         age=0,
-        lifetime=30
+        lifetime=30,
     )
     domestic_hot_water = DomesticHotWater(
-        COMPONENT_IS_MANDATORY=False,
-        cylinder_volume=[100, 200],
-        incumbent=False,
-        age=0,
-        lifetime=12
+        COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
     )
     energy_storage_system = EnergyStorageSystem(
         COMPONENT_IS_MANDATORY=False,
@@ -59,7 +55,7 @@ def default_siterange() -> SiteRange:
         initial_charge=[0],
         incumbent=False,
         age=0,
-        lifetime=15
+        lifetime=15,
     )
     gas_heater = GasHeater(
         COMPONENT_IS_MANDATORY=True,
@@ -68,7 +64,7 @@ def default_siterange() -> SiteRange:
         gas_type=[GasTypeEnum.NATURAL_GAS, GasTypeEnum.LIQUID_PETROLEUM_GAS],
         incumbent=True,
         age=0,
-        lifetime=10
+        lifetime=10,
     )
     grid = Grid(
         COMPONENT_IS_MANDATORY=True,
@@ -79,7 +75,7 @@ def default_siterange() -> SiteRange:
         export_tariff=[0.05],
         incumbent=False,
         age=0,
-        lifetime=25
+        lifetime=25,
     )
     heat_pump = HeatPump(
         COMPONENT_IS_MANDATORY=False,
@@ -88,22 +84,17 @@ def default_siterange() -> SiteRange:
         send_temp=[70],
         incumbent=False,
         age=0,
-        lifetime=10
+        lifetime=10,
     )
     panel = SolarPanel(
-        COMPONENT_IS_MANDATORY=False,
-        yield_scalar=[100, 200],
-        yield_index=[0],
-        incumbent=False,
-        age=0,
-        lifetime=25
+        COMPONENT_IS_MANDATORY=False, yield_scalar=[100, 200], yield_index=[0], incumbent=False, age=0, lifetime=25
     )
     config = Config(
         capex_limit=99999999999,
         use_boiler_upgrade_scheme=False,
         general_grant_funding=0,
         npv_time_horizon=10,
-        npv_discount_factor=0.0
+        npv_discount_factor=0.0,
     )
 
     return SiteRange(
@@ -218,6 +209,11 @@ def gen_dummy_portfolio_solution(portfolio: list[Site]) -> PortfolioSolution:
 
 def gen_dummy_portfolio_solutions(portfolio: list[Site]) -> list[PortfolioSolution]:
     return [gen_dummy_portfolio_solution(portfolio) for _ in range(10)]
+
+
+@pytest.fixture
+def dummy_site_solution(default_site: Site) -> SiteSolution:
+    return gen_dummy_site_solution(default_site)
 
 
 @pytest.fixture
