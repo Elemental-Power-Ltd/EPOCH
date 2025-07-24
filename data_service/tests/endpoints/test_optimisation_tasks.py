@@ -486,7 +486,7 @@ class TestOptimisationTaskDatabaseUUID4:
     def sample_task_config(self) -> TaskConfig:
         """Create a sample task to put in our database."""
         return TaskConfig(
-            task_id=uuid7(),
+            task_id=uuid.uuid4(),
             task_name="test_task_config",
             client_id="demo",
             portfolio_constraints={"capex": {"max": 1e5}},
