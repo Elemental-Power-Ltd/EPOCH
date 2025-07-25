@@ -1,13 +1,13 @@
 import pytest
 
-from app.internal.result import do_nothing_scenario
+from app.internal.result import get_baseline_portfolio_solution
 from app.models.core import Site
 from app.models.result import OptimisationResult
 
 
-class TestDoNothingScenario:
+class TestGetBaselinePortfolioSolution:
     def test_good_inputs(self, default_portfolio: list[Site]):
-        res = do_nothing_scenario(portfolio=default_portfolio)
+        res = get_baseline_portfolio_solution(portfolio=default_portfolio)
         assert all(site.site_data.site_id in res.scenario.keys() for site in default_portfolio)
 
 
