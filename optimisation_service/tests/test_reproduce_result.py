@@ -2,7 +2,7 @@ import datetime
 from uuid import UUID, uuid4
 
 from app.internal.uuid7 import uuid7
-from app.models.epoch_types.task_data_type import Building, Config, GasHeater, Grid, SolarPanel, GasType
+from app.models.epoch_types.task_data_type import Building, Config, GasHeater, GasType, Grid, SolarPanel
 from app.models.simulate import ResultReproConfig
 from app.models.site_data import FileLoc, RemoteMetaData, TaskData
 
