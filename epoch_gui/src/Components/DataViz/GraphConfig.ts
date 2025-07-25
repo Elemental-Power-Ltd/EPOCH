@@ -67,8 +67,8 @@ export const all_surplus_stackbars = [...elec_surplus_stackbars, ...heat_surplus
 export const all_flagged_stackbars = [...all_shortfall_stackbars, ...all_surplus_stackbars];
 
 // mark the stackbars on whether we need them above or below 0
-export const all_positive_stackbars = [...elec_supply_stackbars, ...heat_supply_stackbars, ...all_surplus_stackbars];
-export const all_negative_stackbars = [...elec_draw_stackbars, ...heat_draw_stackbars, ...all_shortfall_stackbars];
+export const all_negative_stackbars = [...elec_supply_stackbars, ...heat_supply_stackbars, ...all_surplus_stackbars];
+export const all_positive_stackbars = [...elec_draw_stackbars, ...heat_draw_stackbars, ...all_shortfall_stackbars];
 
 export const all_energy_stackbars = [...all_positive_stackbars, ...all_negative_stackbars];
 

@@ -46,16 +46,16 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
     );
 
     // Calculate the negative total (energy draw)
-    const negativeTotals = filteredAndRangedData[Object.keys(filteredAndRangedData)[0]].map((_, i) =>
+    const drawTotals = filteredAndRangedData[Object.keys(filteredAndRangedData)[0]].map((_, i) =>
         Object.entries(filteredAndRangedData)
-            .filter(([key]) => all_negative_stackbars.includes(key))
+            .filter(([key]) => all_positive_stackbars.includes(key))
             .reduce((sum, [_, arr]) => sum + arr[i], 0)
     );
 
     // Calculate the positive total (energy supply)
-    const positiveTotals = filteredAndRangedData[Object.keys(filteredAndRangedData)[0]].map((_, i) =>
+    const supplyTotals = filteredAndRangedData[Object.keys(filteredAndRangedData)[0]].map((_, i) =>
         Object.entries(filteredAndRangedData)
-            .filter(([key]) => all_positive_stackbars.includes(key))
+            .filter(([key]) => all_negative_stackbars.includes(key))
             .reduce((sum, [_, arr]) => sum + arr[i], 0)
     );
 
@@ -84,7 +84,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                     name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
-                    customdata: negativeTotals,
+                    customdata: drawTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
                 };
@@ -100,7 +100,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                     name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
-                    customdata: positiveTotals,
+                    customdata: supplyTotals,
                     hoverinfo: 'x+y+name',
                     hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
                 };
@@ -116,7 +116,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                     name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
-                    customdata: negativeTotals,
+                    customdata: drawTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
                 };
@@ -132,7 +132,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                     name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
-                    customdata: positiveTotals,
+                    customdata: supplyTotals,
                     hoverinfo: 'x+y+name',
                     hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
                 };
@@ -148,7 +148,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                     name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
-                    customdata: negativeTotals,
+                    customdata: drawTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
                 };
@@ -164,7 +164,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                     name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
-                    customdata: negativeTotals,
+                    customdata: drawTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total draw: %{customdata:.4f}',
                 };
@@ -180,7 +180,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                     name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
-                    customdata: positiveTotals,
+                    customdata: supplyTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
                 };
@@ -196,7 +196,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                     name: rangedData[key]?.name || key,
                     type: 'bar',
                     marker: getMarker(key),
-                    customdata: positiveTotals,
+                    customdata: supplyTotals,
                     hoverinfo: 'name+x+y',
                     hovertemplate: 'Value: %{y:.4f}<br>Total supply: %{customdata:.4f}',
                 };
