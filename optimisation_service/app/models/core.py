@@ -13,6 +13,14 @@ from app.models.site_data import EpochSiteData, SiteMetaData
 
 logger = logging.getLogger("default")
 
+# We try to import the EPOCH simulator here to use it in the TaskData if it wasn't provided.
+try:
+    import epoch_simulator
+
+    epoch_version_ = epoch_simulator.__version__  # type: ignore
+except ImportError:
+    epoch_version_ = None
+
 
 class Site(BaseModel):
     name: str = Field(description="Human readable name for a building. Must be unique to portfolio.")
@@ -60,7 +68,7 @@ class Task(BaseModel):
         default_factory=uuid7,
         description="Unique ID (generally a UUIDv7) of an optimisation task.",
     )
-    epoch_version: str | None = Field(description="EPOCH version that this task was submitted for")
+    epoch_version: str | None = Field(description="EPOCH version that this task was submitted for", default=epoch_version_)
 
 
 class TaskResponse(BaseModel):

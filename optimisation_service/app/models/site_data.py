@@ -1,9 +1,10 @@
 from enum import StrEnum
 from os import PathLike
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import UUID4, AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 
+from app.models.database import dataset_id_t
 from app.models.epoch_types.task_data_type import TaskData
 
 
@@ -14,9 +15,6 @@ class FileLoc(StrEnum):
 
 class DataDuration(StrEnum):
     year = "year"
-
-
-dataset_id_t = Annotated[UUID4, "String serialised UUID"]
 
 
 class RemoteMetaData(BaseModel):
@@ -176,6 +174,6 @@ class DatasetTypeEnum(StrEnum):
 
 
 class DatasetEntry(BaseModel):
-    dataset_id: UUID4
+    dataset_id: dataset_id_t
     dataset_type: DatasetTypeEnum
     created_at: AwareDatetime
