@@ -167,6 +167,7 @@ class TestImportTariffs:
                 "start_ts": demo_start_ts.isoformat(),
                 "end_ts": demo_end_ts.isoformat(),
             },
+            timeout=10,
         )
         assert response.status_code == 200, response.text
         metadata = response.json()
@@ -196,6 +197,7 @@ class TestImportTariffs:
                     "start_ts": demo_start_ts.isoformat(),
                     "end_ts": demo_end_ts.isoformat(),
                 },
+                timeout=10,
             )
         ).json()
         expected_len = int((demo_end_ts - demo_start_ts) / pd.Timedelta(minutes=30))
@@ -219,6 +221,7 @@ class TestImportTariffs:
                 "start_ts": start_ts.isoformat(),
                 "end_ts": end_ts.isoformat(),
             },
+            timeout=10,
         )
         assert response.status_code == 200, response.text
         metadata = response.json()

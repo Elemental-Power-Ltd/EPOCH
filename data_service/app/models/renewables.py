@@ -71,6 +71,7 @@ class PvgisDataSourceEnum(StrEnum):
     SARAH = "PVGIS-SARAH"
     SARAH2 = "PVGIS-SARAH2"
     SARAH3 = "PVGIS-SARAH3"
+    UNKNOWN = "UNKNOWN"
 
 
 class PvgisMountingSystemEnum(StrEnum):
