@@ -24,7 +24,7 @@ from app.internal.constraints import is_in_constraints
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
-from app.internal.result import do_nothing_scenario
+from app.internal.result import get_baseline_portfolio_solution
 from app.models.algorithms import Algorithm
 from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
@@ -281,7 +281,7 @@ class NSGA2(Algorithm):
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
         non_dom_sol = res.X
         if non_dom_sol is None or len(non_dom_sol) == 0:
-            portfolio_solutions_pf = [do_nothing_scenario(portfolio)]
+            portfolio_solutions_pf = [get_baseline_portfolio_solution(portfolio)]
         else:
             if non_dom_sol.ndim == 1:
                 non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
@@ -455,7 +455,7 @@ class SeparatedNSGA2(Algorithm):
         if any(mask) > 0:
             combined_solutions = np.array(combined_solutions)[mask].tolist()
         elif not self.return_least_infeasible and not any(mask):
-            combined_solutions = [do_nothing_scenario(portfolio)]
+            combined_solutions = [get_baseline_portfolio_solution(portfolio)]
 
         total_exec_time = datetime.now(UTC) - start_time
 
