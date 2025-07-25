@@ -302,24 +302,24 @@ async def generate_heating_load_regression_impl(
 
     if gas_df.shape[0] < 3:
         raise HTTPException(400, f"Dataset covered too little time: {gas_df.index.min()} to {gas_df.index.max()}")
-    async with pool.acquire() as conn:
-        fit_weather_df = weather_dataset_to_dataframe(
-            await get_weather(
-                WeatherRequest(location=location, start_ts=gas_df["start_ts"].min(), end_ts=gas_df["end_ts"].max()),
-                conn=conn,
-                http_client=http_client,
-            )
-        )
 
-        fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df, apply_bait=params.apply_bait)
-        changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions, params.savings_fraction)
-        forecast_weather_df = weather_dataset_to_dataframe(
-            await get_weather(
-                WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
-                conn=conn,
-                http_client=http_client,
-            )
+    fit_weather_df = weather_dataset_to_dataframe(
+        await get_weather(
+            WeatherRequest(location=location, start_ts=gas_df["start_ts"].min(), end_ts=gas_df["end_ts"].max()),
+            pool=pool,
+            http_client=http_client,
         )
+    )
+
+    fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df, apply_bait=params.apply_bait)
+    changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions, params.savings_fraction)
+    forecast_weather_df = weather_dataset_to_dataframe(
+        await get_weather(
+            WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+            pool=pool,
+            http_client=http_client,
+        )
+    )
 
     # We do this two step resampling to make sure we don't drop the last 23:30 entry if required
     forecast_weather_df = WeatherDataFrame(
@@ -498,19 +498,19 @@ async def generate_thermal_model_heating_load(
         raise HTTPException(400, "Must have provided a thermal model dataset ID to generate a heating load")
     thermal_model = await get_thermal_model(pool, dataset_id=DatasetID(dataset_id=params.structure_id))
 
-    async with pool.acquire() as conn:
-        if params.site_id is None:
-            raise HTTPException(400, "Must have provided a site ID for thermal model dataset fitting")
-        location = await get_location(SiteID(site_id=params.site_id), conn)
-        weather_records = await get_weather(
-            weather_request=WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
-            conn=conn,
-            http_client=http_client,
-        )
-        if weather_records is None:
-            raise HTTPException(400, f"Failed to get a weather dataset for {params}.")
-        weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records], index="timestamp")
-        weather_df["timestamp"] = weather_df.index
+    if params.site_id is None:
+        raise HTTPException(400, "Must have provided a site ID for thermal model dataset fitting")
+    location = await get_location(SiteID(site_id=params.site_id), pool)
+    weather_records = await get_weather(
+        weather_request=WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+        pool=pool,
+        http_client=http_client,
+    )
+    if weather_records is None:
+        raise HTTPException(400, f"Failed to get a weather dataset for {params}.")
+    weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records], index="timestamp")
+    weather_df["timestamp"] = weather_df.index
+
     elec_df = None
     heating_load_df = simulate_parameters(
         scale_factor=thermal_model.scale_factor,

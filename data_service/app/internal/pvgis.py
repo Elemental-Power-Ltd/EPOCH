@@ -74,9 +74,15 @@ async def get_pvgis_optima(
         res = await client.get(base_url, params=params)
     except httpx.TimeoutException:
         logger.warning(f"Failed to get PVGIS optima with {params} due to a timeout.")
+        logger.info(f"Exact query was: {base_url}, {params}.")
         return DEFAULT_OPTIMA_
     except httpx.RemoteProtocolError as ex:
-        logger.warning(f"Failed to get PVGIS optima with {params} due to a server error: {ex}.")
+        logger.warning(f"Failed to get PVGIS optima with {params} due to a RemoteProtocolError: {ex}.")
+        logger.info(f"Exact query was: {base_url}, {params}.")
+        return DEFAULT_OPTIMA_
+    except httpx.ConnectError as ex:
+        logger.warning(f"Failed to get PVGIS optima with {params} due to a ConnectError: {ex}.")
+        logger.info(f"Exact query was: {base_url}, {params}.")
         return DEFAULT_OPTIMA_
     assert res.status_code == 200, f"Failed to get PVGIS optima: {res.status_code}, {res.text}"
     data = res.json()

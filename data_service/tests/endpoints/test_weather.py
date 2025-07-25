@@ -1,6 +1,7 @@
 """Tests for weather endpoints."""
 
 # ruff: noqa: D101, D102, D103
+import asyncio
 import datetime
 
 import httpx
@@ -87,6 +88,46 @@ class TestGetWeather:
         )
 
         assert result.json() == again_result.json()
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    async def test_idempotent_taskgroup(
+        self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
+    ) -> None:
+        """Test that we can request the same weather twice in a row."""
+        async with asyncio.TaskGroup() as tg:
+            first_task = tg.create_task(
+                client.post(
+                    "/get-weather",
+                    json={"location": "Cardiff", "start_ts": demo_start_ts.isoformat(), "end_ts": demo_end_ts.isoformat()},
+                )
+            )
+
+            second_task = tg.create_task(
+                client.post(
+                    "/get-weather",
+                    json={
+                        "location": "Cardiff",
+                        "start_ts": (demo_start_ts - datetime.timedelta(days=1)).isoformat(),
+                        "end_ts": (demo_end_ts - datetime.timedelta(days=1)).isoformat(),
+                    },
+                )
+            )
+
+            third_task = tg.create_task(
+                client.post(
+                    "/get-weather",
+                    json={
+                        "location": "Cardiff",
+                        "start_ts": (demo_start_ts + datetime.timedelta(days=1)).isoformat(),
+                        "end_ts": (demo_end_ts + datetime.timedelta(days=1)).isoformat(),
+                    },
+                )
+            )
+        result = first_task.result().json()
+        again_result = second_task.result().json()
+        third_result = third_task.result().json()
+        assert len(result) == len(again_result) == len(third_result)
 
     @pytest.mark.asyncio
     @pytest.mark.external

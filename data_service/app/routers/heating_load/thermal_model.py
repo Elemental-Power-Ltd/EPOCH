@@ -198,17 +198,20 @@ async def fit_thermal_model_endpoint(
         await get_thermal_model(pool=pool, dataset_id=DatasetID(dataset_id=item.dataset_id)) for item in all_thermal_metadata
     ]
 
-    async with pool.acquire() as conn, httpx.AsyncClient() as client:
-        gas_meter_records = await get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), pool=pool)
-        elec_meter_records = await get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool)
-        location = await get_location(SiteID(site_id=params.site_id), conn=conn)
+    async with asyncio.TaskGroup() as tg:
+        location_task = tg.create_task(get_location(SiteID(site_id=params.site_id), pool=pool))
+        gas_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), pool=pool))
+        elec_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool))
+
+    location, gas_meter_records, elec_meter_records = location_task.result(), gas_meter_task.result(), elec_meter_task.result()
+    async with httpx.AsyncClient() as client:
         weather_records = await get_weather(
             weather_request=WeatherRequest(
                 location=location,
                 start_ts=min(item.start_ts for item in gas_meter_records),
                 end_ts=max(item.end_ts for item in gas_meter_records),
             ),
-            conn=conn,
+            pool=pool,
             http_client=client,
         )
 
