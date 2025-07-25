@@ -42,7 +42,7 @@ if sys.platform.startswith("win"):
     testing.postgresql.Postgresql.terminate = win_terminate
     testing.common.database.Database.terminate = win_terminate
 
-DO_MOCK = False
+DO_MOCK = True
 
 
 async def apply_migrations(database: testing.postgresql.Database) -> None:

@@ -547,7 +547,7 @@ async def add_solar_locations(location: SolarLocation, pool: DatabasePoolDep) ->
 
 
 @router.post("/get-location", tags=["db"])
-async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
+async def get_location(site_id: SiteID, pool: DatabasePoolDep) -> location_t:
     """
     Get the location name for this site.
 
@@ -563,7 +563,7 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
     location
         Name of the location e.g. "Worksop", "Retford", "Cardiff"
     """
-    location = await conn.fetchval(
+    location = await pool.fetchval(
         """SELECT location FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
         site_id.site_id,
     )

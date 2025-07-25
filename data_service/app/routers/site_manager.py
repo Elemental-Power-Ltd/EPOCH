@@ -720,18 +720,23 @@ async def generate_all(
         )
     # We have to get the weather into the database before we try to do any fitting,
     # especially over the requested and gas meter time periods.
-    async with pool.acquire() as conn:
-        location = await get_location(params, conn)
-        await get_weather(
-            WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
-            conn=conn,
-            http_client=http_client,
+    location = await get_location(params, pool)
+    async with asyncio.TaskGroup() as tg:
+        params_weather_task = tg.create_task(
+            get_weather(
+                WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+                pool=pool,
+                http_client=http_client,
+            )
         )
-        await get_weather(
-            WeatherRequest(location=location, start_ts=gas_start_ts, end_ts=gas_end_ts),
-            conn=conn,
-            http_client=http_client,
+        gas_weather_task = tg.create_task(
+            get_weather(
+                WeatherRequest(location=location, start_ts=gas_start_ts, end_ts=gas_end_ts),
+                pool=pool,
+                http_client=http_client,
+            )
         )
+    _ = [params_weather_task.result(), gas_weather_task.result()]
     # Most of these are single datasets, but prime the list of desired UUIDs with empty lists
     # for the cases where we'll need them.
     all_requests: to_generate_t = {}
