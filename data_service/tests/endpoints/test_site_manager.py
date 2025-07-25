@@ -159,6 +159,7 @@ class TestGenerateAll:
         )
         assert list_result.status_code == 200, list_result.text
         assert list_result.json()["ElectricityMeterDataSynthesised"] is not None
+        assert list_result.json()["bundle_id"] is not None
 
         data_result = await client.post(
             "/get-latest-datasets",

@@ -45,6 +45,7 @@ class DatasetList(pydantic.BaseModel):
     site_id: site_id_t
     start_ts: pydantic.AwareDatetime
     end_ts: pydantic.AwareDatetime
+    bundle_id: dataset_id_t | None = pydantic.Field(default=None, description="The bundle these datasets came from")
     SiteBaseline: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     HeatingLoad: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     ASHPData: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)

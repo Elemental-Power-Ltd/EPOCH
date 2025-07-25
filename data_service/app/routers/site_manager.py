@@ -59,6 +59,7 @@ router = APIRouter()
 MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
 NULL_UUID = uuid.UUID(int=0, version=4)
 type to_generate_t = dict[DatasetTypeEnum, RequestBase | Sequence[RequestBase]]
+logger = logging.getLogger(__name__)
 
 
 @router.post("/list-datasets", tags=["db", "list"])
@@ -79,7 +80,6 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
     -------
     A list of UUID dataset strings, with the earliest at the start and the latest at the end.
     """
-    logger = logging.getLogger(__name__)
     async with asyncio.TaskGroup() as tg:
         baseline_task = tg.create_task(list_baseline_datasets(site_id, pool))
         gas_task = tg.create_task(list_gas_datasets(site_id, pool))
@@ -112,6 +112,192 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
     return res
 
 
+async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> DatasetList | None:
+    """
+    List the contents of the latesst bundle to mimic the format of `list-latest-datasets`.
+
+    If there are no bundles, this returns None.
+
+    Parameters
+    ----------
+    site_id
+        Site ID to check available bundles for
+    pool
+        Database pool to check in
+
+    Returns
+    -------
+    DatasetList
+        Contents of the latest bundle, in the right order, if one exists
+    None
+        If no bundles exist
+    """
+    latest_bundle = await pool.fetchrow(
+        """
+        SELECT
+            m.bundle_id,
+            ANY_VALUE(start_ts) AS start_ts,
+            ANY_VALUE(end_ts) AS end_ts,
+            ANY_VALUE(created_at) AS created_at,
+            ARRAY_AGG(dataset_type ORDER BY dataset_order ASC) AS dataset_types,
+            ARRAY_AGG(dataset_subtype ORDER BY dataset_order ASC) AS dataset_subtypes,
+            ARRAY_AGG(dataset_id ORDER BY dataset_order ASC) AS dataset_ids
+        FROM data_bundles.metadata AS m
+        LEFT JOIN
+            data_bundles.dataset_links AS dl
+        ON dl.bundle_id = m.bundle_id
+        WHERE m.site_id = $1
+        GROUP BY m.bundle_id
+        ORDER BY created_at DESC
+        LIMIT 1""",
+        site_id.site_id,
+    )
+    if latest_bundle is None:
+        return None
+
+    bundle_id, start_ts, end_ts, created_at, dataset_types, dataset_subtypes, dataset_ids = latest_bundle
+
+    return DatasetList(
+        site_id=site_id.site_id,
+        start_ts=start_ts,
+        end_ts=end_ts,
+        bundle_id=bundle_id,
+        SiteBaseline=DatasetEntry(
+            dataset_id=dataset_ids[dataset_types.index(DatasetTypeEnum.SiteBaseline)],
+            dataset_type=DatasetTypeEnum.SiteBaseline,
+            created_at=created_at,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            num_entries=None,
+            resolution=None,
+            dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.SiteBaseline)],
+        )
+        if DatasetTypeEnum.SiteBaseline in dataset_types
+        else None,
+        HeatingLoad=[
+            DatasetEntry(
+                dataset_id=ds_id,
+                dataset_type=ds_type,
+                created_at=created_at,
+                start_ts=start_ts,
+                end_ts=end_ts,
+                num_entries=None,
+                resolution=None,
+                dataset_subtype=ds_subtype,
+            )
+            for ds_type, ds_subtype, ds_id in zip(dataset_types, dataset_subtypes, dataset_ids, strict=False)
+            if ds_type == DatasetTypeEnum.HeatingLoad
+        ]
+        if DatasetTypeEnum.HeatingLoad in dataset_types
+        else None,
+        ASHPData=DatasetEntry(
+            dataset_id=dataset_ids[dataset_types.index(DatasetTypeEnum.ASHPData)],
+            dataset_type=DatasetTypeEnum.ASHPData,
+            created_at=created_at,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            num_entries=None,
+            resolution=None,
+            dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.ASHPData)],
+        )
+        if DatasetTypeEnum.ASHPData in dataset_types
+        else None,
+        CarbonIntensity=DatasetEntry(
+            dataset_id=dataset_ids[dataset_types.index(DatasetTypeEnum.CarbonIntensity)],
+            dataset_type=DatasetTypeEnum.CarbonIntensity,
+            created_at=created_at,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            num_entries=None,
+            resolution=None,
+            dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.CarbonIntensity)],
+        )
+        if DatasetTypeEnum.CarbonIntensity in dataset_types
+        else None,
+        ElectricityMeterData=DatasetEntry(
+            dataset_id=dataset_ids[dataset_types.index(DatasetTypeEnum.ElectricityMeterData)],
+            dataset_type=DatasetTypeEnum.ElectricityMeterData,
+            created_at=created_at,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            num_entries=None,
+            resolution=None,
+            dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.ElectricityMeterData)],
+        )
+        if DatasetTypeEnum.ElectricityMeterData in dataset_types
+        else None,
+        ElectricityMeterDataSynthesised=DatasetEntry(
+            dataset_id=dataset_ids[dataset_types.index(DatasetTypeEnum.ElectricityMeterDataSynthesised)],
+            dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
+            created_at=created_at,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            num_entries=None,
+            resolution=None,
+            dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.ElectricityMeterDataSynthesised)],
+        )
+        if DatasetTypeEnum.ElectricityMeterDataSynthesised in dataset_types
+        else None,
+        ImportTariff=[
+            DatasetEntry(
+                dataset_id=ds_id,
+                dataset_type=ds_type,
+                created_at=created_at,
+                start_ts=start_ts,
+                end_ts=end_ts,
+                num_entries=None,
+                resolution=None,
+                dataset_subtype=ds_subtype,
+            )
+            for ds_type, ds_subtype, ds_id in zip(dataset_types, dataset_subtypes, dataset_ids, strict=False)
+            if ds_type == DatasetTypeEnum.ImportTariff
+        ]
+        if DatasetTypeEnum.ImportTariff in dataset_types
+        else None,
+        Weather=None,
+        GasMeterData=DatasetEntry(
+            dataset_id=dataset_ids[dataset_types.index(DatasetTypeEnum.GasMeterData)],
+            dataset_type=DatasetTypeEnum.GasMeterData,
+            created_at=created_at,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            num_entries=None,
+            resolution=None,
+            dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.GasMeterData)],
+        )
+        if DatasetTypeEnum.GasMeterData in dataset_types
+        else None,
+        RenewablesGeneration=[
+            DatasetEntry(
+                dataset_id=ds_id,
+                dataset_type=ds_type,
+                created_at=created_at,
+                start_ts=start_ts,
+                end_ts=end_ts,
+                num_entries=None,
+                resolution=None,
+                dataset_subtype=ds_subtype,
+            )
+            for ds_type, ds_subtype, ds_id in zip(dataset_types, dataset_subtypes, dataset_ids, strict=False)
+            if ds_type == DatasetTypeEnum.RenewablesGeneration
+        ]
+        if DatasetTypeEnum.RenewablesGeneration in dataset_types
+        else None,
+        ThermalModel=DatasetEntry(
+            dataset_id=dataset_ids[dataset_types.index(DatasetTypeEnum.ThermalModel)],
+            dataset_type=DatasetTypeEnum.ThermalModel,
+            created_at=created_at,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            num_entries=None,
+            resolution=None,
+            dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.ThermalModel)],
+        )
+        if DatasetTypeEnum.ThermalModel in dataset_types
+        else None,
+    )
+
+
 @router.post("/list-latest-datasets", tags=["db", "list"])
 async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> DatasetList:
     """
@@ -130,6 +316,11 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
     -------
         A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
     """
+    # This is our quick bailout if we've got a new-style bundle
+    latest_bundle = await list_latest_bundle(params, pool)
+    if latest_bundle is not None:
+        return latest_bundle
+    logger.info("Didn't get a bundle, so separately listing datasets.")
     all_datasets = await list_datasets(params, pool)
 
     def created_at_or_epoch(ts: DatasetEntry | None) -> datetime.datetime:
@@ -685,13 +876,32 @@ async def generate_all(
                 params.site_id,
             )
         )
+
+        baseline_task = tg.create_task(
+            pool.fetchval(
+                """SELECT baseline_id FROM client_info.site_baselines
+                          WHERE site_id = $1 ORDER BY created_at DESC LIMIT 1""",
+                params.site_id,
+            )
+        )
     gas_result = gas_dataset_task.result()
     elec_meter_dataset_id = elec_meter_dataset_task.result()
+    baseline_id = baseline_task.result()
     if gas_result is None:
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset_id is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
 
+    if baseline_id is not None:
+        await file_self_with_bundle(
+            pool,
+            BundleEntryMetadata(
+                bundle_id=bundle_metadata.bundle_id,
+                dataset_id=elec_meter_dataset_id,
+                dataset_type=DatasetTypeEnum.SiteBaseline,
+                dataset_subtype=None,
+            ),
+        )
     gas_meter_dataset_id, gas_start_ts, gas_end_ts = gas_result
 
     # Attach the two meter datasets we've used to this bundle
