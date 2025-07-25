@@ -26,6 +26,9 @@ from .internal.elec_meters import VAE
 
 logger = logging.getLogger("default")
 
+type DBConnection = asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
+type HTTPClient = httpx.AsyncClient
+
 
 class Database:
     """Shared database object that we'll re-use throughout the lifetime of this API."""
@@ -89,12 +92,9 @@ class Database:
 
 
 db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
-http_client = httpx.AsyncClient()
+http_client = httpx.AsyncClient(timeout=60)
 
 elec_vae_mdl: VAE | None = None
-
-DBConnection = asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
-HTTPClient = httpx.AsyncClient
 
 
 async def get_http_client() -> AsyncGenerator[HTTPClient]:
