@@ -61,7 +61,7 @@ async def get_pvgis_optima(
         "header": int(False),
     }
 
-    _DEFAULT_OPTIMA = PVOptimaResult(
+    DEFAULT_OPTIMA_ = PVOptimaResult(
         azimuth=180,
         tilt=35.0,
         altitude=0.0,
@@ -74,10 +74,10 @@ async def get_pvgis_optima(
         res = await client.get(base_url, params=params)
     except httpx.TimeoutException:
         logger.warning(f"Failed to get PVGIS optima with {params} due to a timeout.")
-        return _DEFAULT_OPTIMA
+        return DEFAULT_OPTIMA_
     except httpx.RemoteProtocolError as ex:
         logger.warning(f"Failed to get PVGIS optima with {params} due to a server error: {ex}.")
-        return _DEFAULT_OPTIMA
+        return DEFAULT_OPTIMA_
     assert res.status_code == 200, f"Failed to get PVGIS optima: {res.status_code}, {res.text}"
     data = res.json()
 
