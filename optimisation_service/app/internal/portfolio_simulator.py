@@ -37,8 +37,7 @@ class PortfolioSimulator:
         """
         self.sims = {
             name: Simulator.from_json(epoch_data.model_dump_json(), epoch_config_dict[name].model_dump_json())
-            for
-            name, epoch_data in epoch_data_dict.items()
+            for name, epoch_data in epoch_data_dict.items()
         }
 
     def simulate_portfolio(self, portfolio_scenarios: dict[str, AnnotatedTaskData]) -> PortfolioSolution:
