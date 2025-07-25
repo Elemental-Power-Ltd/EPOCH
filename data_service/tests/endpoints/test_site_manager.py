@@ -4,15 +4,30 @@
 import asyncio
 import datetime
 import json
+import uuid
 
+import asyncpg
 import httpx
 import numpy as np
 import pytest
 import pytest_asyncio
 
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.site_manager.bundles import insert_dataset_bundle
 from app.models.core import DatasetTypeEnum
 from app.models.heating_load import InterventionEnum
+from app.models.site_manager import DatasetBundleMetadata
+
+
+async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
+    """
+    Get the demo database from the pool as a filthy hack.
+
+    This hack was implemented on 2025-05-07, so please replace with a proper fixture in the future.
+    """
+    from app.dependencies import get_db_pool
+
+    return await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
 
 
 @pytest_asyncio.fixture
@@ -394,3 +409,83 @@ class TestListAllDatasets:
         assert len(data) == 10
         assert data["eload"] is not None
         assert len(data["eload"]["data"]) > 0
+
+
+class TestDatasetBundles:
+    """Test that we can enter, list and retrieve bundles."""
+
+    @pytest.mark.asyncio
+    async def test_can_enter_bundle_meta_only(self, client: httpx.AsyncClient) -> None:
+        """Test that we can enter a valid bundle with only metadata."""
+        DEMO_UUID = uuid.UUID(int=1, version=4)
+        pool = await get_pool_hack(client)
+        test_bundle = DatasetBundleMetadata(
+            bundle_id=DEMO_UUID,
+            name="Test Bundle",
+            start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
+            end_ts=datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC),
+            site_id="demo_london",
+        )
+        res = await insert_dataset_bundle(bundle_metadata=test_bundle, pool=pool)
+        assert res == DEMO_UUID
+
+    @pytest.mark.asyncio
+    async def test_can_enter_bundle_with_data(self, client: httpx.AsyncClient) -> None:
+        """Test that we can enter a valid bundle with metadata and datasets."""
+        DEMO_UUID = uuid.UUID(int=1, version=4)
+        pool = await get_pool_hack(client)
+        test_bundle = DatasetBundleMetadata(
+            bundle_id=DEMO_UUID,
+            name="Test Bundle",
+            start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
+            end_ts=datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC),
+            site_id="demo_london",
+        )
+        res = await insert_dataset_bundle(
+            bundle_metadata=test_bundle,
+            pool=pool,
+        )
+        assert res == DEMO_UUID
+
+    @pytest.mark.asyncio
+    async def test_can_list_bundles(self, client: httpx.AsyncClient) -> None:
+        """Test that we can enter a valid bundle with metadata and datasets."""
+        DEMO_UUID = uuid.UUID(int=1, version=4)
+        pool = await get_pool_hack(client)
+        test_bundle = DatasetBundleMetadata(
+            bundle_id=DEMO_UUID,
+            name="Test Bundle",
+            start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
+            end_ts=datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC),
+            site_id="demo_london",
+        )
+        _ = await insert_dataset_bundle(
+            bundle_metadata=test_bundle,
+            pool=pool,
+        )
+
+        DEMO_UUID_2 = uuid.UUID(int=10, version=4)
+        test_bundle = DatasetBundleMetadata(
+            bundle_id=DEMO_UUID_2,
+            name="Test Bundle 2",
+            start_ts=datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC),
+            end_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
+            site_id="demo_london",
+        )
+        _ = await insert_dataset_bundle(
+            bundle_metadata=test_bundle,
+            pool=pool,
+        )
+
+        result = await client.post(
+            "list-dataset-bundles",
+            json={
+                "site_id": "demo_london",
+                "start_ts": datetime.datetime(year=2000, month=1, day=1, tzinfo=datetime.UTC).isoformat(),
+                "end_ts": datetime.datetime.now(datetime.UTC).isoformat(),
+            },
+        )
+        assert result.status_code == 200, result.text
+        data = result.json()
+        assert len(data) == 2
+        assert {item["bundle_id"] for item in data} == {str(DEMO_UUID), str(DEMO_UUID_2)}

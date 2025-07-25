@@ -15,8 +15,9 @@ import pytest_asyncio
 from app.dependencies import get_db_pool, get_http_client
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.pvgis import get_pvgis_optima
+from app.internal.solar_pv.disaggregate import disaggregate_readings
 from app.internal.utils.uuid import uuid7
-from app.routers.renewables import disaggregate_readings
 
 
 @pytest_asyncio.fixture
@@ -355,6 +356,18 @@ class TestRenewablesErrors:
         assert results.status_code == 400
         assert "dataset_id" in results.json()["detail"]
         assert str(bad_uuid) in results.json()["detail"]
+
+
+class TestPVGIS:
+    @pytest.mark.external
+    @pytest.mark.asyncio
+    async def test_pvgis_optima(self, client: httpx.AsyncClient) -> None:
+        """That that we can get PVGIS optima without an error."""
+        external_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        result = await get_pvgis_optima(external_client, latitude=51.0, longitude=0.10, tracking=False)
+        assert result.tilt == 39
+        assert result.altitude == 61.0
+        assert result.azimuth == 180
 
 
 class TestWindRenewables:

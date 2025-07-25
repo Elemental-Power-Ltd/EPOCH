@@ -26,6 +26,7 @@ from ...dependencies import DatabasePoolDep, HttpClientDep
 from ...internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
 from ...internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
 from ...internal.site_manager import list_thermal_models
+from ...internal.site_manager.bundles import file_self_with_bundle
 from ...internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
@@ -36,7 +37,7 @@ from ...internal.thermal_model.phpp.parse_phpp import (
     phpp_total_heat_loss,
 )
 from ...internal.utils.uuid import uuid7
-from ...models.core import DatasetID, SiteID, dataset_id_t, site_id_t
+from ...models.core import DatasetID, DatasetTypeEnum, SiteID, dataset_id_t, site_id_t
 from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
 from ...models.weather import BaitAndModelCoefs, WeatherRequest
 from ..client_data import get_location
@@ -120,6 +121,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         site_id=site_id,
         structure_id=None,
         surveyed_sizes=params.surveyed_sizes,
+        bundle_metadata=params.bundle_metadata,
     )
 
     # First, check if we've got a good enough PHPP, and if we do, return
@@ -188,12 +190,15 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
         site_id=site_id,
         structure_id=most_recent_id,
         surveyed_sizes=params.surveyed_sizes,
+        bundle_metadata=params.bundle_metadata,
     )
 
 
 @api_router.post("/generate-heating-load", tags=["generate", "heating"])
 async def generate_heating_load(
-    params: HeatingLoadRequest, pool: DatabasePoolDep, http_client: HttpClientDep
+    params: HeatingLoadRequest,
+    pool: DatabasePoolDep,
+    http_client: HttpClientDep,
 ) -> HeatingLoadMetadata:
     """
     Generate a heating load based on the model type specified in an argument.
@@ -414,7 +419,7 @@ async def generate_heating_load_regression(
         metadata_params["cost"] = cost
 
     metadata = HeatingLoadMetadata(
-        dataset_id=uuid7(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         site_id=site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps(metadata_params),
@@ -456,6 +461,10 @@ async def generate_heating_load_regression(
                     strict=True,
                 ),
             )
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Regression heat load generation {metadata.dataset_id} completed.")
     return metadata
 
 
@@ -527,44 +536,57 @@ async def generate_thermal_model_heating_load(
     hh_heating_load_df["end_ts"] = hh_heating_load_df.index + pd.Timedelta(minutes=30)
 
     metadata = HeatingLoadMetadata(
-        dataset_id=uuid7(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         site_id=params.site_id,
         created_at=datetime.datetime.now(datetime.UTC),
-        params=json.dumps({
-            "thermal_model_dataset_id": str(params.structure_id),
-            "generation_method": HeatingLoadModelEnum.ThermalModel,
-        }),
+        params=json.dumps(
+            {
+                "thermal_model_dataset_id": str(params.structure_id),
+                "generation_method": HeatingLoadModelEnum.ThermalModel,
+            }
+        ),
         interventions=params.interventions,
         generation_method=HeatingLoadModelEnum.ThermalModel,
     )
 
-    await pool.execute(
-        """
-        INSERT INTO heating.metadata
-        (dataset_id, site_id, created_at, params, interventions)
-        VALUES ($1, $2, $3, $4, $5)""",
-        metadata.dataset_id,
-        metadata.site_id,
-        metadata.created_at,
-        json.dumps(metadata.params),
-        metadata.interventions,
-    )
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO heating.metadata
+                (dataset_id, site_id, created_at, params, interventions)
+                VALUES ($1, $2, $3, $4, $5)""",
+                metadata.dataset_id,
+                metadata.site_id,
+                metadata.created_at,
+                json.dumps(metadata.params),
+                metadata.interventions,
+            )
 
-    await pool.copy_records_to_table(
-        schema_name="heating",
-        table_name="synthesised",
-        columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
-        records=zip(
-            itertools.repeat(metadata.dataset_id, len(hh_heating_load_df)),
-            hh_heating_load_df.start_ts,
-            hh_heating_load_df.end_ts,
-            hh_heating_load_df.heating_usage,
-            hh_heating_load_df.dhw,
-            hh_heating_load_df.external_temperatures,
-            strict=True,
-        ),
-    )
+            await conn.copy_records_to_table(
+                schema_name="heating",
+                table_name="synthesised",
+                columns=["dataset_id", "start_ts", "end_ts", "heating", "dhw", "air_temperature"],
+                records=zip(
+                    itertools.repeat(metadata.dataset_id, len(hh_heating_load_df)),
+                    hh_heating_load_df.start_ts,
+                    hh_heating_load_df.end_ts,
+                    hh_heating_load_df.heating_usage,
+                    hh_heating_load_df.dhw,
+                    hh_heating_load_df.external_temperatures,
+                    strict=True,
+                ),
+            )
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
 
+                # We also file the thermal model in the database as part of this bundle
+                thermal_bundle_metadata = params.bundle_metadata.model_copy()
+                thermal_bundle_metadata.dataset_type = DatasetTypeEnum.ThermalModel
+                thermal_bundle_metadata.dataset_id = params.structure_id
+                await file_self_with_bundle(conn, bundle_metadata=thermal_bundle_metadata)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Thermal Model heat load generation {metadata.dataset_id} completed.")
     return metadata
 
 

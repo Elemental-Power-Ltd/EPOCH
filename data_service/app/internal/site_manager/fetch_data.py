@@ -76,27 +76,23 @@ async def fetch_all_input_data(
                 else DummyTask()
             )
 
-            heat_task = (
-                tg.create_task(
-                    get_heating_load(cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]), pool)
-                )
-                if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
-                else DummyTask()
-            )
+            if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None:
+                hload_req = cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad])
+            else:
+                hload_req = None
+            heat_task = tg.create_task(get_heating_load(hload_req, pool)) if hload_req is not None else DummyTask()
             dhw_task = (
                 tg.create_task(
                     get_dhw_load(
                         DatasetIDWithTime(
-                            dataset_id=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).dataset_id[
-                                0
-                            ],
-                            start_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).start_ts,
-                            end_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).end_ts,
+                            dataset_id=hload_req.dataset_id[0],
+                            start_ts=hload_req.start_ts,
+                            end_ts=hload_req.end_ts,
                         ),
                         pool,
                     )
                 )
-                if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
+                if hload_req is not None
                 else DummyTask()
             )
 
@@ -104,16 +100,14 @@ async def fetch_all_input_data(
                 tg.create_task(
                     get_air_temp(
                         DatasetIDWithTime(
-                            dataset_id=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).dataset_id[
-                                0
-                            ],
-                            start_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).start_ts,
-                            end_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).end_ts,
+                            dataset_id=hload_req.dataset_id[0],
+                            start_ts=hload_req.start_ts,
+                            end_ts=hload_req.end_ts,
                         ),
                         pool,
                     )
                 )
-                if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
+                if hload_req is not None
                 else DummyTask()
             )
 

@@ -42,6 +42,8 @@ if sys.platform.startswith("win"):
     testing.postgresql.Postgresql.terminate = win_terminate
     testing.common.database.Database.terminate = win_terminate
 
+DO_MOCK = False
+
 
 async def apply_migrations(database: testing.postgresql.Database) -> None:
     """
@@ -106,7 +108,7 @@ class MockedHttpClient(httpx.AsyncClient):
         """
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "octopus", f"{url_params}.json")
-        if stored_tariff.exists():
+        if stored_tariff.exists() and DO_MOCK:
             self.octopus_requests["cached"] += 1
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
@@ -132,7 +134,7 @@ class MockedHttpClient(httpx.AsyncClient):
         """
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "carbon_intensity", f"{url_params}.json")
-        if stored_tariff.exists():
+        if stored_tariff.exists() and DO_MOCK:
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
@@ -157,7 +159,7 @@ class MockedHttpClient(httpx.AsyncClient):
         """
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "visual_crossing", f"{url_params}.json")
-        if stored_tariff.exists():
+        if stored_tariff.exists() and DO_MOCK:
             self.visualcrossing_requests["cached"] += 1
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
@@ -188,7 +190,7 @@ class MockedHttpClient(httpx.AsyncClient):
         # Read the parameters passed to the endpoint to get a horrible _key_value_ type string.
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_rn = Path(".", "tests", "data", "renewables_ninja", f"{url_params}.json")
-        if stored_rn.exists():
+        if stored_rn.exists() and DO_MOCK:
             return cast(Jsonable, json.loads(stored_rn.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
@@ -217,9 +219,10 @@ class MockedHttpClient(httpx.AsyncClient):
         # Read the parameters passed to the endpoint to get a horrible _key_value_ type string.
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_rn = Path(".", "tests", "data", "pvgis", f"{url_params}.json")
-        if stored_rn.exists():
+        if stored_rn.exists() and DO_MOCK:
             return cast(Jsonable, json.loads(stored_rn.read_text()))
         else:
+            print(f"Getting from {url}, {kwargs}")
             data = (await _http_client.get(url, **kwargs)).json()
             stored_rn.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)

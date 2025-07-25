@@ -555,8 +555,6 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
 
     Parameters
     ----------
-    request
-
     site_id
         Database ID of the site you are interested in.
 

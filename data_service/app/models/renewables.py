@@ -3,26 +3,18 @@
 # ruff: noqa: D101
 import datetime
 from enum import StrEnum
-from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, dataset_id_t, site_id_field, site_id_t
+from .core import EpochEntry, RequestBase, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
-class RenewablesRequest(pydantic.BaseModel):
+class RenewablesRequest(RequestBase):
     site_id: site_id_t = site_id_field
     renewables_location_id: str | None = pydantic.Field(
         default=None,
         examples=["demo_matts_house_southroof"],
         description="Database ID of the site-associated solar location e.g. southroof",
-    )
-    start_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=["2020-01-01T00:00:00Z"], description="The starting time to run the renewables calculation, should be <2021."
-    )
-    end_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=["2021-01-01T00:00:00Z"],
-        description="The ending time to run the renewables calculation, should be one year on from start_ts",
     )
     azimuth: float | None = pydantic.Field(
         default=None,
@@ -38,37 +30,14 @@ class RenewablesRequest(pydantic.BaseModel):
         default=False, examples=[False, True], description="Whether these panels use single axis tracking."
     )
 
-    @pydantic.model_validator(mode="after")
-    def check_timestamps_valid(self) -> Self:
-        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
-        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
-        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
-        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
-        return self
 
-
-class RenewablesWindRequest(pydantic.BaseModel):
+class RenewablesWindRequest(RequestBase):
     site_id: site_id_t = site_id_field
-    start_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=["2020-01-01T00:00:00Z"], description="The starting time to run the renewables calculation, should be <2021."
-    )
-    end_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=["2021-01-01T00:00:00Z"],
-        description="The ending time to run the renewables calculation, should be one year on from start_ts",
-    )
     turbine: str = pydantic.Field(
         examples=["Acciona AW77 1500", "Enercon E101 3000"],
         description="Name of the turbine you want to model; must exist in the RN database.",
     )
     height: float = pydantic.Field(examples=[10.0, 80.0, 100.0], description="Height of the hub above the ground in m.")
-
-    @pydantic.model_validator(mode="after")
-    def check_timestamps_valid(self) -> Self:
-        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
-        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
-        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
-        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
-        return self
 
 
 class RenewablesMetadata(pydantic.BaseModel):
@@ -102,6 +71,7 @@ class PvgisDataSourceEnum(StrEnum):
     SARAH = "PVGIS-SARAH"
     SARAH2 = "PVGIS-SARAH2"
     SARAH3 = "PVGIS-SARAH3"
+    UNKNOWN = "UNKNOWN"
 
 
 class PvgisMountingSystemEnum(StrEnum):

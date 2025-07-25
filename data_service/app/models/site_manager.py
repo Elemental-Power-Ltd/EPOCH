@@ -8,7 +8,7 @@ from typing import Literal
 
 import pydantic
 
-from .core import DatasetEntry, dataset_id_t, site_id_field, site_id_t
+from .core import DatasetEntry, DatasetTypeEnum, dataset_id_t, site_id_field, site_id_t
 
 
 class FileLocationEnum(StrEnum):
@@ -86,6 +86,30 @@ class RemoteMetaData(pydantic.BaseModel):
     GasMeterData: dataset_id_t | None = pydantic.Field(default=None)
     RenewablesGeneration: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
     ThermalModel: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
+
+
+class DatasetBundleMetadata(pydantic.BaseModel):
+    """Metadata about a specific bundle of datasets, including a unique ID and when it was created."""
+
+    bundle_id: dataset_id_t = pydantic.Field(description="The ID of this bundle of datasets")
+    name: str | None = pydantic.Field(default=None, description="Human readable name of this dataset bundle.")
+    site_id: site_id_t = site_id_field
+    start_ts: pydantic.AwareDatetime | None = pydantic.Field(
+        default=None, description="The earliest timestamp for each of the datasets in this bundle, if applicable."
+    )
+    end_ts: pydantic.AwareDatetime | None = pydantic.Field(
+        default=None, description="The latest timestamp for each of the datasets in this bundle, if applicable."
+    )
+    created_at: pydantic.AwareDatetime = pydantic.Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC), description="When this bundle of datasets was created."
+    )
+    available_datasets: list[DatasetTypeEnum] = pydantic.Field(
+        default=[],
+        description=(
+            "Unsorted list of the types of datasets available in this bundle."
+            " May contain duplicates if there are multiple of a single type. "
+        ),
+    )
 
 
 SiteDataEntry = RemoteMetaData | LocalMetaData

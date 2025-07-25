@@ -3,11 +3,10 @@
 # ruff: noqa: D101
 import datetime
 from enum import StrEnum
-from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, dataset_id_t, site_id_field, site_id_t
+from .core import EpochEntry, RequestBase, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
 class GSPEnum(StrEnum):
@@ -58,30 +57,12 @@ class SyntheticTariffEnum(StrEnum):
     ShapeShifter = "shapeshifter"
 
 
-class TariffRequest(pydantic.BaseModel):
+class TariffRequest(RequestBase):
     site_id: site_id_t = site_id_field
     tariff_name: SyntheticTariffEnum | str = pydantic.Field(
         examples=["E-1R-AGILE-24-04-03-A", "E-1R-COOP-FIX-12M-24-07-25-B"],
         description="The specific region-containing tariff code for this tariff.",
     )
-    start_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=[datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)],
-        description="The earliest timestamp to get this tariff for"
-        + "(but note that it may not be provided too far in the past).",
-    )
-    end_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=[datetime.datetime(year=2024, month=12, day=1, tzinfo=datetime.UTC)],
-        description="The latest timestamp to get this tariff for"
-        + "(but note that it may not be provided too far in the future).",
-    )
-
-    @pydantic.model_validator(mode="after")
-    def check_timestamps_valid(self) -> Self:
-        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
-        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
-        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
-        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
-        return self
 
     @pydantic.field_validator("tariff_name", mode="before")
     @classmethod

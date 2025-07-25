@@ -43,26 +43,6 @@ dataset_id_field = Field(
     default_factory=uuid7,
 )
 
-epoch_start_time_field = Field(
-    examples=["00:00", "11:30"],
-    description="Starting time for this data, often 30 mins or 1 hour long from now.",
-    pattern=r"[0-2][0-9]:[0-6][0-9]",
-)
-
-epoch_hour_of_year_field = Field(
-    examples=[1, 365 * 24 - 1],
-    description="Hour of the year, 1-indexed for EPOCH. Counts up even over timezone changes."
-    + "For example, Jan 1st 00:00 is 1.",
-)
-
-epoch_date_field = Field(
-    examples=["01-Jan", "31-Dec"],
-    description="Date string for EPOCH to consume, zero padded day first"
-    + "and 3 letter month abbreviation second."
-    + "No year information is provided (be careful!). This is originally Excel-like.",
-    pattern=r"[0-9][0-9]-[A-Za-z]*",
-)
-
 
 class FuelEnum(StrEnum):
     gas = "gas"
@@ -236,3 +216,31 @@ class SiteData(pydantic.BaseModel):
     dec_lmk: str | None = pydantic.Field(
         description="LMK for the latest Commercial Display Energy Certificate for this building", default=None
     )
+
+
+class BundleEntryMetadata(pydantic.BaseModel):
+    bundle_id: dataset_id_t = pydantic.Field(description="ID of the linked bundle that this is part of.")
+    dataset_id: dataset_id_t = pydantic.Field(description="ID for this individual dataset within the bundle.")
+    dataset_type: DatasetTypeEnum = pydantic.Field(description="Type of dataset this is, such as ElectricityMeterData")
+    dataset_subtype: Any = pydantic.Field(
+        description="JSON serialisable subtype for this dataset, maybe a solar location or tariff type."
+    )
+    dataset_order: int | None = pydantic.Field(
+        description="Order of these datasets within the bundle; especially useful for sorting subtypes such as import tariffs.",
+        default=None,
+    )
+
+
+class RequestBase(pydantic.BaseModel):
+    start_ts: pydantic.AwareDatetime
+    end_ts: pydantic.AwareDatetime
+
+    bundle_metadata: BundleEntryMetadata | None = None
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self

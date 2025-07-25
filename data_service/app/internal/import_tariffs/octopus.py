@@ -104,13 +104,20 @@ async def get_octopus_tariff(
                         return sub_url["href"]
         raise ValueError(f"Could not find `standard_unit_rates` in {region_meta}")
 
-    unit_rate_url = extract_rates_url(region_meta)
-
+    # Don't allow Octopus to put us in an infinite loop with the `next` URLs, which
+    # can sometimes repeat
+    unit_rate_url: str | None = extract_rates_url(region_meta)
+    seen_next_urls: set[str] = set()
     all_results = []
     while unit_rate_url:
         rates_response = await rate_limited_request(unit_rate_url, params=params)
         response_json = rates_response.json()
-        unit_rate_url = response_json.get("next")
+        new_unit_rate_url = response_json.get("next")
+        if new_unit_rate_url and new_unit_rate_url not in seen_next_urls:
+            unit_rate_url = str(new_unit_rate_url)
+            seen_next_urls.add(new_unit_rate_url)
+        else:
+            unit_rate_url = None
         all_results.extend(response_json.get("results", []))
 
     df = pd.DataFrame.from_records(all_results).rename(

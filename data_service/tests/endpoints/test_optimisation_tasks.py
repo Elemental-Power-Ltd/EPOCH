@@ -63,7 +63,7 @@ class TestOptimisationTaskDatabase:
             },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
-            epoch_version="1.2.3"
+            epoch_version="1.2.3",
         )
 
     @pytest.fixture
@@ -487,7 +487,7 @@ class TestOptimisationTaskDatabaseUUID4:
     def sample_task_config(self) -> TaskConfig:
         """Create a sample task to put in our database."""
         return TaskConfig(
-            task_id=uuid7(),
+            task_id=uuid.uuid4(),
             task_name="test_task_config",
             client_id="demo",
             portfolio_constraints={"capex": {"max": 1e5}},
@@ -516,7 +516,7 @@ class TestOptimisationTaskDatabaseUUID4:
             },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
-            epoch_version="v1.2.3"
+            epoch_version="v1.2.3",
         )
 
     @pytest.fixture

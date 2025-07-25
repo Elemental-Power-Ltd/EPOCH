@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import logging
 
 import fastapi
 import httpx
@@ -10,8 +11,10 @@ import pandas as pd
 from fastapi import HTTPException
 
 from ..epl_secrets import get_secrets_environment
-from ..models.renewables import PvgisMountingSystemEnum, PVOptimaResult
+from ..models.renewables import PvgisDataSourceEnum, PvgisMountingSystemEnum, PvgisTechnologyEnum, PvgisTypeEnum, PVOptimaResult
 from .utils import check_latitude_longitude
+
+logger = logging.getLogger(__name__)
 
 
 async def get_pvgis_optima(
@@ -24,6 +27,7 @@ async def get_pvgis_optima(
     Use PVGIS to calculate optimal tilts and azimuths for a solar setup at this location.
 
     The PVGIS calculator itself is a bit poor, but they provide this nice utility optimiser.
+    Returns a default UK-friendly optimum if we couldn't contact PVGIS.
 
     Parameters
     ----------
@@ -57,10 +61,23 @@ async def get_pvgis_optima(
         "header": int(False),
     }
 
+    DEFAULT_OPTIMA_ = PVOptimaResult(
+        azimuth=180,
+        tilt=35.0,
+        altitude=0.0,
+        mounting_system=PvgisMountingSystemEnum.fixed,
+        type=PvgisTypeEnum.building_integrated,
+        technology=PvgisTechnologyEnum.unknown,
+        data_source=PvgisDataSourceEnum.UNKNOWN,
+    )
     try:
         res = await client.get(base_url, params=params)
-    except httpx.TimeoutException as ex:
-        raise HTTPException(400, f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
+    except httpx.TimeoutException:
+        logger.warning(f"Failed to get PVGIS optima with {params} due to a timeout.")
+        return DEFAULT_OPTIMA_
+    except httpx.RemoteProtocolError as ex:
+        logger.warning(f"Failed to get PVGIS optima with {params} due to a server error: {ex}.")
+        return DEFAULT_OPTIMA_
     assert res.status_code == 200, f"Failed to get PVGIS optima: {res.status_code}, {res.text}"
     data = res.json()
 

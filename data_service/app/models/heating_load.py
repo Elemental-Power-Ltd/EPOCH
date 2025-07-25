@@ -8,7 +8,7 @@ from typing import Self
 import pydantic
 from pydantic import Field
 
-from .core import DatasetIDWithTime, EpochEntry, dataset_id_t, site_id_field, site_id_t
+from .core import EpochEntry, RequestBase, dataset_id_t, site_id_field, site_id_t
 from .thermal_model import SurveyedSizes
 
 
@@ -85,7 +85,8 @@ class HeatingLoadModelEnum(StrEnum):
     Auto = "auto"
 
 
-class HeatingLoadRequest(DatasetIDWithTime):
+class HeatingLoadRequest(RequestBase):
+    dataset_id: dataset_id_t
     interventions: list[InterventionEnum] | list[str] = Field(
         examples=[[InterventionEnum.Loft], [], ["Internal Insulation to external solid wall", "Secondary Glazing"]],
         default=[],
