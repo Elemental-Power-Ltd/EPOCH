@@ -2,7 +2,7 @@ import datetime
 from uuid import UUID, uuid4
 
 from app.internal.uuid7 import uuid7
-from app.models.epoch_types.task_data_type import Building, Config, GasHeater, Grid, SolarPanel
+from app.models.epoch_types.task_data_type import Building, Config, GasHeater, Grid, SolarPanel, GasType
 from app.models.simulate import ResultReproConfig
 from app.models.site_data import FileLoc, RemoteMetaData, TaskData
 
@@ -69,7 +69,7 @@ class TestResultReproConfig:
                     energy_storage_system=None,
                     gas_heater=GasHeater(
                         maximum_output=1000.0,
-                        gas_type="NATURAL_GAS",
+                        gas_type=GasType.NATURAL_GAS,
                         boiler_efficiency=0.9,
                         incumbent=True,
                         age=0.0,
@@ -126,13 +126,4 @@ class TestResultReproConfig:
                 )
             },
         )
-
-
-# class TestDataManager:
-#    @pytest.mark.asyncio
-#    async def test_get_portfolio(self) -> None:
-#        portfolio_id = "0ab3eb02-5df0-4d7f-af58-937e68dadf73"
-#        dm = DataManager()
-#        result = await dm.get_result_configuration(portfolio_id=portfolio_id)
-#        print(result)
-#        assert False
+        assert config
