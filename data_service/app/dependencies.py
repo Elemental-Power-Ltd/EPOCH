@@ -89,7 +89,7 @@ class Database:
 
 
 db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
-http_client = httpx.AsyncClient(timeout=10)
+http_client = httpx.AsyncClient()
 
 elec_vae_mdl: VAE | None = None
 
