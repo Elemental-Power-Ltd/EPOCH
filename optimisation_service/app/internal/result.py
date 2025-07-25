@@ -22,7 +22,7 @@ def get_baseline_portfolio_scenario(portfolio: list[Site]) -> dict[str, Annotate
     for site in portfolio:
         site_id = site.site_data.site_id
         baseline = site._epoch_data.baseline
-        portfolio_scenario[site_id] = baseline
+        portfolio_scenario[site_id] = AnnotatedTaskData.model_validate(baseline.model_dump(exclude_none=True))
 
     return portfolio_scenario
 
