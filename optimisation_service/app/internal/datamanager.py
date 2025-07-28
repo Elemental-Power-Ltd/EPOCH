@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import typing
-import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -10,11 +9,11 @@ from typing import Any
 import httpx
 from fastapi import Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
-from pydantic import UUID4
 
-from ..models.core import OptimisationResultEntry, Task
-from ..models.simulate import EpochInputData, ResultReproConfig
-from ..models.site_data import DatasetTypeEnum, EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
+from app.models.core import OptimisationResultEntry, Task
+from app.models.database import dataset_id_t
+from app.models.simulate import EpochInputData, ResultReproConfig
+from app.models.site_data import DatasetTypeEnum, EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
 
 logger = logging.getLogger("default")
 
@@ -73,7 +72,7 @@ class DataManager:
 
         return epoch_data
 
-    async def get_saved_epoch_input(self, portfolio_id: UUID4, site_id: str) -> EpochInputData:
+    async def get_saved_epoch_input(self, portfolio_id: dataset_id_t, site_id: str) -> EpochInputData:
         """
         Get the SiteData and TaskData that was used to produce a specific result in the database.
 
@@ -122,9 +121,9 @@ class DataManager:
             if not site_data.__getattribute__(key):
                 curr_entries = datasetlist[key]
                 if isinstance(curr_entries, list):
-                    site_data.__setattr__(key, [uuid.UUID(item["dataset_id"]) for item in curr_entries])
+                    site_data.__setattr__(key, [item["dataset_id"] for item in curr_entries])
                 elif isinstance(curr_entries, dict):
-                    site_data.__setattr__(key, uuid.UUID(curr_entries["dataset_id"]))
+                    site_data.__setattr__(key, curr_entries["dataset_id"])
                 else:
                     site_data.__setattr__(key, None)
 
@@ -277,7 +276,7 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-task", data=data)
 
-    async def get_result_configuration(self, portfolio_id: UUID4) -> ResultReproConfig:
+    async def get_result_configuration(self, portfolio_id: dataset_id_t) -> ResultReproConfig:
         """
         Get the configuration that was used to generate a portfolio result that is stored in the database
 

@@ -65,4 +65,5 @@ def default_task(default_objectives, default_optimiser, default_portfolio, defau
         portfolio=default_portfolio,
         client_id="demo",
         portfolio_constraints=default_constraints,
+        epoch_version="0.0.1",
     )

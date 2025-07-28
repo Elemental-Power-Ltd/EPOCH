@@ -1,17 +1,25 @@
 import datetime
 import logging
-import uuid
-from typing import Annotated
 
-from pydantic import UUID4, AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
+from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 
+from app.internal.uuid7 import uuid7
 from app.models.constraints import Constraints
+from app.models.database import dataset_id_t
 from app.models.epoch_types import SiteRange, TaskDataPydantic
 from app.models.metrics import Metric
 from app.models.optimisers import OptimiserTypes
 from app.models.site_data import EpochSiteData, SiteMetaData
 
 logger = logging.getLogger("default")
+
+# We try to import the EPOCH simulator here to use it in the TaskData if it wasn't provided.
+try:
+    import epoch_simulator
+
+    epoch_version_ = epoch_simulator.__version__  # type: ignore
+except ImportError:
+    epoch_version_ = None
 
 
 class Site(BaseModel):
@@ -56,14 +64,15 @@ class Task(BaseModel):
         examples=["demo"],
         description="The database ID for a client, all lower case, joined by underscores.",
     )
-    task_id: Annotated[UUID4, "String serialised UUID"] = Field(
-        default_factory=uuid.uuid4,
-        description="Unique ID (generally a UUIDv4) of an optimisation task.",
+    task_id: dataset_id_t = Field(
+        default_factory=uuid7,
+        description="Unique ID (generally a UUIDv7) of an optimisation task.",
     )
+    epoch_version: str | None = Field(description="EPOCH version that this task was submitted for", default=epoch_version_)
 
 
 class TaskResponse(BaseModel):
-    task_id: UUID4
+    task_id: dataset_id_t
 
 
 class SiteMetrics(BaseModel):
@@ -195,7 +204,7 @@ class SiteOptimisationResult(BaseModel):
         examples=["demo_london"],
         description="The database ID for a site, all lower case, joined by underscores.",
     )
-    portfolio_id: UUID4 = Field(
+    portfolio_id: dataset_id_t = Field(
         description="The portfolio pareto front entry this site is linked to."
         + " A single site result is uniquely identified by a (portfolio_id, site_id) pair."
     )
@@ -227,8 +236,7 @@ class PortfolioMetrics(BaseModel):
         default=None,
     )
     operating_balance: float | None = Field(
-        description="Monetary savings across the portfolio "
-        "from fuel, electricity and opex when compared against the baseline.",
+        description="Monetary savings across the portfolio from fuel, electricity and opex when compared against the baseline.",
         default=None,
     )
     cost_balance: float | None = Field(
@@ -267,7 +275,7 @@ class PortfolioMetrics(BaseModel):
     )
     total_dhw_shortfall: float | None = Field(
         description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None
+        default=None,
     )
     total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas across this portfolio", default=None)
     total_electricity_import_cost: float | None = Field(
@@ -306,11 +314,11 @@ class PortfolioMetrics(BaseModel):
     )
     baseline_ch_shortfall: float | None = Field(
         description="Baseline central heating (CH) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None
+        default=None,
     )
     baseline_dhw_shortfall: float | None = Field(
         description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None
+        default=None,
     )
     baseline_gas_import_cost: float | None = Field(
         description="Baseline spend (£) importing gas across this portfolio", default=None
@@ -338,8 +346,8 @@ class PortfolioMetrics(BaseModel):
 class PortfolioOptimisationResult(BaseModel):
     """Result for a whole portfolio optimisation task, often one entry in the Pareto front."""
 
-    task_id: UUID4
-    portfolio_id: UUID4 = Field(
+    task_id: dataset_id_t
+    portfolio_id: dataset_id_t = Field(
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
@@ -354,7 +362,7 @@ class PortfolioOptimisationResult(BaseModel):
 class TaskResult(BaseModel):
     """Result for metadata about an optimisation task."""
 
-    task_id: UUID4
+    task_id: dataset_id_t
     n_evals: PositiveInt = Field(description="Number of site scenarios evaluated during this task.", examples=[1, 9999])
     exec_time: datetime.timedelta = Field(description="Wall-clock time this optimisation run took.")
     completed_at: AwareDatetime = Field(

@@ -1,14 +1,13 @@
-from pydantic import UUID4, BaseModel
+from pydantic import BaseModel
 
+from app.models.database import dataset_id_t, site_id_t
 from app.models.epoch_types import ReportData, TaskDataPydantic
 from app.models.metrics import MetricValues
 from app.models.site_data import EpochSiteData, RemoteMetaData, SiteMetaData
 
-site_id_t = str
-
 
 class ReproduceSimulationRequest(BaseModel):
-    portfolio_id: UUID4
+    portfolio_id: dataset_id_t
     site_id: str
 
 
@@ -18,13 +17,13 @@ class RunSimulationRequest(BaseModel):
 
 
 class ResultReproConfig(BaseModel):
-    portfolio_id: UUID4
+    portfolio_id: dataset_id_t
     task_data: dict[site_id_t, TaskDataPydantic]
     site_data: dict[site_id_t, RemoteMetaData]
 
 
 class GetSavedSiteDataRequest(BaseModel):
-    portfolio_id: UUID4
+    portfolio_id: dataset_id_t
     site_id: str
 
 

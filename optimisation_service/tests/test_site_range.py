@@ -11,7 +11,7 @@ class TestCountParametersToOptimise:
             fabric_intervention_index=[0],
             incumbent=False,
             age=0,
-            lifetime=30
+            lifetime=30,
         )
         panel_1 = SolarPanel(
             COMPONENT_IS_MANDATORY=False, yield_scalar=[1], yield_index=[0], incumbent=False, age=0, lifetime=25
@@ -26,14 +26,14 @@ class TestCountParametersToOptimise:
             send_temp=[2.0],
             incumbent=False,
             age=0,
-            lifetime=10
+            lifetime=10,
         )
         config = Config(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
             npv_time_horizon=10,
-            npv_discount_factor=0.0
+            npv_discount_factor=0.0,
         )
 
         site_range = SiteRange(building=building, solar_panels=[panel_1, panel_2], heat_pump=heat_pump, config=config)
@@ -48,7 +48,7 @@ class TestCountParametersToOptimise:
             fabric_intervention_index=[0, 1],
             incumbent=False,
             age=0,
-            lifetime=30
+            lifetime=30,
         )
         panel_1 = SolarPanel(
             COMPONENT_IS_MANDATORY=True, yield_scalar=[1], yield_index=[0, 2], incumbent=False, age=0, lifetime=25
@@ -63,14 +63,14 @@ class TestCountParametersToOptimise:
             send_temp=[2.0],
             incumbent=False,
             age=0,
-            lifetime=10
+            lifetime=10,
         )
         config = Config(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
             npv_time_horizon=10,
-            npv_discount_factor=0
+            npv_discount_factor=0,
         )
 
         site_range = SiteRange(building=building, solar_panels=[panel_1, panel_2], heat_pump=heat_pump, config=config)
@@ -87,7 +87,7 @@ class TestCountParametersInAsset:
             fabric_intervention_index=[0],
             incumbent=False,
             age=0,
-            lifetime=30
+            lifetime=30,
         )
 
         optional_building = Building(
@@ -97,7 +97,7 @@ class TestCountParametersInAsset:
             fabric_intervention_index=[0],
             incumbent=False,
             age=0,
-            lifetime=30
+            lifetime=30,
         )
 
         assert count_parameters_in_asset(mandatory_building.model_dump()) == 0
@@ -111,7 +111,7 @@ class TestCountParametersInAsset:
             send_temp=[2.0, 3.0],
             incumbent=False,
             age=0,
-            lifetime=10
+            lifetime=10,
         )
 
         # 3 varying parameters: COMPONENT_IS_MANDATORY, heat_source, send_temp
