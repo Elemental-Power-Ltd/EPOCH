@@ -897,7 +897,7 @@ async def generate_all(
             pool,
             BundleEntryMetadata(
                 bundle_id=bundle_metadata.bundle_id,
-                dataset_id=elec_meter_dataset_id,
+                dataset_id=baseline_id,
                 dataset_type=DatasetTypeEnum.SiteBaseline,
                 dataset_subtype=None,
             ),
