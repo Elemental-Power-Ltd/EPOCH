@@ -285,7 +285,10 @@ class NSGA2(Algorithm):
         else:
             if non_dom_sol.ndim == 1:
                 non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
-            portfolio_solutions = [pi.simulate_portfolio(sol) for sol in non_dom_sol]
+            portfolio_scenarios = [
+                pi.convert_portfolio_chromosome_to_portfolio_scenario(chromosome) for chromosome in non_dom_sol
+            ]
+            portfolio_solutions = [pi.sim.simulate_portfolio(portfolio_scenario) for portfolio_scenario in portfolio_scenarios]
             portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
         return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals)

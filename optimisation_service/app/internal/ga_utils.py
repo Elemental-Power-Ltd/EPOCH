@@ -19,6 +19,7 @@ from app.models.core import Site
 from app.models.epoch_types import TaskDataPydantic
 from app.models.ga_utils import AnnotatedTaskData, AssetParameter, ParsedAsset, asset_t, value_t
 from app.models.metrics import Metric, MetricDirection, MetricValues
+from app.models.site_data import EpochSiteData
 
 logger = logging.getLogger("default")
 
@@ -48,6 +49,7 @@ class ProblemInstance(ElementwiseProblem):
         n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
         for site in portfolio:
             n_ieq_constr += sum(len(bounds) for bounds in site.constraints.values())
+            n_ieq_constr += 1  # peak_hload constraints
 
         epoch_data_dict = {}
         epoch_config_dict = {}
@@ -177,9 +179,9 @@ class ProblemInstance(ElementwiseProblem):
         """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
-    def convert_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> AnnotatedTaskData:
+    def convert_site_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> AnnotatedTaskData:
         """
-        Convert a candidate solution from an array of indeces to a site scenario.
+        Convert a site's candidate solution from an array of indeces to a site scenario.
 
         Parameters
         ----------
@@ -236,6 +238,25 @@ class ProblemInstance(ElementwiseProblem):
 
         return AnnotatedTaskData.model_validate(site_scenario)
 
+    def convert_portfolio_chromosome_to_portfolio_scenario(self, x: npt.NDArray) -> dict[str, AnnotatedTaskData]:
+        """
+        Convert a portfolio's candidate solution from an array of indeces to dictionnary of site scenarios.
+
+        Parameters
+        ----------
+        x
+            A pymoo compatible portfolio solution (array of indeces).
+
+        Returns
+        -------
+        portfolio_scenarios
+            A dictionnary of site solutions indexed on the site ids.
+        """
+        x_dict = self.split_solution(x)
+        portfolio_scenarios = {name: self.convert_site_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
+
+        return portfolio_scenarios
+
     def convert_site_scenario_to_chromosome(self, site_scenario: AnnotatedTaskData, site_name: str) -> npt.NDArray:
         """
         Convert a candidate solution from a site scenario to an array of indeces.
@@ -283,24 +304,6 @@ class ProblemInstance(ElementwiseProblem):
 
         return np.array(x)
 
-    def simulate_portfolio(self, x: npt.NDArray) -> PortfolioSolution:
-        """
-        Simulate a candidate portfolio solution.
-
-        Parameters
-        ----------
-        x
-            A candidate portfolio solution (array of parameter values).
-
-        Returns
-        -------
-        PortfolioSolution
-            The evaluated candidate solution.
-        """
-        x_dict = self.split_solution(x)
-        portfolio_pytd = {name: self.convert_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
-        return self.sim.simulate_portfolio(portfolio_pytd)
-
     def apply_directions(self, metric_values: MetricValues) -> MetricValues:
         """
         Applies metric optimisation direction to metric values.
@@ -320,7 +323,7 @@ class ProblemInstance(ElementwiseProblem):
             metric_values[metric] *= MetricDirection[metric]
         return metric_values
 
-    def calculate_infeasibility(self, portfolio_solution: PortfolioSolution) -> list[float]:
+    def evaluate_constraint_violations(self, portfolio_solution: PortfolioSolution) -> list[float]:
         """
         Calculate the infeasibility of a portfolio solution given the problem's portfolio constraints.
 
@@ -334,15 +337,17 @@ class ProblemInstance(ElementwiseProblem):
         excess
             List of values that indicate by how much the metric values exceed the constraints.
         """
-        # evaluate portfolio level constraints first
-        excess = evaluate_excess(portfolio_solution.metric_values, constraints=self.constraints)
+        # evaluate portfolio level constraints
+        constraint_violations = evaluate_constraints(portfolio_solution.metric_values, constraints=self.constraints)
 
         # evaluate site constraints
         for site in self.portfolio:
-            metric_values = portfolio_solution.scenario[site.site_data.site_id].metric_values
-            excess.extend(evaluate_excess(metric_values=metric_values, constraints=site.constraints))
+            site_solution = portfolio_solution.scenario[site.site_data.site_id]
+            constraint_violations.extend(
+                evaluate_constraints(metric_values=site_solution.metric_values, constraints=site.constraints)
+            )
 
-        return excess
+        return constraint_violations
 
     def _evaluate(self, x: npt.NDArray, out: dict[str, list[float]]) -> None:
         """
@@ -359,14 +364,28 @@ class ProblemInstance(ElementwiseProblem):
         -------
         None
         """
-        portfolio_solution = self.simulate_portfolio(x=x)
-        out["G"] = self.calculate_infeasibility(portfolio_solution)
-        selected_results = {metric: portfolio_solution.metric_values[metric] for metric in self.objectives}
-        directed_results = self.apply_directions(selected_results)
-        out["F"] = list(directed_results.values())
+        portfolio_scenarios = self.convert_portfolio_chromosome_to_portfolio_scenario(x=x)
+
+        constraint_violations = []
+        for site in self.portfolio:
+            site_scenario = portfolio_scenarios[site.site_data.site_id]
+            constraint_violations.append(evaluate_peak_hload(site_scenario=site_scenario, site_data=site._epoch_data))
+
+        if max(constraint_violations) > 0:
+            out["G"] = constraint_violations + [0] * (self.n_ieq_constr - len(constraint_violations))
+            out["F"] = [0] * self.n_obj
+
+        else:
+            portfolio_solution = self.sim.simulate_portfolio(portfolio_scenarios=portfolio_scenarios)
+            constraint_violations += self.evaluate_constraint_violations(portfolio_solution)
+
+            out["G"] = constraint_violations
+            selected_results = {metric: portfolio_solution.metric_values[metric] for metric in self.objectives}
+            directed_results = self.apply_directions(selected_results)
+            out["F"] = list(directed_results.values())
 
 
-def evaluate_excess(metric_values: MetricValues, constraints: Constraints) -> list[float]:
+def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) -> list[float]:
     """
     Measures by how much the metric values exceed the constraints.
     Returns a list of floats, one for each constraint.
@@ -395,6 +414,41 @@ def evaluate_excess(metric_values: MetricValues, constraints: Constraints) -> li
     return excess
 
 
+def evaluate_peak_hload(site_scenario: AnnotatedTaskData, site_data: EpochSiteData) -> float:
+    """
+    Evaluate a site scenario's maximum heat generation against its peak heat load requirement.
+
+    Parameters
+    ----------
+    site_scenario
+        The site scenario to evaluate.
+    site_data
+        The input data for the site.
+
+    Returns
+    -------
+        Difference between the peak heat load requirement and the site scenario's maximum heat generation.
+        A negative value indicates that the maximum heat generation is greater than the peak heat load requirement.
+        A positive value indicates that the maximum heat generation is smaller than the peak heat load requirement.
+    """
+    if site_scenario.building is None:
+        return 0
+
+    site_heat_generation = 0.0
+    if site_scenario.gas_heater is not None:
+        site_heat_generation += site_scenario.gas_heater.maximum_output
+    if site_scenario.heat_pump is not None:
+        site_heat_generation += site_scenario.heat_pump.heat_power
+
+    fabric_intervention_index = site_scenario.building.fabric_intervention_index
+    if fabric_intervention_index == 0:
+        peak_hload_req = site_data.peak_hload
+    else:
+        peak_hload_req = site_data.fabric_interventions[fabric_intervention_index - 1].peak_hload
+
+    return peak_hload_req - site_heat_generation
+
+
 class EstimateBasedSampling(Sampling):
     """
     Generate a population of solutions by estimating some parameter values from data.
@@ -409,9 +463,9 @@ class EstimateBasedSampling(Sampling):
                 epoch_data=site._epoch_data,
                 pop_size=n_samples,
             )
-            site_pops.append([
-                problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios
-            ])
+            site_pops.append(
+                [problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios]
+            )
         portfolio_pop = np.concatenate(site_pops, axis=1)
         return portfolio_pop
 

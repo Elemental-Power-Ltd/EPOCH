@@ -191,6 +191,7 @@ class DataManager:
             baseline=site_data_entries.baseline,
             building_eload=site_data_entries.eload.data,
             building_hload=site_data_entries.heat.data[0].reduced_hload,  # First heat_load is Baseline
+            peak_hload=site_data_entries.heat.data[0].peak_hload,
             ev_eload=[0 for _ in site_data_entries.eload.data],  # EV_load unsupported by DB
             dhw_demand=site_data_entries.dhw.data,
             air_temperature=site_data_entries.air_temp.data,

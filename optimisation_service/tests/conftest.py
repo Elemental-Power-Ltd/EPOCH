@@ -212,6 +212,11 @@ def gen_dummy_portfolio_solutions(portfolio: list[Site]) -> list[PortfolioSoluti
 
 
 @pytest.fixture
+def dummy_site_solution(default_site: Site) -> SiteSolution:
+    return gen_dummy_site_solution(default_site)
+
+
+@pytest.fixture
 def dummy_portfolio_solution(default_portfolio: list[Site]) -> PortfolioSolution:
     return gen_dummy_portfolio_solution(default_portfolio)
 
