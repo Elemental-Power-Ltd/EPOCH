@@ -2,7 +2,7 @@ from enum import StrEnum
 from os import PathLike
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from app.models.database import dataset_id_t
 from app.models.epoch_types.task_data_type import TaskData
@@ -43,6 +43,10 @@ class RemoteMetaData(BaseModel):
     Weather: dataset_id_t | None = Field(default=None)
     GasMeterData: dataset_id_t | None = Field(default=None)
     RenewablesGeneration: dataset_id_t | list[dataset_id_t] | None = Field(default=None)
+
+    # we mutate RemoteMetaData requests (in hydrate_site_data_with_latest_dataset_ids)
+    # so we validate assignment to prevent pydantic warnings about UUIDs vs Strings
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class LocalMetaData(BaseModel):
