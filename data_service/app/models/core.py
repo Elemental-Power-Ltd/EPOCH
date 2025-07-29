@@ -196,6 +196,8 @@ class ClientData(pydantic.BaseModel):
 
 
 class SiteData(pydantic.BaseModel):
+    """Metadata about a specific site from the database."""
+
     client_id: client_id_t = client_id_field
     site_id: str = site_id_field
     name: str = pydantic.Field(
@@ -216,6 +218,7 @@ class SiteData(pydantic.BaseModel):
     dec_lmk: str | None = pydantic.Field(
         description="LMK for the latest Commercial Display Energy Certificate for this building", default=None
     )
+    floor_area: float | None = pydantic.Field(description="Floor area in m^2 used for efficiency metrics", default=None)
 
 
 class BundleEntryMetadata(pydantic.BaseModel):

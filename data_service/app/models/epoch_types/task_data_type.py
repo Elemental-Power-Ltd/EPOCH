@@ -405,6 +405,7 @@ class Config(BaseModel):
     )
 
 
+
 class TaskData(BaseModel):
     building: Building | None = Field(
         default=None,

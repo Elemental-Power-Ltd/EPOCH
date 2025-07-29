@@ -346,7 +346,8 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
                 coordinates,
                 address,
                 epc_lmk,
-                dec_lmk)
+                dec_lmk,
+                floor_area)
             VALUES (
                 $1,
                 $2,
@@ -355,7 +356,8 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
                 $5,
                 $6,
                 $7,
-                $8)""",
+                $8,
+                $9)""",
             site_data.client_id,
             site_data.site_id,
             site_data.name,
@@ -364,6 +366,7 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
             site_data.address,
             site_data.epc_lmk,
             site_data.dec_lmk,
+            site_data.floor_area,
         )
         logger.info(f"Inserted client {site_data.client_id} with return status {status}")
     except asyncpg.exceptions.UniqueViolationError as ex:
@@ -596,11 +599,13 @@ async def get_site_data(site_id: SiteID, pool: DatabasePoolDep) -> SiteData:
             coordinates,
             address,
             epc_lmk,
-            dec_lmk
+            dec_lmk,
+            floor_area
         FROM
             client_info.site_info
         WHERE
-            site_id = $1""",
+            site_id = $1
+        LIMIT 1""",
         site_id.site_id,
     )
     if result is None:
@@ -615,4 +620,5 @@ async def get_site_data(site_id: SiteID, pool: DatabasePoolDep) -> SiteData:
         address=result["address"],
         epc_lmk=result["epc_lmk"],
         dec_lmk=result["dec_lmk"],
+        floor_area=result["floor_area"],
     )
