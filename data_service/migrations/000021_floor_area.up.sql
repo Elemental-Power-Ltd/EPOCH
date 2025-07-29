@@ -1,3 +1,5 @@
+-- This linting rule is particularly awkawrd here, so ignore it
+-- noqa: disable=LT14
 BEGIN;
 -- This is in m^2, and may differ to the floor area calculated in PHPPs
 -- Use this floor area for official metrics like carbon intensity per floor area, or SAP rating.
@@ -7,6 +9,7 @@ ALTER TABLE client_info.site_info ADD COLUMN floor_area FLOAT;
 -- set the floor areas if we know them.
 -- These were mostly looked up manually from EPCs.
 -- NULL out the ones that we can't find
+
 UPDATE client_info.site_info SET floor_area = 433.0 WHERE site_id = '100_102_bridge_street';
 UPDATE client_info.site_info SET floor_area = NULL WHERE site_id = 'best_lab';
 UPDATE client_info.site_info SET floor_area = 2374.2 WHERE site_id = 'bircotes_leisure_centre';
