@@ -851,7 +851,7 @@ async def generate_all(
             pool.fetchval(
                 """
             SELECT
-                dataset_id,
+                dataset_id
             FROM client_meters.metadata
             WHERE site_id = $1 AND fuel_type = 'gas' AND NOT is_synthesised
             ORDER BY created_at DESC
