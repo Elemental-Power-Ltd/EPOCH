@@ -20,13 +20,15 @@ from fastapi import APIRouter
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep, SecretsDep
 from ..epl_secrets import get_secrets_environment
-from ..internal.utils import split_into_sessions
+from ..internal.utils import RateLimiter, split_into_sessions
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
 
 router = APIRouter()
 
 # This is used for book-keeping of the temporary weather tables
 WEATHER_TEMP_IDX = 0
+
+WEATHER_RATE_LIMIT = RateLimiter
 
 
 async def visual_crossing_request(

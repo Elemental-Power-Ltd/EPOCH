@@ -45,14 +45,12 @@ from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetBundleMetadata, DatasetList, RemoteMetaData
-from ..models.weather import WeatherRequest
 from .carbon_intensity import generate_grid_co2
-from .client_data import get_location, get_solar_locations
+from .client_data import get_solar_locations
 from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
 from .import_tariffs import generate_import_tariffs, get_import_tariffs
 from .renewables import generate_renewables_generation
-from .weather import get_weather
 
 router = APIRouter()
 
@@ -928,25 +926,6 @@ async def generate_all(
                 ),
             )
         )
-    # We have to get the weather into the database before we try to do any fitting,
-    # especially over the requested and gas meter time periods.
-    location = await get_location(params, pool)
-    async with asyncio.TaskGroup() as tg:
-        params_weather_task = tg.create_task(
-            get_weather(
-                WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
-                pool=pool,
-                http_client=http_client,
-            )
-        )
-        gas_weather_task = tg.create_task(
-            get_weather(
-                WeatherRequest(location=location, start_ts=gas_start_ts, end_ts=gas_end_ts),
-                pool=pool,
-                http_client=http_client,
-            )
-        )
-    _ = [params_weather_task.result(), gas_weather_task.result()]
     # Most of these are single datasets, but prime the list of desired UUIDs with empty lists
     # for the cases where we'll need them.
     all_requests: to_generate_t = {}
