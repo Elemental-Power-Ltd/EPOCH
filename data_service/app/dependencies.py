@@ -11,10 +11,11 @@ import multiprocessing
 import os
 import typing
 from collections.abc import AsyncGenerator, AsyncIterator
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Never
+import asyncio
 
 import asyncpg
 import httpx
@@ -92,7 +93,11 @@ class Database:
 
 
 db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
-http_client = httpx.AsyncClient(timeout=60)
+
+# These limits are enormous to make sure that we don't saturate the AsyncConnnections
+# https://github.com/encode/httpx/discussions/3084
+http_limits = httpx.Limits(max_keepalive_connections=10000, keepalive_expiry=30)
+http_client = httpx.AsyncClient(timeout=60, limits=http_limits)
 
 elec_vae_mdl: VAE | None = None
 
@@ -150,6 +155,7 @@ async def get_secrets_dependency() -> SecretDict:
 
 
 _PROCESS_POOL: ProcessPoolExecutor | None = None
+_THREAD_POOL: ThreadPoolExecutor | None = None
 
 
 async def get_process_pool() -> ProcessPoolExecutor:
@@ -165,6 +171,19 @@ async def get_process_pool() -> ProcessPoolExecutor:
         mp_context = multiprocessing.get_context("spawn")
         _PROCESS_POOL = ProcessPoolExecutor(mp_context=mp_context)
     return _PROCESS_POOL
+
+
+async def get_thread_pool() -> ThreadPoolExecutor:
+    """
+    Dependency Injection for background thread pools.
+
+    Will initialise the thread pool the first time it is called.
+    Uses many workers to avoid saturating the pool.
+    """
+    global _THREAD_POOL
+    if _THREAD_POOL is None:
+        _THREAD_POOL = ThreadPoolExecutor(max_workers=16)
+    return _THREAD_POOL
 
 
 SecretsDep = typing.Annotated[SecretDict, Depends(get_secrets_dependency)]
@@ -211,6 +230,9 @@ def load_vae() -> VAE:
 async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
     """Set up a long clients: a database pool and an HTTP client."""
     # Startup events
+    loop = asyncio.get_running_loop()
+    thread_pool = await get_thread_pool()
+    loop.set_default_executor(thread_pool)
     await db.create_pool()
     global elec_vae_mdl
     elec_vae_mdl = load_vae()
