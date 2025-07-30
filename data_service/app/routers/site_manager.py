@@ -848,17 +848,12 @@ async def generate_all(
 
     async with asyncio.TaskGroup() as tg:
         gas_dataset_task = tg.create_task(
-            pool.fetchrow(
+            pool.fetchval(
                 """
             SELECT
-                m.dataset_id,
-                MIN(gm.start_ts) AS start_ts,
-                MAX(gm.end_ts) AS end_ts
-            FROM client_meters.metadata AS m
-            LEFT JOIN client_meters.gas_meters AS gm
-            ON gm.dataset_id = m.dataset_id
+                dataset_id,
+            FROM client_meters.metadata
             WHERE site_id = $1 AND fuel_type = 'gas' AND NOT is_synthesised
-            GROUP BY m.dataset_id
             ORDER BY created_at DESC
             LIMIT 1""",
                 params.site_id,
@@ -867,7 +862,9 @@ async def generate_all(
         elec_meter_dataset_task = tg.create_task(
             pool.fetchval(
                 """
-            SELECT dataset_id FROM client_meters.metadata
+            SELECT
+                dataset_id
+            FROM client_meters.metadata
             WHERE site_id = $1 AND fuel_type = 'elec' AND NOT is_synthesised
             ORDER BY created_at DESC
             LIMIT 1""",
@@ -882,10 +879,10 @@ async def generate_all(
                 params.site_id,
             )
         )
-    gas_result = gas_dataset_task.result()
+    gas_meter_dataset_id = gas_dataset_task.result()
     elec_meter_dataset_id = elec_meter_dataset_task.result()
     baseline_id = baseline_task.result()
-    if gas_result is None:
+    if gas_meter_dataset_id is None:
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset_id is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
@@ -900,7 +897,6 @@ async def generate_all(
                 dataset_subtype=None,
             ),
         )
-    gas_meter_dataset_id, gas_start_ts, gas_end_ts = gas_result
 
     # Attach the two meter datasets we've used to this bundle
     async with asyncio.TaskGroup() as tg:
