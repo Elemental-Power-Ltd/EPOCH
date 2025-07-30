@@ -100,7 +100,10 @@ db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
 http_limits = httpx.Limits(max_keepalive_connections=10000, keepalive_expiry=datetime.timedelta(seconds=30).total_seconds())
 http_client = httpx.AsyncClient(
     timeout=httpx.Timeout(
-        pool=None, connect=datetime.timedelta(minutes=10).total_seconds(), read=datetime.timedelta(minutes=10).total_seconds()
+        pool=None,
+        connect=datetime.timedelta(minutes=10).total_seconds(),
+        read=datetime.timedelta(minutes=10).total_seconds(),
+        write=None,
     ),
     limits=http_limits,
 )
