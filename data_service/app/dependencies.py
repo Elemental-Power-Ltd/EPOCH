@@ -7,6 +7,7 @@ function and FastAPI will figure it out through magic.
 """
 
 import asyncio
+import datetime
 import logging
 import multiprocessing
 import os
@@ -96,8 +97,13 @@ db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
 
 # These limits are enormous to make sure that we don't saturate the AsyncConnnections
 # https://github.com/encode/httpx/discussions/3084
-http_limits = httpx.Limits(max_keepalive_connections=10000, keepalive_expiry=30)
-http_client = httpx.AsyncClient(timeout=60, limits=http_limits)
+http_limits = httpx.Limits(max_keepalive_connections=10000, keepalive_expiry=datetime.timedelta(seconds=30).total_seconds())
+http_client = httpx.AsyncClient(
+    timeout=httpx.Timeout(
+        pool=None, connect=datetime.timedelta(minutes=10).total_seconds(), read=datetime.timedelta(minutes=10).total_seconds()
+    ),
+    limits=http_limits,
+)
 
 elec_vae_mdl: VAE | None = None
 
