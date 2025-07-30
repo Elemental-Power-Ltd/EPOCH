@@ -6,6 +6,7 @@ To connect to a database, simply provide the relevant `DatabaseDep` or `HttpClie
 function and FastAPI will figure it out through magic.
 """
 
+import asyncio
 import logging
 import multiprocessing
 import os
@@ -15,7 +16,6 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Never
-import asyncio
 
 import asyncpg
 import httpx
