@@ -13,7 +13,7 @@ from ..utils import RateLimiter
 
 # Octopus limits the number of calls we can make; it isn't documented so we have to guess about this.
 # "BottlecapDave" from Home Assistant suggests it's 100 / hour, but that seems stricter than what I've actually seen
-OCTOPUS_RATE_LIMITER = RateLimiter(rate_limit_requests=25, rate_limit_period=60.0)
+OCTOPUS_RATE_LIMITER = RateLimiter(rate_limit_requests=25, rate_limit_period=datetime.timedelta(seconds=60.0))
 
 
 async def get_octopus_tariff(

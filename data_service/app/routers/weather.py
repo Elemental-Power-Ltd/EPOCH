@@ -20,13 +20,17 @@ from fastapi import APIRouter
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep, SecretsDep
 from ..epl_secrets import get_secrets_environment
-from ..internal.utils import split_into_sessions
+from ..internal.utils import RateLimiter, split_into_sessions
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
 
 router = APIRouter()
 
 # This is used for book-keeping of the temporary weather tables
 WEATHER_TEMP_IDX = 0
+
+# We batch requests and use aiometer.amap for a single request, but this is a higher
+# level rate limit just to make sure we're not being silly.
+WEATHER_RATE_LIMIT = RateLimiter(rate_limit_requests=10, rate_limit_period=datetime.timedelta(seconds=1))
 
 
 async def visual_crossing_request(
@@ -211,10 +215,11 @@ async def get_weather(
         FROM weather.visual_crossing
         WHERE location = $1
         AND $2 <= timestamp
-        AND timestamp < $3
+        AND timestamp <= $3
         ORDER BY date ASC""",
         weather_request.location,
         weather_request.start_ts,
+        # There's a <= in here to prevent missing out the final day of a given group
         weather_request.end_ts,
     )
 
@@ -232,7 +237,6 @@ async def get_weather(
     missing_days = sorted(expected_days - got_days)
 
     logger = logging.getLogger(__name__)
-    # TODO (2024-08-09 MHJB): make this async-ier
     for missing_session in split_into_sessions(missing_days, datetime.timedelta(days=1)):
         logger.warning(f"Missing days between {min(missing_session)} and {max(missing_session)} for {weather_request.location}")
 
@@ -240,6 +244,9 @@ async def get_weather(
         session_max_ts = datetime.datetime.combine(max(missing_session), datetime.time.max, datetime.UTC) + datetime.timedelta(
             days=1
         )
+        # There's another rate limiter within the `visual_crossing_request` function, this just slows down parallel requests
+        # to prevent trouble.
+        await WEATHER_RATE_LIMIT.acquire()
         vc_recs = await visual_crossing_request(
             weather_request.location,
             session_min_ts,

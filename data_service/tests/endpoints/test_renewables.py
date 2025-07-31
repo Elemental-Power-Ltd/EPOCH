@@ -61,6 +61,7 @@ class TestRenewables:
     async def test_generate_renewables_metadata(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
+        earliest_possible = datetime.datetime.now(datetime.UTC)
         result = (
             await client.post(
                 "/generate-renewables-generation",
@@ -74,12 +75,11 @@ class TestRenewables:
                 },
             )
         ).json()
+        created_at = datetime.datetime.fromisoformat(result["created_at"])
         assert "dataset_id" in result
-        assert (
-            datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=1)
-            <= datetime.datetime.fromisoformat(result["created_at"])
-            <= datetime.datetime.now(datetime.UTC)
-        )
+        assert earliest_possible <= created_at
+        assert created_at <= datetime.datetime.now(datetime.UTC)
+
         assert result["parameters"]["azimuth"] == 178
         assert result["parameters"]["tilt"] == 30
         assert result["site_id"] == "demo_london"

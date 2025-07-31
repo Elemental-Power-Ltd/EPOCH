@@ -166,6 +166,7 @@ class DatasetTypeEnum(StrEnum):
     ASHPData = "ASHPData"
     ImportTariff = "ImportTariff"
     ThermalModel = "ThermalModel"
+    PHPP = "PHPP"
 
 
 class DatasetEntry(pydantic.BaseModel):

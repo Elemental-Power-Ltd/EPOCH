@@ -57,6 +57,7 @@ class DatasetList(pydantic.BaseModel):
     GasMeterData: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     RenewablesGeneration: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     ThermalModel: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
+    PHPP: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
 
 
 class RemoteMetaData(pydantic.BaseModel):
@@ -87,6 +88,7 @@ class RemoteMetaData(pydantic.BaseModel):
     GasMeterData: dataset_id_t | None = pydantic.Field(default=None)
     RenewablesGeneration: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
     ThermalModel: dataset_id_t | list[dataset_id_t] | None = pydantic.Field(default=None)
+    PHPP: dataset_id_t | None = pydantic.Field(default=None)
 
 
 class DatasetBundleMetadata(pydantic.BaseModel):

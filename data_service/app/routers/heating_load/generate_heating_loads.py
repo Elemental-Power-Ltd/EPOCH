@@ -11,6 +11,7 @@ and generate half-hourly heating and domestic hot water (DHW) load profiles that
 stored in a database for further analysis.
 """
 
+import asyncio
 import datetime
 import itertools
 import json
@@ -77,9 +78,9 @@ async def get_site_id_for_heating_load(dataset_id: dataset_id_t, pool: DatabaseP
     return cast(site_id_t, site_id)
 
 
-async def select_regression_or_thermal(params: HeatingLoadRequest, pool: DatabasePoolDep) -> HeatingLoadRequest:
+async def select_regression_thermal_phpp(params: HeatingLoadRequest, pool: DatabasePoolDep) -> HeatingLoadRequest:
     """
-    Select whether the regression mode or the thermal model is best for this site.
+    Select whether the regression mode, the thermal model or a PHPP is best for this site.
 
     This will first attempt to use a PHPP if one exists.
     Then, if no PHPP exists, but a good quality thermal model does, it'll use that.
@@ -140,6 +141,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
             structure_id=most_recent.structure_id,
             surveyed_sizes=params.surveyed_sizes,
             savings_fraction=0.0,  # These are specifically overwritten
+            bundle_metadata=params.bundle_metadata,  # Make sure we pass the bundle metadata along!
         )
 
     available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
@@ -220,9 +222,9 @@ async def generate_heating_load(
     logger = logging.getLogger(__name__)
     match params.model_type:
         case HeatingLoadModelEnum.Auto:
-            # This function will look up if we have a good enough thermal model, and create
+            # This function will look up if we have a good enough PHPP or thermal model, and create
             # a new heating load request, then all that.
-            new_heatload_params = await select_regression_or_thermal(params=params, pool=pool)
+            new_heatload_params = await select_regression_thermal_phpp(params=params, pool=pool)
             logger.info(f"Generating heat load for {new_heatload_params.site_id} with {new_heatload_params.model_type}.")
             return await generate_heating_load(new_heatload_params, pool, http_client)
         case HeatingLoadModelEnum.Regression:
@@ -311,7 +313,7 @@ async def generate_heating_load_regression_impl(
         )
     )
 
-    fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df, apply_bait=params.apply_bait)
+    fitted_coefs = await asyncio.to_thread(fit_bait_and_model, gas_df, fit_weather_df, apply_bait=params.apply_bait)
     changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions, params.savings_fraction)
     forecast_weather_df = weather_dataset_to_dataframe(
         await get_weather(
@@ -331,7 +333,8 @@ async def generate_heating_load_regression_impl(
         ).ffill()
     )
 
-    forecast_weather_df["bait"] = building_adjusted_internal_temperature(
+    forecast_weather_df["bait"] = await asyncio.to_thread(
+        building_adjusted_internal_temperature,
         forecast_weather_df,
         changed_coefs.solar_gain,
         changed_coefs.wind_chill,
@@ -351,7 +354,8 @@ async def generate_heating_load_regression_impl(
     )
 
     flat_heating_kwh = changed_coefs.dhw_kwh * (1.0 - params.dhw_fraction) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=24)
-    heating_df = assign_hh_dhw_poisson(
+    heating_df = await asyncio.to_thread(
+        assign_hh_dhw_poisson,
         heating_df,
         poisson_weights,
         dhw_event_size=event_size,
@@ -720,4 +724,12 @@ async def generate_heating_load_phpp(
                     strict=True,
                 ),
             )
+
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+                # We also file the PHPP in the database as part of this bundle
+                phpp_bundle_metadata = params.bundle_metadata.model_copy()
+                phpp_bundle_metadata.dataset_type = DatasetTypeEnum.PHPP
+                phpp_bundle_metadata.dataset_id = params.structure_id
+                await file_self_with_bundle(conn, bundle_metadata=phpp_bundle_metadata)
     return hload_metadata

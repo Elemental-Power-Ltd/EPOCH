@@ -45,14 +45,12 @@ from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetBundleMetadata, DatasetList, RemoteMetaData
-from ..models.weather import WeatherRequest
 from .carbon_intensity import generate_grid_co2
-from .client_data import get_location, get_solar_locations
+from .client_data import get_solar_locations
 from .electricity_load import generate_electricity_load
 from .heating_load import generate_heating_load
 from .import_tariffs import generate_import_tariffs, get_import_tariffs
 from .renewables import generate_renewables_generation
-from .weather import get_weather
 
 router = APIRouter()
 
@@ -758,24 +756,23 @@ async def generate_all_wrapper(
     -------
     None
     """
-    all_tasks: list[Task] = []
     async with asyncio.TaskGroup() as tg:
+        all_tasks: list[Task] = []
         for hload_req in to_generate[DatasetTypeEnum.HeatingLoad]:
             assert isinstance(hload_req, HeatingLoadRequest)
-            all_tasks.append(tg.create_task(generate_heating_load(hload_req, pool, http_client)))
+            all_tasks.append(tg.create_task(generate_heating_load(hload_req, pool, http_client=http_client)))
 
         for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
             assert isinstance(solar_req, RenewablesRequest)
-            all_tasks.append(tg.create_task(generate_renewables_generation(solar_req, pool, http_client, secrets_env)))
-
-        for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
-            assert isinstance(tariff_req, TariffRequest)
             all_tasks.append(
                 tg.create_task(
-                    generate_import_tariffs(tariff_req, pool=pool, http_client=http_client), name=tariff_req.tariff_name
+                    generate_renewables_generation(solar_req, pool, http_client=http_client, secrets_env=secrets_env)
                 )
             )
 
+        for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
+            assert isinstance(tariff_req, TariffRequest)
+            all_tasks.append(tg.create_task(generate_import_tariffs(tariff_req, pool=pool, http_client=http_client)))
         elec_req = cast(ElectricalLoadRequest, to_generate[DatasetTypeEnum.ElectricityMeterDataSynthesised])
         all_tasks.append(tg.create_task(generate_electricity_load(elec_req, vae=vae, pool=pool, http_client=http_client)))
 
@@ -850,17 +847,12 @@ async def generate_all(
 
     async with asyncio.TaskGroup() as tg:
         gas_dataset_task = tg.create_task(
-            pool.fetchrow(
+            pool.fetchval(
                 """
             SELECT
-                m.dataset_id,
-                MIN(gm.start_ts) AS start_ts,
-                MAX(gm.end_ts) AS end_ts
-            FROM client_meters.metadata AS m
-            LEFT JOIN client_meters.gas_meters AS gm
-            ON gm.dataset_id = m.dataset_id
+                dataset_id
+            FROM client_meters.metadata
             WHERE site_id = $1 AND fuel_type = 'gas' AND NOT is_synthesised
-            GROUP BY m.dataset_id
             ORDER BY created_at DESC
             LIMIT 1""",
                 params.site_id,
@@ -869,7 +861,9 @@ async def generate_all(
         elec_meter_dataset_task = tg.create_task(
             pool.fetchval(
                 """
-            SELECT dataset_id FROM client_meters.metadata
+            SELECT
+                dataset_id
+            FROM client_meters.metadata
             WHERE site_id = $1 AND fuel_type = 'elec' AND NOT is_synthesised
             ORDER BY created_at DESC
             LIMIT 1""",
@@ -884,10 +878,10 @@ async def generate_all(
                 params.site_id,
             )
         )
-    gas_result = gas_dataset_task.result()
+    gas_meter_dataset_id = gas_dataset_task.result()
     elec_meter_dataset_id = elec_meter_dataset_task.result()
     baseline_id = baseline_task.result()
-    if gas_result is None:
+    if gas_meter_dataset_id is None:
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset_id is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
@@ -902,7 +896,6 @@ async def generate_all(
                 dataset_subtype=None,
             ),
         )
-    gas_meter_dataset_id, gas_start_ts, gas_end_ts = gas_result
 
     # Attach the two meter datasets we've used to this bundle
     async with asyncio.TaskGroup() as tg:
@@ -928,25 +921,6 @@ async def generate_all(
                 ),
             )
         )
-    # We have to get the weather into the database before we try to do any fitting,
-    # especially over the requested and gas meter time periods.
-    location = await get_location(params, pool)
-    async with asyncio.TaskGroup() as tg:
-        params_weather_task = tg.create_task(
-            get_weather(
-                WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
-                pool=pool,
-                http_client=http_client,
-            )
-        )
-        gas_weather_task = tg.create_task(
-            get_weather(
-                WeatherRequest(location=location, start_ts=gas_start_ts, end_ts=gas_end_ts),
-                pool=pool,
-                http_client=http_client,
-            )
-        )
-    _ = [params_weather_task.result(), gas_weather_task.result()]
     # Most of these are single datasets, but prime the list of desired UUIDs with empty lists
     # for the cases where we'll need them.
     all_requests: to_generate_t = {}
@@ -1130,7 +1104,13 @@ async def generate_all(
     }
 
     background_tasks.add_task(
-        generate_all_wrapper, pool, http_client, secrets_env, vae, all_requests, bundle_metadata=bundle_metadata
+        generate_all_wrapper,
+        pool,
+        http_client,
+        secrets_env,
+        vae,
+        all_requests,
+        bundle_metadata=bundle_metadata,
     )
 
     # Check that the gas and electricity metadata tasks were handled okay before we tidy up

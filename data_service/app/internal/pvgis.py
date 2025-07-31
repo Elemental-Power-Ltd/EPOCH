@@ -11,10 +11,15 @@ import pandas as pd
 from fastapi import HTTPException
 
 from ..epl_secrets import get_secrets_environment
-from ..models.renewables import PvgisDataSourceEnum, PvgisMountingSystemEnum, PvgisTechnologyEnum, PvgisTypeEnum, PVOptimaResult
-from .utils import check_latitude_longitude
+from ..models.renewables import PvgisMountingSystemEnum, PVOptimaResult
+from .utils import RateLimiter, check_latitude_longitude
 
 logger = logging.getLogger(__name__)
+
+# This is for the burst rate limit of 1/second
+RN_SLOW_LIMITER = RateLimiter(rate_limit_requests=50, rate_limit_period=datetime.timedelta(hours=1))
+RN_BURST_LIMITER = RateLimiter(rate_limit_requests=6, rate_limit_period=datetime.timedelta(seconds=60))
+PVGIS_RATE_LIMITER = RateLimiter(rate_limit_requests=25, rate_limit_period=datetime.timedelta(seconds=1))
 
 
 async def get_pvgis_optima(
@@ -61,29 +66,10 @@ async def get_pvgis_optima(
         "header": int(False),
     }
 
-    DEFAULT_OPTIMA_ = PVOptimaResult(
-        azimuth=180,
-        tilt=35.0,
-        altitude=0.0,
-        mounting_system=PvgisMountingSystemEnum.fixed,
-        type=PvgisTypeEnum.building_integrated,
-        technology=PvgisTechnologyEnum.unknown,
-        data_source=PvgisDataSourceEnum.UNKNOWN,
-    )
-    try:
-        res = await client.get(base_url, params=params)
-    except httpx.TimeoutException:
-        logger.warning(f"Failed to get PVGIS optima with {params} due to a timeout.")
-        logger.info(f"Exact query was: {base_url}, {params}.")
-        return DEFAULT_OPTIMA_
-    except httpx.RemoteProtocolError as ex:
-        logger.warning(f"Failed to get PVGIS optima with {params} due to a RemoteProtocolError: {ex}.")
-        logger.info(f"Exact query was: {base_url}, {params}.")
-        return DEFAULT_OPTIMA_
-    except httpx.ConnectError as ex:
-        logger.warning(f"Failed to get PVGIS optima with {params} due to a ConnectError: {ex}.")
-        logger.info(f"Exact query was: {base_url}, {params}.")
-        return DEFAULT_OPTIMA_
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await PVGIS_RATE_LIMITER.acquire()
+    res = await client.get(base_url, params=params)
+
     assert res.status_code == 200, f"Failed to get PVGIS optima: {res.status_code}, {res.text}"
     data = res.json()
 
@@ -164,6 +150,8 @@ async def get_pvgis_data(
         "components": int(True),
         "pvtechchoice": "crystSi",
     }
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await PVGIS_RATE_LIMITER.acquire()
     req = await client.get(base_url, params=params)
 
     try:
@@ -243,6 +231,10 @@ async def get_renewables_ninja_data(
         "capacity": 1.0,
         "format": "json",
     }
+
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await RN_SLOW_LIMITER.acquire()
+        await RN_BURST_LIMITER.acquire()
     req = await client.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
@@ -326,6 +318,9 @@ async def get_renewables_ninja_wind_data(
         -------
         set of valid turbine names
         """
+        if getattr(http_client, "DO_RATE_LIMIT", True):
+            await RN_SLOW_LIMITER.acquire()
+            await RN_BURST_LIMITER.acquire()
         rn_wind_resp = await http_client.get(
             "https://www.renewables.ninja/api/models/wind", headers={"Authorization": f"Token {api_key}"}
         )
@@ -354,7 +349,9 @@ async def get_renewables_ninja_wind_data(
         "capacity": 1.0,
         "format": "json",
     }
-
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await RN_SLOW_LIMITER.acquire()
+        await RN_BURST_LIMITER.acquire()
     req = await client.get(
         "https://www.renewables.ninja/api/data/wind", params=params, headers={"Authorization": f"Token {api_key}"}
     )
