@@ -318,8 +318,9 @@ async def get_renewables_ninja_wind_data(
         -------
         set of valid turbine names
         """
-        await RN_SLOW_LIMITER.acquire()
-        await RN_BURST_LIMITER.acquire()
+        if getattr(http_client, "DO_RATE_LIMIT", True):
+            await RN_SLOW_LIMITER.acquire()
+            await RN_BURST_LIMITER.acquire()
         rn_wind_resp = await http_client.get(
             "https://www.renewables.ninja/api/models/wind", headers={"Authorization": f"Token {api_key}"}
         )
@@ -348,9 +349,9 @@ async def get_renewables_ninja_wind_data(
         "capacity": 1.0,
         "format": "json",
     }
-
-    await RN_SLOW_LIMITER.acquire()
-    await RN_BURST_LIMITER.acquire()
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await RN_SLOW_LIMITER.acquire()
+        await RN_BURST_LIMITER.acquire()
     req = await client.get(
         "https://www.renewables.ninja/api/data/wind", params=params, headers={"Authorization": f"Token {api_key}"}
     )

@@ -78,9 +78,9 @@ async def get_site_id_for_heating_load(dataset_id: dataset_id_t, pool: DatabaseP
     return cast(site_id_t, site_id)
 
 
-async def select_regression_or_thermal(params: HeatingLoadRequest, pool: DatabasePoolDep) -> HeatingLoadRequest:
+async def select_regression_thermal_phpp(params: HeatingLoadRequest, pool: DatabasePoolDep) -> HeatingLoadRequest:
     """
-    Select whether the regression mode or the thermal model is best for this site.
+    Select whether the regression mode, the thermal model or a PHPP is best for this site.
 
     This will first attempt to use a PHPP if one exists.
     Then, if no PHPP exists, but a good quality thermal model does, it'll use that.
@@ -141,6 +141,7 @@ async def select_regression_or_thermal(params: HeatingLoadRequest, pool: Databas
             structure_id=most_recent.structure_id,
             surveyed_sizes=params.surveyed_sizes,
             savings_fraction=0.0,  # These are specifically overwritten
+            bundle_metadata=params.bundle_metadata,  # Make sure we pass the bundle metadata along!
         )
 
     available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
@@ -221,9 +222,9 @@ async def generate_heating_load(
     logger = logging.getLogger(__name__)
     match params.model_type:
         case HeatingLoadModelEnum.Auto:
-            # This function will look up if we have a good enough thermal model, and create
+            # This function will look up if we have a good enough PHPP or thermal model, and create
             # a new heating load request, then all that.
-            new_heatload_params = await select_regression_or_thermal(params=params, pool=pool)
+            new_heatload_params = await select_regression_thermal_phpp(params=params, pool=pool)
             logger.info(f"Generating heat load for {new_heatload_params.site_id} with {new_heatload_params.model_type}.")
             return await generate_heating_load(new_heatload_params, pool, http_client)
         case HeatingLoadModelEnum.Regression:

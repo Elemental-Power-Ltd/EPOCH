@@ -9,7 +9,6 @@ from asyncio import Task
 from collections.abc import Sequence
 from typing import Any, cast
 
-import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
@@ -725,7 +724,7 @@ async def get_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> 
 
 async def generate_all_wrapper(
     pool: DatabasePoolDep,
-    # http_client: HttpClientDep,
+    http_client: HttpClientDep,
     secrets_env: SecretsDep,
     vae: VaeDep,
     to_generate: to_generate_t,
@@ -757,39 +756,38 @@ async def generate_all_wrapper(
     -------
     None
     """
-    async with httpx.AsyncClient(timeout=120) as http_client:
-        async with asyncio.TaskGroup() as tg:
-            all_tasks: list[Task] = []
-            for hload_req in to_generate[DatasetTypeEnum.HeatingLoad]:
-                assert isinstance(hload_req, HeatingLoadRequest)
-                all_tasks.append(tg.create_task(generate_heating_load(hload_req, pool, http_client=http_client)))
+    async with asyncio.TaskGroup() as tg:
+        all_tasks: list[Task] = []
+        for hload_req in to_generate[DatasetTypeEnum.HeatingLoad]:
+            assert isinstance(hload_req, HeatingLoadRequest)
+            all_tasks.append(tg.create_task(generate_heating_load(hload_req, pool, http_client=http_client)))
 
-            for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
-                assert isinstance(solar_req, RenewablesRequest)
-                all_tasks.append(
-                    tg.create_task(
-                        generate_renewables_generation(solar_req, pool, http_client=http_client, secrets_env=secrets_env)
-                    )
+        for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
+            assert isinstance(solar_req, RenewablesRequest)
+            all_tasks.append(
+                tg.create_task(
+                    generate_renewables_generation(solar_req, pool, http_client=http_client, secrets_env=secrets_env)
                 )
-
-            for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
-                assert isinstance(tariff_req, TariffRequest)
-                all_tasks.append(tg.create_task(generate_import_tariffs(tariff_req, pool=pool, http_client=http_client)))
-            elec_req = cast(ElectricalLoadRequest, to_generate[DatasetTypeEnum.ElectricityMeterDataSynthesised])
-            all_tasks.append(tg.create_task(generate_electricity_load(elec_req, vae=vae, pool=pool, http_client=http_client)))
-
-            ci_req = cast(GridCO2Request, to_generate[DatasetTypeEnum.CarbonIntensity])
-            all_tasks.append(tg.create_task(generate_grid_co2(ci_req, pool=pool, http_client=http_client)))
-
-            await file_self_with_bundle(
-                pool,
-                BundleEntryMetadata(
-                    bundle_id=bundle_metadata.bundle_id,
-                    dataset_id=NULL_UUID,
-                    dataset_type=DatasetTypeEnum.ASHPData,
-                    dataset_subtype=None,
-                ),
             )
+
+        for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
+            assert isinstance(tariff_req, TariffRequest)
+            all_tasks.append(tg.create_task(generate_import_tariffs(tariff_req, pool=pool, http_client=http_client)))
+        elec_req = cast(ElectricalLoadRequest, to_generate[DatasetTypeEnum.ElectricityMeterDataSynthesised])
+        all_tasks.append(tg.create_task(generate_electricity_load(elec_req, vae=vae, pool=pool, http_client=http_client)))
+
+        ci_req = cast(GridCO2Request, to_generate[DatasetTypeEnum.CarbonIntensity])
+        all_tasks.append(tg.create_task(generate_grid_co2(ci_req, pool=pool, http_client=http_client)))
+
+        await file_self_with_bundle(
+            pool,
+            BundleEntryMetadata(
+                bundle_id=bundle_metadata.bundle_id,
+                dataset_id=NULL_UUID,
+                dataset_type=DatasetTypeEnum.ASHPData,
+                dataset_subtype=None,
+            ),
+        )
 
     _ = [task.result() for task in all_tasks]
 
@@ -1107,7 +1105,8 @@ async def generate_all(
 
     background_tasks.add_task(
         generate_all_wrapper,
-        pool,  # http_client,
+        pool,
+        http_client,
         secrets_env,
         vae,
         all_requests,
