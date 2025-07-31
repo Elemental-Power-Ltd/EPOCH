@@ -9,9 +9,10 @@ from asyncio import Task
 from collections.abc import Sequence
 from typing import Any, cast
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
 import httpx
-from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep, get_http_client
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+
+from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
 from ..internal.site_manager import (
     list_ashp_datasets,
     list_carbon_intensity_datasets,
@@ -765,7 +766,11 @@ async def generate_all_wrapper(
 
             for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
                 assert isinstance(solar_req, RenewablesRequest)
-                all_tasks.append(tg.create_task(generate_renewables_generation(solar_req, pool, http_client=http_client, secrets_env=secrets_env)))
+                all_tasks.append(
+                    tg.create_task(
+                        generate_renewables_generation(solar_req, pool, http_client=http_client, secrets_env=secrets_env)
+                    )
+                )
 
             for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
                 assert isinstance(tariff_req, TariffRequest)
@@ -1101,8 +1106,12 @@ async def generate_all(
     }
 
     background_tasks.add_task(
-        generate_all_wrapper, pool, #http_client,
-          secrets_env, vae, all_requests, bundle_metadata=bundle_metadata
+        generate_all_wrapper,
+        pool,  # http_client,
+        secrets_env,
+        vae,
+        all_requests,
+        bundle_metadata=bundle_metadata,
     )
 
     # Check that the gas and electricity metadata tasks were handled okay before we tidy up
