@@ -758,28 +758,22 @@ async def generate_all_wrapper(
     """
     async with httpx.AsyncClient() as http_client:
         all_tasks: list[Task] = []
-        async with asyncio.TaskGroup() as tg:
-            for hload_req in to_generate[DatasetTypeEnum.HeatingLoad]:
-                assert isinstance(hload_req, HeatingLoadRequest)
-                all_tasks.append(tg.create_task(generate_heating_load(hload_req, pool, http_client)))
+        for hload_req in to_generate[DatasetTypeEnum.HeatingLoad]:
+            assert isinstance(hload_req, HeatingLoadRequest)
+            await generate_heating_load(hload_req, pool, http_client)
 
-            for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
-                assert isinstance(solar_req, RenewablesRequest)
-                all_tasks.append(tg.create_task(generate_renewables_generation(solar_req, pool, http_client, secrets_env)))
+        for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
+            assert isinstance(solar_req, RenewablesRequest)
+            await generate_renewables_generation(solar_req, pool, http_client, secrets_env)
 
-            for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
-                assert isinstance(tariff_req, TariffRequest)
-                all_tasks.append(
-                    tg.create_task(
-                        generate_import_tariffs(tariff_req, pool=pool, http_client=http_client), name=tariff_req.tariff_name
-                    )
-                )
+        for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
+            assert isinstance(tariff_req, TariffRequest)
+            await generate_import_tariffs(tariff_req, pool=pool, http_client=http_client)
+        elec_req = cast(ElectricalLoadRequest, to_generate[DatasetTypeEnum.ElectricityMeterDataSynthesised])
+        await generate_electricity_load(elec_req, vae=vae, pool=pool, http_client=http_client)
 
-            elec_req = cast(ElectricalLoadRequest, to_generate[DatasetTypeEnum.ElectricityMeterDataSynthesised])
-            all_tasks.append(tg.create_task(generate_electricity_load(elec_req, vae=vae, pool=pool, http_client=http_client)))
-
-            ci_req = cast(GridCO2Request, to_generate[DatasetTypeEnum.CarbonIntensity])
-            all_tasks.append(tg.create_task(generate_grid_co2(ci_req, pool=pool, http_client=http_client)))
+        ci_req = cast(GridCO2Request, to_generate[DatasetTypeEnum.CarbonIntensity])
+        await generate_grid_co2(ci_req, pool=pool, http_client=http_client)
 
         await file_self_with_bundle(
             pool,
