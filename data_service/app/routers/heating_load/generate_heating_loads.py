@@ -723,4 +723,12 @@ async def generate_heating_load_phpp(
                     strict=True,
                 ),
             )
+
+            if params.bundle_metadata is not None:
+                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+                # We also file the PHPP in the database as part of this bundle
+                phpp_bundle_metadata = params.bundle_metadata.model_copy()
+                phpp_bundle_metadata.dataset_type = DatasetTypeEnum.PHPP
+                phpp_bundle_metadata.dataset_id = params.structure_id
+                await file_self_with_bundle(conn, bundle_metadata=phpp_bundle_metadata)
     return hload_metadata
