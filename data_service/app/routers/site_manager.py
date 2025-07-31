@@ -10,8 +10,8 @@ from collections.abc import Sequence
 from typing import Any, cast
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-
-from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
+import httpx
+from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep, get_http_client
 from ..internal.site_manager import (
     list_ashp_datasets,
     list_carbon_intensity_datasets,
@@ -724,7 +724,7 @@ async def get_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> 
 
 async def generate_all_wrapper(
     pool: DatabasePoolDep,
-    http_client: HttpClientDep,
+    # http_client: HttpClientDep,
     secrets_env: SecretsDep,
     vae: VaeDep,
     to_generate: to_generate_t,
@@ -756,29 +756,30 @@ async def generate_all_wrapper(
     -------
     None
     """
-    all_tasks: list[Task] = []
-    async with asyncio.TaskGroup() as tg:
-        for hload_req in to_generate[DatasetTypeEnum.HeatingLoad]:
-            assert isinstance(hload_req, HeatingLoadRequest)
-            all_tasks.append(tg.create_task(generate_heating_load(hload_req, pool, http_client)))
+    async with httpx.AsyncClient() as http_client:
+        all_tasks: list[Task] = []
+        async with asyncio.TaskGroup() as tg:
+            for hload_req in to_generate[DatasetTypeEnum.HeatingLoad]:
+                assert isinstance(hload_req, HeatingLoadRequest)
+                all_tasks.append(tg.create_task(generate_heating_load(hload_req, pool, http_client)))
 
-        for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
-            assert isinstance(solar_req, RenewablesRequest)
-            all_tasks.append(tg.create_task(generate_renewables_generation(solar_req, pool, http_client, secrets_env)))
+            for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
+                assert isinstance(solar_req, RenewablesRequest)
+                all_tasks.append(tg.create_task(generate_renewables_generation(solar_req, pool, http_client, secrets_env)))
 
-        for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
-            assert isinstance(tariff_req, TariffRequest)
-            all_tasks.append(
-                tg.create_task(
-                    generate_import_tariffs(tariff_req, pool=pool, http_client=http_client), name=tariff_req.tariff_name
+            for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
+                assert isinstance(tariff_req, TariffRequest)
+                all_tasks.append(
+                    tg.create_task(
+                        generate_import_tariffs(tariff_req, pool=pool, http_client=http_client), name=tariff_req.tariff_name
+                    )
                 )
-            )
 
-        elec_req = cast(ElectricalLoadRequest, to_generate[DatasetTypeEnum.ElectricityMeterDataSynthesised])
-        all_tasks.append(tg.create_task(generate_electricity_load(elec_req, vae=vae, pool=pool, http_client=http_client)))
+            elec_req = cast(ElectricalLoadRequest, to_generate[DatasetTypeEnum.ElectricityMeterDataSynthesised])
+            all_tasks.append(tg.create_task(generate_electricity_load(elec_req, vae=vae, pool=pool, http_client=http_client)))
 
-        ci_req = cast(GridCO2Request, to_generate[DatasetTypeEnum.CarbonIntensity])
-        all_tasks.append(tg.create_task(generate_grid_co2(ci_req, pool=pool, http_client=http_client)))
+            ci_req = cast(GridCO2Request, to_generate[DatasetTypeEnum.CarbonIntensity])
+            all_tasks.append(tg.create_task(generate_grid_co2(ci_req, pool=pool, http_client=http_client)))
 
         await file_self_with_bundle(
             pool,
@@ -1105,7 +1106,8 @@ async def generate_all(
     }
 
     background_tasks.add_task(
-        generate_all_wrapper, pool, http_client, secrets_env, vae, all_requests, bundle_metadata=bundle_metadata
+        generate_all_wrapper, pool, #http_client,
+          secrets_env, vae, all_requests, bundle_metadata=bundle_metadata
     )
 
     # Check that the gas and electricity metadata tasks were handled okay before we tidy up
