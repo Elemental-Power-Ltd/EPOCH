@@ -17,7 +17,7 @@ import json
 import logging
 import operator
 from typing import cast
-
+import asyncio
 import numpy as np
 import pandas as pd
 from fastapi import HTTPException
@@ -311,7 +311,7 @@ async def generate_heating_load_regression_impl(
         )
     )
 
-    fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df, apply_bait=params.apply_bait)
+    fitted_coefs = await asyncio.to_thread(fit_bait_and_model, gas_df, fit_weather_df, apply_bait=params.apply_bait)
     changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions, params.savings_fraction)
     forecast_weather_df = weather_dataset_to_dataframe(
         await get_weather(
@@ -331,7 +331,7 @@ async def generate_heating_load_regression_impl(
         ).ffill()
     )
 
-    forecast_weather_df["bait"] = building_adjusted_internal_temperature(
+    forecast_weather_df["bait"] = await asyncio.to_thread(building_adjusted_internal_temperature, 
         forecast_weather_df,
         changed_coefs.solar_gain,
         changed_coefs.wind_chill,
@@ -351,7 +351,7 @@ async def generate_heating_load_regression_impl(
     )
 
     flat_heating_kwh = changed_coefs.dhw_kwh * (1.0 - params.dhw_fraction) * pd.Timedelta(minutes=30) / pd.Timedelta(hours=24)
-    heating_df = assign_hh_dhw_poisson(
+    heating_df = await asyncio.to_thread(assign_hh_dhw_poisson,
         heating_df,
         poisson_weights,
         dhw_event_size=event_size,
