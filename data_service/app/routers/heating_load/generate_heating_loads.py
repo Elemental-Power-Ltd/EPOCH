@@ -644,7 +644,11 @@ async def generate_heating_load_phpp(
     # TODO (2025-07-17 MHJB): this mismatch between typed dict and pydantic is very annoying
     peak_hload = phpp_total_heat_loss(
         structure_df=structure_df,
-        metadata={"air_changes": 4.0, "floor_area": metadata.floor_area, "internal_volume": metadata.internal_volume},
+        metadata={
+            "air_changes": metadata.air_changes,
+            "floor_area": metadata.floor_area,
+            "internal_volume": metadata.internal_volume,
+        },
     )
 
     new_structure_df = structure_df.copy()
@@ -652,7 +656,6 @@ async def generate_heating_load_phpp(
         # Repeatedly apply interventions to the same dataframe. This does some unnecessary copying but is cleanest
         new_structure_df = apply_phpp_intervention(new_structure_df, intervention_name=intervention)
 
-    # TODO (2025-05-17 MHJB): read the air changes from the PHPP?
     final_peak_hload = phpp_total_heat_loss(
         structure_df=new_structure_df,
         metadata={
@@ -680,7 +683,7 @@ async def generate_heating_load_phpp(
     )
 
     hload_metadata = HeatingLoadMetadata(
-        dataset_id=uuid7(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         site_id=site_id,
         created_at=datetime.datetime.now(datetime.UTC),
         params=json.dumps(metadata_params),
