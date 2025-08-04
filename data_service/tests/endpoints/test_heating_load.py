@@ -317,3 +317,24 @@ class TestPHPPHeatingLoad:
         assert hload_data["cost"] > 10_000, "Cost should be big"
         assert hload_data["peak_hload"] < 191, "Peak hload should be lower than non-intervention"
         assert all(item >= 0 for item in hload_data["reduced_hload"])
+
+        generated_cladding_resp = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": meter_data["dataset_id"],
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "interventions": ["cladding"],
+            },
+        )
+        assert generated_cladding_resp.status_code == 200, generated_cladding_resp.text
+        generated_cladding_metadata = generated_cladding_resp.json()
+        assert generated_cladding_metadata["generation_method"] == "phpp"
+
+        cladding_hload_resp = await client.post(
+            "/get-heating-load", json={"dataset_id": generated_cladding_metadata["dataset_id"]}
+        )
+        cladding_hload_data = cladding_hload_resp.json()["data"][0]
+        assert cladding_hload_data["cost"] > 10_000, "Cost should be big"
+        assert cladding_hload_data["peak_hload"] < 191, "Peak hload should be lower than non-intervention"
+        assert all(item >= 0 for item in cladding_hload_data["reduced_hload"])

@@ -675,12 +675,13 @@ async def generate_heating_load_phpp(
         "source_dataset_id": str(params.dataset_id),
         "structure_id": str(params.structure_id),
         "generation_method": HeatingLoadModelEnum.PHPP,
+        "percentage_saving": percentage_saving,
+        # Do this type wrangling in case we got genericised interventions (some of which, like double glazing, might pass)
+        "cost": phpp_fabric_intervention_cost(
+            structure_df, [item.value if isinstance(item, InterventionEnum) else str(item) for item in params.interventions]
+        ),
         **changed_coefs.model_dump(),
     }
-    # Do this type wrangling in case we got genericised interventions (some of which, like double glazing, might pass)
-    metadata_params["cost"] = phpp_fabric_intervention_cost(
-        structure_df, [item.value if isinstance(item, InterventionEnum) else str(item) for item in params.interventions]
-    )
 
     hload_metadata = HeatingLoadMetadata(
         dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
