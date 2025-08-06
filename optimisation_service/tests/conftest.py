@@ -3,10 +3,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from epoch_simulator import SimulationResult, aggregate_site_results
 
 from app.internal.datamanager import load_epoch_data_from_file
+from app.internal.epoch_utils import simulation_result_to_metric_dict
 from app.internal.ga_utils import ProblemInstance
-from app.internal.portfolio_simulator import combine_metric_values
 from app.internal.site_range import REPEAT_COMPONENTS
 from app.models.constraints import Constraints
 from app.models.core import Site
@@ -25,11 +26,15 @@ from app.models.epoch_types.site_range_type import (
     SolarPanel,
 )
 from app.models.ga_utils import AnnotatedTaskData, asset_t, value_t
-from app.models.metrics import _METRICS, Metric
+from app.models.metrics import Metric
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
 from app.models.site_data import EpochSiteData, SiteMetaData
 
 _DATA_PATH = Path("tests", "data")
+
+# set a few fields in the SimulationResult with random values
+_METRICS = ["total_capex", "total_electricity_used", "total_ch_shortfall"]
+_COMPARISON = ["operating_balance", "npv_balance", "combined_carbon_balance"]
 
 
 @pytest.fixture
@@ -174,8 +179,18 @@ def gen_dummy_site_solution(site: Site) -> SiteSolution:
         else:
             site_scenario[asset_name] = choose_random_values_for_asset(asset)
     scenario = AnnotatedTaskData.model_validate(site_scenario)
-    metric_values = {metric: random.random() * 100 for metric in _METRICS}
-    return SiteSolution(scenario=scenario, metric_values=metric_values)
+
+    # construct a pybind SimulationResult and populate a few of the fields
+    sim_result = SimulationResult()
+    for metric in _METRICS:
+        setattr(sim_result.metrics, metric, random.random() * 100)
+
+    for metric in _COMPARISON:
+        setattr(sim_result.comparison, metric, random.random() * 100)
+
+    metric_values = simulation_result_to_metric_dict(sim_result)
+
+    return SiteSolution(scenario=scenario, metric_values=metric_values, simulation_result=sim_result)
 
 
 def choose_random_values_for_asset(asset: asset_t) -> dict[str, value_t]:
@@ -204,13 +219,16 @@ def choose_random_values_for_asset(asset: asset_t) -> dict[str, value_t]:
 
 def gen_dummy_portfolio_solution(portfolio: list[Site]) -> PortfolioSolution:
     solution = {}
-    building_metric_values = []
+    site_results = []
+
     for site in portfolio:
         site_solution = gen_dummy_site_solution(site)
         solution[site.site_data.site_id] = site_solution
-        building_metric_values.append(site_solution.metric_values)
-    metric_values = combine_metric_values(building_metric_values)
-    return PortfolioSolution(scenario=solution, metric_values=metric_values)
+        site_results.append(site_solution.simulation_result)
+
+    portfolio_result = aggregate_site_results(site_results)
+    metric_values = simulation_result_to_metric_dict(portfolio_result)
+    return PortfolioSolution(scenario=solution, metric_values=metric_values, simulation_result=portfolio_result)
 
 
 def gen_dummy_portfolio_solutions(portfolio: list[Site]) -> list[PortfolioSolution]:

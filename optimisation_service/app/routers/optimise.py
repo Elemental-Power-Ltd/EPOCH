@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.internal.bayesian.bayesian import Bayesian
 from app.internal.constraints import apply_default_constraints
 from app.internal.datamanager import DataManagerDep
+from app.internal.epoch_utils import simulation_result_to_pydantic
 from app.internal.ga_utils import strip_annotations
 from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
@@ -20,16 +21,13 @@ from app.internal.uuid7 import uuid7
 from app.models.core import (
     EndpointTask,
     OptimisationResultEntry,
-    PortfolioMetrics,
     PortfolioOptimisationResult,
     Site,
-    SiteMetrics,
     SiteOptimisationResult,
     Task,
     TaskResponse,
     TaskResult,
 )
-from app.models.metrics import Metric
 from app.models.result import OptimisationResult
 from app.routers.epl_queue import IQueue
 
@@ -78,94 +76,15 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
                     site_id=site_id,
                     portfolio_id=portfolio_id,
                     scenario=strip_annotations(site_solution.scenario),
-                    metrics=SiteMetrics(
-                        carbon_balance_scope_1=site_solution.metric_values[Metric.carbon_balance_scope_1],
-                        carbon_balance_scope_2=site_solution.metric_values[Metric.carbon_balance_scope_2],
-                        carbon_balance_total=site_solution.metric_values[Metric.carbon_balance_total],
-                        carbon_cost=site_solution.metric_values[Metric.carbon_cost],
-                        meter_balance=site_solution.metric_values[Metric.meter_balance],
-                        operating_balance=site_solution.metric_values[Metric.operating_balance],
-                        cost_balance=site_solution.metric_values[Metric.cost_balance],
-                        npv_balance=site_solution.metric_values[Metric.npv_balance],
-                        capex=site_solution.metric_values[Metric.capex],
-                        payback_horizon=site_solution.metric_values[Metric.payback_horizon],
-                        annualised_cost=site_solution.metric_values[Metric.annualised_cost],
-                        total_gas_used=site_solution.metric_values[Metric.total_gas_used],
-                        total_electricity_imported=site_solution.metric_values[Metric.total_electricity_imported],
-                        total_electricity_generated=site_solution.metric_values[Metric.total_electricity_generated],
-                        total_electricity_exported=site_solution.metric_values[Metric.total_electricity_exported],
-                        total_electrical_shortfall=site_solution.metric_values[Metric.total_electrical_shortfall],
-                        total_heat_shortfall=site_solution.metric_values[Metric.total_heat_shortfall],
-                        total_ch_shortfall=site_solution.metric_values[Metric.total_ch_shortfall],
-                        total_dhw_shortfall=site_solution.metric_values[Metric.total_dhw_shortfall],
-                        total_gas_import_cost=site_solution.metric_values[Metric.total_gas_import_cost],
-                        total_electricity_import_cost=site_solution.metric_values[Metric.total_electricity_import_cost],
-                        total_electricity_export_gain=site_solution.metric_values[Metric.total_electricity_export_gain],
-                        total_meter_cost=site_solution.metric_values[Metric.total_meter_cost],
-                        total_operating_cost=site_solution.metric_values[Metric.total_operating_cost],
-                        total_net_present_value=site_solution.metric_values[Metric.total_net_present_value],
-                        baseline_gas_used=site_solution.metric_values[Metric.baseline_gas_used],
-                        baseline_electricity_imported=site_solution.metric_values[Metric.baseline_electricity_imported],
-                        baseline_electricity_generated=site_solution.metric_values[Metric.baseline_electricity_generated],
-                        baseline_electricity_exported=site_solution.metric_values[Metric.baseline_electricity_exported],
-                        baseline_electrical_shortfall=site_solution.metric_values[Metric.baseline_electrical_shortfall],
-                        baseline_heat_shortfall=site_solution.metric_values[Metric.baseline_heat_shortfall],
-                        baseline_ch_shortfall=site_solution.metric_values[Metric.baseline_ch_shortfall],
-                        baseline_dhw_shortfall=site_solution.metric_values[Metric.baseline_dhw_shortfall],
-                        baseline_gas_import_cost=site_solution.metric_values[Metric.baseline_gas_import_cost],
-                        baseline_electricity_import_cost=site_solution.metric_values[Metric.baseline_electricity_import_cost],
-                        baseline_electricity_export_gain=site_solution.metric_values[Metric.baseline_electricity_export_gain],
-                        baseline_meter_cost=site_solution.metric_values[Metric.baseline_meter_cost],
-                        baseline_operating_cost=site_solution.metric_values[Metric.baseline_operating_cost],
-                        baseline_net_present_value=site_solution.metric_values[Metric.baseline_net_present_value],
-                    ),
+                    metrics=simulation_result_to_pydantic(site_solution.simulation_result),
                 )
             )
         portfolios.append(
             PortfolioOptimisationResult(
                 task_id=task.task_id,
                 portfolio_id=portfolio_id,
-                metrics=PortfolioMetrics(
-                    carbon_balance_scope_1=portfolio_solution.metric_values[Metric.carbon_balance_scope_1],
-                    carbon_balance_scope_2=portfolio_solution.metric_values[Metric.carbon_balance_scope_2],
-                    carbon_balance_total=portfolio_solution.metric_values[Metric.carbon_balance_total],
-                    carbon_cost=portfolio_solution.metric_values[Metric.carbon_cost],
-                    meter_balance=portfolio_solution.metric_values[Metric.meter_balance],
-                    operating_balance=portfolio_solution.metric_values[Metric.operating_balance],
-                    cost_balance=portfolio_solution.metric_values[Metric.cost_balance],
-                    npv_balance=portfolio_solution.metric_values[Metric.npv_balance],
-                    capex=portfolio_solution.metric_values[Metric.capex],
-                    payback_horizon=portfolio_solution.metric_values[Metric.payback_horizon],
-                    annualised_cost=portfolio_solution.metric_values[Metric.annualised_cost],
-                    total_gas_used=portfolio_solution.metric_values[Metric.total_gas_used],
-                    total_electricity_imported=portfolio_solution.metric_values[Metric.total_electricity_imported],
-                    total_electricity_generated=portfolio_solution.metric_values[Metric.total_electricity_generated],
-                    total_electricity_exported=portfolio_solution.metric_values[Metric.total_electricity_exported],
-                    total_electrical_shortfall=portfolio_solution.metric_values[Metric.total_electrical_shortfall],
-                    total_heat_shortfall=portfolio_solution.metric_values[Metric.total_heat_shortfall],
-                    total_ch_shortfall=portfolio_solution.metric_values[Metric.total_ch_shortfall],
-                    total_dhw_shortfall=portfolio_solution.metric_values[Metric.total_dhw_shortfall],
-                    total_gas_import_cost=portfolio_solution.metric_values[Metric.total_gas_import_cost],
-                    total_electricity_import_cost=portfolio_solution.metric_values[Metric.total_electricity_import_cost],
-                    total_electricity_export_gain=portfolio_solution.metric_values[Metric.total_electricity_export_gain],
-                    total_meter_cost=portfolio_solution.metric_values[Metric.total_meter_cost],
-                    total_operating_cost=portfolio_solution.metric_values[Metric.total_operating_cost],
-                    total_net_present_value=portfolio_solution.metric_values[Metric.total_net_present_value],
-                    baseline_gas_used=portfolio_solution.metric_values[Metric.baseline_gas_used],
-                    baseline_electricity_imported=portfolio_solution.metric_values[Metric.baseline_electricity_imported],
-                    baseline_electricity_generated=portfolio_solution.metric_values[Metric.baseline_electricity_generated],
-                    baseline_electricity_exported=portfolio_solution.metric_values[Metric.baseline_electricity_exported],
-                    baseline_electrical_shortfall=portfolio_solution.metric_values[Metric.baseline_electrical_shortfall],
-                    baseline_heat_shortfall=portfolio_solution.metric_values[Metric.baseline_heat_shortfall],
-                    baseline_ch_shortfall=portfolio_solution.metric_values[Metric.baseline_ch_shortfall],
-                    baseline_dhw_shortfall=portfolio_solution.metric_values[Metric.baseline_dhw_shortfall],
-                    baseline_gas_import_cost=portfolio_solution.metric_values[Metric.baseline_gas_import_cost],
-                    baseline_electricity_import_cost=portfolio_solution.metric_values[Metric.baseline_electricity_import_cost],
-                    baseline_electricity_export_gain=portfolio_solution.metric_values[Metric.baseline_electricity_export_gain],
-                    baseline_meter_cost=portfolio_solution.metric_values[Metric.baseline_meter_cost],
-                    baseline_operating_cost=portfolio_solution.metric_values[Metric.baseline_operating_cost],
-                    baseline_net_present_value=portfolio_solution.metric_values[Metric.baseline_net_present_value],
-                ),
+                # FIXME, type is wrong because PortfolioMetrics and SiteMetrics are different
+                metrics=simulation_result_to_pydantic(portfolio_solution.simulation_result),
                 site_results=site_results,
             )
         )

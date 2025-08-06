@@ -9,35 +9,58 @@ You can't import this file, but it's useful for static analysis.
 import typing
 from enum import Enum
 
+class SapGrade(Enum):
+    A = "A"
+    B = "B"
+    C = "C"
+    D = "D"
+    E = "E"
+    F = "F"
+    G = "G"
+
 class SimulationMetrics:
     total_gas_used: float
     total_electricity_imported: float
     total_electricity_generated: float
     total_electricity_exported: float
+    total_electricity_curtailed: float
+    total_electricity_used: float
 
     total_electrical_shortfall: float
     total_heat_shortfall: float
     total_ch_shortfall: float
     total_dhw_shortfall: float
 
+    total_capex: float
     total_gas_import_cost: float
     total_electricity_import_cost: float
     total_electricity_export_gain: float
 
     total_meter_cost: float
     total_operating_cost: float
+    total_annualised_cost: float
     total_net_present_value: float
 
-class SimulationResult:
-    carbon_balance_scope_1: float
-    carbon_balance_scope_2: float
+    total_scope_1_emissions: float
+    total_scope_2_emissions: float
+    total_combined_carbon_emissions: float
+
+    sap_efficiency_score: int | None
+    sap_efficiency_rating_grade: SapGrade | None
+
+class ScenarioComparison:
     meter_balance: float
     operating_balance: float
     cost_balance: float
     npv_balance: float
-    capex: float
-    payback_horizon: float
-    annualised_cost: float
+    payback_horizon_years: float
+    carbon_balance_scope_1: float
+    carbon_balance_scope_2: float
+    combined_carbon_balance: float
+    carbon_cost: float
+
+class SimulationResult:
+    comparison: ScenarioComparison
     metrics: SimulationMetrics
     baseline_metrics: SimulationMetrics
     report_data: typing.Any
@@ -53,6 +76,7 @@ class Building:
     scalar_heat_load: float
     scalar_electrical_load: float
     fabric_intervention_index: int
+    floor_area: float | None
     incumbent: bool
     age: float
     lifetime: float
@@ -181,3 +205,5 @@ class Simulator:
     def simulate_scenario(self, taskData: TaskData, fullReporting: bool = False) -> SimulationResult: ...
     def is_valid(self, taskData: TaskData) -> bool: ...
     def calculate_capex(self, taskData: TaskData) -> CapexBreakdown: ...
+
+def aggregate_site_results(site_results: list[SimulationResult]) -> SimulationResult: ...

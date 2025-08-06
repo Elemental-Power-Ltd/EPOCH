@@ -6,7 +6,7 @@ from epoch_simulator import Simulator, TaskData
 from fastapi import APIRouter
 
 from app.internal.datamanager import DataManagerDep
-from app.internal.epoch_utils import convert_sim_result
+from app.internal.epoch_utils import simulation_result_to_pydantic
 from app.models.epoch_types import ReportData
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.simulate import (
@@ -139,9 +139,9 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> Ful
     else:
         report_data_pydantic = None
 
-    objectives = convert_sim_result(res)
+    metrics = simulation_result_to_pydantic(res)
 
-    return FullResult(report_data=report_data_pydantic, metrics=objectives, task_data=task_data, site_data=epoch_data)
+    return FullResult(report_data=report_data_pydantic, metrics=metrics, task_data=task_data, site_data=epoch_data)
 
 
 def report_data_to_dict(report_data: ReportData) -> dict[str, list[float]]:

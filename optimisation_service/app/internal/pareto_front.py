@@ -2,9 +2,10 @@ from itertools import islice, product
 from typing import cast
 
 import numpy as np
+from epoch_simulator import aggregate_site_results
 from paretoset import paretoset  # type: ignore
 
-from app.internal.portfolio_simulator import combine_metric_values
+from app.internal.epoch_utils import simulation_result_to_metric_dict
 from app.models.metrics import Metric, MetricDirection
 from app.models.result import PortfolioSolution
 
@@ -32,6 +33,29 @@ def portfolio_pareto_front(portfolio_solutions: list[PortfolioSolution], objecti
     pareto_efficient = paretoset(costs=objective_values, sense=objective_direct, distinct=True)
 
     return cast(list[PortfolioSolution], np.array(portfolio_solutions)[pareto_efficient].tolist())
+
+
+def _merge_solutions(sol1: PortfolioSolution, sol2: PortfolioSolution) -> PortfolioSolution:
+    """
+    Merge two Portfolio Solutions into one.
+    Parameters
+    ----------
+    sol1
+        The first PortfolioSolution to merge.
+    sol2
+        The second PortfolioSolution to merge.
+    Returns
+    -------
+    PortfolioSolution
+        The combined PortfolioSolution.
+    """
+    combined_result = aggregate_site_results([sol1.simulation_result, sol2.simulation_result])
+
+    return PortfolioSolution(
+        scenario=sol1.scenario | sol2.scenario,
+        simulation_result=combined_result,
+        metric_values=simulation_result_to_metric_dict(combined_result)
+    )
 
 
 def merge_and_optimise_two_portfolio_solution_lists(
@@ -71,30 +95,19 @@ def merge_and_optimise_two_portfolio_solution_lists(
     """
     combinations = product(list1, list2)
     if len(list1) == 1 or len(list2) == 1:
-        return [
-            PortfolioSolution(
-                scenario=sol1.scenario | sol2.scenario,
-                metric_values=combine_metric_values([sol1.metric_values, sol2.metric_values]),
-            )
-            for sol1, sol2 in list(combinations)
+        return [_merge_solutions(sol1, sol2) for sol1, sol2 in list(combinations)
         ]
     pf: list[PortfolioSolution] = []
     while subset := list(islice(combinations, batch_size)):
         if capex_limit is not None:
             subset_combined = [
-                PortfolioSolution(
-                    scenario=sol1.scenario | sol2.scenario,
-                    metric_values=combine_metric_values([sol1.metric_values, sol2.metric_values]),
-                )
+                _merge_solutions(sol1, sol2)
                 for sol1, sol2 in subset
                 if sol1.metric_values[Metric.capex] + sol2.metric_values[Metric.capex] <= capex_limit
             ]
         else:
             subset_combined = [
-                PortfolioSolution(
-                    scenario=sol1.scenario | sol2.scenario,
-                    metric_values=combine_metric_values([sol1.metric_values, sol2.metric_values]),
-                )
+                _merge_solutions(sol1, sol2)
                 for sol1, sol2 in subset
             ]
 

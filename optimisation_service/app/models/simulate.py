@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 
+from app.models.core import SimulationMetrics
 from app.models.database import dataset_id_t, site_id_t
 from app.models.epoch_types import ReportData
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
-from app.models.metrics import MetricValues
 from app.models.site_data import EpochSiteData, SiteMetaData
 
 
@@ -34,7 +34,7 @@ class EpochInputData(BaseModel):
 
 
 class FullResult(BaseModel):
-    metrics: MetricValues
+    metrics: SimulationMetrics
     report_data: ReportData | None
 
     # we also return the TaskData,SiteData pair used to produce this result

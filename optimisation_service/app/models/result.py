@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 
+from epoch_simulator import SimulationResult
+
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import MetricValues
 
@@ -12,6 +14,7 @@ from app.models.metrics import MetricValues
 class SiteSolution:
     scenario: AnnotatedTaskData
     metric_values: MetricValues
+    simulation_result: SimulationResult
 
     def __hash__(self) -> int:
         json_str = json.dumps(self.scenario.model_dump(), sort_keys=True, default=str)
@@ -27,6 +30,7 @@ class SiteSolution:
 class PortfolioSolution:
     scenario: dict[str, SiteSolution]
     metric_values: MetricValues
+    simulation_result: SimulationResult
 
     def __hash__(self) -> int:
         return hash(tuple(self.scenario.values()))

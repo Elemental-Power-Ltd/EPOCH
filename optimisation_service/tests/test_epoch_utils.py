@@ -15,8 +15,8 @@ from epoch_simulator import (
 
 from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.epoch_utils import (
-    convert_sim_result,
     convert_TaskData_to_pydantic,
+    simulation_result_to_metric_dict,
 )
 from app.models.epoch_types.site_range_type import Config
 from app.models.metrics import _METRICS
@@ -40,7 +40,7 @@ def test_convert_sim_result(default_config: Config) -> None:
 
     sim_result = sim.simulate_scenario(td)
 
-    res = convert_sim_result(sim_result)
+    res = simulation_result_to_metric_dict(sim_result)
 
     for metric in _METRICS:
         assert metric in res

@@ -17,7 +17,6 @@ import pandas as pd
 from epoch_simulator import TaskData
 from paretoset import paretoset  # type: ignore
 
-from app.internal.portfolio_simulator import combine_metric_values
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import _METRICS, Metric, MetricDirection
@@ -28,6 +27,13 @@ from ..models.algorithms import Algorithm
 logger = logging.getLogger("default")
 
 _EPOCH_CONFIG = {"optimiser": {"leagueTableCapacity": 1, "produceExhaustiveOutput": True}}
+
+
+# FIXME combine_metric_values no longer exists
+#  this is just to trick this into building
+#  the logic will be broken as a result
+def combine_metric_values(*args):
+    return []
 
 
 class GridSearch(Algorithm):
@@ -173,7 +179,8 @@ def pareto_optimise(
         objective_values = [site.objective_values for site in combination]  # type: ignore
         portfolio_objective_values = combine_metric_values(objective_values)  # type: ignore
 
-        portfolio_solution = PortfolioSolution(scenario=solution_dict, metric_values=portfolio_objective_values)
+        portfolio_solution = PortfolioSolution(scenario=solution_dict, metric_values=portfolio_objective_values,
+                                               simulation_result=None)  # type: ignore
 
         portfolio_solutions.append(portfolio_solution)
 

@@ -1,5 +1,6 @@
 import pytest
 import torch
+from epoch_simulator import SimulationResult
 
 from app.internal.bayesian.bayesian import (
     _TKWARGS,
@@ -118,13 +119,14 @@ class TestExtractSubPortfolioCapexAllocations:
         capex_a, capex_b, capex_c, capex_d, capex_e = 10, 20, 30, 40, 50
         solution = PortfolioSolution(
             scenario={
-                "a": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_a}),
-                "b": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_b}),
-                "c": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_c}),
-                "d": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_d}),
-                "e": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_e}),
+                "a": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_a}, SimulationResult()),
+                "b": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_b}, SimulationResult()),
+                "c": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_c}, SimulationResult()),
+                "d": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_d}, SimulationResult()),
+                "e": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_e}, SimulationResult()),
             },
             metric_values={},
+            simulation_result=SimulationResult()
         )
         capex_allocations = extract_sub_portfolio_capex_allocations(solution, sub_portfolio_site_ids)
         assert capex_allocations == [capex_a + capex_b, capex_c + capex_d, capex_e]
@@ -139,13 +141,14 @@ class TestConvertSolutionListToTensor:
         carbon_balance_scope_1 = 66
         solution = PortfolioSolution(
             scenario={
-                "a": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_a}),
-                "b": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_b}),
-                "c": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_c}),
-                "d": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_d}),
-                "e": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_e}),
+                "a": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_a}, SimulationResult()),
+                "b": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_b}, SimulationResult()),
+                "c": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_c}, SimulationResult()),
+                "d": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_d}, SimulationResult()),
+                "e": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_e}, SimulationResult()),
             },
             metric_values={Metric.cost_balance: cost_balance, Metric.carbon_balance_scope_1: carbon_balance_scope_1},
+            simulation_result=SimulationResult()
         )
         train_x, train_y = convert_solution_list_to_tensor(
             solutions=[solution], sub_portfolio_site_ids=sub_portfolio_site_ids, objectives=objectives
