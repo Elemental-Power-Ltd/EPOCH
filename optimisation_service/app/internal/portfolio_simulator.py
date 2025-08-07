@@ -1,8 +1,7 @@
+import copy
 import functools
 import logging
-
-from typing import Self
-import copy
+from typing import Any, Self
 
 import numpy as np
 from epoch_simulator import Simulator, TaskData
@@ -23,7 +22,6 @@ class PortfolioSimulator:
     Provides portfolio simulation by initialising multiple EPOCH simulator's.
     """
 
-
     def __init__(self, epoch_data_dict: dict[str, EpochSiteData], epoch_config_dict: dict[str, PydanticConfig]) -> None:
         """
         Initialise the various EPOCH simulators.
@@ -39,7 +37,6 @@ class PortfolioSimulator:
         -------
         None
         """
-
         # store these even though they can be enormous so that
         # we can re-create the simulators if needed.
         self.epoch_data_dict = epoch_data_dict
@@ -48,7 +45,6 @@ class PortfolioSimulator:
             name: Simulator.from_json(epoch_data.model_dump_json(), epoch_config_dict[name].model_dump_json())
             for name, epoch_data in epoch_data_dict.items()
         }
-
 
     def __copy__(self) -> Self:
         """
@@ -61,7 +57,7 @@ class PortfolioSimulator:
         ----------
         self
             The object we want to copy
-        
+
         Returns
         -------
         Self
@@ -70,7 +66,7 @@ class PortfolioSimulator:
         other = PortfolioSimulator(epoch_data_dict=self.epoch_data_dict, epoch_config_dict=self.epoch_config_dict)
         other.sims = self.sims
         return other
-    
+
     def __deepcopy__(self, memo: dict[int, Any]) -> Self:
         """
         Deepcopy this Portfolio Simulator, making sure to re-create any simulators.
@@ -86,15 +82,16 @@ class PortfolioSimulator:
         memo
             Mystery black box parameter from the copy.deepcopy library function
             (it's a dict of id: value mappings to break loops)
-        
+
         Returns
         -------
         Self
             Brand new portfolio simulator exactly the same as this one.
         """
-        return PortfolioSimulator(epoch_data_dict=copy.deepcopy(self.epoch_data_dict),
-                                   epoch_config_dict=copy.deepcopy(self.epoch_config_dict))
-                                    
+        return PortfolioSimulator(
+            epoch_data_dict=copy.deepcopy(self.epoch_data_dict), epoch_config_dict=copy.deepcopy(self.epoch_config_dict)
+        )
+
     def simulate_portfolio(self, portfolio_scenarios: dict[str, AnnotatedTaskData]) -> PortfolioSolution:
         """
         Simulate a portfolio.
