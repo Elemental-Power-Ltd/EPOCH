@@ -36,6 +36,7 @@ class OptimisationResult:
     solutions: list[PortfolioSolution]
     n_evals: int
     exec_time: timedelta
+    history: list | None = None
 
     def __post_init__(self) -> None:
         if not self.n_evals > 0:
