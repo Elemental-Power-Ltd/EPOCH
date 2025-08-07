@@ -1,7 +1,7 @@
 import copy
 import functools
 import logging
-from typing import Any, Self
+from typing import Any
 
 import numpy as np
 from epoch_simulator import Simulator, TaskData
@@ -46,7 +46,7 @@ class PortfolioSimulator:
             for name, epoch_data in epoch_data_dict.items()
         }
 
-    def __copy__(self) -> PortfolioSimulator:
+    def __copy__(self) -> "PortfolioSimulator":
         """
         Shallow copy this Portfolio Simulator, sharing simulators.
 
@@ -67,7 +67,7 @@ class PortfolioSimulator:
         other.sims = self.sims
         return other
 
-    def __deepcopy__(self, memo: dict[int, Any] | None) -> PortfolioSimulator:
+    def __deepcopy__(self, memo: dict[int, Any] | None) -> "PortfolioSimulator":
         """
         Deepcopy this Portfolio Simulator, making sure to re-create any simulators.
 
