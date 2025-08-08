@@ -35,7 +35,7 @@ def count_parameters_to_optimise(site_range: SiteRange) -> int:
     return n
 
 
-def count_parameters_in_asset(asset: dict) -> int:
+def count_parameters_in_asset(asset: dict[str, list[float]]) -> int:
     """
     Count the number of parameters to optimise in an individual component.
 

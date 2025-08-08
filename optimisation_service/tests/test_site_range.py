@@ -3,7 +3,7 @@ from app.models.epoch_types.site_range_type import Building, Config, HeatPump, H
 
 
 class TestCountParametersToOptimise:
-    def test_COMPONENT_IS_MANDATORY(self):
+    def test_COMPONENT_IS_MANDATORY(self) -> None:
         building = Building(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1.0],
@@ -40,7 +40,7 @@ class TestCountParametersToOptimise:
 
         assert count_parameters_to_optimise(site_range) == 2
 
-    def test_asset_values(self):
+    def test_asset_values(self) -> None:
         building = Building(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1.0],
@@ -79,7 +79,7 @@ class TestCountParametersToOptimise:
 
 
 class TestCountParametersInAsset:
-    def test_COMPONENT_IS_MANDATORY(self):
+    def test_COMPONENT_IS_MANDATORY(self) -> None:
         mandatory_building = Building(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1.0],
@@ -103,7 +103,7 @@ class TestCountParametersInAsset:
         assert count_parameters_in_asset(mandatory_building.model_dump()) == 0
         assert count_parameters_in_asset(optional_building.model_dump()) == 1
 
-    def test_asset_values(self):
+    def test_asset_values(self) -> None:
         heat_pump = HeatPump(
             COMPONENT_IS_MANDATORY=False,
             heat_power=[1],

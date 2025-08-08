@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import Any, Never, cast
 
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2 as Pymoo_NSGA2  # type: ignore
@@ -49,7 +50,7 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         return_least_infeasible: bool,
         pop_size_incr_scalar: float = 0.1,
         pop_size_incr_threshold: float = 0.9,
-        **kwargs,
+        **kwargs: Never,
     ):
         """
         Initialise a Pymoo NSGA2 algorithm with a customised loop.
@@ -103,7 +104,7 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
             **kwargs,
         )
 
-    def _advance(self, infills=None, **kwargs):
+    def _advance(self, infills: None = None, **kwargs: Never) -> Any:
         """
         Extend the _advance function to enable automatic population size increase.
 
@@ -218,7 +219,7 @@ class NSGA2(Algorithm):
 
         self.termination_criteria = MultiTermination(tol, period, n_max_gen, n_max_evals, cv_tol, cv_period)
 
-    def _load_existing_solutions(self, solutions: list[PortfolioSolution], problem: ProblemInstance):
+    def _load_existing_solutions(self, solutions: list[PortfolioSolution], problem: ProblemInstance) -> None:
         """
         Load existing solutions to the optimisation problem into the population.
 
@@ -361,7 +362,9 @@ class MultiTermination(Termination):
         max_evals_progress = self.max_evals.update(algorithm)
         cv_progress = self.cv.update(algorithm)
         p = [f_progress, max_gen_progess, max_evals_progress, cv_progress]
-        return max(p)
+        if max(p) is not None:
+            return cast(float, max(p))
+        return float("inf")
 
 
 class SeparatedNSGA2(Algorithm):

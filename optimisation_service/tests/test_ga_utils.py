@@ -48,7 +48,9 @@ from .conftest import site_generator
 
 
 class TestProblemInstance:
-    def test_init(self, default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]):
+    def test_init(
+        self, default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]
+    ) -> None:
         ProblemInstance(default_objectives, default_constraints, default_portfolio)
 
     def test_split_solution(self, default_problem_instance: ProblemInstance) -> None:
@@ -83,7 +85,7 @@ class TestProblemInstance:
                     assert hasattr(td_pydantic, asset_name)
 
     @pytest.mark.parametrize("x_value", [0, 1])
-    def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance):
+    def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
         for site in default_problem_instance.portfolio:
             x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
             site_scenario = default_problem_instance.convert_site_chromosome_to_site_scenario(x, site.name)
@@ -115,7 +117,7 @@ class TestProblemInstance:
                 else:
                     assert hasattr(td_pydantic, asset_name)
 
-    def test_apply_directions(self, default_problem_instance: ProblemInstance):
+    def test_apply_directions(self, default_problem_instance: ProblemInstance) -> None:
         metric_values: MetricValues = dict.fromkeys(_OBJECTIVES, 10)
         res = default_problem_instance.apply_directions(deepcopy(metric_values))
         assert res[Metric.annualised_cost] == metric_values[Metric.annualised_cost]
@@ -128,7 +130,7 @@ class TestProblemInstance:
 
     def test_evaluate_constraint_violations(
         self, default_problem_instance: ProblemInstance, dummy_portfolio_solution: PortfolioSolution
-    ):
+    ) -> None:
         n_constraints = count_constraints(default_problem_instance.constraints)
         for site in default_problem_instance.portfolio:
             n_constraints += count_constraints(site.constraints)
@@ -137,7 +139,7 @@ class TestProblemInstance:
 
 
 class TestEvaluateExcess:
-    def test_it_works(self, default_constraints: Constraints):
+    def test_it_works(self, default_constraints: Constraints) -> None:
         metric_values: MetricValues = dict.fromkeys(_METRICS, 10)
 
         excess = []
@@ -159,10 +161,10 @@ class TestEvaluateExcess:
 
 
 class TestEvaluatePeakHload:
-    def test_it_works(self, default_epoch_data: EpochSiteData, dummy_site_solution: SiteSolution):
+    def test_it_works(self, default_epoch_data: EpochSiteData, dummy_site_solution: SiteSolution) -> None:
         evaluate_peak_hload(site_scenario=dummy_site_solution.scenario, site_data=default_epoch_data)
 
-    def test_undersized_heat_pump(self, default_epoch_data: EpochSiteData):
+    def test_undersized_heat_pump(self, default_epoch_data: EpochSiteData) -> None:
         scenario = AnnotatedTaskData()
         scenario.building = Building()
 
@@ -172,7 +174,7 @@ class TestEvaluatePeakHload:
 
         assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 1
 
-    def test_undersized_gas_heater(self, default_epoch_data: EpochSiteData):
+    def test_undersized_gas_heater(self, default_epoch_data: EpochSiteData) -> None:
         scenario = AnnotatedTaskData()
         scenario.building = Building()
 
@@ -182,7 +184,7 @@ class TestEvaluatePeakHload:
 
         assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 1
 
-    def test_undersized_gas_heater_and_heat_pump(self, default_epoch_data: EpochSiteData):
+    def test_undersized_gas_heater_and_heat_pump(self, default_epoch_data: EpochSiteData) -> None:
         scenario = AnnotatedTaskData()
         scenario.building = Building()
 
@@ -193,7 +195,7 @@ class TestEvaluatePeakHload:
 
         assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 2
 
-    def test_oversized_heat_pump(self, default_epoch_data: EpochSiteData):
+    def test_oversized_heat_pump(self, default_epoch_data: EpochSiteData) -> None:
         scenario = AnnotatedTaskData()
         scenario.building = Building()
 
@@ -203,7 +205,7 @@ class TestEvaluatePeakHload:
 
         assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -1
 
-    def test_oversized_gas_heater(self, default_epoch_data: EpochSiteData):
+    def test_oversized_gas_heater(self, default_epoch_data: EpochSiteData) -> None:
         scenario = AnnotatedTaskData()
         scenario.building = Building()
 
@@ -213,7 +215,7 @@ class TestEvaluatePeakHload:
 
         assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -1
 
-    def test_oversized_gas_heater_and_heat_pump(self, default_epoch_data: EpochSiteData):
+    def test_oversized_gas_heater_and_heat_pump(self, default_epoch_data: EpochSiteData) -> None:
         scenario = AnnotatedTaskData()
         scenario.building = Building()
 
@@ -224,7 +226,7 @@ class TestEvaluatePeakHload:
 
         assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -2
 
-    def test_fabric_intervention_peak_hload(self, default_epoch_data: EpochSiteData):
+    def test_fabric_intervention_peak_hload(self, default_epoch_data: EpochSiteData) -> None:
         scenario = AnnotatedTaskData()
         scenario.building = Building()
         scenario.heat_pump = HeatPump(heat_power=50)
@@ -238,7 +240,7 @@ class TestEvaluatePeakHload:
 
 
 class TestSimpleIntMutation:
-    def test_mut_simple_int_works(self):
+    def test_mut_simple_int_works(self) -> None:
         """
         Test mut_simple_int works with good inputs.
         """
@@ -253,7 +255,7 @@ class TestSimpleIntMutation:
 
 
 class TestRoundingAndDegenerateRepair:
-    def test_rounding(self, default_objectives: list[Metric], default_constraints: Constraints):
+    def test_rounding(self, default_objectives: list[Metric], default_constraints: Constraints) -> None:
         building = BuildingRange(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1],
@@ -307,7 +309,7 @@ class TestRoundingAndDegenerateRepair:
         assert res.dtype == int
         assert res.shape == X.shape
 
-    def test_degeneracy(self, default_objectives: list[Metric], default_constraints: Constraints):
+    def test_degeneracy(self, default_objectives: list[Metric], default_constraints: Constraints) -> None:
         building = BuildingRange(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1],
@@ -361,7 +363,7 @@ class TestRoundingAndDegenerateRepair:
         assert res.shape == X.shape
         assert (res == np.array([[0, 0, 1, 1, 1], [1, 0, 1, 1, 1], [1, 1, 0, 1, 1], [1, 1, 1, 0, 0], [1, 1, 1, 1, 0]])).all
 
-    def test_degeneracy_with_renewables(self, default_objectives: list[Metric], default_constraints: Constraints):
+    def test_degeneracy_with_renewables(self, default_objectives: list[Metric], default_constraints: Constraints) -> None:
         building = BuildingRange(
             COMPONENT_IS_MANDATORY=True,
             scalar_heat_load=[1],

@@ -10,6 +10,7 @@ import time
 from datetime import timedelta
 from itertools import islice, product, starmap
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -100,11 +101,11 @@ class GridSearch(Algorithm):
                     max_value = bounds.get("max", np.inf)
                     df_res = df_res[(df_res[objective] >= min_value) & (df_res[objective] <= max_value)]
 
-                scenarios_list: list[dict] = df_res.drop(columns=_METRICS).to_dict("records")
+                scenarios_list: list[dict] = df_res.drop(columns=_METRICS).to_dict("records")  # type: ignore
                 scenarios = [TaskData.from_json(json.dumps(scenario)) for scenario in scenarios_list]
-                objective_values: list[dict] = df_res[_METRICS].to_dict("records")
+                objective_values: list[dict[str, float]] = df_res[_METRICS].to_dict("records")  # type: ignore
 
-                site_solutions[site.name] = list(starmap(SiteSolution, zip(scenarios, objective_values, strict=False)))  # type: ignore
+                site_solutions[site.name] = list(starmap(SiteSolution, zip(scenarios, objective_values, strict=True)))
 
         solutions = pareto_optimise(site_solutions, objectives, constraints)
 
@@ -138,7 +139,7 @@ def pareto_optimise(
     pareto_optimal_subsets = []
     n = 0
     while True:
-        subset = np.array(list(islice(all_combinations, 50000000)))  # type: ignore
+        subset = np.array(list(islice(all_combinations, 50000000)))
         logger.debug(f"optimising subset {n}.")
         n += 1
         if subset.size > 1:
@@ -204,7 +205,7 @@ def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Metric], preser
         objective_direct = ["max" if MetricDirection[objective] == -1 else "min" for objective in objectives]
         pareto_efficient = paretoset(costs=obj_values, sense=objective_direct, distinct=True)
         optimal_res.append(group[pareto_efficient])
-    return pd.concat(optimal_res)
+    return cast(pd.DataFrame, pd.concat(optimal_res))
 
 
 def run_headless(

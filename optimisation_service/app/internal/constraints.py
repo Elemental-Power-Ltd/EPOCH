@@ -86,7 +86,7 @@ def merge_constraints(constraints_list: list[Constraints]) -> Constraints:
     for constraints in constraints_list:
         for metric, bounds in constraints.items():
             if metric not in merged:
-                merged[metric] = Bounds()  # type: ignore
+                merged[metric] = Bounds()
 
             if "min" in bounds:
                 merged[metric]["min"] = max(bounds["min"], merged[metric].get("min", -float("inf")))

@@ -85,9 +85,21 @@ markers = [
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.mypy]
+exclude = ["Epoch/"]
 check_untyped_defs = true
+extra_checks = true
+disallow_any_generics = true 
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true 
+disallow_untyped_decorators = true
+no_implicit_reexport = true
+strict_equality = true 
 warn_redundant_casts = true
+warn_return_any = true 
 warn_unreachable = true
+warn_unused_configs = true 
+warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = "app.models.epoch_types.task_data_type"

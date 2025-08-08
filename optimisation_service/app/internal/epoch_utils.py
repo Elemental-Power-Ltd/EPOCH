@@ -1,12 +1,15 @@
 """Wrappers for Epoch that are more ergonomic for python."""
 
 import json
+from typing import cast
 
 from epoch_simulator import SimulationResult, TaskData
 
 from app.internal.metrics import calculate_carbon_cost
-from app.models.epoch_types import TaskDataPydantic
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric, MetricValues
+
+type Jsonable = float | int | str | dict[str, Jsonable]
 
 
 def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
@@ -83,7 +86,7 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
     return metric_values
 
 
-def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:
+def convert_TaskData_to_dictionary(task_data: TaskData) -> dict[str, Jsonable]:
     """
     Convert an Epoch TaskData instance into a dictionary representation.
 
@@ -97,7 +100,7 @@ def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:
     task_data_dict
         A dictionary representation of the task_data.
     """
-    return json.loads(task_data.to_json())
+    return cast(dict[str, Jsonable], json.loads(task_data.to_json()))
 
 
 def convert_TaskData_to_pydantic(task_data: TaskData) -> TaskDataPydantic:

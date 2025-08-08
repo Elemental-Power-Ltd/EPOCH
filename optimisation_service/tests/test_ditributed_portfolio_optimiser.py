@@ -10,7 +10,9 @@ from .conftest import gen_dummy_portfolio_solutions
 
 
 class TestDistributedPortfolioOptimiser:
-    def test_init(self, default_portfolio: list[Site], default_constraints: Constraints, default_objectives: list[Metric]):
+    def test_init(
+        self, default_portfolio: list[Site], default_constraints: Constraints, default_objectives: list[Metric]
+    ) -> None:
         sub_portfolios = split_into_sub_portfolios(default_portfolio, 1)
         dpo = DistributedPortfolioOptimiser(
             sub_portfolios=sub_portfolios,
@@ -22,7 +24,9 @@ class TestDistributedPortfolioOptimiser:
         assert len(dpo.sub_portfolio_solutions) == len(sub_portfolios)
         assert len(dpo.init_solutions) >= 1
 
-    def test_evaluate(self, default_portfolio: list[Site], default_constraints: Constraints, default_objectives: list[Metric]):
+    def test_evaluate(
+        self, default_portfolio: list[Site], default_constraints: Constraints, default_objectives: list[Metric]
+    ) -> None:
         sub_portfolios = split_into_sub_portfolios(default_portfolio, 1)
         dpo = DistributedPortfolioOptimiser(
             sub_portfolios=sub_portfolios,
@@ -34,7 +38,7 @@ class TestDistributedPortfolioOptimiser:
 
     def test_merge_and_optimise_portfolio_solution_lists(
         self, default_portfolio: list[Site], default_constraints: Constraints, default_objectives: list[Metric]
-    ):
+    ) -> None:
         sub_portfolios = split_into_sub_portfolios(default_portfolio, 1)
         dpo = DistributedPortfolioOptimiser(
             sub_portfolios=sub_portfolios,
@@ -49,5 +53,5 @@ class TestDistributedPortfolioOptimiser:
 
 
 class TestSelectStartingSolutions:
-    def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution]):
+    def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution]) -> None:
         select_starting_solutions(dummy_portfolio_solutions, {Metric.capex: {"max": 99999}})

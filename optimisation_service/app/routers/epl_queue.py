@@ -13,7 +13,7 @@ from app.models.epl_queue import QueueElem, QueueStatus, TaskWDataManager, task_
 logger = logging.getLogger("default")
 
 
-class IQueue(asyncio.Queue):
+class IQueue(asyncio.Queue[TaskWDataManager]):
     """Inspectable Queue with cancelling of tasks."""
 
     def __init__(self, maxsize: PositiveInt = 1) -> None:
@@ -29,7 +29,7 @@ class IQueue(asyncio.Queue):
         if maxsize <= 0:
             raise ValueError("Queue maxsize must be positive integer.")
         super().__init__(maxsize=0)
-        self.q: OrderedDict = OrderedDict()
+        self.q: OrderedDict[dataset_id_t, QueueElem] = OrderedDict()
         self.q_len = maxsize
 
     async def put(self, task_w_datamanager: TaskWDataManager) -> None:
@@ -60,7 +60,7 @@ class IQueue(asyncio.Queue):
         """
         task, data_manager = await super().get()
         logger.info(f"{task.task_id} retrieved from queue.")
-        assert self.q[task.task_id].state == task_state.QUEUED or self.q[task.task_id].STATE == task_state.CANCELLED
+        assert self.q[task.task_id].state == task_state.QUEUED or self.q[task.task_id].state == task_state.CANCELLED
         if self.q[task.task_id].state == task_state.QUEUED:
             self.q[task.task_id].state = task_state.RUNNING
             return task, data_manager
@@ -94,7 +94,7 @@ class IQueue(asyncio.Queue):
         assert self.q[task_id].state != task_state.RUNNING, "Task already running."
         self.q[task_id].state = task_state.CANCELLED
 
-    def uncancelled(self) -> OrderedDict:
+    def uncancelled(self) -> OrderedDict[dataset_id_t, QueueElem]:
         """
         Ordered dictionary of not cancelled tasks in queue.
 

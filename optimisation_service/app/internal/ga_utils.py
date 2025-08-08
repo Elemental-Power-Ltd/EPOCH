@@ -13,13 +13,14 @@ from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
 from app.internal.heuristics.population_init import generate_site_scenarios_from_heuristics
-from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
+from app.internal.portfolio_simulator import PortfolioSimulator
 from app.internal.site_range import FIXED_PARAMETERS, REPEAT_COMPONENTS, count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
-from app.models.epoch_types import TaskDataPydantic
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.ga_utils import AnnotatedTaskData, AssetParameter, ParsedAsset, asset_t, value_t
 from app.models.metrics import Metric, MetricDirection, MetricValues
+from app.models.result import PortfolioSolution
 from app.models.site_data import EpochSiteData
 
 logger = logging.getLogger("default")
@@ -53,8 +54,8 @@ class ProblemInstance(ElementwiseProblem):
         epoch_data_dict = {}
         epoch_config_dict = {}
 
-        self.default_parameters: dict[str, dict] = {}
-        self.site_ranges: dict[str, dict] = {}
+        self.default_parameters: dict[str, dict] = {}  # type: ignore
+        self.site_ranges: dict[str, dict] = {}  # type: ignore
         self.asset_parameters: dict[str, list[AssetParameter]] = {}
         self.indexes = {}
         num_attr_values = []
@@ -163,7 +164,7 @@ class ProblemInstance(ElementwiseProblem):
 
         return parsed_asset
 
-    def split_solution(self, x: npt.NDArray) -> dict[str, npt.NDArray]:
+    def split_solution(self, x: npt.NDArray[np.floating]) -> dict[str, npt.NDArray[np.floating]]:
         """
         Split a candidate portfolio solution into candidate building solutions.
 
@@ -178,7 +179,7 @@ class ProblemInstance(ElementwiseProblem):
         """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
-    def convert_site_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> AnnotatedTaskData:
+    def convert_site_chromosome_to_site_scenario(self, x: npt.NDArray[np.floating], site_name: str) -> AnnotatedTaskData:
         """
         Convert a site's candidate solution from an array of indices to a site scenario.
 
@@ -239,7 +240,7 @@ class ProblemInstance(ElementwiseProblem):
 
         return AnnotatedTaskData.model_validate(site_scenario)
 
-    def convert_portfolio_chromosome_to_portfolio_scenario(self, x: npt.NDArray) -> dict[str, AnnotatedTaskData]:
+    def convert_portfolio_chromosome_to_portfolio_scenario(self, x: npt.NDArray[np.floating]) -> dict[str, AnnotatedTaskData]:
         """
         Convert a portfolio's candidate solution from an array of indeces to dictionnary of site scenarios.
 
@@ -258,7 +259,7 @@ class ProblemInstance(ElementwiseProblem):
 
         return portfolio_scenarios
 
-    def convert_site_scenario_to_chromosome(self, site_scenario: AnnotatedTaskData, site_name: str) -> npt.NDArray:
+    def convert_site_scenario_to_chromosome(self, site_scenario: AnnotatedTaskData, site_name: str) -> npt.NDArray[np.floating]:
         """
         Convert a candidate solution from a site scenario to an array of indeces.
 
@@ -350,7 +351,7 @@ class ProblemInstance(ElementwiseProblem):
 
         return constraint_violations
 
-    def _evaluate(self, x: npt.NDArray, out: dict[str, list[float]]) -> None:
+    def _evaluate(self, x: npt.NDArray[np.floating], out: dict[str, list[float]]) -> None:
         """
         Evaluate a candidate portfolio solution.
 
@@ -454,7 +455,7 @@ def evaluate_peak_hload(site_scenario: AnnotatedTaskData, site_data: EpochSiteDa
 class EstimateBasedSampling(Sampling):
     """Generate a population of solutions by estimating some parameter values from data."""
 
-    def _do(self, problem: ProblemInstance, n_samples: int, **kwargs):
+    def _do(self, problem: ProblemInstance, n_samples: int, **kwargs: Any) -> npt.NDArray[np.floating]:
         site_pops = []
         for site in problem.portfolio:
             site_name = site.site_data.site_id
@@ -476,7 +477,7 @@ class SimpleIntMutation(Mutation):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-    def _do(self, problem: ProblemInstance, X: npt.NDArray, **kwargs: Never) -> npt.NDArray:
+    def _do(self, problem: ProblemInstance, X: npt.NDArray[np.floating], **kwargs: Never) -> npt.NDArray[np.floating]:
         X.astype(float)
         prob_var = self.get_prob_var(problem, size=len(X))
         Xp = self.mut_simple_int(X, problem.xl, problem.xu, prob_var)
@@ -484,7 +485,9 @@ class SimpleIntMutation(Mutation):
         return Xp
 
     @staticmethod
-    def mut_simple_int(X: npt.NDArray, xl: npt.NDArray, xu: npt.NDArray, prob: npt.NDArray) -> npt.NDArray:
+    def mut_simple_int(
+        X: npt.NDArray[np.floating], xl: npt.NDArray[np.floating], xu: npt.NDArray[np.floating], prob: npt.NDArray[np.floating]
+    ) -> npt.NDArray[np.floating]:
         """
         Randomly adds or substracts 1 from values in X based.
 
@@ -516,7 +519,7 @@ class SimpleIntMutation(Mutation):
 
         Xp = repair_random_init(Xp, X, xl, xu)
 
-        return Xp
+        return cast(npt.NDArray[np.floating], Xp)
 
 
 class RoundingAndDegenerateRepair(Repair):
@@ -528,7 +531,7 @@ class RoundingAndDegenerateRepair(Repair):
     This is to reduce the number of degenerate solutions.
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         """
         Create the repair function.
 
@@ -540,7 +543,7 @@ class RoundingAndDegenerateRepair(Repair):
         """
         super().__init__(**kwargs)
 
-    def _do(self, problem: ProblemInstance, X, **kwargs):
+    def _do(self, problem: ProblemInstance, X: npt.NDArray[np.floating], **kwargs: Any) -> npt.NDArray[np.floating]:
         """
         Force all degenerate solutions cause by optional components to have the same default values.
 

@@ -12,7 +12,7 @@ from .tree_construction import find_maximising_path, is_in_elec_shortfall, is_in
 
 def draw_upgrade_tree(
     all_results: dict[str, PortfolioOptimisationResult],
-    G: nx.Graph,
+    G: nx.Graph[str],
     source: str,
     sink: str,
     possible_components: list[str],

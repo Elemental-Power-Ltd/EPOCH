@@ -1,3 +1,5 @@
+from typing import cast
+
 import numpy as np
 
 from app.internal.constraints import is_in_constraints
@@ -240,4 +242,4 @@ def select_starting_solutions(existing_solutions: list[PortfolioSolution], const
     mask = is_in_constraints(constraints, existing_solutions)
     selected_solutions = np.array(existing_solutions)[mask].tolist()
 
-    return selected_solutions
+    return cast(list[PortfolioSolution], selected_solutions)

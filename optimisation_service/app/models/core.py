@@ -8,7 +8,8 @@ from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 from app.internal.uuid7 import uuid7
 from app.models.constraints import Constraints
 from app.models.database import dataset_id_t
-from app.models.epoch_types import SiteRange, TaskDataPydantic
+from app.models.epoch_types import SiteRange
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric
 from app.models.optimisers import OptimiserTypes
 from app.models.site_data import EpochSiteData, SiteMetaData

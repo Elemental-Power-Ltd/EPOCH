@@ -1,7 +1,8 @@
 from pydantic import BaseModel
 
 from app.models.database import dataset_id_t, site_id_t
-from app.models.epoch_types import ReportData, TaskDataPydantic
+from app.models.epoch_types import ReportData
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import MetricValues
 from app.models.site_data import EpochSiteData, RemoteMetaData, SiteMetaData
 

@@ -1,4 +1,5 @@
 from itertools import islice, product
+from typing import cast
 
 import numpy as np
 from paretoset import paretoset  # type: ignore
@@ -30,7 +31,7 @@ def portfolio_pareto_front(portfolio_solutions: list[PortfolioSolution], objecti
     objective_direct = ["max" if MetricDirection[objective] == -1 else "min" for objective in objectives]
     pareto_efficient = paretoset(costs=objective_values, sense=objective_direct, distinct=True)
 
-    return np.array(portfolio_solutions)[pareto_efficient].tolist()
+    return cast(list[PortfolioSolution], np.array(portfolio_solutions)[pareto_efficient].tolist())
 
 
 def merge_and_optimise_two_portfolio_solution_lists(

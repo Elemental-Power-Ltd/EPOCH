@@ -4,7 +4,7 @@ import os
 import typing
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from fastapi import Depends, HTTPException
@@ -160,7 +160,7 @@ class DataManager:
         """
         async with httpx.AsyncClient() as client:
             latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=site_data)
-            return latest_ids
+            return cast(dict[str, Any], latest_ids)
 
     def save_parameters(self, task: Task) -> None:
         """

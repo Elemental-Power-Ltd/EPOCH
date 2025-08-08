@@ -1,6 +1,7 @@
 """Asset heuristics for initialising EPOCH search spaces."""
 
 from datetime import datetime, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -65,7 +66,7 @@ class HeatPumpHeuristic:
         timedeltas = np.pad(np.diff(np.array(timestamps)), pad_width=(0, 1), mode="wrap") / timedelta(hours=1)
 
         elec_loads = (np.array(building_hload) / cops) / timedeltas
-        return np.quantile(elec_loads, quantile)
+        return float(np.quantile(elec_loads, quantile))
 
 
 class SolarHeuristic:
@@ -154,7 +155,7 @@ class EnergyStorageSystemHeuristic:
         Estimated battery charging rate required in kW
         """
         timedeltas = np.pad(np.diff(np.array(timestamps)), pad_width=(0, 1), mode="wrap") / timedelta(hours=1)
-        return np.quantile(np.array(building_eload) / timedeltas, quantile)
+        return float(np.quantile(np.array(building_eload) / timedeltas, quantile))
 
     @staticmethod
     def charge_power(
@@ -186,10 +187,10 @@ class EnergyStorageSystemHeuristic:
         solar_output = np.array(solar_yield) * solar_scale
         # Convert from kWh / timestep into kW (e.g. something that uses 1kWh in 0.5 hours is a 2kW charge)
         timedeltas = np.pad(np.diff(np.array(timestamps)), pad_width=(0, 1), mode="wrap") / timedelta(hours=1)
-        return np.quantile(solar_output / timedeltas, quantile)
+        return float(np.quantile(solar_output / timedeltas, quantile))
 
 
-def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
+def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict[str, Any]]:
     """
     Estimate values for assets for assets with heuristics.
 
@@ -220,7 +221,7 @@ def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
     estimates["energy_storage_system"]["capacity"] = EnergyStorageSystemHeuristic.capacity(
         building_eload=epoch_data.building_eload, timestamps=timestamps
     )
-    solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields, strict=False)]
+    solar_yield_sum = [float(sum(values)) for values in zip(*epoch_data.solar_yields, strict=True)]
     estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystemHeuristic.charge_power(
         solar_yield=solar_yield_sum,
         timestamps=timestamps,

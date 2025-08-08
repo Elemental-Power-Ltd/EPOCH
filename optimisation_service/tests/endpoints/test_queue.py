@@ -8,7 +8,8 @@ from app.internal.datamanager import DataManager
 from app.internal.uuid7 import uuid7
 from app.main import app
 from app.models.core import Task
-from app.routers.epl_queue import IQueue, task_state
+from app.models.epl_queue import task_state
+from app.routers.epl_queue import IQueue
 
 
 class TestQueueEndpoint:

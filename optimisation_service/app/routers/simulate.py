@@ -2,19 +2,20 @@
 
 import logging
 
-from epoch_simulator import Simulator
+from epoch_simulator import Simulator, TaskData
 from fastapi import APIRouter, HTTPException
 
-from app.internal.datamanager import DataManagerDep, EpochSiteData
-from app.internal.epoch_utils import TaskData, convert_sim_result
-from app.models.epoch_types import ReportData, TaskDataPydantic
+from app.internal.datamanager import DataManagerDep
+from app.internal.epoch_utils import convert_sim_result
+from app.models.epoch_types import ReportData
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.simulate import (
     FullResult,
     GetSavedSiteDataRequest,
     ReproduceSimulationRequest,
     RunSimulationRequest,
 )
-from app.models.site_data import LocalMetaData, RemoteMetaData
+from app.models.site_data import EpochSiteData, LocalMetaData, RemoteMetaData
 
 router = APIRouter()
 logger = logging.getLogger("default")

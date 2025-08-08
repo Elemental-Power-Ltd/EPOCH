@@ -1,14 +1,14 @@
 import datetime
 import logging
 import warnings
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import numpy as np
 import numpy.typing as npt
 import torch
 from botorch import fit_gpytorch_mll  # type: ignore
 from botorch.acquisition.multi_objective.logei import (  # type: ignore
-    qLogExpectedHypervolumeImprovement,  # type: ignore
+    qLogExpectedHypervolumeImprovement,
 )
 from botorch.exceptions import BadInitialCandidatesWarning  # type: ignore
 from botorch.exceptions.warnings import UserInputWarning  # type: ignore
@@ -20,7 +20,7 @@ from botorch.models.transforms.outcome import Standardize  # type: ignore
 from botorch.optim.optimize import optimize_acqf  # type: ignore
 from botorch.sampling.normal import IIDNormalSampler  # type: ignore
 from botorch.utils.multi_objective.box_decompositions.non_dominated import (  # type: ignore
-    FastNondominatedPartitioning,  # type: ignore
+    FastNondominatedPartitioning,
 )
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood  # type: ignore
 
@@ -271,7 +271,7 @@ def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -
     return sub_portfolios
 
 
-def generate_random_candidates(n: int, max_capexs: list[float], capex_limit: float):
+def generate_random_candidates(n: int, max_capexs: list[float], capex_limit: float) -> npt.NDArray[np.floating]:
     """
     Generate n CAPEX allocation splits randomly.
 
@@ -392,7 +392,7 @@ def optimize_acquisition_func_and_get_candidate(
     capex_limit: float,
     num_restarts: int,
     raw_samples: int,
-) -> npt.NDArray:
+) -> npt.NDArray[np.floating]:
     """
     Optimise the acquisition function and returns a new candidate.
 
@@ -461,7 +461,7 @@ def optimize_acquisition_func_and_get_candidate(
 
     candidates_arr = candidates.cpu().detach().numpy()
 
-    return candidates_arr
+    return cast(npt.NDArray[np.floating], candidates_arr)
 
 
 def extract_sub_portfolio_capex_allocations(

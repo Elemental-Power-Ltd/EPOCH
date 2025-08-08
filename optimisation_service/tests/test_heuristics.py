@@ -8,7 +8,7 @@ from app.models.site_data import EpochSiteData
 
 
 class TestHeatPump:
-    def test_heat_power(self, default_epoch_data: EpochSiteData):
+    def test_heat_power(self, default_epoch_data: EpochSiteData) -> None:
         N = len(default_epoch_data.building_eload)
         timestamps = [
             default_epoch_data.start_ts + (default_epoch_data.end_ts - default_epoch_data.start_ts) * i / (N - 1)
@@ -25,7 +25,7 @@ class TestHeatPump:
 
 
 class TestRenewables:
-    def test_yield_scalars(self, default_epoch_data: EpochSiteData):
+    def test_yield_scalars(self, default_epoch_data: EpochSiteData) -> None:
         SolarHeuristic.yield_scalar(
             solar_yield=default_epoch_data.solar_yields[0],
             building_eload=default_epoch_data.building_eload,
@@ -33,7 +33,7 @@ class TestRenewables:
 
 
 class TestEnergyStorageSystem:
-    def test_capacity(self, default_epoch_data: EpochSiteData):
+    def test_capacity(self, default_epoch_data: EpochSiteData) -> None:
         N = len(default_epoch_data.building_eload)
         timestamps = [
             default_epoch_data.start_ts + (default_epoch_data.end_ts - default_epoch_data.start_ts) * i / (N - 1)
@@ -41,7 +41,7 @@ class TestEnergyStorageSystem:
         ]
         EnergyStorageSystemHeuristic.capacity(building_eload=default_epoch_data.building_eload, timestamps=timestamps)
 
-    def test_ccharge_power(self, default_epoch_data: EpochSiteData):
+    def test_ccharge_power(self, default_epoch_data: EpochSiteData) -> None:
         N = len(default_epoch_data.building_eload)
         timestamps = [
             default_epoch_data.start_ts + (default_epoch_data.end_ts - default_epoch_data.start_ts) * i / (N - 1)
@@ -55,7 +55,7 @@ class TestEnergyStorageSystem:
             solar_yield=default_epoch_data.solar_yields[0], timestamps=timestamps, solar_scale=solar_scale
         )
 
-    def test_discharge_power(self, default_epoch_data: EpochSiteData):
+    def test_discharge_power(self, default_epoch_data: EpochSiteData) -> None:
         N = len(default_epoch_data.building_eload)
         timestamps = [
             default_epoch_data.start_ts + (default_epoch_data.end_ts - default_epoch_data.start_ts) * i / (N - 1)
@@ -65,7 +65,7 @@ class TestEnergyStorageSystem:
 
 
 class TestGetAllEstimates:
-    def test_good_inputs(self, default_epoch_data: EpochSiteData):
+    def test_good_inputs(self, default_epoch_data: EpochSiteData) -> None:
         estimates = get_all_estimates(default_epoch_data)
         assert isinstance(estimates["heat_pump"]["heat_power"], float)
         assert isinstance(estimates["energy_storage_system"]["capacity"], float)

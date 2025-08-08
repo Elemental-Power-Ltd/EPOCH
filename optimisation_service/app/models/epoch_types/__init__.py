@@ -2,4 +2,4 @@
 
 from .report_data_type import ReportData as ReportData
 from .task_data_type import TaskData as TaskDataPydantic
-from .site_range_type import SiteRange
+from .site_range_type import SiteRange as SiteRange

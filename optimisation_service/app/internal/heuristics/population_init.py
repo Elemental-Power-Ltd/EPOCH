@@ -1,13 +1,13 @@
 import random  # Use random instead of numpy.random to avoid numpy types that aren't json serialisable
+from typing import Any
 
 import numpy as np
 
+from app.internal.heuristics.asset_heuristics import get_all_estimates
 from app.internal.site_range import FIXED_PARAMETERS, REPEAT_COMPONENTS
 from app.models.epoch_types import SiteRange
+from app.models.ga_utils import AnnotatedTaskData
 from app.models.site_data import EpochSiteData
-
-from ...models.ga_utils import AnnotatedTaskData
-from .asset_heuristics import get_all_estimates
 
 
 def generate_site_scenarios_from_heuristics(
@@ -61,7 +61,7 @@ def generate_site_scenarios_from_heuristics(
     return td_pop
 
 
-def is_mandatory_or_random(asset: dict) -> bool:
+def is_mandatory_or_random(asset: dict[str, bool]) -> bool:
     """
     Decide if an asset should be included in this individual.
 
@@ -79,7 +79,9 @@ def is_mandatory_or_random(asset: dict) -> bool:
     return asset["COMPONENT_IS_MANDATORY"] or random.choice([True, False])
 
 
-def generate_asset_from_heuristics(asset_name: str, asset: dict, estimates: dict[str, dict]) -> dict:
+def generate_asset_from_heuristics(
+    asset_name: str, asset: dict[str, Any], estimates: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
     """
     Create an instance of this asset type using the heuristically derived values for this site.
 

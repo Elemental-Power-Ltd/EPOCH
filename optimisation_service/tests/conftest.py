@@ -126,12 +126,12 @@ def default_epoch_data() -> EpochSiteData:
 
 
 @pytest.fixture
-def default_site(default_siterange) -> Site:
+def default_site(default_siterange: SiteRange) -> Site:
     return site_generator("amcott_house", default_siterange)
 
 
 @pytest.fixture
-def default_portfolio(default_siterange) -> list[Site]:
+def default_portfolio(default_siterange: SiteRange) -> list[Site]:
     return [site_generator("amcott_house", default_siterange), site_generator("bircotes_leisure_centre", default_siterange)]
 
 
@@ -146,7 +146,9 @@ def default_objectives() -> list[Metric]:
 
 
 @pytest.fixture
-def default_problem_instance(default_objectives, default_constraints, default_portfolio) -> ProblemInstance:
+def default_problem_instance(
+    default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]
+) -> ProblemInstance:
     return ProblemInstance(default_objectives, default_constraints, default_portfolio)
 
 

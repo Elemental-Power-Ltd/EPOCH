@@ -1,6 +1,6 @@
 import itertools
 from collections.abc import Iterable
-from typing import cast
+from typing import Any, cast
 
 import networkx as nx
 
@@ -55,7 +55,7 @@ def is_in_heat_shortfall(key: str, all_results: ResultsDict, thresh: float = 0.0
     return cast(float, all_results[key].metrics.total_heat_shortfall) > thresh
 
 
-def hamming_distance(s1: Iterable, s2: Iterable) -> int:
+def hamming_distance(s1: Iterable[Any], s2: Iterable[Any]) -> int:
     """
     Get the hamming distance between two strings.
 
@@ -100,7 +100,7 @@ def generate_label(key: str, possible_components: Iterable[str]) -> str:
     return label
 
 
-def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph:
+def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph[str]:
     """
     Create the upgrade tree.
 
@@ -120,7 +120,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
     -------
         Tiered graph with positions, shortfall status set.
     """
-    dG: nx.DiGraph = nx.DiGraph()
+    dG: nx.DiGraph[str] = nx.DiGraph()
     x_scale, y_scale = 10.0, 5.0
     tiers = []
     for length in range(len(possible_components)):
@@ -141,7 +141,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         )
 
     nx.set_node_attributes(
-        dG,
+        dG,  # type: ignore
         values={key: generate_label(key, possible_components=possible_components) for key in dG.nodes},
         name="label",
     )
@@ -151,8 +151,16 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         tier_len = len(tier_contents)
         for idx, item in enumerate(tier_contents):
             pos[item] = ((idx - tier_len / 2) * x_scale, tier_rank * y_scale)
-    nx.set_node_attributes(dG, values=pos, name="pos")
-    nx.set_node_attributes(dG, values={key: all_results[key].metrics.capex for key in all_results.keys()}, name="capex")
+    nx.set_node_attributes(
+        dG,  # type: ignore
+        values=pos,
+        name="pos",
+    )
+    nx.set_node_attributes(
+        dG,  # type: ignore
+        values={key: all_results[key].metrics.capex for key in all_results.keys()},
+        name="capex",
+    )
     edge_lengths: dict[tuple[str, str], float] = {}
     step_prices: dict[tuple[str, str], float] = {}
     carbon_savings: dict[tuple[str, str], float] = {}
@@ -171,7 +179,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
     return dG
 
 
-def find_maximising_path(G: nx.Graph, source: str, sink: str, weight: str, sign: int = 1) -> list[str]:
+def find_maximising_path(G: nx.Graph[str], source: str, sink: str, weight: str, sign: int = 1) -> list[str]:
     """
     Find the path the maximises (or minimises) the `weight` metric at each step.
 
