@@ -79,9 +79,9 @@ class GridSearch(Algorithm):
 
                 t0 = time.perf_counter()
                 run_headless(
-                    config_dir=str(config_dir),
-                    input_dir=str(site._epoch_data),
-                    output_dir=str(output_dir),
+                    config_dir=config_dir,
+                    input_dir=site._epoch_data_dir,
+                    output_dir=output_dir,
                 )
                 exec_time = timedelta(seconds=(time.perf_counter() - t0))
 

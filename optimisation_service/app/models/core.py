@@ -1,5 +1,6 @@
 import datetime
 import logging
+from pathlib import Path
 
 from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 
@@ -33,6 +34,7 @@ class Site(BaseModel):
         description="Minimum or maximum bounds to apply on site metrics.", examples=[{Metric.capex: {"max": 50000}}], default={}
     )
     _epoch_data: EpochSiteData = PrivateAttr()
+    _epoch_data_dir: Path = PrivateAttr()
 
 
 class EndpointTask(Site):

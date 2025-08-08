@@ -1,5 +1,5 @@
 from enum import StrEnum
-from os import PathLike
+from pathlib import Path
 from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
@@ -57,7 +57,7 @@ class LocalMetaData(BaseModel):
         examples=["demo_london"],
         description="The database ID for a site, all lower case, joined by underscores.",
     )
-    path: PathLike = Field(examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it.")
+    path: Path = Field(examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it.")
 
 
 class EpochEntry(BaseModel):
