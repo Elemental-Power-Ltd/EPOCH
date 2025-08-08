@@ -127,25 +127,25 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         name="label",
     )
 
-    pos = {}
+    pos: dict[str, tuple[float, float]] = {}
     for tier_rank, tier_contents in enumerate(tiers):
         tier_len = len(tier_contents)
         for idx, item in enumerate(tier_contents):
             pos[item] = ((idx - tier_len / 2) * x_scale, tier_rank * y_scale)
     nx.set_node_attributes(dG, values=pos, name="pos")
     nx.set_node_attributes(dG, values={key: all_results[key].metrics.capex for key in all_results.keys()}, name="capex")
-    edge_lengths = {}
-    step_prices = {}
-    carbon_savings = {}
+    edge_lengths: dict[tuple[str, str], float] = {}
+    step_prices: dict[tuple[str, str], float] = {}
+    carbon_savings: dict[tuple[str, str], float] = {}
     for u, v in dG.edges():
-        u_cost = all_results[u].metrics.total_electricity_import_cost + all_results[u].metrics.total_gas_import_cost # type: ignore
-        v_cost = all_results[v].metrics.total_electricity_import_cost + all_results[v].metrics.total_gas_import_cost # type: ignore
+        u_cost = all_results[u].metrics.total_electricity_import_cost + all_results[u].metrics.total_gas_import_cost  # type: ignore
+        v_cost = all_results[v].metrics.total_electricity_import_cost + all_results[v].metrics.total_gas_import_cost  # type: ignore
 
-        edge_lengths[(u, v)] = v_cost - u_cost
-        step_prices[(u, v)] = all_results[v].metrics.capex - all_results[u].metrics.capex # type: ignore
-        v_co2 = all_results[v].metrics.carbon_balance_scope_1 + all_results[v].metrics.carbon_balance_scope_2 # type: ignore
-        u_co2 = all_results[u].metrics.carbon_balance_scope_1 + all_results[u].metrics.carbon_balance_scope_2 # type: ignore
-        carbon_savings[(u, v)] = v_co2 - u_co2
+        edge_lengths[u, v] = v_cost - u_cost
+        step_prices[u, v] = all_results[v].metrics.capex - all_results[u].metrics.capex  # type: ignore
+        v_co2 = all_results[v].metrics.carbon_balance_scope_1 + all_results[v].metrics.carbon_balance_scope_2  # type: ignore
+        u_co2 = all_results[u].metrics.carbon_balance_scope_1 + all_results[u].metrics.carbon_balance_scope_2  # type: ignore
+        carbon_savings[u, v] = v_co2 - u_co2
     nx.set_edge_attributes(dG, edge_lengths, "operating_cost")
     nx.set_edge_attributes(dG, step_prices, "capex")
     nx.set_edge_attributes(dG, carbon_savings, "carbon_balance")
