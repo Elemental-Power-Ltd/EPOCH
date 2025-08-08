@@ -101,7 +101,7 @@ def generate_label(key: str, possible_components: Iterable[str]) -> str:
 
 
 def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph:
-    dG = nx.DiGraph()
+    dG: nx.DiGraph = nx.DiGraph()
     x_scale, y_scale = 10.0, 5.0
     tiers = []
     for length in range(4):
