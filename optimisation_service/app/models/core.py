@@ -1,5 +1,6 @@
 import datetime
 import logging
+import math
 from pathlib import Path
 
 from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
@@ -81,7 +82,7 @@ class SiteMetrics(BaseModel):
     """Metrics for a single site within a portfolio."""
 
     carbon_balance_scope_1: float | None = Field(
-        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, 3.14]
+        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, math.pi]
     )
     carbon_balance_scope_2: float | None = Field(
         description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
@@ -218,7 +219,9 @@ class PortfolioMetrics(BaseModel):
     """Metrics for the whole portfolio."""
 
     carbon_balance_scope_1: float | None = Field(
-        description="Direct carbon emissions saved by this entire portfolio of scenarios.", default=None, examples=[None, 3.14]
+        description="Direct carbon emissions saved by this entire portfolio of scenarios.",
+        default=None,
+        examples=[None, math.pi],
     )
     carbon_balance_scope_2: float | None = Field(
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None

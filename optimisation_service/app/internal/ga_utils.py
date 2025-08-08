@@ -1,4 +1,5 @@
 import logging
+import operator
 from copy import deepcopy
 from typing import Any, Never, cast
 
@@ -232,7 +233,7 @@ class ProblemInstance(ElementwiseProblem):
 
         # remove any repeat assets that are turned off in this solution
         # (we start by sorting the list by descending index to ensure we never shift the order)
-        repeat_assets_to_pop.sort(key=lambda name_index: name_index[1], reverse=True)
+        repeat_assets_to_pop.sort(key=operator.itemgetter(1), reverse=True)
         for asset_name, repeat_index in repeat_assets_to_pop:
             site_scenario[asset_name].pop(repeat_index)
 
@@ -462,9 +463,9 @@ class EstimateBasedSampling(Sampling):
                 epoch_data=site._epoch_data,
                 pop_size=n_samples,
             )
-            site_pops.append(
-                [problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios]
-            )
+            site_pops.append([
+                problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios
+            ])
         portfolio_pop = np.concatenate(site_pops, axis=1)
         return portfolio_pop
 

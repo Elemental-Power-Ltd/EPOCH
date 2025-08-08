@@ -295,7 +295,7 @@ def generate_random_candidates(n: int, max_capexs: list[float], capex_limit: flo
         candidate = np.array([rng.uniform(0, max_capex) for max_capex in max_capexs])
         candidate_sum = sum(candidate)
         if candidate_sum > capex_limit:
-            candidate = candidate * rng.uniform(0.01, capex_limit / candidate_sum)
+            candidate *= rng.uniform(0.01, capex_limit / candidate_sum)
         candidates.append(candidate)
     return np.array(candidates)
 

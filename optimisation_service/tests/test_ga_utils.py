@@ -147,8 +147,7 @@ class TestEvaluateExcess:
 
             if min_value is not None and max_value is not None:
                 metric_values[metric] = min_value - 1
-                excess.append(1.0)
-                excess.append(-max_value)
+                excess.extend([1.0, -max_value])
             elif min_value is not None:
                 metric_values[metric] = min_value - 1
                 excess.append(1.0)
@@ -403,29 +402,25 @@ class TestRoundingAndDegenerateRepair:
 
         rdr = RoundingAndDegenerateRepair()
 
-        X = np.array(
-            [
-                [0, 1, 1, 1, 1, 1],
-                [1, 0, 1, 1, 1, 1],
-                [1, 1, 0, 1, 1, 1],
-                [1, 1, 1, 0, 1, 1],
-                [1, 1, 1, 1, 0, 1],
-                [1, 1, 1, 1, 1, 0],
-            ]
-        )
+        X = np.array([
+            [0, 1, 1, 1, 1, 1],
+            [1, 0, 1, 1, 1, 1],
+            [1, 1, 0, 1, 1, 1],
+            [1, 1, 1, 0, 1, 1],
+            [1, 1, 1, 1, 0, 1],
+            [1, 1, 1, 1, 1, 0],
+        ])
 
         res = rdr._do(pi, X)
         assert res.shape == X.shape
         assert (
             res
-            == np.array(
-                [
-                    [0, 0, 1, 1, 1, 1],
-                    [1, 0, 1, 1, 1, 1],
-                    [1, 1, 0, 1, 1, 1],
-                    [1, 1, 1, 0, 0, 1],
-                    [1, 1, 1, 1, 0, 1],
-                    [1, 1, 1, 1, 1, 0],
-                ]
-            )
+            == np.array([
+                [0, 0, 1, 1, 1, 1],
+                [1, 0, 1, 1, 1, 1],
+                [1, 1, 0, 1, 1, 1],
+                [1, 1, 1, 0, 0, 1],
+                [1, 1, 1, 1, 0, 1],
+                [1, 1, 1, 1, 1, 0],
+            ])
         ).all
