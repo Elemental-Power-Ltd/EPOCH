@@ -1,5 +1,7 @@
+import copy
 import functools
 import logging
+from typing import Any
 
 import numpy as np
 from epoch_simulator import Simulator, TaskData
@@ -35,10 +37,60 @@ class PortfolioSimulator:
         -------
         None
         """
+        # store these even though they can be enormous so that
+        # we can re-create the simulators if needed.
+        self.epoch_data_dict = epoch_data_dict
+        self.epoch_config_dict = epoch_config_dict
         self.sims = {
             name: Simulator.from_json(epoch_data.model_dump_json(), epoch_config_dict[name].model_dump_json())
             for name, epoch_data in epoch_data_dict.items()
         }
+
+    def __copy__(self) -> "PortfolioSimulator":
+        """
+        Shallow copy this Portfolio Simulator, sharing simulators.
+
+        Simulator objects aren't pickleable (the default way of copying), so for this
+        shallowcopy we will simply add references to the old simulators.
+
+        Parameters
+        ----------
+        self
+            The object we want to copy
+
+        Returns
+        -------
+        Self
+            Brand new portfolio simulator exactly the same as this one with shared dicts and simulators.
+        """
+        other = PortfolioSimulator(epoch_data_dict=self.epoch_data_dict, epoch_config_dict=self.epoch_config_dict)
+        other.sims = self.sims
+        return other
+
+    def __deepcopy__(self, memo: dict[int, Any] | None) -> "PortfolioSimulator":
+        """
+        Deepcopy this Portfolio Simulator, making sure to re-create any simulators.
+
+        Simulator objects aren't pickleable (the default way of copying), so for this
+        deepcopy we will simply re-construct a new PortfolioSimulator with new Simulator
+        objects within it, making sure that we copy the dictionaries.
+
+        Parameters
+        ----------
+        self
+            The object we want to copy
+        memo
+            Mystery black box parameter from the copy.deepcopy library function
+            (it's a dict of id: value mappings to break loops)
+
+        Returns
+        -------
+        Self
+            Brand new portfolio simulator exactly the same as this one.
+        """
+        return PortfolioSimulator(
+            epoch_data_dict=copy.deepcopy(self.epoch_data_dict), epoch_config_dict=copy.deepcopy(self.epoch_config_dict)
+        )
 
     def simulate_portfolio(self, portfolio_scenarios: dict[str, AnnotatedTaskData]) -> PortfolioSolution:
         """
@@ -121,8 +173,7 @@ def combine_metric_values(metric_values_list: list[MetricValues]) -> MetricValue
 
     if Metric.capex in combined_metric_values and Metric.operating_balance in combined_metric_values:
         combined_metric_values[Metric.payback_horizon] = calculate_payback_horizon(
-            capex=combined_metric_values[Metric.capex],
-            operating_balance=combined_metric_values[Metric.operating_balance]
+            capex=combined_metric_values[Metric.capex], operating_balance=combined_metric_values[Metric.operating_balance]
         )
 
     if Metric.capex in combined_metric_values and Metric.carbon_balance_scope_1 in combined_metric_values:

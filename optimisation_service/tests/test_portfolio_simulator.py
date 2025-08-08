@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -7,6 +8,7 @@ from epoch_simulator import Building, Simulator, TaskData
 from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.internal.portfolio_simulator import PortfolioSimulator, combine_metric_values, simulate_scenario
+from app.models.core import EpochSiteData
 from app.models.epoch_types.site_range_type import Config
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _METRICS, _SUMMABLE_METRICS, Metric, MetricValues
@@ -257,3 +259,35 @@ class TestCombineMetricValues:
 
         # we can't derive a carbon cost without scope_1 being present in both
         assert Metric.carbon_cost not in res
+
+
+class TestIsCopiable:
+    @pytest.fixture
+    def epoch_data_ah(self) -> EpochSiteData:
+        return load_epoch_data_from_file(Path(_DATA_PATH, "amcott_house", "epoch_data.json"))
+
+    def test_shallow_copy(self, default_config: Config, epoch_data_ah: EpochSiteData) -> None:
+        """Test that we can shallow copy a simulator."""
+        orig = PortfolioSimulator(
+            epoch_data_dict={
+                "amcott_house": epoch_data_ah,
+            },
+            epoch_config_dict={
+                "amcott_house": default_config,
+            },
+        )
+        # This should fail if we've got it wrong
+        copy.copy(orig)
+
+    def test_deep_copy(self, default_config: Config, epoch_data_ah: EpochSiteData) -> None:
+        """Test that we can deepcopy a simulator and have it be unchanged."""
+        orig = PortfolioSimulator(
+            epoch_data_dict={
+                "amcott_house": epoch_data_ah,
+            },
+            epoch_config_dict={
+                "amcott_house": default_config,
+            },
+        )
+        # This should fail if we've got it wrong
+        copy.deepcopy(orig)

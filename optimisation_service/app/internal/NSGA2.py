@@ -250,6 +250,7 @@ class NSGA2(Algorithm):
         constraints: Constraints,
         portfolio: list[Site],
         existing_solutions: list[PortfolioSolution] | None = None,
+        save_history: bool = False
     ) -> OptimisationResult:
         """
         Run NSGA optimisation.
@@ -264,7 +265,8 @@ class NSGA2(Algorithm):
             Portfolio of sites to optimise.
         existing_solutions
             Existing solutions to the problem to initialise the optimisation with.
-
+        save_history
+            Whether to save the history (creates a list of NSGA2 objects in the return value)
         Returns
         -------
         OptimisationResult
@@ -275,7 +277,7 @@ class NSGA2(Algorithm):
         pi = ProblemInstance(objectives, constraints, portfolio)
         if existing_solutions is not None and len(existing_solutions) > 0:
             self._load_existing_solutions(existing_solutions, pi)
-        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria)
+        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, save_history=save_history)
         simulate_scenario.cache_clear()
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
@@ -291,7 +293,8 @@ class NSGA2(Algorithm):
             portfolio_solutions = [pi.sim.simulate_portfolio(portfolio_scenario) for portfolio_scenario in portfolio_scenarios]
             portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
-        return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals)
+        return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals,
+                                  history=res.history if save_history else None)
 
 
 class MultiTermination(Termination):
