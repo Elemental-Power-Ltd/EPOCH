@@ -92,7 +92,9 @@ ValueMetrics calculate_npv(const SiteData& siteData, const TaskConfig& config, c
 			valueMetrics.annualised_cost += (comp.capex / comp.lifetime);
 		}
 
-		float next_replacement = comp.lifetime - comp.age;
+		// If a user has provided an age greater than the lifetime of this component,
+		// then presume we replace it in year zero.
+		float next_replacement = std::max(comp.lifetime - comp.age, 0.0f);
 		//int next_replacement = std::ceil(comp.lifetime - comp.age);
 
 		while (next_replacement < horizon) {
@@ -115,7 +117,7 @@ ValueMetrics calculate_npv(const SiteData& siteData, const TaskConfig& config, c
 		npv -= costs[year] / df;
 	}
 
-	valueMetrics.net_present_value = (float)npv;
+	valueMetrics.net_present_value = static_cast<float>(npv);
 
 	return valueMetrics;
 }
