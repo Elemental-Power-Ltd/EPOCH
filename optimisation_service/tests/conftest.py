@@ -177,10 +177,12 @@ def gen_dummy_site_solution(site: Site) -> SiteSolution:
 def choose_random_values_for_asset(asset: asset_t) -> dict[str, value_t]:
     """
     Reduce a SiteRange asset into a TaskData asset by selecting a random element in each list.
+
     Parameters
     ----------
     asset
         a SiteRange asset containing lists of possible values for parameters
+
     Returns
     -------
     a TaskData asset with randomly chosen values

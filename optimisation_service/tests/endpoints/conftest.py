@@ -27,7 +27,7 @@ def result_tmp_path(tmp_path_factory):
 
 
 @pytest_asyncio.fixture()
-def client(result_tmp_path: Path) -> Generator[TestClient, None, None]:
+def client(result_tmp_path: Path) -> Generator[TestClient]:
     class DataManagerOverride(DataManager):
         async def fetch_portfolio_data(self, task: Task) -> None:
             for site in task.portfolio:

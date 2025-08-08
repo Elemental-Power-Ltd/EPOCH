@@ -13,6 +13,7 @@ from app.models.result import PortfolioSolution
 class DistributedPortfolioOptimiser:
     """
     Optimise a portfolio that is split into N sub-portfolios for various CAPEX allocations.
+
     Each sub-portfolio is optimised individually with NSGA-II.
     """
 
@@ -66,8 +67,7 @@ class DistributedPortfolioOptimiser:
             self.n_evals += res.n_evals
             max_capex = 0.0
             for solution in res.solutions:
-                if solution.metric_values[Metric.capex] > max_capex:
-                    max_capex = solution.metric_values[Metric.capex]
+                max_capex = max(max_capex, solution.metric_values[Metric.capex])
             max_capexs.append(max_capex)
 
         capex_limits = [capex_limit] * len(self.sub_portfolios)
@@ -76,7 +76,9 @@ class DistributedPortfolioOptimiser:
         )
 
         # update sub_portfolio_solutions
-        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(self.sub_portfolio_solutions, sub_solutions):
+        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(
+            self.sub_portfolio_solutions, sub_solutions, strict=False
+        ):
             sub_portfolio_solution_list.update(set(new_sub_portfolio_solution_list))
 
         return solutions, max_capexs
@@ -120,7 +122,9 @@ class DistributedPortfolioOptimiser:
         )
 
         # update sub_portfolio_solutions
-        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(self.sub_portfolio_solutions, sub_solutions):
+        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(
+            self.sub_portfolio_solutions, sub_solutions, strict=True
+        ):
             sub_portfolio_solution_list.update(set(new_sub_portfolio_solution_list))
 
         return solutions
@@ -134,6 +138,7 @@ class DistributedPortfolioOptimiser:
     ) -> list[PortfolioSolution]:
         """
         Merge and optimise a list of portfolio solution lists into a single portfolio solution Pareto-optimal front.
+
         Uses cached sub-portfolio solutions to avoid recomputing existing solutions.
 
         Parameters
@@ -210,7 +215,7 @@ class DistributedPortfolioOptimiser:
             new_combinations = list(set(new_combinations) - self.sub_portfolio_combinations[i])
 
         # update sub_portfolio_combinations
-        for combination_set, new_combination_set in zip(self.sub_portfolio_combinations, combinations_to_cache):
+        for combination_set, new_combination_set in zip(self.sub_portfolio_combinations, combinations_to_cache, strict=False):
             combination_set.update(set(new_combination_set))
 
         return new_combinations
@@ -221,7 +226,7 @@ def select_starting_solutions(existing_solutions: list[PortfolioSolution], const
     Select a set of solutions to use to initialise an algorithm with from a set of existing solutions.
 
     Parameters
-    ---------
+    ----------
     existing_solutions
         Existing portfolio solutions to select from.
     constraints

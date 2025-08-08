@@ -57,7 +57,7 @@ class TestProblemInstance:
             splits[site.name] = np.arange(count_parameters_to_optimise(site.site_range))
         x = np.concatenate(list(splits.values()))
         res = default_problem_instance.split_solution(x)
-        assert [x == y for x, y in zip(splits, res)]
+        assert [x == y for x, y in zip(splits, res, strict=False)]
 
     @pytest.mark.parametrize("x_value", [0, 1])
     def test_convert_chromosome_to_site_scenario(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
@@ -76,12 +76,11 @@ class TestProblemInstance:
                     assert (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count) or (
                         repeat_count == 0 and not hasattr(td_pydantic, asset_name)
                     )
+                # for singleton components, we check whether the component should be present or not
+                elif not x_value and not asset["COMPONENT_IS_MANDATORY"]:
+                    assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
                 else:
-                    # for singleton components, we check whether the component should be present or not
-                    if not x_value and not asset["COMPONENT_IS_MANDATORY"]:
-                        assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
-                    else:
-                        assert hasattr(td_pydantic, asset_name)
+                    assert hasattr(td_pydantic, asset_name)
 
     @pytest.mark.parametrize("x_value", [0, 1])
     def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance):
@@ -111,11 +110,10 @@ class TestProblemInstance:
                     assert (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count) or (
                         repeat_count == 0 and not hasattr(td_pydantic, asset_name)
                     )
+                elif not x_value and not asset["COMPONENT_IS_MANDATORY"]:
+                    assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
                 else:
-                    if not x_value and not asset["COMPONENT_IS_MANDATORY"]:
-                        assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
-                    else:
-                        assert hasattr(td_pydantic, asset_name)
+                    assert hasattr(td_pydantic, asset_name)
 
     def test_apply_directions(self, default_problem_instance: ProblemInstance):
         metric_values: MetricValues = dict.fromkeys(_OBJECTIVES, 10)

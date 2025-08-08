@@ -30,9 +30,7 @@ _EPOCH_CONFIG = {"optimiser": {"leagueTableCapacity": 1, "produceExhaustiveOutpu
 
 
 class GridSearch(Algorithm):
-    """
-    Optimise a multi-objective EPOCH problem using grid search.
-    """
+    """Optimise a multi-objective EPOCH problem using grid search."""
 
     def __init__(
         self,
@@ -106,7 +104,7 @@ class GridSearch(Algorithm):
                 scenarios = [TaskData.from_json(json.dumps(scenario)) for scenario in scenarios_list]
                 objective_values: list[dict] = df_res[_METRICS].to_dict("records")
 
-                site_solutions[site.name] = [SiteSolution(*sol) for sol in zip(scenarios, objective_values)]  # type: ignore
+                site_solutions[site.name] = [SiteSolution(*sol) for sol in zip(scenarios, objective_values, strict=False)]  # type: ignore
 
         solutions = pareto_optimise(site_solutions, objectives, constraints)
 
@@ -116,6 +114,23 @@ class GridSearch(Algorithm):
 def pareto_optimise(
     building_solutions_dict: dict[str, list[SiteSolution]], objectives: list[Metric], constraints: Constraints
 ) -> list[PortfolioSolution]:
+    """
+    Find the Pareto front from this grid search.
+
+    Parameters
+    ----------
+    building_solutions_dict
+        All solutions you've just gridsearched
+    objectives
+        Objectives you want to consider in making the PF
+    constraint
+        Rules for which sites to throw out
+
+    Returns
+    -------
+    list[PortfolioSolution]
+        Pareto front from this grid search
+    """
     logger.debug(f"Number of Sites: {[len(scenario_list) for scenario_list in building_solutions_dict.values()]}")
     all_combinations = product(*building_solutions_dict.values())
     objective_mask = [_METRICS.index(col) for col in objectives]
@@ -144,16 +159,16 @@ def pareto_optimise(
         else:
             break
     reduced_set = np.vstack(pareto_optimal_subsets)
-    costs = np.array([
-        list(combine_metric_values([site.objective_values for site in combination]).values()) for combination in reduced_set
-    ])[:, objective_mask]
+    costs = np.array(
+        [list(combine_metric_values([site.objective_values for site in combination]).values()) for combination in reduced_set]
+    )[:, objective_mask]
     is_pareto_efficient = paretoset(costs=costs, sense=objective_direct, distinct=True)
     front = reduced_set[is_pareto_efficient].tolist()
 
     site_names = building_solutions_dict.keys()
     portfolio_solutions = []
     for combination in front:
-        solution_dict = dict(zip(site_names, combination))
+        solution_dict = dict(zip(site_names, combination, strict=False))
         objective_values = [site.objective_values for site in combination]  # type: ignore
         portfolio_objective_values = combine_metric_values(objective_values)  # type: ignore
 
@@ -193,12 +208,12 @@ def pareto_front_but_preserve(df: pd.DataFrame, objectives: list[Metric], preser
 
 
 def run_headless(
-    input_dir: os.PathLike | str,
-    output_dir: os.PathLike | str,
-    config_dir: os.PathLike | str,
+    input_dir: pathlib.Path,
+    output_dir: pathlib.Path,
+    config_dir: pathlib.Path,
 ) -> dict[str, float]:
     """
-    Run the headless version of Epoch as a subprocess
+    Run the headless version of Epoch as a subprocess.
 
     Parameters
     ----------
@@ -217,7 +232,6 @@ def run_headless(
 
     epoch_path = get_epoch_path()
 
-    input_dir, output_dir, config_dir = pathlib.Path(input_dir), pathlib.Path(output_dir), pathlib.Path(config_dir)
     # check these directories exist
     assert input_dir.is_dir(), f"Could not find {input_dir}"
     assert output_dir.is_dir(), f"Could not find {output_dir}"
@@ -227,22 +241,23 @@ def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / 'inputParameters.json'} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / 'EpochConfig.json'} is not a file"
 
-    result = subprocess.run([
-        epoch_path,
-        "--input",
-        str(input_dir),
-        "--output",
-        str(output_dir),
-        "--config",
-        str(config_dir),
-    ])
+    result = subprocess.run(
+        [
+            epoch_path,
+            "--input",
+            str(input_dir),
+            "--output",
+            str(output_dir),
+            "--config",
+            str(config_dir),
+        ]
+    )
 
     assert result.returncode == 0, result
 
     output_json = output_dir / "outputParameters.json"
 
-    with open(output_json) as f:
-        full_output = json.load(f)
+    full_output = json.loads(output_json.read_text())
 
     minimal_output = {
         "annualised": full_output["annualised"],
@@ -257,7 +272,7 @@ def run_headless(
 
 def get_epoch_path() -> str:
     """
-    Find the Epoch executable
+    Find the Epoch executable.
 
     This tries a number of options in the following order:
     1. Epoch is in the system PATH
@@ -268,7 +283,6 @@ def get_epoch_path() -> str:
     -------
         A valid path to supply to subprocess.run
     """
-
     # When using Docker, we expect to find Epoch in the PATH
     system_path_epoch = shutil.which("Epoch")
     if system_path_epoch:

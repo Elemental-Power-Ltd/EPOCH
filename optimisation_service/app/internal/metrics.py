@@ -3,7 +3,8 @@ import numpy as np
 
 def calculate_carbon_cost(capex: float | int, carbon_balance_scope_1: float | int) -> float | int:
     """
-    Calculates the salix carbon cost of a scenario.
+    Calculate the salix carbon cost of a scenario.
+
     It is the total CAPEX of a scenario divided by its scope 1 carbon emission savings in tonnes.
     The carbon emissions need to be adjusted by multiplying each assets savings by its lifetime years.
     The lifetime years of each asset and the carbon cost equation can be found:
@@ -37,6 +38,7 @@ def calculate_carbon_cost(capex: float | int, carbon_balance_scope_1: float | in
 def calculate_payback_horizon(capex: float | int, operating_balance: float | int) -> float | int:
     """
     Calculate payback horizon from CAPEX and operating balance.
+
     Returns negative if CAPEX is non null and operating balance is null or negative.
     Returns 0 if CAPEX is null or negative.
 

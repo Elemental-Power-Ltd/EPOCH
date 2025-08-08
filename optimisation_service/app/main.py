@@ -15,10 +15,8 @@ from .routers.optimise import process_requests
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """
-    Create queue that is served by process_requests from moment app is created until it is closed.
-    """
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    """Create queue that is served by process_requests from moment app is created until it is closed."""
     q = IQueue(maxsize=20)
     app.state.q = q
     app.state.start_time = datetime.datetime.now(datetime.UTC)
@@ -43,6 +41,7 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Exception handler that logs a validation issue."""
     logger.error(f"Validation error: {exc.errors()} | Body: {exc.body}")
     return JSONResponse(
         status_code=422,
@@ -52,6 +51,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.get("/")
 async def read_main() -> dict[str, str]:
+    """Welcome function to check the API is working."""
     return {"message": "Welcome to the Optimisation API!"}
 
 

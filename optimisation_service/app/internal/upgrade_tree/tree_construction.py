@@ -74,7 +74,7 @@ def hamming_distance(s1: Iterable, s2: Iterable) -> int:
     int
         Number of single character changes to make to turn s1 into s2
     """
-    return sum(c1 != c2 for c1, c2 in zip(s1, s2))
+    return sum(c1 != c2 for c1, c2 in zip(s1, s2, strict=False))
 
 
 def generate_label(key: str, possible_components: Iterable[str]) -> str:
@@ -96,15 +96,34 @@ def generate_label(key: str, possible_components: Iterable[str]) -> str:
     str
         Components installed at each node, linked by newlines
     """
-    label = ",\n".join(comp for c, comp in zip(key, possible_components) if bool(int(c)))
+    label = ",\n".join(comp for c, comp in zip(key, possible_components, strict=False) if bool(int(c)))
     return label
 
 
 def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph:
+    """
+    Create the upgrade tree.
+
+    This takes in the results you have already calculated for all possible upgrades,
+    and a list of human readable names for them.
+    The all results dict should be keyed by bitstrings representing which components are included,
+    and have the raw outputs as values.
+
+    Parameters
+    ----------
+    all_results
+        All possible combinations already simulated
+    possible_components
+        Human readable names for components
+
+    Returns
+    -------
+        Tiered graph with positions, shortfall status set.
+    """
     dG = nx.DiGraph()
     x_scale, y_scale = 10.0, 5.0
     tiers = []
-    for length in range(4):
+    for length in range(len(possible_components)):
         items_with_length = sorted(filter(lambda s: sum(item == "1" for item in s) == length, all_results.keys()))
         tiers.append(items_with_length)
 

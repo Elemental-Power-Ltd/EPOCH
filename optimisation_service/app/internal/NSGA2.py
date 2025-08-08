@@ -35,6 +35,8 @@ from app.models.result import OptimisationResult, PortfolioSolution
 
 
 class CustomPymooNSGA2(Pymoo_NSGA2):
+    """Extend the PymooNSGA2 code with some utility for our purposes."""
+
     def __init__(
         self,
         pop_size: int,
@@ -50,7 +52,9 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         **kwargs,
     ):
         """
-        Initialise a Pymoo NSGA2 algorithm with a customised loop capable of automatically increasing the population size at
+        Initialise a Pymoo NSGA2 algorithm with a customised loop.
+
+        This is capable of automatically increasing the population size at
         each generation dependent on the proportion of optimal scenarios in the population.
 
         Parameters
@@ -101,8 +105,20 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
 
     def _advance(self, infills=None, **kwargs):
         """
-        Extending the _advance function to enable automatic population size increase.
+        Extend the _advance function to enable automatic population size increase.
+
         The function is called at each generation.
+
+        Parameters
+        ----------
+        infills
+            Passed to Pymoo_NSGA2
+        kwargs
+            Forwarded to the Pymoo_NSGA2
+
+        Returns
+        -------
+            ?
         """
         if self.pop_size_incr_scalar > 0.0:
             # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
@@ -115,9 +131,7 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
 
 
 class NSGA2(Algorithm):
-    """
-    Optimise a multi-objective EPOCH problem using NSGA-II.
-    """
+    """Optimise a multi-objective EPOCH problem using NSGA-II."""
 
     def __init__(
         self,
@@ -207,6 +221,7 @@ class NSGA2(Algorithm):
     def _load_existing_solutions(self, solutions: list[PortfolioSolution], problem: ProblemInstance):
         """
         Load existing solutions to the optimisation problem into the population.
+
         Can only be run once before run.
         Should not be used directly, favour using existing_solutions variable in run function.
 
@@ -250,7 +265,7 @@ class NSGA2(Algorithm):
         constraints: Constraints,
         portfolio: list[Site],
         existing_solutions: list[PortfolioSolution] | None = None,
-        save_history: bool = False
+        save_history: bool = False,
     ) -> OptimisationResult:
         """
         Run NSGA optimisation.
@@ -267,6 +282,7 @@ class NSGA2(Algorithm):
             Existing solutions to the problem to initialise the optimisation with.
         save_history
             Whether to save the history (creates a list of NSGA2 objects in the return value)
+
         Returns
         -------
         OptimisationResult
@@ -293,11 +309,17 @@ class NSGA2(Algorithm):
             portfolio_solutions = [pi.sim.simulate_portfolio(portfolio_scenario) for portfolio_scenario in portfolio_scenarios]
             portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
-        return OptimisationResult(solutions=portfolio_solutions_pf, exec_time=exec_time, n_evals=n_evals,
-                                  history=res.history if save_history else None)
+        return OptimisationResult(
+            solutions=portfolio_solutions_pf,
+            exec_time=exec_time,
+            n_evals=n_evals,
+            history=res.history if save_history else None,
+        )
 
 
 class MultiTermination(Termination):
+    """Combination of multiple termination criteria: robust, maximum generation, maximum func calls, constrint violation."""
+
     def __init__(
         self,
         tol: float = 1e-6,
@@ -307,6 +329,24 @@ class MultiTermination(Termination):
         cv_tol: float = 1e-6,
         cv_period: int = 30,
     ) -> None:
+        """
+        Create the multi termination criterion.
+
+        Parameters
+        ----------
+        tol
+            Tolerance for the Robust criterion
+        period
+            Memory length for the Robust criterion
+        n_max_gen
+            Maximum generations to allow
+        n_max_evals
+            Maximum function calls to allow
+        cv_tol
+            Constraint violation tolerance
+        cv_period
+            Constraint violation memory length.
+        """
         super().__init__()
         self.f = RobustTermination(MultiObjectiveSpaceTermination(tol, only_feas=True), period)
         self.max_gen = MaximumGenerationTermination(n_max_gen)
@@ -327,6 +367,7 @@ class MultiTermination(Termination):
 class SeparatedNSGA2(Algorithm):
     """
     Optimise a single or multi objective portfolio problem by optimising each site individually with NSGA-II.
+
     The site solutions are recombined into portfolio solutions as follows:
         1. Select a site's set of solutions as the "recombined" set.
         2. Select another site's set of solutions as the "incoming" set.
@@ -470,9 +511,10 @@ class SeparatedNSGA2(Algorithm):
 
 class SeparatedNSGA2xNSGA2(Algorithm):
     """
-    Optimise a single or multi objective portfolio problem by first applying the SeparatedNSGA2 algorithm to the problem
-    followed by applying the NSGA2 algorithm to the problem with as starting population the solutions from the SeparatedNSGA2
-    algorithm.
+    Optimise a single or multi objective portfolio problem by first applying the SeparatedNSGA2 algorithm to the problem.
+
+    This is followed by applying the NSGA2 algorithm to the problem with as starting population,
+    the solutions from the SeparatedNSGA2 algorithm.
 
     This algorithm will perform better than either of its parts for extensive (many components) multi objective portfolio
     problems with more than 3 sites. This is because it leverages the fast execution time of the SeparatedNSGA2 algorithm to
@@ -482,6 +524,16 @@ class SeparatedNSGA2xNSGA2(Algorithm):
     """
 
     def __init__(self, SeparatedNSGA2_param: NSGA2HyperParam | None = None, NSGA2_param: NSGA2HyperParam | None = None):
+        """
+        Create the SeparatedNSGA2xNSGA2 optimiser.
+
+        Parameters
+        ----------
+        SeparatedNSGA2_param
+            Parameters for the separated part, as hyperparameters. Picks sensible defaults if not provided
+        NSGA2_param
+            Parameters for the NSGA2 part; picks sensible defaults if None.
+        """
         if SeparatedNSGA2_param is None:
             SeparatedNSGA2_param = NSGA2HyperParam()
         if NSGA2_param is None:

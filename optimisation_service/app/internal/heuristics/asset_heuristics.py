@@ -1,6 +1,4 @@
-"""
-Asset heuristics for initialising EPOCH search spaces.
-"""
+"""Asset heuristics for initialising EPOCH search spaces."""
 
 from datetime import datetime, timedelta
 
@@ -11,6 +9,8 @@ from app.models.site_data import EpochSiteData
 
 
 class HeatPumpHeuristic:
+    """Heuristic for sizing heat pumps based on the heat load."""
+
     @staticmethod
     def heat_power(
         building_hload: list[float],
@@ -69,6 +69,8 @@ class HeatPumpHeuristic:
 
 
 class SolarHeuristic:
+    """Heuristic for sizing solar to cover daily usage."""
+
     @staticmethod
     def yield_scalar(solar_yield: list[float], building_eload: list[float], quantile: float = 0.75) -> float:
         """
@@ -99,6 +101,8 @@ class SolarHeuristic:
 
 
 class EnergyStorageSystemHeuristic:
+    """Heuristic to size batteries based on load."""
+
     @staticmethod
     def capacity(building_eload: list[float], timestamps: list[datetime], quantile: float = 0.75) -> float:
         """
@@ -216,7 +220,7 @@ def get_all_estimates(epoch_data: EpochSiteData) -> dict[str, dict]:
     estimates["energy_storage_system"]["capacity"] = EnergyStorageSystemHeuristic.capacity(
         building_eload=epoch_data.building_eload, timestamps=timestamps
     )
-    solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields)]
+    solar_yield_sum = [sum(values) for values in zip(*epoch_data.solar_yields, strict=False)]
     estimates["energy_storage_system"]["charge_power"] = EnergyStorageSystemHeuristic.charge_power(
         solar_yield=solar_yield_sum,
         timestamps=timestamps,

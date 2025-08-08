@@ -18,9 +18,7 @@ logger = logging.getLogger("default")
 
 
 class PortfolioSimulator:
-    """
-    Provides portfolio simulation by initialising multiple EPOCH simulator's.
-    """
+    """Provides portfolio simulation by initialising multiple EPOCH simulators."""
 
     def __init__(self, epoch_data_dict: dict[str, EpochSiteData], epoch_config_dict: dict[str, PydanticConfig]) -> None:
         """
@@ -148,6 +146,7 @@ def simulate_scenario(sim: Simulator, site_name: str, site_scenario: TaskData) -
 def combine_metric_values(metric_values_list: list[MetricValues]) -> MetricValues:
     """
     Combine a list of metric values into a single list of metric values.
+
     Most metrics can be summed, but some require more complex functions.
 
     Parameters
@@ -160,7 +159,6 @@ def combine_metric_values(metric_values_list: list[MetricValues]) -> MetricValue
     metric_values
         Dictionary of metric values.
     """
-
     # start by finding the metrics that all entries have in common
     # we can only combine a metric if it is present in every entry
     common_metrics = set.intersection(*(set(mv.keys()) for mv in metric_values_list))

@@ -35,6 +35,9 @@ from app.routers.epl_queue import IQueue
 
 
 class OptimiserFunc(Enum):
+    """Mapping of optimiser types to optimiser class."""
+
+    # TODO (2025-08-08 MHJB): should this be a dict instead? feels weird as an enum.
     NSGA2 = NSGA2
     GridSearch = GridSearch
     SeparatedNSGA2xNSGA2 = SeparatedNSGA2xNSGA2
@@ -47,6 +50,23 @@ logger = logging.getLogger("default")
 
 
 def process_results(task: Task, results: OptimisationResult, completed_at: datetime.datetime) -> OptimisationResultEntry:
+    """
+    Process the results of a task, creating a portfolio result.
+
+    Parameters
+    ----------
+    task
+        The completed job
+    results
+        Results of the completed job
+    completed_at
+        When the job was finished (hopefully recently)
+
+    Returns
+    -------
+    OptimisationResultEntry
+        Format suitable to file in the database as a result with a new UUID
+    """
     logger.info(f"Postprocessing results of {task.task_id}.")
     portfolios = []
     for portfolio_solution in results.solutions:
@@ -157,7 +177,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
 
 def check_epoch_versions() -> tuple[str | None, str | None]:
     """
-    Checks the versions of EPOCH's headless exe and EPOCH's python bindings.
+    Check the versions of EPOCH's headless exe and EPOCH's python bindings.
 
     Returns
     -------

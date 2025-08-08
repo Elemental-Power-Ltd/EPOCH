@@ -27,9 +27,7 @@ Config.warnings["not_compiled"] = False
 
 
 class ProblemInstance(ElementwiseProblem):
-    """
-    Create Pymoo ProblemInstance from OptimiseProblem instance.
-    """
+    """Create Pymoo ProblemInstance from OptimiseProblem instance."""
 
     def __init__(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> None:
         """
@@ -181,12 +179,12 @@ class ProblemInstance(ElementwiseProblem):
 
     def convert_site_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> AnnotatedTaskData:
         """
-        Convert a site's candidate solution from an array of indeces to a site scenario.
+        Convert a site's candidate solution from an array of indices to a site scenario.
 
         Parameters
         ----------
         x
-            A pymoo compatible site solution (array of indeces).
+            A pymoo compatible site solution (array of indices).
         site_name
             The name of the building.
 
@@ -201,20 +199,22 @@ class ProblemInstance(ElementwiseProblem):
         singleton_assets_to_pop: list[str] = []
         repeat_assets_to_pop: list[tuple[str, int]] = []
 
-        for param, idx in zip(self.asset_parameters[site_name], x):
+        for param, idx in zip(self.asset_parameters[site_name], x, strict=False):
             if param.attr_name == "COMPONENT_IS_MANDATORY":
                 if param.repeat_index is None:
                     if site_range[param.asset_name][param.attr_name][idx] == 0:
                         # this singleton asset should not be in this solution
                         singleton_assets_to_pop.append(param.asset_name)
-                else:
-                    if site_range[param.asset_name][param.repeat_index][param.attr_name][idx] == 0:
-                        # this repeat asset should not be in this solution
-                        repeat_assets_to_pop.append((param.asset_name, param.repeat_index))
+                elif site_range[param.asset_name][param.repeat_index][param.attr_name][idx] == 0:
+                    # this repeat asset should not be in this solution
+                    repeat_assets_to_pop.append((param.asset_name, param.repeat_index))
 
             elif param.repeat_index is None:
                 # this is an attribute for a singleton component
-                site_scenario[param.asset_name][param.attr_name] = site_range[param.asset_name][param.attr_name][idx]
+                try:
+                    site_scenario[param.asset_name][param.attr_name] = site_range[param.asset_name][param.attr_name][idx]
+                except IndexError:
+                    print(param.asset_name, param.attr_name, idx)
             else:
                 # this is an attribute for a repeat component
                 repeat_attr = site_range[param.asset_name][param.repeat_index][param.attr_name][idx]
@@ -286,27 +286,27 @@ class ProblemInstance(ElementwiseProblem):
                 else:
                     value = td_dict[param.asset_name][param.attr_name]
                     x.append(site_range[param.asset_name][param.attr_name].index(value))
+            # repeat component
+            elif param.asset_name not in td_dict:
+                # we have none of this repeat component
+                x.append(0)
+            elif not any(rc["index_tracker"] == param.repeat_index for rc in td_dict[param.asset_name]):
+                # this instance of the repeat component is not present
+                x.append(0)
+            elif param.attr_name == "COMPONENT_IS_MANDATORY":
+                x.append(1)
             else:
-                # repeat component
-                if param.asset_name not in td_dict:
-                    # we have none of this repeat component
-                    x.append(0)
-                elif not any(rc["index_tracker"] == param.repeat_index for rc in td_dict[param.asset_name]):
-                    # this instance of the repeat component is not present
-                    x.append(0)
-                elif param.attr_name == "COMPONENT_IS_MANDATORY":
-                    x.append(1)
-                else:
-                    # we know this instance is present, find it and read from the appropriate index in SiteRange
-                    repeat_instance = next(rc for rc in td_dict[param.asset_name] if rc["index_tracker"] == param.repeat_index)
-                    value = repeat_instance[param.attr_name]
-                    x.append(site_range[param.asset_name][param.repeat_index][param.attr_name].index(value))
+                # we know this instance is present, find it and read from the appropriate index in SiteRange
+                repeat_instance = next(rc for rc in td_dict[param.asset_name] if rc["index_tracker"] == param.repeat_index)
+                value = repeat_instance[param.attr_name]
+                x.append(site_range[param.asset_name][param.repeat_index][param.attr_name].index(value))
 
         return np.array(x)
 
     def apply_directions(self, metric_values: MetricValues) -> MetricValues:
         """
-        Applies metric optimisation direction to metric values.
+        Apply metric optimisation direction to metric values.
+
         Multiplies metric values of metrics that need to be maximised by -1.
 
         Parameters
@@ -388,6 +388,7 @@ class ProblemInstance(ElementwiseProblem):
 def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) -> list[float]:
     """
     Measures by how much the metric values exceed the constraints.
+
     Returns a list of floats, one for each constraint.
 
     Parameters
@@ -450,9 +451,7 @@ def evaluate_peak_hload(site_scenario: AnnotatedTaskData, site_data: EpochSiteDa
 
 
 class EstimateBasedSampling(Sampling):
-    """
-    Generate a population of solutions by estimating some parameter values from data.
-    """
+    """Generate a population of solutions by estimating some parameter values from data."""
 
     def _do(self, problem: ProblemInstance, n_samples: int, **kwargs):
         site_pops = []
@@ -471,9 +470,7 @@ class EstimateBasedSampling(Sampling):
 
 
 class SimpleIntMutation(Mutation):
-    """
-    Pymoo Mutation Operator which randomly mutates parameter values by a single step in the search space.
-    """
+    """Pymoo Mutation Operator which randomly mutates parameter values by a single step in the search space."""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -524,6 +521,7 @@ class SimpleIntMutation(Mutation):
 class RoundingAndDegenerateRepair(Repair):
     """
     Function to repair pymoo chromosomes.
+
     Floats are rounded to the nearest integer.
     Components that have been disabled in the solution have all their other asset values set to the smallest value.
     This is to reduce the number of degenerate solutions.
@@ -531,6 +529,9 @@ class RoundingAndDegenerateRepair(Repair):
 
     def __init__(self, **kwargs) -> None:
         """
+        Create the repair function.
+
+        Just passes on all kwargs to pymoo.
 
         Returns
         -------
@@ -540,7 +541,7 @@ class RoundingAndDegenerateRepair(Repair):
 
     def _do(self, problem: ProblemInstance, X, **kwargs):
         """
-        Forces all degenrate solutions cause by optional components to have the same default values.
+        Force all degenerate solutions cause by optional components to have the same default values.
 
         For example:
         Imagine we would like to optimise a site with a single optional heat pump component with three sizes: [10, 20, 30].
@@ -576,7 +577,8 @@ class RoundingAndDegenerateRepair(Repair):
 
 def strip_annotations(annotated_task: AnnotatedTaskData) -> TaskDataPydantic:
     """
-    Remove annotations from a TaskData
+    Remove annotations from a TaskData.
+
     Parameters
     ----------
     annotated_task

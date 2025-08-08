@@ -36,7 +36,7 @@ class EndpointFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         """
-        Should we allow this record through the filter?
+        Check if we should we allow this record through the filter.
 
         Checks if the request method matches the specified request method and that the endpoint path matches.
 
@@ -45,7 +45,6 @@ class EndpointFilter(logging.Filter):
             True if we should allow this record through, False if otherwise.
         """
         if not isinstance(record.args, tuple | list) or len(record.args) < 4:
-            print("Record args:", record.args)
             return True
         request_method = str(record.args[1])  # should be GET or POST
         query_string = str(record.args[2])  # complete query string (so parameter and other value included)

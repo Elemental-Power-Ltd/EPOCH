@@ -1,6 +1,4 @@
-"""
-Wrappers for Epoch that are more ergonomic for python.
-"""
+"""Wrappers for Epoch that are more ergonomic for python."""
 
 import json
 
@@ -87,7 +85,7 @@ def convert_sim_result(sim_result: SimulationResult) -> MetricValues:
 
 def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:
     """
-    Converts an Epoch TaskData instance into a dictionary representation.
+    Convert an Epoch TaskData instance into a dictionary representation.
 
     Parameters
     ----------
@@ -104,7 +102,7 @@ def convert_TaskData_to_dictionary(task_data: TaskData) -> dict:
 
 def convert_TaskData_to_pydantic(task_data: TaskData) -> TaskDataPydantic:
     """
-    Converts an Epoch TaskData instance into a pydantic model
+    Convert an Epoch TaskData instance into a pydantic model.
 
     Parameters
     ----------

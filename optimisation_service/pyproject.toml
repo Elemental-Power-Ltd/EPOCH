@@ -11,14 +11,14 @@ authors = [
 ]
 description = "Optimisation Backend for Elemental Power"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 
 [tool.ruff]
-exclude = ["app/models/epoch_types"]
+exclude = ["*.ipynb", "app/models/epoch_types/", "Epoch/"]
 line-length = 128
 
 [tool.ruff.lint.pydocstyle]
@@ -34,24 +34,47 @@ select = [
     "A", # flake8-builtins
     "C4", # flake8-comprehensions
     "UP", # pyupgrade
-    "DTZ", # datetime
+    "DTZ", #datetime
     "PT", # pytest
     "PD", # pandas
     "PERF", # performance,
     "RUF", # ruff
     "FAST", # fastAPI
-    # "D", # pydocstyle
+    "D", # pydocstyle
+    "PLR",
+    #"NPY",
+    #"ICN",
+    #"LOG",
+    "FURB",
+    "TRY",
+    # "DOC", # docstring contents
 ]
 ignore = [
+    "D100", # module docstrings mostly not helpful
+    "D104", # package docstrings mostly not helpful
+    "PD008", # at instead of loc
     "PD901", # pandas df variable name
     "PT011", # pytest raises too broad
     "RUF029", # declared async but doesn't use
-    "B905", # zip() without an explicit strict= parameter.
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "PLR2004", # magic value used in comparison
+    "PLR6301", # could be a function, class method, ... (complains about tests)
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0913",  # too many arguments
+    "PLR0914", # too many local variables
+    "PLR0915", # too many statements
+    "PLR0917", # too many positional arguments
 ]
 
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
+
+[tool.ruff.lint.per-file-ignores]
+# Skip all docstring-like complaints in the test directory
+"tests/*" = ["D"]
+"app/models/*" = ["D101", "D105"]
 
 [tool.pytest.ini_options]
 markers = [
