@@ -101,7 +101,7 @@ class GridSearch(Algorithm):
                     max_value = bounds.get("max", np.inf)
                     df_res = df_res[(df_res[objective] >= min_value) & (df_res[objective] <= max_value)]
 
-                scenarios_list: list[dict] = df_res.drop(columns=_METRICS).to_dict("records")  # type: ignore
+                scenarios_list: list[dict] = df_res.drop(columns=_METRICS).to_dict("records")
                 scenarios = [TaskData.from_json(json.dumps(scenario)) for scenario in scenarios_list]
                 objective_values: list[dict[str, float]] = df_res[_METRICS].to_dict("records")  # type: ignore
 

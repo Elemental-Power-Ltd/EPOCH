@@ -166,13 +166,13 @@ class DistributedPortfolioOptimiser:
 
         existing_combinations = list(self.sub_portfolio_combinations[0])
         mask = is_in_constraints(constraints={Metric.capex: Bounds(max=combined_capex_limit)}, solutions=existing_combinations)
-        existing_combinations = np.array(existing_combinations)[mask].tolist()
+        existing_combinations = cast(list[PortfolioSolution], np.array(existing_combinations)[mask].tolist())
 
         for i in range(1, len(solutions)):
             new_solutions = list(set(solutions[i]) - self.sub_portfolio_solutions[i])
             existing_solutions = list(self.sub_portfolio_solutions[i])
             mask = is_in_constraints(constraints={Metric.capex: Bounds(max=capex_limits[i])}, solutions=existing_solutions)
-            existing_solutions = np.array(existing_solutions)[mask].tolist()
+            existing_solutions = cast(list[PortfolioSolution], np.array(existing_solutions)[mask].tolist())
 
             if len(new_combinations) > 0 and len(new_solutions) > 0:
                 new_combs_n_sols = merge_and_optimise_two_portfolio_solution_lists(new_combinations, new_solutions, objectives)
@@ -200,14 +200,14 @@ class DistributedPortfolioOptimiser:
             mask = is_in_constraints(
                 constraints={Metric.capex: Bounds(max=combined_capex_limit)}, solutions=existing_combinations
             )
-            existing_combinations = np.array(existing_combinations)[mask].tolist()
+            existing_combinations = cast(list[PortfolioSolution], np.array(existing_combinations)[mask].tolist())
 
             if len(new_combinations) > 0:
                 all_combinations = new_combinations + existing_combinations
 
                 if i == len(solutions) - 1:
                     mask = is_in_constraints(constraints, all_combinations)
-                    all_combinations = np.array(all_combinations)[mask].tolist()
+                    all_combinations = cast(list[PortfolioSolution], np.array(all_combinations)[mask].tolist())
 
                 if len(all_combinations) > 0:
                     new_combinations = portfolio_pareto_front(all_combinations, objectives)

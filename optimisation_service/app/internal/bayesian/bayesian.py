@@ -172,7 +172,7 @@ class Bayesian(Algorithm):
         candidates = generate_random_candidates(n=self.n_initialisation_points, max_capexs=max_capexs, capex_limit=capex_limit)
         for k, candidate in enumerate(candidates):
             logger.debug(f"On random candidate {k + 1} / {self.n_initialisation_points}.")
-            new_solutions = dpo.evaluate(candidate)
+            new_solutions = dpo.evaluate(candidate)  # type: ignore
 
             if len(new_solutions) > 0:
                 solutions = portfolio_pareto_front(solutions + new_solutions, objectives)
@@ -215,7 +215,7 @@ class Bayesian(Algorithm):
 
             for k, candidate in enumerate(candidates):
                 logger.debug(f"On batch {k + 1} / {self.batch_size}.")
-                new_solutions = dpo.evaluate(candidate)
+                new_solutions = dpo.evaluate(candidate)  # type: ignore
 
                 if len(new_solutions) > 0:
                     solutions = portfolio_pareto_front(solutions + new_solutions, objectives)

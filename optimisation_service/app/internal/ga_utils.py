@@ -54,8 +54,8 @@ class ProblemInstance(ElementwiseProblem):
         epoch_data_dict = {}
         epoch_config_dict = {}
 
-        self.default_parameters: dict[str, dict] = {}  # type: ignore
-        self.site_ranges: dict[str, dict] = {}  # type: ignore
+        self.default_parameters: dict[str, dict] = {}
+        self.site_ranges: dict[str, dict] = {}
         self.asset_parameters: dict[str, list[AssetParameter]] = {}
         self.indexes = {}
         num_attr_values = []

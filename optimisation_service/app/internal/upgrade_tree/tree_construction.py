@@ -141,7 +141,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         )
 
     nx.set_node_attributes(
-        dG,  # type: ignore
+        dG,
         values={key: generate_label(key, possible_components=possible_components) for key in dG.nodes},
         name="label",
     )
@@ -152,12 +152,12 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         for idx, item in enumerate(tier_contents):
             pos[item] = ((idx - tier_len / 2) * x_scale, tier_rank * y_scale)
     nx.set_node_attributes(
-        dG,  # type: ignore
+        dG,
         values=pos,
         name="pos",
     )
     nx.set_node_attributes(
-        dG,  # type: ignore
+        dG,
         values={key: all_results[key].metrics.capex for key in all_results.keys()},
         name="capex",
     )
@@ -207,7 +207,7 @@ def find_maximising_path(G: nx.Graph[str], source: str, sink: str, weight: str, 
     """
     curr_node = source
     path = [curr_node]
-    while curr_node != sink and G.neighbors(curr_node):
+    while curr_node != sink and G.neighbors(curr_node):  # type: ignore
         neighbours = sorted(G[curr_node])
         if not neighbours:
             break

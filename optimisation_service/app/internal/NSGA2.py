@@ -503,7 +503,7 @@ class SeparatedNSGA2(Algorithm):
 
         mask = is_in_constraints(constraints, combined_solutions)
         if any(mask) > 0:
-            combined_solutions = np.array(combined_solutions)[mask].tolist()
+            combined_solutions = cast(list[PortfolioSolution], np.array(combined_solutions)[mask].tolist())
         elif not self.return_least_infeasible and not any(mask):
             combined_solutions = [get_baseline_portfolio_solution(portfolio)]
 

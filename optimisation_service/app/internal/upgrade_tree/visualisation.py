@@ -60,8 +60,8 @@ def draw_upgrade_tree(
 
     if ax is None:
         _, ax = plt.subplots()
-    pos = nx.get_node_attributes(G, "pos")
-    labels = nx.get_node_attributes(G, "label")
+    pos: dict[str, tuple[float, float]] = nx.get_node_attributes(G, "pos")  # type: ignore
+    labels: dict[str, str] = nx.get_node_attributes(G, "label")  # type: ignore
     in_cost_nodes = list(G.nodes)
     nx.draw_networkx_nodes(G, pos=pos, node_size=node_size, nodelist=in_cost_nodes, ax=ax)
     nx.draw_networkx_nodes(G, pos=pos, node_size=node_size, nodelist=shortfall_nodes, node_color="#DD0000", ax=ax)
@@ -74,9 +74,15 @@ def draw_upgrade_tree(
         G, pos=pos, node_size=node_size, edgelist=list(itertools.pairwise(shortest_path)), edge_color="green", width=4.0, ax=ax
     )
     nx.draw_networkx_edge_labels(
-        G, pos=pos, edge_labels={k: f"£{v:.2f}" for k, v in nx.get_edge_attributes(G, "operating_cost").items()}, font_size=8
+        G,
+        pos=pos,
+        edge_labels={
+            k: f"£{v:.2f}"
+            for k, v in nx.get_edge_attributes(G, "operating_cost").items()  # type: ignore
+        },
+        font_size=8,
     )
-    operating_costs = nx.get_node_attributes(G, "operating_cost")
+    operating_costs: dict[str, float] = nx.get_node_attributes(G, "operating_cost")  # type: ignore
     ax.set_title(" -> ".join(order) + "\n" + f"Operating cost: £{operating_costs[sink]:.2f}")
     min_x, max_x = min(item[0] for item in pos.values()) * 1.1, max(item[0] for item in pos.values()) * 1.1
 
