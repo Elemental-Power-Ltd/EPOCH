@@ -3,29 +3,29 @@ Generate all possible combinations of assets to create an upgrade tree.
 
 This includes functions to check for what the combinations should be.
 """
-from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
-from app.models.site_data import EpochSiteData
+
+import itertools
+import logging
 
 import epoch_simulator as eps
-from epoch_simulator import TaskData as EpochTaskData
 from epoch_simulator import SimulationResult
-import itertools
+from epoch_simulator import TaskData as EpochTaskData
 
 from app.models.epoch_types.task_data_type import (
-    Config,
-    SolarPanel,
-    ElectricVehicles,
-    EnergyStorageSystem,
     Building,
+    Config,
     DataCentre,
     DomesticHotWater,
+    ElectricVehicles,
+    EnergyStorageSystem,
     GasHeater,
     Grid,
     HeatPump,
     Mop,
+    SolarPanel,
 )
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.site_data import EpochSiteData
-import logging
 
 type AnyComponent = (
     Building
