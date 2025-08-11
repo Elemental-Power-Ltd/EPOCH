@@ -5,6 +5,7 @@ from app.models.epoch_types.task_data_type import HeatPump as HeatPumpTD
 from app.models.epoch_types.task_data_type import SolarPanel as SolarPanelTD
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 
+
 class TestCheckChanges:
     def test_gas_to_ashp(self) -> None:
         """Test that we correctly treat replacing a gas heater with an heat pump."""
