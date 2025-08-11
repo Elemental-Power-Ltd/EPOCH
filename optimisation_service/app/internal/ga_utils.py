@@ -213,10 +213,7 @@ class ProblemInstance(ElementwiseProblem):
 
             elif param.repeat_index is None:
                 # this is an attribute for a singleton component
-                try:
-                    site_scenario[param.asset_name][param.attr_name] = site_range[param.asset_name][param.attr_name][idx]
-                except IndexError:
-                    print(param.asset_name, param.attr_name, idx)
+                site_scenario[param.asset_name][param.attr_name] = site_range[param.asset_name][param.attr_name][idx]
             else:
                 # this is an attribute for a repeat component
                 repeat_attr = site_range[param.asset_name][param.repeat_index][param.attr_name][idx]
