@@ -50,7 +50,8 @@ def analyse_differences(start: TaskDataPydantic, end: TaskDataPydantic) -> dict[
     This checks each component in the end TaskData, and checks if it is different between start and end.
     If the component is added, we'll mark it as `component: {component_data}` in the changed_dict.
     If it is removed, we'll mark it as `component: None` in the changed_dict.
-    Gas heaters are handled differently, as they're removed when heat pumps are installed.
+    Gas heaters are handled differently: they're often removed when heat pumps are installed,
+    so we need to check if we've kept a backup gas heater or if it's being removed entirely.
 
     Parameters
     ----------
