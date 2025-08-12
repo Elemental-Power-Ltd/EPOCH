@@ -176,7 +176,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         u_cost = all_results[u].metrics.total_operating_cost  # type: ignore
         v_cost = all_results[v].metrics.total_operating_cost  # type: ignore
 
-        edge_lengths[u, v] = v_cost - u_cost
+        edge_lengths[u, v] = v_cost - u_cost  # type: ignore
         step_prices[u, v] = all_results[v].metrics.capex - all_results[u].metrics.capex  # type: ignore
         v_co2 = all_results[v].metrics.carbon_balance_scope_1 + all_results[v].metrics.carbon_balance_scope_2  # type: ignore
         u_co2 = all_results[u].metrics.carbon_balance_scope_1 + all_results[u].metrics.carbon_balance_scope_2  # type: ignore
