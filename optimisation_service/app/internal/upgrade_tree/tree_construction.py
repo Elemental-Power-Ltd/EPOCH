@@ -27,6 +27,8 @@ def is_in_elec_shortfall(key: str, all_results: ResultsDict, thresh: float = 0.0
     bool
         True if there is no information about the shortfall, or if the shortfall is above the thresh
     """
+    # If we've got an old result with no shortfalls provided, then presume that this
+    # node is bad.
     if all_results[key].metrics.total_electrical_shortfall is None:
         return True
     return cast(float, all_results[key].metrics.total_electrical_shortfall) > thresh
@@ -50,7 +52,9 @@ def is_in_heat_shortfall(key: str, all_results: ResultsDict, thresh: float = 0.0
     bool
         True if there is no information about the shortfall, or if the shortfall is above the thresh
     """
-    if all_results[key].metrics.total_electrical_shortfall is None:
+    # If we've got an old result with no shortfalls provided, then presume that this
+    # node is bad.
+    if all_results[key].metrics.total_heat_shortfall is None:
         return True
     return cast(float, all_results[key].metrics.total_heat_shortfall) > thresh
 
@@ -102,25 +106,31 @@ def generate_label(key: str, possible_components: Iterable[str]) -> str:
 
 def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph[str]:
     """
-    Create the upgrade tree.
+    Generate the tiered graph of upgrades.
 
     This takes in the results you have already calculated for all possible upgrades,
     and a list of human readable names for them.
-    The all results dict should be keyed by bitstrings representing which components are included,
-    and have the raw outputs as values.
+
+    This will start at the node with no interventions and go up in tiers to the node with all interventions.
+    The `all_results` dict must have bitstring keys in the form 01010...,
+    as that's used to calculate what should be on each tier. It must have the raw outputs as values.
+
+    Edges are drawn if neither node is in shortfall for heat or electricity.
 
     Parameters
     ----------
     all_results
-        All possible combinations already simulated
+        Dictionary of `bitstring: sim result` for all possible combinations of interventions.
     possible_components
-        Human readable names for components
+        Human readable names of components in the same order as the bitstring
 
     Returns
     -------
-        Tiered graph with positions, shortfall status set.
+        Directed graph with bitstring nodes, edges between them if a transition is allowed.
+        Has edge properties `operating_cost`, `capex`, `carbon_balance` showing costs of transitions.
     """
-    dG: nx.DiGraph[str] = nx.DiGraph()
+
+    dG: nx.DiGraph = nx.DiGraph()
     x_scale, y_scale = 10.0, 5.0
     tiers = []
     for length in range(len(possible_components)):
@@ -129,6 +139,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
 
     dG.add_nodes_from(all_results.keys())
     for lo, hi in itertools.pairwise(tiers):
+        # Allow edges if there is only one change between the nodes, and both are valid.
         dG.add_edges_from(
             filter(
                 lambda t: (
@@ -146,6 +157,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         name="label",
     )
 
+    # Store the positions of each node in tiers
     pos: dict[str, tuple[float, float]] = {}
     for tier_rank, tier_contents in enumerate(tiers):
         tier_len = len(tier_contents)
@@ -156,19 +168,25 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         values=pos,
         name="pos",
     )
+
+    # We use the CAPEX values when animating the graph
     nx.set_node_attributes(
         cast(nx.Graph[Hashable], dG),
         values={key: all_results[key].metrics.capex for key in all_results.keys()},
         name="capex",
     )
+
+    # These are the edge costs: the energy savings, monetary costs and carbon costs.
     edge_lengths: dict[tuple[str, str], float] = {}
     step_prices: dict[tuple[str, str], float] = {}
     carbon_savings: dict[tuple[str, str], float] = {}
     for u, v in dG.edges():
-        u_cost = all_results[u].metrics.total_electricity_import_cost + all_results[u].metrics.total_gas_import_cost  # type: ignore
-        v_cost = all_results[v].metrics.total_electricity_import_cost + all_results[v].metrics.total_gas_import_cost  # type: ignore
+        # If these metrics are None, we're in trouble. Presume that they've been filled in, and if you've got a NoneType
+        # error and are debugging here, you know why.
+        u_cost = all_results[u].metrics.total_operating_cost  # type: ignore
+        v_cost = all_results[v].metrics.total_operating_cost  # type: ignore
 
-        edge_lengths[u, v] = v_cost - u_cost
+        edge_lengths[u, v] = v_cost - u_cost  # type: ignore
         step_prices[u, v] = all_results[v].metrics.capex - all_results[u].metrics.capex  # type: ignore
         v_co2 = all_results[v].metrics.carbon_balance_scope_1 + all_results[v].metrics.carbon_balance_scope_2  # type: ignore
         u_co2 = all_results[u].metrics.carbon_balance_scope_1 + all_results[u].metrics.carbon_balance_scope_2  # type: ignore
