@@ -129,7 +129,6 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         Directed graph with bitstring nodes, edges between them if a transition is allowed.
         Has edge properties `operating_cost`, `capex`, `carbon_balance` showing costs of transitions.
     """
-
     dG: nx.DiGraph = nx.DiGraph()
     x_scale, y_scale = 10.0, 5.0
     tiers = []
@@ -183,8 +182,8 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
     for u, v in dG.edges():
         # If these metrics are None, we're in trouble. Presume that they've been filled in, and if you've got a NoneType
         # error and are debugging here, you know why.
-        u_cost = all_results[u].metrics.total_operating_cost  # type: ignore
-        v_cost = all_results[v].metrics.total_operating_cost  # type: ignore
+        u_cost = all_results[u].metrics.total_operating_cost
+        v_cost = all_results[v].metrics.total_operating_cost
 
         edge_lengths[u, v] = v_cost - u_cost  # type: ignore
         step_prices[u, v] = all_results[v].metrics.capex - all_results[u].metrics.capex  # type: ignore

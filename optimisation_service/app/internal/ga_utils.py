@@ -461,9 +461,9 @@ class EstimateBasedSampling(Sampling):
                 epoch_data=site._epoch_data,
                 pop_size=n_samples,
             )
-            site_pops.append([
-                problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios
-            ])
+            site_pops.append(
+                [problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios]
+            )
         portfolio_pop = np.concatenate(site_pops, axis=1)
         return portfolio_pop
 

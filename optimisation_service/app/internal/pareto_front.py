@@ -25,9 +25,9 @@ def portfolio_pareto_front(portfolio_solutions: list[PortfolioSolution], objecti
     portfolio_solutions
         List of Pareto-front portfolio solutions.
     """
-    objective_values = np.array([
-        [solution.metric_values[objective] for objective in objectives] for solution in portfolio_solutions
-    ])
+    objective_values = np.array(
+        [[solution.metric_values[objective] for objective in objectives] for solution in portfolio_solutions]
+    )
     objective_direct = ["max" if MetricDirection[objective] == -1 else "min" for objective in objectives]
     pareto_efficient = paretoset(costs=objective_values, sense=objective_direct, distinct=True)
 

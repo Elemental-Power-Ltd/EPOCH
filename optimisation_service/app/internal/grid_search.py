@@ -160,9 +160,9 @@ def pareto_optimise(
         else:
             break
     reduced_set = np.vstack(pareto_optimal_subsets)
-    costs = np.array([
-        list(combine_metric_values([site.objective_values for site in combination]).values()) for combination in reduced_set
-    ])[:, objective_mask]
+    costs = np.array(
+        [list(combine_metric_values([site.objective_values for site in combination]).values()) for combination in reduced_set]
+    )[:, objective_mask]
     is_pareto_efficient = paretoset(costs=costs, sense=objective_direct, distinct=True)
     front = reduced_set[is_pareto_efficient].tolist()
 
@@ -242,15 +242,17 @@ def run_headless(
     assert (input_dir / "inputParameters.json").is_file(), f"Could not find {input_dir / 'inputParameters.json'} is not a file"
     assert (config_dir / "EpochConfig.json").is_file(), f"Could not find {input_dir / 'EpochConfig.json'} is not a file"
 
-    result = subprocess.run([
-        epoch_path,
-        "--input",
-        str(input_dir),
-        "--output",
-        str(output_dir),
-        "--config",
-        str(config_dir),
-    ])
+    result = subprocess.run(
+        [
+            epoch_path,
+            "--input",
+            str(input_dir),
+            "--output",
+            str(output_dir),
+            "--config",
+            str(config_dir),
+        ]
+    )
 
     assert result.returncode == 0, result
 
