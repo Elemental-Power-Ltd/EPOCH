@@ -1,12 +1,15 @@
 import datetime
 import logging
+import math
+from pathlib import Path
 
 from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
 
 from app.internal.uuid7 import uuid7
 from app.models.constraints import Constraints
 from app.models.database import dataset_id_t
-from app.models.epoch_types import SiteRange, TaskDataPydantic
+from app.models.epoch_types import SiteRange
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric
 from app.models.optimisers import OptimiserTypes
 from app.models.site_data import EpochSiteData, SiteMetaData
@@ -33,6 +36,7 @@ class Site(BaseModel):
         description="Minimum or maximum bounds to apply on site metrics.", examples=[{Metric.capex: {"max": 50000}}], default={}
     )
     _epoch_data: EpochSiteData = PrivateAttr()
+    _epoch_data_dir: Path = PrivateAttr()
 
 
 class EndpointTask(Site):
@@ -79,7 +83,7 @@ class SiteMetrics(BaseModel):
     """Metrics for a single site within a portfolio."""
 
     carbon_balance_scope_1: float | None = Field(
-        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, 3.14]
+        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, math.pi]
     )
     carbon_balance_scope_2: float | None = Field(
         description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
@@ -216,7 +220,9 @@ class PortfolioMetrics(BaseModel):
     """Metrics for the whole portfolio."""
 
     carbon_balance_scope_1: float | None = Field(
-        description="Direct carbon emissions saved by this entire portfolio of scenarios.", default=None, examples=[None, 3.14]
+        description="Direct carbon emissions saved by this entire portfolio of scenarios.",
+        default=None,
+        examples=[None, math.pi],
     )
     carbon_balance_scope_2: float | None = Field(
         description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None

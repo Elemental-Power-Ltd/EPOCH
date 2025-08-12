@@ -1,3 +1,5 @@
+from typing import cast
+
 import numpy as np
 
 from app.internal.constraints import is_in_constraints
@@ -13,6 +15,7 @@ from app.models.result import PortfolioSolution
 class DistributedPortfolioOptimiser:
     """
     Optimise a portfolio that is split into N sub-portfolios for various CAPEX allocations.
+
     Each sub-portfolio is optimised individually with NSGA-II.
     """
 
@@ -66,8 +69,7 @@ class DistributedPortfolioOptimiser:
             self.n_evals += res.n_evals
             max_capex = 0.0
             for solution in res.solutions:
-                if solution.metric_values[Metric.capex] > max_capex:
-                    max_capex = solution.metric_values[Metric.capex]
+                max_capex = max(max_capex, solution.metric_values[Metric.capex])
             max_capexs.append(max_capex)
 
         capex_limits = [capex_limit] * len(self.sub_portfolios)
@@ -76,7 +78,9 @@ class DistributedPortfolioOptimiser:
         )
 
         # update sub_portfolio_solutions
-        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(self.sub_portfolio_solutions, sub_solutions):
+        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(
+            self.sub_portfolio_solutions, sub_solutions, strict=False
+        ):
             sub_portfolio_solution_list.update(set(new_sub_portfolio_solution_list))
 
         return solutions, max_capexs
@@ -120,7 +124,9 @@ class DistributedPortfolioOptimiser:
         )
 
         # update sub_portfolio_solutions
-        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(self.sub_portfolio_solutions, sub_solutions):
+        for sub_portfolio_solution_list, new_sub_portfolio_solution_list in zip(
+            self.sub_portfolio_solutions, sub_solutions, strict=True
+        ):
             sub_portfolio_solution_list.update(set(new_sub_portfolio_solution_list))
 
         return solutions
@@ -134,6 +140,7 @@ class DistributedPortfolioOptimiser:
     ) -> list[PortfolioSolution]:
         """
         Merge and optimise a list of portfolio solution lists into a single portfolio solution Pareto-optimal front.
+
         Uses cached sub-portfolio solutions to avoid recomputing existing solutions.
 
         Parameters
@@ -159,13 +166,13 @@ class DistributedPortfolioOptimiser:
 
         existing_combinations = list(self.sub_portfolio_combinations[0])
         mask = is_in_constraints(constraints={Metric.capex: Bounds(max=combined_capex_limit)}, solutions=existing_combinations)
-        existing_combinations = np.array(existing_combinations)[mask].tolist()
+        existing_combinations = cast(list[PortfolioSolution], np.array(existing_combinations)[mask].tolist())
 
         for i in range(1, len(solutions)):
             new_solutions = list(set(solutions[i]) - self.sub_portfolio_solutions[i])
             existing_solutions = list(self.sub_portfolio_solutions[i])
             mask = is_in_constraints(constraints={Metric.capex: Bounds(max=capex_limits[i])}, solutions=existing_solutions)
-            existing_solutions = np.array(existing_solutions)[mask].tolist()
+            existing_solutions = cast(list[PortfolioSolution], np.array(existing_solutions)[mask].tolist())
 
             if len(new_combinations) > 0 and len(new_solutions) > 0:
                 new_combs_n_sols = merge_and_optimise_two_portfolio_solution_lists(new_combinations, new_solutions, objectives)
@@ -193,14 +200,14 @@ class DistributedPortfolioOptimiser:
             mask = is_in_constraints(
                 constraints={Metric.capex: Bounds(max=combined_capex_limit)}, solutions=existing_combinations
             )
-            existing_combinations = np.array(existing_combinations)[mask].tolist()
+            existing_combinations = cast(list[PortfolioSolution], np.array(existing_combinations)[mask].tolist())
 
             if len(new_combinations) > 0:
                 all_combinations = new_combinations + existing_combinations
 
                 if i == len(solutions) - 1:
                     mask = is_in_constraints(constraints, all_combinations)
-                    all_combinations = np.array(all_combinations)[mask].tolist()
+                    all_combinations = cast(list[PortfolioSolution], np.array(all_combinations)[mask].tolist())
 
                 if len(all_combinations) > 0:
                     new_combinations = portfolio_pareto_front(all_combinations, objectives)
@@ -210,7 +217,7 @@ class DistributedPortfolioOptimiser:
             new_combinations = list(set(new_combinations) - self.sub_portfolio_combinations[i])
 
         # update sub_portfolio_combinations
-        for combination_set, new_combination_set in zip(self.sub_portfolio_combinations, combinations_to_cache):
+        for combination_set, new_combination_set in zip(self.sub_portfolio_combinations, combinations_to_cache, strict=False):
             combination_set.update(set(new_combination_set))
 
         return new_combinations
@@ -221,7 +228,7 @@ def select_starting_solutions(existing_solutions: list[PortfolioSolution], const
     Select a set of solutions to use to initialise an algorithm with from a set of existing solutions.
 
     Parameters
-    ---------
+    ----------
     existing_solutions
         Existing portfolio solutions to select from.
     constraints
@@ -235,4 +242,4 @@ def select_starting_solutions(existing_solutions: list[PortfolioSolution], const
     mask = is_in_constraints(constraints, existing_solutions)
     selected_solutions = np.array(existing_solutions)[mask].tolist()
 
-    return selected_solutions
+    return cast(list[PortfolioSolution], selected_solutions)

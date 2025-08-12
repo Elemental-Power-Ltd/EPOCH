@@ -9,7 +9,7 @@ from app.models.epoch_types.site_range_type import HeatPump, HeatSourceEnum
 
 
 class TestGenerateSiteScenariosFromHeuristics:
-    def test_good_inputs(self, default_site: Site):
+    def test_good_inputs(self, default_site: Site) -> None:
         epoch_data = default_site._epoch_data
         site_range = default_site.site_range
         pop_size = 2
@@ -21,7 +21,7 @@ class TestGenerateSiteScenariosFromHeuristics:
             assert hasattr(individual, "config")
             assert hasattr(individual, "grid")
 
-    def test_generate_asset(self, default_site: Site):
+    def test_generate_asset(self, default_site: Site) -> None:
         estimates = get_all_estimates(default_site._epoch_data)
 
         power_options = [50.0, 75.0]
@@ -42,19 +42,19 @@ class TestGenerateSiteScenariosFromHeuristics:
 
 
 class TestNormalChoice:
-    def test_good_inputs(self):
+    def test_good_inputs(self) -> None:
         choices = [25, 50, 75]
         estimate = choices[0]
         res = normal_choice(estimate, choices, 0.1)
         assert res in choices
 
-    def test_large_estimate(self):
+    def test_large_estimate(self) -> None:
         choices = [25, 50, 75]
         estimate = max(choices) * 10
         res = normal_choice(estimate, choices, 0.1)
         assert res == max(choices)
 
-    def test_small_estimate(self):
+    def test_small_estimate(self) -> None:
         choices = [25, 50, 75]
         estimate = min(choices) / 10
         res = normal_choice(estimate, choices, 0.1)

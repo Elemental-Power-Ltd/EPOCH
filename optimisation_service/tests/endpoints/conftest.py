@@ -10,7 +10,9 @@ from pandas.core.api import DataFrame as DataFrame
 
 from app.internal.datamanager import DataManager, load_epoch_data_from_file
 from app.main import app
-from app.models.core import OptimisationResultEntry, Task
+from app.models.constraints import Constraints
+from app.models.core import OptimisationResultEntry, Site, Task
+from app.models.metrics import Metric
 from app.models.optimisers import (
     NSGA2HyperParam,
     NSGA2Optimiser,
@@ -22,12 +24,12 @@ from ..conftest import _DATA_PATH
 
 
 @pytest.fixture(scope="session")
-def result_tmp_path(tmp_path_factory):
+def result_tmp_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return tmp_path_factory.mktemp("results")
 
 
 @pytest_asyncio.fixture()
-def client(result_tmp_path: Path) -> Generator[TestClient, None, None]:
+def client(result_tmp_path: Path) -> Generator[TestClient]:
     class DataManagerOverride(DataManager):
         async def fetch_portfolio_data(self, task: Task) -> None:
             for site in task.portfolio:
@@ -57,7 +59,12 @@ def default_optimiser() -> NSGA2Optimiser:
 
 
 @pytest.fixture
-def default_task(default_objectives, default_optimiser, default_portfolio, default_constraints) -> Task:
+def default_task(
+    default_objectives: list[Metric],
+    default_optimiser: NSGA2Optimiser,
+    default_portfolio: list[Site],
+    default_constraints: Constraints,
+) -> Task:
     return Task(
         name="test",
         optimiser=default_optimiser,

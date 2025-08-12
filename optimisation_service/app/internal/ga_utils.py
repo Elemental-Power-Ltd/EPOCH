@@ -1,4 +1,5 @@
 import logging
+import operator
 from copy import deepcopy
 from typing import Any, Never, cast
 
@@ -12,13 +13,14 @@ from pymoo.core.sampling import Sampling  # type: ignore
 from pymoo.operators.repair.bounds_repair import repair_random_init  # type: ignore
 
 from app.internal.heuristics.population_init import generate_site_scenarios_from_heuristics
-from app.internal.portfolio_simulator import PortfolioSimulator, PortfolioSolution
+from app.internal.portfolio_simulator import PortfolioSimulator
 from app.internal.site_range import FIXED_PARAMETERS, REPEAT_COMPONENTS, count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
-from app.models.epoch_types import TaskDataPydantic
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.ga_utils import AnnotatedTaskData, AssetParameter, ParsedAsset, asset_t, value_t
 from app.models.metrics import Metric, MetricDirection, MetricValues
+from app.models.result import PortfolioSolution
 from app.models.site_data import EpochSiteData
 
 logger = logging.getLogger("default")
@@ -27,9 +29,7 @@ Config.warnings["not_compiled"] = False
 
 
 class ProblemInstance(ElementwiseProblem):
-    """
-    Create Pymoo ProblemInstance from OptimiseProblem instance.
-    """
+    """Create Pymoo ProblemInstance from OptimiseProblem instance."""
 
     def __init__(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> None:
         """
@@ -164,7 +164,7 @@ class ProblemInstance(ElementwiseProblem):
 
         return parsed_asset
 
-    def split_solution(self, x: npt.NDArray) -> dict[str, npt.NDArray]:
+    def split_solution(self, x: npt.NDArray[np.floating]) -> dict[str, npt.NDArray[np.floating]]:
         """
         Split a candidate portfolio solution into candidate building solutions.
 
@@ -179,14 +179,14 @@ class ProblemInstance(ElementwiseProblem):
         """
         return {building_name: x[start:stop] for building_name, (start, stop) in self.indexes.items()}
 
-    def convert_site_chromosome_to_site_scenario(self, x: npt.NDArray, site_name: str) -> AnnotatedTaskData:
+    def convert_site_chromosome_to_site_scenario(self, x: npt.NDArray[np.floating], site_name: str) -> AnnotatedTaskData:
         """
-        Convert a site's candidate solution from an array of indeces to a site scenario.
+        Convert a site's candidate solution from an array of indices to a site scenario.
 
         Parameters
         ----------
         x
-            A pymoo compatible site solution (array of indeces).
+            A pymoo compatible site solution (array of indices).
         site_name
             The name of the building.
 
@@ -201,16 +201,15 @@ class ProblemInstance(ElementwiseProblem):
         singleton_assets_to_pop: list[str] = []
         repeat_assets_to_pop: list[tuple[str, int]] = []
 
-        for param, idx in zip(self.asset_parameters[site_name], x):
+        for param, idx in zip(self.asset_parameters[site_name], x, strict=False):
             if param.attr_name == "COMPONENT_IS_MANDATORY":
                 if param.repeat_index is None:
                     if site_range[param.asset_name][param.attr_name][idx] == 0:
                         # this singleton asset should not be in this solution
                         singleton_assets_to_pop.append(param.asset_name)
-                else:
-                    if site_range[param.asset_name][param.repeat_index][param.attr_name][idx] == 0:
-                        # this repeat asset should not be in this solution
-                        repeat_assets_to_pop.append((param.asset_name, param.repeat_index))
+                elif site_range[param.asset_name][param.repeat_index][param.attr_name][idx] == 0:
+                    # this repeat asset should not be in this solution
+                    repeat_assets_to_pop.append((param.asset_name, param.repeat_index))
 
             elif param.repeat_index is None:
                 # this is an attribute for a singleton component
@@ -232,13 +231,13 @@ class ProblemInstance(ElementwiseProblem):
 
         # remove any repeat assets that are turned off in this solution
         # (we start by sorting the list by descending index to ensure we never shift the order)
-        repeat_assets_to_pop.sort(key=lambda name_index: name_index[1], reverse=True)
+        repeat_assets_to_pop.sort(key=operator.itemgetter(1), reverse=True)
         for asset_name, repeat_index in repeat_assets_to_pop:
             site_scenario[asset_name].pop(repeat_index)
 
         return AnnotatedTaskData.model_validate(site_scenario)
 
-    def convert_portfolio_chromosome_to_portfolio_scenario(self, x: npt.NDArray) -> dict[str, AnnotatedTaskData]:
+    def convert_portfolio_chromosome_to_portfolio_scenario(self, x: npt.NDArray[np.floating]) -> dict[str, AnnotatedTaskData]:
         """
         Convert a portfolio's candidate solution from an array of indeces to dictionnary of site scenarios.
 
@@ -257,7 +256,7 @@ class ProblemInstance(ElementwiseProblem):
 
         return portfolio_scenarios
 
-    def convert_site_scenario_to_chromosome(self, site_scenario: AnnotatedTaskData, site_name: str) -> npt.NDArray:
+    def convert_site_scenario_to_chromosome(self, site_scenario: AnnotatedTaskData, site_name: str) -> npt.NDArray[np.floating]:
         """
         Convert a candidate solution from a site scenario to an array of indeces.
 
@@ -286,27 +285,27 @@ class ProblemInstance(ElementwiseProblem):
                 else:
                     value = td_dict[param.asset_name][param.attr_name]
                     x.append(site_range[param.asset_name][param.attr_name].index(value))
+            # repeat component
+            elif param.asset_name not in td_dict:
+                # we have none of this repeat component
+                x.append(0)
+            elif not any(rc["index_tracker"] == param.repeat_index for rc in td_dict[param.asset_name]):
+                # this instance of the repeat component is not present
+                x.append(0)
+            elif param.attr_name == "COMPONENT_IS_MANDATORY":
+                x.append(1)
             else:
-                # repeat component
-                if param.asset_name not in td_dict:
-                    # we have none of this repeat component
-                    x.append(0)
-                elif not any(rc["index_tracker"] == param.repeat_index for rc in td_dict[param.asset_name]):
-                    # this instance of the repeat component is not present
-                    x.append(0)
-                elif param.attr_name == "COMPONENT_IS_MANDATORY":
-                    x.append(1)
-                else:
-                    # we know this instance is present, find it and read from the appropriate index in SiteRange
-                    repeat_instance = next(rc for rc in td_dict[param.asset_name] if rc["index_tracker"] == param.repeat_index)
-                    value = repeat_instance[param.attr_name]
-                    x.append(site_range[param.asset_name][param.repeat_index][param.attr_name].index(value))
+                # we know this instance is present, find it and read from the appropriate index in SiteRange
+                repeat_instance = next(rc for rc in td_dict[param.asset_name] if rc["index_tracker"] == param.repeat_index)
+                value = repeat_instance[param.attr_name]
+                x.append(site_range[param.asset_name][param.repeat_index][param.attr_name].index(value))
 
         return np.array(x)
 
     def apply_directions(self, metric_values: MetricValues) -> MetricValues:
         """
-        Applies metric optimisation direction to metric values.
+        Apply metric optimisation direction to metric values.
+
         Multiplies metric values of metrics that need to be maximised by -1.
 
         Parameters
@@ -349,7 +348,7 @@ class ProblemInstance(ElementwiseProblem):
 
         return constraint_violations
 
-    def _evaluate(self, x: npt.NDArray, out: dict[str, list[float]]) -> None:
+    def _evaluate(self, x: npt.NDArray[np.floating], out: dict[str, list[float]]) -> None:
         """
         Evaluate a candidate portfolio solution.
 
@@ -388,6 +387,7 @@ class ProblemInstance(ElementwiseProblem):
 def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) -> list[float]:
     """
     Measures by how much the metric values exceed the constraints.
+
     Returns a list of floats, one for each constraint.
 
     Parameters
@@ -450,11 +450,9 @@ def evaluate_peak_hload(site_scenario: AnnotatedTaskData, site_data: EpochSiteDa
 
 
 class EstimateBasedSampling(Sampling):
-    """
-    Generate a population of solutions by estimating some parameter values from data.
-    """
+    """Generate a population of solutions by estimating some parameter values from data."""
 
-    def _do(self, problem: ProblemInstance, n_samples: int, **kwargs):
+    def _do(self, problem: ProblemInstance, n_samples: int, **kwargs: Any) -> npt.NDArray[np.floating]:
         site_pops = []
         for site in problem.portfolio:
             site_name = site.site_data.site_id
@@ -471,14 +469,12 @@ class EstimateBasedSampling(Sampling):
 
 
 class SimpleIntMutation(Mutation):
-    """
-    Pymoo Mutation Operator which randomly mutates parameter values by a single step in the search space.
-    """
+    """Pymoo Mutation Operator which randomly mutates parameter values by a single step in the search space."""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-    def _do(self, problem: ProblemInstance, X: npt.NDArray, **kwargs: Never) -> npt.NDArray:
+    def _do(self, problem: ProblemInstance, X: npt.NDArray[np.floating], **kwargs: Never) -> npt.NDArray[np.floating]:
         X.astype(float)
         prob_var = self.get_prob_var(problem, size=len(X))
         Xp = self.mut_simple_int(X, problem.xl, problem.xu, prob_var)
@@ -486,7 +482,9 @@ class SimpleIntMutation(Mutation):
         return Xp
 
     @staticmethod
-    def mut_simple_int(X: npt.NDArray, xl: npt.NDArray, xu: npt.NDArray, prob: npt.NDArray) -> npt.NDArray:
+    def mut_simple_int(
+        X: npt.NDArray[np.floating], xl: npt.NDArray[np.floating], xu: npt.NDArray[np.floating], prob: npt.NDArray[np.floating]
+    ) -> npt.NDArray[np.floating]:
         """
         Randomly adds or substracts 1 from values in X based.
 
@@ -518,19 +516,23 @@ class SimpleIntMutation(Mutation):
 
         Xp = repair_random_init(Xp, X, xl, xu)
 
-        return Xp
+        return cast(npt.NDArray[np.floating], Xp)
 
 
 class RoundingAndDegenerateRepair(Repair):
     """
     Function to repair pymoo chromosomes.
+
     Floats are rounded to the nearest integer.
     Components that have been disabled in the solution have all their other asset values set to the smallest value.
     This is to reduce the number of degenerate solutions.
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         """
+        Create the repair function.
+
+        Just passes on all kwargs to pymoo.
 
         Returns
         -------
@@ -538,9 +540,9 @@ class RoundingAndDegenerateRepair(Repair):
         """
         super().__init__(**kwargs)
 
-    def _do(self, problem: ProblemInstance, X, **kwargs):
+    def _do(self, problem: ProblemInstance, X: npt.NDArray[np.floating], **kwargs: Any) -> npt.NDArray[np.floating]:
         """
-        Forces all degenrate solutions cause by optional components to have the same default values.
+        Force all degenerate solutions cause by optional components to have the same default values.
 
         For example:
         Imagine we would like to optimise a site with a single optional heat pump component with three sizes: [10, 20, 30].
@@ -576,7 +578,8 @@ class RoundingAndDegenerateRepair(Repair):
 
 def strip_annotations(annotated_task: AnnotatedTaskData) -> TaskDataPydantic:
     """
-    Remove annotations from a TaskData
+    Remove annotations from a TaskData.
+
     Parameters
     ----------
     annotated_task

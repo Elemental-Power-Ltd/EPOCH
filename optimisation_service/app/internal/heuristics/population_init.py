@@ -1,17 +1,18 @@
 import random  # Use random instead of numpy.random to avoid numpy types that aren't json serialisable
+from typing import Any
 
 import numpy as np
 
+from app.internal.heuristics.asset_heuristics import get_all_estimates
 from app.internal.site_range import FIXED_PARAMETERS, REPEAT_COMPONENTS
 from app.models.epoch_types import SiteRange
+from app.models.ga_utils import AnnotatedTaskData
 from app.models.site_data import EpochSiteData
-
-from ...models.ga_utils import AnnotatedTaskData
-from .asset_heuristics import get_all_estimates
 
 
 def generate_site_scenarios_from_heuristics(
-        site_range: SiteRange, epoch_data: EpochSiteData, pop_size: int) -> list[AnnotatedTaskData]:
+    site_range: SiteRange, epoch_data: EpochSiteData, pop_size: int
+) -> list[AnnotatedTaskData]:
     """
     Generate a population of site scenarios by estimating some parameter values from data.
 
@@ -52,18 +53,18 @@ def generate_site_scenarios_from_heuristics(
                         # associate this asset with the index in the SiteRange
                         repeat_asset["index_tracker"] = i
                         individual[asset_name].append(repeat_asset)
-            else:
-                if is_mandatory_or_random(asset_range):
-                    individual[asset_name] = generate_asset_from_heuristics(asset_name, asset_range, estimates)
+            elif is_mandatory_or_random(asset_range):
+                individual[asset_name] = generate_asset_from_heuristics(asset_name, asset_range, estimates)
 
         td_pop.append(AnnotatedTaskData.model_validate(individual))
     # TODO: check CAPEX of values
     return td_pop
 
 
-def is_mandatory_or_random(asset: dict) -> bool:
+def is_mandatory_or_random(asset: dict[str, bool]) -> bool:
     """
-    Helper function to decide if an asset should be included in this individual.
+    Decide if an asset should be included in this individual.
+
     Returns True if the asset is mandatory and a random choice otherwise.
 
     Parameters
@@ -73,12 +74,14 @@ def is_mandatory_or_random(asset: dict) -> bool:
 
     Returns
     -------
-    Whether this component should be included or not.
+        Whether this component should be included or not.
     """
     return asset["COMPONENT_IS_MANDATORY"] or random.choice([True, False])
 
 
-def generate_asset_from_heuristics(asset_name: str, asset: dict, estimates: dict[str, dict]) -> dict:
+def generate_asset_from_heuristics(
+    asset_name: str, asset: dict[str, Any], estimates: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
     """
     Create an instance of this asset type using the heuristically derived values for this site.
 
@@ -102,11 +105,7 @@ def generate_asset_from_heuristics(asset_name: str, asset: dict, estimates: dict
         elif attribute_name in FIXED_PARAMETERS:
             # fixed_parameters are forwarded as is, there's no choice to make
             task_data_asset[attribute_name] = attribute_values
-        elif (
-            asset_name in estimates.keys()
-            and attribute_name in estimates[asset_name].keys()
-            and len(attribute_values) > 1
-        ):
+        elif asset_name in estimates.keys() and attribute_name in estimates[asset_name].keys() and len(attribute_values) > 1:
             estimate = estimates[asset_name][attribute_name]
             task_data_asset[attribute_name] = normal_choice(estimate, attribute_values)
         else:
@@ -117,9 +116,10 @@ def generate_asset_from_heuristics(asset_name: str, asset: dict, estimates: dict
 
 def normal_choice(estimate: float | int, attribute_values: list[float] | list[int], std_dev_scale: float = 0.1) -> int | float:
     """
-    Randomly select a value from the attribute values list with probabilties from a truncated normal distribution with mu equal
-    to the estimate and with the standard deviation equal to std_dev_scale times the difference between the minimum and maximum
-    attribute value.
+    Randomly select a value from the attribute values list with probabilties from a truncated normal distribution.
+
+    This has mu equal to the estimate and with the standard deviation equal to std_dev_scale times the difference
+    between the minimum and maximum attribute value.
 
     Parameters
     ----------

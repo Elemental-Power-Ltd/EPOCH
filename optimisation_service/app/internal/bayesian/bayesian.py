@@ -1,14 +1,14 @@
 import datetime
 import logging
 import warnings
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import numpy as np
 import numpy.typing as npt
 import torch
 from botorch import fit_gpytorch_mll  # type: ignore
 from botorch.acquisition.multi_objective.logei import (  # type: ignore
-    qLogExpectedHypervolumeImprovement,  # type: ignore
+    qLogExpectedHypervolumeImprovement,
 )
 from botorch.exceptions import BadInitialCandidatesWarning  # type: ignore
 from botorch.exceptions.warnings import UserInputWarning  # type: ignore
@@ -20,7 +20,7 @@ from botorch.models.transforms.outcome import Standardize  # type: ignore
 from botorch.optim.optimize import optimize_acqf  # type: ignore
 from botorch.sampling.normal import IIDNormalSampler  # type: ignore
 from botorch.utils.multi_objective.box_decompositions.non_dominated import (  # type: ignore
-    FastNondominatedPartitioning,  # type: ignore
+    FastNondominatedPartitioning,
 )
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood  # type: ignore
 
@@ -37,6 +37,8 @@ logger = logging.getLogger("default")
 
 
 class TKWARGS(TypedDict):
+    """Torch keyword arguments which we need for optimisation."""
+
     dtype: torch.dtype
     device: torch.device
 
@@ -52,8 +54,9 @@ warnings.filterwarnings("ignore", category=UserInputWarning)
 
 class Bayesian(Algorithm):
     """
-    Optimise a single or multi objective portfolio problem by optimising the CAPEX allocations accross the portfolio with a
-    Bayesian optimiser as follows:
+    Optimise a single or multi objective portfolio problem by optimising the CAPEX allocations.
+
+    This does so across the portfolio with a Bayesian optimiser as follows:
         1. Split the portfolio into N sub-portfolios
         2. Initialise the optimiser by optimising each sub-portfolio individually with NSGA-II for maximum CAPEX, recombining
            the sub-portfolio solutions into feasible portfolio solutions.
@@ -110,7 +113,24 @@ class Bayesian(Algorithm):
         self.NSGA2_param = NSGA2_param
         self.NSGA2_param.return_least_infeasible = False
 
-    def run(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]):
+    def run(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
+        """
+        Run the Bayesian optimiser.
+
+        Parameters
+        ----------
+        objectives
+            List of metrics to maximise or minimise
+        constraints
+            Limitations on which solutions are acceptable
+        portfolio
+            List of sites to optimise
+
+        Returns
+        -------
+        OptimisationResult
+            Optimised portfolio
+        """
         start_time = datetime.datetime.now(datetime.UTC)
         rng = np.random.default_rng()
 
@@ -231,8 +251,9 @@ class Bayesian(Algorithm):
 
 def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -> list[list[Site]]:
     """
-    Split a portfolio into sub portfolios each containing n_per_sub_portfolio sites,
-    except the last sub portfolio if the number of sites isn't divisible by n_per_sub_portfolio.
+    Split a portfolio into sub portfolios each containing n_per_sub_portfolio sites.
+
+    This excludes the last sub portfolio if the number of sites isn't divisible by n_per_sub_portfolio.
 
     Parameters
     ----------
@@ -250,7 +271,7 @@ def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -
     return sub_portfolios
 
 
-def generate_random_candidates(n: int, max_capexs: list[float], capex_limit: float):
+def generate_random_candidates(n: int, max_capexs: list[float], capex_limit: float) -> npt.NDArray[np.floating]:
     """
     Generate n CAPEX allocation splits randomly.
 
@@ -274,7 +295,7 @@ def generate_random_candidates(n: int, max_capexs: list[float], capex_limit: flo
         candidate = np.array([rng.uniform(0, max_capex) for max_capex in max_capexs])
         candidate_sum = sum(candidate)
         if candidate_sum > capex_limit:
-            candidate = candidate * rng.uniform(0.01, capex_limit / candidate_sum)
+            candidate *= rng.uniform(0.01, capex_limit / candidate_sum)
         candidates.append(candidate)
     return np.array(candidates)
 
@@ -322,7 +343,7 @@ def initialise_model(
 # TODO: improve reference point creation
 def create_reference_point(train_y: torch.Tensor) -> torch.Tensor:
     """
-    Creates a reference point for the hypervolume by taking the worst value for each objective.
+    Create a reference point for the hypervolume by taking the worst value for each objective.
 
     Parameters
     ----------
@@ -341,7 +362,8 @@ def create_reference_point(train_y: torch.Tensor) -> torch.Tensor:
 
 def create_capex_allocation_bounds(min_capexs: list[float], max_capexs: list[float]) -> torch.Tensor:
     """
-    Creates a tensor representation of the bounds on the capex allocations.
+    Create a tensor representation of the bounds on the capex allocations.
+
     The capex allocations are bound to [min_capex, max_capex].
 
     Parameters
@@ -370,9 +392,9 @@ def optimize_acquisition_func_and_get_candidate(
     capex_limit: float,
     num_restarts: int,
     raw_samples: int,
-) -> npt.NDArray:
+) -> npt.NDArray[np.floating]:
     """
-    Optimises the acquisition function and returns a new candidate.
+    Optimise the acquisition function and returns a new candidate.
 
     Parameters
     ----------
@@ -439,14 +461,14 @@ def optimize_acquisition_func_and_get_candidate(
 
     candidates_arr = candidates.cpu().detach().numpy()
 
-    return candidates_arr
+    return cast(npt.NDArray[np.floating], candidates_arr)
 
 
 def extract_sub_portfolio_capex_allocations(
     solution: PortfolioSolution, sub_portfolio_site_ids: list[list[str]]
 ) -> list[float]:
     """
-    Extracts the sub portfolio CAPEX allocations from a portfolio solution.
+    Extract the sub portfolio CAPEX allocations from a portfolio solution.
 
     Parameters
     ----------

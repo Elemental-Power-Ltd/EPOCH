@@ -4,7 +4,7 @@ import os
 import typing
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from fastapi import Depends, HTTPException
@@ -23,6 +23,12 @@ _TEMP_DIR = Path("app", "data", "temp")
 
 
 class DataManager:
+    """
+    Handle caching of datasets and connections to the database.
+
+    DataManagers are complex and usually associated with tasks.
+    """
+
     def __init__(self) -> None:
         self.db_url = _DB_URL
         self.temp_dir = _TEMP_DIR
@@ -30,7 +36,6 @@ class DataManager:
     async def fetch_portfolio_data(self, task: Task) -> None:
         """
         Fetch task site data.
-        Either copy local files to temp dir or fetch and process data from database and save to temp dir.
 
         Parameters
         ----------
@@ -48,7 +53,7 @@ class DataManager:
                 site._epoch_data = await self.get_latest_site_data(site_data)
 
             elif site_data.loc == FileLoc.local:
-                site._epoch_data = load_epoch_data_from_file(site_data.path)
+                site._epoch_data = load_epoch_data_from_file(Path(site_data.path))
 
     async def get_latest_site_data(self, site_data: RemoteMetaData) -> EpochSiteData:
         """
@@ -58,9 +63,11 @@ class DataManager:
         ----------
         site_data
             the metadata definition of the SiteData we want
+
         Returns
         -------
-
+        EpochSiteData
+            Data about timeseries inputs for EPOCH to use
         """
         await self.hydrate_site_with_latest_dataset_ids(site_data)
 
@@ -79,12 +86,18 @@ class DataManager:
         Parameters
         ----------
         portfolio_id
+            ID of the portfolio to get data for
         site_id
+            ID of the site within that portfolio
 
         Returns
         -------
             An Epoch Compatible SiteData and a TaskData
 
+        Raises
+        ------
+        HTTPException
+            If that site isn't in that portfolio
         """
         repro_config = await self.get_result_configuration(portfolio_id)
 
@@ -104,12 +117,14 @@ class DataManager:
 
     async def hydrate_site_with_latest_dataset_ids(self, site_data: RemoteMetaData) -> None:
         """
-        Obtain the latest dataset_ids for the given site and place them in the site_data
+        Obtain the latest dataset_ids for the given site and place them in the site_data.
 
         This method should be called when site_data has not provided a specific set of IDs
+
         Parameters
         ----------
         site_data
+            Information about the datasets you want to request
 
         Returns
         -------
@@ -128,9 +143,24 @@ class DataManager:
                     site_data.__setattr__(key, None)
 
     async def fetch_latest_dataset_ids(self, site_data: RemoteMetaData) -> dict[str, Any]:
+        """
+        Get the latest dataset IDs available for this site.
+
+        This will get the IDs from the latest bundle in the database.
+
+        Parameters
+        ----------
+        site_data
+            What data you want to get the latest IDs for
+
+        Returns
+        -------
+        dict[str, Any]
+            Dataset type, ID mapping from the database
+        """
         async with httpx.AsyncClient() as client:
             latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=site_data)
-            return latest_ids
+            return cast(dict[str, Any], latest_ids)
 
     def save_parameters(self, task: Task) -> None:
         """
@@ -227,10 +257,10 @@ class DataManager:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(f"Error response {e.response.status_code} while requesting {e.request.url!r}: {e.response.text}.")
+            logger.exception(f"Error response {e.response.status_code} while requesting {e.request.url!r}: {e.response.text}.")
             raise
         except httpx.RequestError as e:
-            logger.error(f"Request error while requesting {e.request.url!r}: {e!s}", exc_info=True)
+            logger.exception(f"Request error while requesting {e.request.url!r}", exc_info=True)
             raise
 
     async def transmit_results(self, results: OptimisationResultEntry) -> None:
@@ -278,7 +308,7 @@ class DataManager:
 
     async def get_result_configuration(self, portfolio_id: dataset_id_t) -> ResultReproConfig:
         """
-        Get the configuration that was used to generate a portfolio result that is stored in the database
+        Get the configuration that was used to generate a portfolio result that is stored in the database.
 
         Parameters
         ----------
@@ -299,7 +329,7 @@ class DataManager:
 DataManagerDep = typing.Annotated[DataManager, Depends(DataManager)]
 
 
-def load_epoch_data_from_file(path: os.PathLike) -> EpochSiteData:
+def load_epoch_data_from_file(path: Path) -> EpochSiteData:
     """
     Load EpochSiteData from file path.
 
@@ -313,9 +343,7 @@ def load_epoch_data_from_file(path: os.PathLike) -> EpochSiteData:
     epoch_data
         Contents of file converted to EpochSiteData.
     """
-    with open(path) as f:
-        epoch_data = EpochSiteData.model_validate(json.load(f))
-    return epoch_data
+    return EpochSiteData.model_validate(json.loads(path.read_text()))
 
 
 def validate_for_necessary_datasets(site_data: RemoteMetaData) -> None:
@@ -327,12 +355,17 @@ def validate_for_necessary_datasets(site_data: RemoteMetaData) -> None:
     Parameters
     ----------
     site_data
+        Data that we got from the database
 
     Returns
     -------
+        None, if we got to the end
 
+    Raises
+    ------
+    HTTPException
+        If we were missing any datasets
     """
-
     # note that we don't define the SiteBaseline as necessary
     # when this is not provided, we allow the Data Service to provide a default baseline
     necessary_datasets = [

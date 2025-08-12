@@ -1,6 +1,6 @@
 import itertools
-from collections.abc import Iterable
-from typing import cast
+from collections.abc import Hashable, Iterable
+from typing import Any, cast
 
 import networkx as nx
 
@@ -59,7 +59,7 @@ def is_in_heat_shortfall(key: str, all_results: ResultsDict, thresh: float = 0.0
     return cast(float, all_results[key].metrics.total_heat_shortfall) > thresh
 
 
-def hamming_distance(s1: Iterable, s2: Iterable) -> int:
+def hamming_distance(s1: Iterable[Any], s2: Iterable[Any]) -> int:
     """
     Get the hamming distance between two strings.
 
@@ -78,7 +78,7 @@ def hamming_distance(s1: Iterable, s2: Iterable) -> int:
     int
         Number of single character changes to make to turn s1 into s2
     """
-    return sum(c1 != c2 for c1, c2 in zip(s1, s2))
+    return sum(c1 != c2 for c1, c2 in zip(s1, s2, strict=False))
 
 
 def generate_label(key: str, possible_components: Iterable[str]) -> str:
@@ -100,17 +100,20 @@ def generate_label(key: str, possible_components: Iterable[str]) -> str:
     str
         Components installed at each node, linked by newlines
     """
-    label = ",\n".join(comp for c, comp in zip(key, possible_components) if bool(int(c)))
+    label = ",\n".join(comp for c, comp in zip(key, possible_components, strict=False) if bool(int(c)))
     return label
 
 
-def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph:
+def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph[str]:
     """
     Generate the tiered graph of upgrades.
 
+    This takes in the results you have already calculated for all possible upgrades,
+    and a list of human readable names for them.
+
     This will start at the node with no interventions and go up in tiers to the node with all interventions.
     The `all_results` dict must have bitstring keys in the form 01010...,
-    as that's used to calculate what should be on each tier.
+    as that's used to calculate what should be on each tier. It must have the raw outputs as values.
 
     Edges are drawn if neither node is in shortfall for heat or electricity.
 
@@ -123,15 +126,13 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
 
     Returns
     -------
-    nx.DiGraph
         Directed graph with bitstring nodes, edges between them if a transition is allowed.
         Has edge properties `operating_cost`, `capex`, `carbon_balance` showing costs of transitions.
     """
     dG: nx.DiGraph = nx.DiGraph()
     x_scale, y_scale = 10.0, 5.0
     tiers = []
-    max_tier = len(next(iter(all_results.keys())))
-    for length in range(max_tier):
+    for length in range(len(possible_components)):
         items_with_length = sorted(filter(lambda s: sum(item == "1" for item in s) == length, all_results.keys()))
         tiers.append(items_with_length)
 
@@ -150,7 +151,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         )
 
     nx.set_node_attributes(
-        dG,
+        cast(nx.Graph[Hashable], dG),
         values={key: generate_label(key, possible_components=possible_components) for key in dG.nodes},
         name="label",
     )
@@ -161,10 +162,18 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         tier_len = len(tier_contents)
         for idx, item in enumerate(tier_contents):
             pos[item] = ((idx - tier_len / 2) * x_scale, tier_rank * y_scale)
-    nx.set_node_attributes(dG, values=pos, name="pos")
+    nx.set_node_attributes(
+        cast(nx.Graph[Hashable], dG),
+        values=pos,
+        name="pos",
+    )
 
     # We use the CAPEX values when animating the graph
-    nx.set_node_attributes(dG, values={key: all_results[key].metrics.capex for key in all_results.keys()}, name="capex")
+    nx.set_node_attributes(
+        cast(nx.Graph[Hashable], dG),
+        values={key: all_results[key].metrics.capex for key in all_results.keys()},
+        name="capex",
+    )
 
     # These are the edge costs: the energy savings, monetary costs and carbon costs.
     edge_lengths: dict[tuple[str, str], float] = {}
@@ -173,8 +182,8 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
     for u, v in dG.edges():
         # If these metrics are None, we're in trouble. Presume that they've been filled in, and if you've got a NoneType
         # error and are debugging here, you know why.
-        u_cost = all_results[u].metrics.total_operating_cost  # type: ignore
-        v_cost = all_results[v].metrics.total_operating_cost  # type: ignore
+        u_cost = all_results[u].metrics.total_operating_cost
+        v_cost = all_results[v].metrics.total_operating_cost
 
         edge_lengths[u, v] = v_cost - u_cost  # type: ignore
         step_prices[u, v] = all_results[v].metrics.capex - all_results[u].metrics.capex  # type: ignore
@@ -187,7 +196,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
     return dG
 
 
-def find_maximising_path(G: nx.Graph, source: str, sink: str, weight: str, sign: int = 1) -> list[str]:
+def find_maximising_path(G: nx.Graph[str], source: str, sink: str, weight: str, sign: int = 1) -> list[str]:
     """
     Find the path the maximises (or minimises) the `weight` metric at each step.
 

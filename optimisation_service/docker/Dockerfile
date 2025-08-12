@@ -16,8 +16,8 @@ RUN apt-get update \
         git \
         make \
         pkg-config \
-        python3 \
-        python3-dev \
+        python3.13 \
+        python3.13-dev \
         tar \
         unzip \
         zip
@@ -37,7 +37,7 @@ WORKDIR /code/Epoch
 RUN rm -rf ./build \
     && cmake . --preset=python-linux -DCMAKE_CXX_COMPILER=g++ -DCMAKE_MAKE_PROGRAM=make -Wno-dev \
     && cmake --build --preset=python-rel-linux -j \
-    && cp /code/Epoch/build/epoch_py/epoch_simulator.cpython-312-x86_64-linux-gnu.so /code/
+    && cp /code/Epoch/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/
 
 # Build headless release, and strip debug symbols from Epoch before we copy it out of the build image
 RUN rm -rf ./build \
@@ -49,7 +49,7 @@ RUN rm -rf ./build \
 FROM ubuntu:24.10
 
 WORKDIR /code
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip python3-venv
+RUN apt-get update && apt-get install -y --no-install-recommends python3.13 python3.13-pip python3.13-venv
 # Add /code/install to both PATH and PYTHONPATH so that we don't have to know the relative path to Epoch
 ENV PATH="/code/install:$PATH"
 ENV PYTHONPATH="/code/install:$PYTHONPATH"
@@ -58,7 +58,7 @@ ENV PYTHONPATH="/code/install:$PYTHONPATH"
 # dependencies for our app in a venv to avoid mangling the default ones
 COPY requirements.txt .
 COPY requirements requirements
-RUN python3 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrade -r requirements.txt
+RUN python3.13 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copy the python bindings and executable
 COPY app app

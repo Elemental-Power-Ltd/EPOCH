@@ -8,11 +8,11 @@ from epoch_simulator import Building, Simulator, TaskData
 from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.metrics import calculate_carbon_cost, calculate_payback_horizon
 from app.internal.portfolio_simulator import PortfolioSimulator, combine_metric_values, simulate_scenario
-from app.models.core import EpochSiteData
 from app.models.epoch_types.site_range_type import Config
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _METRICS, _SUMMABLE_METRICS, Metric, MetricValues
 from app.models.result import PortfolioSolution
+from app.models.site_data import EpochSiteData
 from tests.conftest import _DATA_PATH
 
 
@@ -90,7 +90,7 @@ class TestSimulateScenario:
 
 
 class TestCombineMetricValues:
-    def test_good_inputs(self):
+    def test_good_inputs(self) -> None:
         metric_values: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: 10,
@@ -155,7 +155,7 @@ class TestCombineMetricValues:
         )
 
     @pytest.mark.parametrize("carbon_balance_scope_1", [0, -10])
-    def test_null_and_negative_carbon_scope_1(self, carbon_balance_scope_1):
+    def test_null_and_negative_carbon_scope_1(self, carbon_balance_scope_1: float) -> None:
         metric_values_1: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: 10,
@@ -178,7 +178,7 @@ class TestCombineMetricValues:
         )
 
     @pytest.mark.parametrize("operating_balance", [0, -10])
-    def test_null_and_negative_operating_balance(self, operating_balance):
+    def test_null_and_negative_operating_balance(self, operating_balance: float) -> None:
         metric_values_1: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: 10,
@@ -204,7 +204,7 @@ class TestCombineMetricValues:
         )
 
     @pytest.mark.parametrize("capex", [0, -10])
-    def test_null_and_negative_capex(self, capex):
+    def test_null_and_negative_capex(self, capex: float) -> None:
         metric_values_1: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: capex,
@@ -233,7 +233,7 @@ class TestCombineMetricValues:
             + metric_values_2[Metric.carbon_balance_scope_1],
         )
 
-    def test_missing_metrics(self):
+    def test_missing_metrics(self) -> None:
         metric_values_1: MetricValues = {
             Metric.annualised_cost: 10,
             Metric.capex: 10,

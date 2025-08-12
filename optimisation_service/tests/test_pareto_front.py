@@ -54,7 +54,7 @@ class TestPortfolioParetoFront:
 
 
 class TestMergeAndOptimiseTwoPortfolioSolutionLists:
-    def test_it_works(self, default_objectives: list[Metric], default_portfolio: list[Site]):
+    def test_it_works(self, default_objectives: list[Metric], default_portfolio: list[Site]) -> None:
         site_names = [site.site_data.site_id for site in default_portfolio]
         portfolio_solutions_1 = [gen_dummy_portfolio_solution(default_portfolio) for _ in range(10)]
         for site in default_portfolio:

@@ -86,7 +86,7 @@ def merge_constraints(constraints_list: list[Constraints]) -> Constraints:
     for constraints in constraints_list:
         for metric, bounds in constraints.items():
             if metric not in merged:
-                merged[metric] = Bounds()  # type: ignore
+                merged[metric] = Bounds()
 
             if "min" in bounds:
                 merged[metric]["min"] = max(bounds["min"], merged[metric].get("min", -float("inf")))
@@ -100,6 +100,7 @@ def merge_constraints(constraints_list: list[Constraints]) -> Constraints:
 def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01) -> Constraints:
     """
     Get the maximum shortfall constraints for a site.
+
     Total heat shortfall is bounded above by heat_tolerance percent of the site's heat load.
     Total electrical shortfall is bounded above by 1 kWh to allow for some floating point issues.
 
@@ -126,6 +127,7 @@ def apply_default_constraints(
 ) -> tuple[list[Site], Constraints]:
     """
     Apply default constraints to existing portfolio and site constraints.
+
     These are:
     - Electrical and Heat shortfall upper bounds on the sites.
       We want to make sure that the solutions provided are viable energetically.
@@ -137,7 +139,7 @@ def apply_default_constraints(
     existing_constraints
         The existing portfolio constraints.
 
-    Retunrs
+    Returns
     -------
     portfolio
         The existing associated portfolio with default site constraints applied to it.

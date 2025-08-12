@@ -1,4 +1,5 @@
 from itertools import islice, product
+from typing import cast
 
 import numpy as np
 from paretoset import paretoset  # type: ignore
@@ -24,13 +25,13 @@ def portfolio_pareto_front(portfolio_solutions: list[PortfolioSolution], objecti
     portfolio_solutions
         List of Pareto-front portfolio solutions.
     """
-    objective_values = np.array([
-        [solution.metric_values[objective] for objective in objectives] for solution in portfolio_solutions
-    ])
+    objective_values = np.array(
+        [[solution.metric_values[objective] for objective in objectives] for solution in portfolio_solutions]
+    )
     objective_direct = ["max" if MetricDirection[objective] == -1 else "min" for objective in objectives]
     pareto_efficient = paretoset(costs=objective_values, sense=objective_direct, distinct=True)
 
-    return np.array(portfolio_solutions)[pareto_efficient].tolist()
+    return cast(list[PortfolioSolution], np.array(portfolio_solutions)[pareto_efficient].tolist())
 
 
 def merge_and_optimise_two_portfolio_solution_lists(
@@ -41,8 +42,8 @@ def merge_and_optimise_two_portfolio_solution_lists(
     batch_size: int = 1000000,
 ) -> list[PortfolioSolution]:
     """
-    Merges two lists of portfolio solutions, from two different portfolios,
-    into a single list of portfolio solutions that is pareto-optimal.
+    Merge two lists of portfolio solutions into a single list of portfolio solutions that is pareto-optimal.
+
     Achieved by taking the product of both lists and optimising them in batches of batch_size,
     whilst maintaining a pareto-optimal list of solutions.
     A capex_limit can be set to remove out-of-bound solutions before the optimisation step.
@@ -62,6 +63,11 @@ def merge_and_optimise_two_portfolio_solution_lists(
         Number of solutions to optimise at the same time.
         Large batch_size may cause memory errors.
         Small batch_size will take longer to compute.
+
+    Returns
+    -------
+    list[PortfolioSolution]
+        New pareto front of solutions
     """
     combinations = product(list1, list2)
     if len(list1) == 1 or len(list2) == 1:

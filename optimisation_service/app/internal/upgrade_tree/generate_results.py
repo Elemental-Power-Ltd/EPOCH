@@ -125,7 +125,7 @@ def generate_upgrade_tree(
 
     all_results = {}
     for combination in itertools.product([False, True], repeat=num_differences):
-        included = [key for key, c in zip(keys, combination) if c]
+        included = [key for key, c in zip(keys, combination, strict=False) if c]
         curr_td = start.model_copy(deep=True)
         for key in included:
             curr_td.__setattr__(key, getattr(end, key))
