@@ -105,7 +105,8 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
     Generate the tiered graph of upgrades.
 
     This will start at the node with no interventions and go up in tiers to the node with all interventions.
-    The `all_results` dict must have bitstring keys in the form 01010..., as that's used to calculate what should be on each tier.
+    The `all_results` dict must have bitstring keys in the form 01010...,
+    as that's used to calculate what should be on each tier.
 
     Edges are drawn if neither node is in shortfall for heat or electricity.
 
@@ -122,7 +123,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         Directed graph with bitstring nodes, edges between them if a transition is allowed.
         Has edge properties `operating_cost`, `capex`, `carbon_balance` showing costs of transitions.
     """
-    dG = nx.DiGraph()
+    dG: nx.DiGraph = nx.DiGraph()
     x_scale, y_scale = 10.0, 5.0
     tiers = []
     max_tier = len(next(iter(all_results.keys())))
