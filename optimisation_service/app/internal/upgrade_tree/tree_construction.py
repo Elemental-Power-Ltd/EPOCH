@@ -101,15 +101,38 @@ def generate_label(key: str, possible_components: Iterable[str]) -> str:
 
 
 def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph:
-    dG: nx.DiGraph = nx.DiGraph()
+    """
+    Generate the tiered graph of upgrades.
+
+    This will start at the node with no interventions and go up in tiers to the node with all interventions.
+    The `all_results` dict must have bitstring keys in the form 01010..., as that's used to calculate what should be on each tier.
+
+    Edges are drawn if neither node is in shortfall for heat or electricity.
+
+    Parameters
+    ----------
+    all_results
+        Dictionary of `bitstring: sim result` for all possible combinations of interventions.
+    possible_components
+        Human readable names of components in the same order as the bitstring
+
+    Returns
+    -------
+    nx.DiGraph
+        Directed graph with bitstring nodes, edges between them if a transition is allowed.
+        Has edge properties `operating_cost`, `capex`, `carbon_balance` showing costs of transitions.
+    """
+    dG = nx.DiGraph()
     x_scale, y_scale = 10.0, 5.0
     tiers = []
-    for length in range(4):
+    max_tier = len(next(iter(all_results.keys())))
+    for length in range(max_tier):
         items_with_length = sorted(filter(lambda s: sum(item == "1" for item in s) == length, all_results.keys()))
         tiers.append(items_with_length)
 
     dG.add_nodes_from(all_results.keys())
     for lo, hi in itertools.pairwise(tiers):
+        # Allow edges if there is only one change between the nodes, and both are valid.
         dG.add_edges_from(
             filter(
                 lambda t: (
@@ -127,13 +150,18 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
         name="label",
     )
 
+    # Store the positions of each node in tiers
     pos: dict[str, tuple[float, float]] = {}
     for tier_rank, tier_contents in enumerate(tiers):
         tier_len = len(tier_contents)
         for idx, item in enumerate(tier_contents):
             pos[item] = ((idx - tier_len / 2) * x_scale, tier_rank * y_scale)
     nx.set_node_attributes(dG, values=pos, name="pos")
+
+    # We use the CAPEX values when animating the graph
     nx.set_node_attributes(dG, values={key: all_results[key].metrics.capex for key in all_results.keys()}, name="capex")
+
+    # These are the edge costs: the energy savings, monetary costs and carbon costs.
     edge_lengths: dict[tuple[str, str], float] = {}
     step_prices: dict[tuple[str, str], float] = {}
     carbon_savings: dict[tuple[str, str], float] = {}
