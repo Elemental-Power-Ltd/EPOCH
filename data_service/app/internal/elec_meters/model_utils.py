@@ -4,7 +4,7 @@ import itertools
 import logging
 import pathlib
 from enum import StrEnum
-from typing import Any, Self, overload
+from typing import Any, Self
 
 import joblib
 import numpy as np
@@ -180,11 +180,6 @@ class RBFTimestampEncoder(TransformerMixin):
         X_preprocessed = self._preprocess(X)
         result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed) # type: ignore
         return result
-
-    @overload
-    def fit_transform(self, X: npt.NDArray[np.floating], y: None = ..., **fit_params: Any) -> npt.NDArray[np.floating]: ...
-    @overload
-    def fit_transform(self, X: Any, y: Any = None, **fit_params: Any): ...
 
     def fit_transform(self, X: Any, y=None, **fit_params):
         """
@@ -458,7 +453,7 @@ def allocate_active_offsets(active_daily, inactive_daily, method="detect-chgpt")
                 a, b = inactive_daily_vals[i], inactive_daily_vals[i+1]
 
                 # isolate segment of active days between inactive days
-                mask = (active_daily_index>=t0) & (active_daily_index<=t1)
+                mask = np.logical_and(active_daily_index>=t0, active_daily_index<=t1)
                 idx = np.where(mask)[0]
                 if len(idx)==0:
                     continue

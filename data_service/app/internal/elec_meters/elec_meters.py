@@ -34,7 +34,6 @@ DAY_TYPE_WEIGHTS = pd.DataFrame(
 )
 DAY_TYPE_WEIGHTS /= DAY_TYPE_WEIGHTS["median_weight"].sum()
 
-
 def day_type(date: datetime.date | pd.Timestamp, public_holidays: Container[datetime.date]) -> DayTypeEnum:
     """
     Get the "type" of this day: whether it's a holiday, shoulder day or midweek.
@@ -103,178 +102,22 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame, public_holidays: Contai
     total_daily_df["end_ts"] = total_daily_df.index + pd.Timedelta(days=1)
     return total_daily_df
 
-
 def daily_to_hh_eload(
-    daily_df: DailyDataFrame, scalers: dict[ScalerTypeEnum, sklearn.preprocessing.StandardScaler], model: VAE
-) -> HHDataFrame:
-    """
-    Turn a set of daily electricity usages into half hourly meter data.
-
-    This works by randomly sampling some point in a latent space and augmenting with a series of conditioning variables,
-    including the start and end dates of the period that we're sampling.
-    If you've only got monthly data, try resampling to daily using `monthly_to_daily_eload` or similar.
-
-    Parameters
-    ----------
-    daily_df
-        Dataframe with start_ts, end_ts and electricity consumption readings in kWh
-    scalers
-        A dictionary of Aggregate, StartTime, EndTime and Data scalers used to normalise the data
-    model
-        A model, probably a VAE, with a decode method and some latent dimension.
-
-    Returns
-    -------
-    Pandas dataframe with halfhourly electricity consumptions. Watch out, as we've put these back into UTC times.
-    """
-    if daily_df.empty:
-        return HHDataFrame(daily_df)
-    with torch.no_grad():
-        consumption_scaled = torch.from_numpy(
-            scalers[ScalerTypeEnum.Aggregate]
-            .transform(daily_df["consumption_kwh"].to_numpy().reshape(-1, 1))
-            .astype(np.float32)
-        )
-
-        # TODO (2024-09-30 JSM): time now encoded using 13 radial basis functions.
-        # Let's discuss whether this is the best encoding method.
-        start_date_scaled = torch.from_numpy(
-            scalers[ScalerTypeEnum.StartTime]
-            .transform(daily_df["start_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
-            .astype(np.float32)
-        )
-        end_date_scaled = torch.from_numpy(
-            scalers[ScalerTypeEnum.EndTime]
-            .transform(daily_df["end_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
-            .astype(np.float32)
-        )
-        # Sample from the latent space, which is ideally given by a normal distribution with mean 0 and variance 1.
-        # This should be [days in dataset, latent_dim] size
-        zs = torch.randn(size=[daily_df.shape[0], model.latent_dim], dtype=torch.float32)
-
-        # Use the decoder part of the LSTM, with random latent space (so it's not always the same)
-        # and some conditioning variables.
-        result_scaled = model.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
-
-        # but as we used scaled data all the way through, unscale it here.
-        result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
-
-    # The scaled data is almost certainly wrong, but we know the daily usages! So re-calibrate the model's outputs
-    # to those usages (in an ideal world, the weighting factors are all 1, but alas)
-    predicted_daily = result.sum(axis=1)
-    actual_daily = daily_df["consumption_kwh"].to_numpy()
-    weighting_factors = (actual_daily / predicted_daily)[:, np.newaxis]
-    result *= weighting_factors
-
-    start_ts = pd.date_range(daily_df.start_ts.min(), daily_df.end_ts.max(), freq=pd.Timedelta(minutes=30), inclusive="left")
-    return HHDataFrame(
-        pd.DataFrame(
-            index=pd.DatetimeIndex(
-                start_ts,
-                name="start_ts",
-            ),
-            # Each row is one day, so we could also express this
-            # as a concat over [i, :], but this saves some memory and mucking around.
-            data={
-                "consumption_kwh": np.ravel(result, order="C"),
-                "end_ts": start_ts + pd.Timedelta(minutes=30),
-                "start_ts": start_ts,
-            },
-        )
-    )
-
-
-def daily_to_hh_eload_2_0(
-    daily_df: DailyDataFrame, scalers: dict[ScalerTypeEnum, sklearn.preprocessing.StandardScaler], model: VAE_2_0
-) -> HHDataFrame:
-    """
-    Turn a set of daily electricity usages into half hourly meter data.
-
-    This works by randomly sampling some point in a latent space and augmenting with a series of conditioning variables,
-    including the start and end dates of the period that we're sampling.
-    If you've only got monthly data, try resampling to daily using `monthly_to_daily_eload` or similar.
-
-    Parameters
-    ----------
-    daily_df
-        Dataframe with start_ts, end_ts and electricity consumption readings in kWh
-    scalers
-        A dictionary of Aggregate, StartTime, EndTime and Data scalers used to normalise the data
-    model
-        A model, probably a VAE, with a decode method and some latent dimension.
-
-    Returns
-    -------
-    Pandas dataframe with halfhourly electricity consumptions. Watch out, as we've put these back into UTC times.
-    """
-    if daily_df.empty:
-        return HHDataFrame(daily_df)
-    with torch.no_grad():
-        consumption_scaled = torch.from_numpy(
-            scalers[ScalerTypeEnum.Aggregate]
-            .transform(daily_df["consumption_kwh"].to_numpy().reshape(-1, 1))
-            .astype(np.float32)
-        )
-        start_date_scaled = torch.from_numpy(
-            scalers[ScalerTypeEnum.StartTime]
-            .transform(daily_df["start_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
-            .astype(np.float32)
-        )
-        end_date_scaled = torch.from_numpy(
-            scalers[ScalerTypeEnum.EndTime]
-            .transform(daily_df["end_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
-            .astype(np.float32)
-        )
-        # Sample from the latent space, which is ideally given by a normal distribution with mean 0 and variance 1.
-        # This should be [days in dataset, latent_dim] size
-        batch_size, n_days = 1, daily_df.shape[0]
-        zs = torch.randn(size=[batch_size, n_days, model.latent_dim], dtype=torch.float32)
-
-        # Use the decoder part of the LSTM, with random latent space (so it's not always the same)
-        # and some conditioning variables.
-        result_scaled = model.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
-
-        # but as we used scaled data all the way through, unscale it here.
-        print(result_scaled.squeeze().detach().numpy().shape)
-        result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
-
-    # The scaled data is almost certainly wrong, but we know the daily usages! So re-calibrate the model's outputs
-    # to those usages (in an ideal world, the weighting factors are all 1, but alas)
-    predicted_daily = result.sum(axis=1)
-    actual_daily = daily_df["consumption_kwh"].to_numpy()
-    weighting_factors = (actual_daily / predicted_daily)[:, np.newaxis]
-    result *= weighting_factors
-
-    start_ts = pd.date_range(daily_df.start_ts.min(), daily_df.end_ts.max(), freq=pd.Timedelta(minutes=30), inclusive="left")
-    return HHDataFrame(
-        pd.DataFrame(
-            index=pd.DatetimeIndex(
-                start_ts,
-                name="start_ts",
-            ),
-            # Each row is one day, so we could also express this
-            # as a concat over [i, :], but this saves some memory and mucking around.
-            data={
-                "consumption_kwh": np.ravel(result, order="C"),
-                "end_ts": start_ts + pd.Timedelta(minutes=30),
-                "start_ts": start_ts,
-            },
-        )
-    )
-
-def daily_to_hh_eload_3_0(
     daily_df: DailyDataFrame,
     model: VAE_2_0,
     resid_model_path: pathlib.Path | None = None, # partial path to the files describing the residual models
     target_hh_observed_df: HHDataFrame | None = None,
-    weekend_inds: tuple = (6,),
+    weekend_inds: tuple[int] = (6,),
     division: str = "england-and-wales",
 ) -> HHDataFrame:
     """
     Turn a set of daily electricity usages into half hourly meter data.
 
-    ...
-    target_hh_observed_df must correspond to dates provided in daily_df
+    This works by randomly sampling some point in a latent space and augmenting with the aggregated consumption for the given
+    day. We then use a VAE decoder to generate an approximate hh profile, which we refine using time series models trained on
+    either a default site or hh data provided by the client.
+
+    If you've only got monthly data, try resampling to daily using `monthly_to_daily_eload` or similar.
 
     Parameters
     ----------
@@ -282,15 +125,23 @@ def daily_to_hh_eload_3_0(
         Dataframe with start_ts, end_ts and electricity consumption readings in kWh
     model
         A model, probably a VAE, with a decode method and some latent dimension.
-        resid_model_path
-            This is a pathlib.Path object that gives the path + model identifier for the set of model files
-            that are to be used as a default model for the residuals.
-            e.g. resid_model_path = pathlib.Path('/path/to/directory') / 'QB'
-            when using the Queen's Buildings to train the residual models
+    resid_model_path (optional)
+        A pathlib.Path object that gives the path + model identifier for the set of model files that are to be used as a
+        default model for the residuals, e.g. resid_model_path = pathlib.Path('/path/to/directory') / 'QB' when using the
+        Queen's Buildings to train the residual models.
+    target_hh_observed_df (optional)
+        A set of half-hourly data for the client's target site, which can be used to train a model for the residuals.
+        Exactly one of resid_model_path or target_hh_observed_df must be provided. The data in target_hh_observed_df must
+        correspond to dates provided in daily_df
+    weekend_inds (optional)
+        A tuple specifying the regular 'non-active' days of the week for the site; default is (6,) for Queen's Buildings.
+    division (optional)
+        A string -- one of {"england-and-wales", "scotland", "northern-ireland"} -- specifying the division of the UK to use to
+        determine the public holidays.
 
     Returns
     -------
-    .
+    Pandas dataframe with halfhourly electricity consumptions. Watch out, as we've put these back into UTC times.
     """
     if (resid_model_path is None) == (target_hh_observed_df is None):
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided.")
@@ -510,7 +361,34 @@ def generate_approx_daily_profiles(
         VAE_model: VAE_2_0,
         consumption_scaled
 ):
-    """Docstring."""
+    """
+    Use the decoder component of a trained VAE to generate approximate intraday electricity demand profiles.
+
+    The decoder of the VAE_2_0 class takes random draws from the latent distribution as well as daily aggregate values, and
+    returns a half-hourly profile for each independent input. The decoder also ostensibly conditions on the start and end
+    timestamps for each day, however these are not currently used in practice; we input zero-tensors instead.
+    TODO (2025-08-13 JSM): remove timestamp conditioning in VAE_2_0; this is asking too much of the VAE
+
+    The daily aggregate values are provided in consumption_scaled; these should have already been scaled using a
+    StandardScaler().
+
+    In the current version of the trained VAE, negative scaled values of consumption_scaled result in poor approximate profiles,
+    so we use the absolute value of the scaled consumption in the logic below.
+    TODO (2025-08-13 JSM): More intensive training (using more data) might help this.
+
+    Parameters
+    ----------
+    VAE_model
+        A trained instance of the VAE_2_0 class of model
+    consumption_scaled
+        A tensor containing the scaled daily aggregate electricity consumption for each required profile
+
+    Returns
+    -------
+    vae_output
+        A numpy array containing an approximate (scaled) half-hourly profile in each row.
+        There are consumption_scaled.shape[0] rows / profiles and 48 columns.
+    """
     # generate a normalised approximate profile for each active day
     VAE_model.eval()
     with torch.no_grad():
@@ -522,16 +400,17 @@ def generate_approx_daily_profiles(
 
         # Use the decoder part of the VAE, with random latent space (so it's not always the same)
         # and some conditioning variables.
-        # TODO JSM : note about absolute values, note about zero time inputs
         vae_output = VAE_model.decode(
             zs, torch.abs(consumption_scaled), torch.zeros(1,13), torch.zeros(1,13), seq_len=48
         )
     vae_output = vae_output.squeeze().detach().cpu().numpy()
 
     # get rid of profiles that are negative and most profiles that start before 7am or end after 8pm
+    active_day_first_hh=14 # 07:00 - 07:30
+    active_day_last_hh=-9 # 19:30 - 20:00
     problem_inds = np.where(
-        (np.sum(vae_output[:,:14], axis=1)>0.05) |
-        (np.sum(vae_output[:,-8:], axis=1)>0.05) |
+        (np.sum(vae_output[:,:active_day_first_hh], axis=1)>0.05) |
+        (np.sum(vae_output[:,active_day_last_hh+1:], axis=1)>0.05) |
         (np.sum(vae_output, axis=1)<0.1)
     )[0]
     while len(problem_inds)>5:
@@ -546,8 +425,8 @@ def generate_approx_daily_profiles(
         vae_output_new = vae_output_new.squeeze().detach().cpu().numpy()
         vae_output[problem_inds,:] = vae_output_new
         problem_inds = np.where(
-            (np.sum(vae_output[:,:14], axis=1)>0.05) |
-            (np.sum(vae_output[:,-8:], axis=1)>0.05) |
+            (np.sum(vae_output[:,:active_day_first_hh], axis=1)>0.05) |
+            (np.sum(vae_output[:,active_day_last_hh+1:], axis=1)>0.05) |
             (np.sum(vae_output, axis=1)<0.1)
         )[0]
 
