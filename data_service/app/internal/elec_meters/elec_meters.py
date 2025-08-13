@@ -146,10 +146,7 @@ def daily_to_hh_eload(
     if (resid_model_path is None) == (target_hh_observed_df is None):
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided.")
 
-    if target_hh_observed_df is None:
-        use_client_hh = False
-    else:
-        use_client_hh = True
+    use_client_hh = False if target_hh_observed_df is None else True
 
     # extract 'start_ts' from first record in daily_df, for later use, and discard 'start_ts', 'end_ts' columns
     initial_start_ts = daily_df.start_ts.min()
@@ -359,7 +356,7 @@ def monthly_to_hh_eload(
 
 def generate_approx_daily_profiles(
         VAE_model: VAE_2_0,
-        consumption_scaled
+        consumption_scaled: torch.Tensor,
 ):
     """
     Use the decoder component of a trained VAE to generate approximate intraday electricity demand profiles.

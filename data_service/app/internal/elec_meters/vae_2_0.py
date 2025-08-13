@@ -8,9 +8,20 @@ from torch import nn
 
 
 class ResidualMLP(nn.Module):
-    """A residual multi-layer perceptron (MLP) block."""
+    """A residual multi-layer perceptron (MLP) block with two layers."""
 
     def __init__(self, dim: int, hid_dim: int | None = None):
+        """
+        Initialise the ResidualMLP class.
+
+        Parameters
+        ----------
+        dim (int)
+            Input dimension of the first layer, output dimension of the second layer.
+        hid_dim (int, optional)
+            Output dimension of the first layer, input dimension of the second layer.
+            If not provided, dim is used instead.
+        """
         super().__init__()
         hid_dim = hid_dim or dim
         self.net = nn.Sequential(

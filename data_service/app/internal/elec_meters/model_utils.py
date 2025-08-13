@@ -737,7 +737,7 @@ def fit_residual_model(resids, verbose=False):
         the standard deviation for the innovations of the fitted ARMA process
     """
     if verbose:
-        print("Fitting trend & ARMA model...")
+        logger.info("Fitting trend & ARMA model...")
 
     trend = resids.mean(axis=0)
     resids_detrended = resids.sub(trend)
@@ -755,13 +755,13 @@ def fit_residual_model(resids, verbose=False):
             # use ArmaProcess() for simulation as it is lightweight, built for generating multiple iid realisations
         ARMA_scale = np.sqrt(sigma2)
         if verbose:
-            print("  Best (p, q):", best["order"])
-            print("  AR coefficients:", ar_coefs)
-            print("  MA coefficients:", ma_coefs)
-            print("  Shared sigma-sq:", sigma2)
-            print("  AIC:", best["aic"])
+            logger.info("  Best (p, q): %s", best["order"])
+            logger.info("  AR coefficients: %s", ar_coefs)
+            logger.info("  MA coefficients: %s", ma_coefs)
+            logger.info("  Shared sigma-sq: %s", sigma2)
+            logger.info("  AIC: %s", best["aic"])
     else:
-        print("No valid ARMA model found.")
+        logger.info("No valid ARMA model found.")
 
     trend_as_df = pd.DataFrame(trend, index=resids.columns).T
     return trend_as_df, ARMA_model, ARMA_scale

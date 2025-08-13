@@ -4,6 +4,7 @@ Training module for time series upsampling.
 This module implements training functions for the VAE model in vae_2_0.py.
 """
 
+import logging
 import warnings
 from collections.abc import Collection
 from pathlib import Path
@@ -20,6 +21,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 
 from app.internal.elec_meters.vae_2_0 import VAE
 
+logger = logging.getLogger(__name__)
 
 class LossesComponentsDict(TypedDict):  # noqa: D101
     recon: float
@@ -527,7 +529,7 @@ def train_model(
         optimizer,
         mode="min",
         factor=scheduler_factor,
-        patience=scheduler_patience,  # , verbose=True
+        patience=scheduler_patience,
     )
 
     # Create TensorBoard writer if log_dir is provided
@@ -602,8 +604,8 @@ def train_model(
         history["val_components"].append(val_results["components"])
         history["learning_rate"].append(optimizer.param_groups[0]["lr"])
 
-        # Print progress
-        print(
+        # Log progress
+        logger.info(
             f"Epoch {epoch + 1}/{num_epochs} - "
             f"Train Loss: {train_results['loss']:.4f}, "
             f"Val Loss: {val_results['loss']:.4f}, "
@@ -620,7 +622,7 @@ def train_model(
             # Save checkpoint if path is provided
             if checkpoint_path is not None:
                 torch.save(model.state_dict(), checkpoint_path)
-                print(f"Saved checkpoint at epoch {epoch + 1}")
+                logger.info(f"Saved checkpoint at epoch {epoch + 1}")
 
         # Early stopping
         if (
@@ -628,13 +630,13 @@ def train_model(
             and epoch - best_epoch >= early_stopping_patience
             and epoch - early_stopping_patience >= kl_annealing_epochs + kl_annealing_delay
         ):  # do at least one round of annealing
-            print(f"Early stopping at epoch {epoch + 1}")
+            logger.info(f"Early stopping at epoch {epoch + 1}")
             break
 
     # Load best model if checkpoint path is provided
     if checkpoint_path is not None and checkpoint_path.exists():
         model.load_state_dict(torch.load(checkpoint_path))
-        print(f"Loaded best model from epoch {best_epoch + 1}")
+        logger.info(f"Loaded best model from epoch {best_epoch + 1}")
 
     # Close TensorBoard writer if it was created
     if writer is not None:
@@ -729,7 +731,7 @@ def vae_training(
     # Initialize history
     history: dict[str, HistoryDict] = {}
 
-    print("=== Training VAE ===")
+    logger.info("=== Training VAE ===")
     # Train VAE
     _, vae_history = train_model(
         model=model,
