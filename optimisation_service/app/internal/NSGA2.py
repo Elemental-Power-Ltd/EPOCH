@@ -318,7 +318,9 @@ class NSGA2(Algorithm):
         pi = ProblemInstance(objectives, constraints, portfolio)
         if existing_solutions is not None and len(existing_solutions) > 0:
             self._load_existing_solutions(existing_solutions, pi)
-        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, save_history=save_history)
+        res = minimize(
+            problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, save_history=save_history, verbose=True
+        )
         simulate_scenario.cache_clear()
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
