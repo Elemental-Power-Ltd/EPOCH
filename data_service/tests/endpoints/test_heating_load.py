@@ -9,7 +9,7 @@ from typing import cast
 import httpx
 import pytest
 import pytest_asyncio
-
+from itertools import pairwise
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 
@@ -318,23 +318,50 @@ class TestPHPPHeatingLoad:
         assert hload_data["peak_hload"] < 191, "Peak hload should be lower than non-intervention"
         assert all(item >= 0 for item in hload_data["reduced_hload"])
 
-        generated_cladding_resp = await client.post(
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    @pytest.mark.slow
+    async def test_phpp_costs_correct_order(
+        self, client: httpx.AsyncClient, uploaded_meter_data: dict[str, Jsonable], uploaded_phpp: dict[str, Jsonable]
+    ) -> None:
+        """Test that generating four heating loads will give us costs in the correct oder."""
+        meter_data, _ = uploaded_meter_data, uploaded_phpp
+
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2023, month=2, day=1, tzinfo=datetime.UTC)
+
+        
+        base_resp = await client.post(
             "/generate-heating-load",
             json={
                 "dataset_id": meter_data["dataset_id"],
                 "start_ts": start_ts.isoformat(),
                 "end_ts": end_ts.isoformat(),
-                "interventions": ["cladding"],
             },
         )
-        assert generated_cladding_resp.status_code == 200, generated_cladding_resp.text
-        generated_cladding_metadata = generated_cladding_resp.json()
-        assert generated_cladding_metadata["generation_method"] == "phpp"
+        all_resps = {}
+        INTERVENTIONS = ["loft", "double_glazing", "cladding"]
+        for intervention in INTERVENTIONS:
+            all_resps[intervention] = await client.post(
+                "/generate-heating-load",
+                json={
+                    "dataset_id": meter_data["dataset_id"],
+                    "start_ts": start_ts.isoformat(),
+                    "end_ts": end_ts.isoformat(),
+                    "interventions": [intervention]
+                },
+            )
+            assert all_resps[intervention].status_code == 200
 
-        cladding_hload_resp = await client.post(
-            "/get-heating-load", json={"dataset_id": generated_cladding_metadata["dataset_id"]}
-        )
-        cladding_hload_data = cladding_hload_resp.json()["data"][0]
-        assert cladding_hload_data["cost"] > 10_000, "Cost should be big"
-        assert cladding_hload_data["peak_hload"] < 191, "Peak hload should be lower than non-intervention"
-        assert all(item >= 0 for item in cladding_hload_data["reduced_hload"])
+        dataset_ids = [base_resp.json()["dataset_id"]] +[all_resps[intervention].json()["dataset_id"]
+                       for intervention in INTERVENTIONS]
+        hload_resp = await client.post("/get-heating-load", json={"dataset_id": dataset_ids})
+        assert hload_resp.status_code == 200
+        hload_data = hload_resp.json()["data"]
+        print(len(hload_data), hload_data[0].keys())
+        all_costs = [item["cost"] for item in hload_data]
+        # skip the "do nothing" cost
+        assert all(item > 0 for item in all_costs[1:])
+        for a, b in pairwise(hload_data):
+            assert a["cost"] < b["cost"]

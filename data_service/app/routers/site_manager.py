@@ -491,7 +491,8 @@ async def get_dataset_bundle(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> 
             MIN(m.start_ts) as start_ts,
             MAX(m.end_ts) AS end_ts,
             ARRAY_AGG(dl.dataset_type ORDER BY dl.dataset_type, dl.dataset_order) AS dataset_type,
-            ARRAY_AGG(dl.dataset_id ORDER BY dl.dataset_type, dl.dataset_order) AS dataset_id
+            ARRAY_AGG(dl.dataset_id ORDER BY dl.dataset_type, dl.dataset_order) AS dataset_id,
+            ARRAY_AGG(dl.dataset_order ORDER BY dl.dataset_type, dl.dataset_order) AS dataset_order
         FROM data_bundles.metadata AS m
         LEFT JOIN data_bundles.dataset_links AS dl
         ON dl.bundle_id = m.bundle_id
