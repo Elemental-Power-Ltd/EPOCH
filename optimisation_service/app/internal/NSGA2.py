@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, Never, cast
 
@@ -33,6 +34,10 @@ from app.models.ga_utils import SamplingMethod
 from app.models.metrics import Metric
 from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
+
+logger = logging.getLogger("default")
+
+MAX_NUMBER_INDIVIDUALS = 10000
 
 
 class CustomPymooNSGA2(Pymoo_NSGA2):
@@ -92,6 +97,7 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         assert pop_size_incr_threshold <= 1.0, "pop_size_incr_threshold must be smaller or equal to 1."
         self.pop_size_incr_scalar = pop_size_incr_scalar
         self.pop_size_incr_threshold = pop_size_incr_threshold
+        self.pop_size_perc = pop_size / (n_offsprings + pop_size)
         super().__init__(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
@@ -121,13 +127,27 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         -------
             ?
         """
+        self.pop_size: int
+        self.n_offsprings: int
         if self.pop_size_incr_scalar > 0.0:
             # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
             # increases pop size by pop_size_incr_scalar percent.
-            # the population is limited to 10k individuals.
-            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:  # type: ignore
-                self.pop_size = min(self.pop_size + max(1, int(self.pop_size_incr_scalar * self.pop_size)), 10000)  # type: ignore
-                self.n_offsprings = min(self.n_offsprings + max(1, int(self.pop_size_incr_scalar * self.n_offsprings)), 10000)  # type: ignore
+            # the population + number of offspring is limited to 10k individuals.
+            if (
+                len(self.opt) >= self.pop_size * self.pop_size_incr_threshold
+                and self.pop_size + self.n_offsprings < MAX_NUMBER_INDIVIDUALS
+            ):
+                self.pop_size += max(1, int(self.pop_size_incr_scalar * self.pop_size))
+                self.n_offsprings += max(1, int(self.pop_size_incr_scalar * self.n_offsprings))
+
+                logger.warning(
+                    "The pop size + number of offspring has reached the max number of individuals permitted,"
+                    f"capping the pop size and number of offspring to {self.pop_size} and {self.n_offsprings} respectively."
+                )
+                if self.pop_size + self.n_offsprings > MAX_NUMBER_INDIVIDUALS:
+                    self.pop_size = int(self.pop_size_perc * MAX_NUMBER_INDIVIDUALS)
+                    self.n_offsprings = int(MAX_NUMBER_INDIVIDUALS - self.pop_size)
+
         return super()._advance(infills, **kwargs)
 
 
@@ -194,6 +214,14 @@ class NSGA2(Algorithm):
         """
         if n_offsprings is None:
             n_offsprings = int(pop_size / 2)
+
+        if pop_size + n_offsprings > MAX_NUMBER_INDIVIDUALS:
+            pop_size = int(pop_size / (pop_size + n_offsprings) * MAX_NUMBER_INDIVIDUALS)
+            n_offsprings = int(MAX_NUMBER_INDIVIDUALS - pop_size)
+            logger.warning(
+                "The pop size + number of offspring is larger than the max number of individuals permitted,"
+                f"reducing pop size and number of offspring to {pop_size} and {n_offsprings} respectively."
+            )
 
         if sampling == SamplingMethod.ESTIMATE:
             sampling_cls = EstimateBasedSampling
@@ -294,7 +322,9 @@ class NSGA2(Algorithm):
         pi = ProblemInstance(objectives, constraints, portfolio)
         if existing_solutions is not None and len(existing_solutions) > 0:
             self._load_existing_solutions(existing_solutions, pi)
-        res = minimize(problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, save_history=save_history)
+        res = minimize(
+            problem=pi, algorithm=self.algorithm, termination=self.termination_criteria, save_history=save_history, verbose=True
+        )
         simulate_scenario.cache_clear()
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
