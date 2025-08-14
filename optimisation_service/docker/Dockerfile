@@ -49,10 +49,10 @@ RUN rm -rf ./build \
 FROM ubuntu:24.10
 
 WORKDIR /code
-RUN apt-get update && apt-get install -y --no-install-recommends python3.13 python3.13-pip python3.13-venv
+RUN apt-get update && apt-get install -y --no-install-recommends python3.13 python3.13-venv
 # Add /code/install to both PATH and PYTHONPATH so that we don't have to know the relative path to Epoch
 ENV PATH="/code/install:$PATH"
-ENV PYTHONPATH="/code/install:$PYTHONPATH"
+ENV PYTHONPATH="/code/install:${PYTHONPATH}"
 
 # We're using Ubuntu instead of the python image, so put the
 # dependencies for our app in a venv to avoid mangling the default ones
@@ -62,7 +62,7 @@ RUN python3.13 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrad
 
 # Copy the python bindings and executable
 COPY app app
-COPY --from=epoch-build /code/epoch_simulator.cpython-312-x86_64-linux-gnu.so /code/Epoch/build/epoch_main/Epoch /code/install/
+COPY --from=epoch-build /code/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/Epoch/build/epoch_main/Epoch /code/install/
 
 EXPOSE 8761
 CMD ["./venv/bin/python", "-m", "fastapi", "run", "./app/main.py", "--port", "8761"]
