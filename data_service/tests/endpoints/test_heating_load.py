@@ -3,13 +3,14 @@
 # ruff: noqa: D101, D102, D103
 import datetime
 import json
+from itertools import pairwise
 from pathlib import Path
 from typing import cast
 
 import httpx
 import pytest
 import pytest_asyncio
-from itertools import pairwise
+
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 
@@ -318,7 +319,6 @@ class TestPHPPHeatingLoad:
         assert hload_data["peak_hload"] < 191, "Peak hload should be lower than non-intervention"
         assert all(item >= 0 for item in hload_data["reduced_hload"])
 
-
     @pytest.mark.asyncio
     @pytest.mark.external
     @pytest.mark.slow
@@ -331,7 +331,6 @@ class TestPHPPHeatingLoad:
         start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2023, month=2, day=1, tzinfo=datetime.UTC)
 
-        
         base_resp = await client.post(
             "/generate-heating-load",
             json={
@@ -349,13 +348,14 @@ class TestPHPPHeatingLoad:
                     "dataset_id": meter_data["dataset_id"],
                     "start_ts": start_ts.isoformat(),
                     "end_ts": end_ts.isoformat(),
-                    "interventions": [intervention]
+                    "interventions": [intervention],
                 },
             )
             assert all_resps[intervention].status_code == 200
 
-        dataset_ids = [base_resp.json()["dataset_id"]] +[all_resps[intervention].json()["dataset_id"]
-                       for intervention in INTERVENTIONS]
+        dataset_ids = [base_resp.json()["dataset_id"]] + [
+            all_resps[intervention].json()["dataset_id"] for intervention in INTERVENTIONS
+        ]
         hload_resp = await client.post("/get-heating-load", json={"dataset_id": dataset_ids})
         assert hload_resp.status_code == 200
         hload_data = hload_resp.json()["data"]

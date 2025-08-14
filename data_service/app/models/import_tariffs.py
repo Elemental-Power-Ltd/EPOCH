@@ -55,6 +55,7 @@ class SyntheticTariffEnum(StrEnum):
     Overnight = "overnight"
     Peak = "peak"
     ShapeShifter = "shapeshifter"
+    PowerPurchaseAgreement = "power_purchase_agreement"
 
 
 class TariffRequest(RequestBase):

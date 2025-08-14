@@ -27,6 +27,7 @@ from ..internal.import_tariffs import (
     resample_to_range,
     tariff_to_new_timestamps,
 )
+from ..internal.import_tariffs.re24 import get_re24_approximate_ppa
 from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils.uuid import uuid7
 from ..models.core import MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
@@ -243,58 +244,76 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
 
     if isinstance(params.tariff_name, SyntheticTariffEnum):
         provider = TariffProviderEnum.Synthetic
-        if params.tariff_name == SyntheticTariffEnum.Agile:
-            logger.info(f"Generating an Agile-like tariff in {region_code} between {params.start_ts} and {params.end_ts}")
-            # Use these rounded dates to make sure everything resamples nicely and that we get the most recent data.
-            underlying_tariff = "RE24-NORDPOOL"
-            end_ts = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-            start_ts = end_ts - datetime.timedelta(days=365)
-            price_df = await get_re24_wholesale_tariff(
-                start_ts=start_ts, end_ts=end_ts, http_client=http_client, region_code=region_code
-            )
-            price_df = tariff_to_new_timestamps(
-                price_df, pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30))
-            )
-        elif params.tariff_name == SyntheticTariffEnum.Peak:
-            # use the FIX prices and the Octopus Cosy pricing structure
-            # https://octopus.energy/smart/cosy-octopus/
-            logger.info(f"Generating a Peak tariff in {region_code} between {params.start_ts} and {params.end_ts}")
-            underlying_tariff = "LOYAL-FIX-12M-23-12-30"
-            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
-            night_cost, day_cost = await get_day_and_night_rates(
-                tariff_name=underlying_tariff, region_code=region_code, client=http_client
-            )
-            price_df = create_peak_tariff(timestamps, day_cost=day_cost, night_cost=day_cost * 0.49, peak_cost=day_cost * 0.5)
-        elif params.tariff_name == SyntheticTariffEnum.Overnight:
-            logger.info(f"Generating an Overnight tariff in {region_code} between {params.start_ts} and {params.end_ts}")
-            underlying_tariff = "LOYAL-FIX-12M-23-12-30"
-            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
-            night_cost, day_cost = await get_day_and_night_rates(
-                tariff_name=underlying_tariff, region_code=region_code, client=http_client
-            )
-            price_df = create_day_and_night_tariff(timestamps, day_cost=day_cost, night_cost=night_cost)
-        elif params.tariff_name == SyntheticTariffEnum.Fixed:
-            logger.info(f"Generating a Fixed tariff in {region_code} between {params.start_ts} and {params.end_ts}")
-            underlying_tariff = "LOYAL-FIX-12M-23-12-30"
-            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
-            fixed_cost = await get_fixed_rates(tariff_name=underlying_tariff, region_code=region_code, client=http_client)
-            price_df = create_fixed_tariff(timestamps, fixed_cost=fixed_cost)
-        elif params.tariff_name == SyntheticTariffEnum.ShapeShifter:
-            logger.info(f"Generating a ShapeShifter tariff in {region_code} between {params.start_ts} and {params.end_ts}")
-            underlying_tariff = "BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
-            timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+        match params.tariff_name:
+            case SyntheticTariffEnum.Agile:
+                logger.info(f"Generating an Agile-like tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+                # Use these rounded dates to make sure everything resamples nicely and that we get the most recent data.
+                underlying_tariff = "RE24-NORDPOOL"
+                end_ts = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+                start_ts = end_ts - datetime.timedelta(days=365)
+                price_df = await get_re24_wholesale_tariff(
+                    start_ts=start_ts, end_ts=end_ts, http_client=http_client, region_code=region_code
+                )
+                price_df = tariff_to_new_timestamps(
+                    price_df, pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30))
+                )
+            case SyntheticTariffEnum.Peak:
+                # use the FIX prices and the Octopus Cosy pricing structure
+                # https://octopus.energy/smart/cosy-octopus/
+                logger.info(f"Generating a Peak tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+                underlying_tariff = "LOYAL-FIX-12M-23-12-30"
+                timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+                night_cost, day_cost = await get_day_and_night_rates(
+                    tariff_name=underlying_tariff, region_code=region_code, client=http_client
+                )
+                price_df = create_peak_tariff(
+                    timestamps, day_cost=day_cost, night_cost=day_cost * 0.49, peak_cost=day_cost * 0.5
+                )
+            case SyntheticTariffEnum.Overnight:
+                logger.info(f"Generating an Overnight tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+                underlying_tariff = "LOYAL-FIX-12M-23-12-30"
+                timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+                night_cost, day_cost = await get_day_and_night_rates(
+                    tariff_name=underlying_tariff, region_code=region_code, client=http_client
+                )
+                price_df = create_day_and_night_tariff(timestamps, day_cost=day_cost, night_cost=night_cost)
+            case SyntheticTariffEnum.Fixed:
+                logger.info(f"Generating a Fixed tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+                underlying_tariff = "LOYAL-FIX-12M-23-12-30"
+                timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+                fixed_cost = await get_fixed_rates(tariff_name=underlying_tariff, region_code=region_code, client=http_client)
+                price_df = create_fixed_tariff(timestamps, fixed_cost=fixed_cost)
+            case SyntheticTariffEnum.ShapeShifter:
+                logger.info(f"Generating a ShapeShifter tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+                underlying_tariff = "BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
+                timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
 
-            postcode = await get_postcode(params.site_id, pool=pool)
-            shapeshifter_costs = await get_shapeshifters_rates(
-                postcode=postcode, client=http_client, underlying_tariff=underlying_tariff
-            )
-            price_df = create_shapeshifter_tariff(
-                timestamps,
-                day_cost=shapeshifter_costs["day"],
-                night_cost=shapeshifter_costs["night"],
-                peak_cost=shapeshifter_costs["peak"],
-            )
+                postcode = await get_postcode(params.site_id, pool=pool)
+                shapeshifter_costs = await get_shapeshifters_rates(
+                    postcode=postcode, client=http_client, underlying_tariff=underlying_tariff
+                )
+                price_df = create_shapeshifter_tariff(
+                    timestamps,
+                    day_cost=shapeshifter_costs["day"],
+                    night_cost=shapeshifter_costs["night"],
+                    peak_cost=shapeshifter_costs["peak"],
+                )
+            case SyntheticTariffEnum.PowerPurchaseAgreement:
+                logger.info("Generating a PPA")
 
+                # First we need a grid tariff to act as a backup for any excess energy
+                # that we can't purchase via a PPA
+                underlying_tariff = "LOYAL-FIX-12M-23-12-30"
+                timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+                fixed_cost = await get_fixed_rates(tariff_name=underlying_tariff, region_code=region_code, client=http_client)
+                fixed_df = create_fixed_tariff(timestamps, fixed_cost=fixed_cost)
+
+                price_df = await get_re24_approximate_ppa(
+                    params=SiteIDWithTime(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts),
+                    pool=pool,
+                    http_client=http_client,
+                    grid_tariff=fixed_df,
+                )
     else:
         logger.info(
             f"Generating a tariff with real Octopus data for {params.tariff_name} in {region_code}"
