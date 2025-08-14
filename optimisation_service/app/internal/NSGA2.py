@@ -92,6 +92,8 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         assert pop_size_incr_threshold <= 1.0, "pop_size_incr_threshold must be smaller or equal to 1."
         self.pop_size_incr_scalar = pop_size_incr_scalar
         self.pop_size_incr_threshold = pop_size_incr_threshold
+        self.offspring_perc = n_offsprings / (n_offsprings + pop_size)
+        self.max_pop_size_reached = False
         super().__init__(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
@@ -124,10 +126,16 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         if self.pop_size_incr_scalar > 0.0:
             # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
             # increases pop size by pop_size_incr_scalar percent.
-            # the population is limited to 10k individuals.
-            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold:  # type: ignore
-                self.pop_size = min(self.pop_size + max(1, int(self.pop_size_incr_scalar * self.pop_size)), 10000)  # type: ignore
-                self.n_offsprings = min(self.n_offsprings + max(1, int(self.pop_size_incr_scalar * self.n_offsprings)), 10000)  # type: ignore
+            # the population + number of offpsing is limited to 10k individuals.
+            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold and not self.max_pop_size_reached:  # type: ignore
+                self.pop_size = self.pop_size + max(1, int(self.pop_size_incr_scalar * self.pop_size))  # type: ignore
+                self.n_offsprings = self.n_offsprings + max(1, int(self.pop_size_incr_scalar * self.n_offsprings))  # type: ignore
+
+                if self.pop_size + self.n_offsprings > 10000:
+                    self.n_offsprings = int(self.offspring_perc * 10000)
+                    self.pop_size = int(10000 - self.n_offsprings)
+                    self.max_pop_size_reached = True
+
         return super()._advance(infills, **kwargs)
 
 
