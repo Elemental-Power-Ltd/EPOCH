@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, Never, cast
 
@@ -33,6 +34,10 @@ from app.models.ga_utils import SamplingMethod
 from app.models.metrics import Metric
 from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
+
+logger = logging.getLogger("default")
+
+MAX_NUMBER_INDIVIDUALS = 10000
 
 
 class CustomPymooNSGA2(Pymoo_NSGA2):
@@ -92,8 +97,7 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         assert pop_size_incr_threshold <= 1.0, "pop_size_incr_threshold must be smaller or equal to 1."
         self.pop_size_incr_scalar = pop_size_incr_scalar
         self.pop_size_incr_threshold = pop_size_incr_threshold
-        self.offspring_perc = n_offsprings / (n_offsprings + pop_size)
-        self.max_pop_size_reached = False
+        self.pop_size_perc = pop_size / (n_offsprings + pop_size)
         super().__init__(
             pop_size=pop_size,
             n_offsprings=n_offsprings,
@@ -123,18 +127,22 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
         -------
             ?
         """
+        self.pop_size: int
+        self.n_offsprings: int
         if self.pop_size_incr_scalar > 0.0:
             # if the current pareto front is larger than pop_size_incr_threshold percent of the pop size
             # increases pop size by pop_size_incr_scalar percent.
             # the population + number of offpsing is limited to 10k individuals.
-            if len(self.opt) >= self.pop_size * self.pop_size_incr_threshold and not self.max_pop_size_reached:  # type: ignore
-                self.pop_size = self.pop_size + max(1, int(self.pop_size_incr_scalar * self.pop_size))  # type: ignore
-                self.n_offsprings = self.n_offsprings + max(1, int(self.pop_size_incr_scalar * self.n_offsprings))  # type: ignore
+            if (
+                len(self.opt) >= self.pop_size * self.pop_size_incr_threshold
+                and self.pop_size + self.n_offsprings < MAX_NUMBER_INDIVIDUALS
+            ):
+                self.pop_size += max(1, int(self.pop_size_incr_scalar * self.pop_size))
+                self.n_offsprings += max(1, int(self.pop_size_incr_scalar * self.n_offsprings))
 
-                if self.pop_size + self.n_offsprings > 10000:
-                    self.n_offsprings = int(self.offspring_perc * 10000)
-                    self.pop_size = int(10000 - self.n_offsprings)
-                    self.max_pop_size_reached = True
+                if self.pop_size + self.n_offsprings > MAX_NUMBER_INDIVIDUALS:
+                    self.pop_size = int(self.pop_size_perc * MAX_NUMBER_INDIVIDUALS)
+                    self.n_offsprings = int(MAX_NUMBER_INDIVIDUALS - self.pop_size)
 
         return super()._advance(infills, **kwargs)
 
@@ -202,6 +210,14 @@ class NSGA2(Algorithm):
         """
         if n_offsprings is None:
             n_offsprings = int(pop_size / 2)
+
+        if pop_size + n_offsprings > MAX_NUMBER_INDIVIDUALS:
+            pop_size = int(pop_size / (pop_size + n_offsprings) * MAX_NUMBER_INDIVIDUALS)
+            n_offsprings = int(MAX_NUMBER_INDIVIDUALS - pop_size)
+            logger.warning(
+                "The pop size + number of offspring is larger than the max number of individuals permitted,"
+                f"reducing pop size and number of offpsring to {pop_size} and {n_offsprings} respectively."
+            )
 
         if sampling == SamplingMethod.ESTIMATE:
             sampling_cls = EstimateBasedSampling
