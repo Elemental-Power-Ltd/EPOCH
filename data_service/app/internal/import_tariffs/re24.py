@@ -20,6 +20,7 @@ from app.models.weather import WeatherRequest
 from app.routers.client_data import get_location
 from app.routers.weather import get_weather
 
+
 async def get_re24_wholesale_tariff(
     start_ts: datetime.datetime,
     end_ts: datetime.datetime,
@@ -121,7 +122,7 @@ async def get_re24_approximate_ppa(
     grid_tariff: pd.DataFrame | float,
     wind_cost: float = 18.0,
     solar_cost: float = 16.0,
- )-> pd.DataFrame:
+) -> pd.DataFrame:
     """
     Get an approximation of what a client would pay for a PPA via RE24.
 
