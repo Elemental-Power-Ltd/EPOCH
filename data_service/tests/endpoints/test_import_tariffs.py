@@ -286,6 +286,7 @@ class TestImportTariffs:
             assert hi == pytest.approx(mid * 1.5)
             assert lo == pytest.approx(mid * 0.49)
 
+    @pytest.mark.external
     @pytest.mark.asyncio
     async def test_generate_and_get_ppa(
         self,
@@ -425,6 +426,7 @@ class TestImportTariffs:
 
 
 class TestRE24PPA:
+    @pytest.mark.external
     @pytest.mark.asyncio
     async def test_units_correct(self, client: httpx.AsyncClient) -> None:
         """Test that we get the units correct in p / kWh."""
@@ -443,6 +445,7 @@ class TestRE24PPA:
         assert all(result.cost <= 100.0)
         assert all(result.cost > 1.0)
 
+    @pytest.mark.external
     @pytest.mark.asyncio
     async def test_get_three(self, client: httpx.AsyncClient) -> None:
         """Test that we get three tiers of prices."""
@@ -460,6 +463,7 @@ class TestRE24PPA:
         )
         assert len(result.cost.unique()) == 3
 
+    @pytest.mark.external
     @pytest.mark.asyncio
     async def test_dataframe_grid(self, client: httpx.AsyncClient) -> None:
         """Test that we can handle a grid dataframe tariff."""
@@ -477,6 +481,7 @@ class TestRE24PPA:
         assert len(result.cost.unique()) == 3
         assert not result["cost"].isna().any()
 
+    @pytest.mark.external
     @pytest.mark.asyncio
     async def test_dataframe_varying_grid(self, client: httpx.AsyncClient) -> None:
         """Test that we can handle a varying grid dataframe tariff."""
