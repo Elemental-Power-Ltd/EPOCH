@@ -66,7 +66,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         pd.DataFrame
             Heating load of start_ts and heating in kWh
         """
-        res = await pool.fetch(
+        res = await db_pool.fetch(
             """
             SELECT
                 start_ts,

@@ -249,10 +249,10 @@ THIRD_PARTY_INTERVENTIONS = {
         u_value=MATERIAL_U_VALUES["Glazed wood or PVC-U door Metal Double Glazed, low-E glass"],
     ),
     "Replacement External Windows": CostedIntervention(
-        acts_on=StructuralArea.WindowArea, cost=1001.83, u_value=MATERIAL_U_VALUES["Metal Double Glazed"]
+        acts_on=StructuralArea.WindowArea, cost=1001.83, u_value=MATERIAL_U_VALUES["Metal Triple Glazed, low-E glass"]
     ),
     "Secondary Glazing": CostedIntervention(
-        acts_on=StructuralArea.WindowArea, cost=275.37, u_value=MATERIAL_U_VALUES["Metal Double Glazed"]
+        acts_on=StructuralArea.WindowArea, cost=275.37, u_value=MATERIAL_U_VALUES["Metal Triple Glazed, low-E glass"]
     ),
     "Fineo Glazing": CostedIntervention(
         acts_on=StructuralArea.WindowArea, cost=586.74, u_value=MATERIAL_U_VALUES["Fineo Glazing"]

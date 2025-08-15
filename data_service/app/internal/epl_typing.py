@@ -38,5 +38,6 @@ DailyDataFrame = NewType("DailyDataFrame", pd.DataFrame)
 MonthlyDataFrame = NewType("MonthlyDataFrame", pd.DataFrame)
 WeatherDataFrame = NewType("WeatherDataFrame", pd.DataFrame)
 
-type db_conn_t = asyncpg.pool.Pool | asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
+type db_pool_t = asyncpg.pool.Pool
+type db_conn_t = db_pool_t | asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
 type Jsonable = dict[str, Jsonable] | list[Jsonable] | str | int | float | bool | None
