@@ -1,4 +1,8 @@
+import pytest
+from pydantic import ValidationError
+
 from app.internal.site_range import count_parameters_in_asset, count_parameters_to_optimise
+from app.models.core import Site
 from app.models.epoch_types.site_range_type import Building, Config, HeatPump, HeatSourceEnum, SiteRange, SolarPanel
 
 
@@ -117,3 +121,27 @@ class TestCountParametersInAsset:
         # 3 varying parameters: COMPONENT_IS_MANDATORY, heat_source, send_temp
         # 1 fixed parameter: heat_power
         assert count_parameters_in_asset(heat_pump.model_dump()) == 3
+
+
+class TestSiteIndices:
+    """Test that we regret site data/range setups where the requested indices are out of range."""
+
+    def test_index_all_good(self, default_site: Site) -> None:
+        """Test that with a reasonable default fabric index we're fine"""
+        assert default_site
+
+    def test_tariff_wrong(self, default_site: Site) -> None:
+        """Test that we fail if there's a bad tariff index."""
+        bad_site = default_site.model_copy(deep=True)
+        assert bad_site.site_range.grid is not None
+        bad_site.site_range.grid.tariff_index = [0, 1, 2, 3, 4, 5]
+        with pytest.raises(ValidationError, match="tariff_index"):
+            Site.model_validate(bad_site)
+
+    def test_fabric_wrong(self, default_site: Site) -> None:
+        """Test that we fail if there's a bad fabric index."""
+        bad_site = default_site.model_copy(deep=True)
+        assert bad_site.site_range.building is not None
+        bad_site.site_range.building.fabric_intervention_index = [0, 1, 2, 3, 4, 5]
+        with pytest.raises(ValidationError, match="fabric_index"):
+            Site.model_validate(bad_site)
