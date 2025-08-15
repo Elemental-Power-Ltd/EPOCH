@@ -7,15 +7,16 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
-from ..internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
-from ..internal.epl_typing import DailyDataFrame, MonthlyDataFrame
-from ..internal.site_manager.bundles import file_self_with_bundle
-from ..internal.utils import get_bank_holidays
-from ..internal.utils.uuid import uuid7
-from ..models.core import DatasetIDWithTime, FuelEnum
-from ..models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
-from ..models.meter_data import ReadingTypeEnum
+from app.dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
+from app.internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
+from app.internal.epl_typing import DailyDataFrame, MonthlyDataFrame
+from app.internal.site_manager.bundles import file_self_with_bundle
+from app.internal.utils import get_bank_holidays
+from app.internal.utils.bank_holidays import UKCountryEnum
+from app.internal.utils.uuid import uuid7
+from app.models.core import DatasetIDWithTime, FuelEnum
+from app.models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
+from app.models.meter_data import ReadingTypeEnum
 
 router = APIRouter()
 
@@ -65,7 +66,7 @@ async def generate_electricity_load(
     raw_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "consumption_kwh"])
     raw_df.index = pd.DatetimeIndex(pd.to_datetime(raw_df["start_ts"]))
 
-    public_holidays = await get_bank_holidays("England", http_client=http_client)
+    public_holidays = get_bank_holidays(UKCountryEnum.England)
     if reading_type != "halfhourly":
         daily_df = monthly_to_daily_eload(MonthlyDataFrame(raw_df), public_holidays=public_holidays)
     else:
