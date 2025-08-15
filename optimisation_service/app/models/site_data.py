@@ -1,8 +1,8 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from app.models.database import dataset_id_t
 from app.models.epoch_types.task_data_type import TaskData
@@ -161,6 +161,64 @@ class EpochSiteData(BaseModel):
 
     ashp_input_table: list[list[float]]
     ashp_output_table: list[list[float]]
+
+    @model_validator(mode="after")
+    def validate_lengths(self) -> Self:
+        """
+        Check that the lengths of the site data are all the same, and return a helpful error message if not.
+
+        A common failure pattern in the data service is to send blank arrays, or have some mismatching.
+        This causes trouble further down in EPOCH, so reject the construction of the SiteData here by
+        checking if any are zero or shorter than expected.
+        The expected length is the maximum length we see, so you'll get a slightly odd message
+        if one is too long.
+
+        Parameters
+        ----------
+        self
+            EpochSiteData to validate
+
+        Returns
+        -------
+        Self
+            If all lengths match
+
+        Raises
+        ------
+        ValueError
+            If any arrays are zero length, or shorter than expected.
+        """
+        lengths = {
+            "building_eload": len(self.building_eload),
+            "building_hload": len(self.building_hload),
+            "ev_eload": len(self.building_eload),
+            "dhw_demand": len(self.dhw_demand),
+            "air_temperature": len(self.air_temperature),
+            "grid_co2": len(self.grid_co2),
+        }
+        for idx, solar in enumerate(self.solar_yields):
+            lengths[f"solar_{idx}"] = len(solar)
+        for idx, tariff in enumerate(self.import_tariffs):
+            lengths[f"tariff_{idx}"] = len(tariff)
+        for idx, fabric in enumerate(self.fabric_interventions):
+            lengths[f"fabric_{idx}"] = len(fabric.reduced_hload)
+
+        all_nonzero = all(val > 0 for val in lengths.values())
+        longest_len = max(lengths.values())
+        all_same = all(val == longest_len for val in lengths.values())
+
+        if all_nonzero and all_same:
+            # We're all good!
+            return self
+
+        if not all_nonzero:
+            zero_length_arrays = [key for key, val in lengths.items() if val == 0]
+            raise ValueError(f"Got zero length arrays in EpochSiteData: {zero_length_arrays}")
+
+        if not all_same:
+            shorter_arrays = [(key, val) for key, val in lengths.items() if val < longest_len]
+            raise ValueError(f"Got shorter length arrays in EpochSiteData: {shorter_arrays} but expected {longest_len}")
+        raise ValueError(f"Problem with lengths in EpochSiteData: {lengths}")
 
 
 SiteMetaData = RemoteMetaData | LocalMetaData
