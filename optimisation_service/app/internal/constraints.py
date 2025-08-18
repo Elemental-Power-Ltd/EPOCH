@@ -104,6 +104,7 @@ def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01, dhw_tole
     Total heat shortfall is bounded above by heat_tolerance percent of the site's central heating load.
     The total DHW shortfall is separated from the central heating shortfall.
     Total electrical shortfall is bounded above by 1 kWh to allow for some floating point issues.
+    We also constrain the total shortfall across both heat metrics as an edge case.
 
     Parameters
     ----------
@@ -134,23 +135,27 @@ def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01, dhw_tole
         Metric.total_electrical_shortfall: Bounds(max=1),
         Metric.total_ch_shortfall: Bounds(max=ch_max),
         Metric.total_dhw_shortfall: Bounds(max=dhw_max),
+        # We keep the total heat shortfall just in case it's useful elsewhere!
+        Metric.total_heat_shortfall: Bounds(max=ch_max + dhw_max),
     }
     return constraints
 
 
 def apply_default_constraints(
-    exsiting_portfolio: list[Site], existing_constraints: Constraints
+    existing_portfolio: list[Site], existing_constraints: Constraints
 ) -> tuple[list[Site], Constraints]:
     """
     Apply default constraints to existing portfolio and site constraints.
 
     These are:
-    - Electrical and Heat shortfall upper bounds on the sites.
-      We want to make sure that the solutions provided are viable energetically.
+    - Electrical shortfall upper bounds on the sites.
+    - Central heating shortfall upper bounds
+    - Domestic hot water upper bounds
+    We want to make sure that the solutions provided are viable energetically.
 
     Parameters
     ----------
-    exsiting_portfolio
+    existing_portfolio
         The associated portfolio.
     existing_constraints
         The existing portfolio constraints.
@@ -163,7 +168,7 @@ def apply_default_constraints(
         The existing portfolio constraints with default constraints applied to them.
     """
     portfolio = []
-    for site in exsiting_portfolio:
+    for site in existing_portfolio:
         shortfall_constraints = get_shortfall_constraints(site=site)
         exsiting_site_constraints = site.constraints
         site.constraints = merge_constraints([exsiting_site_constraints, shortfall_constraints])
