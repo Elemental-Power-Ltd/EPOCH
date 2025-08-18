@@ -10,7 +10,7 @@ import httpx
 from fastapi import Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 
-from app.models.core import OptimisationResultEntry, Task
+from app.models.core import OptimisationResultEntry, Site, Task
 from app.models.database import dataset_id_t
 from app.models.simulate import EpochInputData, ResultReproConfig
 from app.models.site_data import DatasetTypeEnum, EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
@@ -54,6 +54,9 @@ class DataManager:
 
             elif site_data.loc == FileLoc.local:
                 site._epoch_data = load_epoch_data_from_file(Path(site_data.path))
+            # Check here that the data is good, as we partially constructed the site
+            # before we got going.
+            site = Site.model_validate(site)
 
     async def get_latest_site_data(self, site_data: RemoteMetaData) -> EpochSiteData:
         """

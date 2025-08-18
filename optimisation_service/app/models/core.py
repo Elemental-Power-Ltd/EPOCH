@@ -2,8 +2,9 @@ import datetime
 import logging
 import math
 from pathlib import Path
+from typing import Self
 
-from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr
+from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr, model_validator
 
 from app.internal.uuid7 import uuid7
 from app.models.constraints import Constraints
@@ -37,6 +38,61 @@ class Site(BaseModel):
     )
     _epoch_data: EpochSiteData = PrivateAttr()
     _epoch_data_dir: Path = PrivateAttr()
+
+    @model_validator(mode="after")
+    def check_tariff_index(self) -> Self:
+        """
+        Check that all the tariff indices in the site range correspond to real tariffs.
+
+        Returns
+        -------
+        self
+            If we passed the check
+
+        Raises
+        ------
+        ValueError
+            If any tariff indices are outside the range of available tariffs
+        """
+        if self.site_range.grid is None:
+            # If we've got no grid, then it doesn't matter what tariff we look at
+            return self
+        if not hasattr(self, "_epoch_data"):
+            # We haven't initialised the data yet
+            return self
+        tariff_indices = self.site_range.grid.tariff_index
+        available_tariffs = len(self._epoch_data.import_tariffs)
+        if not all(item <= available_tariffs for item in tariff_indices):
+            raise ValueError(f"Requested tariff_index out of feasible range: {tariff_indices} but max is {available_tariffs}")
+        return self
+
+    @model_validator(mode="after")
+    def check_fabric_index(self) -> Self:
+        """
+        Check that all the fabric indices in the site range correspond to real heatloads.
+
+        Returns
+        -------
+        self
+            If we passed the check
+
+        Raises
+        ------
+        ValueError
+            If any fabric indices are outside the range of available heatloads
+        """
+        if self.site_range.building is None:
+            # If we've got no building, then it doesn't matter what tariff we look at
+            return self
+        if not hasattr(self, "_epoch_data"):
+            # We haven't initialised the data yet
+            return self
+        fabric_indices = self.site_range.building.fabric_intervention_index
+
+        available_fabrics = len(self._epoch_data.fabric_interventions)
+        if not all(item <= available_fabrics for item in fabric_indices):
+            raise ValueError(f"Requested fabric_index out of feasible range: {fabric_indices} but max is {available_fabrics}")
+        return self
 
 
 class EndpointTask(Site):
