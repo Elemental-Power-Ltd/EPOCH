@@ -109,6 +109,7 @@ def daily_to_hh_eload(
     target_hh_observed_df: HHDataFrame | None = None,
     weekend_inds: tuple[int,...] = (6,),
     division: str = "england-and-wales",
+    rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
     """
     Turn a set of daily electricity usages into half hourly meter data.
@@ -138,6 +139,8 @@ def daily_to_hh_eload(
     division (optional)
         A string -- one of {"england-and-wales", "scotland", "northern-ireland"} -- specifying the division of the UK to use to
         determine the public holidays.
+    rng
+        Numpy random generator for reproducible results
 
     Returns
     -------
@@ -145,6 +148,9 @@ def daily_to_hh_eload(
     """
     if (resid_model_path is None) == (target_hh_observed_df is None):
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided.")
+
+    if rng is None:
+        rng = np.random.default_rng()
 
     use_client_hh = False if target_hh_observed_df is None else True
 
@@ -268,7 +274,7 @@ def daily_to_hh_eload(
 
     ## - then pre-generate white noise to reduce runtime...
     num_inactive = target_daily_inactive_df.shape[0]
-    eps = np.random.normal(scale = ARMA_scale_inactive_target, size=(num_inactive, 48))
+    eps = rng.normal(scale = ARMA_scale_inactive_target, size=(num_inactive, 48))
     sims = np.empty_like(eps)
     ## ...generate ARMA realisations...
     for i in range(num_inactive):
@@ -282,7 +288,7 @@ def daily_to_hh_eload(
 
     ## - repeat for active dates
     num_active = target_daily_active_df.shape[0]
-    eps = np.random.normal(scale = ARMA_scale_active_target, size=(num_active, 48))
+    eps = rng.normal(scale = ARMA_scale_active_target, size=(num_active, 48))
     sims = np.empty_like(eps)
     for i in range(num_active):
         sims[i] = ARMA_model_active.generate_sample(
