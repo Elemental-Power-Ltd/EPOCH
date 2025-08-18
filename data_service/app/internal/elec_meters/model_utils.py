@@ -18,6 +18,8 @@ from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction  # type: 
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.arima_process import ArmaProcess
 
+from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,6 +34,13 @@ class ScalerTypeEnum(StrEnum):
     Val = "val"
     Test = "test"
 
+class OffsetMethodEnum(StrEnum):
+    """Different methods for allocating baselines in 'active day' daily consumption."""
+
+    MinWeekly = "min-weekly"
+    Recent = "recent"
+    RecentOrNext = "recent-or-next"
+    DetectChgpt = "detect-chgpt"
 
 class CustomMinMaxScaler(MinMaxScaler):
     """
@@ -341,19 +350,18 @@ def load_all_scalers(
     }
 
 
-def allocate_active_offsets(active_daily, inactive_daily, method="detect-chgpt"):
+def allocate_active_offsets(
+        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame, method: str="detect-chgpt"
+) -> np.ndarray:
     """
     Establish value for offset component of 'business as usual' daily aggregates.
 
     In order to model the intraday electricity demand profile for a site that is active (i.e. operating on a
-    normal day), we first establish a offset level: this is the component of the daily demand that corresponds
+    normal day), we first establish an offset level: this is the component of the daily demand that corresponds
     to the site's usage on a inactive day (e.g. weekends, bank holidays).
 
     We establish the offset for each active day by comparing to the surrounding days that are already marked as
-    inactive. For each given active day, we allocate one of the following three values as its offset:
-        - for each fixed week (Mon-Sun inclusive), we use the minimum value in the labelled inactive days
-        - we use the value for the most recent labelled inactive day
-        - we use whichever value is closer in aggregate, the most recent or the next inactive day
+    inactive.
 
     Parameters
     ----------
@@ -374,134 +382,173 @@ def allocate_active_offsets(active_daily, inactive_daily, method="detect-chgpt")
     """
     # # switch between options for baselining each active day: either use:
 
-    match method:
-        case 'min-weekly':
-            # use min "inactive day" value in each fixed week (Mon-Sun inclusive; labelled on the Sunday)
-            weeklymin_inactive = inactive_daily.resample(rule="W-SUN", closed="right").min().ffill()
-                # from inactive days, take minimum over each week; forward fill if a week contains no inactive days
-                # use min (rather than e.g. median) as we want to avoid active daily values being less than the allocated offset
-            # find position in index of weeklymin_inactive that each record of active_daily would be inserted
-            active_daily_index = active_daily.index.to_numpy()
-            pos = np.searchsorted(weeklymin_inactive.index.to_numpy(), active_daily_index, side="left")
-                # use "left": weeklymin_inactive.index uses the Sunday as a label, so days in the week indexed a[i] are indexed by
-                #  v with a[i-1] < v <= a[i].
-            # allocate the corresponding weekly offset to each index of active_daily
-            active_daily_offset = np.empty_like(active_daily_index, dtype=float)
-            active_daily_offset[pos>=0] = weeklymin_inactive.iloc[pos[pos>=0]] # valid lookups
-        case 'recent':
-            # as active_daily_offset, use value from most recent inactive day
-            # find position in index of inactive_daily that each record of active_daily would be inserted
-            active_daily_index = active_daily.index.to_numpy()
-            pos = np.searchsorted(inactive_daily.index.to_numpy(), active_daily_index, side="right") - 1
-                # here, we're looking for the 'most recent' reference index a for each given index v. This is a[i-1] where
-                # a[i-1] <= v < a[i]. So we use side="right" and subtract one from the returned index, to get i-1.
-            # allocate the corresponding value of inactive_daily to each index of active_daily
-            active_daily_offset = np.empty_like(active_daily_index, dtype=float)
-            active_daily_offset[pos>=0] = inactive_daily.iloc[pos[pos>=0]] # valid lookups
-            active_daily_offset[pos<0] = inactive_daily.iloc[0] # default for active dates before first inactive date
-        case 'recent-or-next':
-            # as active_daily_offset, use either most recent or next inactive day, whichever is closer in aggregate value
-                # logic here is that the offset represents the energy usage without daily profile
-                # changes in offset could start on active days or inactive days; in each case, a given active day's
-                # offset is most likely to correspond to the inactive day that is closest in aggregate value
-            # find position in index of inactive_daily that each record of active_daily would be inserted
-            active_daily_index = active_daily.index.to_numpy()
-            pos = np.searchsorted(inactive_daily.index.to_numpy(), active_daily_index, side="left") - 1
-            # allocate the corresponding value of inactive_daily to each index of active_daily
-            prev_inactive = np.empty_like(active_daily_index, dtype=float)
-            prev_inactive[pos>=0] = inactive_daily.iloc[pos[pos>=0]] # valid lookups for most recent inactive value
-            prev_inactive[pos<0] = inactive_daily.iloc[0] # before first ref date
-            # allocate the corresponding value of inactive_daily to each index of active_daily
-            next_inactive = np.empty_like(active_daily_index, dtype=float)
-            next_inactive[pos>=0] = inactive_daily.iloc[pos[pos>=0]+1] # valid lookups for next inactive value
-            next_inactive[pos<0] = inactive_daily.iloc[0] # before first ref date
+    try:
+        method_enum = OffsetMethodEnum(method)
+    except ValueError:
+        print("No matching case found")
+        return
 
-            # use masking to return the offset that gives the smallest positive difference in aggregate from the active value
-                # first replace the negative values with np.inf
-            prev_inactive_posdiff = np.where(active_daily["consumption_kWh"] - prev_inactive >= 0,
-                                                active_daily["consumption_kWh"] - prev_inactive, np.inf)
-            next_inactive_posdiff = np.where(active_daily["consumption_kWh"] - next_inactive >= 0,
-                                    active_daily["consumption_kWh"] - next_inactive, np.inf)
-                # then create a mask that selects the indices for which is the smaller positive diff
-            use_prevoffset = prev_inactive_posdiff <= next_inactive_posdiff
-                # select the previous or next inactive day accordingly
-            active_daily_offset = np.where(use_prevoffset, prev_inactive, next_inactive)
-        case 'detect-chgpt':
-            # for each interval between inactive dates, we detect the point at which the baseline changes:
-            #  - if the bookending inactive values are both lower than the active values, we choose the date in the interval that
-            #    results in the minimum squared residual between active and inactive values.
-            #  - if one of the bookending inactive values is above the active values, we use this to constrain the possible dates
-            inactive_daily_index = inactive_daily.index.to_numpy()
-            inactive_daily_vals = inactive_daily.to_numpy()
-            active_daily_index = active_daily.index.to_numpy()
-            active_daily_vals = active_daily.to_numpy()
-
-            active_daily_offset = np.empty_like(active_daily_index, dtype=float)
-
-            # deal separately with the case where there are active days before or after all inactive days
-            if (active_daily_index[0] < inactive_daily_index[0]):
-                mask = (active_daily_index < inactive_daily_index[0])
-                idx = np.where(mask)[0]
-                active_daily_offset[idx] = inactive_daily_vals[0]
-            if (active_daily_index[-1] > inactive_daily_index[-1]):
-                mask = (active_daily_index > inactive_daily_index[-1])
-                idx = np.where(mask)[0]
-                active_daily_offset[idx] = inactive_daily_vals[-1]
-
-            for i in range(len(inactive_daily_index)-1):
-                t0, t1 = inactive_daily_index[i], inactive_daily_index[i+1]
-                a, b = inactive_daily_vals[i], inactive_daily_vals[i+1]
-
-                # isolate segment of active days between inactive days
-                mask = np.logical_and(active_daily_index>=t0, active_daily_index<=t1)
-                idx = np.where(mask)[0]
-                if len(idx)==0:
-                    continue
-                signal = active_daily_vals[idx]
-                n = len(signal)
-
-                # compute residual cost of assigning baseline a vs b
-                cost = np.full(n + 1, np.inf) # initialise total cost = np.inf
-                sum_sig = np.cumsum(signal)
-                sum_sig2 = np.cumsum(signal**2)
-
-                for k in range(n+1): # try changepoint at position k in signal
-                    if np.all(signal[:k] >= a) and np.all(signal[k:] >= b):
-                        # if a, b are both valid baselines for this split, then calculate the cost,
-                        #   o/w ignore k as a possible changepoint
-                        if k==0:
-                            cost[k] = np.sum((signal - b)**2)
-                        elif k==n:
-                            cost[k] = np.sum((signal - a)**2)
-                        else:
-                            # minimise total cost = cost_a + cost_b
-                            cost_a = sum_sig2[k-1] - 2*a*sum_sig[k-1] + k*a**2
-                            cost_b = (sum_sig2[-1]-sum_sig2[k-1]) - 2*b*(sum_sig[-1]-sum_sig[k-1]) + (n-k)*b**2
-                            cost[k] = cost_a + cost_b
-
-                cp = np.argmin(cost)
-                if cost[cp]==np.inf: # no k for which a,b are both valid baselines
-                    # fallback: try all-a or all-b
-                    if np.all(signal >= a):
-                        active_daily_offset[idx] = a
-                    elif np.all(signal >= b):
-                        active_daily_offset[idx] = b
-                    else: # at least one value in signal is less than a (and sim. for b)
-                        active_daily_offset[idx] = np.min((a,b))
-                elif cp==0:
-                    active_daily_offset[idx] = b
-                elif cp==n:
-                    active_daily_offset[idx] = a
-                else:
-                    active_daily_offset[idx[:cp]] = a
-                    active_daily_offset[idx[cp:]] = b
-
-        case _:
-            raise ValueError("No matching case found")
+    match method_enum:
+        case OffsetMethodEnum.MinWeekly:
+            active_daily_offset = handle_offsets_min_weekly(active_daily, inactive_daily)
+        case OffsetMethodEnum.Recent:
+            active_daily_offset = handle_offsets_recent(active_daily, inactive_daily)
+        case OffsetMethodEnum.RecentOrNext:
+            active_daily_offset = handle_offsets_recent_or_next(active_daily, inactive_daily)
+        case OffsetMethodEnum.DetectChgpt:
+            active_daily_offset = handle_offsets_chgpt(active_daily, inactive_daily)
 
     return active_daily_offset
 
-def split_and_baseline_active_days(df_daily_all, weekend_inds=(5,6), division="england-and-wales"):
+def handle_offsets_min_weekly(
+        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
+) -> np.ndarray:
+    """Establish active day offsets: for each fixed week, use the min value in the labelled inactive days."""
+    # use min "inactive day" value in each fixed week (Mon-Sun inclusive; labelled on the Sunday)
+    weeklymin_inactive = inactive_daily.resample(rule="W-SUN", closed="right").min().ffill()
+        # from inactive days, take minimum over each week; forward fill if a week contains no inactive days
+        # use min (rather than e.g. median) as we want to avoid active daily values being less than the allocated offset
+    # find position in index of weeklymin_inactive that each record of active_daily would be inserted
+    active_daily_index = active_daily.index.to_numpy()
+    pos = np.searchsorted(weeklymin_inactive.index.to_numpy(), active_daily_index, side="left")
+        # use "left": weeklymin_inactive.index uses the Sunday as a label, so days in the week indexed a[i] are indexed by
+        #  v with a[i-1] < v <= a[i].
+    # allocate the corresponding weekly offset to each index of active_daily
+    active_daily_offset = np.empty_like(active_daily_index, dtype=float)
+    active_daily_offset[pos>=0] = weeklymin_inactive.iloc[pos[pos>=0]] # valid lookups
+    return active_daily_offset
+
+def handle_offsets_recent(
+        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
+) -> np.ndarray:
+    """Establish active day offsets: use the value for the most recent labelled inactive day."""
+    # as active_daily_offset, use value from most recent inactive day
+    # find position in index of inactive_daily that each record of active_daily would be inserted
+    active_daily_index = active_daily.index.to_numpy()
+    pos = np.searchsorted(inactive_daily.index.to_numpy(), active_daily_index, side="right") - 1
+        # here, we're looking for the 'most recent' reference index a for each given index v. This is a[i-1] where
+        # a[i-1] <= v < a[i]. So we use side="right" and subtract one from the returned index, to get i-1.
+    # allocate the corresponding value of inactive_daily to each index of active_daily
+    active_daily_offset = np.empty_like(active_daily_index, dtype=float)
+    active_daily_offset[pos>=0] = inactive_daily.iloc[pos[pos>=0]] # valid lookups
+    active_daily_offset[pos<0] = inactive_daily.iloc[0] # default for active dates before first inactive date
+    return active_daily_offset
+
+def handle_offsets_recent_or_next(
+        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
+) -> np.ndarray:
+    """Establish active day offsets: use whichever value is closer in aggregate, the most recent or the next inactive day."""
+    # as active_daily_offset, use either most recent or next inactive day, whichever is closer in aggregate value
+        # logic here is that the offset represents the energy usage without daily profile
+        # changes in offset could start on active days or inactive days; in each case, a given active day's
+        # offset is most likely to correspond to the inactive day that is closest in aggregate value
+    # find position in index of inactive_daily that each record of active_daily would be inserted
+    active_daily_index = active_daily.index.to_numpy()
+    pos = np.searchsorted(inactive_daily.index.to_numpy(), active_daily_index, side="left") - 1
+    # allocate the corresponding value of inactive_daily to each index of active_daily
+    prev_inactive = np.empty_like(active_daily_index, dtype=float)
+    prev_inactive[pos>=0] = inactive_daily.iloc[pos[pos>=0]] # valid lookups for most recent inactive value
+    prev_inactive[pos<0] = inactive_daily.iloc[0] # before first ref date
+    # allocate the corresponding value of inactive_daily to each index of active_daily
+    next_inactive = np.empty_like(active_daily_index, dtype=float)
+    next_inactive[pos>=0] = inactive_daily.iloc[pos[pos>=0]+1] # valid lookups for next inactive value
+    next_inactive[pos<0] = inactive_daily.iloc[0] # before first ref date
+
+    # use masking to return the offset that gives the smallest positive difference in aggregate from the active value
+        # first replace the negative values with np.inf
+    prev_inactive_posdiff = np.where(active_daily["consumption_kWh"] - prev_inactive >= 0,
+                                        active_daily["consumption_kWh"] - prev_inactive, np.inf)
+    next_inactive_posdiff = np.where(active_daily["consumption_kWh"] - next_inactive >= 0,
+                            active_daily["consumption_kWh"] - next_inactive, np.inf)
+        # then create a mask that selects the indices for which is the smaller positive diff
+    use_prevoffset = prev_inactive_posdiff <= next_inactive_posdiff
+        # select the previous or next inactive day accordingly
+    active_daily_offset = np.where(use_prevoffset, prev_inactive, next_inactive)
+    return active_daily_offset
+
+def handle_offsets_chgpt(
+        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
+) -> np.ndarray:
+    """
+    Establish active day offsets.
+
+    For each set of contiguous active days detect the day where the offset changes from the most recent to the next inactive day
+    value.
+    """
+    # for each interval between inactive dates, we detect the point at which the baseline changes:
+    #  - if the bookending inactive values are both lower than the active values, we choose the date in the interval that
+    #    results in the minimum squared residual between active and inactive values.
+    #  - if one of the bookending inactive values is above the active values, we use this to constrain the possible dates
+    inactive_daily_index = inactive_daily.index.to_numpy()
+    inactive_daily_vals = inactive_daily.to_numpy()
+    active_daily_index = active_daily.index.to_numpy()
+    active_daily_vals = active_daily.to_numpy()
+
+    active_daily_offset = np.empty_like(active_daily_index, dtype=float)
+
+    # deal separately with the case where there are active days before or after all inactive days
+    if (active_daily_index[0] < inactive_daily_index[0]):
+        mask = (active_daily_index < inactive_daily_index[0])
+        idx = np.where(mask)[0]
+        active_daily_offset[idx] = inactive_daily_vals[0]
+    if (active_daily_index[-1] > inactive_daily_index[-1]):
+        mask = (active_daily_index > inactive_daily_index[-1])
+        idx = np.where(mask)[0]
+        active_daily_offset[idx] = inactive_daily_vals[-1]
+
+    for i in range(len(inactive_daily_index)-1):
+        t0, t1 = inactive_daily_index[i], inactive_daily_index[i+1]
+        a, b = inactive_daily_vals[i], inactive_daily_vals[i+1]
+
+        # isolate segment of active days between inactive days
+        mask = np.logical_and(active_daily_index>=t0, active_daily_index<=t1)
+        idx = np.where(mask)[0]
+        if len(idx)==0:
+            continue
+        signal = active_daily_vals[idx]
+        n = len(signal)
+
+        # compute residual cost of assigning baseline a vs b
+        cost = np.full(n + 1, np.inf) # initialise total cost = np.inf
+        sum_sig = np.cumsum(signal)
+        sum_sig2 = np.cumsum(signal**2)
+
+        for k in range(n+1): # try changepoint at position k in signal
+            if np.all(signal[:k] >= a) and np.all(signal[k:] >= b):
+                # if a, b are both valid baselines for this split, then calculate the cost,
+                #   o/w ignore k as a possible changepoint
+                if k==0:
+                    cost[k] = np.sum((signal - b)**2)
+                elif k==n:
+                    cost[k] = np.sum((signal - a)**2)
+                else:
+                    # minimise total cost = cost_a + cost_b
+                    cost_a = sum_sig2[k-1] - 2*a*sum_sig[k-1] + k*a**2
+                    cost_b = (sum_sig2[-1]-sum_sig2[k-1]) - 2*b*(sum_sig[-1]-sum_sig[k-1]) + (n-k)*b**2
+                    cost[k] = cost_a + cost_b
+
+        cp = np.argmin(cost)
+        if cost[cp]==np.inf: # no k for which a,b are both valid baselines
+            # fallback: try all-a or all-b
+            if np.all(signal >= a):
+                active_daily_offset[idx] = a
+            elif np.all(signal >= b):
+                active_daily_offset[idx] = b
+            else: # at least one value in signal is less than a (and sim. for b)
+                active_daily_offset[idx] = np.min((a,b))
+        elif cp==0:
+            active_daily_offset[idx] = b
+        elif cp==n:
+            active_daily_offset[idx] = a
+        else:
+            active_daily_offset[idx[:cp]] = a
+            active_daily_offset[idx[cp:]] = b
+    return active_daily_offset
+
+
+def split_and_baseline_active_days(
+        df_daily_all: DailyDataFrame, weekend_inds: tuple[int,...]=(5,6), division: str="england-and-wales"
+) -> tuple[DailyDataFrame, DailyDataFrame]:
     """
     Extract "inactive days" (i.e. weekend/holidays) from daily aggregates; use these to baseline the remaining days.
 

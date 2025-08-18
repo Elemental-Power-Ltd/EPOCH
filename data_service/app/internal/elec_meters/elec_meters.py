@@ -107,7 +107,7 @@ def daily_to_hh_eload(
     model: VAE_2_0,
     resid_model_path: pathlib.Path | None = None, # partial path to the files describing the residual models
     target_hh_observed_df: HHDataFrame | None = None,
-    weekend_inds: tuple[int] = (6,),
+    weekend_inds: tuple[int,...] = (6,),
     division: str = "england-and-wales",
 ) -> HHDataFrame:
     """
