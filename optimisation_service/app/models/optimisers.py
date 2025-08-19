@@ -8,7 +8,6 @@ from app.models.ga_utils import SamplingMethod
 
 class OptimiserStr(StrEnum):
     NSGA2 = "NSGA2"
-    GridSearch = "GridSearch"
     Bayesian = "Bayesian"
     SeparatedNSGA2 = "SeparatedNSGA2"
     SeparatedNSGA2xNSGA2 = "SeparatedNSGA2xNSGA2"
@@ -155,10 +154,6 @@ class BayesianHyperParam(BaseModel):
     )
 
 
-class GridSearchHyperParam(BaseModel):
-    keep_degenerate: bool = Field(description="Include or exclude degenerate solutions.", default=False)
-
-
 class SeparatedNSGA2xNSGA2HyperParam(BaseModel):
     SeparatedNSGA2_param: NSGA2HyperParam = Field(
         title="SeparatedNSGA2 Hyperparameters",
@@ -177,11 +172,6 @@ class NSGA2Optimiser(BaseModel):
     hyperparameters: NSGA2HyperParam
 
 
-class GridSearchOptimiser(BaseModel):
-    name: Literal[OptimiserStr.GridSearch]
-    hyperparameters: GridSearchHyperParam
-
-
 class BayesianOptimiser(BaseModel):
     name: Literal[OptimiserStr.Bayesian]
     hyperparameters: BayesianHyperParam
@@ -198,5 +188,5 @@ class SeparatedNSGA2xNSGA2Optimiser(BaseModel):
 
 
 type OptimiserTypes = (
-    NSGA2Optimiser | GridSearchOptimiser | BayesianOptimiser | SeparatedNSGA2Optimiser | SeparatedNSGA2xNSGA2Optimiser
+    NSGA2Optimiser | BayesianOptimiser | SeparatedNSGA2Optimiser | SeparatedNSGA2xNSGA2Optimiser
 )

@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
@@ -13,7 +12,6 @@ from app.internal.constraints import apply_default_constraints
 from app.internal.datamanager import DataManagerDep
 from app.internal.epoch_utils import simulation_result_to_pydantic
 from app.internal.ga_utils import strip_annotations
-from app.internal.grid_search import GridSearch, get_epoch_path
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.site_range import count_parameters_to_optimise
@@ -37,7 +35,6 @@ class OptimiserFunc(Enum):
 
     # TODO (2025-08-08 MHJB): should this be a dict instead? feels weird as an enum.
     NSGA2 = NSGA2
-    GridSearch = GridSearch
     SeparatedNSGA2xNSGA2 = SeparatedNSGA2xNSGA2
     SeparatedNSGA2 = SeparatedNSGA2
     Bayesian = Bayesian
@@ -83,7 +80,6 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
             PortfolioOptimisationResult(
                 task_id=task.task_id,
                 portfolio_id=portfolio_id,
-                # FIXME, type is wrong because PortfolioMetrics and SiteMetrics are different
                 metrics=simulation_result_to_pydantic(portfolio_solution.simulation_result),
                 site_results=site_results,
             )
@@ -94,52 +90,29 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
     return OptimisationResultEntry(portfolio=portfolios, tasks=tasks)
 
 
-def check_epoch_versions() -> tuple[str | None, str | None]:
+def get_epoch_version() -> str:
+    import epoch_simulator
+    return epoch_simulator.__version__  # type: ignore
+
+
+def check_epoch_version() -> str | None:
     """
-    Check the versions of EPOCH's headless exe and EPOCH's python bindings.
+    Check that we can get the epoch_simulator's version and log it for information.
 
     Returns
     -------
-    tuple[str | None, str | None]
-        Headless version (if available, None otherwise) and pybind version (if available, None otherwise)
+    str | None
+        The version string of the epoch_simulator (if available, None otherwise)
     """
-    has_headless = False
-    has_bindings = False
 
     try:
-        epoch_path = get_epoch_path()
-        result = subprocess.run([epoch_path, "--version"], capture_output=True, text=True)
-        headless_version = result.stdout.splitlines()[-1]
-        has_headless = True
+        simulator_version = get_epoch_version()
+        logger.info(f"Using EPOCH version: {simulator_version}")
     except Exception as e:
-        headless_version = None
-        logger.debug(f"Failed to fetch headless version! {e}")
+        simulator_version = None
+        logger.warning(f"Failed to fetch epoch_simulator version! {e}")
 
-    try:
-        import epoch_simulator
-
-        pybind_version = epoch_simulator.__version__  # type: ignore
-        has_bindings = True
-    except Exception as e:
-        pybind_version = None
-        logger.debug(f"Failed to fetch epoch_simulator version! {e}")
-
-    if has_headless and has_bindings:
-        if pybind_version != headless_version:
-            logger.error(f"EPOCH version do not match! Headless: {headless_version}. Pybind: {pybind_version}.")
-        else:
-            logger.info(f"Using EPOCH version {headless_version}.")
-
-    elif not has_headless and has_bindings:
-        logger.warning(f"Failed to fetch headless version! Found epoch_simulator version: {pybind_version}")
-
-    elif has_headless and not has_bindings:
-        logger.warning(f"Failed to fetch epoch_simulator version! Found headless version: {headless_version}")
-
-    else:
-        logger.warning("Failed to fetch both headless and epoch_simulator!")
-
-    return headless_version, pybind_version
+    return simulator_version
 
 
 async def process_requests(q: IQueue) -> None:
@@ -152,7 +125,7 @@ async def process_requests(q: IQueue) -> None:
         Queue to process.
     """
     logger.info("Initialising worker loop.")
-    check_epoch_versions()
+    check_epoch_version()
     while True:
         logger.info("Awaiting next task from queue.")
         task, data_manager = await q.get()
@@ -191,7 +164,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
         Optimisation task to be added to queue.
     """
     site = Site(name=endpoint_task.site_data.site_id, site_range=endpoint_task.site_range, site_data=endpoint_task.site_data)
-    _, pybind_version = check_epoch_versions()
+    simulator_version = get_epoch_version()
     epp_task = Task(
         name=endpoint_task.name,
         optimiser=endpoint_task.optimiser,
@@ -200,7 +173,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
         portfolio=[site],
         client_id=endpoint_task.client_id,
         portfolio_constraints={},
-        epoch_version=pybind_version,
+        epoch_version=simulator_version,
     )
 
     response = await submit_portfolio(request=request, task=epp_task, data_manager=data_manager)
