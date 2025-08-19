@@ -49,7 +49,11 @@ def _merge_solutions(sol1: PortfolioSolution, sol2: PortfolioSolution) -> Portfo
     PortfolioSolution
         The combined PortfolioSolution.
     """
-    combined_result = aggregate_site_results([sol1.simulation_result, sol2.simulation_result])
+    sol1_site_results = [site.simulation_result for site in sol1.scenario.values()]
+    sol2_site_results = [site.simulation_result for site in sol2.scenario.values()]
+    all_sites = sol1_site_results + sol2_site_results
+
+    combined_result = aggregate_site_results(all_sites)
 
     return PortfolioSolution(
         scenario=sol1.scenario | sol2.scenario,
