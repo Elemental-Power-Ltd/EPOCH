@@ -58,7 +58,7 @@ def _merge_solutions(sol1: PortfolioSolution, sol2: PortfolioSolution) -> Portfo
     return PortfolioSolution(
         scenario=sol1.scenario | sol2.scenario,
         simulation_result=combined_result,
-        metric_values=simulation_result_to_metric_dict(combined_result)
+        metric_values=simulation_result_to_metric_dict(combined_result),
     )
 
 
@@ -99,8 +99,7 @@ def merge_and_optimise_two_portfolio_solution_lists(
     """
     combinations = product(list1, list2)
     if len(list1) == 1 or len(list2) == 1:
-        return [_merge_solutions(sol1, sol2) for sol1, sol2 in list(combinations)
-        ]
+        return [_merge_solutions(sol1, sol2) for sol1, sol2 in list(combinations)]
     pf: list[PortfolioSolution] = []
     while subset := list(islice(combinations, batch_size)):
         if capex_limit is not None:
@@ -110,10 +109,7 @@ def merge_and_optimise_two_portfolio_solution_lists(
                 if sol1.metric_values[Metric.capex] + sol2.metric_values[Metric.capex] <= capex_limit
             ]
         else:
-            subset_combined = [
-                _merge_solutions(sol1, sol2)
-                for sol1, sol2 in subset
-            ]
+            subset_combined = [_merge_solutions(sol1, sol2) for sol1, sol2 in subset]
 
         pf = portfolio_pareto_front(portfolio_solutions=pf + subset_combined, objectives=objectives)
 

@@ -187,6 +187,4 @@ class SeparatedNSGA2xNSGA2Optimiser(BaseModel):
     hyperparameters: SeparatedNSGA2xNSGA2HyperParam
 
 
-type OptimiserTypes = (
-    NSGA2Optimiser | BayesianOptimiser | SeparatedNSGA2Optimiser | SeparatedNSGA2xNSGA2Optimiser
-)
+type OptimiserTypes = NSGA2Optimiser | BayesianOptimiser | SeparatedNSGA2Optimiser | SeparatedNSGA2xNSGA2Optimiser

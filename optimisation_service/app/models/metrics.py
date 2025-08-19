@@ -8,6 +8,7 @@ class Metric(StrEnum):
 
     This primarily means that the baseline metrics are excluded.
     """
+
     meter_balance = "meter_balance"
     operating_balance = "operating_balance"
     cost_balance = "cost_balance"

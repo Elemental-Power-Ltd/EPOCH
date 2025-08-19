@@ -119,8 +119,7 @@ class PortfolioSimulator:
 
         portfolio_result = aggregate_site_results(results)
         portfolio_metrics = simulation_result_to_metric_dict(portfolio_result)
-        return PortfolioSolution(
-            scenario=site_scenarios, metric_values=portfolio_metrics, simulation_result=portfolio_result)
+        return PortfolioSolution(scenario=site_scenarios, metric_values=portfolio_metrics, simulation_result=portfolio_result)
 
 
 @functools.lru_cache(maxsize=100000)

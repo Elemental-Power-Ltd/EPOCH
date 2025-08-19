@@ -92,6 +92,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
 
 def get_epoch_version() -> str:
     import epoch_simulator
+
     return epoch_simulator.__version__  # type: ignore
 
 
