@@ -301,7 +301,6 @@ class PortfolioOptimisationResult(BaseModel):
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
-    # metrics: PortfolioMetrics = Field(description="The metrics calculated across the whole portfolio.")
     metrics: SimulationMetrics = Field(description="The metrics calculated across the whole portfolio.")
     site_results: list[SiteOptimisationResult] | None = Field(
         default=None,
