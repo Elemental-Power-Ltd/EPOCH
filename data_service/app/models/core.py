@@ -226,8 +226,9 @@ class BundleEntryMetadata(pydantic.BaseModel):
     bundle_id: dataset_id_t = pydantic.Field(description="ID of the linked bundle that this is part of.")
     dataset_id: dataset_id_t = pydantic.Field(description="ID for this individual dataset within the bundle.")
     dataset_type: DatasetTypeEnum = pydantic.Field(description="Type of dataset this is, such as ElectricityMeterData")
-    dataset_subtype: Any = pydantic.Field(
-        description="JSON serialisable subtype for this dataset, maybe a solar location or tariff type."
+    dataset_subtype: Any | None = pydantic.Field(
+        default=None,
+        description="JSON serialisable subtype for this dataset, maybe a solar location or tariff type. Defaults to None.",
     )
     dataset_order: int | None = pydantic.Field(
         description="Order of these datasets within the bundle; especially useful for sorting subtypes such as import tariffs.",

@@ -13,6 +13,7 @@ import pytest_asyncio
 
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture
@@ -101,16 +102,37 @@ class TestHeatingLoad:
     async def test_generate_THIRD_PARTY(self, uploaded_meter_data: dict[str, Jsonable], client: httpx.AsyncClient) -> None:
         dataset_id = uploaded_meter_data["dataset_id"]
 
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2023, month=2, day=1, tzinfo=datetime.UTC)
+        bundle_id = str(uuid7())
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": bundle_id,
+                "name": "Test Generate THIRD_PARTY",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
+
         no_intervention_result = await client.post(
             "/generate-heating-load",
             json={
                 "dataset_id": dataset_id,
-                "start_ts": "2023-01-01T00:00:00Z",
-                "end_ts": "2023-02-01T00:00:00Z",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
                 "interventions": [],
                 "savings_percentage": 0.0,
                 "model_type": "regression",
                 "surveyed_sizes": {"total_floor_area": 200, "exterior_wall_area": 100},
+                "bundle_metadata": {
+                    "bundle_id": bundle_id,
+                    "dataset_id": str(uuid7()),
+                    "dataset_type": "HeatingLoad",
+                    "dataset_subtype": [],
+                },
             },
         )
         assert no_intervention_result.status_code == 200, no_intervention_result.text
@@ -118,11 +140,17 @@ class TestHeatingLoad:
             "/generate-heating-load",
             json={
                 "dataset_id": dataset_id,
-                "start_ts": "2023-01-01T00:00:00Z",
-                "end_ts": "2023-02-01T00:00:00Z",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
                 "interventions": ["Fineo Glazing", "Insulation to ceiling void"],
                 "savings_percentage": 0.12,
                 "surveyed_sizes": {"total_floor_area": 88, "exterior_wall_area": 100},
+                "bundle_metadata": {
+                    "bundle_id": bundle_id,
+                    "dataset_id": str(uuid7()),
+                    "dataset_type": "HeatingLoad",
+                    "dataset_subtype": ["Fineo Glazing", "Insulation to ceiling void"],
+                },
             },
         )
 
@@ -138,8 +166,8 @@ class TestHeatingLoad:
             "/list-latest-datasets",
             json={
                 "site_id": "demo_london",
-                "start_ts": "2023-01-01T00:00:00Z",
-                "end_ts": "2023-02-01T00:00:00Z",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
             },
         )
         assert listed_metadata.status_code == 200, listed_metadata.text
@@ -150,8 +178,8 @@ class TestHeatingLoad:
             "/get-latest-datasets",
             json={
                 "site_id": "demo_london",
-                "start_ts": "2023-01-01T00:00:00Z",
-                "end_ts": "2023-02-01T00:00:00Z",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
             },
         )
         assert got_metadata.status_code == 200, got_metadata.text

@@ -36,7 +36,7 @@ async def file_self_with_bundle(pool: db_conn_t, bundle_metadata: BundleEntryMet
         ) VALUES ($1, $2, $3, $4, $5);""",
         bundle_metadata.bundle_id,
         bundle_metadata.dataset_type,
-        json.dumps(bundle_metadata.dataset_subtype),
+        json.dumps(bundle_metadata.dataset_subtype) if bundle_metadata.dataset_subtype is not None else None,
         bundle_metadata.dataset_id,
         bundle_metadata.dataset_order,
     )

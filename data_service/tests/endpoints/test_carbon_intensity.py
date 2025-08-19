@@ -9,6 +9,7 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 
+from app.internal.utils.uuid import uuid7
 from app.routers.carbon_intensity import fetch_carbon_intensity
 
 
@@ -35,11 +36,34 @@ async def grid_co2_metadata(
     client: AsyncClient, demo_site_id: str, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
 ) -> pydantic.Json:
     """Generate a consistent set of carbon intensity data and add it to the DB."""
+    bundle_id = str(uuid7())
+    bundle_resp = await client.post(
+        "/create-bundle",
+        json={
+            "bundle_id": bundle_id,
+            "name": "Carbon Intensity Test",
+            "site_id": "demo_london",
+            "start_ts": demo_start_ts.isoformat(),
+            "end_ts": demo_end_ts.isoformat(),
+        },
+    )
+    assert bundle_resp.is_success
+
     result = await client.post(
         "/generate-grid-co2",
-        json={"site_id": demo_site_id, "start_ts": demo_start_ts.isoformat(), "end_ts": demo_end_ts.isoformat()},
+        json={
+            "site_id": demo_site_id,
+            "start_ts": demo_start_ts.isoformat(),
+            "end_ts": demo_end_ts.isoformat(),
+            "bundle_metadata": {
+                "bundle_id": bundle_id,
+                "dataset_id": str(uuid7()),
+                "dataset_type": "CarbonIntensity",
+                "dataset_subtype": None,
+            },
+        },
     )
-
+    assert result.is_success, result.text
     return result.json()
 
 
@@ -136,7 +160,7 @@ class TestCarbonIntensity:
         )
         assert grid_co2_result.status_code == 200, grid_co2_result.text
         grid_co2_entry = grid_co2_result.json()["CarbonIntensity"]
-
+        print(grid_co2_entry)
         assert datetime.datetime.fromisoformat(grid_co2_entry["start_ts"]) == demo_start_ts
         assert datetime.datetime.fromisoformat(grid_co2_entry["end_ts"]) == demo_end_ts
         assert (
@@ -157,10 +181,32 @@ class TestCarbonIntensityChunking:
         """Test that we get the right number of entries if the last entry is in next year."""
         start_ts = datetime.datetime(year=2024, month=12, day=24, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2025, month=1, day=1, hour=0, minute=0, tzinfo=datetime.UTC)
+        bundle_id = str(uuid7())
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": bundle_id,
+                "name": "Carbon Intensity Test",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
 
         result = await client.post(
             "/generate-grid-co2",
-            json={"site_id": demo_site_id, "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+            json={
+                "site_id": demo_site_id,
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "bundle_metadata": {
+                    "bundle_id": bundle_id,
+                    "dataset_id": str(uuid7()),
+                    "dataset_type": "CarbonIntensity",
+                    "dataset_subtype": None,
+                },
+            },
         )
 
         assert result.status_code == 200
@@ -191,9 +237,32 @@ class TestCarbonIntensityChunking:
         start_ts = datetime.datetime(year=2024, month=12, day=24, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2025, month=1, day=2, hour=0, minute=0, tzinfo=datetime.UTC)
 
+        bundle_id = str(uuid7())
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": bundle_id,
+                "name": "Carbon Intensity Test",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
+
         result = await client.post(
             "/generate-grid-co2",
-            json={"site_id": demo_site_id, "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+            json={
+                "site_id": demo_site_id,
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "bundle_metadata": {
+                    "bundle_id": bundle_id,
+                    "dataset_id": str(uuid7()),
+                    "dataset_type": "CarbonIntensity",
+                    "dataset_subtype": None,
+                },
+            },
         )
 
         assert result.status_code == 200

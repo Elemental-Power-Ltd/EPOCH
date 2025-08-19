@@ -14,7 +14,7 @@ from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.utils import get_bank_holidays
 from app.internal.utils.bank_holidays import UKCountryEnum
 from app.internal.utils.uuid import uuid7
-from app.models.core import DatasetIDWithTime, FuelEnum
+from app.models.core import DatasetIDWithTime, DatasetTypeEnum, FuelEnum
 from app.models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
 from app.models.meter_data import ReadingTypeEnum
 
@@ -155,6 +155,24 @@ async def generate_electricity_load(
 
         if params.bundle_metadata is not None:
             await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+
+            # If we didn't file the associated electricity meter data in the bundle that we used to generate this,
+            # do so now.
+            base_in_db = await conn.fetchval(
+                """SELECT existss
+                (SELECT 1
+                FROM data_bundles.dataset_links
+                WHERE bundle_id = $1 AND dataset_id = $2 AND dataset_type = $3)""",
+                params.bundle_metadata.bundle_id,
+                params.dataset_id,  # the ID of the underlying meter dataset
+                DatasetTypeEnum.ElectricityMeterData,
+            )
+            if not base_in_db:
+                meter_meta = params.bundle_metadata.model_copy(deep=True)
+                meter_meta.dataset_id = params.dataset_id
+                meter_meta.dataset_type = DatasetTypeEnum.ElectricityMeterData
+                await file_self_with_bundle(conn, bundle_metadata=meter_meta)
+
     logger = logging.getLogger(__name__)
     logger.info(f"Electricity load generation {metadata.dataset_id} completed.")
     return metadata
