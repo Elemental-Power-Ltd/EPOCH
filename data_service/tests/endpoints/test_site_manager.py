@@ -268,7 +268,7 @@ class TestGetLatestElectricity:
         self, client: httpx.AsyncClient, upload_meter_data: tuple[dict[str, Jsonable], dict[str, Jsonable]]
     ) -> None:
         """Test that we can generate some electrical data, and then get it via the list- and get- pair."""
-        gas_result, elec_result = upload_meter_data
+        _, elec_result = upload_meter_data
         start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
 

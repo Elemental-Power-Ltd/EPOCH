@@ -159,7 +159,7 @@ async def generate_electricity_load(
             # If we didn't file the associated electricity meter data in the bundle that we used to generate this,
             # do so now.
             base_in_db = await conn.fetchval(
-                """SELECT existss
+                """SELECT exists
                 (SELECT 1
                 FROM data_bundles.dataset_links
                 WHERE bundle_id = $1 AND dataset_id = $2 AND dataset_type = $3)""",
