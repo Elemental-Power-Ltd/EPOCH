@@ -9,7 +9,7 @@ You can't import this file, but it's useful for static analysis.
 import typing
 from enum import Enum
 
-class SapGrade(Enum):
+class RatingGrade(Enum):
     A = "A"
     B = "B"
     C = "C"
@@ -45,8 +45,8 @@ class SimulationMetrics:
     total_scope_2_emissions: float
     total_combined_carbon_emissions: float
 
-    sap_efficiency_score: int | None
-    sap_efficiency_rating_grade: SapGrade | None
+    environmental_impact_score: int | None
+    environmental_impact_grade: RatingGrade | None
 
 class ScenarioComparison:
     meter_balance: float
