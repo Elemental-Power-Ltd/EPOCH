@@ -154,6 +154,7 @@ async def generate_electricity_load(
         )
 
         if params.bundle_metadata is not None:
+            assert params.bundle_metadata.dataset_type == DatasetTypeEnum.ElectricityMeterDataSynthesised
             await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
 
             # If we didn't file the associated electricity meter data in the bundle that we used to generate this,

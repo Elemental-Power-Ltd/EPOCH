@@ -18,7 +18,7 @@ from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, SecretsD
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data, get_renewables_ninja_wind_data
 from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils.uuid import uuid7
-from ..models.core import MultipleDatasetIDWithTime, SiteID, dataset_id_t
+from ..models.core import DatasetTypeEnum, MultipleDatasetIDWithTime, SiteID, dataset_id_t
 from ..models.renewables import (
     EpochRenewablesEntry,
     PVOptimaResult,
@@ -177,6 +177,7 @@ async def generate_renewables_generation(
             )
 
             if params.bundle_metadata is not None:
+                assert params.bundle_metadata.dataset_type == DatasetTypeEnum.RenewablesGeneration
                 await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
 
     logger.info(f"Solar PV generation {metadata.dataset_id} at {params.renewables_location_id} completed.")
@@ -292,6 +293,7 @@ async def generate_wind_generation(
             )
 
             if params.bundle_metadata is not None:
+                assert params.bundle_metadata.dataset_type == DatasetTypeEnum.RenewablesGeneration
                 await file_self_with_bundle(pool, params.bundle_metadata)
     return metadata
 

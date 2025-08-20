@@ -110,11 +110,14 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
     return res
 
 
+@router.post("/list-bundle-contents", tags=["db", "bundle"])
 async def list_bundle_contents(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> DatasetList | None:
     """
     List the contents of the a bundle to mimic the format of `list-datasets`.
 
     If there is not a bundle with this ID, this returns None.
+    This gives you more metadata about each entry than the `list-dataset-bundles` without actually
+    returning all of the entries within a bundle.
 
     Parameters
     ----------
@@ -424,7 +427,8 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
             data_bundles.dataset_links AS dl
         ON dl.bundle_id = m.bundle_id
         WHERE m.site_id = $1
-        GROUP BY m.bundle_id""",
+        GROUP BY m.bundle_id
+        ORDER BY created_at ASC""",
         site_id.site_id,
     )
     if bundle_entries is None or not bundle_entries:
