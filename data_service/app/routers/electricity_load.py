@@ -11,8 +11,6 @@ from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
 from ..internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
-from ..internal.elec_meters.elec_meters import daily_to_hh_eload_2_0
-from ..internal.elec_meters.vae import VAE as VAE_1_0
 from ..internal.epl_typing import DailyDataFrame, MonthlyDataFrame
 from ..internal.utils import get_bank_holidays
 from ..models.core import DatasetIDWithTime, FuelEnum
@@ -111,14 +109,11 @@ async def generate_electricity_load(
     synthetic_daily_df["consumption_kwh"] = all_consumptions
     synthetic_daily_df["start_ts"] = synthetic_daily_df.index
     synthetic_daily_df["end_ts"] = synthetic_daily_df.index + pd.Timedelta(days=1)
-    if isinstance(vae, VAE_1_0):
-        synthetic_hh_df = daily_to_hh_eload(synthetic_daily_df, scalers=load_all_scalers(use_new=False), model=vae)
-    else:
-        synthetic_hh_df = daily_to_hh_eload_2_0(
-            synthetic_daily_df,
-            scalers=load_all_scalers(directory=Path("models", "draft", "32 - trained - QB"), use_new=True),
-            model=vae,
-        )
+    synthetic_hh_df = daily_to_hh_eload(
+        synthetic_daily_df,
+        scalers=load_all_scalers(directory=Path("models", "draft", "32 - trained - QB"), use_new=True),
+        model=vae,
+    )
 
     new_dataset_id = uuid.uuid4()
     metadata = {
