@@ -401,41 +401,42 @@ def kl_annealing_scheduler(
     """
     if epoch < annealing_delay:
         weight = 0.0
-    else:
-        adjusted_epoch = epoch - annealing_delay
-        if annealing_strategy == "linear":
-            # Linear annealing
-            weight = min(
-                target_weight, start_weight + (target_weight - start_weight) * max(adjusted_epoch, 0) / annealing_epochs
-            )
+        return weight
 
-        elif annealing_strategy == "sigmoid":
-            # Sigmoid annealing
-            if annealing_epochs > 0:
-                x = 10 * (adjusted_epoch - annealing_epochs / 2) / annealing_epochs
-                weight = target_weight / (1 + np.exp(-x))
-            else:
-                weight = target_weight
+    adjusted_epoch = epoch - annealing_delay
+    if annealing_strategy == "linear":
+        # Linear annealing
+        weight = min(
+            target_weight, start_weight + (target_weight - start_weight) * max(adjusted_epoch, 0) / annealing_epochs
+        )
 
-        elif annealing_strategy == "cyclical":
-            # Cyclical annealing
-            if annealing_epochs > 0:
-                cycle_size = annealing_epochs // 2
-                cycle = adjusted_epoch // cycle_size
-                position = adjusted_epoch % cycle_size
-                if cycle % 2 == 0:  # Even cycle: anneal
-                    weight = start_weight + (target_weight - start_weight) * position / cycle_size
-                else:  # Odd cycle: use target weight
-                    weight = target_weight
-            else:
-                weight = target_weight
-
-        elif annealing_strategy is None:
-            # Default: no annealing
-            weight = target_weight
+    elif annealing_strategy == "sigmoid":
+        # Sigmoid annealing
+        if annealing_epochs > 0:
+            x = 10 * (adjusted_epoch - annealing_epochs / 2) / annealing_epochs
+            weight = target_weight / (1 + np.exp(-x))
         else:
-            warnings.warn("Incorrect specification of annealing_strategy - defaulting to None", stacklevel=2)
             weight = target_weight
+
+    elif annealing_strategy == "cyclical":
+        # Cyclical annealing
+        if annealing_epochs > 0:
+            cycle_size = annealing_epochs // 2
+            cycle = adjusted_epoch // cycle_size
+            position = adjusted_epoch % cycle_size
+            if cycle % 2 == 0:  # Even cycle: anneal
+                weight = start_weight + (target_weight - start_weight) * position / cycle_size
+            else:  # Odd cycle: use target weight
+                weight = target_weight
+        else:
+            weight = target_weight
+
+    elif annealing_strategy is None:
+        # Default: no annealing
+        weight = target_weight
+    else:
+        warnings.warn("Incorrect specification of annealing_strategy - defaulting to None", stacklevel=2)
+        weight = target_weight
 
     return weight
 
