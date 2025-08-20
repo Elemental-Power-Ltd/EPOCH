@@ -786,19 +786,23 @@ def plot_loss_components(
     -------
         Matplotlib figure object
     """
+    train_hist = history["train_components"]
+    val_hist = history["val_components"]
+
     # Extract components if not specified
     if components is None:
-        components = list(history["train_components"][0].keys())
+        components = list(train_hist[0].keys())
 
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 8))
 
+    n_epochs = len(train_hist)
     # Plot each component
-    epochs = range(1, len(history["train_components"]) + 1)
+    epochs = list(range(1, n_epochs + 1))
 
     for component in components:
-        train_values = [epoch_data.get(component, 0) for epoch_data in history["train_components"]]
-        val_values = [epoch_data.get(component, 0) for epoch_data in history["val_components"]]
+        train_values = [epoch_data.get(component, 0) for epoch_data in train_hist]
+        val_values = [epoch_data.get(component, 0) for epoch_data in val_hist]
 
         ax.plot(epochs, train_values, "-", label=f"Train {component}")
         ax.plot(epochs, val_values, "--", label=f"Val {component}")
