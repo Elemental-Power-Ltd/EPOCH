@@ -1,7 +1,7 @@
 from app.models.epoch_types import SiteRange
 
-REPEAT_COMPONENTS = ["solar_panels"]
-FIXED_PARAMETERS = ["incumbent", "age", "lifetime"]
+REPEAT_COMPONENTS = {"solar_panels"}
+FIXED_PARAMETERS = {"incumbent", "age", "lifetime", "floor_area"}
 
 
 def count_parameters_to_optimise(site_range: SiteRange) -> int:
