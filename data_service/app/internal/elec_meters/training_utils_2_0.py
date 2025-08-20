@@ -46,7 +46,9 @@ class LossesDict(TypedDict):
     components: LossesComponentsDict
 
 
-class HistoryDict(TypedDict):  # noqa: D101
+class HistoryDict(TypedDict):
+    """Custom dictionary type containing statistics tracked during training & validation."""
+
     train_loss: list[float]
     val_loss: list[float]
     train_components: list[LossesComponentsDict]
@@ -405,13 +407,11 @@ def kl_annealing_scheduler(
 
     adjusted_epoch = epoch - annealing_delay
     if annealing_strategy == "linear":
-        # Linear annealing
         weight = min(
             target_weight, start_weight + (target_weight - start_weight) * max(adjusted_epoch, 0) / annealing_epochs
         )
 
     elif annealing_strategy == "sigmoid":
-        # Sigmoid annealing
         if annealing_epochs > 0:
             x = 10 * (adjusted_epoch - annealing_epochs / 2) / annealing_epochs
             weight = target_weight / (1 + np.exp(-x))
@@ -419,7 +419,6 @@ def kl_annealing_scheduler(
             weight = target_weight
 
     elif annealing_strategy == "cyclical":
-        # Cyclical annealing
         if annealing_epochs > 0:
             cycle_size = annealing_epochs // 2
             cycle = adjusted_epoch // cycle_size
@@ -432,7 +431,6 @@ def kl_annealing_scheduler(
             weight = target_weight
 
     elif annealing_strategy is None:
-        # Default: no annealing
         weight = target_weight
     else:
         warnings.warn("Incorrect specification of annealing_strategy - defaulting to None", stacklevel=2)
@@ -519,13 +517,12 @@ def train_model(
     -------
         Tuple of (trained model, training history dict)
     """
-    # Move model to device
     model = model.to(device)
 
-    # Create optimizer
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    # Create TensorBoard writer if log_dir is provided
+    writer = SummaryWriter(log_dir) if log_dir is not None else None
 
-    # Create learning rate scheduler
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = ReduceLROnPlateau(
         optimizer,
         mode="min",
@@ -533,19 +530,13 @@ def train_model(
         patience=scheduler_patience,
     )
 
-    # Create TensorBoard writer if log_dir is provided
-    writer = SummaryWriter(log_dir) if log_dir is not None else None  # type: ignore
-
-    # Initialize training history
+    # Initialize training history and early stopping variables
     history: HistoryDict = {"train_loss": [], "val_loss": [], "train_components": [], "val_components": [], "learning_rate": []}
-
-    # Initialize early stopping variables
     best_val_loss = float("inf")
     best_epoch = 0
 
     # Training loop
     for epoch in range(num_epochs):
-        # Calculate KL weight for annealing
         kl_weight = 1.0
         if kl_annealing:
             kl_weight = kl_annealing_scheduler(
@@ -557,7 +548,6 @@ def train_model(
                 annealing_strategy=kl_annealing_strategy,
             )
 
-        # Train for one epoch
         train_results = train_epoch(
             model=model,
             train_loader=train_loader,
@@ -571,7 +561,6 @@ def train_model(
             clip_grad_norm=clip_grad_norm,
         )
 
-        # Validate
         val_results = validate(
             model=model,
             val_loader=val_loader,
@@ -583,29 +572,26 @@ def train_model(
             temporal_weight=temporal_weight,
         )
 
-        # Update learning rate scheduler
         scheduler.step(val_results["loss"])
 
         # Log to TensorBoard if writer is provided
         if writer is not None:
-            writer.add_scalar("Loss/train", train_results["loss"], epoch)  # type: ignore
-            writer.add_scalar("Loss/val", val_results["loss"], epoch)  # type: ignore
+            writer.add_scalar("Loss/train", train_results["loss"], epoch)
+            writer.add_scalar("Loss/val", val_results["loss"], epoch)
 
             for key in train_results["components"]:
-                writer.add_scalar(f"Components/train_{key}", train_results["components"][key], epoch)  # type: ignore
-                writer.add_scalar(f"Components/val_{key}", val_results["components"][key], epoch)  # type: ignore
+                writer.add_scalar(f"Components/train_{key}", train_results["components"][key], epoch)
+                writer.add_scalar(f"Components/val_{key}", val_results["components"][key], epoch)
 
-            writer.add_scalar("KL_weight", kl_weight, epoch)  # type: ignore
-            writer.add_scalar("Learning_rate", optimizer.param_groups[0]["lr"], epoch)  # type: ignore
+            writer.add_scalar("KL_weight", kl_weight, epoch)
+            writer.add_scalar("Learning_rate", optimizer.param_groups[0]["lr"], epoch)
 
-        # Update history
         history["train_loss"].append(train_results["loss"])
         history["val_loss"].append(val_results["loss"])
         history["train_components"].append(train_results["components"])
         history["val_components"].append(val_results["components"])
         history["learning_rate"].append(optimizer.param_groups[0]["lr"])
 
-        # Log progress
         logger.info(
             f"Epoch {epoch + 1}/{num_epochs} - "
             f"Train Loss: {train_results['loss']:.4f}, "
@@ -711,7 +697,6 @@ def vae_training(
     -------
         Tuple of (trained model, training history dict)
     """
-    # Move model to device
     model = model.to(device)
 
     # Create log directories
@@ -790,40 +775,30 @@ def plot_loss_components(
     train_hist = history["train_components"]
     val_hist = history["val_components"]
 
-    # Extract components if not specified
     if components is None:
         components = list(train_hist[0].keys())
 
-    # Create figure
     fig, ax = plt.subplots(figsize=(12, 8))
-
     n_epochs = len(train_hist)
-    # Plot each component
     epochs = list(range(1, n_epochs + 1))
 
     for component in components:
         train_values = [epoch_data.get(component, 0) for epoch_data in train_hist]
         val_values = [epoch_data.get(component, 0) for epoch_data in val_hist]
-
         ax.plot(epochs, train_values, "-", label=f"Train {component}")
         ax.plot(epochs, val_values, "--", label=f"Val {component}")
 
-    # If log-scale requested, change y-axis here:
     if logscale_y:
         ax.set_yscale("log")
-
-    # Add labels and title
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss Component Value")
     ax.set_title("Loss Components")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
-    # Save figure if path is provided
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
 
-    # Show plot if requested
     if show_plot:
         plt.show()
     else:

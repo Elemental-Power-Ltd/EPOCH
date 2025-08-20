@@ -509,7 +509,7 @@ def handle_offsets_chgpt(
         n = len(signal)
 
         # compute residual cost of assigning baseline a vs b
-        cost = np.full(n + 1, np.inf) # initialise total cost = np.inf
+        cost = np.full(n + 1, np.inf) # initialise infinite total cost
         sum_sig = np.cumsum(signal)
         sum_sig2 = np.cumsum(signal**2)
 
@@ -584,7 +584,8 @@ def split_and_baseline_active_days(
     is_weekend = df_daily_all.index.weekday.isin(weekend_inds)
 
     # Perform the initial split: extract inactive dates and define remaining records of df_daily_all as active days
-    df_daily_inactive = df_daily_all[is_holiday | is_weekend] #TODO (JSM 2025-07-30) - in notebook, this was converted from df to Series -- is this needed?
+    df_daily_inactive = df_daily_all[is_holiday | is_weekend] 
+        #TODO (JSM 2025-07-30) - in notebook, this was converted from df to Series -- is this needed?
     df_daily_active = df_daily_all.loc[df_daily_all.index.difference(df_daily_inactive.index)]
 
     # forward fill any nan records: do so separately for inactive and active days
