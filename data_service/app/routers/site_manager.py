@@ -55,7 +55,7 @@ from .renewables import generate_renewables_generation
 router = APIRouter()
 
 MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
-NULL_UUID = uuid.UUID(int=0, version=4)
+NULL_UUID = uuid.UUID(int=0, version=7)
 type to_generate_t = dict[DatasetTypeEnum, RequestBase | Sequence[RequestBase]]
 logger = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ async def list_bundle_contents(bundle_id: dataset_id_t, pool: DatabasePoolDep) -
 
 
 @router.post("/list-latest-datasets", tags=["db", "list"])
-async def list_latest_datasets(params: SiteID, pool: DatabasePoolDep) -> DatasetList:
+async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> DatasetList:
     """
     Get the most recent datasets of each type for this site.
 
@@ -318,14 +318,14 @@ async def list_latest_datasets(params: SiteID, pool: DatabasePoolDep) -> Dataset
     -------
         A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
     """
-    bundles = await list_dataset_bundles(params, pool)
+    bundles = await list_dataset_bundles(site_id, pool)
     if not bundles:
-        raise HTTPException(404, f"Didn't find any bundled datasets for {params.site_id}, try generating some.")
+        raise HTTPException(404, f"Didn't find any bundled datasets for {site_id.site_id}, try generating some.")
 
     latest_bundle_id = max(bundles, key=lambda x: x.created_at).bundle_id
     bundle_contents = await list_bundle_contents(latest_bundle_id, pool)
     if bundle_contents is None:
-        raise HTTPException(404, f"Didn't find any bundled datasets for {params.site_id}, try generating some.")
+        raise HTTPException(404, f"Didn't find any bundled datasets for {site_id.site_id}, try generating some.")
     return bundle_contents
 
 
@@ -557,7 +557,7 @@ async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])
-async def get_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> SiteDataEntries:
+async def get_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> SiteDataEntries:
     """
     Get the most recent dataset entries of each type for this site.
 
@@ -573,9 +573,9 @@ async def get_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> 
         The site data with full time series for each data source
     """
     logger = logging.getLogger(__name__)
-    logger.info(f"Getting latest dataset list for {params.site_id}")
+    logger.info(f"Getting latest dataset list for {site_id.site_id}")
 
-    bundle_metas = await list_dataset_bundles(site_id=params, pool=pool)
+    bundle_metas = await list_dataset_bundles(site_id=site_id, pool=pool)
     latest_bundle = max(bundle_metas, key=lambda bm: bm.created_at).bundle_id
     return await get_dataset_bundle(bundle_id=latest_bundle, pool=pool)
 

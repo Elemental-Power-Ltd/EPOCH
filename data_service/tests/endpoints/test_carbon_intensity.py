@@ -36,6 +36,8 @@ async def grid_co2_metadata(
     client: AsyncClient, demo_site_id: str, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
 ) -> pydantic.Json:
     """Generate a consistent set of carbon intensity data and add it to the DB."""
+    # We don't use a fixture for the bundle because in some cases the start and end timestamps will differ
+    # which we need to know at bundle creation time.
     bundle_id = str(uuid7())
     bundle_resp = await client.post(
         "/create-bundle",
@@ -160,7 +162,7 @@ class TestCarbonIntensity:
         )
         assert grid_co2_result.status_code == 200, grid_co2_result.text
         grid_co2_entry = grid_co2_result.json()["CarbonIntensity"]
-        print(grid_co2_entry)
+
         assert datetime.datetime.fromisoformat(grid_co2_entry["start_ts"]) == demo_start_ts
         assert datetime.datetime.fromisoformat(grid_co2_entry["end_ts"]) == demo_end_ts
         assert (
