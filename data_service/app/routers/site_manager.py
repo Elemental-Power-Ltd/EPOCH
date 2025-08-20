@@ -55,7 +55,7 @@ from .renewables import generate_renewables_generation
 router = APIRouter()
 
 MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.RenewablesGeneration, DatasetTypeEnum.ImportTariff}
-NULL_UUID = uuid.UUID(int=0, version=7)
+NULL_UUID = uuid.UUID(int=0, version=4)
 type to_generate_t = dict[DatasetTypeEnum, RequestBase | Sequence[RequestBase]]
 logger = logging.getLogger(__name__)
 
