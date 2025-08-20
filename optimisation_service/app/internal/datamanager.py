@@ -164,53 +164,6 @@ class DataManager:
 
         return EpochInputData(task_data=task_data, site_data=epoch_data)
 
-    async def hydrate_site_with_latest_dataset_ids(self, site_data: SiteMetaData) -> None:
-        """
-        Obtain the latest dataset_ids for the given site and place them in the site_data.
-
-        This method should be called when site_data has not provided a specific set of IDs
-
-        Parameters
-        ----------
-        site_data
-            Information about the datasets you want to request
-
-        Returns
-        -------
-        None
-        """
-        datasetlist = await self.fetch_latest_dataset_ids(site_data)
-
-        for key in DatasetTypeEnum:
-            if not site_data.__getattribute__(key):
-                curr_entries = datasetlist[key]
-                if isinstance(curr_entries, list):
-                    site_data.__setattr__(key, [item["dataset_id"] for item in curr_entries])
-                elif isinstance(curr_entries, dict):
-                    site_data.__setattr__(key, curr_entries["dataset_id"])
-                else:
-                    site_data.__setattr__(key, None)
-
-    async def fetch_latest_dataset_ids(self, site_data: SiteMetaData) -> dict[str, Any]:
-        """
-        Get the latest dataset IDs available for this site.
-
-        This will get the IDs from the latest bundle in the database.
-
-        Parameters
-        ----------
-        site_data
-            What data you want to get the latest IDs for
-
-        Returns
-        -------
-        dict[str, Any]
-            Dataset type, ID mapping from the database
-        """
-        async with httpx.AsyncClient() as client:
-            latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=site_data)
-            return cast(dict[str, Any], latest_ids)
-
     def save_parameters(self, task: Task) -> None:
         """
         Save the parameters of a Task to file for debug.
