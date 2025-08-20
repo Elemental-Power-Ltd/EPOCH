@@ -5,6 +5,7 @@ import enum
 import json
 import pathlib
 from collections.abc import Container
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -15,8 +16,7 @@ from statsmodels.tsa.arima_process import ArmaProcess
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame
 
 from .model_utils import ScalerTypeEnum, fit_residual_model, load_all_scalers, split_and_baseline_active_days
-from .vae import VAE
-from .vae_2_0 import VAE as VAE_2_0
+from .vae_2_0 import VAE
 
 
 class DayTypeEnum(int, enum.Enum):
@@ -104,8 +104,8 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame, public_holidays: Contai
 
 def daily_to_hh_eload(
     daily_df: DailyDataFrame,
-    model: VAE_2_0,
-    resid_model_path: pathlib.Path | None = None, # partial path to the files describing the residual models
+    model: VAE,
+    resid_model_path: pathlib.Path | None = None,
     target_hh_observed_df: HHDataFrame | None = None,
     weekend_inds: tuple[int,...] = (6,),
     division: str = "england-and-wales",
@@ -127,9 +127,9 @@ def daily_to_hh_eload(
     model
         A model, probably a VAE, with a decode method and some latent dimension.
     resid_model_path (optional)
-        A pathlib.Path object that gives the path + model identifier for the set of model files that are to be used as a
-        default model for the residuals, e.g. resid_model_path = pathlib.Path('/path/to/directory') / 'QB' when using the
-        Queen's Buildings to train the residual models.
+        A pathlib.Path object that gives the path identifier for the directory containing the model files that are to be used as
+        a default model for the residuals. For now, assume only one set of default models - one active, one inactive.
+        All model files for the residuals have the suffix `default_`.
     target_hh_observed_df (optional)
         A set of half-hourly data for the client's target site, which can be used to train a model for the residuals.
         Exactly one of resid_model_path or target_hh_observed_df must be provided. The data in target_hh_observed_df must
@@ -231,16 +231,17 @@ def daily_to_hh_eload(
         # load defaults for the residual trends, ARMA noise models, and the std devation of the daily data for active days
         # that was used to train these defaults
         # TODO (JSM 2025-08-06) Should we move all logic for loading residual models to .model_utils?
-        with open(resid_model_path.with_name(resid_model_path.name + '_ARMA_model_inactive.json')) as f:
-            ARMA_model_inactive_dict = json.load(f)
-        with open(resid_model_path.with_name(resid_model_path.name + '_ARMA_model_active.json')) as f:
-            ARMA_model_active_dict = json.load(f)
-
+        ARMA_model_active_dict = json.loads(
+            Path(resid_model_path, 'default_ARMA_model_active.json').read_text()
+        )
+        ARMA_model_inactive_dict = json.loads(
+            Path(resid_model_path, 'default_ARMA_model_inactive.json').read_text()
+        )
         default_hh_active_residtrend_df = pd.read_csv(
-            resid_model_path.with_name(resid_model_path.name + '_residtrend_active.csv')
+            Path(resid_model_path, 'default_residtrend_active.csv')
             )
         default_hh_inactive_residtrend_df = pd.read_csv(
-            resid_model_path.with_name(resid_model_path.name + '_residtrend_inactive.csv')
+            Path(resid_model_path, 'default_residtrend_inactive.csv')
             )
         ARMA_model_active = ArmaProcess(ARMA_model_active_dict["ar_params"], ARMA_model_active_dict["ma_params"])
         ARMA_model_inactive = ArmaProcess(ARMA_model_inactive_dict["ar_params"], ARMA_model_inactive_dict["ma_params"])
@@ -361,7 +362,7 @@ def monthly_to_hh_eload(
     return HHDataFrame(halfhourly_df.sort_index())
 
 def generate_approx_daily_profiles(
-        VAE_model: VAE_2_0,
+        VAE_model: VAE,
         consumption_scaled: torch.Tensor,
 ):
     """
