@@ -1,6 +1,5 @@
 from enum import StrEnum
-from pathlib import Path
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
@@ -44,17 +43,6 @@ class SiteMetaData(BaseModel):
     # we mutate SiteMetaData requests (in hydrate_site_data_with_latest_dataset_ids)
     # so we validate assignment to prevent pydantic warnings about UUIDs vs Strings
     model_config = ConfigDict(validate_assignment=True)
-
-
-class LocalMetaData(BaseModel):
-    loc: Literal[FileLoc.local] = Field(
-        examples=["local"], description="Location of data. Either in local directory or in remote database."
-    )
-    site_id: str = Field(
-        examples=["demo_london"],
-        description="The database ID for a site, all lower case, joined by underscores.",
-    )
-    path: Path = Field(examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it.")
 
 
 class EpochEntry(BaseModel):
