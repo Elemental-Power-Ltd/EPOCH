@@ -1,5 +1,6 @@
 import json
 import logging
+import operator
 import os
 import typing
 from datetime import datetime
@@ -108,7 +109,7 @@ class DataManager:
         if len(matching_bundles) == 1:
             return cast(UUID7, matching_bundles[0]["bundle_id"])
 
-        return cast(UUID7, max(matching_bundles, key=lambda x: x["created_at"])["bundle_id"])
+        return cast(UUID7, max(matching_bundles, key=operator.itemgetter("created_at"))["bundle_id"])
 
     async def get_bundled_data(self, bundle_id: bundle_id_t) -> SiteDataEntries:
         """
