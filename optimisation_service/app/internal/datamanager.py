@@ -9,9 +9,10 @@ from typing import Any, cast
 import httpx
 from fastapi import Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
+from pydantic import UUID7, AwareDatetime
 
 from app.models.core import OptimisationResultEntry, Site, Task
-from app.models.database import dataset_id_t
+from app.models.database import bundle_id_t, dataset_id_t
 from app.models.simulate import EpochInputData, ResultReproConfig
 from app.models.site_data import DatasetTypeEnum, EpochSiteData, SiteDataEntries, SiteMetaData
 
@@ -67,15 +68,65 @@ class DataManager:
         EpochSiteData
             Data about timeseries inputs for EPOCH to use
         """
-        await self.hydrate_site_with_latest_dataset_ids(site_data)
+        if site_data.bundle_id is None:
+            bundle_id = await self.get_latest_bundle_id(
+                site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts
+            )
+            site_data.bundle_id = bundle_id
 
-        validate_for_necessary_datasets(site_data)
+        site_data_entries = await self.get_bundled_data(bundle_id=site_data.bundle_id)
 
-        dataset_entries = await self.fetch_specific_datasets(site_data)
-
-        epoch_data = self.transform_all_input_data(dataset_entries, site_data.start_ts, site_data.end_ts)
+        epoch_data = self.transform_all_input_data(site_data_entries, site_data.start_ts, site_data.end_ts)
 
         return epoch_data
+
+    async def get_latest_bundle_id(self, site_id: str, start_ts: AwareDatetime, end_ts: AwareDatetime) -> UUID7:
+        """
+        Get the bundle_id of the last created bundle with matching start timestamp.
+
+        Parameters
+        ----------
+        site_id
+            ID of the site.
+        start_ts
+            Start timestamp.
+        end_ts
+            End timestamp.
+
+        Returns
+        -------
+            Bundle ID.
+        """
+        data = {"site_id": site_id, "start_ts": start_ts, "end_ts": end_ts}
+        async with httpx.AsyncClient() as client:
+            bundles = await self.db_post(client=client, subdirectory="/list-dataset-bundles", data=data)
+        matching_bundles = [bundle for bundle in bundles if datetime.fromisoformat(bundle["start_ts"]) == start_ts]
+
+        if len(matching_bundles) == 0:
+            raise ValueError(f"Unable to find a bundle with matching start timestamp: {start_ts}")
+
+        if len(matching_bundles) == 1:
+            return cast(UUID7, matching_bundles[0]["bundle_id"])
+
+        return cast(UUID7, max(matching_bundles, key=lambda x: x["created_at"])["bundle_id"])
+
+    async def get_bundled_data(self, bundle_id: bundle_id_t) -> SiteDataEntries:
+        """
+        Get all the site data entries associated to a bundle_id.
+
+        Parameters
+        ----------
+        bundle_id
+            ID of the bundle.
+
+        Returns
+        -------
+            Dictionary of datasets associated with the bundle.
+        """
+        async with httpx.AsyncClient() as client:
+            res = await client.post(url=self.db_url + "/get-dataset-bundle", params={"bundle_id": str(bundle_id)}, timeout=30.0)
+        site_data_entries = res.json()
+        return SiteDataEntries.model_validate(site_data_entries)
 
     async def get_saved_epoch_input(self, portfolio_id: dataset_id_t, site_id: str) -> EpochInputData:
         """

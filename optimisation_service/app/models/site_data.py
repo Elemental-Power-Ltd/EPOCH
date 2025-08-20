@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-from app.models.database import dataset_id_t
+from app.models.database import bundle_id_t, dataset_id_t
 from app.models.epoch_types.task_data_type import TaskData
 
 
@@ -29,6 +29,7 @@ class SiteMetaData(BaseModel):
         examples=["2023-01-01T00:00:00Z"],
         description="The latest time (exclusive) to retrieve data for.",
     )
+    bundle_id: bundle_id_t | None = Field(default=None)
     SiteBaseline: dataset_id_t | None = Field(default=None)
     HeatingLoad: dataset_id_t | list[dataset_id_t] | None = Field(default=None)
     ASHPData: dataset_id_t | None = Field(default=None)
