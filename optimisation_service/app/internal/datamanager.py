@@ -13,7 +13,7 @@ from fastapi.encoders import jsonable_encoder
 from app.models.core import OptimisationResultEntry, Site, Task
 from app.models.database import dataset_id_t
 from app.models.simulate import EpochInputData, ResultReproConfig
-from app.models.site_data import DatasetTypeEnum, EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
+from app.models.site_data import DatasetTypeEnum, EpochSiteData, SiteDataEntries, SiteMetaData
 
 logger = logging.getLogger("default")
 
@@ -48,17 +48,12 @@ class DataManager:
         """
         # TODO: makes this async
         for site in task.portfolio:
-            site_data = site.site_data
-            if site_data.loc == FileLoc.remote:
-                site._epoch_data = await self.get_latest_site_data(site_data)
-
-            elif site_data.loc == FileLoc.local:
-                site._epoch_data = load_epoch_data_from_file(Path(site_data.path))
+            site._epoch_data = await self.get_latest_site_data(site.site_data)
             # Check here that the data is good, as we partially constructed the site
             # before we got going.
             site = Site.model_validate(site)
 
-    async def get_latest_site_data(self, site_data: RemoteMetaData) -> EpochSiteData:
+    async def get_latest_site_data(self, site_data: SiteMetaData) -> EpochSiteData:
         """
         Get an EPOCH-compatible SiteData using the most recently generated datasets of each type.
 
@@ -118,7 +113,7 @@ class DataManager:
 
         return EpochInputData(task_data=task_data, site_data=epoch_data)
 
-    async def hydrate_site_with_latest_dataset_ids(self, site_data: RemoteMetaData) -> None:
+    async def hydrate_site_with_latest_dataset_ids(self, site_data: SiteMetaData) -> None:
         """
         Obtain the latest dataset_ids for the given site and place them in the site_data.
 
@@ -145,7 +140,7 @@ class DataManager:
                 else:
                     site_data.__setattr__(key, None)
 
-    async def fetch_latest_dataset_ids(self, site_data: RemoteMetaData) -> dict[str, Any]:
+    async def fetch_latest_dataset_ids(self, site_data: SiteMetaData) -> dict[str, Any]:
         """
         Get the latest dataset IDs available for this site.
 
@@ -179,7 +174,7 @@ class DataManager:
             site_temp_dir.mkdir(parents=True, exist_ok=True)
             Path(site_temp_dir, "site_range.json").write_text(site.site_range.model_dump_json())
 
-    async def fetch_specific_datasets(self, site_data: RemoteMetaData) -> SiteDataEntries:
+    async def fetch_specific_datasets(self, site_data: SiteMetaData) -> SiteDataEntries:
         """
         Fetch some specificially chosen datasets from the database.
 
@@ -349,7 +344,7 @@ def load_epoch_data_from_file(path: Path) -> EpochSiteData:
     return EpochSiteData.model_validate(json.loads(path.read_text()))
 
 
-def validate_for_necessary_datasets(site_data: RemoteMetaData) -> None:
+def validate_for_necessary_datasets(site_data: SiteMetaData) -> None:
     """
     Check that the site_data contains all of the necessary datasets.
 

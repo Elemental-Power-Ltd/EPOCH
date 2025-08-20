@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from app.internal.uuid7 import uuid7
 from app.models.epoch_types.task_data_type import Building, Config, GasHeater, GasType, Grid, SolarPanel, TaskData
 from app.models.simulate import ResultReproConfig
-from app.models.site_data import FileLoc, RemoteMetaData
+from app.models.site_data import SiteMetaData
 
 
 class TestResultReproConfig:
@@ -14,11 +14,10 @@ class TestResultReproConfig:
             portfolio_id=uuid7(),
             task_data={"demo_london": TaskData()},
             site_data={
-                "demo_london": RemoteMetaData(
+                "demo_london": SiteMetaData(
                     site_id="demo_london",
                     start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
                     end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    loc=FileLoc.remote,
                     HeatingLoad=[uuid7(), uuid7()],
                     ElectricityMeterData=uuid7(),
                 )
@@ -35,11 +34,10 @@ class TestResultReproConfig:
             portfolio_id=uuid4(),
             task_data={"demo_london": TaskData()},
             site_data={
-                "demo_london": RemoteMetaData(
+                "demo_london": SiteMetaData(
                     site_id="demo_london",
                     start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
                     end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    loc=FileLoc.remote,
                     HeatingLoad=[uuid4(), uuid4()],
                     ElectricityMeterData=uuid4(),
                 )
@@ -98,8 +96,7 @@ class TestResultReproConfig:
                 )
             },
             site_data={
-                "demo_london": RemoteMetaData(
-                    loc=FileLoc.remote,
+                "demo_london": SiteMetaData(
                     site_id="demo_london",
                     start_ts=datetime.datetime(2022, 1, 1, 0, 0, tzinfo=datetime.UTC),
                     end_ts=datetime.datetime(2023, 1, 1, 0, 0, tzinfo=datetime.UTC),

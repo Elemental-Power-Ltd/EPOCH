@@ -18,7 +18,6 @@ from app.models.optimisers import (
     NSGA2Optimiser,
     OptimiserStr,
 )
-from app.models.site_data import LocalMetaData, RemoteMetaData
 
 from ..conftest import _DATA_PATH
 
@@ -33,10 +32,7 @@ def client(result_tmp_path: Path) -> Generator[TestClient]:
     class DataManagerOverride(DataManager):
         async def fetch_portfolio_data(self, task: Task) -> None:
             for site in task.portfolio:
-                if isinstance(site.site_data, LocalMetaData):
-                    site._epoch_data = load_epoch_data_from_file(site.site_data.path)
-                elif isinstance(site.site_data, RemoteMetaData):
-                    site._epoch_data = load_epoch_data_from_file(Path(_DATA_PATH, site.name))
+                site._epoch_data = load_epoch_data_from_file(Path(_DATA_PATH, site.name, "epoch_data.json"))
 
         async def transmit_results(self, result: OptimisationResultEntry) -> None:
             with open(Path(result_tmp_path, f"{result.tasks.task_id}.json"), "w") as f:

@@ -17,10 +17,7 @@ class DataDuration(StrEnum):
     year = "year"
 
 
-class RemoteMetaData(BaseModel):
-    loc: Literal[FileLoc.remote] = Field(
-        examples=["remote"], description="Location of data. Either in local directory or in remote database."
-    )
+class SiteMetaData(BaseModel):
     site_id: str = Field(
         examples=["demo_london"],
         description="The database ID for a site, all lower case, joined by underscores.",
@@ -44,7 +41,7 @@ class RemoteMetaData(BaseModel):
     GasMeterData: dataset_id_t | None = Field(default=None)
     RenewablesGeneration: dataset_id_t | list[dataset_id_t] | None = Field(default=None)
 
-    # we mutate RemoteMetaData requests (in hydrate_site_data_with_latest_dataset_ids)
+    # we mutate SiteMetaData requests (in hydrate_site_data_with_latest_dataset_ids)
     # so we validate assignment to prevent pydantic warnings about UUIDs vs Strings
     model_config = ConfigDict(validate_assignment=True)
 
@@ -219,9 +216,6 @@ class EpochSiteData(BaseModel):
             shorter_arrays = [(key, val) for key, val in lengths.items() if val < longest_len]
             raise ValueError(f"Got shorter length arrays in EpochSiteData: {shorter_arrays} but expected {longest_len}")
         raise ValueError(f"Problem with lengths in EpochSiteData: {lengths}")
-
-
-SiteMetaData = RemoteMetaData | LocalMetaData
 
 
 class DatasetTypeEnum(StrEnum):

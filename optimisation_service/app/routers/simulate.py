@@ -3,7 +3,7 @@
 import logging
 
 from epoch_simulator import Simulator, TaskData
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from app.internal.datamanager import DataManagerDep
 from app.internal.epoch_utils import convert_sim_result
@@ -15,7 +15,7 @@ from app.models.simulate import (
     ReproduceSimulationRequest,
     RunSimulationRequest,
 )
-from app.models.site_data import EpochSiteData, LocalMetaData, RemoteMetaData
+from app.models.site_data import EpochSiteData, SiteMetaData
 
 router = APIRouter()
 logger = logging.getLogger("default")
@@ -38,9 +38,6 @@ async def run_simulation(request: RunSimulationRequest, data_manager: DataManage
         Full result from the simulation to run
     """
     logger.info("Running single simulation")
-
-    if isinstance(request.site_data, LocalMetaData):
-        raise HTTPException(400, detail="Simulation from local data is not supported")
 
     epoch_data = await data_manager.get_latest_site_data(request.site_data)
 
@@ -74,7 +71,7 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
 
 
 @router.post("/get-latest-site-data")
-async def get_latest_site_data(site_data: RemoteMetaData, data_manager: DataManagerDep) -> EpochSiteData:
+async def get_latest_site_data(site_data: SiteMetaData, data_manager: DataManagerDep) -> EpochSiteData:
     """
     Serve an EPOCH compatible SiteData using the most recently generated dataset of each type.
 
