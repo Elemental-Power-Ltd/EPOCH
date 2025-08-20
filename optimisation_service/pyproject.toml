@@ -18,7 +18,7 @@ classifiers = [
 ]
 
 [tool.ruff]
-exclude = ["*.ipynb", "app/models/epoch_types/", "Epoch/"]
+exclude = ["app/models/epoch_types/", "Epoch/"]
 line-length = 128
 
 [tool.ruff.lint.pydocstyle]
