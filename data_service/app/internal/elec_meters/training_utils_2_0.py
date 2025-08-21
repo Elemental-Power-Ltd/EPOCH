@@ -23,6 +23,7 @@ from app.internal.elec_meters.vae_2_0 import VAE
 
 logger = logging.getLogger(__name__)
 
+
 class LossesComponentsDict(TypedDict):  # noqa: D101
     recon: float
     kl: float
@@ -407,9 +408,7 @@ def kl_annealing_scheduler(
 
     adjusted_epoch = epoch - annealing_delay
     if annealing_strategy == "linear":
-        weight = min(
-            target_weight, start_weight + (target_weight - start_weight) * max(adjusted_epoch, 0) / annealing_epochs
-        )
+        weight = min(target_weight, start_weight + (target_weight - start_weight) * max(adjusted_epoch, 0) / annealing_epochs)
 
     elif annealing_strategy == "sigmoid":
         if annealing_epochs > 0:

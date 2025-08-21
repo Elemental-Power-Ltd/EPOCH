@@ -20,6 +20,7 @@ anyio==4.7.0
 asyncpg==0.30.0
     # via -r requirements.in
 bayesian-optimization==2.0.3
+    # via -r requirements.in
 certifi==2024.12.14
     # via
     #   httpcore
@@ -28,6 +29,11 @@ click==8.1.8
     # via
     #   rich-toolkit
     #   typer
+    #   uvicorn
+colorama==0.4.6
+    # via
+    #   bayesian-optimization
+    #   click
     #   uvicorn
 contourpy==1.3.1
     # via matplotlib
@@ -89,17 +95,25 @@ networkx==3.4.2
 numpy==2.2.3
     # via
     #   -r requirements.in
+    #   bayesian-optimization
     #   contourpy
     #   matplotlib
     #   pandas
+    #   patsy
     #   scikit-learn
     #   scipy
+    #   statsmodels
 packaging==24.2
-    # via matplotlib
+    # via
+    #   matplotlib
+    #   statsmodels
 pandas==2.2.3
     # via
     #   -r requirements.in
     #   scikit-lego
+    #   statsmodels
+patsy==1.0.1
+    # via statsmodels
 pillow==11.0.0
     # via matplotlib
 pydantic==2.10.4
@@ -135,13 +149,16 @@ rich-toolkit==0.12.0
 scikit-learn==1.6.0
     # via
     #   -r requirements.in
+    #   bayesian-optimization
     #   scikit-lego
 scikit-lego==0.9.4
     # via sklego
 scipy==1.14.1
     # via
     #   -r requirements.in
+    #   bayesian-optimization
     #   scikit-learn
+    #   statsmodels
 shellingham==1.5.4
     # via typer
 six==1.17.0
@@ -152,15 +169,14 @@ sniffio==1.3.1
     # via anyio
 starlette==0.41.3
     # via fastapi
+statsmodels==0.14.5
+    # via -r requirements.in
 sympy==1.13.1
     # via torch
 threadpoolctl==3.5.0
     # via scikit-learn
 torch==2.5.1+cpu
     # via -r requirements.in
-torch==2.5.1
-triton==3.1.0; sys_platform == "linux"
-    # via torch
 typer==0.12.5
     # via fastapi-cli
 typing-extensions==4.12.2
@@ -178,8 +194,6 @@ uvicorn==0.34.0
     # via
     #   fastapi
     #   fastapi-cli
-uvloop==0.21.0; sys_platform == "linux"
-    # via uvicorn
 watchfiles==1.0.3
     # via uvicorn
 websockets==14.1

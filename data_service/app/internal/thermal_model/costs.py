@@ -100,12 +100,14 @@ def get_wall_areas(structure: HeatNetwork) -> float:
     float
         External area of the walls in contact with the outside air, in m^2
     """
-    wall_types = frozenset({
-        BuildingElement.WallEast,
-        BuildingElement.WallNorth,
-        BuildingElement.WallSouth,
-        BuildingElement.WallWest,
-    })
+    wall_types = frozenset(
+        {
+            BuildingElement.WallEast,
+            BuildingElement.WallNorth,
+            BuildingElement.WallSouth,
+            BuildingElement.WallWest,
+        }
+    )
     area = 0.0
     for u, v, data in structure.edges(data=True):
         if (u in wall_types or v in wall_types) and BuildingElement.ExternalAir in {u, v}:
@@ -127,12 +129,14 @@ def get_window_areas(structure: HeatNetwork) -> float:
     float
         External area of the walls in contact with the outside air, in m^2
     """
-    window_types = frozenset({
-        BuildingElement.WindowsEast,
-        BuildingElement.WindowsNorth,
-        BuildingElement.WindowsSouth,
-        BuildingElement.WindowsWest,
-    })
+    window_types = frozenset(
+        {
+            BuildingElement.WindowsEast,
+            BuildingElement.WindowsNorth,
+            BuildingElement.WindowsSouth,
+            BuildingElement.WindowsWest,
+        }
+    )
     area = 0.0
     for u, v, data in structure.edges(data=True):
         if (u in window_types or v in window_types) and BuildingElement.ExternalAir in {u, v}:

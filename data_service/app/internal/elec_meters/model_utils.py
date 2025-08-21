@@ -18,7 +18,7 @@ from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction  # type: 
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.arima_process import ArmaProcess
 
-from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame
+from app.internal.epl_typing import DailyDataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ class ScalerTypeEnum(StrEnum):
     Val = "val"
     Test = "test"
 
+
 class OffsetMethodEnum(StrEnum):
     """Different methods for allocating baselines in 'active day' daily consumption."""
 
@@ -41,6 +42,7 @@ class OffsetMethodEnum(StrEnum):
     Recent = "recent"
     RecentOrNext = "recent-or-next"
     DetectChgpt = "detect-chgpt"
+
 
 class CustomMinMaxScaler(MinMaxScaler):
     """
@@ -56,8 +58,7 @@ class CustomMinMaxScaler(MinMaxScaler):
     n: int
     axis: int
 
-    def __init__(self, n: int = 9, feature_range: tuple = (0, 1),
-                 copy: bool = True, clip: bool = False, axis: int = 0):
+    def __init__(self, n: int = 9, feature_range: tuple = (0, 1), copy: bool = True, clip: bool = False, axis: int = 0):
         # first 9 values corresponds to 00:00-04:00 inclusive for
         self.n = n
         self.axis = axis
@@ -79,7 +80,7 @@ class CustomMinMaxScaler(MinMaxScaler):
             X = X.T
 
         # Compute custom min (mean of first n values) and max (global max)
-        mean_val = np.mean(X[:self.n], axis=0)
+        mean_val = np.mean(X[: self.n], axis=0)
         max_val = np.max(X, axis=0)
 
         self.data_min_ = mean_val
@@ -187,7 +188,7 @@ class RBFTimestampEncoder(TransformerMixin):
         if not self.is_fitted:
             raise ValueError("The model needs to be fitted before transforming data.")
         X_preprocessed = self._preprocess(X)
-        result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed) # type: ignore
+        result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed)  # type: ignore
         return result
 
     def fit_transform(self, X: Any, y=None, **fit_params):
@@ -242,6 +243,7 @@ def load_StandardScaler(path: pathlib.Path, refresh: bool = False) -> StandardSc
 
     return scaler
 
+
 def load_CustomMinMaxScaler(path: pathlib.Path, refresh: bool = False) -> CustomMinMaxScaler:
     """
     Load a saved instance of CustomMinMaxScaler from a joblib file.
@@ -277,6 +279,7 @@ def load_CustomMinMaxScaler(path: pathlib.Path, refresh: bool = False) -> Custom
         raise FileNotFoundError(f"No scaler found at {path}") from ex
 
     return scaler
+
 
 def load_RBFTimestampEncoder(path: pathlib.Path, refresh: bool = False) -> RBFTimestampEncoder:
     """
@@ -314,6 +317,7 @@ def load_RBFTimestampEncoder(path: pathlib.Path, refresh: bool = False) -> RBFTi
 
     return scaler
 
+
 def load_all_scalers(
     directory: pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = False, use_new: bool = True
 ) -> dict[ScalerTypeEnum, CustomMinMaxScaler | RBFTimestampEncoder | StandardScaler]:
@@ -335,12 +339,24 @@ def load_all_scalers(
     """
     if use_new:
         return {
-            ScalerTypeEnum.Train: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh),
-            ScalerTypeEnum.Val: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh),
-            ScalerTypeEnum.Test: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh),
-            ScalerTypeEnum.Aggregate: load_StandardScaler(directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh),
-            ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(directory / "elecTransformerVAE_start_time_scaler.joblib", refresh=refresh),
-            ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(directory / "elecTransformerVAE_end_time_scaler.joblib", refresh=refresh),
+            ScalerTypeEnum.Train: load_CustomMinMaxScaler(
+                directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh
+            ),
+            ScalerTypeEnum.Val: load_CustomMinMaxScaler(
+                directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh
+            ),
+            ScalerTypeEnum.Test: load_CustomMinMaxScaler(
+                directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh
+            ),
+            ScalerTypeEnum.Aggregate: load_StandardScaler(
+                directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh
+            ),
+            ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(
+                directory / "elecTransformerVAE_start_time_scaler.joblib", refresh=refresh
+            ),
+            ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(
+                directory / "elecTransformerVAE_end_time_scaler.joblib", refresh=refresh
+            ),
         }
     return {
         ScalerTypeEnum.Data: load_StandardScaler(directory / "elecVAE_data_scaler.joblib", refresh=refresh),
@@ -351,7 +367,7 @@ def load_all_scalers(
 
 
 def allocate_active_offsets(
-        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame, method: str="detect-chgpt"
+    active_daily: DailyDataFrame, inactive_daily: DailyDataFrame, method: str = "detect-chgpt"
 ) -> np.ndarray:
     """
     Establish value for offset component of 'business as usual' daily aggregates.
@@ -400,75 +416,73 @@ def allocate_active_offsets(
 
     return active_daily_offset
 
-def handle_offsets_min_weekly(
-        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
-) -> np.ndarray:
+
+def handle_offsets_min_weekly(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> np.ndarray:
     """Establish active day offsets: for each fixed week, use the min value in the labelled inactive days."""
     # use min "inactive day" value in each fixed week (Mon-Sun inclusive; labelled on the Sunday)
     weeklymin_inactive = inactive_daily.resample(rule="W-SUN", closed="right").min().ffill()
-        # from inactive days, take minimum over each week; forward fill if a week contains no inactive days
-        # use min (rather than e.g. median) as we want to avoid active daily values being less than the allocated offset
+    # from inactive days, take minimum over each week; forward fill if a week contains no inactive days
+    # use min (rather than e.g. median) as we want to avoid active daily values being less than the allocated offset
     # find position in index of weeklymin_inactive that each record of active_daily would be inserted
     active_daily_index = active_daily.index.to_numpy()
     pos = np.searchsorted(weeklymin_inactive.index.to_numpy(), active_daily_index, side="left")
-        # use "left": weeklymin_inactive.index uses the Sunday as a label, so days in the week indexed a[i] are indexed by
-        #  v with a[i-1] < v <= a[i].
+    # use "left": weeklymin_inactive.index uses the Sunday as a label, so days in the week indexed a[i] are indexed by
+    #  v with a[i-1] < v <= a[i].
     # allocate the corresponding weekly offset to each index of active_daily
     active_daily_offset = np.empty_like(active_daily_index, dtype=float)
-    active_daily_offset[pos>=0] = weeklymin_inactive.iloc[pos[pos>=0]] # valid lookups
+    active_daily_offset[pos >= 0] = weeklymin_inactive.iloc[pos[pos >= 0]]  # valid lookups
     return active_daily_offset
 
-def handle_offsets_recent(
-        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
-) -> np.ndarray:
+
+def handle_offsets_recent(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> np.ndarray:
     """Establish active day offsets: use the value for the most recent labelled inactive day."""
     # as active_daily_offset, use value from most recent inactive day
     # find position in index of inactive_daily that each record of active_daily would be inserted
     active_daily_index = active_daily.index.to_numpy()
     pos = np.searchsorted(inactive_daily.index.to_numpy(), active_daily_index, side="right") - 1
-        # here, we're looking for the 'most recent' reference index a for each given index v. This is a[i-1] where
-        # a[i-1] <= v < a[i]. So we use side="right" and subtract one from the returned index, to get i-1.
+    # here, we're looking for the 'most recent' reference index a for each given index v. This is a[i-1] where
+    # a[i-1] <= v < a[i]. So we use side="right" and subtract one from the returned index, to get i-1.
     # allocate the corresponding value of inactive_daily to each index of active_daily
     active_daily_offset = np.empty_like(active_daily_index, dtype=float)
-    active_daily_offset[pos>=0] = inactive_daily.iloc[pos[pos>=0]] # valid lookups
-    active_daily_offset[pos<0] = inactive_daily.iloc[0] # default for active dates before first inactive date
+    active_daily_offset[pos >= 0] = inactive_daily.iloc[pos[pos >= 0]]  # valid lookups
+    active_daily_offset[pos < 0] = inactive_daily.iloc[0]  # default for active dates before first inactive date
     return active_daily_offset
 
-def handle_offsets_recent_or_next(
-        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
-) -> np.ndarray:
+
+def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> np.ndarray:
     """Establish active day offsets: use whichever value is closer in aggregate, the most recent or the next inactive day."""
     # as active_daily_offset, use either most recent or next inactive day, whichever is closer in aggregate value
-        # logic here is that the offset represents the energy usage without daily profile
-        # changes in offset could start on active days or inactive days; in each case, a given active day's
-        # offset is most likely to correspond to the inactive day that is closest in aggregate value
+    # logic here is that the offset represents the energy usage without daily profile
+    # changes in offset could start on active days or inactive days; in each case, a given active day's
+    # offset is most likely to correspond to the inactive day that is closest in aggregate value
     # find position in index of inactive_daily that each record of active_daily would be inserted
     active_daily_index = active_daily.index.to_numpy()
     pos = np.searchsorted(inactive_daily.index.to_numpy(), active_daily_index, side="left") - 1
     # allocate the corresponding value of inactive_daily to each index of active_daily
     prev_inactive = np.empty_like(active_daily_index, dtype=float)
-    prev_inactive[pos>=0] = inactive_daily.iloc[pos[pos>=0]] # valid lookups for most recent inactive value
-    prev_inactive[pos<0] = inactive_daily.iloc[0] # before first ref date
+    prev_inactive[pos >= 0] = inactive_daily.iloc[pos[pos >= 0]]  # valid lookups for most recent inactive value
+    prev_inactive[pos < 0] = inactive_daily.iloc[0]  # before first ref date
     # allocate the corresponding value of inactive_daily to each index of active_daily
     next_inactive = np.empty_like(active_daily_index, dtype=float)
-    next_inactive[pos>=0] = inactive_daily.iloc[pos[pos>=0]+1] # valid lookups for next inactive value
-    next_inactive[pos<0] = inactive_daily.iloc[0] # before first ref date
+    next_inactive[pos >= 0] = inactive_daily.iloc[pos[pos >= 0] + 1]  # valid lookups for next inactive value
+    next_inactive[pos < 0] = inactive_daily.iloc[0]  # before first ref date
 
     # use masking to return the offset that gives the smallest positive difference in aggregate from the active value
-        # first replace the negative values with np.inf
-    prev_inactive_posdiff = np.where(active_daily["consumption_kWh"] - prev_inactive >= 0,
-                                        active_daily["consumption_kWh"] - prev_inactive, np.inf)
-    next_inactive_posdiff = np.where(active_daily["consumption_kWh"] - next_inactive >= 0,
-                            active_daily["consumption_kWh"] - next_inactive, np.inf)
-        # then create a mask that selects the indices for which is the smaller positive diff
+    # first replace the negative values with np.inf
+    prev_inactive_posdiff = np.where(
+        active_daily["consumption_kWh"] - prev_inactive >= 0, active_daily["consumption_kWh"] - prev_inactive, np.inf
+    )
+    next_inactive_posdiff = np.where(
+        active_daily["consumption_kWh"] - next_inactive >= 0, active_daily["consumption_kWh"] - next_inactive, np.inf
+    )
+    # then create a mask that selects the indices for which is the smaller positive diff
     use_prevoffset = prev_inactive_posdiff <= next_inactive_posdiff
-        # select the previous or next inactive day accordingly
+    # select the previous or next inactive day accordingly
     active_daily_offset = np.where(use_prevoffset, prev_inactive, next_inactive)
     return active_daily_offset
 
-def handle_offsets_chgpt(
-        active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
-) -> np.ndarray:
+
+def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> np.ndarray:
     """
     Establish active day offsets.
 
@@ -487,58 +501,58 @@ def handle_offsets_chgpt(
     active_daily_offset = np.empty_like(active_daily_index, dtype=float)
 
     # deal separately with the case where there are active days before or after all inactive days
-    if (active_daily_index[0] < inactive_daily_index[0]):
-        mask = (active_daily_index < inactive_daily_index[0])
+    if active_daily_index[0] < inactive_daily_index[0]:
+        mask = active_daily_index < inactive_daily_index[0]
         idx = np.where(mask)[0]
         active_daily_offset[idx] = inactive_daily_vals[0]
-    if (active_daily_index[-1] > inactive_daily_index[-1]):
-        mask = (active_daily_index > inactive_daily_index[-1])
+    if active_daily_index[-1] > inactive_daily_index[-1]:
+        mask = active_daily_index > inactive_daily_index[-1]
         idx = np.where(mask)[0]
         active_daily_offset[idx] = inactive_daily_vals[-1]
 
-    for i in range(len(inactive_daily_index)-1):
-        t0, t1 = inactive_daily_index[i], inactive_daily_index[i+1]
-        a, b = inactive_daily_vals[i], inactive_daily_vals[i+1]
+    for i in range(len(inactive_daily_index) - 1):
+        t0, t1 = inactive_daily_index[i], inactive_daily_index[i + 1]
+        a, b = inactive_daily_vals[i], inactive_daily_vals[i + 1]
 
         # isolate segment of active days between inactive days
-        mask = np.logical_and(active_daily_index>=t0, active_daily_index<=t1)
+        mask = np.logical_and(active_daily_index >= t0, active_daily_index <= t1)
         idx = np.where(mask)[0]
-        if len(idx)==0:
+        if len(idx) == 0:
             continue
         signal = active_daily_vals[idx]
         n = len(signal)
 
         # compute residual cost of assigning baseline a vs b
-        cost = np.full(n + 1, np.inf) # initialise infinite total cost
+        cost = np.full(n + 1, np.inf)  # initialise infinite total cost
         sum_sig = np.cumsum(signal)
         sum_sig2 = np.cumsum(signal**2)
 
-        for k in range(n+1): # try changepoint at position k in signal
+        for k in range(n + 1):  # try changepoint at position k in signal
             if np.all(signal[:k] >= a) and np.all(signal[k:] >= b):
                 # if a, b are both valid baselines for this split, then calculate the cost,
                 #   o/w ignore k as a possible changepoint
-                if k==0:
-                    cost[k] = np.sum((signal - b)**2)
-                elif k==n:
-                    cost[k] = np.sum((signal - a)**2)
+                if k == 0:
+                    cost[k] = np.sum((signal - b) ** 2)
+                elif k == n:
+                    cost[k] = np.sum((signal - a) ** 2)
                 else:
                     # minimise total cost = cost_a + cost_b
-                    cost_a = sum_sig2[k-1] - 2*a*sum_sig[k-1] + k*a**2
-                    cost_b = (sum_sig2[-1]-sum_sig2[k-1]) - 2*b*(sum_sig[-1]-sum_sig[k-1]) + (n-k)*b**2
+                    cost_a = sum_sig2[k - 1] - 2 * a * sum_sig[k - 1] + k * a**2
+                    cost_b = (sum_sig2[-1] - sum_sig2[k - 1]) - 2 * b * (sum_sig[-1] - sum_sig[k - 1]) + (n - k) * b**2
                     cost[k] = cost_a + cost_b
 
         cp = np.argmin(cost)
-        if cost[cp]==np.inf: # no k for which a,b are both valid baselines
+        if cost[cp] == np.inf:  # no k for which a,b are both valid baselines
             # fallback: try all-a or all-b
             if np.all(signal >= a):
                 active_daily_offset[idx] = a
             elif np.all(signal >= b):
                 active_daily_offset[idx] = b
-            else: # at least one value in signal is less than a (and sim. for b)
-                active_daily_offset[idx] = np.min((a,b))
-        elif cp==0:
+            else:  # at least one value in signal is less than a (and sim. for b)
+                active_daily_offset[idx] = np.min((a, b))
+        elif cp == 0:
             active_daily_offset[idx] = b
-        elif cp==n:
+        elif cp == n:
             active_daily_offset[idx] = a
         else:
             active_daily_offset[idx[:cp]] = a
@@ -547,7 +561,7 @@ def handle_offsets_chgpt(
 
 
 def split_and_baseline_active_days(
-        df_daily_all: DailyDataFrame, weekend_inds: tuple[int,...]=(5,6), division: str="england-and-wales"
+    df_daily_all: DailyDataFrame, weekend_inds: tuple[int, ...] = (5, 6), division: str = "england-and-wales"
 ) -> tuple[DailyDataFrame, DailyDataFrame]:
     """
     Extract "inactive days" (i.e. weekend/holidays) from daily aggregates; use these to baseline the remaining days.
@@ -555,7 +569,7 @@ def split_and_baseline_active_days(
     We model active days and inactive days separately, expecting the active days to display more [canonical/regular] intraday variation.
     We distinguish between the two types of day by first assuming inactive days to include Bank Holidays and days of the week
     indicated by the provided index (Monday=0, Sunday=6); we use these inactive days as a 'baseline' above which active days vary.
-    By removing this baseline, we use simple outlier detection methods to identify remaining inactive days (e.g. between 
+    By removing this baseline, we use simple outlier detection methods to identify remaining inactive days (e.g. between
     Christmas and New Year).
 
     Parameters
@@ -579,13 +593,13 @@ def split_and_baseline_active_days(
     # Ascertain the public holiday and 'weekend' dates to use in the first split
     bh = BankHolidays(use_cached_holidays=True)
     uk_holidays = bh.get_holidays(division=division)
-    holiday_dates = {pd.Timestamp(event['date']) for event in uk_holidays}
+    holiday_dates = {pd.Timestamp(event["date"]) for event in uk_holidays}
     is_holiday = df_daily_all.index.normalize().isin(holiday_dates)
     is_weekend = df_daily_all.index.weekday.isin(weekend_inds)
 
     # Perform the initial split: extract inactive dates and define remaining records of df_daily_all as active days
-    df_daily_inactive = df_daily_all[is_holiday | is_weekend] 
-        #TODO (JSM 2025-07-30) - in notebook, this was converted from df to Series -- is this needed?
+    df_daily_inactive = df_daily_all[is_holiday | is_weekend]
+    # TODO (JSM 2025-07-30) - in notebook, this was converted from df to Series -- is this needed?
     df_daily_active = df_daily_all.loc[df_daily_all.index.difference(df_daily_inactive.index)]
 
     # forward fill any nan records: do so separately for inactive and active days
@@ -593,8 +607,10 @@ def split_and_baseline_active_days(
     df_daily_active = df_daily_active.ffill(inplace=False)
 
     # for each active date, establish the appropriate inactive date (either the most recent or the next) to use as a baseline/offset
-    df_daily_active["offsets"] = allocate_active_offsets(df_daily_active["consumption_kWh"], df_daily_inactive, method="detect-chgpt")
-        # method="detect-chgpt": assume active date baseline to be piecewise constant between inactive dates; find optimal changepoint.
+    df_daily_active["offsets"] = allocate_active_offsets(
+        df_daily_active["consumption_kWh"], df_daily_inactive, method="detect-chgpt"
+    )
+    # method="detect-chgpt": assume active date baseline to be piecewise constant between inactive dates; find optimal changepoint.
 
     # remove offsets for all active dates
     df_daily_active["consumption_baselined"] = df_daily_active["consumption_kWh"] - df_daily_active["offsets"]
@@ -604,21 +620,21 @@ def split_and_baseline_active_days(
     med = np.nanmedian(df_daily_active["consumption_baselined"])
     med_abs_dev = np.nanmedian(np.abs(df_daily_active["consumption_baselined"] - med))
     z_score_mod = 0.6745 * ((df_daily_active["consumption_baselined"] - med) / med_abs_dev)
-    site_specific_inactive_inds = df_daily_active.index[np.where(z_score_mod<-3.5)[0]] # only interested in low outliers
+    site_specific_inactive_inds = df_daily_active.index[np.where(z_score_mod < -3.5)[0]]  # only interested in low outliers
 
     ## alternative approach:
     # site_specific_inactive_inds = df_daily_active.index[
     #     np.nonzero(np.abs(df_daily_active["consumption_baselined"]) < 0.3*np.nanmedian(df_daily_active["consumption_baselined"]))[0]
     #     ]
 
-
     # move by using datetime indexing only
-    df_daily_inactive = pd.concat([df_daily_inactive,
-                                    df_daily_active["consumption_kWh"].loc[site_specific_inactive_inds]]
-                                    ).sort_index()
+    df_daily_inactive = pd.concat(
+        [df_daily_inactive, df_daily_active["consumption_kWh"].loc[site_specific_inactive_inds]]
+    ).sort_index()
     df_daily_active = df_daily_active.drop(site_specific_inactive_inds)
 
     return df_daily_active, df_daily_inactive
+
 
 def joint_nll(params: np.ndarray, models: list[ARIMA]) -> float:
     """
@@ -642,10 +658,10 @@ def joint_nll(params: np.ndarray, models: list[ARIMA]) -> float:
     total = 0.0
     for m in models:
         try:
-            ll = m.loglike(params, transformed=False)   # use raw AR, MA, sigma-sq params (not internal transformed form)
-            if not np.isfinite(ll):                     # invalid region
+            ll = m.loglike(params, transformed=False)  # use raw AR, MA, sigma-sq params (not internal transformed form)
+            if not np.isfinite(ll):  # invalid region
                 return np.inf
-            total -= ll                                 # negative log likelihood
+            total -= ll  # negative log likelihood
         except Exception:
             return np.inf  # penalise with infinite loss for e.g., LU decomposition failure
     return total
@@ -696,12 +712,12 @@ def fit_shared_arma_model(
             )
             for y in data
         ]
-    except Exception: # if model creation within the fitting function failed, skip this choice of (p,q)
+    except Exception:  # if model creation within the fitting function failed, skip this choice of (p,q)
         return None
 
-    sigma2_init = np.mean(data.var(axis=1)) # better scalar init for sigma-sq, compared to data.var()
+    sigma2_init = np.mean(data.var(axis=1))  # better scalar init for sigma-sq, compared to data.var()
     init = np.r_[np.zeros(p + q), sigma2_init]
-    bounds = [(-np.inf, np.inf)]*(p+q) + [(1e-6, np.inf)]  # sigma-sq > 0
+    bounds = [(-np.inf, np.inf)] * (p + q) + [(1e-6, np.inf)]  # sigma-sq > 0
 
     return minimize(
         joint_nll,
@@ -741,28 +757,28 @@ def select_best_shared_arma_model(
 
     for p, q in itertools.product(range(p_max + 1), range(q_max + 1)):
         if p == q == 0:
-            continue          # ARMA(0,0) is white noise - skip this case
+            continue  # ARMA(0,0) is white noise - skip this case
         result = fit_shared_arma_model(data, p, q, max_iter=max_iter)
         if result is None:
-            continue          # if model creation within the fitting function failed, skip this choice of (p,q)
+            continue  # if model creation within the fitting function failed, skip this choice of (p,q)
         if not result.success:
-            continue          # if the optimiser fails to find a valid minimum, skip this choice of (p,q)
-
+            continue  # if the optimiser fails to find a valid minimum, skip this choice of (p,q)
 
         ar_poly = np.r_[1, -result.x[:p]]
-        ma_poly = np.r_[1,  result.x[p:p+q]]
+        ma_poly = np.r_[1, result.x[p : p + q]]
         arma = ArmaProcess(ar_poly, ma_poly)
 
-        if p > 0 and not arma.isstationary: # ensure we only consider stationary models for simulating from
+        if p > 0 and not arma.isstationary:  # ensure we only consider stationary models for simulating from
             continue
 
         k = p + q + 1
-        aic = 2 * k + 2 * result.fun # result.fun = joint NLL
+        aic = 2 * k + 2 * result.fun  # result.fun = joint NLL
 
-        if len(best_result)==0 or aic < best_result["aic"]:
+        if len(best_result) == 0 or aic < best_result["aic"]:
             best_result = {"order": (p, q), "params": result.x, "aic": aic}
 
     return best_result
+
 
 def fit_residual_model(resids, verbose=False):
     """
@@ -790,17 +806,16 @@ def fit_residual_model(resids, verbose=False):
     trend = resids.mean(axis=0)
     resids_detrended = resids.sub(trend)
 
-    best = select_best_shared_arma_model(resids_detrended.to_numpy(),
-                                         p_max=3, q_max=3)
+    best = select_best_shared_arma_model(resids_detrended.to_numpy(), p_max=3, q_max=3)
     if len(best) > 0:
         p, q = best["order"]
         ar_coefs = best["params"][:p]
-        ma_coefs = best["params"][p:p+q]
+        ma_coefs = best["params"][p : p + q]
         sigma2 = best["params"][-1]
         ar = np.r_[1, -ar_coefs]
         ma = np.r_[1, ma_coefs]
         ARMA_model = ArmaProcess(ar, ma)
-            # use ArmaProcess() for simulation as it is lightweight, built for generating multiple iid realisations
+        # use ArmaProcess() for simulation as it is lightweight, built for generating multiple iid realisations
         ARMA_scale = np.sqrt(sigma2)
         if verbose:
             logger.info("  Best (p, q): %s", best["order"])
@@ -813,5 +828,3 @@ def fit_residual_model(resids, verbose=False):
 
     trend_as_df = pd.DataFrame(trend, index=resids.columns).T
     return trend_as_df, ARMA_model, ARMA_scale
-
-
