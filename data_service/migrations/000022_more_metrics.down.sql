@@ -33,6 +33,6 @@ DROP COLUMN IF EXISTS metric_baseline_combined_carbon_emissions,
 DROP COLUMN IF EXISTS metric_baseline_environmental_impact_score,
 DROP COLUMN IF EXISTS metric_baseline_environmental_impact_grade;
 
-DROP TYPE IF EXISTS GRADE_ENUM;
+DROP TYPE IF EXISTS "GRADE_ENUM";
 
 END;
