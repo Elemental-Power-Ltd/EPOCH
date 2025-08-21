@@ -77,9 +77,9 @@ class DataManager:
 
         site_data_entries = await self.get_bundled_data(bundle_id=site_data.bundle_id)
 
-        start_ts, end_ts = await self.get_bundle_timestamps(bundle_id=site_data.bundle_id)
+        site_data.start_ts, site_data.end_ts = await self.get_bundle_timestamps(bundle_id=site_data.bundle_id)
 
-        epoch_data = self.transform_all_input_data(site_data_entries, start_ts, end_ts)
+        epoch_data = self.transform_all_input_data(site_data_entries, site_data.start_ts, site_data.end_ts)
 
         return epoch_data
 
