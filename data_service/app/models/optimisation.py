@@ -434,7 +434,6 @@ class TaskConfig(pydantic.BaseModel):
         examples=[
             {
                 "demo_london": {
-                    "loc": "remote",
                     "site_id": "demo_london",
                     "start_ts": "2025-01-01T00:00:00Z",
                     "duration": "1Y",
