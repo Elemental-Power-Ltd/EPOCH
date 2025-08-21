@@ -6,7 +6,7 @@ from typing import cast
 from epoch_simulator import SimulationResult, TaskData
 
 from app.models.core import Grade, SimulationMetrics
-from app.models.epoch_types import TaskDataPydantic
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric, MetricValues
 
 type Jsonable = float | int | str | dict[str, Jsonable]
