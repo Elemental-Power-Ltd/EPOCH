@@ -18,6 +18,7 @@ from ..dependencies import DatabasePoolDep
 from ..internal.optimisation import pick_highlighted_results
 from ..models.core import ClientID, ResultID, TaskID
 from ..models.optimisation import (
+    Grade,
     OptimisationResultEntry,
     OptimisationResultsResponse,
     OptimisationTaskListEntry,
@@ -162,6 +163,10 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                 total_scope_1_emissions=nan_to_num(item["metric_total_scope_1_emissions"]),
                 total_scope_2_emissions=nan_to_num(item["metric_total_scope_2_emissions"]),
                 total_combined_carbon_emissions=nan_to_num(item["metric_total_combined_carbon_emissions"]),
+                # quirk of Portfolio vs Site results,
+                # these columns don't exist in the portfolio table
+                scenario_environmental_impact_score=None,
+                scenario_environmental_impact_grade=None,
                 # baseline metrics
                 baseline_gas_used=nan_to_num(item["metric_baseline_gas_used"]),
                 baseline_electricity_imported=nan_to_num(item["metric_baseline_electricity_imported"]),
@@ -182,6 +187,10 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                 baseline_scope_1_emissions=nan_to_num(item["metric_baseline_scope_1_emissions"]),
                 baseline_scope_2_emissions=nan_to_num(item["metric_baseline_scope_2_emissions"]),
                 baseline_combined_carbon_emissions=nan_to_num(item["metric_baseline_combined_carbon_emissions"]),
+                # quirk of Portfolio vs Site results,
+                # these columns don't exist in the portfolio table
+                baseline_environmental_impact_score=None,
+                baseline_environmental_impact_grade=None,
             ),
             site_results=[
                 SiteOptimisationResult(
@@ -220,6 +229,11 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                         total_scope_1_emissions=nan_to_num(sub_item["metric_total_scope_1_emissions"]),
                         total_scope_2_emissions=nan_to_num(sub_item["metric_total_scope_2_emissions"]),
                         total_combined_carbon_emissions=nan_to_num(sub_item["metric_total_combined_carbon_emissions"]),
+                        scenario_environmental_impact_score=nan_to_num(
+                            sub_item["metric_scenario_environmental_impact_score"]),
+                        scenario_environmental_impact_grade=Grade[
+                            sub_item["metric_scenario_environmental_impact_grade"]] if sub_item[
+                            "metric_scenario_environmental_impact_grade"] else None,
                         # baseline metrics
                         baseline_gas_used=nan_to_num(sub_item["metric_baseline_gas_used"]),
                         baseline_electricity_imported=nan_to_num(sub_item["metric_baseline_electricity_imported"]),
@@ -240,6 +254,11 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                         baseline_scope_1_emissions=nan_to_num(sub_item["metric_baseline_scope_1_emissions"]),
                         baseline_scope_2_emissions=nan_to_num(sub_item["metric_baseline_scope_2_emissions"]),
                         baseline_combined_carbon_emissions=nan_to_num(sub_item["metric_baseline_combined_carbon_emissions"]),
+                        baseline_environmental_impact_score=nan_to_num(
+                            sub_item["metric_baseline_environmental_impact_score"]),
+                        baseline_environmental_impact_grade=Grade[
+                            sub_item["metric_baseline_environmental_impact_grade"]] if sub_item[
+                            "metric_baseline_environmental_impact_grade"] else None,
                     ),
                 )
                 for sub_item in item["site_results"]
@@ -504,6 +523,8 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             [item.metrics.total_scope_1_emissions for item in pf.site_results],
                             [item.metrics.total_scope_2_emissions for item in pf.site_results],
                             [item.metrics.total_combined_carbon_emissions for item in pf.site_results],
+                            [item.metrics.scenario_environmental_impact_score for item in pf.site_results],
+                            [item.metrics.scenario_environmental_impact_grade for item in pf.site_results],
 
                             [item.metrics.baseline_gas_used for item in pf.site_results],
                             [item.metrics.baseline_electricity_imported for item in pf.site_results],
@@ -524,6 +545,8 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             [item.metrics.baseline_scope_1_emissions for item in pf.site_results],
                             [item.metrics.baseline_scope_2_emissions for item in pf.site_results],
                             [item.metrics.baseline_combined_carbon_emissions for item in pf.site_results],
+                            [item.metrics.baseline_environmental_impact_score for item in pf.site_results],
+                            [item.metrics.baseline_environmental_impact_grade for item in pf.site_results],
                             strict=True,
                         ),
                         columns=[
@@ -560,6 +583,8 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             "metric_total_scope_1_emissions",
                             "metric_total_scope_2_emissions",
                             "metric_total_combined_carbon_emissions",
+                            "metric_scenario_environmental_impact_score",
+                            "metric_scenario_environmental_impact_grade",
                             "metric_baseline_gas_used",
                             "metric_baseline_electricity_imported",
                             "metric_baseline_electricity_generated",
@@ -579,6 +604,8 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             "metric_baseline_scope_1_emissions",
                             "metric_baseline_scope_2_emissions",
                             "metric_baseline_combined_carbon_emissions",
+                            "metric_baseline_environmental_impact_score",
+                            "metric_baseline_environmental_impact_grade",
                         ],
                     )
 
