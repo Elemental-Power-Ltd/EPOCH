@@ -145,6 +145,7 @@ class Grade(StrEnum):
     F = "F"
     G = "G"
 
+
 class SimulationMetrics(BaseModel):
     """Metrics for a site or portfolio of sites."""
 
@@ -225,8 +226,10 @@ class SimulationMetrics(BaseModel):
     total_scope_2_emissions: float | None = Field(description="Total Scope 2 emissions (kg CO2e).", default=None)
     total_combined_carbon_emissions: float | None = Field(description="Scope 1 and Scope 2 emissions (kg CO2e).", default=None)
 
-    scenario_environmental_impact_score: int | None = Field(description="environmental impact score based on SAP", default=None)
-    scenario_environmental_impact_grade: Grade | None = Field(description="environmental impact grade (A-G)", default=None)
+    scenario_environmental_impact_score: int | None = Field(
+        description="environmental impact score based on SAP", default=None)
+    scenario_environmental_impact_grade: Grade | None = Field(
+        description="environmental impact grade (A-G)", default=None)
 
     baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh).", default=None)
     baseline_electricity_imported: float | None = Field(
@@ -277,8 +280,10 @@ class SimulationMetrics(BaseModel):
     baseline_combined_carbon_emissions: float | None = Field(
         description="Baseline Scope 1 and Scope 2 emissions (kg CO2e).", default=None
     )
-    baseline_environmental_impact_score: int | None = Field(description="baseline environmental impact score based on SAP", default=None)
-    baseline_environmental_impact_grade: Grade | None = Field(description="baseline environmental impact grade (A-G)", default=None)
+    baseline_environmental_impact_score: int | None = Field(
+        description="baseline environmental impact score based on SAP", default=None)
+    baseline_environmental_impact_grade: Grade | None = Field(
+        description="baseline environmental impact grade (A-G)", default=None)
 
 
 class SiteOptimisationResult(BaseModel):

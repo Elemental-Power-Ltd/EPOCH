@@ -5,8 +5,8 @@ from typing import cast
 
 from epoch_simulator import SimulationResult, TaskData
 
-from app.models.core import SimulationMetrics, Grade
-from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
+from app.models.core import Grade, SimulationMetrics
+from app.models.epoch_types import TaskDataPydantic
 from app.models.metrics import Metric, MetricValues
 
 type Jsonable = float | int | str | dict[str, Jsonable]
@@ -33,8 +33,10 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
     baseline = sim_result.baseline_metrics
 
     # we have to do an awkward conversion between two enums with the same values here
-    scenario_grade = Grade[scenario.environmental_impact_grade.name] if scenario.environmental_impact_grade is not None else None
-    baseline_grade = Grade[baseline.environmental_impact_grade.name] if baseline.environmental_impact_grade is not None else None
+    scenario_grade = Grade[
+        scenario.environmental_impact_grade.name] if scenario.environmental_impact_grade is not None else None
+    baseline_grade = Grade[
+        baseline.environmental_impact_grade.name] if baseline.environmental_impact_grade is not None else None
 
     return SimulationMetrics(
         # Comparison metrics
