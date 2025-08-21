@@ -1,10 +1,9 @@
 from enum import StrEnum
-from pathlib import Path
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-from app.models.database import dataset_id_t
+from app.models.database import bundle_id_t, dataset_id_t
 from app.models.epoch_types.task_data_type import TaskData
 
 
@@ -17,10 +16,7 @@ class DataDuration(StrEnum):
     year = "year"
 
 
-class RemoteMetaData(BaseModel):
-    loc: Literal[FileLoc.remote] = Field(
-        examples=["remote"], description="Location of data. Either in local directory or in remote database."
-    )
+class SiteMetaData(BaseModel):
     site_id: str = Field(
         examples=["demo_london"],
         description="The database ID for a site, all lower case, joined by underscores.",
@@ -33,6 +29,7 @@ class RemoteMetaData(BaseModel):
         examples=["2023-01-01T00:00:00Z"],
         description="The latest time (exclusive) to retrieve data for.",
     )
+    bundle_id: bundle_id_t | None = Field(default=None)
     SiteBaseline: dataset_id_t | None = Field(default=None)
     HeatingLoad: dataset_id_t | list[dataset_id_t] | None = Field(default=None)
     ASHPData: dataset_id_t | None = Field(default=None)
@@ -44,20 +41,9 @@ class RemoteMetaData(BaseModel):
     GasMeterData: dataset_id_t | None = Field(default=None)
     RenewablesGeneration: dataset_id_t | list[dataset_id_t] | None = Field(default=None)
 
-    # we mutate RemoteMetaData requests (in hydrate_site_data_with_latest_dataset_ids)
+    # we mutate SiteMetaData requests (in hydrate_site_data_with_latest_dataset_ids)
     # so we validate assignment to prevent pydantic warnings about UUIDs vs Strings
     model_config = ConfigDict(validate_assignment=True)
-
-
-class LocalMetaData(BaseModel):
-    loc: Literal[FileLoc.local] = Field(
-        examples=["local"], description="Location of data. Either in local directory or in remote database."
-    )
-    site_id: str = Field(
-        examples=["demo_london"],
-        description="The database ID for a site, all lower case, joined by underscores.",
-    )
-    path: Path = Field(examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it.")
 
 
 class EpochEntry(BaseModel):
@@ -219,9 +205,6 @@ class EpochSiteData(BaseModel):
             shorter_arrays = [(key, val) for key, val in lengths.items() if val < longest_len]
             raise ValueError(f"Got shorter length arrays in EpochSiteData: {shorter_arrays} but expected {longest_len}")
         raise ValueError(f"Problem with lengths in EpochSiteData: {lengths}")
-
-
-SiteMetaData = RemoteMetaData | LocalMetaData
 
 
 class DatasetTypeEnum(StrEnum):

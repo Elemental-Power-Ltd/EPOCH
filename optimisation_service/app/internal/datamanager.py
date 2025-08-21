@@ -1,5 +1,6 @@
 import json
 import logging
+import operator
 import os
 import typing
 from datetime import datetime
@@ -9,11 +10,12 @@ from typing import Any, cast
 import httpx
 from fastapi import Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
+from pydantic import UUID7, AwareDatetime
 
 from app.models.core import OptimisationResultEntry, Site, Task
-from app.models.database import dataset_id_t
+from app.models.database import bundle_id_t, dataset_id_t
 from app.models.simulate import EpochInputData, ResultReproConfig
-from app.models.site_data import DatasetTypeEnum, EpochSiteData, FileLoc, RemoteMetaData, SiteDataEntries
+from app.models.site_data import DatasetTypeEnum, EpochSiteData, SiteDataEntries, SiteMetaData
 
 logger = logging.getLogger("default")
 
@@ -48,17 +50,12 @@ class DataManager:
         """
         # TODO: makes this async
         for site in task.portfolio:
-            site_data = site.site_data
-            if site_data.loc == FileLoc.remote:
-                site._epoch_data = await self.get_latest_site_data(site_data)
-
-            elif site_data.loc == FileLoc.local:
-                site._epoch_data = load_epoch_data_from_file(Path(site_data.path))
+            site._epoch_data = await self.get_latest_site_data(site.site_data)
             # Check here that the data is good, as we partially constructed the site
             # before we got going.
             site = Site.model_validate(site)
 
-    async def get_latest_site_data(self, site_data: RemoteMetaData) -> EpochSiteData:
+    async def get_latest_site_data(self, site_data: SiteMetaData) -> EpochSiteData:
         """
         Get an EPOCH-compatible SiteData using the most recently generated datasets of each type.
 
@@ -72,15 +69,90 @@ class DataManager:
         EpochSiteData
             Data about timeseries inputs for EPOCH to use
         """
-        await self.hydrate_site_with_latest_dataset_ids(site_data)
+        if site_data.bundle_id is None:
+            bundle_id = await self.get_latest_bundle_id(
+                site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts
+            )
+            site_data.bundle_id = bundle_id
 
-        validate_for_necessary_datasets(site_data)
+        site_data_entries = await self.get_bundled_data(bundle_id=site_data.bundle_id)
 
-        dataset_entries = await self.fetch_specific_datasets(site_data)
+        site_data.start_ts, site_data.end_ts = await self.get_bundle_timestamps(bundle_id=site_data.bundle_id)
 
-        epoch_data = self.transform_all_input_data(dataset_entries, site_data.start_ts, site_data.end_ts)
+        epoch_data = self.transform_all_input_data(site_data_entries, site_data.start_ts, site_data.end_ts)
 
         return epoch_data
+
+    async def get_latest_bundle_id(self, site_id: str, start_ts: AwareDatetime, end_ts: AwareDatetime) -> UUID7:
+        """
+        Get the bundle_id of the last created bundle with matching start timestamp.
+
+        Parameters
+        ----------
+        site_id
+            ID of the site.
+        start_ts
+            Start timestamp.
+        end_ts
+            End timestamp.
+
+        Returns
+        -------
+            Bundle ID.
+        """
+        data = {"site_id": site_id}
+        async with httpx.AsyncClient() as client:
+            bundles = await self.db_post(client=client, subdirectory="/list-dataset-bundles", data=data)
+        matching_bundles = [
+            bundle
+            for bundle in bundles
+            if datetime.fromisoformat(bundle["start_ts"]) == start_ts and datetime.fromisoformat(bundle["end_ts"]) == end_ts
+        ]
+
+        if not matching_bundles:
+            raise ValueError(f"Unable to find a bundle with matching start and end timestamps: {start_ts}, {end_ts}")
+
+        return cast(UUID7, max(matching_bundles, key=operator.itemgetter("created_at"))["bundle_id"])
+
+    async def get_bundled_data(self, bundle_id: bundle_id_t) -> SiteDataEntries:
+        """
+        Get all the site data entries associated to a bundle_id.
+
+        Parameters
+        ----------
+        bundle_id
+            ID of the bundle.
+
+        Returns
+        -------
+            Dictionary of datasets associated with the bundle.
+        """
+        async with httpx.AsyncClient() as client:
+            res = await client.post(url=self.db_url + "/get-dataset-bundle", params={"bundle_id": str(bundle_id)}, timeout=30.0)
+        site_data_entries = res.json()
+        return SiteDataEntries.model_validate(site_data_entries)
+
+    async def get_bundle_timestamps(self, bundle_id: bundle_id_t) -> tuple[AwareDatetime, AwareDatetime]:
+        """
+        Get a bundle's start and end timestamps.
+
+        Parameters
+        ----------
+        bundle_id
+            ID of the bundle.
+
+        Returns
+        -------
+            Tuple with start and end timestamps.
+        """
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                url=self.db_url + "/list-bundle-contents", params={"bundle_id": str(bundle_id)}, timeout=30.0
+            )
+        bundle_content = res.json()
+        starts_ts: AwareDatetime = bundle_content["start_ts"]
+        end_ts: AwareDatetime = bundle_content["end_ts"]
+        return (starts_ts, end_ts)
 
     async def get_saved_epoch_input(self, portfolio_id: dataset_id_t, site_id: str) -> EpochInputData:
         """
@@ -118,53 +190,6 @@ class DataManager:
 
         return EpochInputData(task_data=task_data, site_data=epoch_data)
 
-    async def hydrate_site_with_latest_dataset_ids(self, site_data: RemoteMetaData) -> None:
-        """
-        Obtain the latest dataset_ids for the given site and place them in the site_data.
-
-        This method should be called when site_data has not provided a specific set of IDs
-
-        Parameters
-        ----------
-        site_data
-            Information about the datasets you want to request
-
-        Returns
-        -------
-        None
-        """
-        datasetlist = await self.fetch_latest_dataset_ids(site_data)
-
-        for key in DatasetTypeEnum:
-            if not site_data.__getattribute__(key):
-                curr_entries = datasetlist[key]
-                if isinstance(curr_entries, list):
-                    site_data.__setattr__(key, [item["dataset_id"] for item in curr_entries])
-                elif isinstance(curr_entries, dict):
-                    site_data.__setattr__(key, curr_entries["dataset_id"])
-                else:
-                    site_data.__setattr__(key, None)
-
-    async def fetch_latest_dataset_ids(self, site_data: RemoteMetaData) -> dict[str, Any]:
-        """
-        Get the latest dataset IDs available for this site.
-
-        This will get the IDs from the latest bundle in the database.
-
-        Parameters
-        ----------
-        site_data
-            What data you want to get the latest IDs for
-
-        Returns
-        -------
-        dict[str, Any]
-            Dataset type, ID mapping from the database
-        """
-        async with httpx.AsyncClient() as client:
-            latest_ids = await self.db_post(client=client, subdirectory="/list-latest-datasets", data=site_data)
-            return cast(dict[str, Any], latest_ids)
-
     def save_parameters(self, task: Task) -> None:
         """
         Save the parameters of a Task to file for debug.
@@ -179,7 +204,7 @@ class DataManager:
             site_temp_dir.mkdir(parents=True, exist_ok=True)
             Path(site_temp_dir, "site_range.json").write_text(site.site_range.model_dump_json())
 
-    async def fetch_specific_datasets(self, site_data: RemoteMetaData) -> SiteDataEntries:
+    async def fetch_specific_datasets(self, site_data: SiteMetaData) -> SiteDataEntries:
         """
         Fetch some specificially chosen datasets from the database.
 
@@ -349,7 +374,7 @@ def load_epoch_data_from_file(path: Path) -> EpochSiteData:
     return EpochSiteData.model_validate(json.loads(path.read_text()))
 
 
-def validate_for_necessary_datasets(site_data: RemoteMetaData) -> None:
+def validate_for_necessary_datasets(site_data: SiteMetaData) -> None:
     """
     Check that the site_data contains all of the necessary datasets.
 
