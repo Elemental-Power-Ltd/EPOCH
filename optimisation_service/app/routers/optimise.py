@@ -315,7 +315,7 @@ async def submit_portfolio(request: Request, task: Task, data_manager: DataManag
     try:
         await data_manager.fetch_portfolio_data(task)
         task.portfolio, task.portfolio_constraints = apply_default_constraints(
-            exsiting_portfolio=task.portfolio, existing_constraints=task.portfolio_constraints
+            existing_portfolio=task.portfolio, existing_constraints=task.portfolio_constraints
         )
         data_manager.save_parameters(task)
         await data_manager.transmit_task(task)

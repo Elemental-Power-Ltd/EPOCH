@@ -97,44 +97,65 @@ def merge_constraints(constraints_list: list[Constraints]) -> Constraints:
     return merged
 
 
-def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01) -> Constraints:
+def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01, dhw_tolerance: float | None = None) -> Constraints:
     """
     Get the maximum shortfall constraints for a site.
 
-    Total heat shortfall is bounded above by heat_tolerance percent of the site's heat load.
+    Total heat shortfall is bounded above by heat_tolerance percent of the site's central heating load.
+    The total DHW shortfall is separated from the central heating shortfall.
     Total electrical shortfall is bounded above by 1 kWh to allow for some floating point issues.
+    We also constrain the total shortfall across both heat metrics as an edge case.
 
     Parameters
     ----------
     site
         A site to generate shortfall constraints for.
     heat_tolerance
-        Percentage of the heat load to bound the total heat shortfall by.
+        Percentage of the heat load to bound the central heating shortfall by.
+    dhw_tolerance
+        Percentage of the DHW load to bound the DHW shorfall by. If default, use the same as the heat tolerance.
 
     Returns
     -------
     constraints
         Constraints dict, containing constraints on total_electrical_shortfall and total_heat_shortfall.
     """
+    if dhw_tolerance is None:
+        dhw_tolerance = heat_tolerance
+
     hload = sum(site._epoch_data.building_hload)
-    heat_max = max(heat_tolerance * hload, 1)
-    constraints = {Metric.total_electrical_shortfall: Bounds(max=1), Metric.total_heat_shortfall: Bounds(max=heat_max)}
+    dhw_load = sum(site._epoch_data.dhw_demand)
+
+    # Clip these to always forgive 1 kWh of shortfall in case of floating point errors
+    # or other minor weirdness.
+    ch_max = max(heat_tolerance * hload, 1.0)
+    dhw_max = max(dhw_tolerance * dhw_load, 1.0)
+
+    constraints = {
+        Metric.total_electrical_shortfall: Bounds(max=1),
+        Metric.total_ch_shortfall: Bounds(max=ch_max),
+        Metric.total_dhw_shortfall: Bounds(max=dhw_max),
+        # We keep the total heat shortfall just in case it's useful elsewhere!
+        Metric.total_heat_shortfall: Bounds(max=ch_max + dhw_max),
+    }
     return constraints
 
 
 def apply_default_constraints(
-    exsiting_portfolio: list[Site], existing_constraints: Constraints
+    existing_portfolio: list[Site], existing_constraints: Constraints
 ) -> tuple[list[Site], Constraints]:
     """
     Apply default constraints to existing portfolio and site constraints.
 
     These are:
-    - Electrical and Heat shortfall upper bounds on the sites.
-      We want to make sure that the solutions provided are viable energetically.
+    - Electrical shortfall upper bounds on the sites.
+    - Central heating shortfall upper bounds
+    - Domestic hot water upper bounds
+    We want to make sure that the solutions provided are viable energetically.
 
     Parameters
     ----------
-    exsiting_portfolio
+    existing_portfolio
         The associated portfolio.
     existing_constraints
         The existing portfolio constraints.
@@ -147,7 +168,7 @@ def apply_default_constraints(
         The existing portfolio constraints with default constraints applied to them.
     """
     portfolio = []
-    for site in exsiting_portfolio:
+    for site in existing_portfolio:
         shortfall_constraints = get_shortfall_constraints(site=site)
         exsiting_site_constraints = site.constraints
         site.constraints = merge_constraints([exsiting_site_constraints, shortfall_constraints])

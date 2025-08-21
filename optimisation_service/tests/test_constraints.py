@@ -56,14 +56,18 @@ class TestGetShortfallConstraints:
         constraints = get_shortfall_constraints(site=default_site, heat_tolerance=0.01)
         assert constraints[Metric.total_electrical_shortfall]["max"] == 1
         assert constraints[Metric.total_heat_shortfall]["max"] >= 1
+        assert constraints[Metric.total_ch_shortfall]["max"] >= 1
+        assert constraints[Metric.total_dhw_shortfall]["max"] >= 1
 
 
 class TestApplyDefaultConstraints:
     def test_good_inputs(self, default_portfolio: list[Site], default_constraints: Constraints) -> None:
-        portfolio, _ = apply_default_constraints(exsiting_portfolio=default_portfolio, existing_constraints=default_constraints)
+        portfolio, _ = apply_default_constraints(existing_portfolio=default_portfolio, existing_constraints=default_constraints)
         for site in portfolio:
             assert site.constraints[Metric.total_electrical_shortfall]["max"] == 1
             assert site.constraints[Metric.total_heat_shortfall]["max"] >= 1
+            assert site.constraints[Metric.total_ch_shortfall]["max"] >= 1
+            assert site.constraints[Metric.total_dhw_shortfall]["max"] >= 1
 
 
 class TestMergeConstrains:
