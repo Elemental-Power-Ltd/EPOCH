@@ -77,7 +77,9 @@ class DataManager:
 
         site_data_entries = await self.get_bundled_data(bundle_id=site_data.bundle_id)
 
-        epoch_data = self.transform_all_input_data(site_data_entries, site_data.start_ts, site_data.end_ts)
+        start_ts, end_ts = await self.get_bundle_timestamps(bundle_id=site_data.bundle_id)
+
+        epoch_data = self.transform_all_input_data(site_data_entries, start_ts, end_ts)
 
         return epoch_data
 
@@ -98,16 +100,17 @@ class DataManager:
         -------
             Bundle ID.
         """
-        data = {"site_id": site_id, "start_ts": start_ts, "end_ts": end_ts}
+        data = {"site_id": site_id}
         async with httpx.AsyncClient() as client:
             bundles = await self.db_post(client=client, subdirectory="/list-dataset-bundles", data=data)
-        matching_bundles = [bundle for bundle in bundles if datetime.fromisoformat(bundle["start_ts"]) == start_ts]
+        matching_bundles = [
+            bundle
+            for bundle in bundles
+            if datetime.fromisoformat(bundle["start_ts"]) == start_ts and datetime.fromisoformat(bundle["end_ts"]) == end_ts
+        ]
 
-        if len(matching_bundles) == 0:
-            raise ValueError(f"Unable to find a bundle with matching start timestamp: {start_ts}")
-
-        if len(matching_bundles) == 1:
-            return cast(UUID7, matching_bundles[0]["bundle_id"])
+        if not matching_bundles:
+            raise ValueError(f"Unable to find a bundle with matching start and end timestamps: {start_ts}, {end_ts}")
 
         return cast(UUID7, max(matching_bundles, key=operator.itemgetter("created_at"))["bundle_id"])
 
@@ -128,6 +131,28 @@ class DataManager:
             res = await client.post(url=self.db_url + "/get-dataset-bundle", params={"bundle_id": str(bundle_id)}, timeout=30.0)
         site_data_entries = res.json()
         return SiteDataEntries.model_validate(site_data_entries)
+
+    async def get_bundle_timestamps(self, bundle_id: bundle_id_t) -> tuple[AwareDatetime, AwareDatetime]:
+        """
+        Get a bundle's start and end timestamps.
+
+        Parameters
+        ----------
+        bundle_id
+            ID of the bundle.
+
+        Returns
+        -------
+            Tuple with start and end timestamps.
+        """
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                url=self.db_url + "/list-bundle-contents", params={"bundle_id": str(bundle_id)}, timeout=30.0
+            )
+        bundle_content = res.json()
+        starts_ts: AwareDatetime = bundle_content["start_ts"]
+        end_ts: AwareDatetime = bundle_content["end_ts"]
+        return (starts_ts, end_ts)
 
     async def get_saved_epoch_input(self, portfolio_id: dataset_id_t, site_id: str) -> EpochInputData:
         """
