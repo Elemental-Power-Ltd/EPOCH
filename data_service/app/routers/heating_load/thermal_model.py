@@ -16,7 +16,6 @@ import asyncio
 import datetime
 import json
 import operator
-import uuid
 
 import httpx
 import pandas as pd
@@ -27,7 +26,8 @@ from fastapi.encoders import jsonable_encoder
 from ...dependencies import DatabasePoolDep, ProcessPoolDep
 from ...internal.site_manager.dataset_lists import list_elec_datasets, list_gas_datasets, list_thermal_models
 from ...internal.thermal_model.fitting import fit_to_gas_usage
-from ...models.core import DatasetID, DatasetTypeEnum
+from ...internal.utils.uuid import uuid7
+from ...models.core import DatasetID, DatasetTypeEnum, SiteID, uuid_t
 from ...models.heating_load import ThermalModelResult
 from ...models.thermal_model import ThermalModelRequest
 from ...models.weather import WeatherRequest
@@ -40,9 +40,9 @@ from .router import api_router
 async def file_params_with_db(
     pool: DatabasePoolDep,
     site_id: str,
-    task_id: pydantic.UUID4,
+    task_id: pydantic.UUID7,
     results: ThermalModelResult,
-    datasets: dict[DatasetTypeEnum, pydantic.UUID4],
+    datasets: dict[DatasetTypeEnum, pydantic.UUID7],
 ) -> None:
     """
     Write the parameters for the thermal model to the database.
@@ -85,8 +85,8 @@ async def thermal_fitting_process_wrapper(
     executor: ProcessPoolDep,
     pool: DatabasePoolDep,
     site_id: str,
-    task_id: pydantic.UUID4,
-    datasets: dict[DatasetTypeEnum, pydantic.UUID4],
+    task_id: uuid_t,
+    datasets: dict[DatasetTypeEnum, uuid_t],
     gas_df: pd.DataFrame,
     weather_df: pd.DataFrame,
     elec_df: pd.DataFrame | None,
@@ -160,7 +160,7 @@ async def get_thermal_model(pool: DatabasePoolDep, dataset_id: DatasetID) -> The
 @api_router.post("/fit-thermal-model")
 async def fit_thermal_model_endpoint(
     pool: DatabasePoolDep, process_pool: ProcessPoolDep, bgt: BackgroundTasks, params: ThermalModelRequest
-) -> dict[str, pydantic.UUID4]:
+) -> dict[str, pydantic.UUID7]:
     """
     Fit thermal model parameters via a background task.
 
@@ -181,34 +181,37 @@ async def fit_thermal_model_endpoint(
     -------
         The ID that this dataset will eventually get.
     """
-    all_gas_datasets = await list_gas_datasets(params, pool)
+    all_gas_datasets = await list_gas_datasets(SiteID(site_id=params.site_id), pool)
     if not all_gas_datasets:
         raise HTTPException(400, f"No gas datasets available for `{params.site_id}` to fit to.")
     latest_gas_dataset_id = max(all_gas_datasets, key=operator.attrgetter("created_at")).dataset_id
 
-    all_elec_datasets = await list_elec_datasets(params, pool)
+    all_elec_datasets = await list_elec_datasets(SiteID(site_id=params.site_id), pool)
     if not all_elec_datasets:
         raise HTTPException(400, f"No gas datasets available for `{params.site_id}` to fit to.")
     latest_elec_dataset_id = max(all_elec_datasets, key=operator.attrgetter("created_at")).dataset_id
 
     # We use the existing thermal models as probe points for the new model.
     # If we've changed the limits, watch out as some of these might end up being thrown out.
-    all_thermal_metadata = await list_thermal_models(params, pool)
+    all_thermal_metadata = await list_thermal_models(SiteID(site_id=params.site_id), pool)
     all_thermal_models = [
         await get_thermal_model(pool=pool, dataset_id=DatasetID(dataset_id=item.dataset_id)) for item in all_thermal_metadata
     ]
 
-    async with pool.acquire() as conn, httpx.AsyncClient() as client:
-        gas_meter_records = await get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), pool=pool)
-        elec_meter_records = await get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool)
-        location = await get_location(params, conn=conn)
+    async with asyncio.TaskGroup() as tg:
+        location_task = tg.create_task(get_location(SiteID(site_id=params.site_id), pool=pool))
+        gas_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), pool=pool))
+        elec_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool))
+
+    location, gas_meter_records, elec_meter_records = location_task.result(), gas_meter_task.result(), elec_meter_task.result()
+    async with httpx.AsyncClient() as client:
         weather_records = await get_weather(
             weather_request=WeatherRequest(
                 location=location,
                 start_ts=min(item.start_ts for item in gas_meter_records),
                 end_ts=max(item.end_ts for item in gas_meter_records),
             ),
-            conn=conn,
+            pool=pool,
             http_client=client,
         )
 
@@ -226,7 +229,7 @@ async def fit_thermal_model_endpoint(
         gas_df["start_ts"] = gas_df.index
     weather_df = pd.DataFrame.from_records([item.model_dump() for item in weather_records], index="timestamp")
     weather_df["timestamp"] = weather_df.index
-    task_id = uuid.uuid4()
+    task_id = uuid7()
     bgt.add_task(
         thermal_fitting_process_wrapper,
         process_pool,

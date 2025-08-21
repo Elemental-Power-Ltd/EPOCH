@@ -3,12 +3,12 @@
 # ruff: noqa: D101, D102
 import datetime
 import json
-import uuid
 
 import httpx
 import pytest
 
 from app.internal.gas_meters import parse_half_hourly, try_meter_parsing
+from app.internal.utils.uuid import uuid7
 
 
 class TestUploadMeterData:
@@ -59,7 +59,7 @@ class TestUploadMeterData:
     async def test_get_non_existent_dataset(self, client: httpx.AsyncClient) -> None:
         result = await client.post(
             "/get-meter-data",
-            json={"dataset_id": str(uuid.uuid4()), "start_ts": "2023-01-01T00:00:00Z", "end_ts": "2023-02-01T00:00:00Z"},
+            json={"dataset_id": str(uuid7()), "start_ts": "2023-01-01T00:00:00Z", "end_ts": "2023-02-01T00:00:00Z"},
         )
         assert result.status_code == 400
 

@@ -16,7 +16,8 @@ class RateLimiter:
     Tokens are added to the bucket based on time elapsed since the last request,
     and each request consumes one token. If no tokens are available, the limiter
     will cause the caller to wait until a token becomes available.
-
+    Where you're performing batched request to an endpoint, prefer `aiometer.amap`
+    but this will do for single requests in functions that are called regularly.
 
     Attributes
     ----------
@@ -32,7 +33,9 @@ class RateLimiter:
         Lock to ensure thread-safety in async environment.
     """
 
-    def __init__(self, rate_limit_requests: int = 5, rate_limit_period: float = 1.0) -> None:
+    def __init__(
+        self, rate_limit_requests: int = 5, rate_limit_period: datetime.timedelta = datetime.timedelta(seconds=1.0)
+    ) -> None:
         """
         Create a rate limiter, starting the timer and filling the token pool.
 
@@ -61,16 +64,16 @@ class RateLimiter:
         """
         async with self.lock:
             now = datetime.datetime.now(datetime.UTC)
-            time_passed = (now - self.updated_at).total_seconds()
+            time_passed = now - self.updated_at
             self.updated_at = now
 
             # Add tokens based on time passed
-            self.tokens = min(self.rate_limit, self.tokens + time_passed * (self.rate_limit / self.period))
+            self.tokens = min(self.rate_limit, self.tokens + self.rate_limit * (time_passed / self.period))
 
             # If we don't have at least 1 token, wait
             if self.tokens < 1:
                 wait_time = (1 - self.tokens) * (self.period / self.rate_limit)
-                await asyncio.sleep(wait_time)
+                await asyncio.sleep(wait_time.total_seconds())
                 self.tokens = 1
                 self.updated_at = datetime.datetime.now(datetime.UTC)
 

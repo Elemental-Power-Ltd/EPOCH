@@ -7,9 +7,10 @@ from fastapi import HTTPException
 
 from app.dependencies import DatabasePoolDep
 from app.models.client_data import SiteDataEntries
-from app.models.core import DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime
+from app.models.core import DatasetID, DatasetIDWithTime, DatasetTypeEnum, MultipleDatasetIDWithTime
 from app.routers.air_source_heat_pump import get_ashp_input, get_ashp_output
 from app.routers.carbon_intensity import get_grid_co2
+from app.routers.client_data import get_baseline, get_default_baseline
 from app.routers.electricity_load import get_blended_electricity_load
 from app.routers.heating_load.get_heating_loads import get_air_temp, get_dhw_load, get_heating_load
 from app.routers.import_tariffs import get_import_tariffs
@@ -44,6 +45,21 @@ async def fetch_all_input_data(
 
     try:
         async with asyncio.TaskGroup() as tg:
+            baseline_task = (
+                tg.create_task(
+                    get_baseline(
+                        site_or_dataset_id=DatasetID(
+                            dataset_id=cast(DatasetIDWithTime, site_data_ids[DatasetTypeEnum.SiteBaseline]).dataset_id
+                        ),
+                        pool=pool,
+                    )
+                )
+                if site_data_ids.get(DatasetTypeEnum.SiteBaseline) is not None
+                # The baseline is a special case
+                # we always return a baseline, returning the default baseline if no specific baseline is requested
+                else tg.create_task(get_default_baseline())
+            )
+
             # We create a blended electricity load if we got either a real set of data or a blended set of data.
             eload_task = (
                 tg.create_task(
@@ -60,27 +76,23 @@ async def fetch_all_input_data(
                 else DummyTask()
             )
 
-            heat_task = (
-                tg.create_task(
-                    get_heating_load(cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]), pool)
-                )
-                if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
-                else DummyTask()
-            )
+            if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None:
+                hload_req = cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad])
+            else:
+                hload_req = None
+            heat_task = tg.create_task(get_heating_load(hload_req, pool)) if hload_req is not None else DummyTask()
             dhw_task = (
                 tg.create_task(
                     get_dhw_load(
                         DatasetIDWithTime(
-                            dataset_id=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).dataset_id[
-                                0
-                            ],
-                            start_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).start_ts,
-                            end_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).end_ts,
+                            dataset_id=hload_req.dataset_id[0],
+                            start_ts=hload_req.start_ts,
+                            end_ts=hload_req.end_ts,
                         ),
                         pool,
                     )
                 )
-                if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
+                if hload_req is not None
                 else DummyTask()
             )
 
@@ -88,16 +100,14 @@ async def fetch_all_input_data(
                 tg.create_task(
                     get_air_temp(
                         DatasetIDWithTime(
-                            dataset_id=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).dataset_id[
-                                0
-                            ],
-                            start_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).start_ts,
-                            end_ts=cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad]).end_ts,
+                            dataset_id=hload_req.dataset_id[0],
+                            start_ts=hload_req.start_ts,
+                            end_ts=hload_req.end_ts,
                         ),
                         pool,
                     )
                 )
-                if site_data_ids.get(DatasetTypeEnum.HeatingLoad) is not None
+                if hload_req is not None
                 else DummyTask()
             )
 
@@ -142,6 +152,7 @@ async def fetch_all_input_data(
         raise HTTPException(500, detail=str(list(excgroup.exceptions))) from excgroup
 
     return SiteDataEntries(
+        baseline=baseline_task.result(),
         eload=eload_task.result(),
         heat=heat_task.result(),
         air_temp=air_temp_task.result(),

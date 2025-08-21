@@ -14,7 +14,7 @@ import numpy as np
 from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
-from ..dependencies import DatabaseDep
+from ..dependencies import DatabasePoolDep
 from ..internal.optimisation import pick_highlighted_results
 from ..models.core import ClientID, ResultID, TaskID
 from ..models.optimisation import (
@@ -33,7 +33,7 @@ router = APIRouter()
 
 
 @router.post("/get-optimisation-results")
-async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> OptimisationResultsResponse:
+async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> OptimisationResultsResponse:
     """
     Get all the optimisation results for a single task.
 
@@ -50,7 +50,7 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
     results
         List of optimisation results, including the EPOCH parameters under 'solutions'
     """
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT
             pr.task_id,
@@ -72,6 +72,8 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
             ANY_VALUE(pr.metric_total_electricity_exported) AS metric_total_electricity_exported,
             ANY_VALUE(pr.metric_total_electrical_shortfall) AS metric_total_electrical_shortfall,
             ANY_VALUE(pr.metric_total_heat_shortfall) AS metric_total_heat_shortfall,
+            ANY_VALUE(pr.metric_total_ch_shortfall) AS metric_total_ch_shortfall,
+            ANY_VALUE(pr.metric_total_dhw_shortfall) AS metric_total_dhw_shortfall,
             ANY_VALUE(pr.metric_total_gas_import_cost) AS metric_total_gas_import_cost,
             ANY_VALUE(pr.metric_total_electricity_import_cost) AS metric_total_electricity_import_cost,
             ANY_VALUE(pr.metric_total_electricity_export_gain) AS metric_total_electricity_export_gain,
@@ -85,6 +87,8 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
             ANY_VALUE(pr.metric_baseline_electricity_exported) AS metric_baseline_electricity_exported,
             ANY_VALUE(pr.metric_baseline_electrical_shortfall) AS metric_baseline_electrical_shortfall,
             ANY_VALUE(pr.metric_baseline_heat_shortfall) AS metric_baseline_heat_shortfall,
+            ANY_VALUE(pr.metric_baseline_ch_shortfall) as metric_baseline_ch_shortfall,
+            ANY_VALUE(pr.metric_baseline_dhw_shortfall) as metric_baseline_dhw_shortfall,
             ANY_VALUE(pr.metric_baseline_gas_import_cost) AS metric_baseline_gas_import_cost,
             ANY_VALUE(pr.metric_baseline_electricity_import_cost) AS metric_baseline_electricity_import_cost,
             ANY_VALUE(pr.metric_baseline_electricity_export_gain) AS metric_baseline_electricity_export_gain,
@@ -134,6 +138,8 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
                 total_electricity_exported=nan_to_num(item["metric_total_electricity_exported"]),
                 total_electrical_shortfall=nan_to_num(item["metric_total_electrical_shortfall"]),
                 total_heat_shortfall=nan_to_num(item["metric_total_heat_shortfall"]),
+                total_ch_shortfall=nan_to_num(item["metric_total_ch_shortfall"]),
+                total_dhw_shortfall=nan_to_num(item["metric_total_dhw_shortfall"]),
                 total_gas_import_cost=nan_to_num(item["metric_total_gas_import_cost"]),
                 total_electricity_import_cost=nan_to_num(item["metric_total_electricity_import_cost"]),
                 total_electricity_export_gain=nan_to_num(item["metric_total_electricity_export_gain"]),
@@ -146,6 +152,8 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
                 baseline_electricity_exported=nan_to_num(item["metric_baseline_electricity_exported"]),
                 baseline_electrical_shortfall=nan_to_num(item["metric_baseline_electrical_shortfall"]),
                 baseline_heat_shortfall=nan_to_num(item["metric_baseline_heat_shortfall"]),
+                baseline_ch_shortfall=nan_to_num(item["metric_baseline_ch_shortfall"]),
+                baseline_dhw_shortfall=nan_to_num(item["metric_baseline_dhw_shortfall"]),
                 baseline_gas_import_cost=nan_to_num(item["metric_baseline_gas_import_cost"]),
                 baseline_electricity_import_cost=nan_to_num(item["metric_baseline_electricity_import_cost"]),
                 baseline_electricity_export_gain=nan_to_num(item["metric_baseline_electricity_export_gain"]),
@@ -176,6 +184,8 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
                         total_electricity_exported=nan_to_num(sub_item["metric_total_electricity_exported"]),
                         total_electrical_shortfall=nan_to_num(sub_item["metric_total_electrical_shortfall"]),
                         total_heat_shortfall=nan_to_num(sub_item["metric_total_heat_shortfall"]),
+                        total_ch_shortfall=nan_to_num(sub_item["metric_total_ch_shortfall"]),
+                        total_dhw_shortfall=nan_to_num(sub_item["metric_total_dhw_shortfall"]),
                         total_gas_import_cost=nan_to_num(sub_item["metric_total_gas_import_cost"]),
                         total_electricity_import_cost=nan_to_num(sub_item["metric_total_electricity_import_cost"]),
                         total_electricity_export_gain=nan_to_num(sub_item["metric_total_electricity_export_gain"]),
@@ -188,6 +198,8 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
                         baseline_electricity_exported=nan_to_num(sub_item["metric_baseline_electricity_exported"]),
                         baseline_electrical_shortfall=nan_to_num(sub_item["metric_baseline_electrical_shortfall"]),
                         baseline_heat_shortfall=nan_to_num(sub_item["metric_baseline_heat_shortfall"]),
+                        baseline_ch_shortfall=nan_to_num(sub_item["metric_baseline_ch_shortfall"]),
+                        baseline_dhw_shortfall=nan_to_num(sub_item["metric_baseline_dhw_shortfall"]),
                         baseline_gas_import_cost=nan_to_num(sub_item["metric_baseline_gas_import_cost"]),
                         baseline_electricity_import_cost=nan_to_num(sub_item["metric_baseline_electricity_import_cost"]),
                         baseline_electricity_export_gain=nan_to_num(sub_item["metric_baseline_electricity_export_gain"]),
@@ -211,7 +223,7 @@ async def get_optimisation_results(task_id: TaskID, conn: DatabaseDep) -> Optimi
 
 
 @router.post("/list-optimisation-tasks")
-async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> list[OptimisationTaskListEntry]:
+async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) -> list[OptimisationTaskListEntry]:
     """
     Get all the optimisation tasks for a given client.
 
@@ -224,7 +236,7 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
     results
 
     """
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT
             tc.task_id,
@@ -263,7 +275,7 @@ async def list_optimisation_tasks(conn: DatabaseDep, client_id: ClientID) -> lis
 
 
 @router.post("/add-optimisation-results")
-async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationResultEntry) -> None:
+async def add_optimisation_results(pool: DatabasePoolDep, opt_result: OptimisationResultEntry) -> None:
     """
     Add a set of optimisation results into the database.
 
@@ -290,204 +302,221 @@ async def add_optimisation_results(conn: DatabaseDep, opt_result: OptimisationRe
     200, OK
         If all was uploaded correctly.
     """
-    async with conn.transaction():
-        if opt_result.portfolio:
-            # Note that we don't add the specific site results here;
-            # those are stored in a separate table.
-            try:
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            if opt_result.portfolio:
+                # Note that we don't add the specific site results here;
+                # those are stored in a separate table.
+                try:
+                    await conn.copy_records_to_table(
+                        schema_name="optimisation",
+                        table_name="portfolio_results",
+                        records=zip(
+                            [item.task_id for item in opt_result.portfolio],
+                            [item.portfolio_id for item in opt_result.portfolio],
+                            [item.metrics.carbon_balance_scope_1 for item in opt_result.portfolio],
+                            [item.metrics.carbon_balance_scope_2 for item in opt_result.portfolio],
+                            [item.metrics.meter_balance for item in opt_result.portfolio],
+                            [item.metrics.operating_balance for item in opt_result.portfolio],
+                            [item.metrics.cost_balance for item in opt_result.portfolio],
+                            [item.metrics.npv_balance for item in opt_result.portfolio],
+                            [item.metrics.capex for item in opt_result.portfolio],
+                            [item.metrics.payback_horizon for item in opt_result.portfolio],
+                            [item.metrics.annualised_cost for item in opt_result.portfolio],
+                            [item.metrics.carbon_cost for item in opt_result.portfolio],
+                            [item.metrics.total_gas_used for item in opt_result.portfolio],
+                            [item.metrics.total_electricity_imported for item in opt_result.portfolio],
+                            [item.metrics.total_electricity_generated for item in opt_result.portfolio],
+                            [item.metrics.total_electricity_exported for item in opt_result.portfolio],
+                            [item.metrics.total_electrical_shortfall for item in opt_result.portfolio],
+                            [item.metrics.total_heat_shortfall for item in opt_result.portfolio],
+                            [item.metrics.total_ch_shortfall for item in opt_result.portfolio],
+                            [item.metrics.total_dhw_shortfall for item in opt_result.portfolio],
+                            [item.metrics.total_gas_import_cost for item in opt_result.portfolio],
+                            [item.metrics.total_electricity_import_cost for item in opt_result.portfolio],
+                            [item.metrics.total_electricity_export_gain for item in opt_result.portfolio],
+                            [item.metrics.total_meter_cost for item in opt_result.portfolio],
+                            [item.metrics.total_net_present_value for item in opt_result.portfolio],
+                            [item.metrics.total_operating_cost for item in opt_result.portfolio],
+                            [item.metrics.baseline_gas_used for item in opt_result.portfolio],
+                            [item.metrics.baseline_electricity_imported for item in opt_result.portfolio],
+                            [item.metrics.baseline_electricity_generated for item in opt_result.portfolio],
+                            [item.metrics.baseline_electricity_exported for item in opt_result.portfolio],
+                            [item.metrics.baseline_electrical_shortfall for item in opt_result.portfolio],
+                            [item.metrics.baseline_heat_shortfall for item in opt_result.portfolio],
+                            [item.metrics.baseline_ch_shortfall for item in opt_result.portfolio],
+                            [item.metrics.baseline_dhw_shortfall for item in opt_result.portfolio],
+                            [item.metrics.baseline_gas_import_cost for item in opt_result.portfolio],
+                            [item.metrics.baseline_electricity_import_cost for item in opt_result.portfolio],
+                            [item.metrics.baseline_electricity_export_gain for item in opt_result.portfolio],
+                            [item.metrics.baseline_meter_cost for item in opt_result.portfolio],
+                            [item.metrics.baseline_operating_cost for item in opt_result.portfolio],
+                            [item.metrics.baseline_net_present_value for item in opt_result.portfolio],
+                            strict=True,
+                        ),
+                        columns=[
+                            "task_id",
+                            "portfolio_id",
+                            "metric_carbon_balance_scope_1",
+                            "metric_carbon_balance_scope_2",
+                            "metric_meter_balance",
+                            "metric_operating_balance",
+                            "metric_cost_balance",
+                            "metric_npv_balance",
+                            "metric_capex",
+                            "metric_payback_horizon",
+                            "metric_annualised_cost",
+                            "metric_carbon_cost",
+                            "metric_total_gas_used",
+                            "metric_total_electricity_imported",
+                            "metric_total_electricity_generated",
+                            "metric_total_electricity_exported",
+                            "metric_total_electrical_shortfall",
+                            "metric_total_heat_shortfall",
+                            "metric_total_ch_shortfall",
+                            "metric_total_dhw_shortfall",
+                            "metric_total_gas_import_cost",
+                            "metric_total_electricity_import_cost",
+                            "metric_total_electricity_export_gain",
+                            "metric_total_meter_cost",
+                            "metric_total_operating_cost",
+                            "metric_total_net_present_value",
+                            "metric_baseline_gas_used",
+                            "metric_baseline_electricity_imported",
+                            "metric_baseline_electricity_generated",
+                            "metric_baseline_electricity_exported",
+                            "metric_baseline_electrical_shortfall",
+                            "metric_baseline_heat_shortfall",
+                            "metric_baseline_ch_shortfall",
+                            "metric_baseline_dhw_shortfall",
+                            "metric_baseline_gas_import_cost",
+                            "metric_baseline_electricity_import_cost",
+                            "metric_baseline_electricity_export_gain",
+                            "metric_baseline_meter_cost",
+                            "metric_baseline_operating_cost",
+                            "metric_baseline_net_present_value",
+                        ],
+                    )
+                except asyncpg.exceptions.ForeignKeyViolationError as ex:
+                    raise HTTPException(
+                        400,
+                        f"task_id={opt_result.portfolio[0].task_id} does not have an associated task config."
+                        + "You should have added it via /add-optimisation-task beforehand.",
+                    ) from ex
+
+                for pf in opt_result.portfolio:
+                    if not pf.site_results:
+                        # No site results here, so skip it.
+                        continue
+                    await conn.copy_records_to_table(
+                        schema_name="optimisation",
+                        table_name="site_results",
+                        records=zip(
+                            [item.site_id for item in pf.site_results],
+                            [item.portfolio_id for item in pf.site_results],
+                            [json.dumps(jsonable_encoder(item.scenario)) for item in pf.site_results],
+                            [item.metrics.carbon_balance_scope_1 for item in pf.site_results],
+                            [item.metrics.carbon_balance_scope_2 for item in pf.site_results],
+                            [item.metrics.meter_balance for item in pf.site_results],
+                            [item.metrics.operating_balance for item in pf.site_results],
+                            [item.metrics.cost_balance for item in pf.site_results],
+                            [item.metrics.npv_balance for item in pf.site_results],
+                            [item.metrics.capex for item in pf.site_results],
+                            [item.metrics.payback_horizon for item in pf.site_results],
+                            [item.metrics.annualised_cost for item in pf.site_results],
+                            [item.metrics.carbon_cost for item in pf.site_results],
+                            [item.metrics.total_gas_used for item in pf.site_results],
+                            [item.metrics.total_electricity_imported for item in pf.site_results],
+                            [item.metrics.total_electricity_generated for item in pf.site_results],
+                            [item.metrics.total_electricity_exported for item in pf.site_results],
+                            [item.metrics.total_electrical_shortfall for item in pf.site_results],
+                            [item.metrics.total_heat_shortfall for item in pf.site_results],
+                            [item.metrics.total_ch_shortfall for item in pf.site_results],
+                            [item.metrics.total_dhw_shortfall for item in pf.site_results],
+                            [item.metrics.total_gas_import_cost for item in pf.site_results],
+                            [item.metrics.total_electricity_import_cost for item in pf.site_results],
+                            [item.metrics.total_electricity_export_gain for item in pf.site_results],
+                            [item.metrics.total_meter_cost for item in pf.site_results],
+                            [item.metrics.total_operating_cost for item in pf.site_results],
+                            [item.metrics.total_net_present_value for item in pf.site_results],
+                            [item.metrics.baseline_gas_used for item in pf.site_results],
+                            [item.metrics.baseline_electricity_imported for item in pf.site_results],
+                            [item.metrics.baseline_electricity_generated for item in pf.site_results],
+                            [item.metrics.baseline_electricity_exported for item in pf.site_results],
+                            [item.metrics.baseline_electrical_shortfall for item in pf.site_results],
+                            [item.metrics.baseline_heat_shortfall for item in pf.site_results],
+                            [item.metrics.baseline_ch_shortfall for item in pf.site_results],
+                            [item.metrics.baseline_dhw_shortfall for item in pf.site_results],
+                            [item.metrics.baseline_gas_import_cost for item in pf.site_results],
+                            [item.metrics.baseline_electricity_import_cost for item in pf.site_results],
+                            [item.metrics.baseline_electricity_export_gain for item in pf.site_results],
+                            [item.metrics.baseline_meter_cost for item in pf.site_results],
+                            [item.metrics.baseline_operating_cost for item in pf.site_results],
+                            [item.metrics.baseline_net_present_value for item in pf.site_results],
+                            strict=True,
+                        ),
+                        columns=[
+                            "site_id",
+                            "portfolio_id",
+                            "scenario",
+                            "metric_carbon_balance_scope_1",
+                            "metric_carbon_balance_scope_2",
+                            "metric_meter_balance",
+                            "metric_operating_balance",
+                            "metric_cost_balance",
+                            "metric_npv_balance",
+                            "metric_capex",
+                            "metric_payback_horizon",
+                            "metric_annualised_cost",
+                            "metric_carbon_cost",
+                            "metric_total_gas_used",
+                            "metric_total_electricity_imported",
+                            "metric_total_electricity_generated",
+                            "metric_total_electricity_exported",
+                            "metric_total_electrical_shortfall",
+                            "metric_total_heat_shortfall",
+                            "metric_total_ch_shortfall",
+                            "metric_total_dhw_shortfall",
+                            "metric_total_gas_import_cost",
+                            "metric_total_electricity_import_cost",
+                            "metric_total_electricity_export_gain",
+                            "metric_total_meter_cost",
+                            "metric_total_operating_cost",
+                            "metric_total_net_present_value",
+                            "metric_baseline_gas_used",
+                            "metric_baseline_electricity_imported",
+                            "metric_baseline_electricity_generated",
+                            "metric_baseline_electricity_exported",
+                            "metric_baseline_electrical_shortfall",
+                            "metric_baseline_heat_shortfall",
+                            "metric_baseline_ch_shortfall",
+                            "metric_baseline_dhw_shortfall",
+                            "metric_baseline_gas_import_cost",
+                            "metric_baseline_electricity_import_cost",
+                            "metric_baseline_electricity_export_gain",
+                            "metric_baseline_meter_cost",
+                            "metric_baseline_operating_cost",
+                            "metric_baseline_net_present_value",
+                        ],
+                    )
+
+            if opt_result.tasks:
                 await conn.copy_records_to_table(
+                    table_name="task_results",
                     schema_name="optimisation",
-                    table_name="portfolio_results",
                     records=zip(
-                        [item.task_id for item in opt_result.portfolio],
-                        [item.portfolio_id for item in opt_result.portfolio],
-                        [item.metrics.carbon_balance_scope_1 for item in opt_result.portfolio],
-                        [item.metrics.carbon_balance_scope_2 for item in opt_result.portfolio],
-                        [item.metrics.meter_balance for item in opt_result.portfolio],
-                        [item.metrics.operating_balance for item in opt_result.portfolio],
-                        [item.metrics.cost_balance for item in opt_result.portfolio],
-                        [item.metrics.npv_balance for item in opt_result.portfolio],
-                        [item.metrics.capex for item in opt_result.portfolio],
-                        [item.metrics.payback_horizon for item in opt_result.portfolio],
-                        [item.metrics.annualised_cost for item in opt_result.portfolio],
-                        [item.metrics.carbon_cost for item in opt_result.portfolio],
-                        [item.metrics.total_gas_used for item in opt_result.portfolio],
-                        [item.metrics.total_electricity_imported for item in opt_result.portfolio],
-                        [item.metrics.total_electricity_generated for item in opt_result.portfolio],
-                        [item.metrics.total_electricity_exported for item in opt_result.portfolio],
-                        [item.metrics.total_electrical_shortfall for item in opt_result.portfolio],
-                        [item.metrics.total_heat_shortfall for item in opt_result.portfolio],
-                        [item.metrics.total_gas_import_cost for item in opt_result.portfolio],
-                        [item.metrics.total_electricity_import_cost for item in opt_result.portfolio],
-                        [item.metrics.total_electricity_export_gain for item in opt_result.portfolio],
-                        [item.metrics.total_meter_cost for item in opt_result.portfolio],
-                        [item.metrics.total_net_present_value for item in opt_result.portfolio],
-                        [item.metrics.total_operating_cost for item in opt_result.portfolio],
-                        [item.metrics.baseline_gas_used for item in opt_result.portfolio],
-                        [item.metrics.baseline_electricity_imported for item in opt_result.portfolio],
-                        [item.metrics.baseline_electricity_generated for item in opt_result.portfolio],
-                        [item.metrics.baseline_electricity_exported for item in opt_result.portfolio],
-                        [item.metrics.baseline_electrical_shortfall for item in opt_result.portfolio],
-                        [item.metrics.baseline_heat_shortfall for item in opt_result.portfolio],
-                        [item.metrics.baseline_gas_import_cost for item in opt_result.portfolio],
-                        [item.metrics.baseline_electricity_import_cost for item in opt_result.portfolio],
-                        [item.metrics.baseline_electricity_export_gain for item in opt_result.portfolio],
-                        [item.metrics.baseline_meter_cost for item in opt_result.portfolio],
-                        [item.metrics.baseline_operating_cost for item in opt_result.portfolio],
-                        [item.metrics.baseline_net_present_value for item in opt_result.portfolio],
+                        [item.task_id for item in opt_result.tasks],
+                        [item.n_evals for item in opt_result.tasks],
+                        [item.exec_time for item in opt_result.tasks],
+                        [item.completed_at for item in opt_result.tasks],
                         strict=True,
                     ),
-                    columns=[
-                        "task_id",
-                        "portfolio_id",
-                        "metric_carbon_balance_scope_1",
-                        "metric_carbon_balance_scope_2",
-                        "metric_meter_balance",
-                        "metric_operating_balance",
-                        "metric_cost_balance",
-                        "metric_npv_balance",
-                        "metric_capex",
-                        "metric_payback_horizon",
-                        "metric_annualised_cost",
-                        "metric_carbon_cost",
-                        "metric_total_gas_used",
-                        "metric_total_electricity_imported",
-                        "metric_total_electricity_generated",
-                        "metric_total_electricity_exported",
-                        "metric_total_electrical_shortfall",
-                        "metric_total_heat_shortfall",
-                        "metric_total_gas_import_cost",
-                        "metric_total_electricity_import_cost",
-                        "metric_total_electricity_export_gain",
-                        "metric_total_meter_cost",
-                        "metric_total_operating_cost",
-                        "metric_total_net_present_value",
-                        "metric_baseline_gas_used",
-                        "metric_baseline_electricity_imported",
-                        "metric_baseline_electricity_generated",
-                        "metric_baseline_electricity_exported",
-                        "metric_baseline_electrical_shortfall",
-                        "metric_baseline_heat_shortfall",
-                        "metric_baseline_gas_import_cost",
-                        "metric_baseline_electricity_import_cost",
-                        "metric_baseline_electricity_export_gain",
-                        "metric_baseline_meter_cost",
-                        "metric_baseline_operating_cost",
-                        "metric_baseline_net_present_value",
-                    ],
+                    columns=["task_id", "n_evals", "exec_time", "completed_at"],
                 )
-            except asyncpg.exceptions.ForeignKeyViolationError as ex:
-                raise HTTPException(
-                    400,
-                    f"task_id={opt_result.portfolio[0].task_id} does not have an associated task config."
-                    + "You should have added it via /add-optimisation-task beforehand.",
-                ) from ex
-
-            for pf in opt_result.portfolio:
-                if not pf.site_results:
-                    # No site results here, so skip it.
-                    continue
-                await conn.copy_records_to_table(
-                    schema_name="optimisation",
-                    table_name="site_results",
-                    records=zip(
-                        [item.site_id for item in pf.site_results],
-                        [item.portfolio_id for item in pf.site_results],
-                        [json.dumps(jsonable_encoder(item.scenario)) for item in pf.site_results],
-                        [item.metrics.carbon_balance_scope_1 for item in pf.site_results],
-                        [item.metrics.carbon_balance_scope_2 for item in pf.site_results],
-                        [item.metrics.meter_balance for item in pf.site_results],
-                        [item.metrics.operating_balance for item in pf.site_results],
-                        [item.metrics.cost_balance for item in pf.site_results],
-                        [item.metrics.npv_balance for item in pf.site_results],
-                        [item.metrics.capex for item in pf.site_results],
-                        [item.metrics.payback_horizon for item in pf.site_results],
-                        [item.metrics.annualised_cost for item in pf.site_results],
-                        [item.metrics.carbon_cost for item in pf.site_results],
-                        [item.metrics.total_gas_used for item in pf.site_results],
-                        [item.metrics.total_electricity_imported for item in pf.site_results],
-                        [item.metrics.total_electricity_generated for item in pf.site_results],
-                        [item.metrics.total_electricity_exported for item in pf.site_results],
-                        [item.metrics.total_electrical_shortfall for item in pf.site_results],
-                        [item.metrics.total_heat_shortfall for item in pf.site_results],
-                        [item.metrics.total_gas_import_cost for item in pf.site_results],
-                        [item.metrics.total_electricity_import_cost for item in pf.site_results],
-                        [item.metrics.total_electricity_export_gain for item in pf.site_results],
-                        [item.metrics.total_meter_cost for item in pf.site_results],
-                        [item.metrics.total_operating_cost for item in pf.site_results],
-                        [item.metrics.total_net_present_value for item in pf.site_results],
-                        [item.metrics.baseline_gas_used for item in pf.site_results],
-                        [item.metrics.baseline_electricity_imported for item in pf.site_results],
-                        [item.metrics.baseline_electricity_generated for item in pf.site_results],
-                        [item.metrics.baseline_electricity_exported for item in pf.site_results],
-                        [item.metrics.baseline_electrical_shortfall for item in pf.site_results],
-                        [item.metrics.baseline_heat_shortfall for item in pf.site_results],
-                        [item.metrics.baseline_gas_import_cost for item in pf.site_results],
-                        [item.metrics.baseline_electricity_import_cost for item in pf.site_results],
-                        [item.metrics.baseline_electricity_export_gain for item in pf.site_results],
-                        [item.metrics.baseline_meter_cost for item in pf.site_results],
-                        [item.metrics.baseline_operating_cost for item in pf.site_results],
-                        [item.metrics.baseline_net_present_value for item in pf.site_results],
-                        strict=True,
-                    ),
-                    columns=[
-                        "site_id",
-                        "portfolio_id",
-                        "scenario",
-                        "metric_carbon_balance_scope_1",
-                        "metric_carbon_balance_scope_2",
-                        "metric_meter_balance",
-                        "metric_operating_balance",
-                        "metric_cost_balance",
-                        "metric_npv_balance",
-                        "metric_capex",
-                        "metric_payback_horizon",
-                        "metric_annualised_cost",
-                        "metric_carbon_cost",
-                        "metric_total_gas_used",
-                        "metric_total_electricity_imported",
-                        "metric_total_electricity_generated",
-                        "metric_total_electricity_exported",
-                        "metric_total_electrical_shortfall",
-                        "metric_total_heat_shortfall",
-                        "metric_total_gas_import_cost",
-                        "metric_total_electricity_import_cost",
-                        "metric_total_electricity_export_gain",
-                        "metric_total_meter_cost",
-                        "metric_total_operating_cost",
-                        "metric_total_net_present_value",
-                        "metric_baseline_gas_used",
-                        "metric_baseline_electricity_imported",
-                        "metric_baseline_electricity_generated",
-                        "metric_baseline_electricity_exported",
-                        "metric_baseline_electrical_shortfall",
-                        "metric_baseline_heat_shortfall",
-                        "metric_baseline_gas_import_cost",
-                        "metric_baseline_electricity_import_cost",
-                        "metric_baseline_electricity_export_gain",
-                        "metric_baseline_meter_cost",
-                        "metric_baseline_operating_cost",
-                        "metric_baseline_net_present_value",
-                    ],
-                )
-
-        if opt_result.tasks:
-            await conn.copy_records_to_table(
-                table_name="task_results",
-                schema_name="optimisation",
-                records=zip(
-                    [item.task_id for item in opt_result.tasks],
-                    [item.n_evals for item in opt_result.tasks],
-                    [item.exec_time for item in opt_result.tasks],
-                    [item.completed_at for item in opt_result.tasks],
-                    strict=True,
-                ),
-                columns=["task_id", "n_evals", "exec_time", "completed_at"],
-            )
 
 
 @router.post("/add-optimisation-task")
-async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> TaskConfig:
+async def add_optimisation_task(task_config: TaskConfig, pool: DatabasePoolDep) -> TaskConfig:
     """
     Add the details of an optimisation task into the database.
 
@@ -513,7 +542,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
         If the key already exists in the database.
     """
     try:
-        await conn.execute(
+        await pool.execute(
             """
             INSERT INTO
                 optimisation.task_config (
@@ -528,7 +557,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
                     objectives,
                     portfolio_constraints,
                     site_constraints,
-                    baseline_id)
+                    epoch_version)
                 VALUES (
                 $1,
                 $2,
@@ -553,7 +582,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
             json.dumps(jsonable_encoder(task_config.objectives)),
             json.dumps(jsonable_encoder(task_config.portfolio_constraints)),
             json.dumps(jsonable_encoder(task_config.site_constraints)),
-            task_config.baseline_id,
+            task_config.epoch_version,
         )
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
@@ -563,7 +592,7 @@ async def add_optimisation_task(task_config: TaskConfig, conn: DatabaseDep) -> T
 
 
 @router.post("/get-result-configuration")
-async def get_result_configuration(result_id: ResultID, conn: DatabaseDep) -> ResultReproConfig:
+async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -> ResultReproConfig:
     """
     Return the configuration that was used to produce a given result.
 
@@ -576,7 +605,7 @@ async def get_result_configuration(result_id: ResultID, conn: DatabaseDep) -> Re
     -------
         All of the configuration data necessary to reproduce this simulation
     """
-    task_info = await conn.fetchrow(
+    task_info = await pool.fetchrow(
         """
         SELECT
             cr.portfolio_id,
@@ -601,6 +630,7 @@ async def get_result_configuration(result_id: ResultID, conn: DatabaseDep) -> Re
         LEFT JOIN
             optimisation.task_config AS tc
         ON tc.task_id = cr.task_id
+        LIMIT 1
         """,
         result_id.result_id,
     )
@@ -611,6 +641,6 @@ async def get_result_configuration(result_id: ResultID, conn: DatabaseDep) -> Re
     portfolio_id, scenarios, site_ids, portfolio_input_data = task_info
     return ResultReproConfig(
         portfolio_id=portfolio_id,
-        task_data={site_id: json.loads(entry) for site_id, entry in zip(site_ids, scenarios, strict=False)},
+        task_data={site_id: json.loads(entry) for site_id, entry in zip(site_ids, scenarios, strict=True)},
         site_data=json.loads(portfolio_input_data),
     )

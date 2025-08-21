@@ -19,15 +19,16 @@ from typing import Any, Self, cast
 
 import asyncpg
 import httpx
+import pytest
 import pytest_asyncio
 import testing.postgresql  # type: ignore
 from httpx import ASGITransport, AsyncClient
 
 from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
+from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
 from app.main import app
-from app.models.site_range import Jsonable
 
 # apply a windows-specific patch for database termination (we can't use SIGINT)
 if sys.platform.startswith("win"):
@@ -40,6 +41,8 @@ if sys.platform.startswith("win"):
 
     testing.postgresql.Postgresql.terminate = win_terminate
     testing.common.database.Database.terminate = win_terminate
+
+DO_MOCK = True
 
 
 async def apply_migrations(database: testing.postgresql.Database) -> None:
@@ -105,7 +108,7 @@ class MockedHttpClient(httpx.AsyncClient):
         """
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "octopus", f"{url_params}.json")
-        if stored_tariff.exists():
+        if stored_tariff.exists() and DO_MOCK:
             self.octopus_requests["cached"] += 1
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
@@ -131,7 +134,7 @@ class MockedHttpClient(httpx.AsyncClient):
         """
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "carbon_intensity", f"{url_params}.json")
-        if stored_tariff.exists():
+        if stored_tariff.exists() and DO_MOCK:
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
@@ -156,7 +159,7 @@ class MockedHttpClient(httpx.AsyncClient):
         """
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_tariff = Path(".", "tests", "data", "visual_crossing", f"{url_params}.json")
-        if stored_tariff.exists():
+        if stored_tariff.exists() and DO_MOCK:
             self.visualcrossing_requests["cached"] += 1
             return cast(Jsonable, json.loads(stored_tariff.read_text()))
         else:
@@ -187,7 +190,7 @@ class MockedHttpClient(httpx.AsyncClient):
         # Read the parameters passed to the endpoint to get a horrible _key_value_ type string.
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_rn = Path(".", "tests", "data", "renewables_ninja", f"{url_params}.json")
-        if stored_rn.exists():
+        if stored_rn.exists() and DO_MOCK:
             return cast(Jsonable, json.loads(stored_rn.read_text()))
         else:
             data = (await _http_client.get(url, **kwargs)).json()
@@ -216,9 +219,10 @@ class MockedHttpClient(httpx.AsyncClient):
         # Read the parameters passed to the endpoint to get a horrible _key_value_ type string.
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_rn = Path(".", "tests", "data", "pvgis", f"{url_params}.json")
-        if stored_rn.exists():
+        if stored_rn.exists() and DO_MOCK:
             return cast(Jsonable, json.loads(stored_rn.read_text()))
         else:
+            print(f"Getting from {url}, {kwargs}")
             data = (await _http_client.get(url, **kwargs)).json()
             stored_rn.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
@@ -263,6 +267,7 @@ class MockedHttpClient(httpx.AsyncClient):
         -------
             HTTPX status, 200 if file found, 404 otherwise.
         """
+        print("Getting via mocked client", url)
         url = str(url)
         if url.startswith("https://api.octopus.energy/v1/products/"):
             maybe_tariff_data = await self.get_tariff_from_file(url, **kwargs)
@@ -297,7 +302,7 @@ class MockedHttpClient(httpx.AsyncClient):
             if maybe_pvgis_data is not None:
                 return httpx.Response(status_code=200, json=maybe_pvgis_data)
 
-        if url.startswith("https://www.renewables.ninja/api/data/pv"):
+        if url.startswith("https://www.renewables.ninja/api/"):
             maybe_rn_data = await self.cache_renewables_ninja_data(url, **kwargs)
             if maybe_rn_data is not None:
                 return httpx.Response(status_code=200, json=maybe_rn_data)
@@ -310,7 +315,7 @@ class MockedHttpClient(httpx.AsyncClient):
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
+async def client() -> AsyncGenerator[AsyncClient]:
     """
     Get a FastAPI client for a single test.
 
@@ -324,7 +329,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     await db.create_pool()
     assert db.pool is not None, "Could not create database pool"
 
-    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool, None]:
+    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
         """
         Override the database creation with our database from this file.
 
@@ -334,7 +339,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         assert db.pool is not None, "Database pool not yet created."
         yield db.pool
 
-    async def override_get_db_conn() -> AsyncGenerator[DBConnection, None]:
+    async def override_get_db_conn() -> AsyncGenerator[DBConnection]:
         """
         Override the database creation with our database from this file.
 
@@ -373,3 +378,9 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     del app.dependency_overrides[get_db_conn]
     del app.dependency_overrides[get_db_pool]
     del app.dependency_overrides[get_http_client]
+
+
+@pytest.fixture
+def phpp_fpath() -> Path:
+    """Load a PHPP into a dataframe and re-use it for each test."""
+    return Path("tests", "data", "phpp", "PHPP_demo.xlsx").absolute()

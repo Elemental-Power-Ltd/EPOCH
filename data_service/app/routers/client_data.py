@@ -8,7 +8,6 @@ site has zero or more datasets of different kinds.
 
 import json
 import typing
-import uuid
 from logging import getLogger
 
 import asyncpg
@@ -17,6 +16,8 @@ from pydantic import BaseModel
 from pydantic_core._pydantic_core import ValidationError
 
 from ..dependencies import DatabaseDep, DatabasePoolDep
+from ..internal.utils.uuid import uuid7
+from ..models.client_data import SolarLocation
 from ..models.core import (
     ClientData,
     ClientID,
@@ -25,11 +26,9 @@ from ..models.core import (
     SiteData,
     SiteID,
     SiteIdNamePair,
-    client_id_t,
     location_t,
-    site_id_t,
 )
-from ..models.epoch_types.task_data_type import Building, GasHeater, Grid, TaskData
+from ..models.epoch_types.task_data_type import Building, Config, GasHeater, Grid, TaskData
 
 router = APIRouter()
 
@@ -65,12 +64,28 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
         await pool.execute(
             """
             INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
-            uuid.uuid4(),
+            uuid7(),
             site_id.site_id,
             baseline.model_dump_json(),
         )
     except asyncpg.exceptions.ForeignKeyViolationError as ex:
         raise HTTPException(400, f"Site {site_id.site_id} not found in the database.") from ex
+
+
+async def get_default_baseline() -> TaskData:
+    """
+    Provide a default baseline for sites where there is no baseline in the database.
+
+    Returns
+    -------
+        A default baseline
+    """
+    return TaskData(
+        building=Building(incumbent=True),
+        grid=Grid(grid_import=1e3, grid_export=1e3, incumbent=True),
+        gas_heater=GasHeater(maximum_output=1e3, incumbent=True),  # this is unusually large to meet all the heat demand.
+        config=Config(),
+    )
 
 
 @router.post("/get-site-baseline", tags=["db", "baseline", "get"])
@@ -100,11 +115,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
     TaskData
         Single-scenario task data representing the baseline configuration of what infrastructure is already at the site.
     """
-    DEFAULT_CONFIG = TaskData(
-        building=Building(),
-        grid=Grid(grid_import=1e3, grid_export=1e3),
-        gas_heater=GasHeater(maximum_output=1e3),  # this is unusually large to meet all the heat demand.
-    )
+    DEFAULT_CONFIG = await get_default_baseline()
 
     async def get_baseline_from_site_id(site_id: SiteID) -> asyncpg.Record | None:
         """
@@ -174,7 +185,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
         is_valid_dataset = await pool.fetchval(
             """
             SELECT exists (
-                SELECT 1 FROM client_info.site_baselines WHERE dataset_id = $1 LIMIT 1
+                SELECT 1 FROM client_info.site_baselines WHERE baseline_id = $1 LIMIT 1
             )""",
             dataset_id.dataset_id,
         )
@@ -189,7 +200,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
                 baseline
             FROM
                 client_info.site_baselines
-            WHERE dataset_id = $1""",
+            WHERE baseline_id = $1""",
             dataset_id.dataset_id,
         )
         return baseline_rec
@@ -239,7 +250,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
                         expected_mdl = subtype()
                         # Check that we got a valid pydantic Model here to rule out None and NoneType, which have
                         # a habit of sneaking through (and can be surprisingly hard to construct!)
-                        if isinstance(expected_mdl, BaseModel) and subkey in expected_mdl.model_fields:
+                        if isinstance(expected_mdl, BaseModel) and subkey in type(expected_mdl).model_fields:
                             found_in_any = True
                     if not found_in_any:
                         raise HTTPException(400, f"Bad component subvalue in stored baseline: {key}[{subkey}]")
@@ -335,7 +346,8 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
                 coordinates,
                 address,
                 epc_lmk,
-                dec_lmk)
+                dec_lmk,
+                floor_area)
             VALUES (
                 $1,
                 $2,
@@ -344,7 +356,8 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
                 $5,
                 $6,
                 $7,
-                $8)""",
+                $8,
+                $9)""",
             site_data.client_id,
             site_data.site_id,
             site_data.name,
@@ -353,6 +366,7 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
             site_data.address,
             site_data.epc_lmk,
             site_data.dec_lmk,
+            site_data.floor_area,
         )
         logger.info(f"Inserted client {site_data.client_id} with return status {status}")
     except asyncpg.exceptions.UniqueViolationError as ex:
@@ -382,7 +396,7 @@ async def list_clients(conn: DatabaseDep) -> list[ClientIdNamePair]:
             client_id,
             name
         FROM client_info.clients""")
-    return [ClientIdNamePair(client_id=client_id_t(item[0]), name=str(item[1])) for item in res]
+    return [ClientIdNamePair(client_id=item[0], name=item[1]) for item in res]
 
 
 @router.post("/list-sites", tags=["db", "list"])
@@ -409,11 +423,134 @@ async def list_sites(client_id: ClientID, conn: DatabaseDep) -> list[SiteIdNameP
         ORDER BY site_id ASC""",
         client_id.client_id,
     )
-    return [SiteIdNamePair(site_id=site_id_t(item[0]), name=str(item[1])) for item in res]
+    return [SiteIdNamePair(site_id=item[0], name=item[1]) for item in res]
+
+
+@router.post("/get-solar-locations", tags=["db", "pv"])
+async def get_solar_locations(site_id: SiteID, pool: DatabasePoolDep) -> list[SolarLocation]:
+    """
+    Get all the possible locations for solar arrays on this site.
+
+    One site will have zero to many potential solar arrays, each with a maximum size, a tilt, an azimuth and
+    a indication of roof / ground mounted.
+    The maximum size is in kWp assuming 1x2m 440W panels laid out as densely as practical.
+    The azimuth and tilt are the optimal arrangements of panels for that bit of roof or ground and are
+    in degrees from true North and the surface normal respectively.
+    For flat roofs, this may be split into two separate East/West locations.
+
+    Each location is tagged with a human readable name so you know what it refers to.
+
+    Parameters
+    ----------
+    site_id
+        The ID of the site you want to get the potential solar locations of
+    pool
+        Database connection pool to look these up in
+
+    Returns
+    -------
+    list[SolarLocation]
+        List of all potential solar locations at the site, ordered alphabetically by their location ID
+    """
+    res: list[asyncpg.Record] | None = await pool.fetch(
+        """
+        SELECT
+            site_id,
+            renewables_location_id,
+            name,
+            tilt,
+            azimuth,
+            maxpower,
+            mounting_type
+        FROM
+            client_info.solar_locations
+        WHERE site_id = $1
+        ORDER BY renewables_location_id
+        """,
+        site_id.site_id,
+    )
+    if res is None:
+        return []
+    return [
+        SolarLocation(
+            site_id=item["site_id"],
+            renewables_location_id=item["renewables_location_id"],
+            name=item["name"],
+            tilt=item["tilt"],
+            azimuth=item["azimuth"],
+            maxpower=item["maxpower"],
+        )
+        for item in res
+    ]
+
+
+@router.post("/add-solar-location", tags=["db", "solar_pv", "add"])
+async def add_solar_locations(location: SolarLocation, pool: DatabasePoolDep) -> SolarLocation:
+    """
+    Get all the possible locations for solar arrays on this site.
+
+    One site will have zero to many potential solar arrays, each with a maximum size, a tilt, an azimuth and
+    a indication of roof / ground mounted.
+    The maximum size is in kWp assuming 1x2m 440W panels laid out as densely as practical.
+    The azimuth and tilt are the optimal arrangements of panels for that bit of roof or ground and are
+    in degrees from true North and the surface normal respectively.
+    For flat roofs, this may be split into two separate East/West locations.
+
+    Each location is tagged with a human readable name so you know what it refers to.
+
+    Parameters
+    ----------
+    location
+        A solar location with a unique site name
+    pool
+        Database connection pool to add this to
+
+    Returns
+    -------
+    location
+        The location just added to the database
+    """
+    if not location.renewables_location_id.startswith(location.site_id):
+        raise HTTPException(
+            422,
+            f"Location ID {location.renewables_location_id} must include  site ID {location.site_id} for uniqueness (sorry!)",
+        )
+
+    if location.renewables_location_id == location.site_id:
+        raise HTTPException(
+            422,
+            f"Location ID {location.renewables_location_id} must not be equal to {location.site_id} to avoid confusion.",
+        )
+    try:
+        res = await pool.execute(
+            """
+            INSERT INTO client_info.solar_locations (
+                site_id,
+                renewables_location_id,
+                name,
+                tilt,
+                azimuth,
+                maxpower,
+                mounting_type
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            """,
+            location.site_id,
+            location.renewables_location_id,
+            location.name,
+            location.tilt,
+            location.azimuth,
+            location.maxpower,
+            location.mounting_type,
+        )
+    except asyncpg.exceptions.UniqueViolationError as ex:
+        raise HTTPException(400, f"Non-unique renewables location ID: {location.renewables_location_id} already exists") from ex
+    if res:
+        return location
+    raise HTTPException(400, "Error in adding solar location")
 
 
 @router.post("/get-location", tags=["db"])
-async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
+async def get_location(site_id: SiteID, pool: DatabasePoolDep) -> location_t:
     """
     Get the location name for this site.
 
@@ -421,8 +558,6 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
 
     Parameters
     ----------
-    request
-
     site_id
         Database ID of the site you are interested in.
 
@@ -431,7 +566,7 @@ async def get_location(site_id: SiteID, conn: DatabaseDep) -> location_t:
     location
         Name of the location e.g. "Worksop", "Retford", "Cardiff"
     """
-    location = await conn.fetchval(
+    location = await pool.fetchval(
         """SELECT location FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
         site_id.site_id,
     )
@@ -464,11 +599,13 @@ async def get_site_data(site_id: SiteID, pool: DatabasePoolDep) -> SiteData:
             coordinates,
             address,
             epc_lmk,
-            dec_lmk
+            dec_lmk,
+            floor_area
         FROM
             client_info.site_info
         WHERE
-            site_id = $1""",
+            site_id = $1
+        LIMIT 1""",
         site_id.site_id,
     )
     if result is None:
@@ -483,4 +620,5 @@ async def get_site_data(site_id: SiteID, pool: DatabasePoolDep) -> SiteData:
         address=result["address"],
         epc_lmk=result["epc_lmk"],
         dec_lmk=result["dec_lmk"],
+        floor_area=result["floor_area"],
     )

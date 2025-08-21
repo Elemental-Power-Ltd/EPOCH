@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import logging
 
 import fastapi
 import httpx
@@ -11,7 +12,14 @@ from fastapi import HTTPException
 
 from ..epl_secrets import get_secrets_environment
 from ..models.renewables import PvgisMountingSystemEnum, PVOptimaResult
-from .utils import check_latitude_longitude
+from .utils import RateLimiter, check_latitude_longitude
+
+logger = logging.getLogger(__name__)
+
+# This is for the burst rate limit of 1/second
+RN_SLOW_LIMITER = RateLimiter(rate_limit_requests=50, rate_limit_period=datetime.timedelta(hours=1))
+RN_BURST_LIMITER = RateLimiter(rate_limit_requests=6, rate_limit_period=datetime.timedelta(seconds=60))
+PVGIS_RATE_LIMITER = RateLimiter(rate_limit_requests=25, rate_limit_period=datetime.timedelta(seconds=1))
 
 
 async def get_pvgis_optima(
@@ -24,6 +32,7 @@ async def get_pvgis_optima(
     Use PVGIS to calculate optimal tilts and azimuths for a solar setup at this location.
 
     The PVGIS calculator itself is a bit poor, but they provide this nice utility optimiser.
+    Returns a default UK-friendly optimum if we couldn't contact PVGIS.
 
     Parameters
     ----------
@@ -57,10 +66,10 @@ async def get_pvgis_optima(
         "header": int(False),
     }
 
-    try:
-        res = await client.get(base_url, params=params)
-    except httpx.TimeoutException as ex:
-        raise HTTPException(400, f"Failed to get PVGIS optima with {params} due to a timeout.") from ex
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await PVGIS_RATE_LIMITER.acquire()
+    res = await client.get(base_url, params=params)
+
     assert res.status_code == 200, f"Failed to get PVGIS optima: {res.status_code}, {res.text}"
     data = res.json()
 
@@ -141,6 +150,8 @@ async def get_pvgis_data(
         "components": int(True),
         "pvtechchoice": "crystSi",
     }
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await PVGIS_RATE_LIMITER.acquire()
     req = await client.get(base_url, params=params)
 
     try:
@@ -220,10 +231,134 @@ async def get_renewables_ninja_data(
         "capacity": 1.0,
         "format": "json",
     }
+
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await RN_SLOW_LIMITER.acquire()
+        await RN_BURST_LIMITER.acquire()
     req = await client.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
             columns={"electricity": "pv"}
+        )
+    except json.JSONDecodeError as ex:
+        raise fastapi.HTTPException(
+            400, f"Decoding renewables.ninja data failed. Got {req.text} instead of valid JSON."
+        ) from ex
+    renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
+    assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
+    renewables_df.index = renewables_df.index.tz_localize(datetime.UTC)
+    within_timestamps_mask = np.logical_and(
+        renewables_df.index >= pd.Timestamp(start_ts), renewables_df.index < pd.Timestamp(end_ts)
+    )
+    masked_df: pd.DataFrame = renewables_df[within_timestamps_mask]
+    return masked_df
+
+
+async def get_renewables_ninja_wind_data(
+    client: httpx.AsyncClient,
+    latitude: float,
+    longitude: float,
+    start_ts: datetime.datetime,
+    end_ts: datetime.datetime,
+    turbine: str = "Vestas V90 2000",
+    height: float = 80.0,
+    api_key: str | None = None,
+) -> pd.DataFrame:
+    """
+    Request wind turbine information from renewables.ninja.
+
+    This takes in a location, timestamps, and some information about the wind turbine.
+    There is a list of available turbines on renewables ninja and we'll tell you if the one you give is invalid.
+    This may take a few seconds, and is relatively heavily rate limited by renewables.ninja.
+
+    The returned dataframe is in (kw / kWp) so can be easily scaled up (it's calculated for
+    a nominal 1kWp trubine).
+
+    Parameters
+    ----------
+    client
+        HTTP connection client for renewables ninja
+    latitude
+        Latitude of the site you're interested in, in degrees
+    longitude
+        Longitude of the site you're interested in, in degrees
+    start_ts
+        Earliest timestamp to get data for (usually Jan 1st)
+    end_ts
+        Earliest timestamp to get data for (usually Dec 31st)
+    height
+        Height of the wind turbine at this point above the ground in m
+    turbine
+        Name of the turbine you want
+    api_key
+        Renewables Ninja API key; if None, get one from the environment.
+
+    Returns
+    -------
+        pandas dataframe with timestamp index and column "wind"
+    """
+    if api_key is None:
+        api_key = get_secrets_environment()["RENEWABLES_NINJA_API_KEY"]
+
+    if not check_latitude_longitude(latitude=latitude, longitude=longitude):
+        raise ValueError("Latitude and longitude provided the wrong way round.")
+
+    async def get_valid_turbines(http_client: httpx.AsyncClient) -> frozenset[str]:
+        """
+        Get a list of all the valid turbines that renewables.ninja can calculate.
+
+        A turbine is identified by a string name.
+
+        Parameters
+        ----------
+        http_client
+            HTTP connection client for accessing renewables.ninja
+
+        Returns
+        -------
+        set of valid turbine names
+        """
+        if getattr(http_client, "DO_RATE_LIMIT", True):
+            await RN_SLOW_LIMITER.acquire()
+            await RN_BURST_LIMITER.acquire()
+        rn_wind_resp = await http_client.get(
+            "https://www.renewables.ninja/api/models/wind", headers={"Authorization": f"Token {api_key}"}
+        )
+        assert rn_wind_resp.status_code == 200, (
+            "Got a bad status code from Renewables.ninja" + f" for wind model listing: {rn_wind_resp.status_code}"
+        )
+        rn_wind_fields = rn_wind_resp.json()["fields"]
+        for field in rn_wind_fields:
+            if field["id"] == "turbine":
+                break
+        else:
+            raise ValueError("Couldn't find turbine in returned field data")
+        return frozenset(item["value"] for item in field["options"])
+
+    valid_turbines = await get_valid_turbines(client)
+    if turbine not in valid_turbines:
+        raise HTTPException(404, detail=f"Specified turbine {turbine} not found. Try one of {valid_turbines}")
+    params: dict[str, str | float | int] = {
+        "lat": latitude,
+        "lon": longitude,
+        "date_from": start_ts.strftime("%Y-%m-%d"),
+        "date_to": end_ts.strftime("%Y-%m-%d"),
+        "turbine": turbine,
+        "height": height,
+        "header": "false",
+        "capacity": 1.0,
+        "format": "json",
+    }
+    if getattr(client, "DO_RATE_LIMIT", True):
+        await RN_SLOW_LIMITER.acquire()
+        await RN_BURST_LIMITER.acquire()
+    req = await client.get(
+        "https://www.renewables.ninja/api/data/wind", params=params, headers={"Authorization": f"Token {api_key}"}
+    )
+
+    try:
+        renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
+            columns={"electricity": "wind"}
         )
     except json.JSONDecodeError as ex:
         raise fastapi.HTTPException(

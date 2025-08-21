@@ -5,6 +5,7 @@ fastapi[standard]
 httpx
 matplotlib
 numpy
+openpyxl
 pandas
 pydantic
 python-multipart

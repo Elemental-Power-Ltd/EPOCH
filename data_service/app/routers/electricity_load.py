@@ -9,12 +9,16 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
-from ..internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
-from ..internal.epl_typing import DailyDataFrame, MonthlyDataFrame
-from ..internal.utils import get_bank_holidays
-from ..models.core import DatasetIDWithTime, FuelEnum
-from ..models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
+from app.dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
+from app.internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
+from app.internal.epl_typing import DailyDataFrame, MonthlyDataFrame
+from app.internal.site_manager.bundles import file_self_with_bundle
+from app.internal.utils import get_bank_holidays
+from app.internal.utils.bank_holidays import UKCountryEnum
+from app.internal.utils.uuid import uuid7
+from app.models.core import DatasetIDWithTime, DatasetTypeEnum, FuelEnum
+from app.models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
+from app.models.meter_data import ReadingTypeEnum
 
 router = APIRouter()
 
@@ -64,7 +68,7 @@ async def generate_electricity_load(
     raw_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "consumption_kwh"])
     raw_df.index = pd.DatetimeIndex(pd.to_datetime(raw_df["start_ts"]))
 
-    public_holidays = await get_bank_holidays("England", http_client=http_client)
+    public_holidays = get_bank_holidays(UKCountryEnum.England)
     if reading_type != "halfhourly":
         daily_df = monthly_to_daily_eload(MonthlyDataFrame(raw_df), public_holidays=public_holidays)
     else:
@@ -115,17 +119,16 @@ async def generate_electricity_load(
         model=vae,
     )
 
-    new_dataset_id = uuid.uuid4()
-    metadata = {
-        "dataset_id": new_dataset_id,
-        "created_at": datetime.datetime.now(tz=datetime.UTC),
-        "site_id": site_id,
-        "fuel_type": FuelEnum.elec,
-        "reading_type": "halfhourly",
-        "filename": str(params.dataset_id),
-        "is_synthesised": True,
-    }
-    synthetic_hh_df["dataset_id"] = new_dataset_id
+    metadata = ElectricalLoadMetadata(
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
+        created_at=datetime.datetime.now(tz=datetime.UTC),
+        site_id=site_id,
+        fuel_type=FuelEnum.elec,
+        reading_type=ReadingTypeEnum.HalfHourly,
+        filename=str(params.dataset_id),
+        is_synthesised=True,
+    )
+    synthetic_hh_df["dataset_id"] = metadata.dataset_id
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
@@ -140,13 +143,13 @@ async def generate_electricity_load(
                     filename,
                     is_synthesised)
             VALUES ($1, $2, $3, $4, $5, $6, $7)""",
-                metadata["dataset_id"],
-                metadata["site_id"],
-                metadata["created_at"],
-                metadata["fuel_type"],
-                metadata["reading_type"],
-                metadata["filename"],
-                metadata["is_synthesised"],
+                metadata.dataset_id,
+                metadata.site_id,
+                metadata.created_at,
+                metadata.fuel_type,
+                metadata.reading_type,
+                metadata.filename,
+                metadata.is_synthesised,
             )
         await conn.copy_records_to_table(
             table_name="electricity_meters_synthesised",
@@ -155,15 +158,31 @@ async def generate_electricity_load(
             columns=synthetic_hh_df.columns.to_list(),
             timeout=10,
         )
-    return ElectricalLoadMetadata(
-        dataset_id=metadata["dataset_id"],
-        created_at=metadata["created_at"],
-        site_id=metadata["site_id"],
-        fuel_type=metadata["fuel_type"],
-        reading_type=metadata["reading_type"],
-        filename=metadata["filename"],
-        is_synthesised=metadata["is_synthesised"],
-    )
+
+        if params.bundle_metadata is not None:
+            assert params.bundle_metadata.dataset_type == DatasetTypeEnum.ElectricityMeterDataSynthesised
+            await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+
+            # If we didn't file the associated electricity meter data in the bundle that we used to generate this,
+            # do so now.
+            base_in_db = await conn.fetchval(
+                """SELECT exists
+                (SELECT 1
+                FROM data_bundles.dataset_links
+                WHERE bundle_id = $1 AND dataset_id = $2 AND dataset_type = $3)""",
+                params.bundle_metadata.bundle_id,
+                params.dataset_id,  # the ID of the underlying meter dataset
+                DatasetTypeEnum.ElectricityMeterData,
+            )
+            if not base_in_db:
+                meter_meta = params.bundle_metadata.model_copy(deep=True)
+                meter_meta.dataset_id = params.dataset_id
+                meter_meta.dataset_type = DatasetTypeEnum.ElectricityMeterData
+                await file_self_with_bundle(conn, bundle_metadata=meter_meta)
+
+    logger = logging.getLogger(__name__)
+    logger.info(f"Electricity load generation {metadata.dataset_id} completed.")
+    return metadata
 
 
 @router.post("/get-electricity-load", tags=["get", "electricity"])

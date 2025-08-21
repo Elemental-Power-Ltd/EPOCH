@@ -9,23 +9,24 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 
+from app.internal.utils.uuid import uuid7
 from app.routers.carbon_intensity import fetch_carbon_intensity
 
 
-@pytest_asyncio.fixture
-async def demo_start_ts() -> datetime.datetime:
+@pytest.fixture
+def demo_start_ts() -> datetime.datetime:
     """Provide a boring start datetime with good data around it."""
     return datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
 
 
-@pytest_asyncio.fixture
-async def demo_end_ts() -> datetime.datetime:
+@pytest.fixture
+def demo_end_ts() -> datetime.datetime:
     """Provide a boring end datetime with good data around it, more than 14 days after the start."""
     return datetime.datetime(year=2024, month=2, day=11, tzinfo=datetime.UTC)
 
 
-@pytest_asyncio.fixture
-async def demo_site_id() -> str:
+@pytest.fixture
+def demo_site_id() -> str:
     """Provide a site ID with a postcode in the database for regional data."""
     return "demo_london"
 
@@ -35,11 +36,36 @@ async def grid_co2_metadata(
     client: AsyncClient, demo_site_id: str, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
 ) -> pydantic.Json:
     """Generate a consistent set of carbon intensity data and add it to the DB."""
+    # We don't use a fixture for the bundle because in some cases the start and end timestamps will differ
+    # which we need to know at bundle creation time.
+    bundle_id = str(uuid7())
+    bundle_resp = await client.post(
+        "/create-bundle",
+        json={
+            "bundle_id": bundle_id,
+            "name": "Carbon Intensity Test",
+            "site_id": "demo_london",
+            "start_ts": demo_start_ts.isoformat(),
+            "end_ts": demo_end_ts.isoformat(),
+        },
+    )
+    assert bundle_resp.is_success
+
     result = await client.post(
         "/generate-grid-co2",
-        json={"site_id": demo_site_id, "start_ts": demo_start_ts.isoformat(), "end_ts": demo_end_ts.isoformat()},
+        json={
+            "site_id": demo_site_id,
+            "start_ts": demo_start_ts.isoformat(),
+            "end_ts": demo_end_ts.isoformat(),
+            "bundle_metadata": {
+                "bundle_id": bundle_id,
+                "dataset_id": str(uuid7()),
+                "dataset_type": "CarbonIntensity",
+                "dataset_subtype": None,
+            },
+        },
     )
-
+    assert result.is_success, result.text
     return result.json()
 
 
@@ -157,10 +183,32 @@ class TestCarbonIntensityChunking:
         """Test that we get the right number of entries if the last entry is in next year."""
         start_ts = datetime.datetime(year=2024, month=12, day=24, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2025, month=1, day=1, hour=0, minute=0, tzinfo=datetime.UTC)
+        bundle_id = str(uuid7())
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": bundle_id,
+                "name": "Carbon Intensity Test",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
 
         result = await client.post(
             "/generate-grid-co2",
-            json={"site_id": demo_site_id, "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+            json={
+                "site_id": demo_site_id,
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "bundle_metadata": {
+                    "bundle_id": bundle_id,
+                    "dataset_id": str(uuid7()),
+                    "dataset_type": "CarbonIntensity",
+                    "dataset_subtype": None,
+                },
+            },
         )
 
         assert result.status_code == 200
@@ -191,9 +239,32 @@ class TestCarbonIntensityChunking:
         start_ts = datetime.datetime(year=2024, month=12, day=24, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2025, month=1, day=2, hour=0, minute=0, tzinfo=datetime.UTC)
 
+        bundle_id = str(uuid7())
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": bundle_id,
+                "name": "Carbon Intensity Test",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
+
         result = await client.post(
             "/generate-grid-co2",
-            json={"site_id": demo_site_id, "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
+            json={
+                "site_id": demo_site_id,
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "bundle_metadata": {
+                    "bundle_id": bundle_id,
+                    "dataset_id": str(uuid7()),
+                    "dataset_type": "CarbonIntensity",
+                    "dataset_subtype": None,
+                },
+            },
         )
 
         assert result.status_code == 200

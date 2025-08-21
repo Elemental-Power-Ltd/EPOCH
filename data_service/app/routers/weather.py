@@ -18,12 +18,19 @@ import pandas as pd
 import pydantic
 from fastapi import APIRouter
 
-from ..dependencies import DatabaseDep, HTTPClient, HttpClientDep, SecretsDep
+from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep, SecretsDep
 from ..epl_secrets import get_secrets_environment
-from ..internal.utils import split_into_sessions
+from ..internal.utils import RateLimiter, split_into_sessions
 from ..models.weather import WeatherDatasetEntry, WeatherRequest
 
 router = APIRouter()
+
+# This is used for book-keeping of the temporary weather tables
+WEATHER_TEMP_IDX = 0
+
+# We batch requests and use aiometer.amap for a single request, but this is a higher
+# level rate limit just to make sure we're not being silly.
+WEATHER_RATE_LIMIT = RateLimiter(rate_limit_requests=10, rate_limit_period=datetime.timedelta(seconds=1))
 
 
 async def visual_crossing_request(
@@ -184,7 +191,7 @@ async def get_visual_crossing(
 
 @router.post("/get-weather")
 async def get_weather(
-    weather_request: WeatherRequest, conn: DatabaseDep, http_client: HttpClientDep
+    weather_request: WeatherRequest, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> list[WeatherDatasetEntry]:
     """
     Get the weather for a specific location between two timestamps.
@@ -201,17 +208,18 @@ async def get_weather(
 
     """
     # request only the days first so we can check if any data are missing
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT DISTINCT
-            DATE(timestamp) as date
+            timestamp::date as date
         FROM weather.visual_crossing
         WHERE location = $1
         AND $2 <= timestamp
-        AND timestamp < $3
+        AND timestamp <= $3
         ORDER BY date ASC""",
         weather_request.location,
         weather_request.start_ts,
+        # There's a <= in here to prevent missing out the final day of a given group
         weather_request.end_ts,
     )
 
@@ -229,7 +237,6 @@ async def get_weather(
     missing_days = sorted(expected_days - got_days)
 
     logger = logging.getLogger(__name__)
-    # TODO (2024-08-09 MHJB): make this async-ier
     for missing_session in split_into_sessions(missing_days, datetime.timedelta(days=1)):
         logger.warning(f"Missing days between {min(missing_session)} and {max(missing_session)} for {weather_request.location}")
 
@@ -237,73 +244,87 @@ async def get_weather(
         session_max_ts = datetime.datetime.combine(max(missing_session), datetime.time.max, datetime.UTC) + datetime.timedelta(
             days=1
         )
+        # There's another rate limiter within the `visual_crossing_request` function, this just slows down parallel requests
+        # to prevent trouble.
+        await WEATHER_RATE_LIMIT.acquire()
         vc_recs = await visual_crossing_request(
             weather_request.location,
             session_min_ts,
             session_max_ts,
             http_client=http_client,
         )
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                # We do this odd two-step copy because we might be writing to the cache repeatedly from two different tasks.
+                # Those will show a UniqueViolationError, so we create a temporary table, copy the records over, and
+                # ignore any clashes.
+                # We can't use a WHERE NOT EXISTS clause because the other task might be actively writing to the table
+                # as we go along, which trips us up.
+                # Track unique tables by the hash of the weather request and a counting suffix.
+                # If you send two identical requests from two different threads at exactly the same time,
+                # you're on your own.
 
-        async with conn.transaction():
-            await conn.execute(
-                """DELETE FROM
-                        weather.visual_crossing
-                    WHERE location = $1
-                    AND $2 <= timestamp
-                    AND timestamp < $3""",
-                weather_request.location,
-                session_min_ts,
-                session_max_ts,
-            )
+                global WEATHER_TEMP_IDX
+                temp_suffix = str(abs(hash(weather_request.model_dump_json())))
+                temp_table_name = f"weather_temp_{temp_suffix}_{WEATHER_TEMP_IDX}"
+                WEATHER_TEMP_IDX += 1
 
-            await conn.copy_records_to_table(
-                table_name="visual_crossing",
-                schema_name="weather",
-                columns=[
-                    "timestamp",
-                    "location",
-                    "temp",
-                    "humidity",
-                    "precip",
-                    "precipprob",
-                    "snow",
-                    "snowdepth",
-                    "windgust",
-                    "windspeed",
-                    "winddir",
-                    "pressure",
-                    "cloudcover",
-                    "solarradiation",
-                    "solarenergy",
-                    "dniradiation",
-                    "difradiation",
-                ],
-                records=[
-                    (
-                        item["timestamp"],
-                        weather_request.location,
-                        item["temp"],
-                        item["humidity"],
-                        item["precip"],
-                        item["precipprob"],
-                        item["snow"],
-                        item["snowdepth"],
-                        item["windgust"],
-                        item["windspeed"],
-                        item["winddir"],
-                        item["pressure"],
-                        item["cloudcover"],
-                        item["solarradiation"],
-                        item["solarenergy"],
-                        item["dniradiation"],
-                        item["difradiation"],
-                    )
-                    for item in vc_recs
-                ],
-            )
+                await conn.execute(f"CREATE TEMPORARY TABLE {temp_table_name} (LIKE weather.visual_crossing)")
+
+                await conn.copy_records_to_table(
+                    table_name=temp_table_name,
+                    columns=[
+                        "timestamp",
+                        "location",
+                        "temp",
+                        "humidity",
+                        "precip",
+                        "precipprob",
+                        "snow",
+                        "snowdepth",
+                        "windgust",
+                        "windspeed",
+                        "winddir",
+                        "pressure",
+                        "cloudcover",
+                        "solarradiation",
+                        "solarenergy",
+                        "dniradiation",
+                        "difradiation",
+                    ],
+                    records=[
+                        (
+                            item["timestamp"],
+                            weather_request.location,
+                            item["temp"],
+                            item["humidity"],
+                            item["precip"],
+                            item["precipprob"],
+                            item["snow"],
+                            item["snowdepth"],
+                            item["windgust"],
+                            item["windspeed"],
+                            item["winddir"],
+                            item["pressure"],
+                            item["cloudcover"],
+                            item["solarradiation"],
+                            item["solarenergy"],
+                            item["dniradiation"],
+                            item["difradiation"],
+                        )
+                        for item in vc_recs
+                    ],
+                )
+                await conn.execute(f"""
+                    INSERT INTO weather.visual_crossing
+                    (SELECT
+                        t.*
+                    FROM {temp_table_name} AS t)
+                    ON CONFLICT (location, timestamp) DO NOTHING""")
+                await conn.execute(f"DROP TABLE {temp_table_name}")
 
     # Now re-query the data we just fetched for a consistent view
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT
             timestamp,

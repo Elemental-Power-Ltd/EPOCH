@@ -8,13 +8,12 @@ Ideally put these in their own relevant python files!
 import datetime
 from pathlib import Path
 
-import httpx
 import numpy as np
 import pandas as pd
 import pytest
 
 from app.internal.utils import check_latitude_longitude, chunk_time_period, split_into_sessions
-from app.internal.utils.bank_holidays import get_bank_holidays
+from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 from app.internal.utils.database_utils import get_migration_files
 
 
@@ -68,8 +67,7 @@ class TestChunkTimePeriod:
 class TestGetBankHolidays:
     @pytest.mark.asyncio
     async def test_england_bank_holidays(self) -> None:
-        client = httpx.AsyncClient()
-        result = await get_bank_holidays("England", client)
+        result = get_bank_holidays(UKCountryEnum.England)
         assert datetime.date(year=2020, month=12, day=25) in result  # Christmas
         assert datetime.date(year=2019, month=7, day=12) not in result  # battle of the boyne
         assert datetime.date(year=2022, month=11, day=30) not in result  # St Andrew's Day
@@ -77,8 +75,7 @@ class TestGetBankHolidays:
 
     @pytest.mark.asyncio
     async def test_wales_bank_holidays(self) -> None:
-        client = httpx.AsyncClient()
-        result = await get_bank_holidays("Wales", client)
+        result = get_bank_holidays(UKCountryEnum.Wales)
         assert datetime.date(year=2020, month=12, day=25) in result  # Christmas
         assert datetime.date(year=2019, month=7, day=12) not in result  # battle of the boyne
         assert datetime.date(year=2022, month=11, day=30) not in result  # St Andrew's Day
@@ -86,8 +83,7 @@ class TestGetBankHolidays:
 
     @pytest.mark.asyncio
     async def test_scotland_bank_holidays(self) -> None:
-        client = httpx.AsyncClient()
-        result = await get_bank_holidays("Scotland", client)
+        result = get_bank_holidays(UKCountryEnum.Scotland)
         assert datetime.date(year=2020, month=12, day=25) in result  # Christmas
         assert datetime.date(year=2019, month=7, day=12) not in result  # battle of the boyne
         assert datetime.date(year=2022, month=11, day=30) in result  # St Andrew's Day
@@ -95,8 +91,7 @@ class TestGetBankHolidays:
 
     @pytest.mark.asyncio
     async def test_northern_ireland_bank_holidays(self) -> None:
-        client = httpx.AsyncClient()
-        result = await get_bank_holidays("NorthernIreland", client)
+        result = get_bank_holidays(UKCountryEnum.NorthernIreland)
         assert datetime.date(year=2020, month=12, day=25) in result  # Christmas
         assert datetime.date(year=2019, month=7, day=12) in result  # battle of the boyne
         assert datetime.date(year=2022, month=11, day=30) not in result  # St Andrew's Day
