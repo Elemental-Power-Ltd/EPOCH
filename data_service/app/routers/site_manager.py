@@ -44,7 +44,7 @@ from ..models.electricity_load import ElectricalLoadRequest
 from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
-from ..models.site_manager import DatasetBundleMetadata, DatasetList, RemoteMetaData
+from ..models.site_manager import DatasetBundleMetadata, DatasetList, SiteDataEntry
 from .carbon_intensity import generate_grid_co2
 from .client_data import get_solar_locations
 from .electricity_load import generate_electricity_load
@@ -457,7 +457,7 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
 
 @warnings.deprecated("Prefer get-dataset-bundle.")
 @router.post("/get-specific-datasets", tags=["db", "get"])
-async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: DatabasePoolDep) -> SiteDataEntries:
+async def get_specific_datasets(site_data: DatasetList | SiteDataEntry, pool: DatabasePoolDep) -> SiteDataEntries:
     """
     Get specific datasets with chosen IDs for a given site.
 
@@ -480,7 +480,7 @@ async def get_specific_datasets(site_data: DatasetList | RemoteMetaData, pool: D
     # If we've received a DatasetList with all the metadata about each dataset, we turn it into
     # a DatasetList here which is just the IDs, which are easier to request.
     if isinstance(site_data, DatasetList):
-        new_site_data = RemoteMetaData(site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts)
+        new_site_data = SiteDataEntry(site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts)
         for key in DatasetTypeEnum:
             # Model dump will also dump the sub keys from RemoteMetadata into dicts with a "dataset_id" key
             # and some other stuff that we throw away.

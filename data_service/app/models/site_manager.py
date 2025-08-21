@@ -4,32 +4,14 @@
 
 import datetime
 from enum import StrEnum
-from typing import Literal
 
 import pydantic
 
 from .core import DatasetEntry, DatasetTypeEnum, dataset_id_t, site_id_field, site_id_t
 
 
-class FileLocationEnum(StrEnum):
-    local = "local"
-    remote = "remote"
-
-
 class DataDuration(StrEnum):
     year = "year"
-
-
-class LocalMetaData(pydantic.BaseModel):
-    loc: Literal[FileLocationEnum.local] = pydantic.Field(
-        default=FileLocationEnum.local,
-        examples=["local"],
-        description="Where we are getting the data from, either a local file or remote DB.",
-    )
-    site_id: site_id_t = site_id_field
-    path: pydantic.FilePath | str = pydantic.Field(
-        examples=["./tests/data/benchmarks/var-3/InputData"], description="If a local file, the path to it."
-    )
 
 
 class DatasetList(pydantic.BaseModel):
@@ -60,7 +42,7 @@ class DatasetList(pydantic.BaseModel):
     PHPP: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
 
 
-class RemoteMetaData(pydantic.BaseModel):
+class SiteDataEntry(pydantic.BaseModel):
     """
     Requested remote metadata for datasets you want from the database.
 
@@ -69,11 +51,6 @@ class RemoteMetaData(pydantic.BaseModel):
     Generally you want to create one of these from a `DatasetList`.
     """
 
-    loc: Literal[FileLocationEnum.remote] = pydantic.Field(
-        default=FileLocationEnum.remote,
-        examples=["remote"],
-        description="Where we are getting the data from, either a local file or remote DB.",
-    )
     site_id: site_id_t
     start_ts: pydantic.AwareDatetime = pydantic.Field(default=datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC))
     end_ts: pydantic.AwareDatetime = pydantic.Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
@@ -113,6 +90,3 @@ class DatasetBundleMetadata(pydantic.BaseModel):
             " May contain duplicates if there are multiple of a single type. "
         ),
     )
-
-
-SiteDataEntry = RemoteMetaData | LocalMetaData

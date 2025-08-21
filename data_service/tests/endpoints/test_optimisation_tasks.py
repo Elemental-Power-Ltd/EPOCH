@@ -24,7 +24,7 @@ from app.models.optimisation import (
     TaskConfig,
     TaskResult,
 )
-from app.models.site_manager import RemoteMetaData
+from app.models.site_manager import SiteDataEntry
 
 
 class TestOptimisationTaskDatabase:
@@ -54,7 +54,7 @@ class TestOptimisationTaskDatabase:
             },
             objectives=["capex", "carbon_balance"],
             input_data={
-                "demo_london": RemoteMetaData(
+                "demo_london": SiteDataEntry(
                     site_id="demo_london",
                     start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
                     end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
@@ -420,7 +420,7 @@ class TestOptimisationTaskDatabase:
         repro_data = repro_result.json()
         assert repro_data["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
 
-        assert isinstance(sample_task_config.input_data["demo_london"], RemoteMetaData)
+        assert isinstance(sample_task_config.input_data["demo_london"], SiteDataEntry)
         assert (
             datetime.datetime.fromisoformat(repro_data["site_data"]["demo_london"]["start_ts"])
             == sample_task_config.input_data["demo_london"].start_ts
@@ -507,7 +507,7 @@ class TestOptimisationTaskDatabaseUUID4:
             },
             objectives=["capex", "carbon_balance"],
             input_data={
-                "demo_london": RemoteMetaData(
+                "demo_london": SiteDataEntry(
                     site_id="demo_london",
                     start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
                     end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
@@ -873,7 +873,7 @@ class TestOptimisationTaskDatabaseUUID4:
         repro_data = repro_result.json()
         assert repro_data["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
 
-        assert isinstance(sample_task_config.input_data["demo_london"], RemoteMetaData)
+        assert isinstance(sample_task_config.input_data["demo_london"], SiteDataEntry)
         assert (
             datetime.datetime.fromisoformat(repro_data["site_data"]["demo_london"]["start_ts"])
             == sample_task_config.input_data["demo_london"].start_ts
