@@ -1,4 +1,4 @@
-from itertools import islice, product
+from itertools import islice, product, starmap
 from typing import cast
 
 import numpy as np
@@ -38,12 +38,14 @@ def portfolio_pareto_front(portfolio_solutions: list[PortfolioSolution], objecti
 def _merge_solutions(sol1: PortfolioSolution, sol2: PortfolioSolution) -> PortfolioSolution:
     """
     Merge two Portfolio Solutions into one.
+
     Parameters
     ----------
     sol1
         The first PortfolioSolution to merge.
     sol2
         The second PortfolioSolution to merge.
+
     Returns
     -------
     PortfolioSolution
@@ -99,7 +101,7 @@ def merge_and_optimise_two_portfolio_solution_lists(
     """
     combinations = product(list1, list2)
     if len(list1) == 1 or len(list2) == 1:
-        return [_merge_solutions(sol1, sol2) for sol1, sol2 in list(combinations)]
+        return list(starmap(_merge_solutions, list(combinations)))
     pf: list[PortfolioSolution] = []
     while subset := list(islice(combinations, batch_size)):
         if capex_limit is not None:
@@ -109,7 +111,7 @@ def merge_and_optimise_two_portfolio_solution_lists(
                 if sol1.metric_values[Metric.capex] + sol2.metric_values[Metric.capex] <= capex_limit
             ]
         else:
-            subset_combined = [_merge_solutions(sol1, sol2) for sol1, sol2 in subset]
+            subset_combined = list(starmap(_merge_solutions, subset))
 
         pf = portfolio_pareto_front(portfolio_solutions=pf + subset_combined, objectives=objectives)
 

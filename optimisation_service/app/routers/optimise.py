@@ -91,6 +91,14 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
 
 
 def get_epoch_version() -> str:
+    """
+    Get the version of the epoch.
+
+    Returns
+    -------
+        A version string (probably Major.Minor.Patch)
+
+    """
     import epoch_simulator
 
     return epoch_simulator.__version__  # type: ignore
@@ -105,7 +113,6 @@ def check_epoch_version() -> str | None:
     str | None
         The version string of the epoch_simulator (if available, None otherwise)
     """
-
     try:
         simulator_version = get_epoch_version()
         logger.info(f"Using EPOCH version: {simulator_version}")

@@ -164,7 +164,7 @@ def report_data_to_dict(report_data: ReportData) -> dict[str, list[float]]:
         # Crude method of finding the fields
         # Look for all the methods in the report data that don't start with "__"
         fields = [field for field in dir(report_data)
-                  if field not in {"_pybind11_conduit_v1_"} and not field.startswith("__")]
+                  if field != "_pybind11_conduit_v1_" and not field.startswith("__")]
 
         # all fields are currently numpy arrays
         # we want the non-zero arrays

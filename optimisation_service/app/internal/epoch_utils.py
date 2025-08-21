@@ -25,9 +25,7 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
     -------
     SimulationMetrics
         A pydantic model of the metrics.
-
     """
-
     comp = sim_result.comparison
     scenario = sim_result.metrics
     baseline = sim_result.baseline_metrics

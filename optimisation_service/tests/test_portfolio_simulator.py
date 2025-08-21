@@ -1,8 +1,7 @@
 import copy
-import pytest
-
 from pathlib import Path
 
+import pytest
 from epoch_simulator import Building, Simulator, TaskData
 
 from app.internal.datamanager import load_epoch_data_from_file

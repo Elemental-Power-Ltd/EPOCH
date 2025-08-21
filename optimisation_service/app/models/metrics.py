@@ -4,8 +4,8 @@ from enum import IntEnum, StrEnum
 class Metric(StrEnum):
     """
     A subset of the metrics returned from an EPOCH simulation.
-    Specifically the metrics that are in any way meaningful for use as an optimisation objective.
 
+    Specifically the metrics that are in any way meaningful for use as an optimisation objective.
     This primarily means that the baseline metrics are excluded.
     """
 
