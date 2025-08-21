@@ -23,7 +23,7 @@ from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils import chunk_time_period
 from ..internal.utils.uuid import uuid7
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry, GridCO2Request
-from ..models.core import DatasetIDWithTime
+from ..models.core import DatasetIDWithTime, DatasetTypeEnum
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -362,6 +362,7 @@ async def generate_grid_co2(
             )
 
             if params.bundle_metadata is not None:
+                assert params.bundle_metadata.dataset_type == DatasetTypeEnum.CarbonIntensity
                 await file_self_with_bundle(pool=pool, bundle_metadata=params.bundle_metadata)
 
     logger.info(f"Grid CO2 generation {metadata.dataset_id} completed.")
@@ -404,14 +405,13 @@ async def get_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> Epoc
         params.start_ts,
         params.end_ts,
     )
+    if res is None:
+        raise HTTPException(
+            400,
+            f"Could not get a CarbonIntensity dataset for {params.dataset_id} between {params.start_ts} and {params.end_ts}",
+        )
     carbon_df = pd.DataFrame.from_records(res, columns=["start_ts", "forecast", "actual"], coerce_float=True)
     carbon_df.index = pd.to_datetime(carbon_df["start_ts"])  # type: ignore
-
-    # TODO (2025-01-09 MHJB): fix this awful pandas repeated interpolation, reindexing and resampling, it's a mess
-    # carbon_df = carbon_df.resample(pd.Timedelta(minutes=30)).max().infer_objects().interpolate(method="time")
-    # carbon_df = carbon_df.reindex(
-    #    pd.DatetimeIndex(pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left"))
-    # )
 
     carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))
     carbon_df["GridCO2"] = carbon_df["GridCO2"].interpolate(method="time")

@@ -730,6 +730,7 @@ async def generate_heating_load_phpp(
             )
 
             if params.bundle_metadata is not None:
+                assert params.bundle_metadata.dataset_type == DatasetTypeEnum.HeatingLoad
                 await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
                 # We also file the PHPP in the database as part of this bundle
                 phpp_bundle_metadata = params.bundle_metadata.model_copy()

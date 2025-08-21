@@ -448,7 +448,9 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
             params.end_ts,
         )
         if not res:
-            raise ValueError(f"Could not get a dataset for {dataset_id}.")
+            raise ValueError(
+                f"Could not get an ImportTariff dataset for {dataset_id} between {params.start_ts} and {params.end_ts}."
+            )
         df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "unit_cost"])
         df.index = pd.to_datetime(df.index, utc=True)
         df = df.resample(pd.Timedelta(minutes=30)).max().ffill()

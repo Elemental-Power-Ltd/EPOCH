@@ -7,7 +7,7 @@ import uuid
 import warnings
 from asyncio import Task
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import cast
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
@@ -110,16 +110,19 @@ async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[
     return res
 
 
-async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> DatasetList | None:
+@router.post("/list-bundle-contents", tags=["db", "bundle"])
+async def list_bundle_contents(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> DatasetList | None:
     """
-    List the contents of the latesst bundle to mimic the format of `list-latest-datasets`.
+    List the contents of the a bundle to mimic the format of `list-datasets`.
 
-    If there are no bundles, this returns None.
+    If there is not a bundle with this ID, this returns None.
+    This gives you more metadata about each entry than the `list-dataset-bundles` without actually
+    returning all of the entries within a bundle.
 
     Parameters
     ----------
-    site_id
-        Site ID to check available bundles for
+    bundle_id
+         Bundle ID to list the contents of
     pool
         Database pool to check in
 
@@ -137,6 +140,7 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
             ANY_VALUE(start_ts) AS start_ts,
             ANY_VALUE(end_ts) AS end_ts,
             ANY_VALUE(created_at) AS created_at,
+            ANY_VALUE(site_id) AS site_id,
             ARRAY_AGG(dataset_type ORDER BY dataset_order ASC) AS dataset_types,
             ARRAY_AGG(dataset_subtype ORDER BY dataset_order ASC) AS dataset_subtypes,
             ARRAY_AGG(dataset_id ORDER BY dataset_order ASC) AS dataset_ids
@@ -144,19 +148,22 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
         LEFT JOIN
             data_bundles.dataset_links AS dl
         ON dl.bundle_id = m.bundle_id
-        WHERE m.site_id = $1
+        WHERE m.bundle_id = $1
         GROUP BY m.bundle_id
         ORDER BY created_at DESC
         LIMIT 1""",
-        site_id.site_id,
+        bundle_id,
     )
     if latest_bundle is None:
         return None
 
-    bundle_id, start_ts, end_ts, created_at, dataset_types, dataset_subtypes, dataset_ids = latest_bundle
+    bundle_id, start_ts, end_ts, created_at, site_id, dataset_types, dataset_subtypes, dataset_ids = latest_bundle
+
+    RESOLUTION = datetime.timedelta(minutes=30)
+    NUM_ENTRIES = (end_ts - start_ts) / RESOLUTION
 
     return DatasetList(
-        site_id=site_id.site_id,
+        site_id=site_id,
         start_ts=start_ts,
         end_ts=end_ts,
         bundle_id=bundle_id,
@@ -166,8 +173,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
             created_at=created_at,
             start_ts=start_ts,
             end_ts=end_ts,
-            num_entries=None,
-            resolution=None,
+            num_entries=NUM_ENTRIES,
+            resolution=RESOLUTION,
             dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.SiteBaseline)],
         )
         if DatasetTypeEnum.SiteBaseline in dataset_types
@@ -179,8 +186,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
                 created_at=created_at,
                 start_ts=start_ts,
                 end_ts=end_ts,
-                num_entries=None,
-                resolution=None,
+                num_entries=NUM_ENTRIES,
+                resolution=RESOLUTION,
                 dataset_subtype=ds_subtype,
             )
             for ds_type, ds_subtype, ds_id in zip(dataset_types, dataset_subtypes, dataset_ids, strict=False)
@@ -194,8 +201,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
             created_at=created_at,
             start_ts=start_ts,
             end_ts=end_ts,
-            num_entries=None,
-            resolution=None,
+            num_entries=NUM_ENTRIES,
+            resolution=RESOLUTION,
             dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.ASHPData)],
         )
         if DatasetTypeEnum.ASHPData in dataset_types
@@ -206,8 +213,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
             created_at=created_at,
             start_ts=start_ts,
             end_ts=end_ts,
-            num_entries=None,
-            resolution=None,
+            num_entries=NUM_ENTRIES,
+            resolution=RESOLUTION,
             dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.CarbonIntensity)],
         )
         if DatasetTypeEnum.CarbonIntensity in dataset_types
@@ -218,8 +225,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
             created_at=created_at,
             start_ts=start_ts,
             end_ts=end_ts,
-            num_entries=None,
-            resolution=None,
+            num_entries=NUM_ENTRIES,
+            resolution=RESOLUTION,
             dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.ElectricityMeterData)],
         )
         if DatasetTypeEnum.ElectricityMeterData in dataset_types
@@ -230,8 +237,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
             created_at=created_at,
             start_ts=start_ts,
             end_ts=end_ts,
-            num_entries=None,
-            resolution=None,
+            num_entries=NUM_ENTRIES,
+            resolution=RESOLUTION,
             dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.ElectricityMeterDataSynthesised)],
         )
         if DatasetTypeEnum.ElectricityMeterDataSynthesised in dataset_types
@@ -243,8 +250,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
                 created_at=created_at,
                 start_ts=start_ts,
                 end_ts=end_ts,
-                num_entries=None,
-                resolution=None,
+                num_entries=NUM_ENTRIES,
+                resolution=RESOLUTION,
                 dataset_subtype=ds_subtype,
             )
             for ds_type, ds_subtype, ds_id in zip(dataset_types, dataset_subtypes, dataset_ids, strict=False)
@@ -259,8 +266,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
             created_at=created_at,
             start_ts=start_ts,
             end_ts=end_ts,
-            num_entries=None,
-            resolution=None,
+            num_entries=NUM_ENTRIES,
+            resolution=RESOLUTION,
             dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.GasMeterData)],
         )
         if DatasetTypeEnum.GasMeterData in dataset_types
@@ -272,8 +279,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
                 created_at=created_at,
                 start_ts=start_ts,
                 end_ts=end_ts,
-                num_entries=None,
-                resolution=None,
+                num_entries=NUM_ENTRIES,
+                resolution=RESOLUTION,
                 dataset_subtype=ds_subtype,
             )
             for ds_type, ds_subtype, ds_id in zip(dataset_types, dataset_subtypes, dataset_ids, strict=False)
@@ -287,8 +294,8 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
             created_at=created_at,
             start_ts=start_ts,
             end_ts=end_ts,
-            num_entries=None,
-            resolution=None,
+            num_entries=NUM_ENTRIES,
+            resolution=RESOLUTION,
             dataset_subtype=dataset_subtypes[dataset_types.index(DatasetTypeEnum.ThermalModel)],
         )
         if DatasetTypeEnum.ThermalModel in dataset_types
@@ -297,7 +304,7 @@ async def list_latest_bundle(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> 
 
 
 @router.post("/list-latest-datasets", tags=["db", "list"])
-async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> DatasetList:
+async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> DatasetList:
     """
     Get the most recent datasets of each type for this site.
 
@@ -308,158 +315,21 @@ async def list_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) ->
     Parameters
     ----------
     site_id
-        The ID of the site you are interested in, and the timestamps you want to get them between.
+        The ID of the site you are interested in.
 
     Returns
     -------
         A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
     """
-    # This is our quick bailout if we've got a new-style bundle
-    latest_bundle = await list_latest_bundle(params, pool)
-    if latest_bundle is not None:
-        return latest_bundle
-    logger.info("Didn't get a bundle, so separately listing datasets.")
-    all_datasets = await list_datasets(params, pool)
+    bundles = await list_dataset_bundles(site_id, pool)
+    if not bundles:
+        raise HTTPException(404, f"Didn't find any bundled datasets for {site_id.site_id}, try generating some.")
 
-    def created_at_or_epoch(ts: DatasetEntry | None) -> datetime.datetime:
-        """Return the created_at date or the EPOCH."""
-        if ts is None:
-            return datetime.datetime(year=1970, month=1, day=1, tzinfo=datetime.UTC)
-        return ts.created_at
-
-    def subtype_contains(ds: DatasetEntry | None, subtype: InterventionEnum | SyntheticTariffEnum | None) -> bool:
-        if ds is None:
-            return False
-
-        if ds.dataset_subtype == subtype:
-            return True
-
-        if hasattr(ds.dataset_subtype, "__contains__") and subtype in ds.dataset_subtype:  # type: ignore
-            return True
-
-        return False
-
-    def is_single_enum_entry(item: Any) -> bool:
-        """Check if this is a list with a single InterventionEnum."""
-        if isinstance(item, list) and len(item) == 1 and isinstance(item[0], InterventionEnum):
-            return True
-        return False
-
-    heating_subtypes = [None, InterventionEnum.Loft, InterventionEnum.DoubleGlazing, InterventionEnum.Cladding]
-    heating_subtypes.extend(
-        item.dataset_subtype
-        for item in all_datasets[DatasetTypeEnum.HeatingLoad]
-        if not isinstance(item.dataset_subtype, InterventionEnum)
-        and item.dataset_subtype is not None
-        and not is_single_enum_entry(item.dataset_subtype)
-    )
-    heating_loads = [
-        item
-        for item in (
-            max(
-                filter(
-                    lambda ds: subtype_contains(ds, intervention_subtype),
-                    all_datasets[DatasetTypeEnum.HeatingLoad],
-                ),
-                key=created_at_or_epoch,
-                default=None,
-            )
-            for intervention_subtype in heating_subtypes
-        )
-        if item is not None
-    ]
-
-    import_tariffs = [
-        item
-        for item in (
-            max(
-                filter(lambda ds: subtype_contains(ds, tariff_type), all_datasets[DatasetTypeEnum.ImportTariff]),
-                key=created_at_or_epoch,
-                default=None,
-            )
-            for tariff_type in [
-                SyntheticTariffEnum.Fixed,
-                SyntheticTariffEnum.Agile,
-                SyntheticTariffEnum.Overnight,
-                SyntheticTariffEnum.Peak,
-                SyntheticTariffEnum.ShapeShifter,
-            ]
-        )
-        if item is not None
-    ]
-
-    # The labelling of dataset_subtypes for solar locations is a bit of a mess, sorry!
-    # The subtypes are generally chosen to be the string ID of the solar_location on that site.
-    # However, some sites don't have locations assigned: these are given the location "default"
-    # Which is a south-ish facing roof with optimal tilt and azimuth for that location.
-    # Some sites have had solar generations in the database from before this change to track location
-    # was made. These are given the location None to mark that they pre-date the solar locations,
-    # this is mostly equivalent to the "default" location but not necessarily.
-    # In the case where we get some real solar locations, we ignore the None/"default" data
-    # because they've been replaced with actual data, but keep the None/"default" field where
-    # we don't have anything better.
-    potential_locations: set[str | None] = {item.dataset_subtype for item in all_datasets[DatasetTypeEnum.RenewablesGeneration]}
-    if "default" in potential_locations:
-        # Relabel the 'default' entry as None for consistency
-        potential_locations.remove("default")
-        potential_locations.add(None)
-    # However, if we've got multiple legitimate locations then we should remove the None location
-    if len(potential_locations) >= 2 and None in potential_locations:
-        potential_locations.remove(None)
-    if DatasetTypeEnum.RenewablesGeneration in all_datasets and all_datasets[DatasetTypeEnum.RenewablesGeneration] is not None:
-        renewables_generations = [
-            item
-            for item in (
-                max(
-                    filter(
-                        lambda ds: bool(ds.dataset_subtype == solar_locn),
-                        all_datasets[DatasetTypeEnum.RenewablesGeneration],
-                    ),
-                    key=created_at_or_epoch,
-                    default=None,
-                )
-                # Get these in a consistent order sorted alphabetically by their location ID
-                for solar_locn in sorted(potential_locations, key=str)
-            )
-            if item is not None
-        ]
-    else:
-        renewables_generations = []
-
-    return DatasetList(
-        site_id=params.site_id,
-        start_ts=params.start_ts,
-        end_ts=params.end_ts,
-        SiteBaseline=max(all_datasets[DatasetTypeEnum.SiteBaseline], key=lambda x: x.created_at)
-        if all_datasets[DatasetTypeEnum.SiteBaseline]
-        else None,
-        HeatingLoad=heating_loads,
-        ImportTariff=import_tariffs,
-        ASHPData=max(all_datasets[DatasetTypeEnum.ASHPData], key=lambda x: x.created_at)
-        if all_datasets.get(DatasetTypeEnum.ASHPData)
-        else None,
-        CarbonIntensity=max(all_datasets[DatasetTypeEnum.CarbonIntensity], key=lambda x: x.created_at)
-        if all_datasets.get(DatasetTypeEnum.CarbonIntensity)
-        else None,
-        ElectricityMeterData=max(all_datasets[DatasetTypeEnum.ElectricityMeterData], key=lambda x: x.created_at)
-        if all_datasets.get(DatasetTypeEnum.ElectricityMeterData)
-        else None,
-        ElectricityMeterDataSynthesised=max(
-            all_datasets[DatasetTypeEnum.ElectricityMeterDataSynthesised], key=lambda x: x.created_at
-        )
-        if all_datasets.get(DatasetTypeEnum.ElectricityMeterDataSynthesised)
-        else None,
-        Weather=max(all_datasets[DatasetTypeEnum.Weather], key=lambda x: x.created_at)
-        if all_datasets.get(DatasetTypeEnum.Weather)
-        else None,
-        GasMeterData=max(all_datasets[DatasetTypeEnum.GasMeterData], key=lambda x: x.created_at)
-        if all_datasets.get(DatasetTypeEnum.GasMeterData)
-        else None,
-        RenewablesGeneration=renewables_generations,
-        ThermalModel=[max(all_datasets[DatasetTypeEnum.ThermalModel], key=lambda x: x.created_at)]
-        if all_datasets.get(DatasetTypeEnum.ThermalModel)
-        else None,
-    )
+    latest_bundle_id = max(bundles, key=lambda x: x.created_at).bundle_id
+    bundle_contents = await list_bundle_contents(latest_bundle_id, pool)
+    if bundle_contents is None:
+        raise HTTPException(404, f"Didn't find any bundled datasets for {site_id.site_id}, try generating some.")
+    return bundle_contents
 
 
 @router.post("/get-dataset-bundle", tags=["db", "bundle", "get"])
@@ -503,7 +373,7 @@ async def get_dataset_bundle(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> 
     )
     if bundle_row is None:
         raise ValueError(f"Couldn't fetch {bundle_id} as it isn't in the database")
-    bundle_start_ts, bundle_end_ts, dataset_types, dataset_ids = bundle_row
+    bundle_start_ts, bundle_end_ts, dataset_types, dataset_ids, _ = bundle_row
 
     dataset_requests: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
     for dataset_type, dataset_id in zip(dataset_types, dataset_ids, strict=True):
@@ -523,7 +393,7 @@ async def get_dataset_bundle(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> 
 
 
 @router.post("/list-dataset-bundles")
-async def list_dataset_bundles(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> list[DatasetBundleMetadata]:
+async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetBundleMetadata]:
     """
     List all the dataset bundles available for this site.
 
@@ -557,7 +427,8 @@ async def list_dataset_bundles(site_id: SiteIDWithTime, pool: DatabasePoolDep) -
             data_bundles.dataset_links AS dl
         ON dl.bundle_id = m.bundle_id
         WHERE m.site_id = $1
-        GROUP BY m.bundle_id""",
+        GROUP BY m.bundle_id
+        ORDER BY created_at ASC""",
         site_id.site_id,
     )
     if bundle_entries is None or not bundle_entries:
@@ -690,7 +561,7 @@ async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])
-async def get_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> SiteDataEntries:
+async def get_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> SiteDataEntries:
     """
     Get the most recent dataset entries of each type for this site.
 
@@ -706,21 +577,11 @@ async def get_latest_datasets(params: SiteIDWithTime, pool: DatabasePoolDep) -> 
         The site data with full time series for each data source
     """
     logger = logging.getLogger(__name__)
-    logger.info(f"Getting latest dataset list for {params.site_id}")
+    logger.info(f"Getting latest dataset list for {site_id.site_id}")
 
-    try:
-        bundle_metas = await list_dataset_bundles(site_id=params, pool=pool)
-        latest_bundle = max(bundle_metas, key=lambda bm: bm.created_at).bundle_id
-        return await get_dataset_bundle(bundle_id=latest_bundle, pool=pool)
-    except ValueError as ex:
-        logger.warning(f"Could not get a latest bundle for {params.site_id} due to {ex}, falling back.")
-        pass
-
-    site_data = await list_latest_datasets(params, pool=pool)
-    try:
-        return await get_specific_datasets(site_data, pool)
-    except KeyError as ex:
-        raise HTTPException(400, f"Missing dataset {ex}. Did you run generate-all for this site?") from ex
+    bundle_metas = await list_dataset_bundles(site_id=site_id, pool=pool)
+    latest_bundle = max(bundle_metas, key=lambda bm: bm.created_at).bundle_id
+    return await get_dataset_bundle(bundle_id=latest_bundle, pool=pool)
 
 
 async def generate_all_wrapper(
@@ -791,6 +652,29 @@ async def generate_all_wrapper(
         )
 
     _ = [task.result() for task in all_tasks]
+
+
+@router.post("/create-bundle", tags=["db", "bundle"])
+async def create_bundle(bundle_metadata: DatasetBundleMetadata, pool: DatabasePoolDep) -> dataset_id_t:
+    """
+    Create a new bundle in the database.
+
+    This is only used when creating a bundle from an external source, probably an API user.
+
+    Parameters
+    ----------
+    bundle_metadata
+        Information about the bundle, including a unique ID and timestamps, to create
+    pool
+        Database pool to create the bundle in
+
+    Returns
+    -------
+    dataset_id_t
+        The ID of the newly created bundle.
+    """
+    resp = await insert_dataset_bundle(bundle_metadata, pool)
+    return resp
 
 
 @router.post("/generate-all")

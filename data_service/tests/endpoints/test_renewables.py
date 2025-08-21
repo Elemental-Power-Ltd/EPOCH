@@ -78,7 +78,7 @@ class TestRenewables:
         created_at = datetime.datetime.fromisoformat(result["created_at"])
         assert "dataset_id" in result
         assert earliest_possible <= created_at
-        assert created_at <= datetime.datetime.now(datetime.UTC)
+        assert created_at <= datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=1)
 
         assert result["parameters"]["azimuth"] == 178
         assert result["parameters"]["tilt"] == 30

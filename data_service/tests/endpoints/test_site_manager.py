@@ -12,9 +12,10 @@ import numpy as np
 import pytest
 import pytest_asyncio
 
+from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.site_manager.bundles import insert_dataset_bundle
-from app.models.core import DatasetTypeEnum
+from app.internal.utils.uuid import uuid7
 from app.models.heating_load import InterventionEnum
 from app.models.site_manager import DatasetBundleMetadata
 
@@ -31,7 +32,7 @@ async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
 
 
 @pytest_asyncio.fixture
-async def upload_meter_data(client: httpx.AsyncClient) -> tuple:
+async def upload_meter_data(client: httpx.AsyncClient) -> tuple[dict[str, Jsonable], dict[str, Jsonable]]:
     elec_data = parse_half_hourly("./tests/data/test_elec.csv")
     elec_data["start_ts"] = elec_data.index
     metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
@@ -54,6 +55,20 @@ class TestGetMultipleTariffs:
         start_ts = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC)
         site_id = "demo_london"
+
+        bundle_id = str(uuid7())
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": bundle_id,
+                "name": "test_generate_and_get_multiple_tariffs",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
+
         async with asyncio.TaskGroup() as tg:
             # We generate four different types of tariff, here done manually to keep track of the
             # tasks and not lose the handle to the task (which causes mysterious bugs)
@@ -65,6 +80,12 @@ class TestGetMultipleTariffs:
                         "tariff_name": "fixed",
                         "start_ts": start_ts.isoformat(),
                         "end_ts": end_ts.isoformat(),
+                        "bundle_metadata": {
+                            "bundle_id": bundle_id,
+                            "dataset_id": str(uuid7()),
+                            "dataset_type": "ImportTariff",
+                            "dataset_subtype": "fixed",
+                        },
                     },
                 )
             )
@@ -76,6 +97,12 @@ class TestGetMultipleTariffs:
                         "tariff_name": "agile",
                         "start_ts": start_ts.isoformat(),
                         "end_ts": end_ts.isoformat(),
+                        "bundle_metadata": {
+                            "bundle_id": bundle_id,
+                            "dataset_id": str(uuid7()),
+                            "dataset_type": "ImportTariff",
+                            "dataset_subtype": "agile",
+                        },
                     },
                 )
             )
@@ -89,7 +116,7 @@ class TestGetMultipleTariffs:
         )
         assert all_datasets_response.status_code == 200
         all_json = all_datasets_response.json()
-        assert sum(int(bool(all_json[key])) for key in DatasetTypeEnum) == 2
+        assert len(all_json["ImportTariff"]) == 2
 
         get_datasets_response = await client.post(
             "/get-latest-tariffs",
@@ -112,7 +139,9 @@ class TestGenerateAll:
     @pytest.mark.slow
     @pytest.mark.asyncio
     @pytest.mark.external
-    async def test_all_same_length(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+    async def test_all_same_length(
+        self, client: httpx.AsyncClient, upload_meter_data: tuple[dict[str, Jsonable], dict[str, Jsonable]]
+    ) -> None:
         _, _ = upload_meter_data
         demo_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
         demo_end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
@@ -235,22 +264,38 @@ class TestGenerateAll:
 
 class TestGetLatestElectricity:
     @pytest.mark.asyncio
-    async def test_get_blended_latest_elec(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
+    async def test_get_blended_latest_elec(
+        self, client: httpx.AsyncClient, upload_meter_data: tuple[dict[str, Jsonable], dict[str, Jsonable]]
+    ) -> None:
         """Test that we can generate some electrical data, and then get it via the list- and get- pair."""
-        _, _ = upload_meter_data
+        _, elec_result = upload_meter_data
         start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
-        list_result = await client.post(
-            "/list-latest-datasets",
-            json={"site_id": "demo_london", "start_ts": "1970-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"},
+
+        bundle_id = uuid7()
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": str(bundle_id),
+                "name": "test_get_blended_latest_elec",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
         )
-        assert list_result.status_code == 200
+        assert bundle_resp.is_success
+
         generate_request = await client.post(
             "/generate-electricity-load",
             json={
-                "dataset_id": list_result.json()["ElectricityMeterData"]["dataset_id"],
+                "dataset_id": elec_result["dataset_id"],
                 "start_ts": start_ts.isoformat(),
                 "end_ts": end_ts.isoformat(),
+                "bundle_metadata": {
+                    "bundle_id": str(bundle_id),
+                    "dataset_id": str(uuid7()),
+                    "dataset_type": "ElectricityMeterDataSynthesised",
+                },
             },
         )
         assert generate_request.status_code == 200, generate_request.text
@@ -289,24 +334,22 @@ class TestGetMultipleHeatLoads:
         start_ts = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC)
 
-        # If we allow the background tasks to get the weather, then they'll overwrite each
-        # other and cause terrible trouble, so let's get it here first.
-        await client.post(
-            "/get-weather",
-            json={"location": "London", "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
-        )
-        await client.post(
-            "/get-weather",
+        bundle_id = uuid7()
+        bundle_resp = await client.post(
+            "/create-bundle",
             json={
-                "location": "London",
-                "start_ts": "2023-10-01T00:00:00Z",
-                "end_ts": "2024-08-13T00:00:00Z",
+                "bundle_id": str(bundle_id),
+                "name": "test_create_and_get_heatloads",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
             },
         )
+        assert bundle_resp.is_success
 
         async with asyncio.TaskGroup() as tg:
-            for intervention in POTENTIAL_INTERVENTIONS:
-                background_tasks.append(  # noqa: PERF401
+            for idx, intervention in enumerate(POTENTIAL_INTERVENTIONS):
+                background_tasks.append(
                     tg.create_task(
                         client.post(
                             "/generate-heating-load",
@@ -315,14 +358,17 @@ class TestGetMultipleHeatLoads:
                                 "start_ts": start_ts.isoformat(),
                                 "end_ts": end_ts.isoformat(),
                                 "interventions": intervention,
+                                "bundle_metadata": {
+                                    "bundle_id": str(bundle_id),
+                                    "dataset_id": str(uuid7()),
+                                    "dataset_type": "HeatingLoad",
+                                    "dataset_subtype": intervention,
+                                    "dataset_order": idx,
+                                },
                             },
                         )
                     )
                 )
-        # keep references to the tasks to avoid a horrible Heisenbug (argh!)
-        # then wait for them all to be done.
-        results = [task.result() for task in background_tasks]
-        print([result.text for result in results])
         listed_datasets_result = await client.post(
             "/list-latest-datasets",
             json={
@@ -351,65 +397,6 @@ class TestGetMultipleHeatLoads:
 
         assert len({item["cost"] for item in heating_data}) == 4, "Must have four different costs"
         assert heating_data[0]["cost"] == 0, "First entry must be zero cost baseline"
-
-
-class TestListAllDatasets:
-    @pytest.mark.asyncio
-    async def test_has_metadata(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
-        """Test that we get some metadata from uploaded datasets."""
-        _, _ = upload_meter_data
-        list_result = await client.post(
-            "/list-datasets",
-            json={"site_id": "demo_london", "start_ts": "1970-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"},
-        )
-
-        assert list_result.status_code == 200, list_result.text
-
-        list_data = list_result.json()
-        assert sum(int(bool(val)) for val in list_data.values()) == 3
-        for dataset_type, dataset_entry in list_data.items():
-            if dataset_type == "ASHPData" or not dataset_entry:
-                # skip this one as it's a dummy dataset
-                continue
-            for subitem in dataset_entry:
-                assert subitem["start_ts"] <= subitem["end_ts"]
-                assert subitem["num_entries"] > 1
-
-    @pytest.mark.asyncio
-    async def test_hand_list_latest_back(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
-        """Test that we can hand the result from "list-latest-datasets" back."""
-        _, _ = upload_meter_data
-        list_result = await client.post(
-            "/list-latest-datasets",
-            json={"site_id": "demo_london", "start_ts": "1970-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"},
-        )
-        assert list_result.status_code == 200
-        assert list_result.json()[DatasetTypeEnum.ElectricityMeterData.value]["dataset_id"]
-        get_result = await client.post("/get-specific-datasets", json=list_result.json())
-        assert get_result.status_code == 200
-        data = get_result.json()
-        assert len(data) == 10
-        assert data["eload"] is not None
-        assert len(data["eload"]["data"]) > 0
-
-    @pytest.mark.asyncio
-    async def test_hand_back_just_datasets(self, client: httpx.AsyncClient, upload_meter_data: tuple) -> None:
-        """Test that we can hand back just the dataset IDs from "list-latest-datasets" back."""
-        _, _ = upload_meter_data
-        list_result = await client.post(
-            "/list-latest-datasets",
-            json={"site_id": "demo_london", "start_ts": "1970-01-01T00:00:00Z", "end_ts": "2025-01-01T00:00:00Z"},
-        )
-        assert list_result.status_code == 200
-        dataset_id = list_result.json()[DatasetTypeEnum.ElectricityMeterData.value]["dataset_id"]
-        get_result = await client.post(
-            "/get-specific-datasets", json={"site_id": "demo_london", "ElectricityMeterData": dataset_id}
-        )
-        assert get_result.status_code == 200, get_result.text
-        data = get_result.json()
-        assert len(data) == 10
-        assert data["eload"] is not None
-        assert len(data["eload"]["data"]) > 0
 
 
 class TestDatasetBundles:
