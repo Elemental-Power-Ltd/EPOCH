@@ -225,8 +225,11 @@ def simulate(
             if edge_attrs.get("radiative") is not None:
                 if isinstance(edge_attrs.get("radiative"), BoilerRadiativeLink):
                     edge_attrs["radiative"].step(
-                        u_attrs, v_attrs, dt.total_seconds(), graph.nodes[BuildingElement.InternalAir]["temperature"],
-                        timestamp=(start_ts + i * dt)
+                        u_attrs,
+                        v_attrs,
+                        dt.total_seconds(),
+                        graph.nodes[BuildingElement.InternalAir]["temperature"],
+                        timestamp=(start_ts + i * dt),
                     )
                 else:
                     edge_attrs["radiative"].step(u_attrs, v_attrs, dt.total_seconds())

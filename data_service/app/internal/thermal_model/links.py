@@ -1,7 +1,8 @@
 """Thermal links between two objects: conductive, radiative, convective."""
 
-from typing import TypedDict
 import datetime
+from typing import TypedDict
+
 
 class ThermalNodeAttrDict(TypedDict):
     """Typed dict for a thermal element node which has a temperature, a heat capacity, and an energy change accumulator."""
@@ -194,8 +195,8 @@ class BoilerRadiativeLink:
         self.is_on = is_on
         # Use the day of year to represent the on / off dates
         # No boiler output for dates between these days
-        self.end_day = datetime.datetime(year=2022, month=3, day=31).timetuple().tm_yday
-        self.start_day = datetime.datetime(year=2022, month=9, day=1).timetuple().tm_yday
+        self.end_day = datetime.datetime(year=2022, month=3, day=31, tzinfo=datetime.UTC).timetuple().tm_yday
+        self.start_day = datetime.datetime(year=2022, month=9, day=1, tzinfo=datetime.UTC).timetuple().tm_yday
 
         self.heatup_time = datetime.timedelta(minutes=15).total_seconds()
 
@@ -207,8 +208,12 @@ class BoilerRadiativeLink:
         )
 
     def step(
-        self, u_attrs: ThermalNodeAttrDict, v_attrs: ThermalNodeAttrDict, dt: float, thermostat_temperature: float,
-        timestamp: datetime.datetime | None = None
+        self,
+        u_attrs: ThermalNodeAttrDict,
+        v_attrs: ThermalNodeAttrDict,
+        dt: float,
+        thermostat_temperature: float,
+        timestamp: datetime.datetime | None = None,
     ) -> float:
         """
         Pass heat from the heat source into the heating system, depending on the measured temperature.
@@ -234,7 +239,6 @@ class BoilerRadiativeLink:
         energy_change
             Total energy transferred during this step. Positive if transferring from v to u, negative otherwise.
         """
-
         if timestamp is not None:
             # If the day of year is between the end date and the start date, then
             # we don't turn the boiler on.
@@ -244,7 +248,7 @@ class BoilerRadiativeLink:
             if doy >= self.end_day and doy < self.start_day:
                 self.is_on = False
                 return 0.0
-            
+
         energy_change_j = 0.0
         if thermostat_temperature > self.setpoint_temperature + 0.5:
             self.is_on = False

@@ -203,7 +203,7 @@ SecretsDep = typing.Annotated[SecretDict, Depends(get_secrets_dependency)]
 DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
 DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
-VaeDep = typing.Annotated[VAE | VAE_2_0, Depends(get_vae_model)]
+VaeDep = typing.Annotated[VAE_2_0, Depends(get_vae_model)]
 ProcessPoolDep = typing.Annotated[ProcessPoolExecutor, Depends(get_process_pool)]
 
 

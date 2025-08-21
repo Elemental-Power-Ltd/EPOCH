@@ -1,20 +1,20 @@
 """API endpoints for electrical loads, including resampling."""
 
 import datetime
+import itertools
 import logging
-import uuid
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
 from app.dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
-from app.internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
-from app.internal.epl_typing import DailyDataFrame, MonthlyDataFrame
+from app.internal.elec_meters import daily_to_hh_eload, day_type, monthly_to_daily_eload
+from app.internal.epl_typing import DailyDataFrame, MonthlyDataFrame, SquareHHDataFrame
 from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.utils import get_bank_holidays
-from app.internal.utils.bank_holidays import UKCountryEnum
 from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetIDWithTime, DatasetTypeEnum, FuelEnum
 from app.models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
@@ -68,15 +68,15 @@ async def generate_electricity_load(
     raw_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "consumption_kwh"])
     raw_df.index = pd.DatetimeIndex(pd.to_datetime(raw_df["start_ts"]))
 
-    public_holidays = get_bank_holidays(UKCountryEnum.England)
     if reading_type != "halfhourly":
-        daily_df = monthly_to_daily_eload(MonthlyDataFrame(raw_df), public_holidays=public_holidays)
+        daily_df = monthly_to_daily_eload(MonthlyDataFrame(raw_df))
     else:
         # We've got half hourly data, so we can skip the horrible daily profiles bit
         daily_df = DailyDataFrame(raw_df[["consumption_kwh"]].resample(pd.Timedelta(days=1)).sum())
         daily_df["start_ts"] = daily_df.index
         daily_df["end_ts"] = daily_df.index + pd.Timedelta(days=1)
 
+    public_holidays = get_bank_holidays()
     weekly_type_df = (
         daily_df[["consumption_kwh"]]
         .groupby([lambda dt, ph=public_holidays: day_type(dt, public_holidays=ph), lambda dt: dt.weekofyear])
@@ -113,10 +113,52 @@ async def generate_electricity_load(
     synthetic_daily_df["consumption_kwh"] = all_consumptions
     synthetic_daily_df["start_ts"] = synthetic_daily_df.index
     synthetic_daily_df["end_ts"] = synthetic_daily_df.index + pd.Timedelta(days=1)
+
+    # TODO (2025-08-21 MHJB): check this toggle is correct for resid_model_path and target_hh_observed_df
+    # do I need to rename the columns?
+
+    def halfhourly_to_square(raw_df: pd.DataFrame) -> SquareHHDataFrame:
+        """
+        Create a SquareHHDataFrame with columns 00:00, 00:30 and rows of dates from a rowwise.
+
+        Parameters
+        ----------
+        raw_df
+            Dataframe with entries like (start_ts, end_ts, consumption) ideally halfhourly
+
+        Returns
+        -------
+        SqaureHHDataFrame
+            Dataframe with columns like 00:00, 00:30, 01:00, ...
+        """
+        rows = []
+        assert isinstance(raw_df.index, pd.DatetimeIndex)
+        dates = sorted(set(raw_df.index.date))
+        for date in sorted(set(raw_df.index.date)):
+            day_df = raw_df[raw_df.index.date == date]
+            row: dict[str | datetime.time, str | float] = {
+                datetime.time(hour=idx.hour, minute=idx.minute, second=0): value
+                for idx, value in zip(day_df.index, day_df["consumption_kwh"], strict=False)
+            }
+            rows.append(row)
+        all_hours = [datetime.time(hour=hour, minute=minute) for hour, minute in itertools.product(range(0, 24), [0, 30])] + [
+            "date"
+        ]
+        return cast(SquareHHDataFrame, pd.DataFrame.from_records(rows, columns=all_hours, index=dates))
+
+    if reading_type == "halfhourly":
+        resid_model_path = None
+        target_hh_observed_df = halfhourly_to_square(raw_df)
+    else:
+        resid_model_path = Path("app", "models", "draft", "32 - trained - QB")
+        target_hh_observed_df = None
+
     synthetic_hh_df = daily_to_hh_eload(
         synthetic_daily_df,
-        scalers=load_all_scalers(directory=Path("models", "draft", "32 - trained - QB"), use_new=True),
         model=vae,
+        resid_model_path=resid_model_path,
+        target_hh_observed_df=target_hh_observed_df,
+        weekend_inds={5, 6},
     )
 
     metadata = ElectricalLoadMetadata(

@@ -519,7 +519,7 @@ def train_model(
     model = model.to(device)
 
     # Create TensorBoard writer if log_dir is provided
-    writer = SummaryWriter(log_dir) if log_dir is not None else None
+    writer = SummaryWriter(log_dir) if log_dir is not None else None  # type: ignore
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = ReduceLROnPlateau(
@@ -575,15 +575,15 @@ def train_model(
 
         # Log to TensorBoard if writer is provided
         if writer is not None:
-            writer.add_scalar("Loss/train", train_results["loss"], epoch)
-            writer.add_scalar("Loss/val", val_results["loss"], epoch)
+            writer.add_scalar("Loss/train", train_results["loss"], epoch)  # type: ignore
+            writer.add_scalar("Loss/val", val_results["loss"], epoch)  # type: ignore
 
             for key in train_results["components"]:
-                writer.add_scalar(f"Components/train_{key}", train_results["components"][key], epoch)
-                writer.add_scalar(f"Components/val_{key}", val_results["components"][key], epoch)
+                writer.add_scalar(f"Components/train_{key}", train_results["components"][key], epoch)  # type: ignore
+                writer.add_scalar(f"Components/val_{key}", val_results["components"][key], epoch)  # type: ignore
 
-            writer.add_scalar("KL_weight", kl_weight, epoch)
-            writer.add_scalar("Learning_rate", optimizer.param_groups[0]["lr"], epoch)
+            writer.add_scalar("KL_weight", kl_weight, epoch)  # type: ignore
+            writer.add_scalar("Learning_rate", optimizer.param_groups[0]["lr"], epoch)  # type: ignore
 
         history["train_loss"].append(train_results["loss"])
         history["val_loss"].append(val_results["loss"])
