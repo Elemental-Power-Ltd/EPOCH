@@ -1,7 +1,7 @@
 import datetime
 import logging
 import math
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Self
 
@@ -136,7 +136,7 @@ class TaskResponse(BaseModel):
     task_id: dataset_id_t
 
 
-class Grade(Enum):
+class Grade(StrEnum):
     A = "A"
     B = "B"
     C = "C"
