@@ -170,7 +170,7 @@ def report_data_to_dict(report_data: ReportData) -> dict[str, list[float]]:
         # we want the non-zero arrays
         for field in fields:
             vector = getattr(report_data, field)
-            if vector:
+            if vector.any():
                 # convert the numpy array to a python list
                 report_dict[field] = list(vector)
     return report_dict
