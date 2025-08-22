@@ -149,7 +149,7 @@ float calculate_gas_heater_cost(const GasCHData& gas) {
 	return calculate_three_tier_costs(capex_prices.gas_heater_prices, gas.maximum_output);
 }
 
-float calculate_grid_cost(const GridData& grid) {
+float calculate_grid_cost([[maybe_unused]] const GridData& grid) {
 
 	// set Grid upgrade to zero for the moment
 	const float grid_upgrade_kw = 0.0f;

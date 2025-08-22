@@ -132,7 +132,7 @@ NullESS::NullESS(const SiteData& siteData)
 {
 }
 
-void NullESS::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t)
+void NullESS::StepCalc([[maybe_unused]] TempSum& tempSum, [[maybe_unused]] const float futureEnergy_e, [[maybe_unused]] const size_t t)
 {
     // Do nothing
 }
@@ -143,7 +143,7 @@ float NullESS::AvailDisch()
     return 0.0f;
 }
 
-void NullESS::Report(ReportData& reportData) const
+void NullESS::Report([[maybe_unused]] ReportData& reportData) const
 {
     // Do nothing
 }

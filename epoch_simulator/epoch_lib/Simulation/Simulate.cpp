@@ -137,7 +137,7 @@ CapexBreakdown Simulator::calculateCapexWithDiscounts(const TaskData& taskData) 
 	return calculate_capex_with_discounts(mSiteData, mConfig, taskData);
 }
 
-ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType simulationType) const {
+ReportData Simulator::simulateTimesteps(const TaskData& taskData, [[maybe_unused]] SimulationType simulationType) const {
 	/* INITIALISE classes that support energy sums and object precedence */
 	Flags flags(taskData);	// flags energy component presence in TaskData & balancing modes
 	TempSum tempSum(mSiteData);		// class of arrays for running totals (replace ESUM and Heat)
@@ -298,7 +298,7 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, SimulationType
 	return reportData;
 }
 
-SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
+SimulationResult Simulator::makeInvalidResult([[maybe_unused]] const TaskData& taskData) const {
 	// When a scenario is invalid, for now we return the FLT_MAX or FLT_MIN for each objective as appropriate
 
 	// TODO - apply proper fix for 'nullable' results

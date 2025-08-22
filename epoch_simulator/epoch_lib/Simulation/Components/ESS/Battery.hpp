@@ -13,21 +13,20 @@ class Battery {
 
 public:
 	Battery(const SiteData& siteData, const EnergyStorageSystem& essData) :
-		mCapacity_e(essData.capacity),
-		mPreSoC_e(essData.initial_charge), // Init State of Charge in kWhs
-		// TODO - reintroduce RTE to TaskData
-		mRTLrate(1.0f - 0.86f), // loss rate easier in calcs
-
-		// timestep_hours can be considered a power scalar per timestep
-		mChargMax_e(essData.charge_power * siteData.timestep_hours), // kWh per timestep
-		mDischMax_e(essData.discharge_power * siteData.timestep_hours), // UkWh per timestep
-		mAuxLoad_e(essData.capacity / 1200 * siteData.timestep_hours), // kWh per timestep
-
 		// Initilaise results data vectors with all values to zero
 		mHistSoC_e(Eigen::VectorXf::Zero(siteData.timesteps)),      // Resulting State of Charge per timestep
 		mHistCharg_e(Eigen::VectorXf::Zero(siteData.timesteps)),   // Charge kWh per timestep
 		mHistDisch_e(Eigen::VectorXf::Zero(siteData.timesteps)),   // Discharge kWh per timestep
-		mHistRTL_e(Eigen::VectorXf::Zero(siteData.timesteps))     // Round trip loss kWh per timestep
+		mHistRTL_e(Eigen::VectorXf::Zero(siteData.timesteps)),     // Round trip loss kWh per timestep
+	
+		mCapacity_e(essData.capacity),
+		// timestep_hours can be considered a power scalar per timestep
+		mChargMax_e(essData.charge_power * siteData.timestep_hours), // kWh per timestep
+		mDischMax_e(essData.discharge_power * siteData.timestep_hours), // UkWh per timestep
+		// TODO - reintroduce RTE to TaskData
+		mRTLrate(1.0f - 0.86f), // loss rate easier in calcs
+		mAuxLoad_e(essData.capacity / 1200 * siteData.timestep_hours), // kWh per timestep
+		mPreSoC_e(essData.initial_charge) // Init State of Charge in kWhs
 	{
 		mHistAux_e = Eigen::VectorXf::Constant(siteData.timesteps, mAuxLoad_e);
 	}

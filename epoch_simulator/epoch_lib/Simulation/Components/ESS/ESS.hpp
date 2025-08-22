@@ -13,7 +13,7 @@
 
 class ESS {
 public:
-    ESS(const SiteData& siteData) {};
+    ESS([[maybe_unused]]const SiteData& siteData) {};
     virtual ~ESS() = default;
 
     virtual void StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t) = 0;

@@ -10,14 +10,14 @@
 class Grid
 {
 public:
-	Grid(const SiteData& siteData, const GridData& gridData, const Building& building) :
-		// Initilaise results data vectors with all values to zero
-		Imp_e(Eigen::VectorXf::Zero(siteData.timesteps)),
-		Exp_e(Eigen::VectorXf::Zero(siteData.timesteps)),
+	Grid(const SiteData& siteData, const GridData& gridData, [[maybe_unused]] const Building& building) :
 		// Calculate the Import and Export capacity (in kWh) per timestep
 		// The import capacity is reduced by the import_headroom
 		ImpMax_e(gridData.grid_import * (1.0f - gridData.import_headroom) * siteData.timestep_hours),
-		ExpMax_e(gridData.grid_export * siteData.timestep_hours)
+		ExpMax_e(gridData.grid_export * siteData.timestep_hours),
+		// Initialise results data vectors with all values to zero
+		Imp_e(Eigen::VectorXf::Zero(siteData.timesteps)),
+		Exp_e(Eigen::VectorXf::Zero(siteData.timesteps))
 	{}
 
 	float AvailImport() const {

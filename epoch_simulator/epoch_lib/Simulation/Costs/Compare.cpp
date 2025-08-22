@@ -7,7 +7,7 @@
 
 
 ScenarioComparison compareScenarios(
-	const SiteData& siteData,
+	[[maybe_unused]] const SiteData& siteData,
 	const UsageData& baselineUsage, const SimulationMetrics& baselineMetrics, 
 	const UsageData& scenarioUsage, const SimulationMetrics& scenarioMetrics
 ) {

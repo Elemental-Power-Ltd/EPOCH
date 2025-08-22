@@ -16,18 +16,18 @@ public:
 		mTimestep_seconds(std::chrono::duration<float>(siteData.timestep_interval_s).count()),// set up timestep seconds in constructor
 		mTimestep_hours(siteData.timestep_hours),
 		mCapacity_h(calculate_Capacity_h()), // calculate tank energy capacity in constructor
-		mDHW_discharging(siteData.dhw_demand),
 		mCylinderStartSoC_h(calculate_Capacity_h()), // set start SoC to full for now
+		mHeat_pump_power_h(heatPumpData.heat_power), // will need to calculate energy per timestep
 		mDHW_charging(Eigen::VectorXf::Zero(siteData.timesteps)),
-		mDHW_local_shortfall(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_discharging(siteData.dhw_demand),
 		mDHW_standby_losses(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_local_shortfall(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mDHW_SoC_history(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mDHW_ave_temperature(Eigen::VectorXf::Zero(siteData.timesteps)),
-		mDHW_diverter_load_e(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mDHW_heat_pump_load_h(Eigen::VectorXf::Zero(siteData.timesteps)),
+		mDHW_diverter_load_e(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mImport_tariff(siteData.import_tariffs[tariff_index]),
-		mTariffStats(tariff_stats),
-		mHeat_pump_power_h(heatPumpData.heat_power) // will need to calculate energy per timestep
+		mTariffStats(tariff_stats)
 	{}
 
 	// Calculate cylinder energy capacity based on T_setpoint, convert to kWh
@@ -84,7 +84,7 @@ public:
 		return;
 	}
 
-	void update_SoC_detailed(float E_charge_kWh, float V_draw_kWh)
+	void update_SoC_detailed([[maybe_unused]] float E_charge_kWh, [[maybe_unused]] float V_draw_kWh)
 	{
 		//TBD this can will be the more detailed & computationally expensive cylinder model
 		return;
@@ -169,27 +169,23 @@ private:
 	float mTimestep_seconds;
 	float mTimestep_hours;
 
-
 	const float c_w = 4.18f;            // Specific heat capacity of water in kJ/kg·°C
-	const float rho = 1.0f;             // Density of water in kg/
+	const float rho = 1.0f;             // Density of water in kg/L
 	const float T_cold = 10.0f;         // Cold water inlet temperature in °C
 	const float T_ambient = 20.0f;      // Ambient temperature in °C
-	// 30 minutes in seconds
 	const float T_setpoint = 60.0f;     // Setpoint temperature for hot water in °C
 
-
-
 	// State variables
-	float mU;               // Heat loss coefficient in W/°C
-	float mCapacity_h;         // heat capacity of tank in kWh
-	float mCylEnergy_h;    // Stored heat energy in kWh
-	float mT_ave;           // average water temperature in °C
-	float mCylinderStartSoC_h; // starting state of charge in kWh
+	float mU;                           // Heat loss coefficient in W/°C
+	float mCapacity_h;                  // heat capacity of tank in kWh
+	float mCylEnergy_h;                 // Stored heat energy in kWh
+	float mT_ave;                       // average water temperature in °C
+	float mCylinderStartSoC_h;          // starting state of charge in kWh
 
-	float mHeat_pump_power_h; // max heat pump power
+	float mHeat_pump_power_h;           // max heat pump power
 
-	year_TS mDHW_charging; // member timeseries for calculated charging
-	year_TS mDHW_discharging;  // member timeseries for discharging from historical data
+	year_TS mDHW_charging;              // member timeseries for calculated charging
+	year_TS mDHW_discharging;           // member timeseries for discharging from historical data
 	year_TS mDHW_standby_losses;
 	year_TS mDHW_local_shortfall;
 	year_TS mDHW_SoC_history;

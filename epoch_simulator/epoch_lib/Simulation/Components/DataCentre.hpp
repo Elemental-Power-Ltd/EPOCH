@@ -15,7 +15,7 @@ constexpr float SCALAR_HEAT_YIELD = 0.75f;
 class DataCentre {
 
 public:
-    DataCentre(const SiteData& siteData) {};
+    DataCentre([[maybe_unused]] const SiteData& siteData) {};
     virtual ~DataCentre() = default;
 
     virtual void AllCalcs(TempSum& tempSum) = 0;

@@ -15,6 +15,12 @@ class AmbientHeatPump {
 
 public:
 	AmbientHeatPump(const SiteData& siteData, const HeatPumpData& hp) :
+		// Initialise results data vectors with all values to zero
+		mDHWload_e(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP electrical load
+		mDHWout_h(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP heat output
+		mCHload_e(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP electrical load
+		mCHout_h(Eigen::VectorXf::Zero(siteData.timesteps)),		// ASHP heat output
+		mFreeHeat_h(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP heat from ambient
 		// Initialise Persistent Values
 		DHW_OUT_TEMP(60),	// FUTURE: removed when taskData.ASHP_DHWtemp available
 		mASHPperfDHW(siteData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
@@ -22,17 +28,10 @@ public:
 		mTimesteps(siteData.timesteps),
 		mHeatpumpSuppliesDHW(true),	// FUTURE: read value from (new) taskData value or use ASHP_DHWtemp not zero
 		mHeatpumpSuppliesCentralHeating(true),		// FUTURE: read value from (new) taskData value or use ASHP_RadTemp not zero
-		mAmbientTemperature(siteData.air_temperature),	// Ambient Temperature
 		mHeatPumpMax_h(0),
 		mHeatPumpMax_e(0),
 		mMaxElec_e(0.0f),
-
-		// Initilaise results data vectors with all values to zero
-		mDHWload_e(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP electrical load
-		mDHWout_h(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP heat output
-		mCHload_e(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP electrical load
-		mCHout_h(Eigen::VectorXf::Zero(siteData.timesteps)),		// ASHP heat output
-		mFreeHeat_h(Eigen::VectorXf::Zero(siteData.timesteps))	// ASHP heat from ambient
+		mAmbientTemperature(siteData.air_temperature)	// Ambient Temperature
 	{
 		mResidualCapacity = Eigen::VectorXf::Constant(siteData.timesteps, 1.0f);// Remaining heatpump capacity
 	}
