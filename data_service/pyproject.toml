@@ -90,7 +90,9 @@ ignore_errors = true
 dialect = "postgres"
 max_line_length = 128
 templater = "python"
+ignore = "templating"
 large_file_skip_byte_limit = 20000 # ignore the big first file
+
 
 [tool.sqlfluff.rules.capitalisation.keywords]
 capitalisation_policy = "upper"

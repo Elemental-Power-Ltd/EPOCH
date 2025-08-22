@@ -41,7 +41,6 @@ from ...internal.utils.uuid import uuid7
 from ...models.core import DatasetID, DatasetTypeEnum, SiteID, dataset_id_t, site_id_t
 from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
 from ...models.weather import BaitAndModelCoefs, WeatherRequest
-from ..client_data import get_location
 from ..weather import get_weather
 from .phpp import get_phpp_dataframe_from_database, list_phpp
 from .router import api_router
@@ -504,7 +503,12 @@ async def generate_thermal_model_heating_load(
 
     if params.site_id is None:
         raise HTTPException(400, "Must have provided a site ID for thermal model dataset fitting")
-    location = await get_location(SiteID(site_id=params.site_id), pool)
+    location = await pool.fetchval(
+        """SELECT location FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
+        params.site_id,
+    )
+    if location is None:
+        raise HTTPException(400, f"Could not find a location for {params.site_id}")
     weather_records = await get_weather(
         weather_request=WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
         pool=pool,

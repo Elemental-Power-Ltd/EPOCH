@@ -43,12 +43,6 @@ class TestClientData:
         assert response.json()[0]["site_id"] == "demo_cardiff"
         assert response.json()[1]["site_id"] == "demo_london"
 
-    # @pytest.mark.asyncio
-    # async def test_list_datasets(self, client: AsyncClient) -> None:
-    #    response = await client.post("/list-datasets", json={"site_id": "demo_london"})
-    #    assert response.status_code == 200
-    #    assert len(response.json()) >= 1
-
     @pytest.mark.asyncio
     async def test_add_site(self, client: AsyncClient) -> None:
         site_data = SiteData(
@@ -188,6 +182,20 @@ class TestSiteBaseline:
         )
         response = await client.post("/get-site-baseline", json={"site_id": "demo_london"})
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_baseline_floor_area(self, client: AsyncClient) -> None:
+        """Test that we insert and get out floor areas."""
+        baseline = {
+            "building": {"floor_area": 89.0},
+        }
+        response = await client.post(
+            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
+        )
+        response = await client.post("/get-site-baseline", json={"site_id": "demo_london"})
+        assert response.is_success
+        data = response.json()
+        assert data["building"]["floor_area"] == 89.0
 
 
 class TestSolarLocations:
