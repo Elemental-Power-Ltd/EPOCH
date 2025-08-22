@@ -15,6 +15,7 @@ from app.internal.utils.uuid import uuid7
 
 class TestUploadMeterData:
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_upload_hh_and_generate(self, client: httpx.AsyncClient) -> None:
         """Test that we can upload half hourly data and generate a new dataset."""
         raw_data = parse_half_hourly("./tests/data/test_elec.csv")
@@ -40,6 +41,17 @@ class TestUploadMeterData:
             },
         )
         assert elec_result.is_success, elec_result.text
+
+        new_id = elec_result.json()["dataset_id"]
+        result = await client.post(
+            "/get-electricity-load",
+            json={
+                "dataset_id": new_id,
+                "start_ts": "2019-01-01T00:00:00Z",
+                "end_ts": "2020-01-01T00:00:00Z",
+            },
+        )
+        assert result.is_success, result.text
 
     @pytest.mark.asyncio
     async def test_upload_pre_parsed_with_specified(self, client: httpx.AsyncClient) -> None:
@@ -135,6 +147,7 @@ class TestUploadMeterData:
 
 
 class TestGetBlendedData:
+    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_can_get_blended_data(self, client: httpx.AsyncClient) -> None:
         elec_data = parse_half_hourly("./tests/data/test_elec.csv")

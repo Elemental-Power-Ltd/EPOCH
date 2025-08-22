@@ -615,7 +615,7 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
                     # minimise total cost = cost_a + cost_b
                     cost_a = sum_sig2[k - 1] - 2 * a * sum_sig[k - 1] + k * a**2
                     cost_b = (sum_sig2[-1] - sum_sig2[k - 1]) - 2 * b * (sum_sig[-1] - sum_sig[k - 1]) + (n - k) * b**2
-                    cost[k] = cost_a + cost_b
+                    cost[k] = cost_a[0] + cost_b[0]
 
         cp = np.argmin(cost)
         if cost[cp] == np.inf:  # no k for which a,b are both valid baselines
@@ -704,7 +704,7 @@ def split_and_baseline_active_days(
     z_score_mod = 0.6745 * ((df_daily_active["consumption_baselined"] - med) / med_abs_dev)
     site_specific_inactive_inds = df_daily_active.index[np.where(z_score_mod < -3.5)[0]]  # only interested in low outliers
 
-    ## alternative approach:
+    # alternative approach:
     # site_specific_inactive_inds = df_daily_active.index[
     #     np.nonzero(
     #       np.abs(

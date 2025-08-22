@@ -206,7 +206,6 @@ def daily_to_hh_eload(
     target_daily_active_df, target_daily_inactive_df = split_and_baseline_active_days(
         daily_df, weekend_inds=weekend_inds, division=division
     )
-
     # scale the baselined daily consumption data for active days, using a *new* StandardScaler
     aggregate_scaler_new = sklearn.preprocessing.StandardScaler()
     consumption_scaled = torch.tensor(
@@ -248,7 +247,6 @@ def daily_to_hh_eload(
         )
 
         is_active_mask = target_hh_observed_df.index.isin(target_hh_obs_daily_active.index)
-        num_active_days = np.sum(is_active_mask)
         assert np.any(is_active_mask), "Must have at least one active day."
         assert not np.all(is_active_mask), "Must have at least one inactive day."
         # baseline all days (active and inactive):
@@ -264,9 +262,20 @@ def daily_to_hh_eload(
 
         # then establish the residuals, assuming that these limited data are to be modelled using the generated VAE output
         # - vae_output used to model the intraday profile on active days; baselined inactive days are simply relabelled here
-        target_hh_active_residuals = cast(
+        # We generate a new VAE output as we can't guarantee that these data are the same shape as the target data
+        # (for example, we might have observed data for two years but want to generate for one)
+        daily_active_baselined = target_hh_obs_baselined[is_active_mask].sum(axis=1).to_numpy().reshape(-1, 1)
+        obs_scaler = sklearn.preprocessing.StandardScaler()
+        obs_consumption_scaled = torch.tensor(
+            obs_scaler.fit_transform(daily_active_baselined),
+            dtype=torch.float32,
+        )
+
+        # generate a normalised approximate profile for each active day
+        vae_obs = generate_approx_daily_profiles(model, obs_consumption_scaled)
+        target_hh_active_residuals = cast(  # type: ignore
             SquareHHDataFrame,
-            target_hh_obs_baselined[is_active_mask] - vae_output_np[:num_active_days, :],  # type: ignore
+            target_hh_obs_baselined[is_active_mask] - vae_obs,
         )
         target_hh_inactive_residuals = target_hh_obs_baselined[~is_active_mask]
 
@@ -293,28 +302,18 @@ def daily_to_hh_eload(
         ARMA_scale_inactive = ARMA_model_inactive_dict["sigma"]
         reference_hourly_active_std = ARMA_model_active_dict["hourly_active_std"]
 
+    target_active_mask = np.isin(target_hh_df.index, hh_active_approx_df.index).astype(bool)
+    num_inactive, num_active = target_daily_inactive_df.shape[0], target_daily_active_df.shape[0]
     # add fitted trends
     if use_client_hh:
-        target_hh_df.loc[target_daily_inactive_df.index] = (  # type: ignore
-            target_hh_df.loc[target_daily_inactive_df.index]
-            + np.tile(target_hh_inactive_residtrend_df, (target_daily_inactive_df.shape[0], 1))
-        )
-        target_hh_df.loc[target_daily_active_df.index] = (  # type: ignore
-            target_hh_df.loc[target_daily_active_df.index]
-            + np.tile(target_hh_active_residtrend_df, (target_daily_active_df.shape[0], 1))
-        )
+        target_hh_df[~target_active_mask] += np.tile(target_hh_inactive_residtrend_df, (num_inactive, 1))
+        target_hh_df[target_active_mask] += np.tile(target_hh_active_residtrend_df, (num_active, 1))
     else:
-        target_hh_df.loc[target_daily_inactive_df.index] = (  # type: ignore
-            target_hh_df.loc[target_daily_inactive_df.index]
-            + np.tile(default_hh_inactive_residtrend_df, (target_daily_inactive_df.shape[0], 1))
-        )
-        target_hh_df.loc[target_daily_active_df.index] = (  # type: ignore
-            target_hh_df.loc[target_daily_active_df.index]
-            + np.tile(default_hh_active_residtrend_df, (target_daily_active_df.shape[0], 1))
-        )
+        target_hh_df[~target_active_mask] += np.tile(default_hh_inactive_residtrend_df, (num_inactive, 1))
+        target_hh_df[target_active_mask] += np.tile(default_hh_active_residtrend_df, (num_active, 1))
 
     # Add noise from fitted ARMA distributions
-    ## - first, if needed, scale the ARMA_scale_* parameters using the daily aggregate values for the target site
+    # - first, if needed, scale the ARMA_scale_* parameters using the daily aggregate values for the target site
     if not use_client_hh:
         ARMA_scale_active_target = (
             ARMA_scale_active * target_daily_active_df["consumption_baselined"].std() / reference_hourly_active_std
@@ -325,27 +324,24 @@ def daily_to_hh_eload(
         ARMA_scale_inactive_target = ARMA_scale_inactive
         ARMA_scale_active_target = ARMA_scale_active
 
-    ## - then pre-generate white noise to reduce runtime...
-    num_inactive = target_daily_inactive_df.shape[0]
-    eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
-    sims = np.empty_like(eps)
-    ## ...generate ARMA realisations...
-    for i in range(num_inactive):
-        sims[i] = ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-    ## ...and add the generated noise to the approximate profiles
-    target_hh_df.loc[target_daily_inactive_df.index] = (  # type: ignore
-        target_hh_df.loc[target_daily_inactive_df.index] + sims
-    )
+    # - then pre-generate white noise to reduce runtime...
 
-    ## - repeat for active dates
+    eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
+    sims = np.asarray(
+        [
+            ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+            for i in range(num_inactive)
+        ]
+    )
+    target_hh_df[~target_active_mask] += sims
+
+    # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
-    sims = np.empty_like(eps)
-    for i in range(num_active):
-        sims[i] = ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-    target_hh_df.loc[target_daily_active_df.index] = (  # type: ignore
-        target_hh_df.loc[target_daily_active_df.index] + sims
+    sims = np.asarray(
+        [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
     )
+    target_hh_df[target_active_mask] += sims
 
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     return HHDataFrame(

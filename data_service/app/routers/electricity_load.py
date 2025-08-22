@@ -151,9 +151,11 @@ async def generate_electricity_load(
         resid_model_path = None
         target_hh_observed_df = halfhourly_to_square(raw_df)
     else:
+        print("Using stored resid")
         resid_model_path = Path("models", "draft", "32 - trained - QB")
         target_hh_observed_df = None
 
+    print(synthetic_daily_df.shape, params.start_ts, params.end_ts)
     synthetic_hh_df = daily_to_hh_eload(
         synthetic_daily_df,
         model=vae,
