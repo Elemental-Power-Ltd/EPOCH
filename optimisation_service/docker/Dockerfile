@@ -9,6 +9,9 @@ WORKDIR /
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
+        autoconf-archive \
         ca-certificates \
         cmake \
         curl \
