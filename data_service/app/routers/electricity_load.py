@@ -134,23 +134,24 @@ async def generate_electricity_load(
         rows = []
         assert isinstance(raw_df.index, pd.DatetimeIndex)
         dates = sorted(set(raw_df.index.date))
-        for date in sorted(set(raw_df.index.date)):
+        for date in dates:
             day_df = raw_df[raw_df.index.date == date]
-            row: dict[str | datetime.time, str | float] = {
+            row: dict[datetime.time, float] = {
                 datetime.time(hour=idx.hour, minute=idx.minute, second=0): value
-                for idx, value in zip(day_df.index, day_df["consumption_kwh"], strict=False)
+                for idx, value in zip(day_df.index, day_df["consumption_kwh"], strict=True)
             }
             rows.append(row)
-        all_hours = [datetime.time(hour=hour, minute=minute) for hour, minute in itertools.product(range(0, 24), [0, 30])] + [
-            "date"
-        ]
-        return cast(SquareHHDataFrame, pd.DataFrame.from_records(rows, columns=all_hours, index=dates))
+        all_hours = [datetime.time(hour=hour, minute=minute) for hour, minute in itertools.product(range(0, 24), [0, 30])]
+        # If our half hourly readings are missing (e.g. the first reading is at 01:00) then fill them in roughly
+        # from the nearby days.
+        new_df = pd.DataFrame.from_records(rows, columns=all_hours, index=pd.DatetimeIndex(dates)).ffill().bfill()
+        return cast(SquareHHDataFrame, new_df)
 
     if reading_type == "halfhourly":
         resid_model_path = None
         target_hh_observed_df = halfhourly_to_square(raw_df)
     else:
-        resid_model_path = Path("app", "models", "draft", "32 - trained - QB")
+        resid_model_path = Path("models", "draft", "32 - trained - QB")
         target_hh_observed_df = None
 
     synthetic_hh_df = daily_to_hh_eload(

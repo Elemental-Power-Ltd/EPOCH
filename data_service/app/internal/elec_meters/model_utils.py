@@ -670,7 +670,7 @@ def split_and_baseline_active_days(
     """
     # Ascertain the public holiday and 'weekend' dates to use in the first split
     holiday_dates = frozenset(get_bank_holidays(division))
-    assert isinstance(df_daily_all.index, pd.DatetimeIndex)
+    assert isinstance(df_daily_all.index, pd.DatetimeIndex), df_daily_all.index
 
     # Perform the initial split: extract inactive dates and define remaining records of df_daily_all as active days
     is_holiday = df_daily_all.index.map(lambda dt: dt.date() in holiday_dates).to_numpy()

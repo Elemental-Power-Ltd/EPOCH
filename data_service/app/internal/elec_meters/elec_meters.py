@@ -2,11 +2,12 @@
 
 import datetime
 import enum
+import itertools
 import json
 import pathlib
 from collections.abc import Container
 from pathlib import Path
-from typing import cast
+from typing import Any, TypeGuard, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -20,6 +21,41 @@ from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
 from .model_utils import fit_residual_model, split_and_baseline_active_days
 from .vae_2_0 import VAE
+
+
+def is_valid_square_hh_dataframe(obj: Any) -> TypeGuard[SquareHHDataFrame]:
+    """
+    Check if this object is a valid SquareHHDataFrame.
+
+    A SquareHHDataframe has a daily DatetimeIndex, and columns [00:00, 00:30, ..., 23:30]
+    None of its entries are NaN.
+
+    Parameters
+    ----------
+    obj
+        Object, probably a dataframe, to check if it's a SquareHHDataFrame
+
+    Returns
+    -------
+    True if all criteria are met
+    False otherwise
+    """
+    if not isinstance(obj, pd.DataFrame):
+        return False
+
+    expected_hours = {datetime.time(hour=h, minute=m) for h, m in itertools.product(range(24), [0, 30])}
+    if len(obj.columns) != 48:
+        return False
+
+    if any(col not in expected_hours for col in obj.columns):
+        return False
+
+    if pd.isna(obj).any().any():
+        return False
+
+    if not isinstance(obj.index, pd.DatetimeIndex):
+        return False
+    return True
 
 
 class DayTypeEnum(enum.IntEnum):
@@ -202,8 +238,10 @@ def daily_to_hh_eload(
     target_hh_df = pd.concat([hh_inactive_approx_df, hh_active_approx_df], axis=0).sort_index()
 
     if use_client_hh:
-        # split client hh data into active and inactive days
-        assert target_hh_observed_df is not None
+        # split client hh data into active and inactive dayss
+        assert target_hh_observed_df is not None, "Asked to use_client_hh but got a None target_hh_observed_df"
+        assert not target_hh_observed_df.empty, "Asked to use_client_hh but got an empty target_hh_observed_df"
+        assert is_valid_square_hh_dataframe(target_hh_observed_df), "Got a target_hh_observed_df that isn't a valid square HH"
         target_hh_obs_daily = cast(DailyDataFrame, pd.DataFrame(target_hh_observed_df.sum(axis=1), columns=["consumption_kwh"]))
         target_hh_obs_daily_active, _ = split_and_baseline_active_days(
             target_hh_obs_daily, weekend_inds=weekend_inds, division=division
@@ -211,6 +249,8 @@ def daily_to_hh_eload(
 
         is_active_mask = target_hh_observed_df.index.isin(target_hh_obs_daily_active.index)
         num_active_days = np.sum(is_active_mask)
+        assert np.any(is_active_mask), "Must have at least one active day."
+        assert not np.all(is_active_mask), "Must have at least one inactive day."
         # baseline all days (active and inactive):
         # - for active days, this is subtracting the 'offset' calculated using the appropriate nearest inactive day
         # - for inactive days, this is simply centering the data / zeroing the daily mean
@@ -242,6 +282,7 @@ def daily_to_hh_eload(
         # that was used to train these defaults
         # TODO (JSM 2025-08-06) Should we move all logic for loading residual models to .model_utils?
         assert resid_model_path is not None
+        assert resid_model_path.is_dir(), f"Resid model path {resid_model_path} is not a directory"
         default_hh_active_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_active.csv"))
         default_hh_inactive_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_inactive.csv"))
         ARMA_model_active_dict = json.loads(Path(resid_model_path, "default_ARMA_model_active.json").read_text())
