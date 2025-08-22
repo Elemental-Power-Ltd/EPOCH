@@ -33,6 +33,8 @@
 
 #include "Components/DataCentre.hpp"
 #include "Components/ESS/ESS.hpp"
+#include "Costs/Compare.hpp"
+#include "Costs/SAP.hpp"
 
 Simulator::Simulator(SiteData siteData, TaskConfig config):
 	mSiteData(siteData),
@@ -65,7 +67,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 		auto simulationResult = makeInvalidResult(taskData);
 
 		// but this invalid result can still have a valid CAPEX
-		simulationResult.project_CAPEX = capex.total_capex;
+		simulationResult.metrics.total_capex = capex.total_capex;
 		return simulationResult;
 	}
 
@@ -79,30 +81,11 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 
 	result.baseline_metrics = mBaselineMetrics;
 	result.metrics = calculateMetrics(taskData, result.report_data.value(), scenarioUsage);
-
-	auto comparison = compareScenarios(mSiteData, mBaselineUsage, result.baseline_metrics, scenarioUsage, result.metrics);
-
-	result.project_CAPEX = scenarioUsage.capex_breakdown.total_capex;
-	// There is some redundancy here
-	//  total_annualised_cost is in both the SimulationResult and the SimulationMetrics
-	//  this is to avoid breaking the interface exposing the total_annualised_cost in the SimulationResult
-	result.total_annualised_cost = result.metrics.total_annualised_cost;
-	result.scenario_cost_balance = comparison.cost_balance;
-	result.meter_balance = comparison.meter_balance;
-	result.operating_balance = comparison.operating_balance;
-	result.payback_horizon_years = comparison.payback_horizon_years;
-	result.scenario_carbon_balance_scope_1 = comparison.carbon_balance_scope_1;
-	result.scenario_carbon_balance_scope_2 = comparison.carbon_balance_scope_2;
-	result.npv_balance = comparison.npv_balance;
+	result.comparison = compareScenarios(mSiteData, mBaselineUsage, result.baseline_metrics, scenarioUsage, result.metrics);
 
 
 	if (simulationType != SimulationType::FullReporting) {
-		// TEMPORARY HACK
-		// until the costs have been refactored, we are always doing full reporting
-		// this is a lazy way of getting the vectors we need into costVectors
-
-		// in order to preserve the correct appearance of there being no reportData,
-		// we remove the reportData again here
+		// We only return the full timeseries vectors in FullReporting mode
 		result.report_data = std::nullopt;
 	}
 	
@@ -321,12 +304,12 @@ SimulationResult Simulator::makeInvalidResult(const TaskData& taskData) const {
 	// TODO - apply proper fix for 'nullable' results
 	SimulationResult result{};
 
-	result.project_CAPEX = std::numeric_limits<float>::max();
-	result.total_annualised_cost = std::numeric_limits<float>::max();
-	result.scenario_cost_balance = std::numeric_limits<float>::lowest();
-	result.payback_horizon_years = std::numeric_limits<float>::max();
-	result.scenario_carbon_balance_scope_1 = std::numeric_limits<float>::lowest();
-	result.scenario_carbon_balance_scope_2 = std::numeric_limits<float>::lowest();
+	result.metrics.total_capex = std::numeric_limits<float>::max();
+	result.metrics.total_annualised_cost = std::numeric_limits<float>::max();
+	result.comparison.cost_balance = std::numeric_limits<float>::lowest();
+	result.comparison.payback_horizon_years = std::numeric_limits<float>::max();
+	result.comparison.carbon_balance_scope_1 = std::numeric_limits<float>::lowest();
+	result.comparison.carbon_balance_scope_2 = std::numeric_limits<float>::lowest();
 
 	return result;
 }
@@ -354,16 +337,23 @@ CostVectors Simulator::extractCostVectors(const ReportData& reportData, const Ta
 SimulationMetrics Simulator::calculateMetrics(const TaskData& taskData, const ReportData& reportData, const UsageData& usage) const {
 	SimulationMetrics metrics{};
 
+	// energy totals in kWh
 	metrics.total_gas_used = reportData.GasCH_load.sum();
 	metrics.total_electricity_imported = reportData.Grid_Import.sum();
 	metrics.total_electricity_generated = reportData.PVacGen.sum();
 	metrics.total_electricity_exported = reportData.Grid_Export.sum();
+	metrics.total_electricity_curtailed = reportData.Actual_curtailed_export.sum();
+	metrics.total_electricity_used = 
+		(metrics.total_electricity_imported + metrics.total_electricity_generated) 
+		- (metrics.total_electricity_exported + metrics.total_electricity_curtailed);
 
 	metrics.total_electrical_shortfall = reportData.Actual_import_shortfall.sum();
 	metrics.total_heat_shortfall = reportData.Heat_shortfall.sum();
 	metrics.total_ch_shortfall = reportData.CH_shortfall.sum();
 	metrics.total_dhw_shortfall = reportData.DHW_Shortfall.sum();
 
+	// financial totals in £
+	metrics.total_capex = usage.capex_breakdown.total_capex;
 	metrics.total_gas_import_cost = usage.fuel_cost;
 	metrics.total_electricity_import_cost = usage.elec_cost;
 	metrics.total_electricity_export_gain = usage.export_revenue;
@@ -374,6 +364,20 @@ SimulationMetrics Simulator::calculateMetrics(const TaskData& taskData, const Re
 	auto valueMetrics = calculate_npv(mSiteData, mConfig, taskData, usage);
 	metrics.total_annualised_cost = valueMetrics.annualised_cost;
 	metrics.total_net_present_value = valueMetrics.net_present_value;
+
+	metrics.total_scope_1_emissions = usage.carbon_scope_1_kg_CO2e;
+	metrics.total_scope_2_emissions = usage.carbon_scope_2_kg_CO2e;
+	metrics.total_combined_carbon_emissions = usage.carbon_scope_1_kg_CO2e + usage.carbon_scope_2_kg_CO2e;
+	
+	if (taskData.building.has_value() && taskData.building->floor_area.has_value()) {
+		float floor_area = taskData.building->floor_area.value();
+		// This is a best approximation of the energy input for SAP
+		// (a breakdown of electricity to extract heating, cooling and lighting would be more correct)
+		double sap_electricity = metrics.total_electricity_used - metrics.total_electricity_exported;
+		double sap_co2 = sap_co2_emissions(metrics.total_gas_used, sap_electricity);
+		metrics.environmental_impact_score = environmental_impact_rating(sap_co2, floor_area);
+		metrics.environmental_impact_grade = rating_to_band(metrics.environmental_impact_score.value());
+	}
 
 	return metrics;
 }

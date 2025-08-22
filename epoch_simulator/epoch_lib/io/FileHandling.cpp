@@ -82,7 +82,7 @@ void appendResultToCSV(std::filesystem::path filepath, const ObjectiveResult& re
 		throw FileReadException(filepath.filename().string());
 	}
 
-	outFile << result.payback_horizon_years << "," << result.project_CAPEX << "\n";
+	outFile << result.payback_horizon_years << "," << result.total_capex << "\n";
 
 }
 
@@ -144,7 +144,7 @@ void writeObjectiveResultHeader(std::ofstream& outFile) {
 void writeObjectiveResultRow(std::ofstream& outFile, const ObjectiveResult& result) {
 	// These must be written in exactly the same order as the header
 	outFile << result.total_annualised_cost << ",";
-	outFile << result.project_CAPEX << ",";
+	outFile << result.total_capex << ",";
 	outFile << result.scenario_cost_balance << ",";
 	outFile << result.payback_horizon_years << ",";
 	outFile << result.scenario_carbon_balance_scope_1 << ",";

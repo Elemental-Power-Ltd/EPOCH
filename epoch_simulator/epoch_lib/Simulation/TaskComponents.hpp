@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 #include <bit>
 #include <cstdint>
@@ -19,6 +20,7 @@ struct Building {
     float scalar_heat_load = 1.0f;
     float scalar_electrical_load = 1.0f;
     size_t fabric_intervention_index = 0;
+    std::optional<float> floor_area = std::nullopt;
     bool incumbent = false;
     float age = 0;
     float lifetime = 25;
@@ -156,7 +158,8 @@ struct std::hash<Building>
     std::size_t operator()(const Building& b) const noexcept
     {
         std::size_t h=0;
-        hash_combine(h, b.scalar_heat_load, b.scalar_electrical_load, b.fabric_intervention_index, b.incumbent, b.age, b.lifetime); 
+        float floor = b.floor_area.has_value() ? b.floor_area.value() : -1.0f;
+        hash_combine(h, b.scalar_heat_load, b.scalar_electrical_load, b.fabric_intervention_index, floor, b.incumbent, b.age, b.lifetime); 
         return h;
     }
 };

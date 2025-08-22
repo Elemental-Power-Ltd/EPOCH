@@ -21,20 +21,20 @@ LeagueTable::LeagueTable(const OptimiserConfig& optimiserConfig, const FileConfi
 void LeagueTable::considerResult(const SimulationResult& r, const TaskWithIndex& taskWithIndex)
 {
 	// CAPEX
-	considerMinimum(mCapex, r.project_CAPEX, taskWithIndex.index);
+	considerMinimum(mCapex, r.metrics.total_capex, taskWithIndex.index);
 
 	// Annualised Cost
-	considerMinimum(mAnnualisedCost, r.total_annualised_cost, taskWithIndex.index);
+	considerMinimum(mAnnualisedCost, r.metrics.total_annualised_cost, taskWithIndex.index);
 
 	// Payback Horizon
 	// FIXME - payback horizon can now be negative, if we restore grid search this will need changing
-	considerMinimum(mPaybackHorizon, r.payback_horizon_years, taskWithIndex.index);
+	considerMinimum(mPaybackHorizon, r.comparison.payback_horizon_years, taskWithIndex.index);
 
 	// Cost Balance
-	considerMaximum(mCostBalance, r.scenario_cost_balance, taskWithIndex.index);
+	considerMaximum(mCostBalance, r.comparison.cost_balance, taskWithIndex.index);
 
 	// Carbon Balance
-	considerMaximum(mCarbonBalance, r.scenario_carbon_balance_scope_1, taskWithIndex.index);
+	considerMaximum(mCarbonBalance, r.comparison.carbon_balance_scope_1, taskWithIndex.index);
 
 	considerAsWorst(r, taskWithIndex.index);
 
@@ -224,11 +224,11 @@ void LeagueTable::considerMaximumUnderMutex(std::multimap<float, uint64_t>& subT
 
 void LeagueTable::considerAsWorst(const SimulationResult& r, uint64_t paramIndex) {
 	// if any of the objectives are the worst seen so far, acquire the mutex and check again
-	if (r.project_CAPEX > mWorstCapex.first ||
-		r.total_annualised_cost > mWorstAnnualisedCost.first ||
-		r.payback_horizon_years > mWorstPaybackHorizon.first ||
-		r.scenario_cost_balance < mWorstCostBalance.first ||
-		r.scenario_carbon_balance_scope_1 < mWorstCarbonBalance.first
+	if (r.metrics.total_capex > mWorstCapex.first ||
+		r.metrics.total_annualised_cost > mWorstAnnualisedCost.first ||
+		r.comparison.payback_horizon_years > mWorstPaybackHorizon.first ||
+		r.comparison.cost_balance < mWorstCostBalance.first ||
+		r.comparison.carbon_balance_scope_1 < mWorstCarbonBalance.first
 		) {
 		considerAsWorstUnderMutex(r, paramIndex);
 	}
@@ -239,30 +239,30 @@ void LeagueTable::considerAsWorstUnderMutex(const SimulationResult& r, uint64_t 
 
 	//////// Minimising objectives ////////
 	// CAPEX
-	if (r.project_CAPEX > mWorstCapex.first) {
-		mWorstCapex = { r.project_CAPEX, paramIndex };
+	if (r.metrics.total_capex > mWorstCapex.first) {
+		mWorstCapex = { r.metrics.total_capex, paramIndex };
 	}
 
 	// Annualised Cost
-	if (r.total_annualised_cost > mWorstAnnualisedCost.first) {
-		mWorstAnnualisedCost = { r.total_annualised_cost, paramIndex };
+	if (r.metrics.total_annualised_cost > mWorstAnnualisedCost.first) {
+		mWorstAnnualisedCost = { r.metrics.total_annualised_cost, paramIndex };
 	}
 
 	// Payback Horizon
-	if (r.payback_horizon_years > mWorstPaybackHorizon.first) {
-		mWorstPaybackHorizon = { r.payback_horizon_years, paramIndex };
+	if (r.comparison.payback_horizon_years > mWorstPaybackHorizon.first) {
+		mWorstPaybackHorizon = { r.comparison.payback_horizon_years, paramIndex };
 	}
 
 
 	//////// Maximising objectives ////////
 	// Cost Balance
-	if (r.scenario_cost_balance < mWorstCostBalance.first) {
-		mWorstCostBalance = { r.scenario_cost_balance, paramIndex };
+	if (r.comparison.cost_balance < mWorstCostBalance.first) {
+		mWorstCostBalance = { r.comparison.cost_balance, paramIndex };
 	}
 
 	// Carbon Balance
-	if (r.scenario_carbon_balance_scope_1 < mWorstCarbonBalance.first) {
-		mWorstCarbonBalance = { r.scenario_carbon_balance_scope_1, paramIndex };
+	if (r.comparison.carbon_balance_scope_1 < mWorstCarbonBalance.first) {
+		mWorstCarbonBalance = { r.comparison.carbon_balance_scope_1, paramIndex };
 	}
 }
 

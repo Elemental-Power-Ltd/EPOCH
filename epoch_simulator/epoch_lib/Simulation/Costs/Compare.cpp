@@ -33,14 +33,11 @@ ScenarioComparison compareScenarios(
 
 	comparison.payback_horizon_years = calculate_payback_horizon(scenarioUsage.capex_breakdown.total_capex, comparison.operating_balance);
 
-	float baseline_carbon_scope_1 = calculate_carbon_usage_scope_1(baselineUsage);
-	float scenario_carbon_scope_1 = calculate_carbon_usage_scope_1(scenarioUsage);
+	comparison.carbon_balance_scope_1 = baselineUsage.carbon_scope_1_kg_CO2e - scenarioUsage.carbon_scope_1_kg_CO2e;
+	comparison.carbon_balance_scope_2 = baselineUsage.carbon_scope_2_kg_CO2e - scenarioUsage.carbon_scope_2_kg_CO2e;
+	comparison.combined_carbon_balance = comparison.carbon_balance_scope_1 + comparison.carbon_balance_scope_2;
 
-	float baseline_carbon_scope_2 = calculate_carbon_usage_scope_2(baselineUsage);
-	float scenario_carbon_scope_2 = calculate_carbon_usage_scope_2(scenarioUsage);
-
-	comparison.carbon_balance_scope_1 = baseline_carbon_scope_1 - scenario_carbon_scope_1;
-	comparison.carbon_balance_scope_2 = baseline_carbon_scope_2 - scenario_carbon_scope_2;
+	comparison.carbon_cost = calculate_carbon_cost(scenarioMetrics.total_capex, comparison.carbon_balance_scope_1);
 
 	return comparison;
 }
@@ -70,12 +67,27 @@ float calculate_payback_horizon(float capex, float operating_balance) {
 	}
 };
 
-float calculate_carbon_usage_scope_1(const UsageData& usage) {
-	return usage.fuel_kg_CO2e - usage.low_priority_kg_CO2e_avoided;
-}
 
-float calculate_carbon_usage_scope_2(const UsageData& usage) {
-	// export_kg_CO2e <= 0
-	// it is the CO2 'saved' by exporting 100% green electricity to the grid
-	return usage.elec_kg_CO2e + usage.export_kg_CO2e;
+/**
+*   Calculates the salix carbon cost of a scenario.
+*   It is the total CAPEX of a scenario divided by its scope 1 carbon emission savings in tonnes.
+*   The carbon emissions need to be adjusted by multiplying each assets savings by its lifetime years.
+*   The lifetime years of each asset and the carbon cost equation can be found:
+*   https://www.salixfinance.co.uk/sites/default/files/2024-10/Guidance%20Notes%20%282%29.pdf.
+*   Since, only heat pumps currently affect the carbon emissions, the ASSET_LIFETIME_YEARS is set to 20.
+*   Returns largest float32 if CAPEX is non null and carbon_balance_scope_1 is null or negative.
+*   Returns 0 if CAPEX is null.
+*/
+float calculate_carbon_cost(float capex, float carbon_balance_scope_1) {
+	if (capex > 0 && carbon_balance_scope_1 > 0) {
+		const float ASSET_LIFETIME_YEARS = 20.0f;
+		return capex / (carbon_balance_scope_1 * ASSET_LIFETIME_YEARS / 1000.0f);
+	}
+
+	if (capex > 0 and carbon_balance_scope_1 <= 0) {
+		return std::numeric_limits<float>::max();
+	}
+
+	return 0;
+
 }

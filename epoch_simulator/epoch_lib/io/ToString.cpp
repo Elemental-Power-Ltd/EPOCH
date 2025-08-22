@@ -2,65 +2,122 @@
 #include "EnumToString.hpp"
 
 
+template<typename T>
+std::string formatOptional(const std::optional<T>& opt) {
+	if (opt.has_value()) {
+		return std::format("{}", *opt);
+	}
+	else {
+		return "-";
+	}
+}
+
+template<typename T>
+std::string formatOptionalEnum(const std::optional<T>& opt) {
+	if (opt.has_value()) {
+		return enumToString(*opt);
+	}
+	else {
+		return "-";
+	}
+}
+
 std::string resultToString(const SimulationResult& result) {
 	return std::format(
 		"SimulationResult(\n"
-		"  carbon_balance_scope_1: {},\n"
-		"  carbon_balance_scope_2: {},\n"
 		"  meter_balance: {},\n"
 		"  operating_balance: {},\n"
 		"  cost_balance: {},\n"
-		"  capex: {},\n"
-		"  payback_horizon: {},\n"
-		"  annualised_cost: {},\n"
 		"  npv_balance: {},\n"
+		"  payback_horizon: {},\n"
+		"  carbon_balance_scope_1: {},\n"
+		"  carbon_balance_scope_2: {},\n"
+		"  combined_carbon_balance: {},\n"
+		"  carbon_cost: {},\n"
+
 		"  scenario: {}\n"
 		"  baseline: {}\n"
 		")",
-		result.scenario_carbon_balance_scope_1,
-		result.scenario_carbon_balance_scope_2,
-		result.meter_balance,
-		result.operating_balance,
-		result.scenario_cost_balance,
-		result.project_CAPEX,
-		result.payback_horizon_years,
-		result.total_annualised_cost,
-		result.npv_balance,
+		result.comparison.meter_balance,
+		result.comparison.operating_balance,
+		result.comparison.cost_balance,
+		result.comparison.npv_balance,
+
+		result.comparison.payback_horizon_years,
+
+		result.comparison.carbon_balance_scope_1,
+		result.comparison.carbon_balance_scope_2,
+		result.comparison.combined_carbon_balance,
+
+		result.comparison.carbon_cost,
+
 		metricsToString(result.metrics),
 		metricsToString(result.baseline_metrics)
 	);
 }
 
 std::string metricsToString(const SimulationMetrics& metrics) {
+	auto impact_score_str = formatOptional(metrics.environmental_impact_score);
+	auto impact_grade_str = formatOptionalEnum(metrics.environmental_impact_grade);
+
 	return std::format(
 		"\n    total_gas_used: {},\n"
 		"    total_electricity_imported: {},\n"
 		"    total_electricity_generated: {},\n"
 		"    total_electricity_exported: {},\n"
+		"    total_electricity_curtailed: {},\n"
+		"    total_electricity_used: {},\n"
+
 		"    total_electrical_shortfall: {},\n"
 		"    total_heat_shortfall: {},\n"
 		"    total_ch_shortfall: {},\n"
 		"    total_dhw_shortfall: {},\n"
+
+		"    total_capex: {},\n"
 		"    total_gas_import_cost: {},\n"
 		"    total_electricity_import_cost: {},\n"
 		"    total_electricity_export_gain: {},\n"
+
 		"    total_meter_cost: {},\n"
 		"    total_operating_cost: {},\n"
-		"    total_net_present_value: {},\n",
+		"    total_annualised_cost: {},\n"
+		"    total_net_present_value: {},\n"
+
+		"    total_scope_1_emissions: {},\n"
+		"    total_scope_2_emissions: {},\n"
+		"    total_combined_carbon_emissions: {},\n"
+
+		"    environmental_impact_score: {},\n"
+		"    environmental_impact_grade: {},\n",
+
 		metrics.total_gas_used,
 		metrics.total_electricity_imported,
 		metrics.total_electricity_generated,
 		metrics.total_electricity_exported,
+		metrics.total_electricity_curtailed,
+		metrics.total_electricity_used,
+
 		metrics.total_electrical_shortfall,
 		metrics.total_heat_shortfall,
 		metrics.total_ch_shortfall,
 		metrics.total_dhw_shortfall,
+
+		metrics.total_capex,
 		metrics.total_gas_import_cost,
 		metrics.total_electricity_import_cost,
 		metrics.total_electricity_export_gain,
+
 		metrics.total_meter_cost,
 		metrics.total_operating_cost,
-		metrics.total_net_present_value
+		metrics.total_annualised_cost,
+		metrics.total_net_present_value,
+
+		metrics.total_scope_1_emissions,
+		metrics.total_scope_2_emissions,
+		metrics.total_combined_carbon_emissions,
+
+		impact_score_str,
+		impact_grade_str
 	);
 }
 
@@ -117,7 +174,8 @@ std::string buildingToString(const Building& b) {
 	std::ostringstream oss;
 	oss << "<Building scalar_heat_load=" << b.scalar_heat_load
 		<< ", scalar_electrical_load=" << b.scalar_electrical_load
-		<< ", fabric_intervention_index=" << b.fabric_intervention_index 
+		<< ", fabric_intervention_index=" << b.fabric_intervention_index
+		<< ", floor_area=" << (b.floor_area.has_value() ? std::to_string(b.floor_area.value()) : "null")
 		<< ", incumbent=" << b.incumbent
 		<< ", age=" << b.age
 		<< ", lifetime=" << b.lifetime

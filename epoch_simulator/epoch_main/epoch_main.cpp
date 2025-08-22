@@ -7,6 +7,7 @@
 #include "../epoch_lib/Simulation/TaskData.hpp"
 #include "../epoch_lib/io/FileHandling.hpp"
 #include "../epoch_lib/io/TaskDataJson.hpp"
+#include "../epoch_lib/io/ToString.hpp"
 #include "../epoch_lib/io/SiteDataJson.hpp"
 
 int main(int argc, char* argv[]) {
@@ -100,48 +101,6 @@ void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 		writeTimeSeriesToCSV(fp, *result.report_data);
 	}
 
-	// TODO - wrangle with utf and locales to allow the pound sign
-	spdlog::info("Scope 1 emissions: {} kgCO2e / year", result.scenario_carbon_balance_scope_1);
-	spdlog::info("Scope 2 emissions: {} kgCO2e / year", result.scenario_carbon_balance_scope_2);
-	spdlog::info("Capex: £{:.2f}", result.project_CAPEX);
-	spdlog::info("Annualised Cost: £{:.2f} / year", result.total_annualised_cost);
-	spdlog::info("Cost Balance: £{:.2f} / year", result.scenario_cost_balance);
-	spdlog::info("Payback Horizon: {} years", result.payback_horizon_years);
-	spdlog::info("NPV Balance: £{}", result.npv_balance);
-
-	spdlog::info(
-		"Energy totals (kWh):\n"
-		" - Gas used = {}\n"
-		" - Electricity imported = {}\n"
-		" - Electricity generated = {}\n"
-		" - Electricity exported = {}\n"
-		" - Electrical shortfall = {}\n"
-		" - Heat shortfall = {}\n"
-		" - CH shortfall = {}\n"
-		" - DHW shortfall = {}\n\n"
-		"Financial totals (£):\n"
-		" - Gas import cost = {}\n"
-		" - Electricity import cost = {}\n"
-		" - Electricity export gain = {}\n"
-		" - Total Meter Cost = {}\n"
-		" - Total Operating Cost = {}\n"
-		" - Net Present Value = {}\n",
-		result.metrics.total_gas_used,
-		result.metrics.total_electricity_imported,
-		result.metrics.total_electricity_generated,
-		result.metrics.total_electricity_exported,
-		result.metrics.total_electrical_shortfall,
-		result.metrics.total_heat_shortfall,
-		result.metrics.total_ch_shortfall,
-		result.metrics.total_dhw_shortfall,
-		result.metrics.total_gas_import_cost,
-		result.metrics.total_electricity_import_cost,
-		result.metrics.total_electricity_export_gain,
-		result.metrics.total_meter_cost,
-		result.metrics.total_operating_cost,
-		result.metrics.total_net_present_value
-	);
-
-
+	spdlog::info(resultToString(result));
 
 }

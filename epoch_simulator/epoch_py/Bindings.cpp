@@ -4,6 +4,7 @@
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl/filesystem.h>
+#include <pybind11/native_enum.h>
 #include <sstream>
 
 #include "Simulate_py.hpp"
@@ -12,6 +13,7 @@
 #include "../epoch_lib/io/EnumToString.hpp"
 #include "../epoch_lib/io/TaskDataJson.hpp"
 #include "../epoch_lib/io/ToString.hpp"
+#include "../epoch_lib/Portfolio/Portfolio.hpp"
 #include "../epoch_lib/Simulation/Costs/CostData.hpp"
 #include "../epoch_lib/Simulation/Costs/Capex.hpp"
 
@@ -58,6 +60,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("scalar_heat_load", &Building::scalar_heat_load)
 		.def_readwrite("scalar_electrical_load", &Building::scalar_electrical_load)
 		.def_readwrite("fabric_intervention_index", &Building::fabric_intervention_index)
+		.def_readwrite("floor_area", &Building::floor_area)
 		.def_readwrite("incumbent", &Building::incumbent)
 		.def_readwrite("age", &Building::age)
 		.def_readwrite("lifetime", &Building::lifetime);
@@ -175,35 +178,65 @@ PYBIND11_MODULE(epoch_simulator, m) {
 
 
 	pybind11::class_<SimulationResult>(m, "SimulationResult")
-		.def_readonly("carbon_balance_scope_1", &SimulationResult::scenario_carbon_balance_scope_1)
-		.def_readonly("carbon_balance_scope_2", &SimulationResult::scenario_carbon_balance_scope_2)
-		.def_readonly("cost_balance", &SimulationResult::scenario_cost_balance)
-		.def_readonly("capex", &SimulationResult::project_CAPEX)
-		.def_readonly("payback_horizon", &SimulationResult::payback_horizon_years)
-		.def_readonly("annualised_cost", &SimulationResult::total_annualised_cost)
-		.def_readonly("meter_balance", &SimulationResult::meter_balance)
-		.def_readonly("operating_balance", &SimulationResult::operating_balance)
-		.def_readonly("npv_balance", &SimulationResult::npv_balance)
-		.def_readonly("metrics", &SimulationResult::metrics)
-		.def_readonly("baseline_metrics", &SimulationResult::baseline_metrics)
-		.def_readonly("report_data", &SimulationResult::report_data)
+		// provide a default-initialised constructor, primarily for tests in the Optimisation service
+		.def(pybind11::init<>())
+		.def_readwrite("comparison", &SimulationResult::comparison)
+		.def_readwrite("metrics", &SimulationResult::metrics)
+		.def_readwrite("baseline_metrics", &SimulationResult::baseline_metrics)
+		.def_readwrite("report_data", &SimulationResult::report_data)
 		.def("__repr__", &resultToString);
 
+	pybind11::class_<ScenarioComparison>(m, "ScenarioComparison")
+		.def_readwrite("meter_balance", &ScenarioComparison::meter_balance)
+		.def_readwrite("operating_balance", &ScenarioComparison::operating_balance)
+		.def_readwrite("cost_balance", &ScenarioComparison::cost_balance)
+		.def_readwrite("npv_balance", &ScenarioComparison::npv_balance)
+		.def_readwrite("payback_horizon_years", &ScenarioComparison::payback_horizon_years)
+		.def_readwrite("carbon_balance_scope_1", &ScenarioComparison::carbon_balance_scope_1)
+		.def_readwrite("carbon_balance_scope_2", &ScenarioComparison::carbon_balance_scope_2)
+		.def_readwrite("combined_carbon_balance", &ScenarioComparison::combined_carbon_balance)
+		.def_readwrite("carbon_cost", &ScenarioComparison::carbon_cost);
+
+	pybind11::native_enum<RatingGrade>(m, "RatingGrade", "enum.IntEnum", "Rating bands for SAP grades")
+		.value("A", RatingGrade::A)
+		.value("B", RatingGrade::B)
+		.value("C", RatingGrade::C)
+		.value("D", RatingGrade::D)
+		.value("E", RatingGrade::E)
+		.value("F", RatingGrade::F)
+		.value("G", RatingGrade::G)
+		.export_values()
+		.finalize();
+
 	pybind11::class_<SimulationMetrics>(m, "SimulationMetrics")
-		.def_readonly("total_gas_used", &SimulationMetrics::total_gas_used)
-		.def_readonly("total_electricity_imported", &SimulationMetrics::total_electricity_imported)
-		.def_readonly("total_electricity_generated", &SimulationMetrics::total_electricity_generated)
-		.def_readonly("total_electricity_exported", &SimulationMetrics::total_electricity_exported)
-		.def_readonly("total_electrical_shortfall", &SimulationMetrics::total_electrical_shortfall)
-		.def_readonly("total_heat_shortfall", &SimulationMetrics::total_heat_shortfall)
-		.def_readonly("total_ch_shortfall", &SimulationMetrics::total_ch_shortfall)
-		.def_readonly("total_dhw_shortfall", &SimulationMetrics::total_dhw_shortfall)
-		.def_readonly("total_gas_import_cost", &SimulationMetrics::total_gas_import_cost)
-		.def_readonly("total_electricity_import_cost", &SimulationMetrics::total_electricity_import_cost)
-		.def_readonly("total_electricity_export_gain", &SimulationMetrics::total_electricity_export_gain)
-		.def_readonly("total_meter_cost", &SimulationMetrics::total_meter_cost)
-		.def_readonly("total_operating_cost", &SimulationMetrics::total_operating_cost)
-		.def_readonly("total_net_present_value", &SimulationMetrics::total_net_present_value)
+		.def_readwrite("total_gas_used", &SimulationMetrics::total_gas_used)
+		.def_readwrite("total_electricity_imported", &SimulationMetrics::total_electricity_imported)
+		.def_readwrite("total_electricity_generated", &SimulationMetrics::total_electricity_generated)
+		.def_readwrite("total_electricity_exported", &SimulationMetrics::total_electricity_exported)
+		.def_readwrite("total_electricity_curtailed", &SimulationMetrics::total_electricity_curtailed)
+		.def_readwrite("total_electricity_used", &SimulationMetrics::total_electricity_used)
+
+		.def_readwrite("total_electrical_shortfall", &SimulationMetrics::total_electrical_shortfall)
+		.def_readwrite("total_heat_shortfall", &SimulationMetrics::total_heat_shortfall)
+		.def_readwrite("total_ch_shortfall", &SimulationMetrics::total_ch_shortfall)
+		.def_readwrite("total_dhw_shortfall", &SimulationMetrics::total_dhw_shortfall)
+
+		.def_readwrite("total_capex", &SimulationMetrics::total_capex)
+		.def_readwrite("total_gas_import_cost", &SimulationMetrics::total_gas_import_cost)
+		.def_readwrite("total_electricity_import_cost", &SimulationMetrics::total_electricity_import_cost)
+		.def_readwrite("total_electricity_export_gain", &SimulationMetrics::total_electricity_export_gain)
+
+		.def_readwrite("total_meter_cost", &SimulationMetrics::total_meter_cost)
+		.def_readwrite("total_operating_cost", &SimulationMetrics::total_operating_cost)
+		.def_readwrite("total_annualised_cost", &SimulationMetrics::total_annualised_cost)
+		.def_readwrite("total_net_present_value", &SimulationMetrics::total_net_present_value)
+
+		.def_readwrite("total_scope_1_emissions", &SimulationMetrics::total_scope_1_emissions)
+		.def_readwrite("total_scope_2_emissions", &SimulationMetrics::total_scope_2_emissions)
+		.def_readwrite("total_combined_carbon_emissions", &SimulationMetrics::total_combined_carbon_emissions)
+
+		.def_readwrite("environmental_impact_score", &SimulationMetrics::environmental_impact_score)
+		.def_readwrite("environmental_impact_grade", &SimulationMetrics::environmental_impact_grade)
 		.def("__repr__", &metricsToString);
 
 	pybind11::class_<ReportData>(m, "ReportData")
@@ -262,4 +295,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("general_grant_funding", &CapexBreakdown::general_grant_funding)
 		.def_readonly("total_capex", &CapexBreakdown::total_capex)
 		.def("__repr__", &capexBreakdownToString);
+
+	m.def("aggregate_site_results", &aggregateSiteResults,
+		pybind11::arg("site_results"));
+
 }

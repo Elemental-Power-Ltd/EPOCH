@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-std::string enumToString(const HeatSource& heat_source) {
+std::string enumToString(const HeatSource heat_source) {
 	switch (heat_source) {
 	case HeatSource::AMBIENT_AIR:
 		return "AMBIENT_AIR";
@@ -13,7 +13,7 @@ std::string enumToString(const HeatSource& heat_source) {
 	}
 }
 
-std::string enumToString(const BatteryMode& battery_mode) {
+std::string enumToString(const BatteryMode battery_mode) {
 	switch (battery_mode) {
 	case BatteryMode::CONSUME:
 		return "CONSUME";
@@ -24,7 +24,7 @@ std::string enumToString(const BatteryMode& battery_mode) {
 	}
 }
 
-std::string enumToString(const GasType& gas_type) {
+std::string enumToString(const GasType gas_type) {
 	switch (gas_type) {
 	case GasType::NATURAL_GAS:
 		return "NATURAL_GAS";
@@ -32,5 +32,28 @@ std::string enumToString(const GasType& gas_type) {
 		return "LIQUID_PETROLEUM_GAS";
 	default:
 		throw std::invalid_argument("Invalid Gas Type");
+	}
+}
+
+std::string enumToString(const RatingGrade grade)
+{
+	switch (grade) {
+	case RatingGrade::A:
+		return "A";
+	case RatingGrade::B:
+		return "B";
+	case RatingGrade::C:
+		return "C";
+	case RatingGrade::D:
+		return "D";
+	case RatingGrade::E:
+		return "E";
+	case RatingGrade::F:
+		return "F";
+	case RatingGrade::G:
+		return "G";
+	default:
+		throw std::invalid_argument("Invalid SAP Grade");
+
 	}
 }

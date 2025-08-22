@@ -11,6 +11,13 @@ void from_json(const json& j, Building& building) {
 	j.at("incumbent").get_to(building.incumbent);
 	j.at("age").get_to(building.age);
 	j.at("lifetime").get_to(building.lifetime);
+
+	if (j.contains("floor_area") && !j.at("floor_area").is_null()) {
+		building.floor_area = j.at("floor_area").get<float>();
+	}
+	else {
+		building.floor_area = std::nullopt;
+	}
 }
 
 void to_json(json& j, const Building& building) {
@@ -22,6 +29,13 @@ void to_json(json& j, const Building& building) {
 		{"age", building.age},
 		{"lifetime", building.lifetime}
 	};
+
+	if (building.floor_area.has_value()) {
+		j["floor_area"] = building.floor_area.value();
+	}
+	else {
+		j["floor_area"] = nullptr;
+	}
 }
 
 // DataCentre

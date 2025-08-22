@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "2.2.0";
+const std::string EPOCH_VERSION = "3.0.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -74,12 +74,34 @@ struct ReportData {
 	year_TS ASHP_used_hotroom_heat;
 };
 
+
+struct ScenarioComparison {
+	float meter_balance;
+	float operating_balance;
+	float cost_balance;
+	float npv_balance;
+
+	float payback_horizon_years;
+
+	float carbon_balance_scope_1;
+	float carbon_balance_scope_2;
+	float combined_carbon_balance;
+
+	float carbon_cost;
+};
+
+
+// Rating bands for SAP grading
+enum class RatingGrade { A, B, C, D, E, F, G };
+
 struct SimulationMetrics {
 	// energy totals in kWh
 	float total_gas_used;
 	float total_electricity_imported;
 	float total_electricity_generated;
 	float total_electricity_exported;
+	float total_electricity_curtailed;
+	float total_electricity_used;
 
 	float total_electrical_shortfall;
 	float total_heat_shortfall;
@@ -87,6 +109,7 @@ struct SimulationMetrics {
 	float total_dhw_shortfall;
 
 	// financial totals in £
+	float total_capex;
 	float total_gas_import_cost;
 	float total_electricity_import_cost;
 	float total_electricity_export_gain;
@@ -95,21 +118,22 @@ struct SimulationMetrics {
 	float total_operating_cost;
 	float total_annualised_cost;
 	float total_net_present_value;
+
+	// carbon totals in kg CO2e
+	float total_scope_1_emissions;
+	float total_scope_2_emissions;
+	float total_combined_carbon_emissions;
+
+	// SAP
+	std::optional<int> environmental_impact_score;
+	std::optional<RatingGrade> environmental_impact_grade;
 };
+
 
 struct SimulationResult {
 	float runtime;
 
-	float total_annualised_cost;
-	float project_CAPEX;
-	float scenario_cost_balance;
-	float payback_horizon_years;
-	float scenario_carbon_balance_scope_1;
-	float scenario_carbon_balance_scope_2;
-	float meter_balance;
-	float operating_balance;
-	float npv_balance;
-
+	ScenarioComparison comparison;
 	SimulationMetrics metrics;
 	SimulationMetrics baseline_metrics;
 
@@ -136,7 +160,7 @@ struct CostVectors {
 // Contains the five objectives and the TaskData that was used to produce the result
 struct ObjectiveResult {
 	float total_annualised_cost;
-	float project_CAPEX;
+	float total_capex;
 	float scenario_cost_balance;
 	float payback_horizon_years;
 	float scenario_carbon_balance_scope_1;
@@ -147,12 +171,12 @@ struct ObjectiveResult {
 
 inline ObjectiveResult toObjectiveResult(const SimulationResult& simResult, const TaskData& taskData) noexcept {
 	return ObjectiveResult {
-		simResult.total_annualised_cost,
-		simResult.project_CAPEX,
-		simResult.scenario_cost_balance,
-		simResult.payback_horizon_years,
-		simResult.scenario_carbon_balance_scope_1,
-		simResult.scenario_carbon_balance_scope_2,
+		simResult.metrics.total_annualised_cost,
+		simResult.metrics.total_capex,
+		simResult.comparison.cost_balance,
+		simResult.comparison.payback_horizon_years,
+		simResult.comparison.carbon_balance_scope_1,
+		simResult.comparison.carbon_balance_scope_2,
 		taskData
 	};
 }

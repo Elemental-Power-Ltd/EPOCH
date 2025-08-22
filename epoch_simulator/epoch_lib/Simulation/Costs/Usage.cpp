@@ -59,6 +59,11 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 		usage.electric_vehicle_revenue = costVectors.actual_ev_load_e.sum() * EV_low_price;
 	}
 
+	usage.carbon_scope_1_kg_CO2e = usage.fuel_kg_CO2e - usage.low_priority_kg_CO2e_avoided;
+	// export_kg_CO2e <= 0
+	// it is the CO2 'saved' by exporting 100% green electricity to the grid
+	usage.carbon_scope_2_kg_CO2e = usage.elec_kg_CO2e + usage.export_kg_CO2e;
+
 	return usage;
 }
 
