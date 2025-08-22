@@ -63,15 +63,17 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
       const scenarioEnergy: MetricKey[] = [
           "total_gas_used",
           "total_electricity_imported",
-          "total_electricity_imported",
-          "total_electricity_imported",
+          "total_electricity_exported",
+          "total_electricity_curtailed",
+          "total_electricity_used",
       ]
 
       const baselineEnergy: MetricKey[] = [
           "baseline_gas_used",
           "baseline_electricity_imported",
-          "baseline_electricity_imported",
-          "baseline_electricity_imported",
+          "baseline_electricity_exported",
+          "baseline_electricity_curtailed",
+          "baseline_electricity_used",
       ]
 
       const shortfalls: MetricKey[] = [
@@ -111,6 +113,22 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           "payback_horizon",
       ]
 
+      const scenarioCarbon: MetricKey[] = [
+          "total_scope_1_emissions",
+          "total_scope_2_emissions",
+          "total_combined_carbon_emissions",
+          "scenario_environmental_impact_score",
+          "scenario_environmental_impact_grade",
+      ]
+
+      const baselineCarbon: MetricKey[] = [
+          "baseline_scope_1_emissions",
+          "baseline_scope_2_emissions",
+          "baseline_combined_carbon_emissions",
+          "baseline_environmental_impact_score",
+          "baseline_environmental_impact_grade",
+      ]
+
       const renderMetricRow = (metricRow: MetricKey[]) => (
         metricRow.map((metric, index) => (
             <Grid item key={index}>
@@ -135,10 +153,11 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           {tabValue === 1 && (renderTab([scenarioEnergy, baselineEnergy, shortfalls]))}
           {tabValue === 2 && (renderTab([scenarioMeter, baselineMeter]))}
           {tabValue === 3 && (renderTab([financial1, financial2]))}
+          {tabValue === 4 && (renderTab([scenarioCarbon, baselineCarbon]))}
 
 
-          {tabValue === 4 && (<TaskDataViewer data={scenario!}/>)}
-          {tabValue === 5 && (<TaskDataViewer data={baseline!}/>)}
+          {tabValue === 5 && (<TaskDataViewer data={scenario!}/>)}
+          {tabValue === 6 && (<TaskDataViewer data={baseline!}/>)}
         </Box>
       )
     }
@@ -156,6 +175,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           <Tab label={"Energy"}/>
           <Tab label={"Meter"}/>
           <Tab label={"Financial"}/>
+          <Tab label={"Carbon"}/>
           {scenario !== null && <Tab label={"Scenario"}/>}
           {baseline !== null && <Tab label={"Baseline"}/>}
         </Tabs>

@@ -2,6 +2,7 @@ import { ReactElement } from "react";
 
 import { Box, Typography } from "@mui/material";
 
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import BoltIcon from '@mui/icons-material/Bolt';
 import Co2Icon from '@mui/icons-material/Co2';
 import FireIcon from '@mui/icons-material/LocalFireDepartment';
@@ -20,7 +21,7 @@ interface MetricProps {
   metrics: SiteMetrics;
 }
 
-const getIcon = (def: MetricDefinition, rawValue?: number): ReactElement => {
+const getIcon = (def: MetricDefinition, rawValue?: any): ReactElement => {
 
     let iconColor: "action" | "disabled" | "error" = "action"
 
@@ -46,6 +47,9 @@ const getIcon = (def: MetricDefinition, rawValue?: number): ReactElement => {
         }
         case 'Year' : {
             return <TimelineIcon sx={{ fontSize: 40 }} color={iconColor} />
+        }
+        case 'Assessment': {
+            return <AssessmentIcon sx={{ fontSize: 40 }} color={iconColor} />
         }
         default: {
             return <FireIcon sx={{ fontSize: 40 }} color={iconColor} />

@@ -109,8 +109,8 @@ const rangifyComponent = (rangeComponent: any, baselineComponent: any): any =>  
             if (!(key in rangeComponent)) {
                 return;
             }
-
-            if (typeof rangeComponent[key] === "object" && "min" in rangeComponent[key]) {
+            const val = rangeComponent[key]
+            if (typeof val === "object" && val !== null && "min" in rangeComponent[key]) {
                 // This property is min/max/step in the SiteRange form
                 // e.g. Battery capacity
 

@@ -25,6 +25,7 @@ export interface Building {
   scalar_heat_load: number;
   scalar_electrical_load: number;
   fabric_intervention_index: number;
+  floor_area?: number;
   incumbent: boolean;
   age: number;
   lifetime: number;

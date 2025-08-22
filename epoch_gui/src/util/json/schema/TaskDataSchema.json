@@ -29,6 +29,13 @@
           "description": "Index mapping to a fabric intervention option specified in the SiteData.",
           "default": 0
         },
+        "floor_area": {
+          "type": ["number", "null"],
+          "title": "Floor Area",
+          "description": "Floor area of the site in metres squared.",
+          "exclusiveMinimum": 0,
+          "default": null
+        },
         "incumbent": {
           "type": "boolean",
           "title": "Incumbent",
@@ -54,6 +61,7 @@
         "scalar_heat_load",
         "scalar_electrical_load",
         "fabric_intervention_index",
+        "floor_area",
         "incumbent",
         "age",
         "lifetime"

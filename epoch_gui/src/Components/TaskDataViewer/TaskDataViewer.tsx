@@ -71,6 +71,7 @@ const fieldMappings: {
     scalar_heat_load:          { label: 'Heat Load'},
     scalar_electrical_load:    { label: 'Electrical Load'},
     fabric_intervention_index: { label: 'Fabric Intervention Index' },
+    floor_area: {label: 'Floor Area'},
     incumbent: {label: 'Incumbent'},
     age: {label: 'Age'},
     lifetime: {label: 'Lifetime'},

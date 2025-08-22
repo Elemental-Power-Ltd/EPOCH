@@ -118,6 +118,10 @@ export const formatEnergy = (value: number | undefined, toNearest?: number): str
     if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
         return "-"
     }
+    // convert -0 into +0
+    if (value === 0) {
+        value = 0;
+    }
     if (toNearest) {
         value = Math.round(value / toNearest) * toNearest;
     }

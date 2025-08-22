@@ -4,7 +4,7 @@ import {formatCarbon, formatCarbonCost, formatPounds, formatYears, formatEnergy}
 /** All keys that really exist on SiteMetrics */
 export type MetricKey = keyof SiteMetrics;
 
-export type iconEnum = 'Carbon' | 'Pound' | 'Gas' | 'Electricity' | 'Year';
+export type iconEnum = 'Carbon' | 'Pound' | 'Gas' | 'Electricity' | 'Year' | 'Assessment';
 
 /** Immutable definition for one metric */
 export interface MetricDefinition {
@@ -15,7 +15,7 @@ export interface MetricDefinition {
     /** enum to hint at the desired Icon **/
     icon: iconEnum;
     /** Function that turns the raw number into a displayable string */
-    format: (v: number | undefined) => string;
+    format: (v: any) => string;
     /** OPTIONAL dynamic colour rule */
     color?: (v: number | undefined) => "action" | "error";
 }
@@ -24,6 +24,8 @@ const fmtEnergy = (v: number | undefined) => formatEnergy(v, 100);
 // when shortfall > 0 we want to display the icon with the 'error' color state
 const shortfallColour = (v: number | undefined) =>
     (v ?? 0) > 0 ? "error" : "action";
+
+const fmtUnchanged = (v: any | undefined) => `${v ?? ''}`;
 
 /** Look‑up table — **one line per metric, ONE place to maintain** */
 export const metricDefs: Record<MetricKey, MetricDefinition> = {
@@ -191,19 +193,19 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
     },
     baseline_electricity_imported: {
         key: "baseline_electricity_imported",
-        label: "Baseline Electricity Imported",
+        label: "Baseline Imported",
         icon: "Electricity",
         format: fmtEnergy,
     },
     baseline_electricity_generated: {
         key: "baseline_electricity_generated",
-        label: "Baseline Electricity Generated",
+        label: "Baseline Generated",
         icon: "Electricity",
         format: fmtEnergy,
     },
     baseline_electricity_exported: {
         key: "baseline_electricity_exported",
-        label: "Baseline Electricity Exported",
+        label: "Baseline Exported",
         icon: "Electricity",
         format: fmtEnergy,
     },
@@ -221,7 +223,7 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
     },
     baseline_ch_shortfall: {
         key: "baseline_ch_shortfall",
-        label: "Baseline Cooling Shortfall",
+        label: "Baseline CH Shortfall",
         icon: "Gas",
         format: fmtEnergy,
     },
@@ -267,5 +269,88 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
         icon: "Pound",
         format: formatPounds,
     },
-};
+    total_electricity_curtailed: {
+        key: "total_electricity_curtailed",
+        "label": "Curtailed Electricity",
+        "icon": "Electricity",
+        format: fmtEnergy,
+    },
+    total_electricity_used: {
+        key: "total_electricity_used",
+        "label": "Total Electricity Used",
+        "icon": "Electricity",
+        format: fmtEnergy,
+    },
+    total_scope_1_emissions: {
+        key: "total_scope_1_emissions",
+        label: "Scope 1 Emissions",
+        icon: "Carbon",
+        format: formatCarbon,
+    },
+    total_scope_2_emissions: {
+        key: "total_scope_2_emissions",
+        label: "Scope 2 Emissions",
+        icon: "Carbon",
+        format: formatCarbon,
+    },
+    total_combined_carbon_emissions: {
+        key: "total_combined_carbon_emissions",
+        label: "Combined Emissions",
+        icon: "Carbon",
+        format: formatCarbon,
+    },
+    scenario_environmental_impact_score: {
+        key: "scenario_environmental_impact_score",
+        label: "Environmental Impact Score",
+        icon: "Assessment",
+        format: fmtUnchanged,
+    },
+    scenario_environmental_impact_grade: {
+        key: "scenario_environmental_impact_grade",
+        label: "Environmental Impact Grade",
+        icon: "Assessment",
+        format: fmtUnchanged,
+    },
+    baseline_electricity_curtailed: {
+        key: "baseline_electricity_curtailed",
+        label: "Baseline Curtailed",
+        icon: "Electricity",
+        format: fmtEnergy,
+    },
+    baseline_electricity_used: {
+        key: "baseline_electricity_used",
+        label: "Baseline Electricity Used",
+        icon: "Electricity",
+        format: fmtEnergy,
+    },
+    baseline_scope_1_emissions: {
+        key: "baseline_scope_1_emissions",
+        label: "Baseline Scope 1",
+        icon: "Carbon",
+        format: formatCarbon,
+    },
+    baseline_scope_2_emissions: {
+        key: "baseline_scope_2_emissions",
+        label: "Baseline Scope 2",
+        icon: "Carbon",
+        format: formatCarbon,
+    },
+    baseline_combined_carbon_emissions: {
+        key: "baseline_combined_carbon_emissions",
+        label: "Baseline Combined Emissions",
+        icon: "Carbon",
+        format: formatCarbon,
+    },
+    baseline_environmental_impact_score: {
+        key: "baseline_environmental_impact_score",
+        label: "Baseline Score",
+        icon: "Assessment",
+        format: fmtUnchanged,
+    },
+    baseline_environmental_impact_grade: {
+        key: "baseline_environmental_impact_grade",
+        label: "Baseline Grade",
+        icon: "Assessment",
+        format: fmtUnchanged,
+    }};
 

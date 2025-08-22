@@ -3,6 +3,7 @@
     "scalar_heat_load": 1.0,
     "scalar_electrical_load": 1.0,
     "fabric_intervention_index": 0,
+    "floor_area": null,
     "incumbent": false,
     "age": 0,
     "lifetime": 30
