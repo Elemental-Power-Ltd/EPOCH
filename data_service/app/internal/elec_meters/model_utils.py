@@ -704,15 +704,6 @@ def split_and_baseline_active_days(
     z_score_mod = 0.6745 * ((df_daily_active["consumption_baselined"] - med) / med_abs_dev)
     site_specific_inactive_inds = df_daily_active.index[np.where(z_score_mod < -3.5)[0]]  # only interested in low outliers
 
-    # alternative approach:
-    # site_specific_inactive_inds = df_daily_active.index[
-    #     np.nonzero(
-    #       np.abs(
-    #           df_daily_active["consumption_baselined"]) < 0.3 * np.nanmedian(df_daily_active["consumption_baselined"]
-    #       )
-    #     )[0]
-    #     ]
-
     # move by using datetime indexing only
     df_daily_inactive = cast(
         DailyDataFrame,

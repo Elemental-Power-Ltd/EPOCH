@@ -149,7 +149,9 @@ def daily_to_hh_eload(
     model: VAE,
     resid_model_path: pathlib.Path | None = None,
     target_hh_observed_df: SquareHHDataFrame | None = None,
-    weekend_inds: Container[int] = (6,),
+    weekend_inds: Container[int] = {
+        6,
+    },
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -168,20 +170,20 @@ def daily_to_hh_eload(
         Dataframe with start_ts, end_ts and electricity consumption readings in kWh
     model
         A model, probably a VAE, with a decode method and some latent dimension.
-    resid_model_path (optional)
+    resid_model_path
         A pathlib.Path object that gives the path identifier for the directory containing the model files that are to be used as
         a default model for the residuals. For now, assume only one set of default models - one active, one inactive.
         All model files for the residuals have the suffix `default_`.
-    target_hh_observed_df (optional)
+    target_hh_observed_df
         A set of half-hourly data for the client's target site, which can be used to train a model for the residuals.
         It must have a column `consumption_kWh` (note capital W)
         Exactly one of resid_model_path or target_hh_observed_df must be provided. The data in target_hh_observed_df must
         correspond to dates provided in daily_df
-    weekend_inds (optional)
-        A tuple specifying the regular 'non-active' days of the week for the site; default is (6,) for Queen's Buildings.
-    division (optional)
-        A string -- one of {"england-and-wales", "scotland", "northern-ireland"} -- specifying the division of the UK to use to
-        determine the public holidays.
+    weekend_inds
+        A set specifying the regular 'non-active' days of the week for the site; default is {6,} for Queen's Buildings.
+        This should match the indices provided by .dayofweek
+    division
+        Which the division of the UK to use to determine the public holidays.
     rng
         Numpy random generator for reproducible results
 
