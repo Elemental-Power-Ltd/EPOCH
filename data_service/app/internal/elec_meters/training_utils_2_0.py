@@ -48,7 +48,22 @@ class LossesDict(TypedDict):
 
 
 class HistoryDict(TypedDict):
-    """Custom dictionary type containing statistics tracked during training & validation."""
+    """
+    Custom dictionary type containing statistics tracked during training & validation.
+
+    Attributes
+    ----------
+    train_loss
+        A list of training losses; each value is usually the batchwise mean total training loss obtained at each epoch
+    val_loss
+        A list of validation losses; each value is usually the batchwise mean total validation loss obtained at each epoch
+    train_components
+        A list of dicts; each is usually the training loss components and their corresponding batchwise mean for each epoch
+    val_components
+        A list of dicts; each is usually the validation loss components and their corresponding batchwise mean for each epoch
+    learning_rate
+        A list of learning rate values, one for each epoch
+    """
 
     train_loss: list[float]
     val_loss: list[float]
@@ -322,14 +337,22 @@ def validate(
 
     Parameters
     ----------
-        model: VAE model
-        val_loader: DataLoader for validation data
-        device: Device to use
-        kl_weight: Weight for KL divergence loss
-        kl_free_bits: value at which to lower-clamp the mean KL loss per dim of the latent space
-        recon_downsampling_scales: factors at which to downscale reconstructions
-        recon_weight: Weight for VAE reconstruction loss
-        temporal_weight: Weight for temporal coherence loss
+        model
+            VAE model
+        val_loader
+            DataLoader for validation data
+        device
+            Device to use
+        kl_weight
+            Weight for KL divergence loss
+        kl_free_bits
+            value at which to lower-clamp the mean KL loss per dim of the latent space
+        recon_downsampling_scales
+            factors at which to downscale reconstructions
+        recon_weight
+            Weight for VAE reconstruction loss
+        temporal_weight
+            Weight for temporal coherence loss
 
     Returns
     -------
@@ -391,12 +414,18 @@ def kl_annealing_scheduler(
 
     Parameters
     ----------
-        epoch: Current epoch
-        start_weight: Starting weight
-        target_weight: Target weight
-        annealing_delay: Number of epochs before which we start annealing
-        annealing_epochs: Number of epochs for annealing
-        annealing_strategy: Strategy for annealing ('linear', 'sigmoid', 'cyclical', or None)
+        epoch
+            Current epoch
+        start_weight
+            Starting weight
+        target_weight
+            Target weight
+        annealing_delay
+            Number of epochs before which we start annealing
+        annealing_epochs
+            Number of epochs for annealing
+        annealing_strategy
+            Strategy for annealing ('linear', 'sigmoid', 'cyclical', or None)
 
     Returns
     -------
@@ -470,7 +499,7 @@ def train_model(
     model
         VAE model
     train_loader
-         DataLoader for training data
+        DataLoader for training data
     val_loader
         DataLoader for validation data
     num_epochs

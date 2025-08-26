@@ -33,7 +33,7 @@ class ArmaFitResult(TypedDict):
     params
         Parameters for the ARMA model
     aic
-        ?
+        Akaike information criterion, a scalar statistic upon which we base model choice; to be minimised
     """
 
     order: tuple[int, int]
@@ -433,7 +433,7 @@ def allocate_active_offsets(
         A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
         These correspond to days for which the site is inactive (e.g. weekends, bank holidays)
     method
-        A string to indicate the method used. One of {'min-weekly', 'recent', 'recent-or-next', 'detect-chgpt'}
+        A StrEnum to indicate the method used. Corresponds to one of {'min-weekly', 'recent', 'recent-or-next', 'detect-chgpt'}
         Defaults to 'detect-chgpt'.
 
     Returns
@@ -461,13 +461,16 @@ def handle_offsets_min_weekly(active_daily: DailyDataFrame, inactive_daily: Dail
     Parameters
     ----------
     active_daily
-
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is active, i.e. operating as usual.
     inactive_daily
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is inactive (e.g. weekends, bank holidays)
 
     Returns
     -------
     npt.NDArray[np.floating]
-        The offsets to use as the labelled inactive day.
+        The offsets to use for each active day as the corresponding 'inactive day component'
     """
     # use min "inactive day" value in each fixed week (Mon-Sun inclusive; labelled on the Sunday)
     weeklymin_inactive = inactive_daily.resample(rule="W-SUN", closed="right").min().ffill()
@@ -491,13 +494,16 @@ def handle_offsets_recent(active_daily: DailyDataFrame, inactive_daily: DailyDat
     Parameters
     ----------
     active_daily
-
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is active, i.e. operating as usual.
     inactive_daily
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is inactive (e.g. weekends, bank holidays)
 
     Returns
     -------
     npt.NDArray[np.floating]
-        The offsets to use as the labelled inactive day.
+        The offsets to use for each active day as the corresponding 'inactive day component'
     """
     # as active_daily_offset, use value from most recent inactive day
     # find position in index of inactive_daily that each record of active_daily would be inserted
@@ -519,13 +525,16 @@ def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: 
     Parameters
     ----------
     active_daily
-
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is active, i.e. operating as usual.
     inactive_daily
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is inactive (e.g. weekends, bank holidays)
 
     Returns
     -------
     npt.NDArray[np.floating]
-        The offsets to use as the labelled inactive day.
+        The offsets to use for each active day as the corresponding 'inactive day component'
     """
     # as active_daily_offset, use either most recent or next inactive day, whichever is closer in aggregate value
     # logic here is that the offset represents the energy usage without daily profile
@@ -564,6 +573,20 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
 
     For each set of contiguous active days detect the day where the offset changes from the most recent to the next inactive day
     value.
+
+    Parameters
+    ----------
+    active_daily
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is active, i.e. operating as usual.
+    inactive_daily
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is inactive (e.g. weekends, bank holidays)
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        The offsets to use for each active day as the corresponding 'inactive day component'
     """
     # for each interval between inactive dates, we detect the point at which the baseline changes:
     #  - if the bookending inactive values are both lower than the active values, we choose the date in the interval that
@@ -666,7 +689,6 @@ def split_and_baseline_active_days(
         has datetime index
     df_daily_inactive
         has datetime index
-
     """
     # Ascertain the public holiday and 'weekend' dates to use in the first split
     holiday_dates = frozenset(get_bank_holidays(division))
