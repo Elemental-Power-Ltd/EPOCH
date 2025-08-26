@@ -130,7 +130,11 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             res = await client.post(url=self.db_url + "/get-dataset-bundle", params={"bundle_id": str(bundle_id)}, timeout=30.0)
         site_data_entries = res.json()
-        return SiteDataEntries.model_validate(site_data_entries)
+        try:
+            site_data_entries = SiteDataEntries.model_validate(site_data_entries)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to validate site data: {e!s}") from e
+        return site_data_entries
 
     async def get_bundle_timestamps(self, bundle_id: bundle_id_t) -> tuple[AwareDatetime, AwareDatetime]:
         """
