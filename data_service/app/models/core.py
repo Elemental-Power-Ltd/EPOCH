@@ -7,17 +7,21 @@ centralise it in here.
 
 # ruff: noqa: D101
 import datetime
-import uuid
 from enum import StrEnum
 from typing import Annotated, Any, Self
 
 import pydantic
 from pydantic import BaseModel, Field
 
-dataset_id_t = Annotated[pydantic.UUID4, "String serialised UUID"]
-client_id_t = str
-site_id_t = str
-location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
+from app.internal.utils.uuid import uuid7
+
+# We have to support either UUID4 for historic datasets or UUID7 for more recent dataset
+type uuid_t = pydantic.UUID4 | pydantic.UUID7
+type dataset_id_t = Annotated[uuid_t, "String serialised UUID"]
+type client_id_t = str
+type site_id_t = str
+type location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
+
 
 example_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
 example_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
@@ -36,27 +40,7 @@ client_id_field = Field(
 dataset_id_field = Field(
     examples=["805fb659-1cac-44f3-a1f9-85dc82178f53"],
     description="Unique ID (generally a UUIDv4) of a dataset.",
-    default_factory=uuid.uuid4,
-)
-
-epoch_start_time_field = Field(
-    examples=["00:00", "11:30"],
-    description="Starting time for this data, often 30 mins or 1 hour long from now.",
-    pattern=r"[0-2][0-9]:[0-6][0-9]",
-)
-
-epoch_hour_of_year_field = Field(
-    examples=[1, 365 * 24 - 1],
-    description="Hour of the year, 1-indexed for EPOCH. Counts up even over timezone changes."
-    + "For example, Jan 1st 00:00 is 1.",
-)
-
-epoch_date_field = Field(
-    examples=["01-Jan", "31-Dec"],
-    description="Date string for EPOCH to consume, zero padded day first"
-    + "and 3 letter month abbreviation second."
-    + "No year information is provided (be careful!). This is originally Excel-like.",
-    pattern=r"[0-9][0-9]-[A-Za-z]*",
+    default_factory=uuid7,
 )
 
 
@@ -134,7 +118,7 @@ class DatasetIDWithTime(BaseModel):
 
 
 class MultipleDatasetIDWithTime(BaseModel):
-    dataset_id: list[dataset_id_t] = pydantic.Field(examples=[uuid.uuid4(), [uuid.uuid4() for _ in range(4)]])
+    dataset_id: list[dataset_id_t] = pydantic.Field(examples=[uuid7(), [uuid7() for _ in range(4)]])
     start_ts: pydantic.AwareDatetime = Field(
         examples=["2024-01-01T00:00:00Z"],
         description="The earliest time (inclusive) to retrieve data for.",
@@ -171,6 +155,7 @@ class ClientIdNamePair(pydantic.BaseModel):
 
 
 class DatasetTypeEnum(StrEnum):
+    SiteBaseline = "SiteBaseline"
     GasMeterData = "GasMeterData"
     ElectricityMeterData = "ElectricityMeterData"
     ElectricityMeterDataSynthesised = "ElectricityMeterDataSynthesised"
@@ -181,6 +166,7 @@ class DatasetTypeEnum(StrEnum):
     ASHPData = "ASHPData"
     ImportTariff = "ImportTariff"
     ThermalModel = "ThermalModel"
+    PHPP = "PHPP"
 
 
 class DatasetEntry(pydantic.BaseModel):
@@ -211,6 +197,8 @@ class ClientData(pydantic.BaseModel):
 
 
 class SiteData(pydantic.BaseModel):
+    """Metadata about a specific site from the database."""
+
     client_id: client_id_t = client_id_field
     site_id: str = site_id_field
     name: str = pydantic.Field(
@@ -231,3 +219,33 @@ class SiteData(pydantic.BaseModel):
     dec_lmk: str | None = pydantic.Field(
         description="LMK for the latest Commercial Display Energy Certificate for this building", default=None
     )
+    floor_area: float | None = pydantic.Field(description="Floor area in m^2 used for efficiency metrics", default=None)
+
+
+class BundleEntryMetadata(pydantic.BaseModel):
+    bundle_id: dataset_id_t = pydantic.Field(description="ID of the linked bundle that this is part of.")
+    dataset_id: dataset_id_t = pydantic.Field(description="ID for this individual dataset within the bundle.")
+    dataset_type: DatasetTypeEnum = pydantic.Field(description="Type of dataset this is, such as ElectricityMeterData")
+    dataset_subtype: Any | None = pydantic.Field(
+        default=None,
+        description="JSON serialisable subtype for this dataset, maybe a solar location or tariff type. Defaults to None.",
+    )
+    dataset_order: int | None = pydantic.Field(
+        description="Order of these datasets within the bundle; especially useful for sorting subtypes such as import tariffs.",
+        default=None,
+    )
+
+
+class RequestBase(pydantic.BaseModel):
+    start_ts: pydantic.AwareDatetime
+    end_ts: pydantic.AwareDatetime
+
+    bundle_metadata: BundleEntryMetadata | None = None
+
+    @pydantic.model_validator(mode="after")
+    def check_timestamps_valid(self) -> Self:
+        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
+        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
+        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
+        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
+        return self

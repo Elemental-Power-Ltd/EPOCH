@@ -3,21 +3,18 @@
 # ruff: noqa: D101
 import datetime
 from enum import StrEnum
-from typing import Self
 
 import pydantic
 
-from .core import EpochEntry, dataset_id_field, site_id_field, site_id_t
+from .core import EpochEntry, RequestBase, dataset_id_field, dataset_id_t, site_id_field, site_id_t
 
 
-class RenewablesRequest(pydantic.BaseModel):
+class RenewablesRequest(RequestBase):
     site_id: site_id_t = site_id_field
-    start_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=["2020-01-01T00:00:00Z"], description="The starting time to run the renewables calculation, should be <2021."
-    )
-    end_ts: pydantic.AwareDatetime = pydantic.Field(
-        examples=["2021-01-01T00:00:00Z"],
-        description="The ending time to run the renewables calculation, should be one year on from start_ts",
+    renewables_location_id: str | None = pydantic.Field(
+        default=None,
+        examples=["demo_matts_house_southroof"],
+        description="Database ID of the site-associated solar location e.g. southroof",
     )
     azimuth: float | None = pydantic.Field(
         default=None,
@@ -33,13 +30,14 @@ class RenewablesRequest(pydantic.BaseModel):
         default=False, examples=[False, True], description="Whether these panels use single axis tracking."
     )
 
-    @pydantic.model_validator(mode="after")
-    def check_timestamps_valid(self) -> Self:
-        """Check that the start timestamp is before the end timestamp, and that neither of them is in the future."""
-        assert self.start_ts < self.end_ts, f"Start timestamp {self.start_ts} must be before end timestamp {self.end_ts}"
-        assert self.start_ts <= datetime.datetime.now(datetime.UTC), f"Start timestamp {self.start_ts} must be in the past."
-        assert self.end_ts <= datetime.datetime.now(datetime.UTC), f"End timestamp {self.end_ts} must be in the past."
-        return self
+
+class RenewablesWindRequest(RequestBase):
+    site_id: site_id_t = site_id_field
+    turbine: str = pydantic.Field(
+        examples=["Acciona AW77 1500", "Enercon E101 3000"],
+        description="Name of the turbine you want to model; must exist in the RN database.",
+    )
+    height: float = pydantic.Field(examples=[10.0, 80.0, 100.0], description="Height of the hub above the ground in m.")
 
 
 class RenewablesMetadata(pydantic.BaseModel):
@@ -49,9 +47,12 @@ class RenewablesMetadata(pydantic.BaseModel):
     created_at: pydantic.AwareDatetime = pydantic.Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC), description="The time we generated this dataset at"
     )
-    dataset_id: pydantic.UUID4 = dataset_id_field
+    dataset_id: dataset_id_t = dataset_id_field
     site_id: site_id_t = site_id_field
     parameters: pydantic.Json = pydantic.Field(description="The parameters we sent to the data source in generating this.")
+    renewables_location_id: str | None = pydantic.Field(
+        description="Database ID for the on-site location of this installation", default=None
+    )
 
 
 class EpochRenewablesEntry(EpochEntry):
@@ -70,6 +71,7 @@ class PvgisDataSourceEnum(StrEnum):
     SARAH = "PVGIS-SARAH"
     SARAH2 = "PVGIS-SARAH2"
     SARAH3 = "PVGIS-SARAH3"
+    UNKNOWN = "UNKNOWN"
 
 
 class PvgisMountingSystemEnum(StrEnum):
@@ -77,6 +79,13 @@ class PvgisMountingSystemEnum(StrEnum):
 
 
 class PvgisTypeEnum(StrEnum):
+    """
+    Type of solar installation (where is mounted).
+
+    PVGIS uses "building-integrated" to mean roof mounted
+    and "free" to mean ground mounted, so we adopt that convention.
+    """
+
     building_integrated = "building-integrated"
     freestanding = "free"
 

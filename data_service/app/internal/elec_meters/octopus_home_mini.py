@@ -178,7 +178,6 @@ async def get_home_mini_readings(
         )
         data = response.json()["data"]["smartMeterTelemetry"]
         if data is None:
-            print(response.text)
             continue
         all_data.extend(data)
 

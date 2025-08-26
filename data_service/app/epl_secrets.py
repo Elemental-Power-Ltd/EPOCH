@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-class SecretDict[K, V](UserDict):
+class SecretDict[K, V](UserDict[K, V]):
     """Secret dict with unprintable keys to avoid logging problems."""
 
     def __repr__(self) -> str:
@@ -54,7 +54,7 @@ def load_secret_from_file(fpath: Path) -> str:
     return fpath.read_text().strip()
 
 
-def load_dotenv(fname: os.PathLike = Path(".env")) -> dict[str, str]:
+def load_dotenv(fname: Path = Path(".env")) -> dict[str, str]:
     """
     Load a set of environment variables from an .env file.
 

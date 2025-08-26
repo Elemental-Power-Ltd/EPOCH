@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import Dataset
 
-from ..utils.bank_holidays import get_bank_holidays_sync
+from ..utils.bank_holidays import get_bank_holidays
 
 
 # Custom dataset class
@@ -38,7 +38,7 @@ def add_covariates(df: pd.DataFrame) -> pd.DataFrame:
     """CHECK IF DATE IS A UK BANK HOLIDAY."""
     # Fetch UK bank holidays and convert dates to a set for fast lookup
 
-    holiday_dates = set(get_bank_holidays_sync())
+    holiday_dates = set(get_bank_holidays())
     # Function to check if a date is a public holiday or weekend
 
     def is_holiday_or_weekend(date: pd.Timestamp) -> bool:

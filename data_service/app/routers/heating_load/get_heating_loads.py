@@ -66,7 +66,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         pd.DataFrame
             Heating load of start_ts and heating in kWh
         """
-        res = await pool.fetch(
+        res = await db_pool.fetch(
             """
             SELECT
                 start_ts,
@@ -103,7 +103,8 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
 
         Returns
         -------
-        cost in GBP of associated interventions
+        float
+            cost in GBP of associated interventions
         """
         metadata = await db_pool.fetchrow(
             """SELECT params, interventions FROM heating.metadata WHERE dataset_id = $1""", dataset_id
@@ -144,19 +145,40 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         return float(res)
 
     async with asyncio.TaskGroup() as tg:
-        all_dfs = [
-            tg.create_task(
+        # TODO (2025-08-04 MHJB): this is a classic N+1 query pattern; we should look all of these up
+        # in a single query and separate them out on our site.
+        all_dfs = {
+            dataset_id: tg.create_task(
                 get_single_dataset(db_pool=pool, start_ts=params.start_ts, end_ts=params.end_ts, dataset_id=dataset_id)
             )
             for dataset_id in params.dataset_id
-        ]
-        all_costs = [tg.create_task(get_heating_cost(db_pool=pool, dataset_id=dataset_id)) for dataset_id in params.dataset_id]
+        }
+        all_costs = {
+            dataset_id: tg.create_task(get_heating_cost(db_pool=pool, dataset_id=dataset_id))
+            for dataset_id in params.dataset_id
+        }
+        peak_hload_resp = tg.create_task(
+            pool.fetch(
+                """
+                SELECT dataset_id, peak_hload
+                FROM heating.metadata
+                WHERE dataset_id = ANY($1::UUID[])""",
+                params.dataset_id,
+            )
+        )
 
+    all_peak_hloads = {dataset_id: peak_hload for dataset_id, peak_hload in peak_hload_resp.result()}  # noqa: C416
+    # Do this ordering by dataset ID to make sure that the costs remain associated with the relevant heating load,
+    # otherwise we'll get them scrambled in the order that the tasks completed.
     return EpochHeatingEntry(
-        timestamps=all_dfs[0].result().index.to_list(),
+        timestamps=all_dfs[params.dataset_id[0]].result().index.to_list(),
         data=[
-            FabricIntervention(cost=cost.result(), reduced_hload=df.result()["heating"].to_list())
-            for cost, df in zip(all_costs, all_dfs, strict=False)
+            FabricIntervention(
+                cost=all_costs[dataset_id].result(),
+                reduced_hload=all_dfs[dataset_id].result()["heating"].to_list(),
+                peak_hload=all_peak_hloads.get(dataset_id, 0.0) if all_peak_hloads.get(dataset_id) is not None else 0.0,
+            )
+            for dataset_id in params.dataset_id
         ],
     )
 

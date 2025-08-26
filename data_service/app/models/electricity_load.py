@@ -4,12 +4,12 @@
 
 import pydantic
 
-from .core import DatasetIDWithTime, EpochEntry
+from .core import EpochEntry, RequestBase, dataset_id_t
 from .meter_data import MeterMetadata
 
 
-class ElectricalLoadRequest(DatasetIDWithTime):
-    pass
+class ElectricalLoadRequest(RequestBase):
+    dataset_id: dataset_id_t
 
 
 class ElectricalLoadMetadata(MeterMetadata):

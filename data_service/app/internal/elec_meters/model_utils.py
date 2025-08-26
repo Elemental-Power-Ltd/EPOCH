@@ -3,22 +3,43 @@
 import itertools
 import logging
 import pathlib
+from collections.abc import Container
 from enum import StrEnum
-from typing import Any, Self
+from typing import Any, Self, TypedDict, cast
 
 import joblib
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from govuk_bank_holidays.bank_holidays import BankHolidays
-from scipy.optimize import minimize
+from scipy.optimize import OptimizeResult, minimize
 from sklearn.base import TransformerMixin  # type: ignore
 from sklearn.preprocessing import MinMaxScaler, StandardScaler  # type: ignore
 from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction  # type: ignore
-from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.arima_process import ArmaProcess
+from statsmodels.tsa.arima.model import ARIMA  # type: ignore
+from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
 
 from app.internal.epl_typing import DailyDataFrame
+from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
+
+
+class ArmaFitResult(TypedDict):
+    """
+    Fitting result from the ARMA process.
+
+    Attributes
+    ----------
+    order
+        (p, q)
+    params
+        Parameters for the ARMA model
+    aic
+        ?
+    """
+
+    order: tuple[int, int]
+    params: npt.NDArray[np.floating]
+    aic: float
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,19 +73,39 @@ class CustomMinMaxScaler(MinMaxScaler):
     transform() method of the MinMax class.
     """
 
-    feature_range: tuple
+    feature_range: tuple[float, float]
     copy: bool
     clip: bool
     n: int
     axis: int
+    scale_: npt.NDArray[np.floating]
+    min_: npt.NDArray[np.floating]
 
-    def __init__(self, n: int = 9, feature_range: tuple = (0, 1), copy: bool = True, clip: bool = False, axis: int = 0):
+    def __init__(
+        self, n: int = 9, feature_range: tuple[float, float] = (0.0, 1.0), copy: bool = True, clip: bool = False, axis: int = 0
+    ):
+        """
+        Set up the additional features for the minmax scaler.
+
+        Parameters
+        ----------
+        n
+            Number of initial values to take to set the scale for
+        axis
+            Which axis to operate on
+        feature_range
+            Desired range of the transformed data
+        copy
+            Whether to copy the input data
+        clip
+            Whether to clip the input data to the feature range
+        """
         # first 9 values corresponds to 00:00-04:00 inclusive for
         self.n = n
         self.axis = axis
         super().__init__(feature_range=feature_range, copy=copy, clip=clip)
 
-    def fit(self, X, y=None):
+    def fit(self, X: npt.NDArray[np.floating], y: npt.NDArray[np.floating] | None = None) -> Self:
         """
         Fit the instance: perform any preprocessing and calculate the custom min and standard max.
 
@@ -94,26 +135,28 @@ class CustomMinMaxScaler(MinMaxScaler):
 
         return self
 
-    def transform(self, X):
+    def transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Transform the data using the custom-fitted MinMaxScaler."""
         X = np.asarray(X)
         if self.axis == 1:
-            return (X.T * self.scale_ + self.min_).T
+            return cast(npt.NDArray[np.floating], (X.T * self.scale_ + self.min_).T)
         else:
-            return X * self.scale_ + self.min_
+            return cast(npt.NDArray[np.floating], X * self.scale_ + self.min_)
 
-    def inverse_transform(self, X):
+    def inverse_transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Perform the inverse transformation on the data using the custom-fitted MinMaxScaler."""
         X = np.asarray(X)
         if self.axis == 1:
-            return ((X.T - self.min_) / self.scale_).T
+            return cast(npt.NDArray[np.floating], ((X.T - self.min_) / self.scale_).T)
         else:
-            return (X - self.min_) / self.scale_
+            return cast(npt.NDArray[np.floating], (X - self.min_) / self.scale_)
 
-    def fit_transform(self, X, y=None, **fit_params):
+    def fit_transform(
+        self, X: npt.NDArray[np.floating], y: npt.NDArray[np.floating] | None = None, **fit_params: dict
+    ) -> npt.NDArray[np.floating]:
         """Fit the custom MinMaxScaler and perform the resulting transformation."""
         X = np.asarray(X)
-        return super().fit_transform(X, y, **fit_params)
+        return cast(npt.NDArray[np.floating], super().fit_transform(X, y, **fit_params))
 
 
 class RBFTimestampEncoder(TransformerMixin):
@@ -188,10 +231,12 @@ class RBFTimestampEncoder(TransformerMixin):
         if not self.is_fitted:
             raise ValueError("The model needs to be fitted before transforming data.")
         X_preprocessed = self._preprocess(X)
-        result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed)  # type: ignore
+        result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed)
         return result
 
-    def fit_transform(self, X: Any, y=None, **fit_params):
+    def fit_transform(
+        self, X: npt.NDArray[np.floating], y: npt.NDArray[np.floating] | None = None, **fit_params: Any
+    ) -> npt.NDArray[np.floating]:
         """
         Fit the RepeatingBasisFunction instance and transform the input data.
 
@@ -367,7 +412,7 @@ def load_all_scalers(
 
 
 def allocate_active_offsets(
-    active_daily: DailyDataFrame, inactive_daily: DailyDataFrame, method: str = "detect-chgpt"
+    active_daily: DailyDataFrame, inactive_daily: DailyDataFrame, method: OffsetMethodEnum = OffsetMethodEnum.DetectChgpt
 ) -> np.ndarray:
     """
     Establish value for offset component of 'business as usual' daily aggregates.
@@ -382,10 +427,10 @@ def allocate_active_offsets(
     Parameters
     ----------
     active_daily
-        A dataframe containing daily aggregate values in a column "consumption_kWh", and with a pd.DatetimeIndex.
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
         These correspond to days for which the site is active, i.e. operating as usual.
     inactive_daily
-        A dataframe containing daily aggregate values in a column "consumption_kWh", and with a pd.DatetimeIndex.
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
         These correspond to days for which the site is inactive (e.g. weekends, bank holidays)
     method
         A string to indicate the method used. One of {'min-weekly', 'recent', 'recent-or-next', 'detect-chgpt'}
@@ -396,15 +441,7 @@ def allocate_active_offsets(
     active_daily_offset
         A dataframe containing the offset component of the daily aggregate values in active_daily, with a pd.DatetimeIndex.
     """
-    # # switch between options for baselining each active day: either use:
-
-    try:
-        method_enum = OffsetMethodEnum(method)
-    except ValueError:
-        print("No matching case found")
-        return
-
-    match method_enum:
+    match method:
         case OffsetMethodEnum.MinWeekly:
             active_daily_offset = handle_offsets_min_weekly(active_daily, inactive_daily)
         case OffsetMethodEnum.Recent:
@@ -417,8 +454,21 @@ def allocate_active_offsets(
     return active_daily_offset
 
 
-def handle_offsets_min_weekly(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> np.ndarray:
-    """Establish active day offsets: for each fixed week, use the min value in the labelled inactive days."""
+def handle_offsets_min_weekly(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> npt.NDArray[np.floating]:
+    """
+    Establish active day offsets: for each fixed week, use the min value in the labelled inactive days.
+
+    Parameters
+    ----------
+    active_daily
+
+    inactive_daily
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        The offsets to use as the labelled inactive day.
+    """
     # use min "inactive day" value in each fixed week (Mon-Sun inclusive; labelled on the Sunday)
     weeklymin_inactive = inactive_daily.resample(rule="W-SUN", closed="right").min().ffill()
     # from inactive days, take minimum over each week; forward fill if a week contains no inactive days
@@ -434,8 +484,21 @@ def handle_offsets_min_weekly(active_daily: DailyDataFrame, inactive_daily: Dail
     return active_daily_offset
 
 
-def handle_offsets_recent(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> np.ndarray:
-    """Establish active day offsets: use the value for the most recent labelled inactive day."""
+def handle_offsets_recent(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> npt.NDArray[np.floating]:
+    """
+    Establish active day offsets: use the value for the most recent labelled inactive day.
+
+    Parameters
+    ----------
+    active_daily
+
+    inactive_daily
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        The offsets to use as the labelled inactive day.
+    """
     # as active_daily_offset, use value from most recent inactive day
     # find position in index of inactive_daily that each record of active_daily would be inserted
     active_daily_index = active_daily.index.to_numpy()
@@ -449,8 +512,21 @@ def handle_offsets_recent(active_daily: DailyDataFrame, inactive_daily: DailyDat
     return active_daily_offset
 
 
-def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> np.ndarray:
-    """Establish active day offsets: use whichever value is closer in aggregate, the most recent or the next inactive day."""
+def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> npt.NDArray[np.floating]:
+    """
+    Establish active day offsets: use whichever value is closer in aggregate, the most recent or the next inactive day.
+
+    Parameters
+    ----------
+    active_daily
+
+    inactive_daily
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        The offsets to use as the labelled inactive day.
+    """
     # as active_daily_offset, use either most recent or next inactive day, whichever is closer in aggregate value
     # logic here is that the offset represents the energy usage without daily profile
     # changes in offset could start on active days or inactive days; in each case, a given active day's
@@ -470,10 +546,10 @@ def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: 
     # use masking to return the offset that gives the smallest positive difference in aggregate from the active value
     # first replace the negative values with np.inf
     prev_inactive_posdiff = np.where(
-        active_daily["consumption_kWh"] - prev_inactive >= 0, active_daily["consumption_kWh"] - prev_inactive, np.inf
+        active_daily["consumption_kwh"] - prev_inactive >= 0, active_daily["consumption_kwh"] - prev_inactive, np.inf
     )
     next_inactive_posdiff = np.where(
-        active_daily["consumption_kWh"] - next_inactive >= 0, active_daily["consumption_kWh"] - next_inactive, np.inf
+        active_daily["consumption_kwh"] - next_inactive >= 0, active_daily["consumption_kwh"] - next_inactive, np.inf
     )
     # then create a mask that selects the indices for which is the smaller positive diff
     use_prevoffset = prev_inactive_posdiff <= next_inactive_posdiff
@@ -482,7 +558,7 @@ def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: 
     return active_daily_offset
 
 
-def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> np.ndarray:
+def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> npt.NDArray[np.floating]:
     """
     Establish active day offsets.
 
@@ -539,7 +615,7 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
                     # minimise total cost = cost_a + cost_b
                     cost_a = sum_sig2[k - 1] - 2 * a * sum_sig[k - 1] + k * a**2
                     cost_b = (sum_sig2[-1] - sum_sig2[k - 1]) - 2 * b * (sum_sig[-1] - sum_sig[k - 1]) + (n - k) * b**2
-                    cost[k] = cost_a + cost_b
+                    cost[k] = cost_a[0] + cost_b[0]
 
         cp = np.argmin(cost)
         if cost[cp] == np.inf:  # no k for which a,b are both valid baselines
@@ -561,14 +637,16 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
 
 
 def split_and_baseline_active_days(
-    df_daily_all: DailyDataFrame, weekend_inds: tuple[int, ...] = (5, 6), division: str = "england-and-wales"
+    df_daily_all: DailyDataFrame, weekend_inds: Container[int] = (5, 6), division: UKCountryEnum = UKCountryEnum.England
 ) -> tuple[DailyDataFrame, DailyDataFrame]:
     """
     Extract "inactive days" (i.e. weekend/holidays) from daily aggregates; use these to baseline the remaining days.
 
-    We model active days and inactive days separately, expecting the active days to display more [canonical/regular] intraday variation.
+    We model active days and inactive days separately,
+    expecting the active days to display more [canonical/regular] intraday variation.
     We distinguish between the two types of day by first assuming inactive days to include Bank Holidays and days of the week
-    indicated by the provided index (Monday=0, Sunday=6); we use these inactive days as a 'baseline' above which active days vary.
+    indicated by the provided index (Monday=0, Sunday=6);
+    we use these inactive days as a 'baseline' above which active days vary.
     By removing this baseline, we use simple outlier detection methods to identify remaining inactive days (e.g. between
     Christmas and New Year).
 
@@ -591,29 +669,33 @@ def split_and_baseline_active_days(
 
     """
     # Ascertain the public holiday and 'weekend' dates to use in the first split
-    bh = BankHolidays(use_cached_holidays=True)
-    uk_holidays = bh.get_holidays(division=division)
-    holiday_dates = {pd.Timestamp(event["date"]) for event in uk_holidays}
-    is_holiday = df_daily_all.index.normalize().isin(holiday_dates)
-    is_weekend = df_daily_all.index.weekday.isin(weekend_inds)
+    holiday_dates = frozenset(get_bank_holidays(division))
+    assert isinstance(df_daily_all.index, pd.DatetimeIndex), df_daily_all.index
 
     # Perform the initial split: extract inactive dates and define remaining records of df_daily_all as active days
-    df_daily_inactive = df_daily_all[is_holiday | is_weekend]
-    # TODO (JSM 2025-07-30) - in notebook, this was converted from df to Series -- is this needed?
-    df_daily_active = df_daily_all.loc[df_daily_all.index.difference(df_daily_inactive.index)]
+    is_holiday = df_daily_all.index.map(lambda dt: dt.date() in holiday_dates).to_numpy()
+    is_weekend = df_daily_all.index.map(lambda dt: dt.weekday() in weekend_inds).to_numpy()
+    is_inactive = np.logical_or(is_holiday, is_weekend)
+    df_daily_inactive, df_daily_active = df_daily_all[is_inactive], df_daily_all[~is_inactive]
 
     # forward fill any nan records: do so separately for inactive and active days
     df_daily_inactive = df_daily_inactive.ffill(inplace=False)
     df_daily_active = df_daily_active.ffill(inplace=False)
+    assert isinstance(df_daily_inactive.index, pd.DatetimeIndex)
+    assert isinstance(df_daily_active.index, pd.DatetimeIndex)
 
-    # for each active date, establish the appropriate inactive date (either the most recent or the next) to use as a baseline/offset
+    # for each active date, establish the appropriate inactive date
+    # (either the most recent or the next) to use as a baseline/offset
     df_daily_active["offsets"] = allocate_active_offsets(
-        df_daily_active["consumption_kWh"], df_daily_inactive, method="detect-chgpt"
+        cast(DailyDataFrame, pd.DataFrame(df_daily_active["consumption_kwh"])),
+        df_daily_inactive,
+        method=OffsetMethodEnum.DetectChgpt,
     )
-    # method="detect-chgpt": assume active date baseline to be piecewise constant between inactive dates; find optimal changepoint.
+    # assume active date baseline to be piecewise constant between inactive dates;
+    # find optimal changepoint.
 
     # remove offsets for all active dates
-    df_daily_active["consumption_baselined"] = df_daily_active["consumption_kWh"] - df_daily_active["offsets"]
+    df_daily_active["consumption_baselined"] = df_daily_active["consumption_kwh"] - df_daily_active["offsets"]
 
     # after baselining, use robust outlier detection (via modified Z-score) to pick out "site-specific" inactive dates
     # modified z-score = 0.6745(x - median) / MAD
@@ -622,21 +704,17 @@ def split_and_baseline_active_days(
     z_score_mod = 0.6745 * ((df_daily_active["consumption_baselined"] - med) / med_abs_dev)
     site_specific_inactive_inds = df_daily_active.index[np.where(z_score_mod < -3.5)[0]]  # only interested in low outliers
 
-    ## alternative approach:
-    # site_specific_inactive_inds = df_daily_active.index[
-    #     np.nonzero(np.abs(df_daily_active["consumption_baselined"]) < 0.3*np.nanmedian(df_daily_active["consumption_baselined"]))[0]
-    #     ]
-
     # move by using datetime indexing only
-    df_daily_inactive = pd.concat(
-        [df_daily_inactive, df_daily_active["consumption_kWh"].loc[site_specific_inactive_inds]]
-    ).sort_index()
+    df_daily_inactive = cast(
+        DailyDataFrame,
+        pd.concat([df_daily_inactive, df_daily_active["consumption_kwh"].loc[site_specific_inactive_inds]]).sort_index(),
+    )
     df_daily_active = df_daily_active.drop(site_specific_inactive_inds)
 
     return df_daily_active, df_daily_inactive
 
 
-def joint_nll(params: np.ndarray, models: list[ARIMA]) -> float:
+def joint_nll(params: npt.NDArray[np.floating], models: list[ARIMA]) -> float:
     """
     Compute the total negative log-likelihood across a list of ARIMA model instances.
 
@@ -645,7 +723,7 @@ def joint_nll(params: np.ndarray, models: list[ARIMA]) -> float:
 
     Parameters
     ----------
-    params (np.ndarray)
+    params (npt.NDArray[np.floating])
         Parameter vector (AR, MA, σ²).
     models (list[ARIMA])
         List of ARIMA model instances.
@@ -668,11 +746,11 @@ def joint_nll(params: np.ndarray, models: list[ARIMA]) -> float:
 
 
 def fit_shared_arma_model(
-    data: np.ndarray,
+    data: npt.NDArray[np.floating],
     p: int,
     q: int,
     max_iter: int = 500,
-) -> tuple[np.ndarray, float] | None:
+) -> OptimizeResult | None:
     """
     Fit a shared ARMA(p, q) model across multiple time series using joint MLE.
 
@@ -734,7 +812,7 @@ def select_best_shared_arma_model(
     p_max: int = 3,
     q_max: int = 3,
     max_iter: int = 500,
-) -> tuple[tuple[int, int], np.ndarray, float] | None:
+) -> ArmaFitResult:
     """
     Grid search over (p, q) to find best shared ARMA(p, q) model by AIC.
 
@@ -753,7 +831,7 @@ def select_best_shared_arma_model(
     -------
         tuple[(p, q), params, aic]: Best model order, parameters, and AIC.
     """
-    best_result = {}
+    best_result: ArmaFitResult | None = None
 
     for p, q in itertools.product(range(p_max + 1), range(q_max + 1)):
         if p == q == 0:
@@ -774,13 +852,15 @@ def select_best_shared_arma_model(
         k = p + q + 1
         aic = 2 * k + 2 * result.fun  # result.fun = joint NLL
 
-        if len(best_result) == 0 or aic < best_result["aic"]:
+        if best_result is None or aic < best_result["aic"]:
             best_result = {"order": (p, q), "params": result.x, "aic": aic}
 
+    if best_result is None:
+        raise ValueError("Couldn't fit a best ARMA model.")
     return best_result
 
 
-def fit_residual_model(resids, verbose=False):
+def fit_residual_model(resids: pd.DataFrame, verbose: bool = False) -> tuple[pd.DataFrame, ArmaProcess, float]:
     """
     Fit a crude trend to the given residuals and then fit an ARMA process to the detrended residuals.
 
@@ -800,6 +880,9 @@ def fit_residual_model(resids, verbose=False):
     ARMA_scale
         the standard deviation for the innovations of the fitted ARMA process
     """
+    assert not resids.empty, "Got an empty residuals dataframe in fit_residual_model."
+    assert not resids.isna().any().any(), "Got NaN values in resids"
+
     if verbose:
         logger.info("Fitting trend & ARMA model...")
 

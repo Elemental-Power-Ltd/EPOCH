@@ -10,11 +10,52 @@ import pandas as pd
 import pytest
 
 from app.internal.gas_meters import parse_half_hourly
+from app.internal.utils.uuid import uuid7
 
 
 class TestUploadMeterData:
     @pytest.mark.asyncio
+    @pytest.mark.slow
+    async def test_upload_hh_and_generate(self, client: httpx.AsyncClient) -> None:
+        """Test that we can upload half hourly data and generate a new dataset."""
+        raw_data = parse_half_hourly("./tests/data/test_elec.csv")
+        raw_data["start_ts"] = raw_data.index
+        metadata = {
+            "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            "dataset_id": str(uuid7()),
+            "fuel_type": "elec",
+            "site_id": "demo_london",
+            "reading_type": "halfhourly",
+        }
+        records = json.loads(raw_data.to_json(orient="records"))
+        meta_result = await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
+        assert meta_result.is_success, meta_result.text
+
+        meta_data = meta_result.json()
+        elec_result = await client.post(
+            "/generate-electricity-load",
+            json={
+                "dataset_id": meta_data["dataset_id"],
+                "start_ts": "2019-01-01T00:00:00Z",
+                "end_ts": "2020-01-01T00:00:00Z",
+            },
+        )
+        assert elec_result.is_success, elec_result.text
+
+        new_id = elec_result.json()["dataset_id"]
+        result = await client.post(
+            "/get-electricity-load",
+            json={
+                "dataset_id": new_id,
+                "start_ts": "2019-01-01T00:00:00Z",
+                "end_ts": "2020-01-01T00:00:00Z",
+            },
+        )
+        assert result.is_success, result.text
+
+    @pytest.mark.asyncio
     async def test_upload_pre_parsed_with_specified(self, client: httpx.AsyncClient) -> None:
+        """Test that we can upload and parse monthly-ish data and get reasonable results out."""
         raw_data = parse_half_hourly("./tests/data/test_elec.csv")
         data = raw_data[["consumption"]].resample(pd.Timedelta(days=29)).sum()
         data["start_ts"] = data.index
@@ -24,7 +65,7 @@ class TestUploadMeterData:
             "dataset_id": "1db34dd6-0e3a-4ed1-8a2a-a84e74550ae4",
             "fuel_type": "elec",
             "site_id": "demo_london",
-            "reading_type": "halfhourly",
+            "reading_type": "manual",
         }
         records = json.loads(data.to_json(orient="records"))
         meta_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
@@ -106,6 +147,7 @@ class TestUploadMeterData:
 
 
 class TestGetBlendedData:
+    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_can_get_blended_data(self, client: httpx.AsyncClient) -> None:
         elec_data = parse_half_hourly("./tests/data/test_elec.csv")

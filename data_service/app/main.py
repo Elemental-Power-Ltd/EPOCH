@@ -5,6 +5,7 @@ lifespan and request objects.
 """
 
 import datetime
+import sys
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,8 @@ from .routers import (
     site_manager,
     weather,
 )
+
+assert sys.version_info >= (3, 13, 0), f"Must be using Python 3.13.0 or above, but you're on {sys.version}"
 
 start_time = datetime.datetime.now(tz=datetime.UTC)
 app = FastAPI(lifespan=lifespan, title="Data Service", root_path="/api/data")
