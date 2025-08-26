@@ -45,7 +45,6 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
     const request: SubmitSimulationRequest = {
       task_data: taskData,
       site_data: {
-        loc: "remote",
         site_id: siteID,
         start_ts: startDate.toISOString(),
         end_ts: startDate.add(8760, "hour").toISOString(),

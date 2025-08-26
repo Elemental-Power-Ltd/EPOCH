@@ -125,7 +125,6 @@ function OptimisationContainer() {
                 name: "-",
                 site_range: portfolioSiteRanges[site_id],
                 site_data: {
-                    loc: "remote",
                     site_id: site_id,
                     start_ts: state.taskConfig.start_date!.toISOString(),
                     // an EPOCH year is exactly 8760 hours (irrespective of leap years)

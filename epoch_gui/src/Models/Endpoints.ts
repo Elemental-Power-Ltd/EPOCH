@@ -4,7 +4,6 @@ interface SiteMetaData {
     site_id: string;
     start_ts: string;
     end_ts: string;
-    loc: "remote";
 }
 
 

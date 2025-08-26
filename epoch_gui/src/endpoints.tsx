@@ -231,7 +231,6 @@ export const getLatestSiteData = async (site_id: string, start_ts: Dayjs, end_ts
         site_id,
         start_ts: start_ts.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
         end_ts: end_ts.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
-        loc: "remote"
     };
 
     try {
