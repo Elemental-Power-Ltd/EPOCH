@@ -10,7 +10,7 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .dependencies import lifespan
+from .lifespan import lifespan
 from .routers import (
     air_source_heat_pump,
     carbon_intensity,

@@ -6,22 +6,19 @@ To connect to a database, simply provide the relevant `DatabaseDep` or `HttpClie
 function and FastAPI will figure it out through magic.
 """
 
-import asyncio
 import datetime
 import logging
 import multiprocessing
 import os
 import typing
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Never
 
 import asyncpg
 import httpx
 import torch
-from fastapi import Depends, FastAPI
+from fastapi import Depends
 
 from .epl_secrets import SecretDict, get_secrets_environment
 from .internal.elec_meters import VAE
@@ -77,12 +74,10 @@ class Database:
         try:
             if self.dsn is not None:
                 # Use this for the local tests, where the DSN is provided by the testing framework
-                self.pool = await asyncpg.create_pool(dsn=self.dsn,
-                timeout=120)
+                self.pool = await asyncpg.create_pool(dsn=self.dsn, timeout=120)
             else:
                 self.pool = await asyncpg.create_pool(
-                    host=self.host, user=self.user, password=self.password, database=self.database,
-                    timeout=120
+                    host=self.host, user=self.user, password=self.password, database=self.database, timeout=120
                 )
         except asyncpg.exceptions.ConnectionFailureError as ex:
             raise RuntimeError(
@@ -232,97 +227,3 @@ def load_vae() -> VAE:
     mdl = VAE(input_dim=1, aggregate_dim=1, date_dim=13, latent_dim=5, hidden_dim=64, num_layers=1)
     mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
     return mdl
-
-
-from asyncio import Queue
-import asyncio
-from typing import Never, Any
-import pydantic
-from enum import Enum, auto
-from concurrent.futures import ProcessPoolExecutor
-from app.models.carbon_intensity import GridCO2Request
-from app.routers.carbon_intensity import generate_grid_co2
-from .dependencies import get_db_pool, get_http_client
-class JobType(Enum):
-    ElectricalLoad = auto()
-    GridCO2 = auto()
-
-class JobState(Enum):
-    Waiting = auto()
-    Executing = auto()
-    Completed = auto()
-    Error = auto()
-
-class DummyRequest():
-    sleep_time: float = 1.0
-
-class PrepochJobType:
-    request: GridCO2Request | DummyRequest 
-    job_state: JobState
-
-    def __init__(self, request):
-        self.request = request
-        self.job_state = JobState.Waiting
-
-type PrepochJobQueueT = Queue[PrepochJobType]
-
-import time
-
-async def process_jobs(queue: PrepochJobQueueT, pool: DatabasePoolDep, http_client: HttpClientDep,
-                       max_iters: int | None = None) -> Never | None:
-    iters = 0
-    while True:
-        iters += 1
-        if max_iters is not None and iters > max_iters:
-            # This is a bailout for unit tests, where we set max_iters
-            # and have this complete after a short amount of time
-            print(f"Breaking after {iters}")
-            return
-        
-        if queue.empty():
-            # If there are no queue entries, then just using queue.get()
-            # will wait until we get a job.
-            # Instead, spin until the queue is filled with some little breaks
-            # to give others a chance to work.
-            await asyncio.sleep(0.1)
-            continue
-        
-        job = await queue.get()
-        print(type(job.request))
-        match job.request:
-            case GridCO2Request():
-                future = await generate_grid_co2(job.request, pool=pool, http_client=http_client)
-            case DummyRequest():
-                future = await asyncio.sleep(job.request.sleep_time)
-            case _:
-                raise ValueError(f"Got a bad job type: {job.request}")
-        if hasattr(job.request, "sleep_time"):
-            print("Slept for ", job.request.sleep_time)
-        job.job_state = JobState.Completed
-        queue.task_done()
-        print("Task done", queue.qsize(), queue.empty())
-
-_QUEUE: PrepochJobQueueT | None = None
-async def get_job_queue() -> PrepochJobQueueT | None:
-    return _QUEUE
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
-    """Set up a long clients: a database pool and an HTTP client."""
-    # Startup events
-    loop = asyncio.get_running_loop()
-    thread_pool = await get_thread_pool()
-    loop.set_default_executor(thread_pool)
-    await db.create_pool()
-    assert db.pool is not None, "Failed to create DB pool"
-    global elec_vae_mdl
-    elec_vae_mdl = load_vae()
-    
-    global _QUEUE
-    _QUEUE = Queue[PrepochJobType]()
-    queue = await get_job_queue()
-    assert queue is not None
-    # queue_task = asyncio.create_task(process_jobs(queue, pool=db.pool, http_client=await get_http_client().__anext__()))
-    yield  # type: ignore
-    # Shutdown events
-     #await http_client.aclose()

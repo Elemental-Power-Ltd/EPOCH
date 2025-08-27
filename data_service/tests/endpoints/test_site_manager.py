@@ -6,7 +6,6 @@ import datetime
 import json
 import uuid
 
-import asyncpg
 import httpx
 import numpy as np
 import pytest
@@ -18,7 +17,6 @@ from app.internal.site_manager.bundles import insert_dataset_bundle
 from app.internal.utils.uuid import uuid7
 from app.models.heating_load import InterventionEnum
 from app.models.site_manager import DatasetBundleMetadata
-
 
 from .conftest import get_pool_hack
 

@@ -27,6 +27,7 @@ from ..internal.site_manager.bundles import file_self_with_bundle, insert_datase
 from ..internal.site_manager.dataset_lists import list_baseline_datasets
 from ..internal.site_manager.fetch_data import fetch_all_input_data
 from ..internal.utils.uuid import uuid7
+from ..job_queue import JobQueueDep
 from ..models.carbon_intensity import GridCO2Request
 from ..models.client_data import SiteDataEntries, SolarLocation
 from ..models.core import (
@@ -1001,3 +1002,233 @@ async def generate_all(
     # Check that the gas and electricity metadata tasks were handled okay before we tidy up
     _ = [gas_task_handle.result(), elec_task_handle.result()]
     return to_generate
+
+
+@router.post("/generate-all-queue")
+async def generate_all_queue(
+    params: SiteIDWithTime, pool: DatabasePoolDep, queue: JobQueueDep
+) -> dict[DatasetTypeEnum, DatasetEntry | list[DatasetEntry]]:
+    """
+    Run all dataset generation tasks for this site.
+
+    This includes heating load, grid CO2, electrical load, carbon intensity and solar PV.
+    Currently it uses a simple tariff that covers a long period of time, and optimal solar PV parameters.
+    You almost certainly want the timestamps to be 2021 or 2022 so we can use renewables.ninja data, and relatively recent
+    tariff data.
+
+    This will run background tasks for each sub item, which can take upwards of 1 minute.
+    For that reason, we'll return an empty set of null data early and chug along in the background.
+    This may block the main thread, so be careful.
+
+    Parameters
+    ----------
+    params
+        SiteIDWithTime, including two relatively far back timestamps for Renewables Ninja to use.
+    pool
+        Connection pool to underlying PostgreSQL database
+    http_client
+        Asynchronous HTTP client to use for requests to 3rd party APIs
+    vae
+        ML model for upscaling of electrical data
+    secrets_env
+        Client secrets environment
+    background_tasks
+        Task group to run after returning data
+
+    Returns
+    -------
+    datasets
+        Dataset Type: Dataset Entry mapping, but with placeholder null UUIDs as the background tasks need to run.
+        Note that this will return immediately, but block this thread until the calculations are done.
+    """
+    bundle_metadata = DatasetBundleMetadata(
+        bundle_id=uuid7(),
+        name=None,
+        site_id=params.site_id,
+        start_ts=params.start_ts,
+        end_ts=params.end_ts,
+        available_datasets=[],  # Leave this empty to start and we'll fill it in as we go along
+    )
+    # File the metadata before we do anything else
+    await insert_dataset_bundle(bundle_metadata=bundle_metadata, pool=pool)
+
+    async with asyncio.TaskGroup() as tg:
+        gas_dataset_task = tg.create_task(
+            pool.fetchval(
+                """
+            SELECT
+                dataset_id
+            FROM client_meters.metadata
+            WHERE site_id = $1 AND fuel_type = 'gas' AND NOT is_synthesised
+            ORDER BY created_at DESC
+            LIMIT 1""",
+                params.site_id,
+            )
+        )
+        elec_meter_dataset_task = tg.create_task(
+            pool.fetchval(
+                """
+            SELECT
+                dataset_id
+            FROM client_meters.metadata
+            WHERE site_id = $1 AND fuel_type = 'elec' AND NOT is_synthesised
+            ORDER BY created_at DESC
+            LIMIT 1""",
+                params.site_id,
+            )
+        )
+
+        baseline_task = tg.create_task(
+            pool.fetchval(
+                """SELECT baseline_id FROM client_info.site_baselines
+                          WHERE site_id = $1 ORDER BY created_at DESC LIMIT 1""",
+                params.site_id,
+            )
+        )
+    gas_meter_dataset_id = gas_dataset_task.result()
+    elec_meter_dataset_id = elec_meter_dataset_task.result()
+    baseline_id = baseline_task.result()
+    if gas_meter_dataset_id is None:
+        raise HTTPException(400, f"No gas meter data for {params.site_id}.")
+    if elec_meter_dataset_id is None:
+        raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
+
+    if baseline_id is not None:
+        await file_self_with_bundle(
+            pool,
+            BundleEntryMetadata(
+                bundle_id=bundle_metadata.bundle_id,
+                dataset_id=baseline_id,
+                dataset_type=DatasetTypeEnum.SiteBaseline,
+                dataset_subtype=None,
+            ),
+        )
+
+    # Attach the two meter datasets we've used to this bundle
+    async with asyncio.TaskGroup() as tg:
+        gas_task_handle = tg.create_task(
+            file_self_with_bundle(
+                pool,
+                BundleEntryMetadata(
+                    bundle_id=bundle_metadata.bundle_id,
+                    dataset_id=gas_meter_dataset_id,
+                    dataset_type=DatasetTypeEnum.GasMeterData,
+                    dataset_subtype=None,
+                ),
+            )
+        )
+        elec_task_handle = tg.create_task(
+            file_self_with_bundle(
+                pool,
+                BundleEntryMetadata(
+                    bundle_id=bundle_metadata.bundle_id,
+                    dataset_id=elec_meter_dataset_id,
+                    dataset_type=DatasetTypeEnum.ElectricityMeterData,
+                    dataset_subtype=None,
+                ),
+            )
+        )
+    # Most of these are single datasets, but prime the list of desired UUIDs with empty lists
+    # for the cases where we'll need them.
+    POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
+    for idx, interventions in enumerate(POTENTIAL_INTERVENTIONS):
+        req = HeatingLoadRequest(
+            dataset_id=gas_meter_dataset_id,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            interventions=interventions,
+            bundle_metadata=BundleEntryMetadata(
+                bundle_id=bundle_metadata.bundle_id,
+                dataset_id=uuid7(),
+                dataset_type=DatasetTypeEnum.HeatingLoad,
+                dataset_subtype=interventions,
+                dataset_order=idx,
+            ),
+        )
+        await queue.put(req)
+
+    grid_req = GridCO2Request(
+        site_id=params.site_id,
+        start_ts=params.start_ts,
+        end_ts=params.end_ts,
+        bundle_metadata=BundleEntryMetadata(
+            bundle_id=bundle_metadata.bundle_id,
+            dataset_id=uuid7(),
+            dataset_type=DatasetTypeEnum.CarbonIntensity,
+            dataset_subtype=None,
+        ),
+    )
+    await queue.put(grid_req)
+
+    # We generate five different types of tariff, here done manually to keep track of the
+    # tasks and not lose the handle to the task (which causes mysterious bugs)
+    # Note that the order here doesn't matter, we just explicitly list them so it's clear what is going on.
+    CHOSEN_TARIFFS = [
+        SyntheticTariffEnum.Fixed,
+        SyntheticTariffEnum.Agile,
+        SyntheticTariffEnum.Peak,
+        SyntheticTariffEnum.Overnight,
+        # SyntheticTariffEnum.ShapeShifter,
+    ]
+    for idx, tariff_type in enumerate(CHOSEN_TARIFFS):
+        tariff_req = TariffRequest(
+            site_id=params.site_id,
+            tariff_name=tariff_type,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            bundle_metadata=BundleEntryMetadata(
+                bundle_id=bundle_metadata.bundle_id,
+                dataset_id=uuid7(),
+                dataset_type=DatasetTypeEnum.ImportTariff,
+                dataset_subtype=tariff_type,
+                dataset_order=idx,
+            ),
+        )
+        await queue.put(tariff_req)
+
+    solar_locns = await get_solar_locations(SiteID(site_id=params.site_id), pool=pool)
+    if not solar_locns:
+        # This site doesn't have any solar locations specified so use a sensible default.
+        DEFAULT_SOLAR_LOCN = SolarLocation(
+            site_id=params.site_id,
+            name="Default",
+            renewables_location_id="default",
+            azimuth=None,
+            tilt=None,
+            maxpower=float("inf"),
+        )
+        solar_locns = [DEFAULT_SOLAR_LOCN]
+
+    for idx, solar_location in enumerate(solar_locns):
+        renewables_req = RenewablesRequest(
+            site_id=params.site_id,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            azimuth=solar_location.azimuth,
+            tilt=solar_location.tilt,
+            renewables_location_id=solar_location.renewables_location_id,
+            bundle_metadata=BundleEntryMetadata(
+                bundle_id=bundle_metadata.bundle_id,
+                dataset_id=uuid7(),
+                dataset_type=DatasetTypeEnum.RenewablesGeneration,
+                dataset_subtype=solar_location.renewables_location_id,
+                dataset_order=idx,
+            ),
+        )
+        await queue.put(renewables_req)
+
+    elec_req = ElectricalLoadRequest(
+        dataset_id=elec_meter_dataset_id,
+        start_ts=params.start_ts,
+        end_ts=params.end_ts,
+        bundle_metadata=BundleEntryMetadata(
+            bundle_id=bundle_metadata.bundle_id,
+            dataset_id=uuid7(),
+            dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
+            dataset_subtype=None,
+        ),
+    )
+    await queue.put(elec_req)
+    # Check that the gas and electricity metadata tasks were handled okay before we tidy up
+    _ = [gas_task_handle.result(), elec_task_handle.result()]
+    return None
