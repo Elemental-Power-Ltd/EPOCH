@@ -3,6 +3,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS optimisation.site_task_config (
     task_id UUID NOT NULL REFERENCES optimisation.task_config (task_id),
     site_id TEXT NOT NULL,
+    bundle_id UUID,
     site_range JSONB,
     site_constraints JSONB,
     site_data JSONB
