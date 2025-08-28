@@ -36,6 +36,19 @@ export interface OptimisationTaskListEntry {
 
 export type Grade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
 
+
+export interface CostInfo {
+  /** Display name for this cost item. */
+  name: string;
+  /** Key of the EPOCH component type this cost belongs to. */
+  component?: string | null;
+  /** The net cost of the item in pounds, including all sub_components minus any funding. */
+  cost: number;
+  /** The sub-components that make up this cost item, or the empty list if there are none. */
+  sub_components: CostInfo[];
+}
+
+
 export interface SiteMetrics {
     meter_balance?: number;
     operating_balance?: number;
@@ -77,6 +90,8 @@ export interface SiteMetrics {
 
     scenario_environmental_impact_score?: number;
     scenario_environmental_impact_grade?: Grade;
+
+    scenario_capex_breakdown?: CostInfo[];
 
     baseline_gas_used?: number;
     baseline_electricity_imported?: number;

@@ -352,5 +352,15 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
         label: "Baseline Grade",
         icon: "Assessment",
         format: fmtUnchanged,
-    }};
+    },
+    // FIXME - refactor needed
+    //  this doesn't really make sense as the capex breakdown isn't a simple metric like the others
+    //  but MetricDefs requires all keys be present here
+    scenario_capex_breakdown: {
+        key: "scenario_capex_breakdown",
+        label: "Capex Breakdown",
+        icon: "Pound",
+        format: fmtUnchanged,
+    }
+};
 

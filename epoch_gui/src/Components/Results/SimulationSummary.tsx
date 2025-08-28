@@ -17,7 +17,7 @@ import {TaskData} from "../TaskDataViewer/TaskData.ts";
 import { TaskDataViewer } from '../TaskDataViewer/TaskDataViewer.tsx';
 import { MetricKey } from '../../util/MetricDefinitions.ts';
 import {Metric} from "./Metric.tsx";
-
+import {CostInfoTree} from "./CostInfoTree";
 
 interface SimulationSummaryProps {
   result: SimulationResult | null;
@@ -146,6 +146,24 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           </Grid>
       )
 
+      const renderCapexBreakdown = () => {
+          if (!result.metrics.scenario_capex_breakdown) {
+              return (
+                  <Box sx={{width: "100%", mt: 2}}>
+                      <Alert severity="info">
+                          Capex Breakdown Unavailable
+                      </Alert>
+                  </Box>
+              )
+          }
+
+          return (
+              <CostInfoTree
+                  items={result.metrics.scenario_capex_breakdown!}
+                  totalCapex={result.metrics.capex}
+              />
+          )
+      }
 
       return (
         <Box>
@@ -154,10 +172,11 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           {tabValue === 2 && (renderTab([scenarioMeter, baselineMeter]))}
           {tabValue === 3 && (renderTab([financial1, financial2]))}
           {tabValue === 4 && (renderTab([scenarioCarbon, baselineCarbon]))}
+          {tabValue === 5 && (renderCapexBreakdown())}
 
 
-          {tabValue === 5 && (<TaskDataViewer data={scenario!}/>)}
-          {tabValue === 6 && (<TaskDataViewer data={baseline!}/>)}
+          {tabValue === 6 && (<TaskDataViewer data={scenario!}/>)}
+          {tabValue === 7 && (<TaskDataViewer data={baseline!}/>)}
         </Box>
       )
     }
@@ -176,6 +195,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           <Tab label={"Meter"}/>
           <Tab label={"Financial"}/>
           <Tab label={"Carbon"}/>
+          <Tab label={"Capex"}/>
           {scenario !== null && <Tab label={"Scenario"}/>}
           {baseline !== null && <Tab label={"Baseline"}/>}
         </Tabs>
