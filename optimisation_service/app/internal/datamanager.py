@@ -180,18 +180,18 @@ class DataManager:
         """
         repro_config = await self.get_result_configuration(portfolio_id)
 
-        if site_id not in repro_config.site_data or site_id not in repro_config.task_data:
+        if site_id not in repro_config.task_data:
             raise HTTPException(400, detail=f"No result found for (portfolio, site) pair: {portfolio_id}, {site_id}")
 
         task_data = repro_config.task_data[site_id]
 
-        if isinstance(LegacyResultReproConfig, repro_config):
+        if isinstance(repro_config, LegacyResultReproConfig):
             site_data = repro_config.site_data[site_id]
             validate_for_necessary_datasets(site_data)
             site_data_entries = await self.fetch_specific_datasets(site_data)
             start_ts, end_ts = site_data.start_ts, site_data.end_ts
 
-        elif isinstance(NewResultReproConfig, repro_config):
+        elif isinstance(repro_config, NewResultReproConfig):
             bundle_id = repro_config.bundle_ids[site_id]
             site_data_entries = await self.get_bundled_data(bundle_id=bundle_id)
             start_ts, end_ts = await self.get_bundle_timestamps(bundle_id=bundle_id)
