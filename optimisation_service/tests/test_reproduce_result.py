@@ -7,7 +7,7 @@ from app.models.simulate import LegacyResultReproConfig
 from app.models.site_data import SiteMetaData
 
 
-class TestResultReproConfig:
+class TestLegacyResultReproConfig:
     def test_can_construct_uuid7(self) -> None:
         """Test that we can construct a LegacyResultReproConfig with UUIDv7"""
         config = LegacyResultReproConfig(
@@ -29,7 +29,7 @@ class TestResultReproConfig:
         assert round_tripped == config
 
     def test_can_construct_uuid4(self) -> None:
-        """Test that we can construct a LegacyResultReproConfig with UUIDv7"""
+        """Test that we can construct a LegacyResultReproConfig with UUIDv4"""
         config = LegacyResultReproConfig(
             portfolio_id=uuid4(),
             task_data={"demo_london": TaskData()},

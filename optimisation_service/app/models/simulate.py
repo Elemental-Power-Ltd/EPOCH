@@ -30,7 +30,7 @@ class LegacyResultReproConfig(ResultReproConfig):
     site_data: dict[site_id_t, SiteMetaData]
 
 
-result_repor_config_t = NewResultReproConfig | LegacyResultReproConfig
+type result_repro_config_t = NewResultReproConfig | LegacyResultReproConfig
 
 
 class GetSavedSiteDataRequest(BaseModel):

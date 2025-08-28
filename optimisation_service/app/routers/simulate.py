@@ -159,11 +159,27 @@ def report_data_to_dict(report_data: ReportData) -> dict[str, list[float]]:
     -------
         A dictionary representation of the report_data
     """
+
+    def filter_report_data_fields(fields: list[str]) -> list[str]:
+        """
+        Crude method of finding the useful report data's fields.
+
+        Filter out the methods that start with "__" and "_pybind11_conduit_v1_".
+
+        Parameters
+        ----------
+        fields
+            list of fields to filter.
+
+        Returns
+        -------
+            list of filtered fields.
+        """
+        return [field for field in fields if field != "_pybind11_conduit_v1_" and not field.startswith("__")]
+
     report_dict = {}
     if report_data is not None:
-        # Crude method of finding the fields
-        # Look for all the methods in the report data that don't start with "__"
-        fields = [field for field in dir(report_data) if field != "_pybind11_conduit_v1_" and not field.startswith("__")]
+        fields = filter_report_data_fields(fields=dir(report_data))
 
         # all fields are currently numpy arrays
         # we want the non-zero arrays

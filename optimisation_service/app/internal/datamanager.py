@@ -14,7 +14,7 @@ from pydantic import UUID7, AwareDatetime
 
 from app.models.core import OptimisationResultEntry, Site, Task
 from app.models.database import bundle_id_t, dataset_id_t
-from app.models.simulate import EpochInputData, LegacyResultReproConfig, NewResultReproConfig, result_repor_config_t
+from app.models.simulate import EpochInputData, LegacyResultReproConfig, NewResultReproConfig, result_repro_config_t
 from app.models.site_data import DatasetTypeEnum, EpochSiteData, SiteDataEntries, SiteMetaData
 
 logger = logging.getLogger("default")
@@ -191,7 +191,7 @@ class DataManager:
             site_data_entries = await self.fetch_specific_datasets(site_data)
             start_ts, end_ts = site_data.start_ts, site_data.end_ts
 
-        elif isinstance(repro_config, NewResultReproConfig):
+        else:
             bundle_id = repro_config.bundle_ids[site_id]
             site_data_entries = await self.get_bundled_data(bundle_id=bundle_id)
             start_ts, end_ts = await self.get_bundle_timestamps(bundle_id=bundle_id)
@@ -345,7 +345,7 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-task", data=data)
 
-    async def get_result_configuration(self, portfolio_id: dataset_id_t) -> result_repor_config_t:
+    async def get_result_configuration(self, portfolio_id: dataset_id_t) -> result_repro_config_t:
         """
         Get the configuration that was used to generate a portfolio result that is stored in the database.
 
