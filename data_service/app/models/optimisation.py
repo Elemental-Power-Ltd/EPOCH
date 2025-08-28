@@ -1,4 +1,5 @@
 """Models for EPOCH/GA optimisation tasks, both queuing and completing."""
+from __future__ import annotations
 
 # ruff: noqa: D101
 import datetime
@@ -23,6 +24,17 @@ class Grade(StrEnum):
     E = "E"
     F = "F"
     G = "G"
+
+
+class CostInfo(BaseModel):
+    name: str = Field(examples=["Solar Panel"], description="Display name for this cost item.")
+    component: str | None = Field(examples=["solar_panel"],
+                                  description="Key of the EPOCH component type this cost belongs to.", default=None)
+    cost: float = Field(examples=[1200.0],
+                        description="The net cost of the item in pounds, including all sub_components minus any funding.")
+    sub_components: list[CostInfo] = Field(
+        description="The sub-components that make up this cost item, or the empty list if there are none.",
+        default_factory=list)
 
 
 class SimulationMetrics(BaseModel):
@@ -117,6 +129,8 @@ class SimulationMetrics(BaseModel):
         description="environmental impact score based on SAP", default=None)
     scenario_environmental_impact_grade: Grade | None = Field(
         description="environmental impact grade (A-G)", default=None)
+
+    scenario_capex_breakdown: list[CostInfo] | None = Field(description="Breakdown of scenario expenditure.", default=None)
 
     baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh).", default=None)
     baseline_electricity_imported: float | None = Field(
