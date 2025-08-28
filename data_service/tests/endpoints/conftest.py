@@ -36,7 +36,7 @@ from app.dependencies import (
 from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
-from app.job_queue import TerminateTaskGroup, get_job_queue, process_jobs, GenericJobRequest
+from app.job_queue import GenericJobRequest, TerminateTaskGroup, get_job_queue, process_jobs
 from app.main import app
 
 # apply a windows-specific patch for database termination (we can't use SIGINT)
@@ -52,6 +52,7 @@ if sys.platform.startswith("win"):
     testing.common.database.Database.terminate = win_terminate
 
 DO_MOCK = True
+NUM_WORKERS = 2
 
 
 async def apply_migrations(database: testing.postgresql.Database) -> None:
@@ -394,16 +395,17 @@ async def client() -> AsyncGenerator[AsyncClient]:
             asyncio.TaskGroup() as tg,
         ):
             # We also have to set up the queue handling task
-            _ = tg.create_task(
-                process_jobs(
-                    queue=override_get_job_queue(),
-                    pool=await override_get_db_pool().__anext__(),
-                    http_client=override_get_http_client(),
-                    vae=await get_vae_model(),
-                    secrets_env=await get_secrets_dependency(),
-                    ignore_exceptions=True,
+            for _ in range(NUM_WORKERS):
+                _ = tg.create_task(
+                    process_jobs(
+                        queue=override_get_job_queue(),
+                        pool=await override_get_db_pool().__anext__(),
+                        http_client=override_get_http_client(),
+                        vae=await get_vae_model(),
+                        secrets_env=await get_secrets_dependency(),
+                        ignore_exceptions=True,
+                    )
                 )
-            )
             yield client
             await queue.join()
             raise TerminateTaskGroup()

@@ -168,6 +168,25 @@ class TestGenerateAll:
         )
 
         assert generate_result.status_code == 200, generate_result.text
+        # Check that they're all generated
+        iters = 0
+        while True:
+            q_resp = await client.post("list-queue-contents", params={"bundle_id": generate_result.json()["bundle_id"]})
+            assert q_resp.is_success, q_resp.text
+            data = q_resp.json()
+            if iters == 0 and not data:
+                pytest.fail("Nothing queued")
+            if not data:
+                # This means the queue is empty!
+                break
+
+            # This is our backup bailout clause to prevent the tests
+            # hanging
+            await asyncio.sleep(1.0)
+            iters += 1
+            if iters > 120:
+                pytest.fail("Generate-all didn't empty in 2 minutes")
+
         list_result = await client.post(
             "/list-latest-datasets",
             json={
@@ -177,8 +196,8 @@ class TestGenerateAll:
             },
         )
         assert list_result.status_code == 200, list_result.text
-        assert list_result.json()["ElectricityMeterDataSynthesised"] is not None
-        assert list_result.json()["bundle_id"] is not None
+        assert list_result.json()["ElectricityMeterDataSynthesised"] is not None, "ElectricityMeterDataSynthesised is None"
+        assert list_result.json()["bundle_id"] is not None, "bundle id is None"
 
         data_result = await client.post(
             "/get-latest-datasets",

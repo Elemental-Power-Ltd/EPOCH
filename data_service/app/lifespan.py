@@ -10,6 +10,8 @@ from fastapi import FastAPI
 from .dependencies import db, get_http_client, get_secrets_dependency, get_thread_pool, get_vae_model
 from .job_queue import TerminateTaskGroup, get_job_queue, process_jobs
 
+NUM_WORKERS = 2
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
@@ -23,16 +25,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
 
     queue = await get_job_queue()
     async with asyncio.TaskGroup() as tg:
-        _ = tg.create_task(
-            process_jobs(
-                queue,
-                pool=db.pool,
-                http_client=await get_http_client().__anext__(),
-                vae=await get_vae_model(),
-                secrets_env=await get_secrets_dependency(),
-                ignore_exceptions=True,
+        for _ in range(NUM_WORKERS):
+            _ = tg.create_task(
+                process_jobs(
+                    queue,
+                    pool=db.pool,
+                    http_client=await get_http_client().__anext__(),
+                    vae=await get_vae_model(),
+                    secrets_env=await get_secrets_dependency(),
+                    ignore_exceptions=True,
+                )
             )
-        )
         yield  # type: ignore
         # Shutdown events
         queue.shutdown()

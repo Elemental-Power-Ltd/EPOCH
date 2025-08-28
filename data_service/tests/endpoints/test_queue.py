@@ -23,7 +23,7 @@ from app.models.heating_load import HeatingLoadRequest
 from app.models.import_tariffs import TariffRequest
 from app.models.renewables import RenewablesRequest, RenewablesWindRequest
 from app.models.site_manager import DatasetBundleMetadata
-from app.routers.site_manager import generate_all_queue, list_queue_contents
+from app.routers.site_manager import generate_all, list_queue_contents
 
 from .conftest import get_internal_client_hack, get_pool_hack
 
@@ -258,6 +258,7 @@ class TestQueueEndpoints:
     """Test queuing real tasks."""
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_add_grid_co2(self, queue_fixture: Queue[GenericJobRequest], client: httpx.AsyncClient) -> None:
         """Test that we successfully handled a queued grid CO2 request."""
         pool = await get_pool_hack(client)
@@ -422,6 +423,7 @@ class TestQueueEndpoints:
         assert is_in_db["exists"], "Not filed in DB"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_add_import_tariff(self, queue_fixture: Queue[GenericJobRequest], client: httpx.AsyncClient) -> None:
         """Test that we successfully handled a queued import tariff request."""
         pool = await get_pool_hack(client)
@@ -478,6 +480,7 @@ class TestQueueEndpoints:
         assert is_in_db["exists"], "Not filed in DB"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_add_renewables(self, queue_fixture: Queue, client: httpx.AsyncClient) -> None:
         """Test that we successfully handled a queued renewables request."""
         pool = await get_pool_hack(client)
@@ -535,6 +538,7 @@ class TestQueueEndpoints:
         assert is_in_db["exists"], "Not filed in DB"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_add_wind_renewables(self, queue_fixture: Queue, client: httpx.AsyncClient) -> None:
         """Test that we successfully handled a queued wind renewables request."""
         pool = await get_pool_hack(client)
@@ -596,6 +600,7 @@ class TestGenerateAllQueue:
     """Test that we can queue all requests."""
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_call_directly(
         self,
         upload_gas_data: dict[str, Jsonable],
@@ -608,7 +613,7 @@ class TestGenerateAllQueue:
         pool = await get_pool_hack(client)
         vae = load_vae()
         internal_client = get_internal_client_hack(client)
-        _ = await generate_all_queue(
+        _ = await generate_all(
             params=SiteIDWithTime(
                 site_id="demo_london",
                 start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
@@ -635,6 +640,7 @@ class TestGenerateAllQueue:
             pass
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_call_endpoint(
         self,
         upload_gas_data: dict[str, Jsonable],
@@ -648,14 +654,14 @@ class TestGenerateAllQueue:
             start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
             end_ts=datetime.datetime(year=2022, month=1, day=8, tzinfo=datetime.UTC),
         )
-        response = await client.post("generate-all-queue", json=json.loads(params.model_dump_json()))
+        response = await client.post("generate-all", json=json.loads(params.model_dump_json()))
         assert response.is_success, response.text
         # Check that they're all generated
         iters = 0
         while True:
-            resp = await client.post("list-queue-contents")
-            assert resp.is_success
-            data = resp.json()
+            q_resp = await client.post("list-queue-contents", params={"bundle_id": response.json()["bundle_id"]})
+            assert q_resp.is_success, q_resp.text
+            data = q_resp.json()
             if not data:
                 # This means the queue is empty!
                 break
@@ -670,7 +676,6 @@ class TestGenerateAllQueue:
         bundle_meta = response.json()
         bundled_data = await client.post("/get-dataset-bundle", params={"bundle_id": bundle_meta["bundle_id"]})
         assert bundled_data.is_success, bundled_data.text
-        print(bundled_data.json().keys())
         assert all(item is not None for item in bundled_data.json().values()), [
             key for key, val in bundled_data.json().items() if val is None
         ]
