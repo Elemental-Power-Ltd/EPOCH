@@ -30,6 +30,7 @@ from ..models.optimisation import (
     TaskConfig,
     result_repor_config_t,
 )
+from .site_manager import SiteDataEntry
 
 router = APIRouter()
 
@@ -697,7 +698,7 @@ async def add_optimisation_task(task_config: TaskConfig, pool: DatabasePoolDep) 
                             task_config.task_id,
                             site_id,
                             bundle_id,
-                            json.dumps(jsonable_encoder(task_config.site_constraints[site_id])),
+                            json.dumps(jsonable_encoder(task_config.site_constraints[site_id])),  # type: ignore
                             json.dumps(jsonable_encoder(task_config.portfolio_range[site_id])),
                         )
                         for site_id, bundle_id in task_config.bundle_ids.items()
@@ -750,17 +751,19 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
     if rows is None:
         raise HTTPException(400, f"No task configuration exists for result with id {result_id.result_id}")
 
-    site_datas = {}
     bundle_ids = {}
     scenarios = {}
 
     for row in rows:
         site_id = row["site_id"]
-        site_datas[site_id] = json.loads(row["site_data"]) if row["site_data"] is not None else None
         bundle_ids[site_id] = row["bundle_id"]
         scenarios[site_id] = json.loads(row["scenario"])
 
     if any(value is None for value in bundle_ids.values()):
+        site_datas: dict[str, SiteDataEntry] = {}
+        for row in rows:
+            site_datas[site_id] = json.loads(row["site_data"])
+
         return LegacyResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, site_data=site_datas)
 
     return NewResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, bundle_ids=bundle_ids)

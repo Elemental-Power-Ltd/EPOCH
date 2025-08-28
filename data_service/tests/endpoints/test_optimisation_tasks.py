@@ -23,7 +23,6 @@ from app.models.optimisation import (
     TaskConfig,
     TaskResult,
 )
-from app.models.site_manager import SiteDataEntry
 
 
 class TestOptimisationTaskDatabase:
@@ -52,17 +51,10 @@ class TestOptimisationTaskDatabase:
                 }
             },
             objectives=["capex", "carbon_balance"],
-            input_data={
-                "demo_london": SiteDataEntry(
-                    site_id="demo_london",
-                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid7(),
-                )
-            },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
             epoch_version="1.2.3",
+            bundle_ids={"demo_london": uuid7()},
         )
 
     @pytest.fixture
@@ -379,14 +371,7 @@ class TestOptimisationTaskDatabase:
         repro_data = repro_result.json()
         assert repro_data["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
 
-        assert isinstance(sample_task_config.input_data["demo_london"], SiteDataEntry)
-        assert (
-            datetime.datetime.fromisoformat(repro_data["site_data"]["demo_london"]["start_ts"])
-            == sample_task_config.input_data["demo_london"].start_ts
-        )
-        assert repro_data["site_data"]["demo_london"] == json.loads(
-            sample_task_config.input_data["demo_london"].model_dump_json()
-        )
+        assert repro_data["bundle_ids"]["demo_london"] == str(sample_task_config.bundle_ids["demo_london"])
         assert repro_data["task_data"] == {
             sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()
         }
@@ -465,17 +450,10 @@ class TestOptimisationTaskDatabaseUUID4:
                 }
             },
             objectives=["capex", "carbon_balance"],
-            input_data={
-                "demo_london": SiteDataEntry(
-                    site_id="demo_london",
-                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid.uuid4(),
-                )
-            },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
             epoch_version="v1.2.3",
+            bundle_ids={"demo_london": uuid7()},
         )
 
     @pytest.fixture
@@ -792,14 +770,7 @@ class TestOptimisationTaskDatabaseUUID4:
         repro_data = repro_result.json()
         assert repro_data["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
 
-        assert isinstance(sample_task_config.input_data["demo_london"], SiteDataEntry)
-        assert (
-            datetime.datetime.fromisoformat(repro_data["site_data"]["demo_london"]["start_ts"])
-            == sample_task_config.input_data["demo_london"].start_ts
-        )
-        assert repro_data["site_data"]["demo_london"] == json.loads(
-            sample_task_config.input_data["demo_london"].model_dump_json()
-        )
+        assert repro_data["bundle_ids"]["demo_london"] == str(sample_task_config.bundle_ids["demo_london"])
         assert repro_data["task_data"] == {
             sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()
         }
