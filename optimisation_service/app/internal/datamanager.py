@@ -324,11 +324,12 @@ class DataManager:
             Optimisation task.
         """
         logger.info(f"Adding {task.task_id} to database.")
-        portfolio_range, input_data, site_constraints = {}, {}, {}
+        portfolio_range, bundle_ids, site_constraints = {}, {}, {}
         for site in task.portfolio:
-            portfolio_range[site.site_data.site_id] = site.site_range
-            input_data[site.site_data.site_id] = site.site_data
-            site_constraints[site.site_data.site_id] = site.constraints
+            site_id = site.site_data.site_id
+            portfolio_range[site_id] = site.site_range
+            site_constraints[site_id] = site.constraints
+            bundle_ids[site_id] = site.site_data.bundle_id
         data = {
             "client_id": task.client_id,
             "task_id": task.task_id,
@@ -337,7 +338,7 @@ class DataManager:
             "optimiser": task.optimiser,
             "created_at": task.created_at,
             "portfolio_range": portfolio_range,
-            "input_data": input_data,
+            "bundle_ids": bundle_ids,
             "portfolio_constraints": task.portfolio_constraints,
             "site_constraints": site_constraints,
         }
