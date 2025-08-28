@@ -28,7 +28,7 @@ from ..models.optimisation import (
     SimulationMetrics,
     SiteOptimisationResult,
     TaskConfig,
-    result_repor_config_t,
+    result_repro_config_t,
 )
 from ..models.site_manager import SiteDataEntry
 
@@ -686,33 +686,28 @@ async def add_optimisation_task(task_config: TaskConfig, pool: DatabasePoolDep) 
 
             except asyncpg.exceptions.UniqueViolationError as ex:
                 raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
-            except asyncpg.PostgresSyntaxError as ex:
-                raise HTTPException(400, f"TaskID {task_config.task_id} had a syntax error {ex}") from ex
 
-            try:
-                await conn.copy_records_to_table(
-                    schema_name="optimisation",
-                    table_name="site_task_config",
-                    records=[
-                        (
-                            task_config.task_id,
-                            site_id,
-                            bundle_id,
-                            json.dumps(jsonable_encoder(task_config.site_constraints[site_id])),  # type: ignore
-                            json.dumps(jsonable_encoder(task_config.portfolio_range[site_id])),
-                        )
-                        for site_id, bundle_id in task_config.bundle_ids.items()
-                    ],
-                    columns=["task_id", "site_id", "bundle_id", "site_constraints", "site_range"],
-                )
-            except asyncpg.PostgresSyntaxError as ex:
-                raise HTTPException(400, f"TaskID {task_config.task_id} had a syntax error {ex}") from ex
+            await conn.copy_records_to_table(
+                schema_name="optimisation",
+                table_name="site_task_config",
+                records=[
+                    (
+                        task_config.task_id,
+                        site_id,
+                        bundle_id,
+                        json.dumps(jsonable_encoder(task_config.site_constraints[site_id])),  # type: ignore
+                        json.dumps(jsonable_encoder(task_config.portfolio_range[site_id])),
+                    )
+                    for site_id, bundle_id in task_config.bundle_ids.items()
+                ],
+                columns=["task_id", "site_id", "bundle_id", "site_constraints", "site_range"],
+            )
 
     return task_config
 
 
 @router.post("/get-result-configuration")
-async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -> result_repor_config_t:
+async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -> result_repro_config_t:
     """
     Return the configuration that was used to produce a given result.
 
@@ -725,28 +720,27 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
     -------
         All of the configuration data necessary to reproduce this simulation
     """
-    try:
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT
-                    stc.site_data,
-                    stc.site_id,
-                    stc.bundle_id,
-                    sr.scenario
-                FROM
-                    optimisation.site_results sr
-                JOIN
-                    optimisation.portfolio_results pr ON sr.portfolio_id = pr.portfolio_id
-                JOIN
-                    optimisation.site_task_config stc ON pr.task_id = stc.task_id
-                WHERE
-                    sr.portfolio_id = $1
-                """,
-                result_id.result_id,
-            )
-    except asyncpg.PostgresSyntaxError as ex:
-        raise HTTPException(400, f"portfolio_id {result_id} had a syntax error {ex}") from ex
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT
+                stc.site_data,
+                stc.site_id,
+                stc.bundle_id,
+                sr.scenario
+            FROM
+                optimisation.site_results AS sr
+            LEFT JOIN
+                optimisation.portfolio_results AS pr
+                ON sr.portfolio_id = pr.portfolio_id
+            LEFT JOIN
+                optimisation.site_task_config AS stc
+                ON pr.task_id = stc.task_id
+            WHERE
+                sr.portfolio_id = $1
+            """,
+            result_id.result_id,
+        )
 
     if rows is None:
         raise HTTPException(400, f"No task configuration exists for result with id {result_id.result_id}")
