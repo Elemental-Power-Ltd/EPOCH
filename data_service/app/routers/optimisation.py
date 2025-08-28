@@ -19,6 +19,8 @@ from ..internal.optimisation import pick_highlighted_results
 from ..models.core import ClientID, ResultID, TaskID
 from ..models.optimisation import (
     Grade,
+    LegacyResultReproConfig,
+    NewResultReproConfig,
     OptimisationResultEntry,
     OptimisationResultsResponse,
     OptimisationTaskListEntry,
