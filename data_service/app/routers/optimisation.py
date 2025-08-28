@@ -30,7 +30,7 @@ from ..models.optimisation import (
     TaskConfig,
     result_repor_config_t,
 )
-from .site_manager import SiteDataEntry
+from ..models.site_manager import SiteDataEntry
 
 router = APIRouter()
 
