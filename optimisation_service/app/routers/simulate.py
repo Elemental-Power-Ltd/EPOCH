@@ -73,7 +73,7 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
 @router.post("/get-latest-site-data")
 async def get_latest_site_data(site_data: SiteMetaData, data_manager: DataManagerDep) -> EpochSiteData:
     """
-    Serve an EPOCH compatible SiteData using the most recently generated dataset of each type.
+    Serve an EPOCH compatible SiteData using the most recent bundle for this site.
 
     Parameters
     ----------
@@ -163,8 +163,7 @@ def report_data_to_dict(report_data: ReportData) -> dict[str, list[float]]:
     if report_data is not None:
         # Crude method of finding the fields
         # Look for all the methods in the report data that don't start with "__"
-        fields = [field for field in dir(report_data)
-                  if field != "_pybind11_conduit_v1_" and not field.startswith("__")]
+        fields = [field for field in dir(report_data) if field != "_pybind11_conduit_v1_" and not field.startswith("__")]
 
         # all fields are currently numpy arrays
         # we want the non-zero arrays

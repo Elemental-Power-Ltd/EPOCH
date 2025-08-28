@@ -14,7 +14,7 @@ from pydantic import UUID7, AwareDatetime
 
 from app.models.core import OptimisationResultEntry, Site, Task
 from app.models.database import bundle_id_t, dataset_id_t
-from app.models.simulate import EpochInputData, ResultReproConfig
+from app.models.simulate import EpochInputData, LegacyResultReproConfig, NewResultReproConfig, result_repor_config_t
 from app.models.site_data import DatasetTypeEnum, EpochSiteData, SiteDataEntries, SiteMetaData
 
 logger = logging.getLogger("default")
@@ -183,14 +183,20 @@ class DataManager:
         if site_id not in repro_config.site_data or site_id not in repro_config.task_data:
             raise HTTPException(400, detail=f"No result found for (portfolio, site) pair: {portfolio_id}, {site_id}")
 
-        site_data = repro_config.site_data[site_id]
         task_data = repro_config.task_data[site_id]
 
-        validate_for_necessary_datasets(site_data)
+        if isinstance(LegacyResultReproConfig, repro_config):
+            site_data = repro_config.site_data[site_id]
+            validate_for_necessary_datasets(site_data)
+            site_data_entries = await self.fetch_specific_datasets(site_data)
+            start_ts, end_ts = site_data.start_ts, site_data.end_ts
 
-        dataset_entries = await self.fetch_specific_datasets(site_data)
+        elif isinstance(NewResultReproConfig, repro_config):
+            bundle_id = repro_config.bundle_ids[site_id]
+            site_data_entries = await self.get_bundled_data(bundle_id=bundle_id)
+            start_ts, end_ts = await self.get_bundle_timestamps(bundle_id=bundle_id)
 
-        epoch_data = self.transform_all_input_data(dataset_entries, site_data.start_ts, site_data.end_ts)
+        epoch_data = self.transform_all_input_data(site_data_entries, start_ts, end_ts)
 
         return EpochInputData(task_data=task_data, site_data=epoch_data)
 
@@ -338,7 +344,7 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             await self.db_post(client=client, subdirectory="/add-optimisation-task", data=data)
 
-    async def get_result_configuration(self, portfolio_id: dataset_id_t) -> ResultReproConfig:
+    async def get_result_configuration(self, portfolio_id: dataset_id_t) -> result_repor_config_t:
         """
         Get the configuration that was used to generate a portfolio result that is stored in the database.
 
@@ -355,7 +361,9 @@ class DataManager:
         async with httpx.AsyncClient() as client:
             data = await self.db_post(client, subdirectory="/get-result-configuration", data={"result_id": portfolio_id})
             logger.info("Repro with:", data)
-            return ResultReproConfig.model_validate(data)
+            if "site_data" in data:
+                return LegacyResultReproConfig.model_validate(data)
+            return NewResultReproConfig.model_validate(data)
 
 
 DataManagerDep = typing.Annotated[DataManager, Depends(DataManager)]
