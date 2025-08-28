@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime
+import json
 import logging
 import uuid
 import warnings
@@ -12,6 +13,7 @@ from typing import cast
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
+from ..internal.epl_typing import Jsonable
 from ..internal.site_manager import (
     list_ashp_datasets,
     list_carbon_intensity_datasets,
@@ -1004,10 +1006,39 @@ async def generate_all(
     return to_generate
 
 
+@router.post("/list-queue-contents")
+async def list_queue_contents(queue: JobQueueDep) -> list[dict[str, Jsonable]]:
+    """
+    List the current contents of the queue.
+
+    This will return the requests that we're hoping to tackle in the order we're going to tackle them.
+    It'll provide the JSON data so may not be round-trippable.
+    Requests from different bundle generation requests might have been mixed together.
+
+    Parameters
+    ----------
+    queue
+        Job queue to report on
+
+    Returns
+    -------
+    list[dict[str, Jsonable]]
+        list of JSON-ified requests that we're going to inspect.
+    """
+    # TODO (2025-08-28 MHJB): do we want to add filtering by bundle for this?
+    # TODO (2025-08-28 MHJB): do we want to return a tuple including the type?
+
+    # We sneakily access the private attribute, don't tell anyone
+    assert hasattr(queue, "_queue"), "Queue internal queue not yet initialised"
+
+    return [
+        json.loads(item.model_dump_json()) if hasattr(item, "model_dump_json") else {"generic": repr(item)}
+        for item in queue._queue
+    ]
+
+
 @router.post("/generate-all-queue")
-async def generate_all_queue(
-    params: SiteIDWithTime, pool: DatabasePoolDep, queue: JobQueueDep
-) -> dict[DatasetTypeEnum, DatasetEntry | list[DatasetEntry]]:
+async def generate_all_queue(params: SiteIDWithTime, pool: DatabasePoolDep, queue: JobQueueDep) -> DatasetBundleMetadata:
     """
     Run all dataset generation tasks for this site.
 
@@ -1229,6 +1260,16 @@ async def generate_all_queue(
         ),
     )
     await queue.put(elec_req)
+    # File the dummy ASHP datasets as part of the bundle
+    await file_self_with_bundle(
+        pool,
+        BundleEntryMetadata(
+            bundle_id=bundle_metadata.bundle_id,
+            dataset_id=NULL_UUID,
+            dataset_type=DatasetTypeEnum.ASHPData,
+            dataset_subtype=None,
+        ),
+    )
     # Check that the gas and electricity metadata tasks were handled okay before we tidy up
     _ = [gas_task_handle.result(), elec_task_handle.result()]
-    return None
+    return bundle_metadata

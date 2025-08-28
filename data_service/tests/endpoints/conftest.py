@@ -24,10 +24,19 @@ import pytest_asyncio
 import testing.postgresql  # type: ignore
 from httpx import ASGITransport, AsyncClient
 
-from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
+from app.dependencies import (
+    Database,
+    DBConnection,
+    get_db_conn,
+    get_db_pool,
+    get_http_client,
+    get_secrets_dependency,
+    get_vae_model,
+)
 from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
+from app.job_queue import TerminateTaskGroup, get_job_queue, process_jobs, GenericJobRequest
 from app.main import app
 
 # apply a windows-specific patch for database termination (we can't use SIGINT)
@@ -366,15 +375,41 @@ async def client() -> AsyncGenerator[AsyncClient]:
         return MockedHttpClient()
         # return _http_client
 
+    queue: asyncio.Queue[GenericJobRequest] = asyncio.Queue()
+
+    def override_get_job_queue() -> asyncio.Queue[GenericJobRequest]:
+        return queue
+
     app.dependency_overrides[get_db_pool] = override_get_db_pool
     app.dependency_overrides[get_db_conn] = override_get_db_conn
     app.dependency_overrides[get_http_client] = override_get_http_client
+    app.dependency_overrides[get_job_queue] = override_get_job_queue
 
-    async with AsyncClient(
-        transport=ASGITransport(app),
-        base_url="http://localhost",
-    ) as client:
-        yield client
+    try:
+        async with (
+            AsyncClient(
+                transport=ASGITransport(app),
+                base_url="http://localhost",
+            ) as client,
+            asyncio.TaskGroup() as tg,
+        ):
+            # We also have to set up the queue handling task
+            _ = tg.create_task(
+                process_jobs(
+                    queue=override_get_job_queue(),
+                    pool=await override_get_db_pool().__anext__(),
+                    http_client=override_get_http_client(),
+                    vae=await get_vae_model(),
+                    secrets_env=await get_secrets_dependency(),
+                    ignore_exceptions=True,
+                )
+            )
+            yield client
+            await queue.join()
+            raise TerminateTaskGroup()
+    except* TerminateTaskGroup:
+        pass
+
     del app.dependency_overrides[get_db_conn]
     del app.dependency_overrides[get_db_pool]
     del app.dependency_overrides[get_http_client]

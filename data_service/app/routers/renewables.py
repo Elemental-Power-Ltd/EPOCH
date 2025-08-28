@@ -242,7 +242,7 @@ async def generate_wind_generation(
     metadata = RenewablesMetadata(
         data_source="renewables.ninja wind",
         created_at=datetime.datetime.now(datetime.UTC),
-        dataset_id=uuid7(),
+        dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         site_id=params.site_id,
         parameters=params.model_dump_json(),
     )
