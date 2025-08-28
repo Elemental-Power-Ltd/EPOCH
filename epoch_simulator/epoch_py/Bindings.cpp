@@ -183,6 +183,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("comparison", &SimulationResult::comparison)
 		.def_readwrite("metrics", &SimulationResult::metrics)
 		.def_readwrite("baseline_metrics", &SimulationResult::baseline_metrics)
+		.def_readwrite("scenario_capex_breakdown", &SimulationResult::scenario_capex_breakdown)
 		.def_readwrite("report_data", &SimulationResult::report_data)
 		.def("__repr__", &resultToString);
 
@@ -278,6 +279,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("ASHP_used_hotroom_heat", &ReportData::ASHP_used_hotroom_heat);
 
 	pybind11::class_<CapexBreakdown>(m, "CapexBreakdown")
+		.def_readonly("building_fabric_capex", &CapexBreakdown::building_fabric_capex)
 		.def_readonly("dhw_capex", &CapexBreakdown::dhw_capex)
 		.def_readonly("ev_charger_cost", &CapexBreakdown::ev_charger_cost)
 		.def_readonly("ev_charger_install", &CapexBreakdown::ev_charger_install)

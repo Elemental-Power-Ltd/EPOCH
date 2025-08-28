@@ -82,6 +82,7 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 	result.baseline_metrics = mBaselineMetrics;
 	result.metrics = calculateMetrics(taskData, result.report_data.value(), scenarioUsage);
 	result.comparison = compareScenarios(mSiteData, mBaselineUsage, result.baseline_metrics, scenarioUsage, result.metrics);
+	result.scenario_capex_breakdown = capex;
 
 
 	if (simulationType != SimulationType::FullReporting) {

@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "3.0.0";
+const std::string EPOCH_VERSION = "3.1.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -130,12 +130,43 @@ struct SimulationMetrics {
 };
 
 
+struct CapexBreakdown {
+	float building_fabric_capex;
+
+	float dhw_capex;
+
+	float ev_charger_cost;
+	float ev_charger_install;
+
+	float gas_heater_capex;
+
+	float grid_capex;
+
+	float heatpump_capex;
+
+	float ess_pcs_capex;
+	float ess_enclosure_capex;
+	float ess_enclosure_disposal;
+
+	float pv_panel_capex;
+	float pv_roof_capex;
+	float pv_ground_capex;
+	float pv_BoP_capex;
+
+	float boiler_upgrade_scheme_funding;
+	float general_grant_funding;
+
+	float total_capex;
+};
+
+
 struct SimulationResult {
 	float runtime;
 
 	ScenarioComparison comparison;
 	SimulationMetrics metrics;
 	SimulationMetrics baseline_metrics;
+	CapexBreakdown scenario_capex_breakdown;
 
 	std::optional<ReportData> report_data;
 };

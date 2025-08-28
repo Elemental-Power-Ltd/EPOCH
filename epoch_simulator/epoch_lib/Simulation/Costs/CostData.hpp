@@ -85,34 +85,6 @@ struct SolarCapex {
 	float BoP_capex;
 };
 
-struct CapexBreakdown {
-	float building_fabric_capex;
-
-	float dhw_capex;
-
-	float ev_charger_cost;
-	float ev_charger_install;
-
-	float gas_heater_capex;
-
-	float grid_capex;
-
-	float heatpump_capex;
-
-	float ess_pcs_capex;
-	float ess_enclosure_capex;
-	float ess_enclosure_disposal;
-
-	float pv_panel_capex;
-	float pv_roof_capex;
-	float pv_ground_capex;
-	float pv_BoP_capex;
-
-	float boiler_upgrade_scheme_funding;
-	float general_grant_funding;
-
-	float total_capex;
-};
 
 struct OpexBreakdown {
 	float ess_pcs_opex;
