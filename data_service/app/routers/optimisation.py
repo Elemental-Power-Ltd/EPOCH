@@ -231,11 +231,10 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                         total_scope_1_emissions=nan_to_num(sub_item["metric_total_scope_1_emissions"]),
                         total_scope_2_emissions=nan_to_num(sub_item["metric_total_scope_2_emissions"]),
                         total_combined_carbon_emissions=nan_to_num(sub_item["metric_total_combined_carbon_emissions"]),
-                        scenario_environmental_impact_score=nan_to_num(
-                            sub_item["metric_scenario_environmental_impact_score"]),
-                        scenario_environmental_impact_grade=Grade[
-                            sub_item["metric_scenario_environmental_impact_grade"]] if sub_item[
-                            "metric_scenario_environmental_impact_grade"] else None,
+                        scenario_environmental_impact_score=nan_to_num(sub_item["metric_scenario_environmental_impact_score"]),
+                        scenario_environmental_impact_grade=Grade[sub_item["metric_scenario_environmental_impact_grade"]]
+                        if sub_item["metric_scenario_environmental_impact_grade"]
+                        else None,
                         scenario_capex_breakdown=capex_breakdown_from_json(sub_item["scenario_capex_breakdown"]),
                         # baseline metrics
                         baseline_gas_used=nan_to_num(sub_item["metric_baseline_gas_used"]),
@@ -525,7 +524,6 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             [item.metrics.scenario_environmental_impact_score for item in pf.site_results],
                             [item.metrics.scenario_environmental_impact_grade for item in pf.site_results],
                             [capex_breakdown_to_json(item.metrics.scenario_capex_breakdown) for item in pf.site_results],
-
                             [item.metrics.baseline_gas_used for item in pf.site_results],
                             [item.metrics.baseline_electricity_imported for item in pf.site_results],
                             [item.metrics.baseline_electricity_generated for item in pf.site_results],

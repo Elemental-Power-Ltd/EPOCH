@@ -366,6 +366,7 @@ class TestQueueEndpoints:
         assert is_in_db["exists"], "Not filed in DB"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_add_heating_load(
         self, queue_fixture: Queue[GenericJobRequest], client: httpx.AsyncClient, upload_gas_data: dict[str, Jsonable]
     ) -> None:
