@@ -697,8 +697,8 @@ async def add_optimisation_task(task_config: TaskConfig, pool: DatabasePoolDep) 
                             task_config.task_id,
                             site_id,
                             bundle_id,
-                            task_config.site_constraints[site_id],
-                            task_config.portfolio_range[site_id],
+                            json.dumps(jsonable_encoder(task_config.site_constraints[site_id])),
+                            json.dumps(jsonable_encoder(task_config.portfolio_range[site_id])),
                         )
                         for site_id, bundle_id in task_config.bundle_ids.items()
                     ],
@@ -724,25 +724,28 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
     -------
         All of the configuration data necessary to reproduce this simulation
     """
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT
-                stc.site_data,
-                stc.site_id,
-                stc.bundle_id,
-                sr.scenario
-            FROM
-                optimisation.site_results sr
-            JOIN
-                optimisation.portfolio_results pr ON sr.portfolio_id = pr.portfolio_id
-            JOIN
-                optimisation.site_task_config stc ON pr.task_id = stc.task_id
-            WHERE
-                sr.portfolio_id = $1
-            """,
-            result_id.result_id,
-        )
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    stc.site_data,
+                    stc.site_id,
+                    stc.bundle_id,
+                    sr.scenario
+                FROM
+                    optimisation.site_results sr
+                JOIN
+                    optimisation.portfolio_results pr ON sr.portfolio_id = pr.portfolio_id
+                JOIN
+                    optimisation.site_task_config stc ON pr.task_id = stc.task_id
+                WHERE
+                    sr.portfolio_id = $1
+                """,
+                result_id.result_id,
+            )
+    except asyncpg.PostgresSyntaxError as ex:
+        raise HTTPException(400, f"portfolio_id {result_id} had a syntax error {ex}") from ex
 
     if rows is None:
         raise HTTPException(400, f"No task configuration exists for result with id {result_id.result_id}")
@@ -753,9 +756,9 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
 
     for row in rows:
         site_id = row["site_id"]
-        site_datas[site_id] = row["site_data"]
+        site_datas[site_id] = json.loads(row["site_data"]) if row["site_data"] is not None else None
         bundle_ids[site_id] = row["bundle_id"]
-        scenarios[site_id] = row["scenario"]
+        scenarios[site_id] = json.loads(row["scenario"])
 
     if any(value is None for value in bundle_ids.values()):
         return LegacyResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, site_data=site_datas)
