@@ -3,13 +3,113 @@
 import json
 from typing import cast
 
-from epoch_simulator import SimulationResult, TaskData
+from epoch_simulator import CapexBreakdown, SimulationResult, TaskData
 
-from app.models.core import Grade, SimulationMetrics
+from app.models.core import CostInfo, Grade, SimulationMetrics
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric, MetricValues
 
 type Jsonable = float | int | str | dict[str, Jsonable]
+
+
+def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list[CostInfo]:
+    """
+    Convert an Epoch CapexBreakdown into a pydantic list of CostInfo objects.
+
+    Parameters
+    ----------
+    capex_breakdown
+        The CapexBreakdown instance to convert.
+
+    Returns
+    -------
+        A list of pydantic CostInfo models.
+    """
+    costs = []
+
+    if capex_breakdown.building_fabric_capex > 0:
+        costs.append(
+            CostInfo(name="Building Fabric", component="building", cost=capex_breakdown.building_fabric_capex)
+        )
+
+    if capex_breakdown.dhw_capex > 0:
+        costs.append(
+            CostInfo(name="Hot Water Cylinder", component="hot_water_cylinder", cost=capex_breakdown.dhw_capex)
+        )
+
+    total_ev_capex = capex_breakdown.ev_charger_cost + capex_breakdown.ev_charger_install
+    if total_ev_capex > 0:
+        charger_cost = CostInfo(name="EV Charger Unit", cost=capex_breakdown.ev_charger_cost)
+        install_cost = CostInfo(name="EV Charger Installation", cost=capex_breakdown.ev_charger_install)
+
+        costs.append(
+            CostInfo(
+                name="Electric Vehicle Chargers",
+                component="electric_vehicles",
+                cost=total_ev_capex,
+                sub_components=[charger_cost, install_cost]
+            )
+        )
+
+    if capex_breakdown.gas_heater_capex > 0:
+        costs.append(
+            CostInfo(name="Gas Heater", component="gas_heater", cost=capex_breakdown.gas_heater_capex)
+        )
+
+    if capex_breakdown.grid_capex > 0:
+        costs.append(
+            CostInfo(name="Grid Upgrade", component="grid", cost=capex_breakdown.grid_capex)
+        )
+
+    if capex_breakdown.heatpump_capex > 0:
+        costs.append(
+            CostInfo(name="Heat Pump", component="heat_pump", cost=capex_breakdown.heatpump_capex)
+        )
+
+    ess_capex = capex_breakdown.ess_pcs_capex + capex_breakdown.ess_enclosure_capex + capex_breakdown.ess_enclosure_disposal
+    if ess_capex > 0:
+        pcs_cost = CostInfo(name="ESS Power Conversion System", cost=capex_breakdown.ess_pcs_capex)
+        enclosure_cost = CostInfo(name="ESS Enclosure", cost=capex_breakdown.ess_enclosure_capex)
+        enclosure_disposal = CostInfo(name="ESS Enclosure Disposal", cost=capex_breakdown.ess_enclosure_disposal)
+
+        costs.append(
+            CostInfo(
+                name="Energy Storage System",
+                component="energy_storage_system",
+                cost=ess_capex,
+                sub_components=[pcs_cost, enclosure_cost, enclosure_disposal, enclosure_disposal]
+            )
+        )
+
+    total_pv_capex = (capex_breakdown.pv_panel_capex + capex_breakdown.pv_roof_capex
+                      + capex_breakdown.pv_ground_capex + capex_breakdown.pv_BoP_capex)
+    if total_pv_capex > 0:
+        panel_capex = CostInfo(name="Panel", cost=capex_breakdown.pv_panel_capex)
+        # for simplicity, combine ground_capex and roof_capex into a single installation line item
+        install_capex = CostInfo(name="Panel Installation",
+                                 cost=capex_breakdown.pv_ground_capex + capex_breakdown.pv_roof_capex)
+        balance_of_plant = CostInfo(name="Balance of Plant", cost=capex_breakdown.pv_BoP_capex)
+
+        costs.append(
+            CostInfo(
+                name="Solar Panels",
+                component="solar_panels",
+                cost=total_pv_capex,
+                sub_components=[panel_capex, install_capex, balance_of_plant]
+            )
+        )
+
+    # for funding, EPOCH returns positive values, which it subtracts from the total capex
+    # it makes more sense to display them as negative amounts in the GUI so we'll flip them
+
+    # BUS could be a sub_component of the Heat Pump but for now we'll all funding at the end for simplicity
+    if capex_breakdown.boiler_upgrade_scheme_funding != 0:
+        costs.append(CostInfo(name="Boiler Upgrade Scheme", cost=-1 * capex_breakdown.boiler_upgrade_scheme_funding))
+
+    if capex_breakdown.general_grant_funding != 0:
+        costs.append(CostInfo(name="General Grant Funding", cost=-1 * capex_breakdown.general_grant_funding))
+
+    return costs
 
 
 def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMetrics:
@@ -76,6 +176,8 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
 
         scenario_environmental_impact_score=scenario.environmental_impact_score,
         scenario_environmental_impact_grade=scenario_grade,
+
+        scenario_capex_breakdown=convert_capex_breakdown_to_pydantic(sim_result.scenario_capex_breakdown),
 
         # Baseline Metrics
         baseline_gas_used=baseline.total_gas_used,
