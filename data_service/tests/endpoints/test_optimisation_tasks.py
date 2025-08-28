@@ -9,6 +9,7 @@ import httpx
 import numpy as np
 import pydantic
 import pytest
+import pytest_asyncio
 
 from app.internal.utils.uuid import uuid7
 from app.models.epoch_types import TaskDataPydantic
@@ -28,9 +29,23 @@ from app.models.optimisation import (
 class TestOptimisationTaskDatabase:
     """Integration tests for adding and querying optimisation tasks."""
 
-    @pytest.fixture
-    def sample_task_config(self) -> TaskConfig:
+    @pytest_asyncio.fixture
+    async def sample_task_config(self, client: httpx.AsyncClient) -> TaskConfig:
         """Create a sample task to put in our database."""
+        bundle_id = str(uuid7())
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": bundle_id,
+                "name": "Task Config Tests",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
         return TaskConfig(
             task_id=uuid7(),
             task_name="test_task_config",
@@ -54,7 +69,7 @@ class TestOptimisationTaskDatabase:
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
             epoch_version="1.2.3",
-            bundle_ids={"demo_london": uuid7()},
+            bundle_ids={"demo_london": bundle_id},
         )
 
     @pytest.fixture
@@ -427,9 +442,23 @@ class TestOptimisationTaskDatabase:
 class TestOptimisationTaskDatabaseUUID4:
     """Integration tests for adding and querying optimisation tasks with old-style UUID4s."""
 
-    @pytest.fixture
-    def sample_task_config(self) -> TaskConfig:
+    @pytest_asyncio.fixture
+    async def sample_task_config(self, client: httpx.AsyncClient) -> TaskConfig:
         """Create a sample task to put in our database."""
+        bundle_id = str(uuid.uuid4())
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": bundle_id,
+                "name": "Task Config Tests",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
         return TaskConfig(
             task_id=uuid.uuid4(),
             task_name="test_task_config",
@@ -453,7 +482,7 @@ class TestOptimisationTaskDatabaseUUID4:
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
             epoch_version="v1.2.3",
-            bundle_ids={"demo_london": uuid7()},
+            bundle_ids={"demo_london": bundle_id},
         )
 
     @pytest.fixture
