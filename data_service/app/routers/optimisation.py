@@ -16,6 +16,7 @@ from fastapi.encoders import jsonable_encoder
 
 from ..dependencies import DatabasePoolDep
 from ..internal.optimisation import pick_highlighted_results
+from ..internal.optimisation.util import capex_breakdown_from_json, capex_breakdown_to_json
 from ..models.core import ClientID, ResultID, TaskID
 from ..models.optimisation import (
     Grade,
@@ -167,6 +168,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                 # these columns don't exist in the portfolio table
                 scenario_environmental_impact_score=None,
                 scenario_environmental_impact_grade=None,
+                scenario_capex_breakdown=None,
                 # baseline metrics
                 baseline_gas_used=nan_to_num(item["metric_baseline_gas_used"]),
                 baseline_electricity_imported=nan_to_num(item["metric_baseline_electricity_imported"]),
@@ -229,10 +231,12 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                         total_scope_1_emissions=nan_to_num(sub_item["metric_total_scope_1_emissions"]),
                         total_scope_2_emissions=nan_to_num(sub_item["metric_total_scope_2_emissions"]),
                         total_combined_carbon_emissions=nan_to_num(sub_item["metric_total_combined_carbon_emissions"]),
-                        scenario_environmental_impact_score=nan_to_num(sub_item["metric_scenario_environmental_impact_score"]),
-                        scenario_environmental_impact_grade=Grade[sub_item["metric_scenario_environmental_impact_grade"]]
-                        if sub_item["metric_scenario_environmental_impact_grade"]
-                        else None,
+                        scenario_environmental_impact_score=nan_to_num(
+                            sub_item["metric_scenario_environmental_impact_score"]),
+                        scenario_environmental_impact_grade=Grade[
+                            sub_item["metric_scenario_environmental_impact_grade"]] if sub_item[
+                            "metric_scenario_environmental_impact_grade"] else None,
+                        scenario_capex_breakdown=capex_breakdown_from_json(sub_item["scenario_capex_breakdown"]),
                         # baseline metrics
                         baseline_gas_used=nan_to_num(sub_item["metric_baseline_gas_used"]),
                         baseline_electricity_imported=nan_to_num(sub_item["metric_baseline_electricity_imported"]),
@@ -520,6 +524,8 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             [item.metrics.total_combined_carbon_emissions for item in pf.site_results],
                             [item.metrics.scenario_environmental_impact_score for item in pf.site_results],
                             [item.metrics.scenario_environmental_impact_grade for item in pf.site_results],
+                            [capex_breakdown_to_json(item.metrics.scenario_capex_breakdown) for item in pf.site_results],
+
                             [item.metrics.baseline_gas_used for item in pf.site_results],
                             [item.metrics.baseline_electricity_imported for item in pf.site_results],
                             [item.metrics.baseline_electricity_generated for item in pf.site_results],
@@ -579,6 +585,7 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             "metric_total_combined_carbon_emissions",
                             "metric_scenario_environmental_impact_score",
                             "metric_scenario_environmental_impact_grade",
+                            "scenario_capex_breakdown",
                             "metric_baseline_gas_used",
                             "metric_baseline_electricity_imported",
                             "metric_baseline_electricity_generated",
