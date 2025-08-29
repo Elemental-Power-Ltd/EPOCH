@@ -10,7 +10,6 @@ from enum import StrEnum
 import pydantic
 from pydantic import BaseModel, Field
 
-from ..internal.utils.uuid import uuid7
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
 from .epoch_types import TaskDataPydantic
 from .site_manager import SiteDataEntry
@@ -342,19 +341,6 @@ class TaskConfig(pydantic.BaseModel):
         description="The objectives that we're interested in, provided as a list."
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
-    input_data: dict[site_id_t, SiteDataEntry] = pydantic.Field(
-        examples=[
-            {
-                "demo_london": {
-                    "site_id": "demo_london",
-                    "start_ts": "2025-01-01T00:00:00Z",
-                    "duration": "1Y",
-                    "dataset_ids": {"HeatingLoad": uuid7()},
-                }
-            }
-        ],
-        description="Where the data for this calculation are coming from, per-site",
-    )
     optimiser: Optimiser = pydantic.Field(
         description="The optimisation algorithm for the backend to use in these calculations."
     )
@@ -365,12 +351,23 @@ class TaskConfig(pydantic.BaseModel):
     epoch_version: str | None = pydantic.Field(
         default=None, description="The EPOCH version this task was created with; None if unknown"
     )
+    bundle_ids: dict[site_id_t, dataset_id_t] = pydantic.Field(description="The data bundle id for each site.")
 
 
 class ResultReproConfig(pydantic.BaseModel):
     portfolio_id: dataset_id_t
     task_data: dict[site_id_t, TaskDataPydantic]
+
+
+class NewResultReproConfig(ResultReproConfig):
+    bundle_ids: dict[site_id_t, dataset_id_t]
+
+
+class LegacyResultReproConfig(ResultReproConfig):
     site_data: dict[site_id_t, SiteDataEntry]
+
+
+type result_repro_config_t = NewResultReproConfig | LegacyResultReproConfig
 
 
 class OptimisationTaskListEntry(pydantic.BaseModel):
