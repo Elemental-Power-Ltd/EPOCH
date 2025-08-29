@@ -32,13 +32,13 @@ class TestOptimisationTaskDatabase:
     @pytest_asyncio.fixture
     async def sample_task_config(self, client: httpx.AsyncClient) -> TaskConfig:
         """Create a sample task to put in our database."""
-        bundle_id = str(uuid7())
+        bundle_id = uuid7()
         start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
         bundle_resp = await client.post(
             "/create-bundle",
             json={
-                "bundle_id": bundle_id,
+                "bundle_id": str(bundle_id),
                 "name": "Task Config Tests",
                 "site_id": "demo_london",
                 "start_ts": start_ts.isoformat(),
@@ -445,13 +445,13 @@ class TestOptimisationTaskDatabaseUUID4:
     @pytest_asyncio.fixture
     async def sample_task_config(self, client: httpx.AsyncClient) -> TaskConfig:
         """Create a sample task to put in our database."""
-        bundle_id = str(uuid.uuid4())
+        bundle_id = uuid.uuid4()
         start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
         bundle_resp = await client.post(
             "/create-bundle",
             json={
-                "bundle_id": bundle_id,
+                "bundle_id": str(bundle_id),
                 "name": "Task Config Tests",
                 "site_id": "demo_london",
                 "start_ts": start_ts.isoformat(),
