@@ -1,4 +1,5 @@
 """Utility functions for handling Optimisation types."""
+
 import json
 
 from app.models.optimisation import CostInfo

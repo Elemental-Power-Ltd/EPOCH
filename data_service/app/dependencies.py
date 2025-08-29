@@ -6,22 +6,19 @@ To connect to a database, simply provide the relevant `DatabaseDep` or `HttpClie
 function and FastAPI will figure it out through magic.
 """
 
-import asyncio
 import datetime
 import logging
 import multiprocessing
 import os
 import typing
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Never
 
 import asyncpg
 import httpx
 import torch
-from fastapi import Depends, FastAPI
+from fastapi import Depends
 
 from .epl_secrets import SecretDict, get_secrets_environment
 from .internal.elec_meters import VAE
@@ -77,10 +74,10 @@ class Database:
         try:
             if self.dsn is not None:
                 # Use this for the local tests, where the DSN is provided by the testing framework
-                self.pool = await asyncpg.create_pool(dsn=self.dsn)
+                self.pool = await asyncpg.create_pool(dsn=self.dsn, timeout=120)
             else:
                 self.pool = await asyncpg.create_pool(
-                    host=self.host, user=self.user, password=self.password, database=self.database
+                    host=self.host, user=self.user, password=self.password, database=self.database, timeout=120
                 )
         except asyncpg.exceptions.ConnectionFailureError as ex:
             raise RuntimeError(
@@ -95,19 +92,6 @@ class Database:
 
 db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
 
-# These limits are enormous to make sure that we don't saturate the AsyncConnnections
-# https://github.com/encode/httpx/discussions/3084
-http_limits = httpx.Limits(max_keepalive_connections=10000, keepalive_expiry=datetime.timedelta(seconds=30).total_seconds())
-http_client = httpx.AsyncClient(
-    timeout=httpx.Timeout(
-        pool=None,
-        connect=datetime.timedelta(minutes=10).total_seconds(),
-        read=datetime.timedelta(minutes=10).total_seconds(),
-        write=None,
-    ),
-    limits=http_limits,
-)
-
 elec_vae_mdl: VAE | None = None
 
 
@@ -118,6 +102,16 @@ async def get_http_client() -> AsyncGenerator[HTTPClient]:
     This is passed as a dependency to make the most use of connection and async
     pooling (i.e. everything goes through this client, so it has the most opportunity to schedule intelligently).
     """
+    http_limits = httpx.Limits(max_keepalive_connections=10000, keepalive_expiry=datetime.timedelta(seconds=30).total_seconds())
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(
+            pool=None,
+            connect=datetime.timedelta(minutes=10).total_seconds(),
+            read=datetime.timedelta(minutes=10).total_seconds(),
+            write=None,
+        ),
+        limits=http_limits,
+    )
     yield http_client
 
 
@@ -233,18 +227,3 @@ def load_vae() -> VAE:
     mdl = VAE(input_dim=1, aggregate_dim=1, date_dim=13, latent_dim=5, hidden_dim=64, num_layers=1)
     mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
     return mdl
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
-    """Set up a long clients: a database pool and an HTTP client."""
-    # Startup events
-    loop = asyncio.get_running_loop()
-    thread_pool = await get_thread_pool()
-    loop.set_default_executor(thread_pool)
-    await db.create_pool()
-    global elec_vae_mdl
-    elec_vae_mdl = load_vae()
-    yield  # type: ignore
-    # Shutdown events
-    await http_client.aclose()

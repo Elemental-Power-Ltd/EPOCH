@@ -2,16 +2,16 @@
 
 import asyncio
 import datetime
+import json
 import logging
 import uuid
 import warnings
-from asyncio import Task
 from collections.abc import Sequence
-from typing import cast
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep, VaeDep
+from ..dependencies import DatabasePoolDep
+from ..internal.epl_typing import Jsonable
 from ..internal.site_manager import (
     list_ashp_datasets,
     list_carbon_intensity_datasets,
@@ -27,6 +27,7 @@ from ..internal.site_manager.bundles import file_self_with_bundle, insert_datase
 from ..internal.site_manager.dataset_lists import list_baseline_datasets
 from ..internal.site_manager.fetch_data import fetch_all_input_data
 from ..internal.utils.uuid import uuid7
+from ..lifespan import JobQueueDep
 from ..models.carbon_intensity import GridCO2Request
 from ..models.client_data import SiteDataEntries, SolarLocation
 from ..models.core import (
@@ -45,12 +46,8 @@ from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import DatasetBundleMetadata, DatasetList, SiteDataEntry
-from .carbon_intensity import generate_grid_co2
 from .client_data import get_solar_locations
-from .electricity_load import generate_electricity_load
-from .heating_load import generate_heating_load
-from .import_tariffs import generate_import_tariffs, get_import_tariffs
-from .renewables import generate_renewables_generation
+from .import_tariffs import get_import_tariffs
 
 router = APIRouter()
 
@@ -481,6 +478,7 @@ async def get_specific_datasets(site_data: DatasetList | SiteDataEntry, pool: Da
     # a DatasetList here which is just the IDs, which are easier to request.
     if isinstance(site_data, DatasetList):
         new_site_data = SiteDataEntry(site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts)
+
         for key in DatasetTypeEnum:
             # Model dump will also dump the sub keys from RemoteMetadata into dicts with a "dataset_id" key
             # and some other stuff that we throw away.
@@ -584,76 +582,6 @@ async def get_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> SiteDat
     return await get_dataset_bundle(bundle_id=latest_bundle, pool=pool)
 
 
-async def generate_all_wrapper(
-    pool: DatabasePoolDep,
-    http_client: HttpClientDep,
-    secrets_env: SecretsDep,
-    vae: VaeDep,
-    to_generate: to_generate_t,
-    bundle_metadata: DatasetBundleMetadata,
-) -> None:
-    """
-    Set the generate all tasks running as part of a TaskGroup.
-
-    This takes in a number of requests, many of which will be IO-bound, and creates a taskgroup to complete
-    them in any order.
-    This is asynchronous but not parallel due to the stateful database pool and HTTP client dependencies.
-
-    Parameters
-    ----------
-    pool
-        Database connection pool to write results to
-    http_client
-        HTTP connection pool to contact external parties with
-    secrets_env
-        Secrets environment featuring API keys
-    vae
-        Electricity upscaling model
-    to_generate
-        Dictionary of dataset types and associated requests for generation
-    bundle_metadata
-        Information about the bundle that these are going to be associated with
-
-    Returns
-    -------
-    None
-    """
-    async with asyncio.TaskGroup() as tg:
-        all_tasks: list[Task] = []
-        for hload_req in to_generate[DatasetTypeEnum.HeatingLoad]:
-            assert isinstance(hload_req, HeatingLoadRequest)
-            all_tasks.append(tg.create_task(generate_heating_load(hload_req, pool, http_client=http_client)))
-
-        for solar_req in to_generate[DatasetTypeEnum.RenewablesGeneration]:
-            assert isinstance(solar_req, RenewablesRequest)
-            all_tasks.append(
-                tg.create_task(
-                    generate_renewables_generation(solar_req, pool, http_client=http_client, secrets_env=secrets_env)
-                )
-            )
-
-        for tariff_req in to_generate[DatasetTypeEnum.ImportTariff]:
-            assert isinstance(tariff_req, TariffRequest)
-            all_tasks.append(tg.create_task(generate_import_tariffs(tariff_req, pool=pool, http_client=http_client)))
-        elec_req = cast(ElectricalLoadRequest, to_generate[DatasetTypeEnum.ElectricityMeterDataSynthesised])
-        all_tasks.append(tg.create_task(generate_electricity_load(elec_req, vae=vae, pool=pool, http_client=http_client)))
-
-        ci_req = cast(GridCO2Request, to_generate[DatasetTypeEnum.CarbonIntensity])
-        all_tasks.append(tg.create_task(generate_grid_co2(ci_req, pool=pool, http_client=http_client)))
-
-        await file_self_with_bundle(
-            pool,
-            BundleEntryMetadata(
-                bundle_id=bundle_metadata.bundle_id,
-                dataset_id=NULL_UUID,
-                dataset_type=DatasetTypeEnum.ASHPData,
-                dataset_subtype=None,
-            ),
-        )
-
-    _ = [task.result() for task in all_tasks]
-
-
 @router.post("/create-bundle", tags=["db", "bundle"])
 async def create_bundle(bundle_metadata: DatasetBundleMetadata, pool: DatabasePoolDep) -> dataset_id_t:
     """
@@ -677,15 +605,49 @@ async def create_bundle(bundle_metadata: DatasetBundleMetadata, pool: DatabasePo
     return resp
 
 
+@router.post("/list-queue-contents")
+async def list_queue_contents(queue: JobQueueDep, bundle_id: dataset_id_t | None = None) -> list[dict[str, Jsonable]]:
+    """
+    List the current contents of the queue.
+
+    This will return the requests that we're hoping to tackle in the order we're going to tackle them.
+    It'll provide the JSON data so may not be round-trippable.
+    Requests from different bundle generation requests might have been mixed together.
+
+    Parameters
+    ----------
+    queue
+        Job queue to report on
+    bundle_id
+        If dataset_id, return only the queued tasks that are part of this bundle
+        If None, return everything in the queue.
+
+    Returns
+    -------
+    list[dict[str, Jsonable]]
+        list of JSON-ified requests that we're going to inspect.
+    """
+    # TODO (2025-08-28 MHJB): do we want to return a tuple including the type?
+
+    # We sneakily access the private attribute, don't tell anyone
+    assert hasattr(queue, "_queue"), "Queue internal queue not yet initialised"
+
+    queue_components = queue.items()
+
+    if bundle_id is None:
+        # We do this weird JSON two-step to make sure that we've got a JSONable thing
+        # otherwise some sub-components don't dump correctly
+        return [json.loads(item.model_dump_json()) for item in queue_components]
+
+    return [
+        json.loads(x.model_dump_json())
+        for x in queue_components
+        if isinstance(x, RequestBase) and x.bundle_metadata is not None and x.bundle_metadata.bundle_id == bundle_id
+    ]
+
+
 @router.post("/generate-all")
-async def generate_all(
-    params: SiteIDWithTime,
-    pool: DatabasePoolDep,
-    http_client: HttpClientDep,
-    vae: VaeDep,
-    secrets_env: SecretsDep,
-    background_tasks: BackgroundTasks,
-) -> dict[DatasetTypeEnum, DatasetEntry | list[DatasetEntry]]:
+async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: JobQueueDep) -> DatasetList:
     """
     Run all dataset generation tasks for this site.
 
@@ -696,7 +658,6 @@ async def generate_all(
 
     This will run background tasks for each sub item, which can take upwards of 1 minute.
     For that reason, we'll return an empty set of null data early and chug along in the background.
-    This may block the main thread, so be careful.
 
     Parameters
     ----------
@@ -704,20 +665,16 @@ async def generate_all(
         SiteIDWithTime, including two relatively far back timestamps for Renewables Ninja to use.
     pool
         Connection pool to underlying PostgreSQL database
-    http_client
-        Asynchronous HTTP client to use for requests to 3rd party APIs
-    vae
-        ML model for upscaling of electrical data
-    secrets_env
-        Client secrets environment
-    background_tasks
-        Task group to run after returning data
+    queue
+        Task queue to submit to
 
     Returns
     -------
     datasets
         Dataset Type: Dataset Entry mapping, but with placeholder null UUIDs as the background tasks need to run.
-        Note that this will return immediately, but block this thread until the calculations are done.
+        Note that this will return immediately, and will take some time to generate.
+        Use `list-queue-contents` to check how things are going.
+        We'll also tell you about the bundle in BundleEntryMetadata.
     """
     bundle_metadata = DatasetBundleMetadata(
         bundle_id=uuid7(),
@@ -808,9 +765,8 @@ async def generate_all(
         )
     # Most of these are single datasets, but prime the list of desired UUIDs with empty lists
     # for the cases where we'll need them.
-    all_requests: to_generate_t = {}
     POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
-    hload_reqs: list[RequestBase] = []
+    hload_reqs = []
     for idx, interventions in enumerate(POTENTIAL_INTERVENTIONS):
         req = HeatingLoadRequest(
             dataset_id=gas_meter_dataset_id,
@@ -825,8 +781,8 @@ async def generate_all(
                 dataset_order=idx,
             ),
         )
+        await queue.put(req)
         hload_reqs.append(req)
-    all_requests[DatasetTypeEnum.HeatingLoad] = hload_reqs
 
     grid_req = GridCO2Request(
         site_id=params.site_id,
@@ -839,12 +795,11 @@ async def generate_all(
             dataset_subtype=None,
         ),
     )
-    all_requests[DatasetTypeEnum.CarbonIntensity] = grid_req
+    await queue.put(grid_req)
 
     # We generate five different types of tariff, here done manually to keep track of the
     # tasks and not lose the handle to the task (which causes mysterious bugs)
     # Note that the order here doesn't matter, we just explicitly list them so it's clear what is going on.
-    tariff_reqs: list[TariffRequest] = []
     CHOSEN_TARIFFS = [
         SyntheticTariffEnum.Fixed,
         SyntheticTariffEnum.Agile,
@@ -852,23 +807,23 @@ async def generate_all(
         SyntheticTariffEnum.Overnight,
         # SyntheticTariffEnum.ShapeShifter,
     ]
+    tariff_reqs = []
     for idx, tariff_type in enumerate(CHOSEN_TARIFFS):
-        tariff_reqs.append(
-            TariffRequest(
-                site_id=params.site_id,
-                tariff_name=tariff_type,
-                start_ts=params.start_ts,
-                end_ts=params.end_ts,
-                bundle_metadata=BundleEntryMetadata(
-                    bundle_id=bundle_metadata.bundle_id,
-                    dataset_id=uuid7(),
-                    dataset_type=DatasetTypeEnum.ImportTariff,
-                    dataset_subtype=tariff_type,
-                    dataset_order=idx,
-                ),
-            )
+        tariff_req = TariffRequest(
+            site_id=params.site_id,
+            tariff_name=tariff_type,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            bundle_metadata=BundleEntryMetadata(
+                bundle_id=bundle_metadata.bundle_id,
+                dataset_id=uuid7(),
+                dataset_type=DatasetTypeEnum.ImportTariff,
+                dataset_subtype=tariff_type,
+                dataset_order=idx,
+            ),
         )
-    all_requests[DatasetTypeEnum.ImportTariff] = tariff_reqs
+        await queue.put(tariff_req)
+        tariff_reqs.append(tariff_req)
 
     solar_locns = await get_solar_locations(SiteID(site_id=params.site_id), pool=pool)
     if not solar_locns:
@@ -883,7 +838,7 @@ async def generate_all(
         )
         solar_locns = [DEFAULT_SOLAR_LOCN]
 
-    renewables_reqs: list[RenewablesRequest] = []
+    solar_reqs = []
     for idx, solar_location in enumerate(solar_locns):
         renewables_req = RenewablesRequest(
             site_id=params.site_id,
@@ -900,8 +855,8 @@ async def generate_all(
                 dataset_order=idx,
             ),
         )
-        renewables_reqs.append(renewables_req)
-    all_requests[DatasetTypeEnum.RenewablesGeneration] = renewables_reqs
+        await queue.put(renewables_req)
+        solar_reqs.append(renewables_req)
 
     elec_req = ElectricalLoadRequest(
         dataset_id=elec_meter_dataset_id,
@@ -914,27 +869,65 @@ async def generate_all(
             dataset_subtype=None,
         ),
     )
-    all_requests[DatasetTypeEnum.ElectricityMeterDataSynthesised] = elec_req
+    await queue.put(elec_req)
+
+    # File the dummy ASHP datasets as part of the bundle
+    await file_self_with_bundle(
+        pool,
+        BundleEntryMetadata(
+            bundle_id=bundle_metadata.bundle_id,
+            dataset_id=NULL_UUID,
+            dataset_type=DatasetTypeEnum.ASHPData,
+            dataset_subtype=None,
+        ),
+    )
+    # Check that the gas and electricity metadata tasks were handled okay before we tidy up
+    _ = [gas_task_handle.result(), elec_task_handle.result()]
 
     RESOLUTION = datetime.timedelta(minutes=30)
     # These UUIDs are correct, but the metadata may change slightly (e.g. the created_at provided here is only an estimate).
     # We know that none of the requests here have bundle_metadatas of None, as we've specifically assigned them
-    to_generate: dict[DatasetTypeEnum, DatasetEntry | list[DatasetEntry]] = {
-        DatasetTypeEnum.HeatingLoad: [
+    return DatasetList(
+        site_id=params.site_id,
+        start_ts=params.start_ts,
+        end_ts=params.end_ts,
+        bundle_id=bundle_metadata.bundle_id,
+        SiteBaseline=DatasetEntry(
+            dataset_id=baseline_id,
+            dataset_type=DatasetTypeEnum.SiteBaseline,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=None,
+            end_ts=None,
+            num_entries=None,
+            dataset_subtype=None,
+        )
+        if baseline_id is not None
+        else None,
+        HeatingLoad=[
             DatasetEntry(
-                dataset_id=cast(HeatingLoadRequest, ds_meta).bundle_metadata.dataset_id,  # type: ignore
+                dataset_id=ds_meta.bundle_metadata.dataset_id,  # type: ignore
                 dataset_type=DatasetTypeEnum.HeatingLoad,
                 created_at=datetime.datetime.now(tz=datetime.UTC),
                 resolution=RESOLUTION,
                 start_ts=params.start_ts,
                 end_ts=params.end_ts,
                 num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
-                dataset_subtype=cast(HeatingLoadRequest, ds_meta).interventions,
+                dataset_subtype=ds_meta.interventions,
             )
-            for ds_meta in all_requests[DatasetTypeEnum.HeatingLoad]
+            for ds_meta in hload_reqs
         ],
-        DatasetTypeEnum.CarbonIntensity: DatasetEntry(
-            dataset_id=all_requests[DatasetTypeEnum.CarbonIntensity].bundle_metadata.dataset_id,  # type: ignore
+        ASHPData=DatasetEntry(
+            dataset_id=NULL_UUID,
+            dataset_type=DatasetTypeEnum.ASHPData,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
+        ),
+        CarbonIntensity=DatasetEntry(
+            dataset_id=grid_req.bundle_metadata.dataset_id,  # type: ignore
             dataset_type=DatasetTypeEnum.CarbonIntensity,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,
@@ -942,21 +935,54 @@ async def generate_all(
             end_ts=params.end_ts,
             num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
-        DatasetTypeEnum.ImportTariff: [
+        ElectricityMeterDataSynthesised=DatasetEntry(
+            dataset_id=elec_req.bundle_metadata.dataset_id,  # type: ignore
+            dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=RESOLUTION,
+            start_ts=params.start_ts,
+            end_ts=params.end_ts,
+            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
+        ),
+        ImportTariff=[
             DatasetEntry(
                 dataset_id=ds_meta.bundle_metadata.dataset_id,  # type: ignore
                 dataset_type=DatasetTypeEnum.ImportTariff,
                 created_at=datetime.datetime.now(tz=datetime.UTC),
-                dataset_subtype=cast(TariffRequest, ds_meta).tariff_name,
+                dataset_subtype=ds_meta.tariff_name,
                 resolution=RESOLUTION,
                 start_ts=params.start_ts,
                 end_ts=params.end_ts,
                 num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
             )
-            for ds_meta in all_requests[DatasetTypeEnum.ImportTariff]
+            for ds_meta in tariff_reqs
         ],
-        # Renewables generation is one series per potential location
-        DatasetTypeEnum.RenewablesGeneration: [
+        # for the meters, return the ID but don't bother to check the other stuff
+        ElectricityMeterData=DatasetEntry(
+            dataset_id=elec_meter_dataset_id,
+            dataset_type=DatasetTypeEnum.ElectricityMeterData,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=None,
+            start_ts=None,
+            end_ts=None,
+            num_entries=None,
+            dataset_subtype=None,
+        )
+        if elec_meter_dataset_id is not None
+        else None,
+        GasMeterData=DatasetEntry(
+            dataset_id=gas_meter_dataset_id,
+            dataset_type=DatasetTypeEnum.GasMeterData,
+            created_at=datetime.datetime.now(tz=datetime.UTC),
+            resolution=None,
+            start_ts=None,
+            end_ts=None,
+            num_entries=None,
+            dataset_subtype=None,
+        )
+        if gas_meter_dataset_id is not None
+        else None,
+        RenewablesGeneration=[
             DatasetEntry(
                 dataset_id=ds_meta.bundle_metadata.dataset_id,  # type: ignore
                 dataset_type=DatasetTypeEnum.RenewablesGeneration,
@@ -966,38 +992,10 @@ async def generate_all(
                 end_ts=params.end_ts,
                 num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
             )
-            for ds_meta in all_requests[DatasetTypeEnum.RenewablesGeneration]
+            for ds_meta in solar_reqs
         ],
-        DatasetTypeEnum.ElectricityMeterDataSynthesised: DatasetEntry(
-            dataset_id=all_requests[DatasetTypeEnum.ElectricityMeterDataSynthesised].bundle_metadata.dataset_id,  # type: ignore
-            dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
-            created_at=datetime.datetime.now(tz=datetime.UTC),
-            resolution=RESOLUTION,
-            start_ts=params.start_ts,
-            end_ts=params.end_ts,
-            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
-        ),
-        DatasetTypeEnum.ASHPData: DatasetEntry(
-            dataset_id=NULL_UUID,
-            dataset_type=DatasetTypeEnum.ASHPData,
-            created_at=datetime.datetime.now(tz=datetime.UTC),
-            resolution=RESOLUTION,
-            start_ts=params.start_ts,
-            end_ts=params.end_ts,
-            num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
-        ),
-    }
-
-    background_tasks.add_task(
-        generate_all_wrapper,
-        pool,
-        http_client,
-        secrets_env,
-        vae,
-        all_requests,
-        bundle_metadata=bundle_metadata,
+        # We don't know these yet, but they'll be handled by the bundles elsewhere
+        Weather=None,
+        ThermalModel=None,
+        PHPP=None,
     )
-
-    # Check that the gas and electricity metadata tasks were handled okay before we tidy up
-    _ = [gas_task_handle.result(), elec_task_handle.result()]
-    return to_generate

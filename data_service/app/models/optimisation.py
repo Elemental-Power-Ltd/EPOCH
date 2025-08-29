@@ -1,4 +1,5 @@
 """Models for EPOCH/GA optimisation tasks, both queuing and completing."""
+
 from __future__ import annotations
 
 # ruff: noqa: D101
@@ -27,13 +28,15 @@ class Grade(StrEnum):
 
 class CostInfo(BaseModel):
     name: str = Field(examples=["Solar Panel"], description="Display name for this cost item.")
-    component: str | None = Field(examples=["solar_panel"],
-                                  description="Key of the EPOCH component type this cost belongs to.", default=None)
-    cost: float = Field(examples=[1200.0],
-                        description="The net cost of the item in pounds, including all sub_components minus any funding.")
+    component: str | None = Field(
+        examples=["solar_panel"], description="Key of the EPOCH component type this cost belongs to.", default=None
+    )
+    cost: float = Field(
+        examples=[1200.0], description="The net cost of the item in pounds, including all sub_components minus any funding."
+    )
     sub_components: list[CostInfo] = Field(
-        description="The sub-components that make up this cost item, or the empty list if there are none.",
-        default_factory=list)
+        description="The sub-components that make up this cost item, or the empty list if there are none.", default_factory=list
+    )
 
 
 class SimulationMetrics(BaseModel):

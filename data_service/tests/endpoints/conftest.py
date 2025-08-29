@@ -24,10 +24,20 @@ import pytest_asyncio
 import testing.postgresql  # type: ignore
 from httpx import ASGITransport, AsyncClient
 
-from app.dependencies import Database, DBConnection, get_db_conn, get_db_pool, get_http_client
+from app.dependencies import (
+    Database,
+    DBConnection,
+    get_db_conn,
+    get_db_pool,
+    get_http_client,
+    get_secrets_dependency,
+    get_vae_model,
+)
 from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
+from app.job_queue import TerminateTaskGroup, TrackingQueue, process_jobs
+from app.lifespan import get_job_queue
 from app.main import app
 
 # apply a windows-specific patch for database termination (we can't use SIGINT)
@@ -43,6 +53,7 @@ if sys.platform.startswith("win"):
     testing.common.database.Database.terminate = win_terminate
 
 DO_MOCK = True
+NUM_WORKERS = 2
 
 
 async def apply_migrations(database: testing.postgresql.Database) -> None:
@@ -366,15 +377,42 @@ async def client() -> AsyncGenerator[AsyncClient]:
         return MockedHttpClient()
         # return _http_client
 
+    queue = TrackingQueue(pool=await override_get_db_pool().__anext__())
+
+    def override_get_job_queue() -> TrackingQueue:
+        return queue
+
     app.dependency_overrides[get_db_pool] = override_get_db_pool
     app.dependency_overrides[get_db_conn] = override_get_db_conn
     app.dependency_overrides[get_http_client] = override_get_http_client
+    app.dependency_overrides[get_job_queue] = override_get_job_queue
 
-    async with AsyncClient(
-        transport=ASGITransport(app),
-        base_url="http://localhost",
-    ) as client:
-        yield client
+    try:
+        async with (
+            AsyncClient(
+                transport=ASGITransport(app),
+                base_url="http://localhost",
+            ) as client,
+            asyncio.TaskGroup() as tg,
+        ):
+            # We also have to set up the queue handling task
+            for _ in range(NUM_WORKERS):
+                _ = tg.create_task(
+                    process_jobs(
+                        queue=override_get_job_queue(),
+                        pool=await override_get_db_pool().__anext__(),
+                        http_client=override_get_http_client(),
+                        vae=await get_vae_model(),
+                        secrets_env=await get_secrets_dependency(),
+                        ignore_exceptions=True,
+                    )
+                )
+            yield client
+            await queue.join()
+            raise TerminateTaskGroup()
+    except* TerminateTaskGroup:
+        pass
+
     del app.dependency_overrides[get_db_conn]
     del app.dependency_overrides[get_db_pool]
     del app.dependency_overrides[get_http_client]
@@ -391,7 +429,38 @@ async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
     Get the demo database from the pool as a filthy hack.
 
     This hack was implemented on 2025-05-07, so please replace with a proper fixture in the future.
+
+    Parameters
+    ----------
+    client
+        The mocked test client to extract the internal DB pool from
+
+    Returns
+    -------
+    asyncpg.Pool
+        Mocked database pool that you cn freely write to
     """
     from app.dependencies import get_db_pool
 
     return await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+
+
+def get_internal_client_hack(client: httpx.AsyncClient) -> httpx.AsyncClient:
+    """
+    Get the demo HTTP client that will maybe draw from a cache.
+
+    This hack was implemented on 2025-05-07, so please replace with a proper fixture in the future.
+
+    Parameters
+    ----------
+    client
+        The mocked test client to extract the internal DB pool from
+
+    Returns
+    -------
+    httpx.AsyncClient
+        Mocked HTTP client that will get from a cache if nneeded
+    """
+    from app.dependencies import get_http_client
+
+    return client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
