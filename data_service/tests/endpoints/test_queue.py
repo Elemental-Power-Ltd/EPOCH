@@ -222,8 +222,11 @@ class TestQueue:
         def raise_error(msg: str) -> None:
             raise ValueError(msg)
 
+        # This fails
         await queue_fixture.put(SyncFunctionRequest(raise_error, "1"))
+        # This succeeds
         await queue_fixture.put(DummyRequest())
+        # This fails
         await queue_fixture.put(SyncFunctionRequest(raise_error, "2"))
         assert not queue_fixture.empty()
 
@@ -246,17 +249,22 @@ class TestQueue:
 
         pool = await get_pool_hack(client)
         entries = await pool.fetch("""SELECT job_status FROM job_queue.job_status""")
+        # Check that we got three jobs, two of which errored and two of which succeeded
         assert len(entries) == 3
         assert sum(item["job_status"] == "error" for item in entries) == 2
         assert sum(item["job_status"] == "completed" for item in entries) == 1
+        details = await pool.fetch("""SELECT detail FROM job_queue.job_status""")
+        # Check that the errors were passed through
+        assert {item["detail"] for item in details} == {None, "ValueError: 1", "ValueError: 2"}
 
     @pytest.mark.asyncio
-    async def test_handle_exception_with_good(self, queue_fixture: TrackingQueue) -> None:
-        """Test that if we add a job before creation that definitely fails but we can handle a good one."""
+    async def test_handle_mixture_succeed_and_fail(self, queue_fixture: TrackingQueue) -> None:
+        """Test that we can handle a mixture of tasks, some of which fail, and some of which succeed."""
 
         def raise_error(msg: str) -> None:
             raise ValueError(msg)
 
+        # This task should succeed
         await queue_fixture.put(DummyRequest())
         assert not queue_fixture.empty()
         consumer = asyncio.create_task(
@@ -269,6 +277,7 @@ class TestQueue:
                 ignore_exceptions=False,
             )
         )
+        # This task will fail
         await queue_fixture.put(SyncFunctionRequest(raise_error, "EXPECTED"))
         await queue_fixture.join()
         exception = consumer.exception()

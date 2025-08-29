@@ -272,9 +272,9 @@ class TrackingQueue(asyncio.Queue[tuple[int, GenericJobRequest]]):
                 job_id,
             )
         else:
-            ex_str = str(ex)
+            ex_str = type(ex).__name__
             if ex.args:
-                ex_str += ":" + ",".join(ex.args)
+                ex_str += ": " + ",".join(ex.args)
             await self.pool.execute(
                 """
             UPDATE job_queue.job_status SET
