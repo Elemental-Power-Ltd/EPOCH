@@ -6,7 +6,6 @@ import datetime
 import json
 import uuid
 
-import asyncpg
 import httpx
 import numpy as np
 import pytest
@@ -19,16 +18,7 @@ from app.internal.utils.uuid import uuid7
 from app.models.heating_load import InterventionEnum
 from app.models.site_manager import DatasetBundleMetadata
 
-
-async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
-    """
-    Get the demo database from the pool as a filthy hack.
-
-    This hack was implemented on 2025-05-07, so please replace with a proper fixture in the future.
-    """
-    from app.dependencies import get_db_pool
-
-    return await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+from .conftest import get_pool_hack
 
 
 @pytest_asyncio.fixture

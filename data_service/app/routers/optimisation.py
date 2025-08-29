@@ -20,15 +20,18 @@ from ..internal.optimisation.util import capex_breakdown_from_json, capex_breakd
 from ..models.core import ClientID, ResultID, TaskID
 from ..models.optimisation import (
     Grade,
+    LegacyResultReproConfig,
+    NewResultReproConfig,
     OptimisationResultEntry,
     OptimisationResultsResponse,
     OptimisationTaskListEntry,
     PortfolioOptimisationResult,
-    ResultReproConfig,
     SimulationMetrics,
     SiteOptimisationResult,
     TaskConfig,
+    result_repro_config_t,
 )
+from ..models.site_manager import SiteDataEntry
 
 router = APIRouter()
 
@@ -231,11 +234,10 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                         total_scope_1_emissions=nan_to_num(sub_item["metric_total_scope_1_emissions"]),
                         total_scope_2_emissions=nan_to_num(sub_item["metric_total_scope_2_emissions"]),
                         total_combined_carbon_emissions=nan_to_num(sub_item["metric_total_combined_carbon_emissions"]),
-                        scenario_environmental_impact_score=nan_to_num(
-                            sub_item["metric_scenario_environmental_impact_score"]),
-                        scenario_environmental_impact_grade=Grade[
-                            sub_item["metric_scenario_environmental_impact_grade"]] if sub_item[
-                            "metric_scenario_environmental_impact_grade"] else None,
+                        scenario_environmental_impact_score=nan_to_num(sub_item["metric_scenario_environmental_impact_score"]),
+                        scenario_environmental_impact_grade=Grade[sub_item["metric_scenario_environmental_impact_grade"]]
+                        if sub_item["metric_scenario_environmental_impact_grade"]
+                        else None,
                         scenario_capex_breakdown=capex_breakdown_from_json(sub_item["scenario_capex_breakdown"]),
                         # baseline metrics
                         baseline_gas_used=nan_to_num(sub_item["metric_baseline_gas_used"]),
@@ -257,11 +259,10 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                         baseline_scope_1_emissions=nan_to_num(sub_item["metric_baseline_scope_1_emissions"]),
                         baseline_scope_2_emissions=nan_to_num(sub_item["metric_baseline_scope_2_emissions"]),
                         baseline_combined_carbon_emissions=nan_to_num(sub_item["metric_baseline_combined_carbon_emissions"]),
-                        baseline_environmental_impact_score=nan_to_num(
-                            sub_item["metric_baseline_environmental_impact_score"]),
-                        baseline_environmental_impact_grade=Grade[
-                            sub_item["metric_baseline_environmental_impact_grade"]] if sub_item[
-                            "metric_baseline_environmental_impact_grade"] else None,
+                        baseline_environmental_impact_score=nan_to_num(sub_item["metric_baseline_environmental_impact_score"]),
+                        baseline_environmental_impact_grade=Grade[sub_item["metric_baseline_environmental_impact_grade"]]
+                        if sub_item["metric_baseline_environmental_impact_grade"]
+                        else None,
                     ),
                 )
                 for sub_item in item["site_results"]
@@ -379,7 +380,6 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             [item.metrics.carbon_balance_scope_2 for item in opt_result.portfolio],
                             [item.metrics.carbon_balance_total for item in opt_result.portfolio],
                             [item.metrics.carbon_cost for item in opt_result.portfolio],
-
                             [item.metrics.total_gas_used for item in opt_result.portfolio],
                             [item.metrics.total_electricity_imported for item in opt_result.portfolio],
                             [item.metrics.total_electricity_generated for item in opt_result.portfolio],
@@ -401,7 +401,6 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             [item.metrics.total_scope_1_emissions for item in opt_result.portfolio],
                             [item.metrics.total_scope_2_emissions for item in opt_result.portfolio],
                             [item.metrics.total_combined_carbon_emissions for item in opt_result.portfolio],
-
                             [item.metrics.baseline_gas_used for item in opt_result.portfolio],
                             [item.metrics.baseline_electricity_imported for item in opt_result.portfolio],
                             [item.metrics.baseline_electricity_generated for item in opt_result.portfolio],
@@ -504,7 +503,6 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             [item.metrics.carbon_balance_scope_2 for item in pf.site_results],
                             [item.metrics.carbon_balance_total for item in pf.site_results],
                             [item.metrics.carbon_cost for item in pf.site_results],
-
                             [item.metrics.total_gas_used for item in pf.site_results],
                             [item.metrics.total_electricity_imported for item in pf.site_results],
                             [item.metrics.total_electricity_generated for item in pf.site_results],
@@ -529,7 +527,6 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                             [item.metrics.scenario_environmental_impact_score for item in pf.site_results],
                             [item.metrics.scenario_environmental_impact_grade for item in pf.site_results],
                             [capex_breakdown_to_json(item.metrics.scenario_capex_breakdown) for item in pf.site_results],
-
                             [item.metrics.baseline_gas_used for item in pf.site_results],
                             [item.metrics.baseline_electricity_imported for item in pf.site_results],
                             [item.metrics.baseline_electricity_generated for item in pf.site_results],
@@ -655,58 +652,67 @@ async def add_optimisation_task(task_config: TaskConfig, pool: DatabasePoolDep) 
     *HTTPException*
         If the key already exists in the database.
     """
-    try:
-        await pool.execute(
-            """
-            INSERT INTO
-                optimisation.task_config (
-                    task_id,
-                    client_id,
-                    task_name,
-                    portfolio_range,
-                    input_data,
-                    optimiser_type,
-                    optimiser_hyperparameters,
-                    created_at,
-                    objectives,
-                    portfolio_constraints,
-                    site_constraints,
-                    epoch_version)
-                VALUES (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                $7,
-                $8,
-                $9,
-                $10,
-                $11,
-                $12)""",
-            task_config.task_id,
-            task_config.client_id,
-            task_config.task_name,
-            json.dumps(jsonable_encoder(task_config.portfolio_range)),
-            json.dumps(jsonable_encoder(task_config.input_data)),
-            task_config.optimiser.name,
-            json.dumps(jsonable_encoder(task_config.optimiser.hyperparameters)),
-            task_config.created_at,
-            json.dumps(jsonable_encoder(task_config.objectives)),
-            json.dumps(jsonable_encoder(task_config.portfolio_constraints)),
-            json.dumps(jsonable_encoder(task_config.site_constraints)),
-            task_config.epoch_version,
-        )
-    except asyncpg.exceptions.UniqueViolationError as ex:
-        raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
-    except asyncpg.PostgresSyntaxError as ex:
-        raise HTTPException(400, f"TaskID {task_config.task_id} already had a syntax error {ex}") from ex
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO
+                        optimisation.task_config (
+                            task_id,
+                            client_id,
+                            task_name,
+                            optimiser_type,
+                            optimiser_hyperparameters,
+                            created_at,
+                            objectives,
+                            portfolio_constraints,
+                            epoch_version)
+                        VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8,
+                        $9)""",
+                    task_config.task_id,
+                    task_config.client_id,
+                    task_config.task_name,
+                    task_config.optimiser.name,
+                    json.dumps(jsonable_encoder(task_config.optimiser.hyperparameters)),
+                    task_config.created_at,
+                    json.dumps(jsonable_encoder(task_config.objectives)),
+                    json.dumps(jsonable_encoder(task_config.portfolio_constraints)),
+                    task_config.epoch_version,
+                )
+
+            except asyncpg.exceptions.UniqueViolationError as ex:
+                raise HTTPException(400, f"TaskID {task_config.task_id} already exists in the database.") from ex
+
+            await conn.copy_records_to_table(
+                schema_name="optimisation",
+                table_name="site_task_config",
+                records=[
+                    (
+                        task_config.task_id,
+                        site_id,
+                        bundle_id,
+                        json.dumps(jsonable_encoder(task_config.site_constraints[site_id])),  # type: ignore
+                        json.dumps(jsonable_encoder(task_config.portfolio_range[site_id])),
+                    )
+                    for site_id, bundle_id in task_config.bundle_ids.items()
+                ],
+                columns=["task_id", "site_id", "bundle_id", "site_constraints", "site_range"],
+            )
+
     return task_config
 
 
 @router.post("/get-result-configuration")
-async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -> ResultReproConfig:
+async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -> result_repro_config_t:
     """
     Return the configuration that was used to produce a given result.
 
@@ -719,42 +725,44 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
     -------
         All of the configuration data necessary to reproduce this simulation
     """
-    task_info = await pool.fetchrow(
-        """
-        SELECT
-            cr.portfolio_id,
-            cr.scenarios,
-            cr.site_ids,
-            tc.input_data
-        FROM (
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
             SELECT
-                pr.portfolio_id,
-                pr.task_id,
-                ARRAY_AGG(sr.scenario ORDER BY sr.site_id) AS scenarios,
-                ARRAY_AGG(sr.site_id ORDER BY sr.site_id) AS site_ids
+                stc.site_data,
+                stc.site_id,
+                stc.bundle_id,
+                sr.scenario
             FROM
-                optimisation.portfolio_results AS pr
-            LEFT JOIN
                 optimisation.site_results AS sr
-            ON pr.portfolio_id = sr.portfolio_id
+            LEFT JOIN
+                optimisation.portfolio_results AS pr
+                ON sr.portfolio_id = pr.portfolio_id
+            LEFT JOIN
+                optimisation.site_task_config AS stc
+                ON pr.task_id = stc.task_id
             WHERE
-                pr.portfolio_id = $1
-            GROUP BY pr.portfolio_id, pr.task_id
-        ) AS cr
-        LEFT JOIN
-            optimisation.task_config AS tc
-        ON tc.task_id = cr.task_id
-        LIMIT 1
-        """,
-        result_id.result_id,
-    )
+                sr.portfolio_id = $1
+            """,
+            result_id.result_id,
+        )
 
-    if task_info is None:
+    if rows is None:
         raise HTTPException(400, f"No task configuration exists for result with id {result_id.result_id}")
 
-    portfolio_id, scenarios, site_ids, portfolio_input_data = task_info
-    return ResultReproConfig(
-        portfolio_id=portfolio_id,
-        task_data={site_id: json.loads(entry) for site_id, entry in zip(site_ids, scenarios, strict=True)},
-        site_data=json.loads(portfolio_input_data),
-    )
+    bundle_ids = {}
+    scenarios = {}
+
+    for row in rows:
+        site_id = row["site_id"]
+        bundle_ids[site_id] = row["bundle_id"]
+        scenarios[site_id] = json.loads(row["scenario"])
+
+    if any(value is None for value in bundle_ids.values()):
+        site_datas: dict[str, SiteDataEntry] = {}
+        for row in rows:
+            site_datas[site_id] = json.loads(row["site_data"])
+
+        return LegacyResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, site_data=site_datas)
+
+    return NewResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, bundle_ids=bundle_ids)

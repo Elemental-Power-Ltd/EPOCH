@@ -9,7 +9,6 @@ from enum import StrEnum
 import pydantic
 from pydantic import BaseModel, Field
 
-from ..internal.utils.uuid import uuid7
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
 from .epoch_types import TaskDataPydantic
 from .site_manager import SiteDataEntry
@@ -68,25 +67,17 @@ class SimulationMetrics(BaseModel):
         description="Net kg CO2e saved from both scope 1 and scope 2 emissions",
         default=None,
     )
-    carbon_cost: float | None = Field(
-        description="Net £ per t CO2e over the lifetime of these interventions.", default=None
-    )
+    carbon_cost: float | None = Field(description="Net £ per t CO2e over the lifetime of these interventions.", default=None)
     total_gas_used: float | None = Field(description="Total gas imported (kWh).", default=None)
     total_electricity_imported: float | None = Field(
         description="Total electricity imported from the grid (kWh).", default=None
     )
-    total_electricity_generated: float | None = Field(
-        description="Total electricity generated on-site (kWh).", default=None
-    )
-    total_electricity_exported: float | None = Field(
-        description="Total electricity exported to the grid (kWh).", default=None
-    )
+    total_electricity_generated: float | None = Field(description="Total electricity generated on-site (kWh).", default=None)
+    total_electricity_exported: float | None = Field(description="Total electricity exported to the grid (kWh).", default=None)
     total_electricity_curtailed: float | None = Field(
         description="Total electricity surplus that could not be exported (kWh).", default=None
     )
-    total_electricity_used: float | None = Field(
-        description="Total electricity used (kWh).", default=None
-    )
+    total_electricity_used: float | None = Field(description="Total electricity used (kWh).", default=None)
     total_electrical_shortfall: float | None = Field(
         description="Total electrical shortfall (kWh) when compared to the demand.", default=None
     )
@@ -125,10 +116,8 @@ class SimulationMetrics(BaseModel):
     total_scope_2_emissions: float | None = Field(description="Total Scope 2 emissions (kg CO2e).", default=None)
     total_combined_carbon_emissions: float | None = Field(description="Scope 1 and Scope 2 emissions (kg CO2e).", default=None)
 
-    scenario_environmental_impact_score: int | None = Field(
-        description="environmental impact score based on SAP", default=None)
-    scenario_environmental_impact_grade: Grade | None = Field(
-        description="environmental impact grade (A-G)", default=None)
+    scenario_environmental_impact_score: int | None = Field(description="environmental impact score based on SAP", default=None)
+    scenario_environmental_impact_grade: Grade | None = Field(description="environmental impact grade (A-G)", default=None)
 
     scenario_capex_breakdown: list[CostInfo] | None = Field(description="Breakdown of scenario expenditure.", default=None)
 
@@ -176,19 +165,17 @@ class SimulationMetrics(BaseModel):
         description="Baseline Net Present Value after repeating the simulation for the configured number of years.",
         default=None,
     )
-    baseline_scope_1_emissions: float | None = Field(
-        description="Baseline Scope 1 emissions (kg CO2e).", default=None
-    )
-    baseline_scope_2_emissions: float | None = Field(
-        description="Baseline Scope 2 emissions (kg CO2e).", default=None
-    )
+    baseline_scope_1_emissions: float | None = Field(description="Baseline Scope 1 emissions (kg CO2e).", default=None)
+    baseline_scope_2_emissions: float | None = Field(description="Baseline Scope 2 emissions (kg CO2e).", default=None)
     baseline_combined_carbon_emissions: float | None = Field(
         description="Baseline Scope 1 and Scope 2 emissions (kg CO2e).", default=None
     )
     baseline_environmental_impact_score: int | None = Field(
-        description="baseline environmental impact score based on SAP", default=None)
+        description="baseline environmental impact score based on SAP", default=None
+    )
     baseline_environmental_impact_grade: Grade | None = Field(
-        description="baseline environmental impact grade (A-G)", default=None)
+        description="baseline environmental impact grade (A-G)", default=None
+    )
 
 
 class SiteOptimisationResult(pydantic.BaseModel):
@@ -351,19 +338,6 @@ class TaskConfig(pydantic.BaseModel):
         description="The objectives that we're interested in, provided as a list."
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
-    input_data: dict[site_id_t, SiteDataEntry] = pydantic.Field(
-        examples=[
-            {
-                "demo_london": {
-                    "site_id": "demo_london",
-                    "start_ts": "2025-01-01T00:00:00Z",
-                    "duration": "1Y",
-                    "dataset_ids": {"HeatingLoad": uuid7()},
-                }
-            }
-        ],
-        description="Where the data for this calculation are coming from, per-site",
-    )
     optimiser: Optimiser = pydantic.Field(
         description="The optimisation algorithm for the backend to use in these calculations."
     )
@@ -374,12 +348,23 @@ class TaskConfig(pydantic.BaseModel):
     epoch_version: str | None = pydantic.Field(
         default=None, description="The EPOCH version this task was created with; None if unknown"
     )
+    bundle_ids: dict[site_id_t, dataset_id_t] = pydantic.Field(description="The data bundle id for each site.")
 
 
 class ResultReproConfig(pydantic.BaseModel):
     portfolio_id: dataset_id_t
     task_data: dict[site_id_t, TaskDataPydantic]
+
+
+class NewResultReproConfig(ResultReproConfig):
+    bundle_ids: dict[site_id_t, dataset_id_t]
+
+
+class LegacyResultReproConfig(ResultReproConfig):
     site_data: dict[site_id_t, SiteDataEntry]
+
+
+type result_repro_config_t = NewResultReproConfig | LegacyResultReproConfig
 
 
 class OptimisationTaskListEntry(pydantic.BaseModel):
