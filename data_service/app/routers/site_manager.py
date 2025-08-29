@@ -630,7 +630,7 @@ async def list_queue_contents(queue: JobQueueDep, bundle_id: dataset_id_t | None
     # TODO (2025-08-28 MHJB): do we want to return a tuple including the type?
 
     # We sneakily access the private attribute, don't tell anyone
-    assert hasattr(queue, "_squeue"), "Queue internal queue not yet initialised"
+    assert hasattr(queue, "_queue"), "Queue internal queue not yet initialised"
 
     queue_components = queue.items()
 
