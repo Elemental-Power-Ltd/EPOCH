@@ -115,9 +115,30 @@ type GenericJobRequest = (
     | SyncFunctionRequest
     | TariffRequest
 )
-
+from typing import Iterable
 type PrepochJobQueueT = Queue[GenericJobRequest]
 
+def is_bundle_in_queue(bundle_id: bundle_id_t, queue: PrepochJobQueueT) -> bool:
+    """
+    Check if there are any remaining jobs with this bundle ID in the queue.
+
+    This might fire repeatedly if there are multiple workers 
+
+    Parameters
+    ----------
+    bundle_id
+        The ID of the bundle to check for
+
+    Returns
+    -------
+    bool
+        True if there are no other jobs with this bundle ID in the queue
+        False if there are remaining jobs.
+    """
+    # This is accessing a private attribute
+    internal_queue: Iterable[GenericJobRequest] = queue._queue
+    return any(hasattr(item, "bundle_metadata") and item.bundle_metadata.bundle_id == bundle_id
+               for item in internal_queue)
 
 async def process_jobs(
     queue: PrepochJobQueueT,
@@ -171,6 +192,7 @@ async def process_jobs(
     """
     logger = getLogger(__name__)
     while True:
+        # TODO (2025-08-29 MHJB): log job started in queue here
         job = await queue.get()
         future: Any = None  # eat the return types of the jobs we submit
         try:
@@ -201,11 +223,14 @@ async def process_jobs(
                     raise ValueError(f"Unhandled {type(job)}")
             logger.info(future)
         except Exception:
+            # TODO (2025-08-29 MHJB): log failure in database here
             if ignore_exceptions:
                 logger.exception("Internal exception in task queue")
             else:
                 queue.task_done()
                 raise
+        # TODO (2025-08-29 MHJB): log completion in database here
+        # also check if none are remaining in queue 
         queue.task_done()
 
 
