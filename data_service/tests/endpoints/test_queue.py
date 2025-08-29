@@ -190,7 +190,7 @@ class TestQueue:
 
     @pytest.mark.asyncio
     async def test_handle_two_exceptions(self, queue_fixture: TrackingQueue) -> None:
-        """Test that if we add a job before creation that definitely fails in a TaskGroup."""
+        """Test that we can handle two exceptions in the queue without hanging."""
 
         def raise_error(msg: str) -> None:
             raise ValueError(msg)
@@ -199,6 +199,9 @@ class TestQueue:
         await queue_fixture.put(DummyRequest())
         await queue_fixture.put(SyncFunctionRequest(raise_error, "2"))
         assert not queue_fixture.empty()
+        # The taskgroup structure is the only thing that works for two exceptions!
+        # as it means they're correctly terminated when there's an error, and the problem bubbles up
+        # out of the taskgroup if `ignore_exceptions=False`.
         with pytest.raises(ExceptionGroup):
             async with asyncio.TaskGroup() as tg:
                 _ = tg.create_task(
@@ -243,7 +246,6 @@ class TestQueue:
 
         pool = await get_pool_hack(client)
         entries = await pool.fetch("""SELECT job_status FROM job_queue.job_status""")
-        print(entries)
         assert len(entries) == 3
         assert sum(item["job_status"] == "error" for item in entries) == 2
         assert sum(item["job_status"] == "completed" for item in entries) == 1
