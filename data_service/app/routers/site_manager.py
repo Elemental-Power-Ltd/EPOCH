@@ -27,7 +27,7 @@ from ..internal.site_manager.bundles import file_self_with_bundle, insert_datase
 from ..internal.site_manager.dataset_lists import list_baseline_datasets
 from ..internal.site_manager.fetch_data import fetch_all_input_data
 from ..internal.utils.uuid import uuid7
-from ..job_queue import GenericJobRequest, JobQueueDep
+from ..lifespan import JobQueueDep
 from ..models.carbon_intensity import GridCO2Request
 from ..models.client_data import SiteDataEntries, SolarLocation
 from ..models.core import (
@@ -630,9 +630,9 @@ async def list_queue_contents(queue: JobQueueDep, bundle_id: dataset_id_t | None
     # TODO (2025-08-28 MHJB): do we want to return a tuple including the type?
 
     # We sneakily access the private attribute, don't tell anyone
-    assert hasattr(queue, "_queue"), "Queue internal queue not yet initialised"
+    assert hasattr(queue, "_squeue"), "Queue internal queue not yet initialised"
 
-    queue_components: list[GenericJobRequest] = list(queue._queue)
+    queue_components = queue.items()
 
     if bundle_id is None:
         # We do this weird JSON two-step to make sure that we've got a JSONable thing

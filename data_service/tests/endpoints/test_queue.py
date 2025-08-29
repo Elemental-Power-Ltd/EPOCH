@@ -3,7 +3,7 @@
 import asyncio
 import datetime
 import json
-from asyncio import Queue, create_task
+from asyncio import create_task
 from typing import cast
 
 import httpx
@@ -15,7 +15,13 @@ from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.site_manager.bundles import insert_dataset_bundle
 from app.internal.utils.uuid import uuid7
-from app.job_queue import ASyncFunctionRequest, GenericJobRequest, SyncFunctionRequest, TerminateTaskGroup, process_jobs
+from app.job_queue import (
+    ASyncFunctionRequest,
+    SyncFunctionRequest,
+    TerminateTaskGroup,
+    TrackingQueue,
+    process_jobs,
+)
 from app.models.carbon_intensity import GridCO2Request
 from app.models.core import BundleEntryMetadata, DatasetTypeEnum, SiteIDWithTime, dataset_id_t
 from app.models.electricity_load import ElectricalLoadRequest
@@ -57,17 +63,17 @@ async def upload_elec_data(client: httpx.AsyncClient) -> dict[str, Jsonable]:
     return cast(dict[str, Jsonable], elec_result.json())
 
 
-@pytest.fixture
-def queue_fixture() -> Queue[GenericJobRequest]:
+@pytest_asyncio.fixture
+async def queue_fixture(client: httpx.AsyncClient) -> TrackingQueue:
     """Initialise an empty queue."""
-    return Queue[GenericJobRequest]()
+    return TrackingQueue(pool=await get_pool_hack(client))
 
 
 class TestQueue:
     """Test that the AsyncQueue works."""
 
     @pytest.mark.asyncio
-    async def test_add_dummies_before_creation(self, queue_fixture: Queue[GenericJobRequest]) -> None:
+    async def test_add_dummies_before_creation(self, queue_fixture: TrackingQueue) -> None:
         """Test that if we add a job before creation, it's processed."""
         await queue_fixture.put(DummyRequest())
         assert not queue_fixture.empty()
@@ -87,7 +93,7 @@ class TestQueue:
         consumer.cancel()
 
     @pytest.mark.asyncio
-    async def test_add_dummies_after_creation(self, queue_fixture: Queue) -> None:
+    async def test_add_dummies_after_creation(self, queue_fixture: TrackingQueue) -> None:
         """Test that if we add a job after creation, it's processed."""
         consumer = create_task(
             process_jobs(
@@ -104,10 +110,15 @@ class TestQueue:
         consumer.cancel()
 
     @pytest.mark.asyncio
-    async def test_add_many_dummies_after_creation(self, queue_fixture: Queue[GenericJobRequest]) -> None:
+    async def test_add_many_dummies_after_creation(self, client: httpx.AsyncClient, queue_fixture: TrackingQueue) -> None:
         """Test that if we add many jobs they're all handled ok."""
         for _ in range(3):
             await queue_fixture.put(DummyRequest(0.1))
+        pool = await get_pool_hack(client)
+        entries = await pool.fetch("""SELECT job_status FROM job_queue.job_status""")
+        assert len(entries) == 3
+        assert all(item["job_status"] == "queued" for item in entries)
+
         consumer = create_task(
             process_jobs(
                 queue_fixture,
@@ -123,8 +134,12 @@ class TestQueue:
         await queue_fixture.join()
         consumer.cancel()
 
+        entries = await pool.fetch("""SELECT job_status FROM job_queue.job_status""")
+        assert len(entries) == 6
+        assert all(item["job_status"] == "completed" for item in entries)
+
     @pytest.mark.asyncio
-    async def test_multiple_consumers(self, queue_fixture: Queue[GenericJobRequest]) -> None:
+    async def test_multiple_consumers(self, queue_fixture: TrackingQueue) -> None:
         """Test that if we add many jobs they're all handled ok."""
         try:
             async with asyncio.TaskGroup() as tg:
@@ -149,7 +164,7 @@ class TestQueue:
             pass
 
     @pytest.mark.asyncio
-    async def test_handle_exception_before_creation(self, queue_fixture: Queue[GenericJobRequest]) -> None:
+    async def test_handle_exception_before_creation(self, queue_fixture: TrackingQueue) -> None:
         """Test that if we add a job before creation that definitely fails."""
 
         def raise_error(msg: str) -> None:
@@ -174,7 +189,7 @@ class TestQueue:
         consumer.cancel()
 
     @pytest.mark.asyncio
-    async def test_handle_two_exceptions(self, queue_fixture: Queue[GenericJobRequest]) -> None:
+    async def test_handle_two_exceptions(self, queue_fixture: TrackingQueue) -> None:
         """Test that if we add a job before creation that definitely fails in a TaskGroup."""
 
         def raise_error(msg: str) -> None:
@@ -198,7 +213,7 @@ class TestQueue:
                 )
 
     @pytest.mark.asyncio
-    async def test_ignore_two_exceptions(self, queue_fixture: Queue[GenericJobRequest]) -> None:
+    async def test_ignore_two_exceptions(self, client: httpx.AsyncClient, queue_fixture: TrackingQueue) -> None:
         """Test that we can ignore multiple exceptions."""
 
         def raise_error(msg: str) -> None:
@@ -226,8 +241,15 @@ class TestQueue:
         except* TerminateTaskGroup:
             pass
 
+        pool = await get_pool_hack(client)
+        entries = await pool.fetch("""SELECT job_status FROM job_queue.job_status""")
+        print(entries)
+        assert len(entries) == 3
+        assert sum(item["job_status"] == "error" for item in entries) == 2
+        assert sum(item["job_status"] == "completed" for item in entries) == 1
+
     @pytest.mark.asyncio
-    async def test_handle_exception_with_good(self, queue_fixture: Queue[GenericJobRequest]) -> None:
+    async def test_handle_exception_with_good(self, queue_fixture: TrackingQueue) -> None:
         """Test that if we add a job before creation that definitely fails but we can handle a good one."""
 
         def raise_error(msg: str) -> None:
@@ -259,7 +281,7 @@ class TestQueueEndpoints:
 
     @pytest.mark.asyncio
     @pytest.mark.external
-    async def test_add_grid_co2(self, queue_fixture: Queue[GenericJobRequest], client: httpx.AsyncClient) -> None:
+    async def test_add_grid_co2(self, queue_fixture: TrackingQueue, client: httpx.AsyncClient) -> None:
         """Test that we successfully handled a queued grid CO2 request."""
         pool = await get_pool_hack(client)
         internal_client = get_internal_client_hack(client)
@@ -310,7 +332,7 @@ class TestQueueEndpoints:
 
     @pytest.mark.asyncio
     async def test_add_elec_load(
-        self, queue_fixture: Queue[GenericJobRequest], client: httpx.AsyncClient, upload_elec_data: dict[str, Jsonable]
+        self, queue_fixture: TrackingQueue, client: httpx.AsyncClient, upload_elec_data: dict[str, Jsonable]
     ) -> None:
         """Test that we successfully handled a queued electrical load request."""
         pool = await get_pool_hack(client)
@@ -368,7 +390,7 @@ class TestQueueEndpoints:
     @pytest.mark.asyncio
     @pytest.mark.external
     async def test_add_heating_load(
-        self, queue_fixture: Queue[GenericJobRequest], client: httpx.AsyncClient, upload_gas_data: dict[str, Jsonable]
+        self, queue_fixture: TrackingQueue, client: httpx.AsyncClient, upload_gas_data: dict[str, Jsonable]
     ) -> None:
         """Test that we successfully handled a queued heating load request."""
         pool = await get_pool_hack(client)
@@ -425,7 +447,7 @@ class TestQueueEndpoints:
 
     @pytest.mark.asyncio
     @pytest.mark.external
-    async def test_add_import_tariff(self, queue_fixture: Queue[GenericJobRequest], client: httpx.AsyncClient) -> None:
+    async def test_add_import_tariff(self, queue_fixture: TrackingQueue, client: httpx.AsyncClient) -> None:
         """Test that we successfully handled a queued import tariff request."""
         pool = await get_pool_hack(client)
         internal_client = get_internal_client_hack(client)
@@ -482,7 +504,7 @@ class TestQueueEndpoints:
 
     @pytest.mark.asyncio
     @pytest.mark.external
-    async def test_add_renewables(self, queue_fixture: Queue, client: httpx.AsyncClient) -> None:
+    async def test_add_renewables(self, queue_fixture: TrackingQueue, client: httpx.AsyncClient) -> None:
         """Test that we successfully handled a queued renewables request."""
         pool = await get_pool_hack(client)
         internal_client = get_internal_client_hack(client)
@@ -540,7 +562,7 @@ class TestQueueEndpoints:
 
     @pytest.mark.asyncio
     @pytest.mark.external
-    async def test_add_wind_renewables(self, queue_fixture: Queue, client: httpx.AsyncClient) -> None:
+    async def test_add_wind_renewables(self, queue_fixture: TrackingQueue, client: httpx.AsyncClient) -> None:
         """Test that we successfully handled a queued wind renewables request."""
         pool = await get_pool_hack(client)
         internal_client = get_internal_client_hack(client)
@@ -606,7 +628,7 @@ class TestGenerateAllQueue:
         self,
         upload_gas_data: dict[str, Jsonable],
         upload_elec_data: dict[str, Jsonable],
-        queue_fixture: Queue,
+        queue_fixture: TrackingQueue,
         client: httpx.AsyncClient,
     ) -> None:
         """Test that we can generate all by calling the function directly."""

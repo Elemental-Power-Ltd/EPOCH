@@ -36,7 +36,8 @@ from app.dependencies import (
 from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
-from app.job_queue import GenericJobRequest, TerminateTaskGroup, get_job_queue, process_jobs
+from app.job_queue import TerminateTaskGroup, TrackingQueue, process_jobs
+from app.lifespan import get_job_queue
 from app.main import app
 
 # apply a windows-specific patch for database termination (we can't use SIGINT)
@@ -376,9 +377,9 @@ async def client() -> AsyncGenerator[AsyncClient]:
         return MockedHttpClient()
         # return _http_client
 
-    queue: asyncio.Queue[GenericJobRequest] = asyncio.Queue()
+    queue = TrackingQueue(pool=await override_get_db_pool().__anext__())
 
-    def override_get_job_queue() -> asyncio.Queue[GenericJobRequest]:
+    def override_get_job_queue() -> TrackingQueue:
         return queue
 
     app.dependency_overrides[get_db_pool] = override_get_db_pool

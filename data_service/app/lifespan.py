@@ -3,14 +3,34 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Never
+from typing import Annotated, Never
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
-from .dependencies import db, get_http_client, get_secrets_dependency, get_thread_pool, get_vae_model
-from .job_queue import TerminateTaskGroup, get_job_queue, process_jobs
+from .dependencies import db, get_db_pool, get_http_client, get_secrets_dependency, get_thread_pool, get_vae_model
+from .job_queue import TerminateTaskGroup, TrackingQueue, process_jobs
 
 NUM_WORKERS = 2
+
+_QUEUE: TrackingQueue | None = None
+
+
+async def get_job_queue() -> TrackingQueue:
+    """
+    Get the queue with tasks in it.
+
+    Returns
+    -------
+    PrepochJobQueueT
+        An initialised, but maybe empty, job queue.
+    """
+    global _QUEUE
+    if _QUEUE is None:
+        _QUEUE = TrackingQueue(pool=await get_db_pool().__anext__())
+    return _QUEUE
+
+
+JobQueueDep = Annotated[TrackingQueue, Depends(get_job_queue)]
 
 
 @asynccontextmanager

@@ -2,20 +2,19 @@
 
 import asyncio
 import json
-import typing
-from asyncio import Queue
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
+from enum import StrEnum, auto
 from logging import getLogger
 from typing import Any
 
-from fastapi import Depends
 from httpx import AsyncClient
 
 from app.epl_secrets import SecretDict
 from app.internal.elec_meters import VAE
 from app.internal.epl_typing import db_pool_t
 from app.models.carbon_intensity import GridCO2Request
+from app.models.core import dataset_id_t
 from app.models.electricity_load import ElectricalLoadRequest
 from app.models.heating_load import HeatingLoadRequest
 from app.models.import_tariffs import TariffRequest
@@ -27,8 +26,20 @@ from app.routers.import_tariffs import generate_import_tariffs
 from app.routers.renewables import generate_renewables_generation, generate_wind_generation
 
 
+class JobStatusEnum(StrEnum):
+    """Mark the status of a job within the database."""
+
+    Queued = auto()
+    Working = auto()
+    Error = auto()
+    Completed = auto()
+
+
 class TerminateTaskGroup(Exception):
-    """Exception raised to terminate a task group."""
+    """Exception raised to terminate a task group.
+
+    Use this to end the processing of a queue.
+    """
 
 
 class ASyncFunctionRequest[**P, R]:
@@ -115,14 +126,175 @@ type GenericJobRequest = (
     | SyncFunctionRequest
     | TariffRequest
 )
-from typing import Iterable
-type PrepochJobQueueT = Queue[GenericJobRequest]
 
-def is_bundle_in_queue(bundle_id: bundle_id_t, queue: PrepochJobQueueT) -> bool:
+
+class TrackingQueue(asyncio.Queue[tuple[int, GenericJobRequest]]):
+    """
+    A job tracking queue that also logs to the database.
+
+    Each job is secretly given a database ID, and status updates are written.
+    As a rough guide:
+    * `.put(item)` will insert it in the database with status `queued`
+    * `.get(item)` will update the database with status `working`
+    * `.mark_done(None)` will update the database with status `completed`
+    * `.mark_done(ex)` will update the database with status `error`
+
+    Internally items are stored as a `(job_id, request)` pair but only the `request` object is exposed.
+    """
+
+    def __init__(self, pool: db_pool_t, maxsize: int = 0):
+        """
+        Set up the queue with access to a database.
+
+        Parameters
+        ----------
+        pool
+            Database pool to write updates into
+        maxsize
+            Maximum queue size, `.put(item)` will block if qsize > maxsize
+        """
+        self.pool = pool
+        # This is how we track which job is currently being worked on
+        # it's set in ".get" and cleared in ".mark_done"
+        # TODO (2025-08-29 MHJB): what if there are two consumers?
+        self._last_job_id: int | None = None
+        super().__init__(maxsize=maxsize)
+
+    def items(self) -> list[GenericJobRequest]:
+        """
+        Get all the current items in the queue.
+
+        This has no guarantee of ordering, and items might have been taken from the queue
+        at any time during this call.
+
+        Returns
+        -------
+        list[GenericJobRequest]
+            List of requests in the queue at the moment you called this.
+        """
+        assert hasattr(self, "_queue"), "Internal queue not initialised"
+        assert self._queue is not None, "Internal queue not initialised"
+        return [item[1] for item in self._queue]
+
+    async def put(self, item: GenericJobRequest) -> None:  # type: ignore[override]
+        """
+        Put a new item in the queue.
+
+        This will insert it into the database with status 'queued'.
+
+        Parameters
+        ----------
+        item
+            Item to insert into the queue
+        """
+        job_id = await self.pool.fetchval(
+            """
+            INSERT INTO job_queue.job_status (
+                job_type,
+                job_status,
+                bundle_id,
+                request)
+            VALUES ($1, $2, $3, $4)
+            RETURNING job_id""",
+            type(item).__name__,
+            JobStatusEnum.Queued,
+            item.bundle_metadata.bundle_id if hasattr(item, "bundle_metadata") else None,  # type: ignore
+            item.model_dump_json(),
+        )
+        return await super().put((int(job_id), item))
+
+    async def get_with_id(self) -> tuple[int, GenericJobRequest]:
+        """
+        Get an item from the queue with its ID.
+
+        This will mark it as `working` in the database.
+
+        Returns
+        -------
+        tuple[int, GenericJobRequest]
+            The ID of a database item, an item to work on
+        """
+        job_id, job = await super().get()
+        await self.pool.execute(
+            """
+            UPDATE job_queue.job_status SET
+                job_status = $1,
+                started_at = NOW()
+            WHERE job_id = $2""",
+            JobStatusEnum.Working,
+            job_id,
+        )
+        # mark this ID as the most recent one we've seen
+        self._last_job_id = job_id
+        return job_id, job
+
+    async def get(self) -> GenericJobRequest:  # type: ignore[override]
+        """
+        Get an item from the queue.
+
+        This will mark it as `working` in the database.
+
+        Returns
+        -------
+        GenericJobRequest
+            an item to work on
+        """
+        return (await self.get_with_id())[1]
+
+    async def task_done(self, job_id: int | None = None, ex: Exception | None = None) -> None:  # type: ignore[override]
+        """
+        Mark an item as done.
+
+        This will mark it as `completed` or `error` in the database dependin on `ex`
+
+        Parameters
+        ----------
+        job_id
+            The ID of the job to mark as done. If not provided, use the ID of the last checked out job.
+        ex
+            If None, mark this job as completed
+            If an exception, mark this job as an error with detail set to info about this problem
+
+        Returns
+        -------
+        None
+        """
+        if job_id is None:
+            job_id = self._last_job_id
+        if ex is None:
+            await self.pool.execute(
+                """
+            UPDATE job_queue.job_status SET
+                job_status = $1,
+                completed_at = NOW()
+            WHERE job_id = $2""",
+                JobStatusEnum.Completed,
+                job_id,
+            )
+        else:
+            ex_str = str(ex)
+            if ex.args:
+                ex_str += ":" + ",".join(ex.args)
+            await self.pool.execute(
+                """
+            UPDATE job_queue.job_status SET
+                job_status = $1,
+                completed_at = NOW(),
+                detail = $2
+            WHERE job_id = $3""",
+                JobStatusEnum.Error,
+                ex_str,
+                job_id,
+            )
+        self._last_job_id = None
+        super().task_done()
+
+
+def is_bundle_in_queue(bundle_id: dataset_id_t, queue: TrackingQueue) -> bool:
     """
     Check if there are any remaining jobs with this bundle ID in the queue.
 
-    This might fire repeatedly if there are multiple workers 
+    This might fire repeatedly if there are multiple workers
 
     Parameters
     ----------
@@ -136,12 +308,15 @@ def is_bundle_in_queue(bundle_id: bundle_id_t, queue: PrepochJobQueueT) -> bool:
         False if there are remaining jobs.
     """
     # This is accessing a private attribute
-    internal_queue: Iterable[GenericJobRequest] = queue._queue
-    return any(hasattr(item, "bundle_metadata") and item.bundle_metadata.bundle_id == bundle_id
-               for item in internal_queue)
+    internal_queue: Iterable[GenericJobRequest] = queue.items()
+    return any(
+        hasattr(item, "bundle_metadata") and item.bundle_metadata.bundle_id == bundle_id  # type: ignore
+        for item in internal_queue
+    )
+
 
 async def process_jobs(
-    queue: PrepochJobQueueT,
+    queue: TrackingQueue,
     pool: db_pool_t,
     http_client: AsyncClient,
     vae: VAE,
@@ -192,8 +367,7 @@ async def process_jobs(
     """
     logger = getLogger(__name__)
     while True:
-        # TODO (2025-08-29 MHJB): log job started in queue here
-        job = await queue.get()
+        job_id, job = await queue.get_with_id()
         future: Any = None  # eat the return types of the jobs we submit
         try:
             match job:
@@ -222,31 +396,12 @@ async def process_jobs(
                 case _:
                     raise ValueError(f"Unhandled {type(job)}")
             logger.info(future)
-        except Exception:
-            # TODO (2025-08-29 MHJB): log failure in database here
+        except Exception as ex:
+            await queue.task_done(job_id=job_id, ex=ex)
             if ignore_exceptions:
                 logger.exception("Internal exception in task queue")
             else:
-                queue.task_done()
                 raise
-        # TODO (2025-08-29 MHJB): log completion in database here
-        # also check if none are remaining in queue 
-        queue.task_done()
-
-
-_QUEUE: PrepochJobQueueT = Queue[GenericJobRequest]()
-
-
-async def get_job_queue() -> PrepochJobQueueT:
-    """
-    Get the queue with tasks in it.
-
-    Returns
-    -------
-    PrepochJobQueueT
-        An initialised, but maybe empty, job queue.
-    """
-    return _QUEUE
-
-
-JobQueueDep = typing.Annotated[PrepochJobQueueT, Depends(get_job_queue)]
+        else:
+            # also check if none are remaining in queue?
+            await queue.task_done(job_id=job_id)
