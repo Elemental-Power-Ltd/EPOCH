@@ -384,3 +384,14 @@ async def client() -> AsyncGenerator[AsyncClient]:
 def phpp_fpath() -> Path:
     """Load a PHPP into a dataframe and re-use it for each test."""
     return Path("tests", "data", "phpp", "PHPP_demo.xlsx").absolute()
+
+
+async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
+    """
+    Get the demo database from the pool as a filthy hack.
+
+    This hack was implemented on 2025-05-07, so please replace with a proper fixture in the future.
+    """
+    from app.dependencies import get_db_pool
+
+    return await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
