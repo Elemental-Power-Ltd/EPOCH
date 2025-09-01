@@ -63,6 +63,7 @@ class SimulationResult:
     comparison: ScenarioComparison
     metrics: SimulationMetrics
     baseline_metrics: SimulationMetrics
+    scenario_capex_breakdown: CapexBreakdown
     report_data: typing.Any
 
 class Config:
@@ -183,9 +184,11 @@ class TaskData:
     def to_json(self) -> str: ...
 
 class CapexBreakdown:
+    building_fabric_capex: float
     dhw_capex: float
     ev_charger_cost: float
     ev_charger_install: float
+    gas_heater_capex: float
     grid_capex: float
     heatpump_capex: float
     ess_pcs_capex: float
@@ -195,6 +198,8 @@ class CapexBreakdown:
     pv_roof_capex: float
     pv_ground_capex: float
     pv_BoP_capex: float
+    boiler_upgrade_scheme_funding: float
+    general_grant_funding: float
     total_capex: float
 
 class Simulator:
