@@ -1,18 +1,22 @@
 """Lifespan tasks including job queues and databases."""
 
 import asyncio
+import contextvars
+import datetime
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Annotated, Never
+from typing import Annotated, Any, Never
 
 from fastapi import Depends, FastAPI
+from pydantic import BaseModel, Field
 
 from .dependencies import db, get_db_pool, get_http_client, get_secrets_dependency, get_thread_pool, get_vae_model
-from .job_queue import TerminateTaskGroup, TrackingQueue, process_jobs
+from .job_queue import TerminateTaskGroup, TrackingQueue, mark_remaining_jobs_as_error, process_jobs
 
 NUM_WORKERS = 2
-
+FINAL_JOIN_TIMEOUT = datetime.timedelta(seconds=10)
 _QUEUE: TrackingQueue | None = None
+WORKERS: list[asyncio.Task] = []
 
 
 async def get_job_queue() -> TrackingQueue:
@@ -33,6 +37,19 @@ async def get_job_queue() -> TrackingQueue:
 JobQueueDep = Annotated[TrackingQueue, Depends(get_job_queue)]
 
 
+class WorkerStatus(BaseModel):
+    """Status of a given worker job."""
+
+    name: str = Field(description="Human-readable name of this worker process")
+    exception: str | None = Field(default=None, description="The exception that caused this job to fail, if any")
+    is_running: bool = Field(default=False, description="Whether this job is running (either awaiting a job or working).")
+    current_job: str | None = Field(default=None, description="The type of the current job that this worker is running.")
+    current_job_id: int | None = Field(default=None, description="The ID of the current job that this worker is running.")
+    started_at: datetime.datetime | None = Field(default=None, description="The time this worker picked up the current job.")
+    coro: str | None = Field(description="Name of the coroutine this worker is working on.")
+    ctx: dict[str, Any] | None = Field(description="Full context dictionary this worker is acting within.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
     """Set up a long clients: a database pool and an HTTP client."""
@@ -42,22 +59,41 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
     loop.set_default_executor(thread_pool)
     await db.create_pool()
     assert db.pool is not None, "Failed to create DB pool"
-
+    await mark_remaining_jobs_as_error(db.pool, "Hanging job tidied on startup")
     queue = await get_job_queue()
-    async with asyncio.TaskGroup() as tg:
-        for _ in range(NUM_WORKERS):
-            _ = tg.create_task(
-                process_jobs(
-                    queue,
-                    pool=db.pool,
-                    http_client=await get_http_client().__anext__(),
-                    vae=await get_vae_model(),
-                    secrets_env=await get_secrets_dependency(),
-                    ignore_exceptions=True,
+    try:
+        async with asyncio.TaskGroup() as tg:
+            for idx in range(NUM_WORKERS):
+                ctx = contextvars.copy_context()
+                WORKERS.append(
+                    tg.create_task(
+                        process_jobs(
+                            queue,
+                            pool=db.pool,
+                            http_client=await get_http_client().__anext__(),
+                            vae=await get_vae_model(),
+                            secrets_env=await get_secrets_dependency(),
+                            ignore_exceptions=True,
+                        ),
+                        name=f"Worker {idx}",
+                        context=ctx,
+                    )
                 )
-            )
-        yield  # type: ignore
-        # Shutdown events
-        queue.shutdown()
-        await queue.join()
-        raise TerminateTaskGroup()
+            # This is the bit that actually "returns" the client
+            yield  # type: ignore
+
+            # We've received a SIGTERM so wait 10s for stragglers to finish, then kill the task
+            # and tidy up.
+            await asyncio.wait_for(queue.join(), FINAL_JOIN_TIMEOUT.total_seconds())
+            raise TerminateTaskGroup()
+    except* TerminateTaskGroup:
+        pass
+    except* TimeoutError:
+        await mark_remaining_jobs_as_error(
+            db.pool, f"Terminated on cleanup due to {FINAL_JOIN_TIMEOUT.total_seconds()}s timeout."
+        )
+    except* Exception as ex:
+        ex_str = type(ex).__name__
+        if ex.args:
+            ex_str += ": " + ",".join(ex.args)
+        await mark_remaining_jobs_as_error(db.pool, "Terminated on cleanup due to" + ex_str)
