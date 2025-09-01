@@ -1,6 +1,8 @@
 """Job queue for background tasks, including dataset generation."""
 
 import asyncio
+import contextvars
+import datetime
 import json
 from collections.abc import Awaitable, Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +26,10 @@ from app.routers.electricity_load import generate_electricity_load
 from app.routers.heating_load import generate_heating_load
 from app.routers.import_tariffs import generate_import_tariffs
 from app.routers.renewables import generate_renewables_generation, generate_wind_generation
+
+current_job_type_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("current_job", default=None)
+current_job_id_ctx: contextvars.ContextVar[int | None] = contextvars.ContextVar("current_id", default=None)
+started_at_ctx: contextvars.ContextVar[datetime.datetime | None] = contextvars.ContextVar("started_at_ctx", default=None)
 
 
 class JobStatusEnum(StrEnum):
@@ -315,6 +321,33 @@ def is_bundle_in_queue(bundle_id: dataset_id_t, queue: TrackingQueue) -> bool:
     )
 
 
+async def mark_remaining_jobs_as_error(pool: db_pool_t, msg: str = "Worker Terminated") -> None:
+    """
+    Mark all the remaining jobs in the database as error.
+
+    This is called at the start and end of the job processing, and marks
+    any jobs as `queued` or `working` as `error` with detail `msg`
+
+    Parameters
+    ----------
+    pool
+        Database pool to update
+
+    Returns
+    -------
+    None
+    """
+    await pool.execute(
+        """UPDATE job_queue.job_status SET
+                       job_status = 'error',
+                       detail = $1,
+                       queued_at = COALESCE(queued_at, NOW()),
+                       completed_at = COALESCE(completed_at, NOW())
+                       WHERE job_status = 'queued' OR job_status = 'working'""",
+        msg,
+    )
+
+
 async def process_jobs(
     queue: TrackingQueue,
     pool: db_pool_t,
@@ -368,7 +401,12 @@ async def process_jobs(
     logger = getLogger(__name__)
     while True:
         job_id, job = await queue.get_with_id()
-        future: Any = None  # eat the return types of the jobs we submit
+        # Use these context variables to smuggle out the current job we're working on through the containing task
+        current_job_id_ctx.set(job_id)
+        current_job_type_ctx.set(type(job).__name__)
+        started_at_ctx.set(datetime.datetime.now(datetime.UTC))
+
+        future: Any = None  # eat the return types of the jobs we submit, but log them in case it's helpful
         try:
             match job:
                 case GridCO2Request():
@@ -397,11 +435,19 @@ async def process_jobs(
                     raise ValueError(f"Unhandled {type(job)}")
             logger.info(future)
         except Exception as ex:
+            # Tidy up the context variables as we're now done
+            current_job_id_ctx.set(None)
+            current_job_type_ctx.set(None)
+            started_at_ctx.set(None)
             await queue.task_done(job_id=job_id, ex=ex)
             if ignore_exceptions:
                 logger.exception("Internal exception in task queue")
             else:
                 raise
         else:
+            # Tidy up the context variables as we're now done
+            current_job_id_ctx.set(None)
+            current_job_type_ctx.set(None)
+            started_at_ctx.set(None)
             # also check if none are remaining in queue?
             await queue.task_done(job_id=job_id)
