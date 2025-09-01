@@ -20,7 +20,17 @@ class RunSimulationRequest(BaseModel):
 class ResultReproConfig(BaseModel):
     portfolio_id: dataset_id_t
     task_data: dict[site_id_t, TaskDataPydantic]
+
+
+class NewResultReproConfig(ResultReproConfig):
+    bundle_ids: dict[site_id_t, dataset_id_t]
+
+
+class LegacyResultReproConfig(ResultReproConfig):
     site_data: dict[site_id_t, SiteMetaData]
+
+
+type result_repro_config_t = NewResultReproConfig | LegacyResultReproConfig
 
 
 class GetSavedSiteDataRequest(BaseModel):

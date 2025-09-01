@@ -3,14 +3,14 @@ from uuid import UUID, uuid4
 
 from app.internal.uuid7 import uuid7
 from app.models.epoch_types.task_data_type import Building, Config, GasHeater, GasType, Grid, SolarPanel, TaskData
-from app.models.simulate import ResultReproConfig
+from app.models.simulate import LegacyResultReproConfig
 from app.models.site_data import SiteMetaData
 
 
-class TestResultReproConfig:
+class TestLegacyResultReproConfig:
     def test_can_construct_uuid7(self) -> None:
-        """Test that we can construct a ResultReproConfig with UUIDv7"""
-        config = ResultReproConfig(
+        """Test that we can construct a LegacyResultReproConfig with UUIDv7"""
+        config = LegacyResultReproConfig(
             portfolio_id=uuid7(),
             task_data={"demo_london": TaskData()},
             site_data={
@@ -25,12 +25,12 @@ class TestResultReproConfig:
         )
         assert config
         config_json = config.model_dump_json()
-        round_tripped = ResultReproConfig.model_validate_json(config_json)
+        round_tripped = LegacyResultReproConfig.model_validate_json(config_json)
         assert round_tripped == config
 
     def test_can_construct_uuid4(self) -> None:
-        """Test that we can construct a ResultReproConfig with UUIDv7"""
-        config = ResultReproConfig(
+        """Test that we can construct a LegacyResultReproConfig with UUIDv4"""
+        config = LegacyResultReproConfig(
             portfolio_id=uuid4(),
             task_data={"demo_london": TaskData()},
             site_data={
@@ -45,11 +45,11 @@ class TestResultReproConfig:
         )
         assert config
         config_json = config.model_dump_json()
-        round_tripped = ResultReproConfig.model_validate_json(config_json)
+        round_tripped = LegacyResultReproConfig.model_validate_json(config_json)
         assert round_tripped == config
 
     def test_with_real_data(self) -> None:
-        config = ResultReproConfig(
+        config = LegacyResultReproConfig(
             portfolio_id=UUID("0ab3eb02-5df0-4d7f-af58-937e68dadf73"),
             task_data={
                 "demo_london": TaskData(
