@@ -4,7 +4,6 @@ import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
-from app.internal.datamanager import DataManager
 from app.internal.uuid7 import uuid7
 from app.main import app
 from app.models.core import Task
@@ -62,7 +61,7 @@ class TestQueue:
         Test IQueue put method.
         """
         q = IQueue()
-        await q.put((default_task, DataManager()))
+        await q.put(default_task)
 
     @pytest.mark.asyncio
     async def test_get(self, default_task: Task) -> None:
@@ -70,7 +69,7 @@ class TestQueue:
         Test IQueue get method.
         """
         q = IQueue()
-        await q.put((default_task, DataManager()))
+        await q.put(default_task)
         task, _ = await q.get()
         assert isinstance(task, Task)
 
@@ -80,7 +79,7 @@ class TestQueue:
         Test Iqueue mark_task_done method.
         """
         q = IQueue()
-        await q.put((default_task, DataManager()))
+        await q.put(default_task)
         assert default_task.task_id in q.q
         q.mark_task_done(default_task)
         assert default_task.task_id not in q.q
@@ -91,7 +90,7 @@ class TestQueue:
         Test IQueue cancel method.
         """
         q = IQueue()
-        await q.put((default_task, DataManager()))
+        await q.put(default_task)
         q.cancel(default_task.task_id)
         assert q.q[default_task.task_id].state == task_state.CANCELLED
 
@@ -102,7 +101,7 @@ class TestQueue:
         """
         q = IQueue()
         assert q.uncancelled() == OrderedDict()
-        await q.put((default_task, DataManager()))
+        await q.put(default_task)
         uncancelled = q.uncancelled()
         assert isinstance(uncancelled, OrderedDict)
         assert default_task.task_id in uncancelled
@@ -114,5 +113,5 @@ class TestQueue:
         """
         q = IQueue()
         assert q.qsize() == 0
-        await q.put((default_task, DataManager()))
+        await q.put(default_task)
         assert q.qsize() == 1

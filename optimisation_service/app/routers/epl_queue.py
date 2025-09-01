@@ -8,12 +8,12 @@ from pydantic import PositiveInt
 
 from app.models.core import Task
 from app.models.database import dataset_id_t
-from app.models.epl_queue import QueueElem, QueueStatus, TaskWDataManager, task_state
+from app.models.epl_queue import QueueElem, QueueStatus, task_state
 
 logger = logging.getLogger("default")
 
 
-class IQueue(asyncio.Queue[TaskWDataManager]):
+class IQueue(asyncio.Queue[Task]):
     """Inspectable Queue with cancelling of tasks."""
 
     def __init__(self, maxsize: PositiveInt = 1) -> None:
@@ -32,21 +32,20 @@ class IQueue(asyncio.Queue[TaskWDataManager]):
         self.q: OrderedDict[dataset_id_t, QueueElem] = OrderedDict()
         self.q_len = maxsize
 
-    async def put(self, task_w_datamanager: TaskWDataManager) -> None:
+    async def put(self, task: Task) -> None:
         """
         Add task in queue.
 
         Parameters
         ----------
-        task_w_datamanager
-            Task to add in queue with associated data manager
+        task
+            Task to add in queue.
         """
-        task, _ = task_w_datamanager
         logger.info(f"Queued {task.task_id}.")
-        await super().put(task_w_datamanager)
+        await super().put(task)
         self.q[task.task_id] = QueueElem(state=task_state.QUEUED, added_at=datetime.datetime.now(datetime.UTC))
 
-    async def get(self) -> TaskWDataManager:
+    async def get(self) -> Task:
         """
         Get next task from queue.
 
@@ -56,14 +55,14 @@ class IQueue(asyncio.Queue[TaskWDataManager]):
         Returns
         -------
         task
-            Next task in queue with associated data manager
+            Next task in queue.
         """
-        task, data_manager = await super().get()
+        task = await super().get()
         logger.info(f"{task.task_id} retrieved from queue.")
         assert self.q[task.task_id].state == task_state.QUEUED or self.q[task.task_id].state == task_state.CANCELLED
         if self.q[task.task_id].state == task_state.QUEUED:
             self.q[task.task_id].state = task_state.RUNNING
-            return task, data_manager
+            return task
         else:
             self.mark_task_done(task)
             return await self.get()

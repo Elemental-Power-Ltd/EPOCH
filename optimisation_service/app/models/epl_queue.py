@@ -3,8 +3,6 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from app.internal.datamanager import DataManager
-from app.models.core import Task
 from app.models.database import dataset_id_t
 
 
@@ -27,6 +25,3 @@ class QueueStatus(BaseModel):
         examples=[{"805fb659-1cac-44f3-a1f9-85dc82178f53": "queued"}], description="Overview of queue elements."
     )
     service_uptime: timedelta = Field(description="Service uptime.")
-
-
-type TaskWDataManager = tuple[Task, DataManager]

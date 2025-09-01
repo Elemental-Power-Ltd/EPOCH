@@ -3,30 +3,26 @@ import datetime
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
+from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 
+from app.dependencies import HTTPClient, HttpClientDep
 from app.internal.bayesian.bayesian import Bayesian
 from app.internal.constraints import apply_default_constraints
-from app.internal.datamanager import DataManagerDep
-from app.internal.epoch_utils import simulation_result_to_pydantic
-from app.internal.ga_utils import strip_annotations
+from app.internal.database.results import process_results, transmit_results
+from app.internal.database.site_data import fetch_portfolio_data
+from app.internal.database.tasks import transmit_task
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.site_range import count_parameters_to_optimise
-from app.internal.uuid7 import uuid7
 from app.models.core import (
     EndpointTask,
-    OptimisationResultEntry,
-    PortfolioOptimisationResult,
     Site,
-    SiteOptimisationResult,
     Task,
     TaskResponse,
-    TaskResult,
 )
-from app.models.result import OptimisationResult
 from app.routers.epl_queue import IQueue
 
 
@@ -42,52 +38,6 @@ class OptimiserFunc(Enum):
 
 router = APIRouter()
 logger = logging.getLogger("default")
-
-
-def process_results(task: Task, results: OptimisationResult, completed_at: datetime.datetime) -> OptimisationResultEntry:
-    """
-    Process the results of a task, creating a portfolio result.
-
-    Parameters
-    ----------
-    task
-        The completed job
-    results
-        Results of the completed job
-    completed_at
-        When the job was finished (hopefully recently)
-
-    Returns
-    -------
-    OptimisationResultEntry
-        Format suitable to file in the database as a result with a new UUID
-    """
-    logger.info(f"Postprocessing results of {task.task_id}.")
-    portfolios = []
-    for portfolio_solution in results.solutions:
-        portfolio_id = uuid7()
-        site_results = []
-        for site_id, site_solution in portfolio_solution.scenario.items():
-            site_results.append(
-                SiteOptimisationResult(
-                    site_id=site_id,
-                    portfolio_id=portfolio_id,
-                    scenario=strip_annotations(site_solution.scenario),
-                    metrics=simulation_result_to_pydantic(site_solution.simulation_result),
-                )
-            )
-        portfolios.append(
-            PortfolioOptimisationResult(
-                task_id=task.task_id,
-                portfolio_id=portfolio_id,
-                metrics=simulation_result_to_pydantic(portfolio_solution.simulation_result),
-                site_results=site_results,
-            )
-        )
-
-    tasks = TaskResult(task_id=task.task_id, n_evals=results.n_evals, exec_time=results.exec_time, completed_at=completed_at)
-
-    return OptimisationResultEntry(portfolio=portfolios, tasks=tasks)
 
 
 def get_epoch_version() -> str:
@@ -123,7 +73,7 @@ def check_epoch_version() -> str | None:
     return simulator_version
 
 
-async def process_requests(q: IQueue) -> None:
+async def process_requests(q: IQueue, http_client: HTTPClient) -> None:
     """
     Loop to process tasks in queue.
 
@@ -136,7 +86,7 @@ async def process_requests(q: IQueue) -> None:
     check_epoch_version()
     while True:
         logger.info("Awaiting next task from queue.")
-        task, data_manager = await q.get()
+        task = await q.get()
         try:
             logger.info(f"Optimising {task.task_id}.")
             loop = asyncio.get_event_loop()
@@ -153,7 +103,7 @@ async def process_requests(q: IQueue) -> None:
             logger.info(f"Finished optimising {task.task_id}.")
             completed_at = datetime.datetime.now(datetime.UTC)
             payload = process_results(task, results, completed_at)
-            await data_manager.transmit_results(payload)
+            await transmit_results(results=payload, http_client=http_client)
         except Exception:
             logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)
             pass
@@ -162,7 +112,7 @@ async def process_requests(q: IQueue) -> None:
 
 
 @router.post("/submit-task")
-async def submit_task(request: Request, endpoint_task: EndpointTask, data_manager: DataManagerDep) -> TaskResponse:
+async def submit_task(request: Request, endpoint_task: EndpointTask, http_client: HttpClientDep) -> TaskResponse:
     """
     Add optimisation task to queue.
 
@@ -184,19 +134,21 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, data_manage
         epoch_version=simulator_version,
     )
 
-    response = await submit_portfolio(request=request, task=epp_task, data_manager=data_manager)
+    response = await submit_portfolio(request=request, task=epp_task, http_client=http_client)
     return response
 
 
 @router.post("/submit-portfolio-task")
-async def submit_portfolio(request: Request, task: Task, data_manager: DataManagerDep) -> TaskResponse:
+async def submit_portfolio(request: Request, task: Task, http_client: HttpClientDep) -> TaskResponse:
     """
     Add portfolio optimisation task to queue.
 
     Parameters
     ----------
-    endpoint_portfolio_task
-        Portfolio ptimisation task to be added to queue.
+    task
+        Task to be added to queue.
+    http_client
+        Asynchronous HTTP client to use for requests.
     """
     logger.info(f"Received task - assigned id: {task.task_id}.")
 
@@ -213,13 +165,15 @@ async def submit_portfolio(request: Request, task: Task, data_manager: DataManag
             status_code=400, detail="Task search space is empty. Found no asset values to optimise in site range."
         )
     try:
-        await data_manager.fetch_portfolio_data(task)
+        await fetch_portfolio_data(task=task, http_client=http_client)
         task.portfolio, task.portfolio_constraints = apply_default_constraints(
             existing_portfolio=task.portfolio, existing_constraints=task.portfolio_constraints
         )
-        data_manager.save_parameters(task)
-        await data_manager.transmit_task(task)
-        await q.put((task, data_manager))
+        simulator_version = get_epoch_version()
+        task.epoch_version = simulator_version
+        save_parameters(task=task)
+        await transmit_task(task=task, http_client=http_client)
+        await q.put(task)
         return TaskResponse(task_id=task.task_id)
     except httpx.HTTPStatusError as e:
         logger.warning(f"Failed to add task to database: {e.response.text!s}")
@@ -227,3 +181,21 @@ async def submit_portfolio(request: Request, task: Task, data_manager: DataManag
     except Exception as e:
         logger.warning(f"Failed to add task to queue: {type(e)}: {e!s}")
         raise HTTPException(status_code=500, detail=f"Failed to add task to queue: {e!s}") from e
+
+
+_TEMP_DIR = Path("app", "data", "temp")
+
+
+def save_parameters(task: Task) -> None:
+    """
+    Save the parameters of a Task to file for debug.
+
+    Parameters
+    ----------
+    task
+        Task to save parameters for.
+    """
+    for site in task.portfolio:
+        site_temp_dir = Path(_TEMP_DIR, str(task.task_id), site.site_data.site_id)
+        site_temp_dir.mkdir(parents=True, exist_ok=True)
+        Path(site_temp_dir, "site_range.json").write_text(site.site_range.model_dump_json())

@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 
+from app.internal.database.results import process_results
 from app.models.core import Task
 from app.models.epoch_types.site_range_type import (
     BatteryModeEnum,
@@ -20,7 +21,6 @@ from app.models.epoch_types.site_range_type import (
     SolarPanel,
 )
 from app.models.result import OptimisationResult
-from app.routers.optimise import process_results
 
 
 class TestSubmitPortfolioTask:
