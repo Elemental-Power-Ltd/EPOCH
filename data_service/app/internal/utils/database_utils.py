@@ -1,10 +1,26 @@
 """Database migration utilities."""
 
+from enum import Enum, auto
 from pathlib import Path
 
 
+class MigrationDirection(Enum):
+    """Whether to look for up for down migrations."""
+
+    Up = auto()
+    Down = auto()
+
+
+def extract_number_from_migration(fname: Path) -> int:
+    """Extract the initial number from a migration file."""
+    return int(fname.stem.split("_", maxsplit=1)[0])
+
+
 def get_migration_files(
-    directory: Path = Path("migrations"), start: int | float = -float("inf"), end: int | float = float("inf")
+    directory: Path = Path("migrations"),
+    start: int | float = -float("inf"),
+    end: int | float = float("inf"),
+    direction: MigrationDirection = MigrationDirection.Up,
 ) -> list[Path]:
     """
     Get all the migration .sql files in ascending order.
@@ -30,11 +46,11 @@ def get_migration_files(
     list[Path]
         Ordered list of up migrations.
     """
-    all_files = [item.absolute() for item in directory.glob("*.up.sql")]
-
-    def extract_number_from_migration(fname: Path) -> int:
-        """Extract the initial number from a migration file."""
-        return int(fname.stem.split("_", maxsplit=1)[0])
+    if direction == MigrationDirection.Up:
+        glob_suffix = "*.up.sql"
+    else:
+        glob_suffix = "*.down.sql"
+    all_files = [item.absolute() for item in directory.glob(glob_suffix)]
 
     return sorted(
         filter(lambda f: start <= extract_number_from_migration(f) < end, all_files), key=extract_number_from_migration
