@@ -681,7 +681,7 @@ def split_and_baseline_active_days(
     weekend_inds
         defaults to (5,6) for Saturday and Sunday
     division
-        defaults to "england-and-wales"
+        which division of the UK to use to determine the public holidays; defaults to England
 
     Returns
     -------
@@ -1038,7 +1038,11 @@ def stabilise_variance(
     ts_std_as_df = pd.DataFrame(ts_std, index=ts.index)
     return ts_std_as_df, lin_model
 
-def predict_var_mean_batched(model, observed_structure: pd.DataFrame, min_var=1e-8):
+def predict_var_mean_batched(
+    model: sm.OLS,
+    observed_structure: pd.DataFrame,
+    min_var=1e-8
+) -> npt.NDArray[np.floating]:
     """
     Compute plug-in variance trajectories for multiple observations of the structural predictor.
 
@@ -1051,7 +1055,7 @@ def predict_var_mean_batched(model, observed_structure: pd.DataFrame, min_var=1e
         Fitted OLS (or GLS) model with predictors in the order
         [const, S, S^2, np.abs(dS)]
     observed_structure : pandas.DataFrame, shape (m, n)
-        Matrix of structural paths from the VAE & deterministic residuals combined.
+        Matrix of structural paths from the offsets, scaled VAE & deterministic residuals combined.
         Rows correspond to independent realisations, columns to time points.
     min_var : float, default=1e-8
         Minimum variance floor to enforce numerical stability when exponentiating log-variance predictions.
