@@ -33,13 +33,13 @@ class ArmaFitResult(TypedDict):
         (p, q)
     params
         Parameters for the ARMA model
-    aic
-        Akaike information criterion, a scalar statistic upon which we base model choice; to be minimised
+    bic
+        Bayesian information criterion, a scalar statistic upon which we base model choice; to be minimised
     """
 
     order: tuple[int, int]
     params: npt.NDArray[np.floating]
-    aic: float
+    bic: float
 
 
 logger = logging.getLogger(__name__)
@@ -796,7 +796,7 @@ def fit_shared_arma_model(
     tuple[np.ndarray, float] (optional)
         A tuple containing:
         - params: Fitted parameter vector (AR, MA, σ²)
-        - aic: Akaike Information Criterion
+        - bic: Bayesian Information Criterion
         Returns None if fitting fails or model is not stationary.
     """
     if p == q == 0:
@@ -837,7 +837,11 @@ def select_best_shared_arma_model(
     max_iter: int = 500,
 ) -> ArmaFitResult:
     """
-    Grid search over (p, q) to find best shared ARMA(p, q) model by AIC.
+    Grid search over (p, q) to find best shared ARMA(p, q) model by BIC.
+
+    We use the Bayesian information criteron (rather than the Akaike information criterion, say) for ARMA order selection
+    because BIC applies a stronger, sample-size-dependent penalty on extra parameters. This reduces the risk of overfitting
+    spurious AR/MA terms and inflating variance.
 
     Parameters
     ----------
@@ -852,9 +856,11 @@ def select_best_shared_arma_model(
 
     Returns
     -------
-        tuple[(p, q), params, aic]: Best model order, parameters, and AIC.
+        tuple[(p, q), params, bic]: Best model order, parameters, and BIC.
     """
     best_result: ArmaFitResult | None = None
+    n_series, series_len = data.shape
+    n_obs = n_series*series_len
 
     for p, q in itertools.product(range(p_max + 1), range(q_max + 1)):
         if p == q == 0:
@@ -873,10 +879,10 @@ def select_best_shared_arma_model(
             continue
 
         k = p + q + 1
-        aic = 2 * k + 2 * result.fun  # result.fun = joint NLL
+        bic = np.log(n_obs) * k + 2 * result.fun  # result.fun = joint NLL
 
-        if best_result is None or aic < best_result["aic"]:
-            best_result = {"order": (p, q), "params": result.x, "aic": aic}
+        if best_result is None or bic < best_result["bic"]:
+            best_result = {"order": (p, q), "params": result.x, "bic": bic}
 
     if best_result is None:
         raise ValueError("Couldn't fit a best ARMA model.")
@@ -940,7 +946,7 @@ def fit_residual_model(
             logger.info("  AR coefficients: %s", ar_coefs)
             logger.info("  MA coefficients: %s", ma_coefs)
             logger.info("  Shared sigma-sq: %s", sigma2)
-            logger.info("  AIC: %s", best["aic"])
+            logger.info("  BIC: %s", best["bic"])
     else:
         logger.info("No valid ARMA model found.")
 
