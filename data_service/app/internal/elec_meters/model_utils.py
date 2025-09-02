@@ -920,10 +920,9 @@ def fit_residual_model(
     resids_detrended = resids.sub(trend)
 
     if vae_struct is not None:
-        resids_detrended_stable, var_lm = stabilise_variance(resids_detrended, vae_struct)
+        resids_detrended_stable, var_lm = stabilise_variance(resids_detrended, vae_struct + trend)
     else:
-        resids_detrended_stable = resids_detrended.copy()
-        var_lm = None
+        resids_detrended_stable, var_lm = stabilise_variance(resids_detrended, trend)
 
     best = select_best_shared_arma_model(resids_detrended_stable.to_numpy(), p_max=3, q_max=3)
     if len(best) > 0:
@@ -1007,7 +1006,7 @@ def stabilise_variance(
     We assume `ts` contains independent time series realisations of the same process, which is heteroskedastic.
     We do so by regressing the log-variance of the observations at each time step against a structural component,
     specified in `structure`, and related quantities.
-    Apply this stablisation to detrended residuals to help subsequent ARMA model selection; without this, ARMA model choice
+    Apply this stabilisation to detrended residuals to help subsequent ARMA model selection; without this, ARMA model choice
     tends to bias models with larger MA components, inflating the variance of the fitted ARMA process.
 
     Parameters
@@ -1052,7 +1051,7 @@ def predict_var_mean_batched(model, observed_structure: pd.DataFrame, min_var=1e
         Fitted OLS (or GLS) model with predictors in the order
         [const, S, S^2, np.abs(dS)]
     observed_structure : pandas.DataFrame, shape (m, n)
-        Matrix of structural paths from the VAE.
+        Matrix of structural paths from the VAE & deterministic residuals combined.
         Rows correspond to independent realisations, columns to time points.
     min_var : float, default=1e-8
         Minimum variance floor to enforce numerical stability when exponentiating log-variance predictions.

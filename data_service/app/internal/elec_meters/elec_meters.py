@@ -19,7 +19,7 @@ from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, SquareHHDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
-from .model_utils import fit_residual_model, split_and_baseline_active_days
+from .model_utils import fit_residual_model, predict_var_mean_batched, split_and_baseline_active_days
 from .vae_2_0 import VAE
 
 
@@ -282,10 +282,10 @@ def daily_to_hh_eload(
         target_hh_inactive_residuals = target_hh_obs_baselined[~is_active_mask]
 
         # then model the residuals: extract the trend and fit an ARMA model to the noise
-        target_hh_inactive_residtrend_df, ARMA_model_inactive, ARMA_scale_inactive = fit_residual_model(
+        target_hh_inactive_residtrend_df, var_model_inactive, ARMA_model_inactive, ARMA_scale_inactive = fit_residual_model(
             target_hh_inactive_residuals, vae_struct=None, verbose=True
         )
-        target_hh_active_residtrend_df, ARMA_model_active, ARMA_scale_active = fit_residual_model(
+        target_hh_active_residtrend_df, var_model_active, ARMA_model_active, ARMA_scale_active = fit_residual_model(
             target_hh_active_residuals, vae_struct=pd.DataFrame(vae_obs), verbose=True
         )
     else:
@@ -314,7 +314,7 @@ def daily_to_hh_eload(
         target_hh_df[~target_active_mask] += np.tile(default_hh_inactive_residtrend_df, (num_inactive, 1))
         target_hh_df[target_active_mask] += np.tile(default_hh_active_residtrend_df, (num_active, 1))
 
-    # Add noise from fitted ARMA distributions
+    # Add noise from fitted ARMA distributions, incorporating heteroskedasticity
     # - first, if needed, scale the ARMA_scale_* parameters using the daily aggregate values for the target site
     if not use_client_hh:
         ARMA_scale_active_target = (
@@ -327,7 +327,6 @@ def daily_to_hh_eload(
         ARMA_scale_active_target = ARMA_scale_active
 
     # - then pre-generate white noise to reduce runtime...
-
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
     sims = np.asarray(
         [
@@ -335,7 +334,11 @@ def daily_to_hh_eload(
             for i in range(num_inactive)
         ]
     )
-    target_hh_df[~target_active_mask] += sims
+    # - scale by fitted heteroskedasticity factors
+    var_factors_inactive = predict_var_mean_batched(
+        var_model_inactive, target_hh_inactive_residtrend_df
+    )
+    target_hh_df[~target_active_mask] += np.sqrt(var_factors_inactive) * sims
 
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
@@ -343,7 +346,10 @@ def daily_to_hh_eload(
     sims = np.asarray(
         [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
     )
-    target_hh_df[target_active_mask] += sims
+    var_factors_active = predict_var_mean_batched(
+        var_model_active, target_hh_df[target_active_mask]
+    )
+    target_hh_df[target_active_mask] += np.sqrt(var_factors_active) * sims
 
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     return HHDataFrame(
