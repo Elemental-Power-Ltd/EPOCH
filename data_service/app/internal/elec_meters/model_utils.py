@@ -926,9 +926,15 @@ def fit_residual_model(
     resids_detrended = resids.sub(trend)
 
     if vae_struct is not None:
-        resids_detrended_stable, var_lm = stabilise_variance(resids_detrended, vae_struct + trend)
+        resids_detrended_stable, var_lm = stabilise_variance(
+            resids_detrended,
+            vae_struct + np.tile(trend, (resids_detrended.shape[0],1))
+        )
     else:
-        resids_detrended_stable, var_lm = stabilise_variance(resids_detrended, trend)
+        resids_detrended_stable, var_lm = stabilise_variance(
+            resids_detrended,
+            pd.DataFrame(np.tile(trend, (resids_detrended.shape[0],1)))
+        )
 
     best = select_best_shared_arma_model(resids_detrended_stable.to_numpy(), p_max=3, q_max=3)
     if len(best) > 0:

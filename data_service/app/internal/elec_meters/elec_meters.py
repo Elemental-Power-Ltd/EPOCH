@@ -278,9 +278,10 @@ def daily_to_hh_eload(
 
         # rescale baseline / peak of approximate profiles to match daily aggregates for active days
         # this is used to calculate residuals and also provide structure for the log-variance regression in fit_residual_model()
-        scaling_factors_obs = daily_active_baselined / np.sum(vae_output_np, axis=1)
+        scaling_factors_obs = daily_active_baselined / np.sum(vae_obs, axis=1)[:,None]
+            # force an extra axis to satisfy np broadcasting rules
         target_hh_active_approx_df = pd.DataFrame(
-            np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs * np.tile(scaling_factors_obs, (48, 1)).T,
+            np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs * np.tile(scaling_factors_obs, (1, 48)),
             columns=timestamp_headers,
             index=target_hh_obs_daily_active.index,
         )
