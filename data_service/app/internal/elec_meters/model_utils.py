@@ -11,6 +11,7 @@ import joblib
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from scipy.interpolate import UnivariateSpline
 from scipy.optimize import OptimizeResult, minimize
 from sklearn.base import TransformerMixin  # type: ignore
 from sklearn.preprocessing import MinMaxScaler, StandardScaler  # type: ignore
@@ -882,7 +883,10 @@ def select_best_shared_arma_model(
     return best_result
 
 
-def fit_residual_model(resids: pd.DataFrame, verbose: bool = False) -> tuple[pd.DataFrame, ArmaProcess, float]:
+def fit_residual_model(
+        resids: pd.DataFrame,
+        verbose: bool = False
+    ) -> tuple[pd.DataFrame, ArmaProcess, float]:
     """
     Fit a crude trend to the given residuals and then fit an ARMA process to the detrended residuals.
 
@@ -908,7 +912,8 @@ def fit_residual_model(resids: pd.DataFrame, verbose: bool = False) -> tuple[pd.
     if verbose:
         logger.info("Fitting trend & ARMA model...")
 
-    trend = resids.mean(axis=0)
+    # trend = resids.mean(axis=0)
+    trend = fit_pooled_spline(resids)
     resids_detrended = resids.sub(trend)
 
     best = select_best_shared_arma_model(resids_detrended.to_numpy(), p_max=3, q_max=3)
@@ -933,3 +938,53 @@ def fit_residual_model(resids: pd.DataFrame, verbose: bool = False) -> tuple[pd.
 
     trend_as_df = pd.DataFrame(trend, index=resids.columns).T
     return trend_as_df, ARMA_model, ARMA_scale
+
+def fit_pooled_spline(
+    resids: pd.DataFrame,
+    smooth_factor: float | None = None,
+    order: int = 3
+) -> pd.Series:
+    """
+    Fit a pooled penalised spline f(t) to input residuals.
+
+    This is preferred to the sample mean as it usually results in lower overall variance for the demeaned residuals.
+    By design, the pooled spline captures more low-frequency structure than the column means, and contains less high-freq
+    variation. The remaining noise process (after subtracting the spline / col means) may therefore have more high-freq
+    power but less low-freq power; the trade-off hear will typically be beneficial, reducing the total overall power (variance)
+    in the demeaned noise process.
+
+    Parameters
+    ----------
+    resids
+        a DataFrame containing a set of observed residuals; axis 1 is of length 48
+    smooth_factor
+        smoothing factor for UnivariateSpline. If None, set to a near-unbiased default.
+    order
+        spline order (default to a cubic spline).
+
+    Returns
+    -------
+    f_hat
+        a smoothed common trend, indexed by columns of resids
+    # spline
+    #     a fitted UnivariateSpline object for later evaluation
+    """
+    n = resids.shape[1]
+    t = np.arange(n, dtype=float)
+
+    # pooled mean across realisations (sufficient statistic for the mean term)
+    y_bar = resids.mean(axis=0).to_numpy()
+
+    # inverse-variance weights (stabilise when m is small / heteroskedastic across t)
+    var_t = resids.var(axis=0, ddof=1).to_numpy()
+    w = 1.0 / np.maximum(var_t, np.finfo(float).eps)
+
+    # SciPy uses 's' as the allowed weighted RSS: sum_i w_i (y_i - f(t_i))^2 <= s
+    # With w_i ≈ 1/Var and correct model, E[RSS_w] ≈ n, so s≈n is a good fast default.
+    if smooth_factor is None:
+        smooth_factor = float(n)
+
+    spline = UnivariateSpline(t, y_bar, w=w, k=order, s=smooth_factor)
+    f_hat = pd.Series(spline(t), index=resids.columns)
+    return f_hat#, spline
+
