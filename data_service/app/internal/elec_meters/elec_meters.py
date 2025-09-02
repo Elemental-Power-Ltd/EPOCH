@@ -283,10 +283,10 @@ def daily_to_hh_eload(
 
         # then model the residuals: extract the trend and fit an ARMA model to the noise
         target_hh_inactive_residtrend_df, ARMA_model_inactive, ARMA_scale_inactive = fit_residual_model(
-            target_hh_inactive_residuals, verbose=True
+            target_hh_inactive_residuals, vae_struct=None, verbose=True
         )
         target_hh_active_residtrend_df, ARMA_model_active, ARMA_scale_active = fit_residual_model(
-            target_hh_active_residuals, verbose=True
+            target_hh_active_residuals, vae_struct=pd.DataFrame(vae_obs), verbose=True
         )
     else:
         # load defaults for the residual trends, ARMA noise models, and the std devation of the daily data for active days

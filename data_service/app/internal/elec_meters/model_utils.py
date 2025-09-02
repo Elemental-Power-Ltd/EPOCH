@@ -11,13 +11,13 @@ import joblib
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import statsmodels.api as sm
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import OptimizeResult, minimize
 from sklearn.base import TransformerMixin  # type: ignore
 from sklearn.preprocessing import MinMaxScaler, StandardScaler  # type: ignore
 from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction  # type: ignore
-from statsmodels.tsa.arima.model import ARIMA  # type: ignore
-from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
+from statsmodels.tsa.api import ARIMA, ArmaProcess
 
 from app.internal.epl_typing import DailyDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
@@ -884,9 +884,10 @@ def select_best_shared_arma_model(
 
 
 def fit_residual_model(
-        resids: pd.DataFrame,
-        verbose: bool = False
-    ) -> tuple[pd.DataFrame, ArmaProcess, float]:
+    resids: pd.DataFrame,
+    vae_struct: pd.DataFrame | None = None,
+    verbose: bool = False
+) -> tuple[pd.DataFrame, sm.OLS | None, ArmaProcess, float]:
     """
     Fit a crude trend to the given residuals and then fit an ARMA process to the detrended residuals.
 
@@ -894,6 +895,8 @@ def fit_residual_model(
     ----------
     resids
         a DataFrame containing a set of observed residuals; axis 1 is of length 48
+    vae_struct
+        contains the structural vae component removed from the observed data to obtain `resids`; same size as `resids`
     verbose (boolean, default False)
         Set this to True if you want progress statements to be printed
 
@@ -916,7 +919,13 @@ def fit_residual_model(
     trend = fit_pooled_spline(resids)
     resids_detrended = resids.sub(trend)
 
-    best = select_best_shared_arma_model(resids_detrended.to_numpy(), p_max=3, q_max=3)
+    if vae_struct is not None:
+        resids_detrended_stable, var_lm = stabilise_variance(resids_detrended, vae_struct)
+    else:
+        resids_detrended_stable = resids_detrended.copy()
+        var_lm = None
+
+    best = select_best_shared_arma_model(resids_detrended_stable.to_numpy(), p_max=3, q_max=3)
     if len(best) > 0:
         p, q = best["order"]
         ar_coefs = best["params"][:p]
@@ -937,7 +946,7 @@ def fit_residual_model(
         logger.info("No valid ARMA model found.")
 
     trend_as_df = pd.DataFrame(trend, index=resids.columns).T
-    return trend_as_df, ARMA_model, ARMA_scale
+    return trend_as_df, var_lm, ARMA_model, ARMA_scale
 
 def fit_pooled_spline(
     resids: pd.DataFrame,
@@ -988,3 +997,78 @@ def fit_pooled_spline(
     f_hat = pd.Series(spline(t), index=resids.columns)
     return f_hat#, spline
 
+def stabilise_variance(
+    ts: pd.DataFrame,
+    structure: pd.DataFrame,
+) -> tuple[pd.Series,sm.OLS]:
+    """
+    Stabilise the variance of a heteroskedastic time series.
+
+    We assume `ts` contains independent time series realisations of the same process, which is heteroskedastic.
+    We do so by regressing the log-variance of the observations at each time step against a structural component,
+    specified in `structure`, and related quantities.
+    Apply this stablisation to detrended residuals to help subsequent ARMA model selection; without this, ARMA model choice
+    tends to bias models with larger MA components, inflating the variance of the fitted ARMA process.
+
+    Parameters
+    ----------
+    ts
+        a DataFrame containing a set of heteroskedastic observed time series; axis 1 is of length 48
+    structure
+        a DataFrame containing a structural component for `ts`, or a proxy thereof; same shape as `ts`;
+        to be used as a predictor for the time-varying variance in `ts`
+
+    Returns
+    -------
+    ts_std
+        a DataFrame containing the variance-stabilised version of `ts`
+    """
+    var_t_est = ts.var(axis=0, ddof=1).to_numpy()
+    log_var = np.log(np.maximum(var_t_est, np.finfo(float).eps))
+
+    S = structure.mean(axis=0).to_numpy()  # regressing against S captures level-dependent variance
+    dS = np.diff(S, prepend=S[0])   # regressing against abs(dS) captures bursts during sudden structural changes
+    X = np.column_stack([S, S**2, np.abs(dS)]) # regressing against S^2 captures nonlinear effects
+    X = sm.add_constant(X)
+
+    lin_model = sm.OLS(log_var, X).fit()
+    log_var_fitted = lin_model.predict(X)
+    var_fitted = np.exp(log_var_fitted)
+    ts_std = ts/np.sqrt(var_fitted)
+
+    ts_std_as_df = pd.DataFrame(ts_std, index=ts.index)
+    return ts_std_as_df, lin_model
+
+def predict_var_mean_batched(model, observed_structure: pd.DataFrame, min_var=1e-8):
+    """
+    Compute plug-in variance trajectories for multiple observations of the structural predictor.
+
+    `model` is assumed to have been returned by `stabilise_variance`, and contains a fitted linear model regressing log-variance
+    against the structure vector and related derivatives.
+
+    Parameters
+    ----------
+    model : statsmodels.regression.linear_model.RegressionResults
+        Fitted OLS (or GLS) model with predictors in the order
+        [const, S, S^2, np.abs(dS)]
+    observed_structure : pandas.DataFrame, shape (m, n)
+        Matrix of structural paths from the VAE.
+        Rows correspond to independent realisations, columns to time points.
+    min_var : float, default=1e-8
+        Minimum variance floor to enforce numerical stability when exponentiating log-variance predictions.
+
+    Returns
+    -------
+    var_hat : ndarray, shape (m, n)
+        Predicted variance trajectories for each realisation and time point, computed as exp(X @ beta).
+    """
+    S = observed_structure.to_numpy(dtype=float)
+    dS = np.concatenate([np.zeros((S.shape[0],1)),
+                        np.diff(S, axis=1)], axis=1)
+
+    # Build X tensor in the same order as model.params; here we assume ['const','S','S2','abs_dS']
+    X = np.stack([np.ones_like(S), S, S**2, np.abs(dS)], axis=-1)
+
+    beta = model.params#.to_numpy()
+    logv = np.einsum('p,mnp->mn', beta, X)
+    return np.exp(np.maximum(logv, np.log(min_var)))
