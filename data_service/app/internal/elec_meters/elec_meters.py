@@ -239,7 +239,7 @@ def daily_to_hh_eload(
     target_hh_df = pd.concat([hh_inactive_approx_df, hh_active_approx_df], axis=0).sort_index()
 
     if use_client_hh:
-        # split client hh data into active and inactive dayss
+        # split client hh data into active and inactive days
         assert target_hh_observed_df is not None, "Asked to use_client_hh but got a None target_hh_observed_df"
         assert not target_hh_observed_df.empty, "Asked to use_client_hh but got an empty target_hh_observed_df"
         assert is_valid_square_hh_dataframe(target_hh_observed_df), "Got a target_hh_observed_df that isn't a valid square HH"
@@ -275,9 +275,19 @@ def daily_to_hh_eload(
 
         # generate a normalised approximate profile for each active day
         vae_obs = generate_approx_daily_profiles(model, obs_consumption_scaled)
+
+        # rescale baseline / peak of approximate profiles to match daily aggregates for active days
+        # this is used to calculate residuals and also provide structure for the log-variance regression in fit_residual_model()
+        scaling_factors_obs = daily_active_baselined / np.sum(vae_output_np, axis=1)
+        target_hh_active_approx_df = pd.DataFrame(
+            np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs * np.tile(scaling_factors_obs, (48, 1)).T,
+            columns=timestamp_headers,
+            index=target_hh_obs_daily_active.index,
+        )
+
         target_hh_active_residuals = cast(  # type: ignore
             SquareHHDataFrame,
-            target_hh_obs_baselined[is_active_mask] - vae_obs,
+            target_hh_observed_df[is_active_mask] - target_hh_active_approx_df,
         )
         target_hh_inactive_residuals = target_hh_obs_baselined[~is_active_mask]
 
@@ -286,7 +296,7 @@ def daily_to_hh_eload(
             target_hh_inactive_residuals, vae_struct=None, verbose=True
         )
         target_hh_active_residtrend_df, var_model_active, ARMA_model_active, ARMA_scale_active = fit_residual_model(
-            target_hh_active_residuals, vae_struct=pd.DataFrame(vae_obs), verbose=True
+            target_hh_active_residuals, vae_struct=target_hh_active_approx_df, verbose=True
         )
     else:
         # load defaults for the residual trends, ARMA noise models, and the std devation of the daily data for active days
@@ -336,7 +346,7 @@ def daily_to_hh_eload(
     )
     # - scale by fitted heteroskedasticity factors
     var_factors_inactive = predict_var_mean_batched(
-        var_model_inactive, target_hh_inactive_residtrend_df
+        var_model_inactive, target_hh_df[~target_active_mask]
     )
     target_hh_df[~target_active_mask] += np.sqrt(var_factors_inactive) * sims
 
