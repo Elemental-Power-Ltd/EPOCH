@@ -7,7 +7,24 @@ from enum import StrEnum
 
 import pydantic
 
+from .client_data import SolarLocation
 from .core import DatasetEntry, DatasetTypeEnum, dataset_id_t, site_id_field, site_id_t
+from .epoch_types import TaskDataPydantic
+from .heating_load import HeatingLoadMetadata
+from .import_tariffs import TariffMetadata
+
+
+class BundleHints(pydantic.BaseModel):
+    """GUI suitable hints and metadata for bundled datasets."""
+
+    renewables: list[SolarLocation] | None = pydantic.Field(
+        default=None, description="Solar locations associated with each renewables generation."
+    )
+    tariffs: list[TariffMetadata] | None = pydantic.Field(default=None, description="Metadata about each tariff.")
+    baseline: TaskDataPydantic | None = pydantic.Field(default=None, description="Contents of the baseline for this bundle.")
+    heating: list[HeatingLoadMetadata] | None = pydantic.Field(
+        default=None, description="Metadata about each heating load, including interventions.."
+    )
 
 
 class DataDuration(StrEnum):
@@ -28,7 +45,7 @@ class DatasetList(pydantic.BaseModel):
     start_ts: pydantic.AwareDatetime
     end_ts: pydantic.AwareDatetime
     bundle_id: dataset_id_t | None = pydantic.Field(default=None, description="The bundle these datasets came from")
-    SiteBaseline: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
+    SiteBaseline: DatasetEntry | None = pydantic.Field(default=None)
     HeatingLoad: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     ASHPData: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
     CarbonIntensity: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)

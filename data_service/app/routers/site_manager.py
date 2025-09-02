@@ -10,6 +10,9 @@ from collections.abc import Sequence
 
 from fastapi import APIRouter, HTTPException
 
+from app.models.import_tariffs import TariffMetadata, TariffProviderEnum
+from app.routers.client_data import get_baseline
+
 from ..dependencies import DatabasePoolDep
 from ..internal.epl_typing import Jsonable
 from ..internal.site_manager import (
@@ -33,6 +36,7 @@ from ..models.client_data import SiteDataEntries, SolarLocation
 from ..models.core import (
     BundleEntryMetadata,
     DatasetEntry,
+    DatasetID,
     DatasetIDWithTime,
     DatasetTypeEnum,
     MultipleDatasetIDWithTime,
@@ -42,10 +46,15 @@ from ..models.core import (
     dataset_id_t,
 )
 from ..models.electricity_load import ElectricalLoadRequest
-from ..models.heating_load import HeatingLoadRequest, InterventionEnum
+from ..models.heating_load import (
+    HeatingLoadMetadata,
+    HeatingLoadModelEnum,
+    HeatingLoadRequest,
+    InterventionEnum,
+)
 from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
-from ..models.site_manager import DatasetBundleMetadata, DatasetList, SiteDataEntry
+from ..models.site_manager import BundleHints, DatasetBundleMetadata, DatasetList, SiteDataEntry
 from .client_data import get_solar_locations
 from .import_tariffs import get_import_tariffs
 
@@ -999,3 +1008,143 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         ThermalModel=None,
         PHPP=None,
     )
+
+
+@router.post("/get-bundle-hints", tags=["db", "bundle"])
+async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> BundleHints:
+    """
+    Get hints about the data within this bundle that will be useful for the GUI.
+
+    Hints are the metadata about each bundled dataset that were created when initially generated them.
+    This may include human readable names, quality scores, or generation methods.
+    These are listed according to the internal `dataset_order` variable so the lists of hints are always
+    in the same order to the actual datasets, e.g. tariff hint 0 is the same as tariff data 0.
+
+    Parameters
+    ----------
+    bundle_id
+        The ID of the bundle to get hints for
+
+    pool
+        Database pool to check for bundle data in
+
+    Returns
+    -------
+    BundleHints
+        Information about renewables, tariffs, baseline and heating to communicate in the GUI.
+    """
+    bundle_meta = await list_bundle_contents(bundle_id=bundle_id, pool=pool)
+    assert bundle_meta is not None
+
+    if bundle_meta.SiteBaseline is not None:
+        baseline_id = bundle_meta.SiteBaseline.dataset_id
+        baseline = await get_baseline(site_or_dataset_id=DatasetID(dataset_id=baseline_id), pool=pool)
+    else:
+        baseline = None
+
+    if isinstance(bundle_meta.ImportTariff, list):
+        tariff_recs = await pool.fetch(
+            """
+            SELECT
+                tm.dataset_id,
+                dataset_order,
+                tm.provider,
+                tm.product_name,
+                tm.tariff_name,
+                tm.valid_from,
+                tm.valid_to
+            FROM data_bundles.dataset_links AS dl
+            LEFT JOIN data_bundles.metadata AS dm
+                on dl.bundle_id = dm.bundle_id
+            LEFT JOIN tariffs.metadata AS tm
+                ON dl.dataset_id = tm.dataset_id
+            WHERE
+                dataset_type = 'ImportTariff' AND dm.bundle_id = $1
+            ORDER BY dataset_order ASC""",
+            bundle_id,
+        )
+        tariff_hints = [
+            TariffMetadata(
+                dataset_id=item["dataset_id"],
+                site_id=bundle_meta.site_id,
+                provider=TariffProviderEnum(item["provider"]),
+                product_name=str(item["product_name"]),
+                tariff_name=str(item["tariff_name"]),
+                valid_from=item["valid_from"],
+                valid_to=item["valid_to"],
+            )
+            for item in tariff_recs
+        ]
+    else:
+        tariff_hints = None
+
+    if bundle_meta.RenewablesGeneration is not None:
+        solar_locns_rec = await pool.fetch(
+            """
+            SELECT
+                dataset_id,
+                dataset_order,
+                renewables_location_id,
+                sl.name,
+                sl.mounting_type,
+                sl.tilt,
+                sl.azimuth,
+                sl.maxpower
+            FROM data_bundles.dataset_links AS dl
+            LEFT JOIN data_bundles.metadata AS dm
+                on dl.bundle_id = dm.bundle_id
+            LEFT JOIN client_info.solar_locations AS sl
+                ON sl.renewables_location_id = REPLACE(dl.dataset_subtype, '"', '')
+            WHERE dataset_type = 'RenewablesGeneration' WHERE dm.bundle_id = $1
+            ORDER BY dataset_order ASC;""",
+            bundle_id,
+        )
+        renewables_hints = [
+            SolarLocation(
+                site_id=bundle_meta.site_id,
+                renewables_location_id=item["renewables_location_id"],
+                name=item["name"],
+                azimuth=item["azimuth"],
+                tilt=item["tilt"],
+                maxpower=item["maxpower"],
+            )
+            for item in solar_locns_rec
+        ]
+    else:
+        renewables_hints = None
+
+    if bundle_meta.HeatingLoad is not None:
+        heating_recs = await pool.fetch(
+            """
+            SELECT
+                hm.dataset_id,
+                dataset_order,
+                hm.interventions,
+                hm.params,
+                hm.peak_hload,
+                hm.created_at,
+                hm.params['generation_method'] AS generation_method
+            FROM data_bundles.dataset_links AS dl
+            LEFT JOIN data_bundles.metadata AS dm
+                on dl.bundle_id = dm.bundle_id
+            LEFT JOIN heating.metadata AS hm
+                ON dl.dataset_id = hm.dataset_id
+            WHERE dataset_type = 'HeatingLoad' AND dm.bundle_id = $1
+            ORDER BY dataset_order ASC;""",
+            bundle_id,
+        )
+        heating_hints = [
+            HeatingLoadMetadata(
+                site_id=bundle_meta.site_id,
+                dataset_id=item["dataset_id"],
+                created_at=item["created_at"],
+                params=item["params"],
+                interventions=item["interventions"],
+                generation_method=HeatingLoadModelEnum(item["generation_method"].replace('"', "")),
+                peak_hload=item["peak_hload"],
+            )
+            for item in heating_recs
+        ]
+    else:
+        heating_hints = None
+    return BundleHints(baseline=baseline, tariffs=tariff_hints, renewables=renewables_hints, heating=heating_hints)

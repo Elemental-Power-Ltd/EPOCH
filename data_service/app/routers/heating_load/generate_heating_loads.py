@@ -694,6 +694,7 @@ async def generate_heating_load_phpp(
         params=json.dumps(metadata_params),
         interventions=params.interventions,
         generation_method=HeatingLoadModelEnum.PHPP,
+        peak_hload=final_peak_hload / 1000,
     )
 
     async with pool.acquire() as conn:
