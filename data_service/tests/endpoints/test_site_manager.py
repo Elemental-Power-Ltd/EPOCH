@@ -14,6 +14,7 @@ import pytest_asyncio
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.site_manager.bundles import insert_dataset_bundle
+from app.routers.site_manager import get_bundle_hints
 from app.internal.utils.uuid import uuid7
 from app.models.heating_load import InterventionEnum
 from app.models.site_manager import DatasetBundleMetadata
@@ -486,3 +487,27 @@ class TestDatasetBundles:
         data = result.json()
         assert len(data) == 2
         assert {item["bundle_id"] for item in data} == {str(DEMO_UUID), str(DEMO_UUID_2)}
+
+class TestBundleHints:
+    """Test that we can get hints about bundles."""
+
+    @pytest.mark.asyncio
+    async def test_empty_bundle_hints(self, client: httpx.AsyncClient) -> None:
+        """Test that we can get boring hints for an empty bundle."""
+        DEMO_UUID = uuid.UUID(int=1, version=4)
+        pool = await get_pool_hack(client)
+        test_bundle = DatasetBundleMetadata(
+            bundle_id=DEMO_UUID,
+            name="Test Bundle",
+            start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
+            end_ts=datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC),
+            site_id="demo_london",
+        )
+        res = await insert_dataset_bundle(bundle_metadata=test_bundle, pool=pool)
+        assert res == DEMO_UUID
+
+        hints_resp = await get_bundle_hints(bundle_id=DEMO_UUID, pool=pool)
+        assert hints_resp.baseline is None
+        assert hints_resp.heating is None
+        assert hints_resp.tariffs is None
+        assert hints_resp.renewables is None

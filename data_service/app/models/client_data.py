@@ -3,7 +3,7 @@
 
 import pydantic
 
-from app.models import EpochRenewablesEntry
+from app.models.renewables import EpochRenewablesEntry
 from app.models.air_source_heat_pump import ASHPCOPResponse
 from app.models.carbon_intensity import EpochCarbonEntry
 from app.models.electricity_load import EpochElectricityEntry
