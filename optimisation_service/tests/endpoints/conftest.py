@@ -49,7 +49,9 @@ class MockedHttpClient(httpx.AsyncClient):
 
     async def get_result_configuration(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("json"))
-        stored_result_configuration = Path(".", "tests", "data", "result_configuration", f"{url_params}.json")
+        storage_path = Path(".", "tests", "data", "result_configuration")
+        storage_path.mkdir(parents=True, exist_ok=True)
+        stored_result_configuration = Path(storage_path, f"{url_params}.json")
         if stored_result_configuration.exists():
             return cast(Jsonable, json.loads(stored_result_configuration.read_text()))
         else:
@@ -62,7 +64,9 @@ class MockedHttpClient(httpx.AsyncClient):
 
     async def get_dataset_bundles_list(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("json"))
-        stored_dataset_bundles_list = Path(".", "tests", "data", "list_dataset_bundles", f"{url_params}.json")
+        storage_path = Path(".", "tests", "data", "list_dataset_bundles")
+        storage_path.mkdir(parents=True, exist_ok=True)
+        stored_dataset_bundles_list = Path(storage_path, f"{url_params}.json")
         if stored_dataset_bundles_list.exists():
             return cast(Jsonable, json.loads(stored_dataset_bundles_list.read_text()))
         else:
@@ -72,7 +76,9 @@ class MockedHttpClient(httpx.AsyncClient):
 
     async def get_dataset_bundle(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("params"))
-        stored_dataset_bundle = Path(".", "tests", "data", "get_dataset_bundle", f"{url_params}.json")
+        storage_path = Path(".", "tests", "data", "get_dataset_bundle")
+        storage_path.mkdir(parents=True, exist_ok=True)
+        stored_dataset_bundle = Path(storage_path, f"{url_params}.json")
         if stored_dataset_bundle.exists():
             return cast(Jsonable, json.loads(stored_dataset_bundle.read_text()))
         else:
@@ -82,7 +88,9 @@ class MockedHttpClient(httpx.AsyncClient):
 
     async def get_bundle_contents_list(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("params"))
-        stored_bundle_contents_list = Path(".", "tests", "data", "list_bundle_contents", f"{url_params}.json")
+        storage_path = Path(".", "tests", "data", "list_bundle_contents")
+        storage_path.mkdir(parents=True, exist_ok=True)
+        stored_bundle_contents_list = Path(storage_path, f"{url_params}.json")
         if stored_bundle_contents_list.exists():
             return cast(Jsonable, json.loads(stored_bundle_contents_list.read_text()))
         else:
@@ -92,7 +100,9 @@ class MockedHttpClient(httpx.AsyncClient):
 
     async def get_specific_datasets(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("json"))
-        stored_specific_datasets = Path(".", "tests", "data", "get_specific_datasets", f"{url_params}.json")
+        storage_path = Path(".", "tests", "data", "get_specific_datasets")
+        storage_path.mkdir(parents=True, exist_ok=True)
+        stored_specific_datasets = Path(storage_path, f"{url_params}.json")
         if stored_specific_datasets.exists():
             return cast(Jsonable, json.loads(stored_specific_datasets.read_text()))
         else:
