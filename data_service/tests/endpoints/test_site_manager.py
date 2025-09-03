@@ -14,10 +14,10 @@ import pytest_asyncio
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.site_manager.bundles import insert_dataset_bundle
-from app.routers.site_manager import get_bundle_hints
 from app.internal.utils.uuid import uuid7
 from app.models.heating_load import InterventionEnum
 from app.models.site_manager import DatasetBundleMetadata
+from app.routers.site_manager import get_bundle_hints
 
 from .conftest import get_pool_hack
 
@@ -487,6 +487,7 @@ class TestDatasetBundles:
         data = result.json()
         assert len(data) == 2
         assert {item["bundle_id"] for item in data} == {str(DEMO_UUID), str(DEMO_UUID_2)}
+
 
 class TestBundleHints:
     """Test that we can get hints about bundles."""

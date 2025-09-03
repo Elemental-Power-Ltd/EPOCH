@@ -3,14 +3,13 @@
 
 import pydantic
 
-from app.models.renewables import EpochRenewablesEntry
 from app.models.air_source_heat_pump import ASHPCOPResponse
 from app.models.carbon_intensity import EpochCarbonEntry
 from app.models.electricity_load import EpochElectricityEntry
 from app.models.epoch_types.task_data_type import TaskData
 from app.models.heating_load import EpochAirTempEntry, EpochDHWEntry, EpochHeatingEntry
 from app.models.import_tariffs import EpochTariffEntry
-from app.models.renewables import PvgisTypeEnum
+from app.models.renewables import EpochRenewablesEntry, PvgisTypeEnum
 
 
 class SolarLocation(pydantic.BaseModel):
