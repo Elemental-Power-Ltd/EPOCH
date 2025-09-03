@@ -10,12 +10,15 @@ import itertools
 import logging
 import operator
 import typing
+from typing import cast
 
 import aiometer
 import numpy as np
 import pandas as pd
 import pydantic
 from fastapi import APIRouter, HTTPException
+
+from app.internal.epl_typing import RecordMapping
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.client_data import get_postcode
@@ -410,7 +413,9 @@ async def get_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> Epoc
             400,
             f"Could not get a CarbonIntensity dataset for {params.dataset_id} between {params.start_ts} and {params.end_ts}",
         )
-    carbon_df = pd.DataFrame.from_records(res, columns=["start_ts", "forecast", "actual"], coerce_float=True)
+    carbon_df = pd.DataFrame.from_records(
+        cast(RecordMapping, res), columns=["start_ts", "forecast", "actual"], coerce_float=True
+    )
     carbon_df.index = pd.to_datetime(carbon_df["start_ts"])  # type: ignore
 
     carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))

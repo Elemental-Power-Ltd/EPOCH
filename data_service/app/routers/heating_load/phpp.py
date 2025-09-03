@@ -8,7 +8,6 @@ import uuid
 
 import asyncpg
 import pandas as pd
-import pydantic
 from fastapi import Form, UploadFile
 
 from ...dependencies import DatabasePoolDep
@@ -17,19 +16,8 @@ from ...internal.thermal_model.phpp.parse_phpp import (
     phpp_to_dataframe,
 )
 from ...models.core import SiteID, dataset_id_t, site_id_t
+from ...models.heating_load import PhppMetadata
 from .router import api_router
-
-
-class PhppMetadata(pydantic.BaseModel):
-    """Metadata for a PHPP, including the file it came from and some non-element data that might be useful."""
-
-    filename: str | None
-    site_id: site_id_t
-    internal_volume: float = pydantic.Field(description="Air volume in m3 within the envelope of this building.")
-    air_changes: float = pydantic.Field(description="Air changes per hour in this building as estimated during survey.")
-    floor_area: float
-    structure_id: dataset_id_t
-    created_at: pydantic.AwareDatetime
 
 
 @api_router.post("/upload-phpp")
@@ -232,7 +220,7 @@ async def get_phpp_dataframe_from_database(
 
     metadata, records = metadata_task.result(), records_task.result()
     assert metadata is not None, "Got None metadata"
-    return pd.DataFrame.from_records(dict(item) for item in records), PhppMetadata(
+    return pd.DataFrame.from_records([dict(item) for item in records]), PhppMetadata(
         filename=metadata["filename"],
         site_id=metadata["site_id"],
         internal_volume=metadata["internal_volume"],

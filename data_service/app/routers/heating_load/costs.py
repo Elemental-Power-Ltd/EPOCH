@@ -8,15 +8,13 @@ fabric interventions, such as insulation or glazing upgrades. It offers:
 - Breakdown of costs by intervention type
 """
 
-from ...dependencies import DatabaseDep, DatabasePoolDep
+from ...dependencies import DatabasePoolDep
 from ...internal.thermal_model.costs import calculate_intervention_costs_params
 from ...models.heating_load import InterventionCostRequest, InterventionCostResult, InterventionEnum, ThermalModelResult
 from .router import api_router
 
 
-async def get_heating_cost_thermal_model(
-    thermal_model: ThermalModelResult, interventions: list[InterventionEnum], pool: DatabasePoolDep
-) -> float:
+async def get_heating_cost_thermal_model(thermal_model: ThermalModelResult, interventions: list[InterventionEnum]) -> float:
     """
     Get the intervention costs for interventions applied to a building described by a thermal model.
 
@@ -39,7 +37,7 @@ async def get_heating_cost_thermal_model(
 
 
 @api_router.post("/get-intervention-cost", tags=["get", "heating"])
-async def get_intervention_cost(params: InterventionCostRequest, conn: DatabaseDep) -> InterventionCostResult:
+async def get_intervention_cost(params: InterventionCostRequest, pool: DatabasePoolDep) -> InterventionCostResult:
     """
     Get the costs of interventions for a given site.
 
@@ -61,7 +59,7 @@ async def get_intervention_cost(params: InterventionCostRequest, conn: DatabaseD
             breakdown={},
             total=0.0,
         )
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT
             intervention,

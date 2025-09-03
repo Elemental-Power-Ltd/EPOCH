@@ -13,8 +13,10 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.models.site_manager import WorkerStatus
+
 from .job_queue import current_job_id_ctx, current_job_type_ctx, started_at_ctx
-from .lifespan import WORKERS, WorkerStatus, lifespan
+from .lifespan import WORKERS, lifespan
 from .routers import (
     air_source_heat_pump,
     carbon_intensity,

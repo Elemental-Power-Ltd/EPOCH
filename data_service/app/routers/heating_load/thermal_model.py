@@ -16,18 +16,21 @@ import asyncio
 import datetime
 import json
 import operator
+from pathlib import Path
 
-import httpx
 import pandas as pd
 import pydantic
 from fastapi import BackgroundTasks, HTTPException
 from fastapi.encoders import jsonable_encoder
 
-from ...dependencies import DatabasePoolDep, ProcessPoolDep
+from app.internal.epl_typing import SeedLike, db_pool_t
+from app.internal.thermal_model.heat_capacities import U_VALUES_PATH
+
+from ...dependencies import DatabasePoolDep, HttpClientDep, ProcessPoolDep
 from ...internal.site_manager.dataset_lists import list_elec_datasets, list_gas_datasets, list_thermal_models
 from ...internal.thermal_model.fitting import fit_to_gas_usage
 from ...internal.utils.uuid import uuid7
-from ...models.core import DatasetID, DatasetTypeEnum, SiteID, uuid_t
+from ...models.core import DatasetID, DatasetTypeEnum, dataset_id_t, site_id_t
 from ...models.heating_load import ThermalModelResult
 from ...models.thermal_model import ThermalModelRequest
 from ...models.weather import WeatherRequest
@@ -37,11 +40,11 @@ from .router import api_router
 
 
 async def file_params_with_db(
-    pool: DatabasePoolDep,
-    site_id: str,
-    task_id: pydantic.UUID7,
+    pool: db_pool_t,
+    site_id: site_id_t,
+    task_id: dataset_id_t,
     results: ThermalModelResult,
-    datasets: dict[DatasetTypeEnum, pydantic.UUID7],
+    datasets: dict[DatasetTypeEnum, dataset_id_t],
 ) -> None:
     """
     Write the parameters for the thermal model to the database.
@@ -82,15 +85,17 @@ async def file_params_with_db(
 
 async def thermal_fitting_process_wrapper(
     executor: ProcessPoolDep,
-    pool: DatabasePoolDep,
-    site_id: str,
-    task_id: uuid_t,
-    datasets: dict[DatasetTypeEnum, uuid_t],
+    pool: db_pool_t,
+    site_id: site_id_t,
+    task_id: dataset_id_t,
+    datasets: dict[DatasetTypeEnum, dataset_id_t],
     gas_df: pd.DataFrame,
     weather_df: pd.DataFrame,
     elec_df: pd.DataFrame | None,
     n_iter: int,
     hints: list[ThermalModelResult],
+    u_values_path: Path = U_VALUES_PATH,
+    seed: SeedLike | None = None,
 ) -> None:
     """
     Monitor and join the Thermal Fitting background process.
@@ -117,7 +122,9 @@ async def thermal_fitting_process_wrapper(
         Electricity usage dataset with start_ts, end_ts and consumption columns (can be None)
     """
     loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(executor, fit_to_gas_usage, gas_df, weather_df, elec_df, n_iter, hints)
+    result = await loop.run_in_executor(
+        executor, fit_to_gas_usage, gas_df, weather_df, elec_df, n_iter, hints, u_values_path, seed
+    )
     await file_params_with_db(pool, site_id, task_id, result, datasets)
 
 
@@ -158,7 +165,11 @@ async def get_thermal_model(pool: DatabasePoolDep, dataset_id: DatasetID) -> The
 
 @api_router.post("/fit-thermal-model")
 async def fit_thermal_model_endpoint(
-    pool: DatabasePoolDep, process_pool: ProcessPoolDep, bgt: BackgroundTasks, params: ThermalModelRequest
+    pool: DatabasePoolDep,
+    process_pool: ProcessPoolDep,
+    bgt: BackgroundTasks,
+    params: ThermalModelRequest,
+    http_client: HttpClientDep,
 ) -> dict[str, pydantic.UUID7]:
     """
     Fit thermal model parameters via a background task.
@@ -180,19 +191,19 @@ async def fit_thermal_model_endpoint(
     -------
         The ID that this dataset will eventually get.
     """
-    all_gas_datasets = await list_gas_datasets(SiteID(site_id=params.site_id), pool)
+    all_gas_datasets = await list_gas_datasets(params.site_id, pool)
     if not all_gas_datasets:
         raise HTTPException(400, f"No gas datasets available for `{params.site_id}` to fit to.")
     latest_gas_dataset_id = max(all_gas_datasets, key=operator.attrgetter("created_at")).dataset_id
 
-    all_elec_datasets = await list_elec_datasets(SiteID(site_id=params.site_id), pool)
+    all_elec_datasets = await list_elec_datasets(params.site_id, pool)
     if not all_elec_datasets:
         raise HTTPException(400, f"No gas datasets available for `{params.site_id}` to fit to.")
     latest_elec_dataset_id = max(all_elec_datasets, key=operator.attrgetter("created_at")).dataset_id
 
     # We use the existing thermal models as probe points for the new model.
     # If we've changed the limits, watch out as some of these might end up being thrown out.
-    all_thermal_metadata = await list_thermal_models(SiteID(site_id=params.site_id), pool)
+    all_thermal_metadata = await list_thermal_models(params.site_id, pool)
     all_thermal_models = [
         await get_thermal_model(pool=pool, dataset_id=DatasetID(dataset_id=item.dataset_id)) for item in all_thermal_metadata
     ]
@@ -213,16 +224,15 @@ async def fit_thermal_model_endpoint(
         elec_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool))
 
     location, gas_meter_records, elec_meter_records = location_task.result(), gas_meter_task.result(), elec_meter_task.result()
-    async with httpx.AsyncClient() as client:
-        weather_records = await get_weather(
-            weather_request=WeatherRequest(
-                location=location,
-                start_ts=min(item.start_ts for item in gas_meter_records),
-                end_ts=max(item.end_ts for item in gas_meter_records),
-            ),
-            pool=pool,
-            http_client=client,
-        )
+    weather_records = await get_weather(
+        weather_request=WeatherRequest(
+            location=location,
+            start_ts=min(item.start_ts for item in gas_meter_records),
+            end_ts=max(item.end_ts for item in gas_meter_records),
+        ),
+        pool=pool,
+        http_client=http_client,
+    )
 
     elec_df = pd.DataFrame.from_records([item.model_dump() for item in elec_meter_records])
     elec_df.index = pd.to_datetime(elec_df.index)
@@ -254,6 +264,7 @@ async def fit_thermal_model_endpoint(
         elec_df=elec_df,
         n_iter=params.n_iter,
         hints=all_thermal_models,
+        seed=params.seed,
     )
     # We just return the boring task ID here for people to get from the database later.
     # TODO (2025-04-30 MHJB): make this into a proper queue.

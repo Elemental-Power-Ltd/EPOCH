@@ -95,24 +95,25 @@ db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
 elec_vae_mdl: VAE | None = None
 
 
-async def get_http_client() -> AsyncGenerator[HTTPClient]:
+async def get_http_client() -> HTTPClient:
     """
     Get a shared HTTP client.
 
     This is passed as a dependency to make the most use of connection and async
     pooling (i.e. everything goes through this client, so it has the most opportunity to schedule intelligently).
     """
-    http_limits = httpx.Limits(max_keepalive_connections=10000, keepalive_expiry=datetime.timedelta(seconds=30).total_seconds())
+    timeout_s_ = datetime.timedelta(seconds=60).total_seconds()
+    http_limits = httpx.Limits(max_keepalive_connections=16, keepalive_expiry=timeout_s_)
     http_client = httpx.AsyncClient(
         timeout=httpx.Timeout(
             pool=None,
-            connect=datetime.timedelta(minutes=10).total_seconds(),
-            read=datetime.timedelta(minutes=10).total_seconds(),
+            connect=timeout_s_,
+            read=timeout_s_,
             write=None,
         ),
         limits=http_limits,
     )
-    yield http_client
+    return http_client
 
 
 async def get_db_conn() -> AsyncGenerator[DBConnection]:
@@ -130,14 +131,14 @@ async def get_db_conn() -> AsyncGenerator[DBConnection]:
         await db.pool.release(conn)
 
 
-async def get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
+async def get_db_pool() -> asyncpg.pool.Pool:
     """
     Get access to the database connection pool directly.
 
     Use this for more fine-grained control than get_db_conn
     """
     assert db.pool is not None, "Database pool not yet created."
-    yield db.pool
+    return db.pool
 
 
 async def get_vae_model() -> VAE:
@@ -150,11 +151,6 @@ async def get_vae_model() -> VAE:
     if elec_vae_mdl is None:
         elec_vae_mdl = load_vae()
     return elec_vae_mdl
-
-
-async def get_secrets_dependency() -> SecretDict:
-    """Get the environment secrets, including API keys, from os environ, .env and files."""
-    return get_secrets_environment()
 
 
 _PROCESS_POOL: ProcessPoolExecutor | None = None
@@ -189,8 +185,17 @@ async def get_thread_pool() -> ThreadPoolExecutor:
     return _THREAD_POOL
 
 
-SecretsDep = typing.Annotated[SecretDict, Depends(get_secrets_dependency)]
-DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
+def get_secrets_dep() -> SecretDict:
+    """
+    Get the secrets environment.
+
+    This is required so the Dependency injection works.
+    """
+    return get_secrets_environment()
+
+
+SecretsDep = typing.Annotated[SecretDict, Depends(get_secrets_dep)]
+DatabaseConnDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
 DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
 VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]

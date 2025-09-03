@@ -10,7 +10,7 @@ from typing import cast
 import numpy as np
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep
+from ..dependencies import DatabasePoolDep, HttpClientDep
 from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
 from ..internal.gas_meters import try_meter_parsing
 from ..internal.solar_pv.disaggregate import disaggregate_electricity_dataframe
@@ -26,7 +26,7 @@ router = APIRouter()
 
 
 @router.post("/upload-meter-entries", tags=["db", "add", "meter"])
-async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> MeterMetadata:
+async def upload_meter_entries(pool: DatabasePoolDep, entries: MeterEntries) -> MeterMetadata:
     """
     Upload some pre-parsed meter data to the database.
 
@@ -36,7 +36,7 @@ async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> Mete
     ----------
     entries
         Pre-parsed meter entries and associated metadata
-    conn
+    pool
         Database connection to upload the entries through
 
     Returns
@@ -59,41 +59,42 @@ async def upload_meter_entries(conn: DatabaseDep, entries: MeterEntries) -> Mete
             f"Fuel type {entries.metadata.fuel_type} is not supported. Please select from ('gas', 'elec')",
         )
 
-    async with conn.transaction():
-        await conn.execute(
-            """
-            INSERT INTO
-                client_meters.metadata (
-                    dataset_id,
-                    created_at,
-                    site_id,
-                    fuel_type,
-                    reading_type,
-                    filename,
-                    is_synthesised)
-            VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6,
-                    $7)""",
-            entries.metadata.dataset_id,
-            entries.metadata.created_at,
-            entries.metadata.site_id,
-            entries.metadata.fuel_type,
-            entries.metadata.reading_type,
-            entries.metadata.filename,
-            entries.metadata.is_synthesised,
-        )
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO
+                    client_meters.metadata (
+                        dataset_id,
+                        created_at,
+                        site_id,
+                        fuel_type,
+                        reading_type,
+                        filename,
+                        is_synthesised)
+                VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7)""",
+                entries.metadata.dataset_id,
+                entries.metadata.created_at,
+                entries.metadata.site_id,
+                entries.metadata.fuel_type,
+                entries.metadata.reading_type,
+                entries.metadata.filename,
+                entries.metadata.is_synthesised,
+            )
 
-        await conn.copy_records_to_table(
-            table_name=table_name,
-            schema_name="client_meters",
-            records=[(entries.metadata.dataset_id, item.start_ts, item.end_ts, item.consumption) for item in entries.data],
-            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
-        )
+            await conn.copy_records_to_table(
+                table_name=table_name,
+                schema_name="client_meters",
+                records=[(entries.metadata.dataset_id, item.start_ts, item.end_ts, item.consumption) for item in entries.data],
+                columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
+            )
 
     return entries.metadata
 
@@ -193,8 +194,7 @@ async def upload_meter_file(
         for start_ts, end_ts, consumption in zip(df.start_ts, df.end_ts, df.consumption, strict=False)
     ]
 
-    async with pool.acquire() as conn:
-        return await upload_meter_entries(conn=conn, entries=MeterEntries(metadata=metadata, data=entries))
+    return await upload_meter_entries(pool=pool, entries=MeterEntries(metadata=metadata, data=entries))
 
 
 @router.post("/get-meter-data", tags=["db", "meter"])

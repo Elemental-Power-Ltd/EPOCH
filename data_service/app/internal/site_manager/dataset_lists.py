@@ -1,19 +1,10 @@
 """Database connection utilities to list various types of dataset."""
 
-import datetime
-
-from ...dependencies import DatabasePoolDep
-from ...models.core import (
-    DatasetEntry,
-    DatasetTypeEnum,
-    SiteID,
-)
-from ...models.heating_load import InterventionEnum
-from ...models.import_tariffs import SyntheticTariffEnum
-from ..utils.uuid import uuid7
+from app.internal.epl_typing import db_pool_t
+from app.models.core import DatasetEntry, DatasetTypeEnum, site_id_t
 
 
-async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+async def list_gas_datasets(site_id: site_id_t, pool: db_pool_t) -> list[DatasetEntry]:
     """
     List the gas meter datasets we have for a given site.
 
@@ -22,29 +13,28 @@ async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[Data
     site_id
         The ID of the site that we've generated datasets for.
     """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-                SELECT
-                    cm.dataset_id,
-                    MAX(cm.created_at) AS created_at,
-                    MIN(gm.start_ts) AS start_ts,
-                    MAX(gm.end_ts) AS end_ts,
-                    COUNT(*) AS num_entries,
-                    AVG(end_ts - start_ts) AS resolution
-                FROM client_meters.metadata AS cm
-                LEFT JOIN
-                    client_meters.gas_meters AS gm
-                ON gm.dataset_id = cm.dataset_id
-                WHERE
-                    (cm.is_synthesised = false)
-                    AND cm.fuel_type = 'gas'
-                    AND site_id = $1
-                GROUP BY
-                    cm.dataset_id
-                """,
-            site_id.site_id,
-        )
+    res = await pool.fetch(
+        """
+            SELECT
+                cm.dataset_id,
+                MAX(cm.created_at) AS created_at,
+                MIN(gm.start_ts) AS start_ts,
+                MAX(gm.end_ts) AS end_ts,
+                COUNT(*) AS num_entries,
+                AVG(end_ts - start_ts) AS resolution
+            FROM client_meters.metadata AS cm
+            LEFT JOIN
+                client_meters.gas_meters AS gm
+            ON gm.dataset_id = cm.dataset_id
+            WHERE
+                (cm.is_synthesised = false)
+                AND cm.fuel_type = 'gas'
+                AND site_id = $1
+            GROUP BY
+                cm.dataset_id
+            """,
+        site_id,
+    )
     return [
         DatasetEntry(
             dataset_id=item["dataset_id"],
@@ -59,7 +49,7 @@ async def list_gas_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[Data
     ]
 
 
-async def list_elec_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+async def list_elec_datasets(site_id: site_id_t, pool: db_pool_t) -> list[DatasetEntry]:
     """
     List the true electricity meter datasets we have for a given site.
 
@@ -68,28 +58,27 @@ async def list_elec_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[Dat
     site_id
         The ID of the site that we've generated datasets for.
     """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                cm.dataset_id,
-                MAX(cm.created_at) AS created_at,
-                MIN(em.start_ts) AS start_ts,
-                MAX(em.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution
-            FROM client_meters.metadata AS cm
-            LEFT JOIN
-                client_meters.electricity_meters AS em
-            ON em.dataset_id = cm.dataset_id
-            WHERE
-                (cm.is_synthesised = false)
-                AND cm.fuel_type = 'elec'
-                AND site_id = $1
-            GROUP BY
-                cm.dataset_id""",
-            site_id.site_id,
-        )
+    res = await pool.fetch(
+        """
+        SELECT
+            cm.dataset_id,
+            MAX(cm.created_at) AS created_at,
+            MIN(em.start_ts) AS start_ts,
+            MAX(em.end_ts) AS end_ts,
+            COUNT(*) AS num_entries,
+            AVG(end_ts - start_ts) AS resolution
+        FROM client_meters.metadata AS cm
+        LEFT JOIN
+            client_meters.electricity_meters AS em
+        ON em.dataset_id = cm.dataset_id
+        WHERE
+            (cm.is_synthesised = false)
+            AND cm.fuel_type = 'elec'
+            AND site_id = $1
+        GROUP BY
+            cm.dataset_id""",
+        site_id,
+    )
     return [
         DatasetEntry(
             dataset_id=item["dataset_id"],
@@ -104,140 +93,7 @@ async def list_elec_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[Dat
     ]
 
 
-async def list_elec_synthesised_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the synthetic electricity datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                cm.dataset_id,
-                MAX(cm.created_at) AS created_at,
-                MIN(em.start_ts) AS start_ts,
-                MAX(em.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution
-            FROM client_meters.metadata AS cm
-            LEFT JOIN
-                client_meters.electricity_meters_synthesised AS em
-            ON em.dataset_id = cm.dataset_id
-            WHERE
-                (cm.is_synthesised = true)
-                AND cm.fuel_type = 'elec'
-                AND site_id = $1
-            GROUP BY
-                cm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-        )
-        for item in res
-        if item["num_entries"] > 1  # filter out bad entries here
-    ]
-
-
-async def list_import_tariff_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the import tariff datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                tm.dataset_id,
-                MAX(tm.created_at) AS created_at,
-                MIN(te.start_ts) AS start_ts,
-                MAX(te.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                (MAX(te.end_ts) - MIN(te.start_ts)) / (COUNT(*) - 1) AS resolution,
-                ANY_VALUE(provider) AS provider,
-                ANY_VALUE(product_name) AS product_name
-            FROM tariffs.metadata AS tm
-            LEFT JOIN
-                tariffs.electricity AS te
-            ON tm.dataset_id = te.dataset_id
-            WHERE site_id = $1
-            GROUP BY tm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.ImportTariff,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-            dataset_subtype=SyntheticTariffEnum(item["product_name"]) if item["provider"] == "synthetic" else None,
-        )
-        for item in res
-    ]
-
-
-async def list_renewables_generation_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the renewables generation (solar) datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                tm.dataset_id,
-                tm.renewables_location_id AS renewables_location_id,
-                MAX(tm.created_at) AS created_at,
-                MIN(te.start_ts) AS start_ts,
-                MAX(te.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                (MAX(te.end_ts) - MIN(te.start_ts)) / (COUNT(*) - 1) AS resolution
-            FROM renewables.metadata AS tm
-            LEFT JOIN
-                renewables.solar_pv AS te
-            ON tm.dataset_id = te.dataset_id
-            WHERE site_id = $1
-            GROUP BY tm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.RenewablesGeneration,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-            dataset_subtype=str(item["renewables_location_id"]) if item["renewables_location_id"] is not None else None,
-        )
-        for item in res
-    ]
-
-
-async def list_thermal_models(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
+async def list_thermal_models(site_id: site_id_t, pool: db_pool_t) -> list[DatasetEntry]:
     """
     List the available thermal models datasets we have for a given site.
 
@@ -245,18 +101,22 @@ async def list_thermal_models(site_id: SiteID, pool: DatabasePoolDep) -> list[Da
     ----------
     site_id
         The ID of the site that we've generated datasets for.
+
+    Returns
+    -------
+    list[DatasetEntry]
+        List of the thermal models with some metadata nulled out
     """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                dataset_id,
-                created_at
-            FROM
-                heating.thermal_model
-            WHERE site_id = $1""",
-            site_id.site_id,
-        )
+    res = await pool.fetch(
+        """
+        SELECT
+            dataset_id,
+            created_at
+        FROM
+            heating.thermal_model
+        WHERE site_id = $1""",
+        site_id,
+    )
     return [
         DatasetEntry(
             dataset_id=item["dataset_id"],
@@ -267,143 +127,5 @@ async def list_thermal_models(site_id: SiteID, pool: DatabasePoolDep) -> list[Da
             num_entries=None,
             resolution=None,
         )
-        for item in res
-    ]
-
-
-async def list_heating_load_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the heating load datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                cm.dataset_id,
-                MAX(cm.created_at) AS created_at,
-                MIN(em.start_ts) AS start_ts,
-                MAX(em.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution,
-                ANY_VALUE(interventions) AS interventions
-            FROM heating.metadata AS cm
-            LEFT JOIN
-                heating.synthesised AS em
-            ON em.dataset_id = cm.dataset_id
-            WHERE
-                site_id = $1
-            GROUP BY
-                cm.dataset_id""",
-            site_id.site_id,
-        )
-
-    def maybe_convert_subtype(subtype: str) -> InterventionEnum | str:
-        """Try to turn a given subtype into an enum, returning string if not."""
-        try:
-            return InterventionEnum(subtype)
-        except ValueError:
-            return subtype
-
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.HeatingLoad,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-            dataset_subtype=[maybe_convert_subtype(subtype) for subtype in item["interventions"]]
-            if item["interventions"]
-            else None,
-        )
-        for item in res
-    ]
-
-
-async def list_carbon_intensity_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List the Carbon Intensity datasets we have for a given site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site that we've generated datasets for.
-    """
-    async with pool.acquire() as conn:
-        res = await conn.fetch(
-            """
-            SELECT
-                cm.dataset_id,
-                MAX(cm.created_at) AS created_at,
-                MIN(em.start_ts) AS start_ts,
-                MAX(em.end_ts) AS end_ts,
-                COUNT(*) AS num_entries,
-                AVG(end_ts - start_ts) AS resolution
-            FROM carbon_intensity.metadata AS cm
-            LEFT JOIN
-                carbon_intensity.grid_co2 AS em
-            ON em.dataset_id = cm.dataset_id
-            WHERE
-                site_id = $1
-            GROUP BY
-                cm.dataset_id""",
-            site_id.site_id,
-        )
-    return [
-        DatasetEntry(
-            dataset_id=item["dataset_id"],
-            dataset_type=DatasetTypeEnum.CarbonIntensity,
-            created_at=item["created_at"],
-            start_ts=item["start_ts"],
-            end_ts=item["end_ts"],
-            num_entries=item["num_entries"],
-            resolution=item["resolution"],
-        )
-        for item in res
-    ]
-
-
-async def list_ashp_datasets() -> list[DatasetEntry]:
-    """
-    List the ASHP datasets we have in the database.
-
-    This is a dummy function as we don't actually store them, but it returns a reasonable looking response.
-    """
-    return [
-        DatasetEntry(dataset_id=uuid7(), dataset_type=DatasetTypeEnum.ASHPData, created_at=datetime.datetime.now(datetime.UTC))
-    ]
-
-
-async def list_baseline_datasets(site_id: SiteID, pool: DatabasePoolDep) -> list[DatasetEntry]:
-    """
-    List all baselines we have defined for this site.
-
-    Parameters
-    ----------
-    site_id
-        The ID of the site we want a baseline for.
-
-    Returns
-    -------
-        a DatasetEntry for each baseline_id in the database for this site.
-
-    """
-    res = await pool.fetch(
-        """
-        SELECT sb.baseline_id, sb.created_at
-        FROM client_info.site_baselines AS sb
-        WHERE sb.site_id = $1
-        ORDER BY sb.created_at
-        """,
-        site_id.site_id,
-    )
-    return [
-        DatasetEntry(dataset_id=item["baseline_id"], dataset_type=DatasetTypeEnum.SiteBaseline, created_at=item["created_at"])
         for item in res
     ]

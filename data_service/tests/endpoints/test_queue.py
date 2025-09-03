@@ -10,7 +10,7 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from app.dependencies import load_vae
+from app.dependencies import get_secrets_dep, load_vae
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.site_manager.bundles import insert_dataset_bundle
@@ -552,7 +552,7 @@ class TestQueueEndpoints:
                         pool=pool,
                         http_client=internal_client,
                         vae=None,  # type: ignore
-                        secrets_env=None,  # type: ignore
+                        secrets_env=get_secrets_dep(),
                         ignore_exceptions=False,
                     )
                 )
@@ -610,7 +610,7 @@ class TestQueueEndpoints:
                         pool=pool,
                         http_client=internal_client,
                         vae=None,  # type: ignore
-                        secrets_env=None,  # type: ignore
+                        secrets_env=get_secrets_dep(),
                         ignore_exceptions=False,
                     )
                 )
@@ -664,7 +664,7 @@ class TestGenerateAllQueue:
                         pool=pool,
                         http_client=internal_client,
                         vae=vae,
-                        secrets_env=None,  # type: ignore
+                        secrets_env=get_secrets_dep(),
                         ignore_exceptions=False,
                     )
                 )

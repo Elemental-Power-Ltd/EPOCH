@@ -4,10 +4,32 @@
 
 import datetime
 from enum import StrEnum
+from typing import Any
 
 import pydantic
 
 from .core import DatasetEntry, DatasetTypeEnum, dataset_id_t, site_id_field, site_id_t
+
+
+class WorkerStatus(pydantic.BaseModel):
+    """Status of a given worker job."""
+
+    name: str = pydantic.Field(description="Human-readable name of this worker process")
+    exception: str | None = pydantic.Field(default=None, description="The exception that caused this job to fail, if any")
+    is_running: bool = pydantic.Field(
+        default=False, description="Whether this job is running (either awaiting a job or working)."
+    )
+    current_job: str | None = pydantic.Field(
+        default=None, description="The type of the current job that this worker is running."
+    )
+    current_job_id: int | None = pydantic.Field(
+        default=None, description="The ID of the current job that this worker is running."
+    )
+    started_at: datetime.datetime | None = pydantic.Field(
+        default=None, description="The time this worker picked up the current job."
+    )
+    coro: str | None = pydantic.Field(description="Name of the coroutine this worker is working on.")
+    ctx: dict[str, Any] | None = pydantic.Field(description="Full context dictionary this worker is acting within.")
 
 
 class DataDuration(StrEnum):

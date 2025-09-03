@@ -104,25 +104,23 @@ class TestGetMultipleTariffs:
             "/list-latest-datasets",
             json={"site_id": "demo_london", "start_ts": start_ts.isoformat(), "end_ts": end_ts.isoformat()},
         )
-        assert all_datasets_response.status_code == 200
+        assert all_datasets_response.is_success, all_datasets_response.text
         all_json = all_datasets_response.json()
         assert len(all_json["ImportTariff"]) == 2
 
         get_datasets_response = await client.post(
-            "/get-latest-tariffs",
-            json={
-                "site_id": "demo_london",
-                "start_ts": start_ts.isoformat(),
-                "loc": "remote",
-                "end_ts": end_ts.isoformat(),
+            "/get-dataset-bundle",
+            params={
+                "bundle_id": bundle_id,
             },
         )
-        assert get_datasets_response.status_code == 200, get_datasets_response.text
+        assert get_datasets_response.is_success, get_datasets_response.text
         got_datasets = get_datasets_response.json()
-        assert all(all(np.isfinite(item)) for item in got_datasets["data"]), "Tariff is empty or NaN"
+        tariff_data = got_datasets["import_tariffs"]["data"]
+        assert all(all(np.isfinite(item)) for item in tariff_data), "Tariff is empty or NaN"
 
         # These shouldn't be identical
-        assert got_datasets["data"][0] != got_datasets["data"][1]
+        assert any(x != y for x, y in zip(tariff_data[0], tariff_data[1], strict=True))
 
 
 class TestGenerateAll:
@@ -319,13 +317,13 @@ class TestGetLatestElectricity:
                 "end_ts": end_ts.isoformat(),
             },
         )
-        assert list_result_with_blend.status_code == 200
+        assert list_result_with_blend.is_success, list_result_with_blend.text
         list_data = list_result_with_blend.json()
         assert list_data["ElectricityMeterData"] is not None
         assert list_data["ElectricityMeterDataSynthesised"] is not None
 
-        get_result = await client.post("get-specific-datasets", json=list_data)
-        assert get_result.status_code == 200
+        get_result = await client.post("get-dataset-bundle", params={"bundle_id": str(bundle_id)})
+        assert get_result.is_success, get_result.text
         assert (
             len(get_result.json()["eload"]["timestamps"])
             == len(get_result.json()["eload"]["data"])
@@ -388,20 +386,17 @@ class TestGetMultipleHeatLoads:
                 "end_ts": datetime.datetime.now(datetime.UTC).isoformat(),
             },
         )
-        assert listed_datasets_result.status_code == 200
+        assert listed_datasets_result.is_success, listed_datasets_result.text
         listed_data = listed_datasets_result.json()
         assert len(listed_data["HeatingLoad"]) == 4
 
         got_datasets = await client.post(
-            "/get-specific-datasets",
-            json={
-                "site_id": "demo_london",
-                "start_ts": start_ts.isoformat(),
-                "end_ts": end_ts.isoformat(),
-                "HeatingLoad": listed_data["HeatingLoad"],
+            "/get-dataset-bundle",
+            params={
+                "bundle_id": str(bundle_id),
             },
         )
-        assert got_datasets.status_code == 200, got_datasets.text
+        assert got_datasets.is_success, got_datasets.text
         heating_data = got_datasets.json()["heat"]["data"]
         for idx in [1, 2, 3]:
             assert heating_data[0]["reduced_hload"] != heating_data[idx]["reduced_hload"]

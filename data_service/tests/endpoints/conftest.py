@@ -30,7 +30,7 @@ from app.dependencies import (
     get_db_conn,
     get_db_pool,
     get_http_client,
-    get_secrets_dependency,
+    get_secrets_dep,
     get_vae_model,
 )
 from app.internal.epl_typing import Jsonable
@@ -340,7 +340,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
     await db.create_pool()
     assert db.pool is not None, "Could not create database pool"
 
-    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
+    def override_get_db_pool() -> asyncpg.pool.Pool:
         """
         Override the database creation with our database from this file.
 
@@ -348,7 +348,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
         and not the global `db` object we use elsewhere.
         """
         assert db.pool is not None, "Database pool not yet created."
-        yield db.pool
+        return db.pool
 
     async def override_get_db_conn() -> AsyncGenerator[DBConnection]:
         """
@@ -377,7 +377,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
         return MockedHttpClient()
         # return _http_client
 
-    queue = TrackingQueue(pool=await override_get_db_pool().__anext__())
+    queue = TrackingQueue(pool=await override_get_db_pool())
 
     def override_get_job_queue() -> TrackingQueue:
         return queue
@@ -400,10 +400,10 @@ async def client() -> AsyncGenerator[AsyncClient]:
                 _ = tg.create_task(
                     process_jobs(
                         queue=override_get_job_queue(),
-                        pool=await override_get_db_pool().__anext__(),
+                        pool=override_get_db_pool(),
                         http_client=override_get_http_client(),
                         vae=await get_vae_model(),
-                        secrets_env=await get_secrets_dependency(),
+                        secrets_env=get_secrets_dep(),
                         ignore_exceptions=True,
                     )
                 )
@@ -442,7 +442,7 @@ async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
     """
     from app.dependencies import get_db_pool
 
-    return await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+    return await client._transport.app.dependency_overrides[get_db_pool]()  # type: ignore
 
 
 def get_internal_client_hack(client: httpx.AsyncClient) -> httpx.AsyncClient:

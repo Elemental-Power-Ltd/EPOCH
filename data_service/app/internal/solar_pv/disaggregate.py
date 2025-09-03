@@ -1,13 +1,14 @@
 """Disaggregation functions for renewables-contaminated readings."""
 
 import logging
+from typing import cast
 
 import httpx
 import numpy as np
 import pandas as pd
 
 from ...models.core import dataset_id_t
-from ..epl_typing import db_conn_t
+from ..epl_typing import RecordMapping, db_conn_t
 from ..pvgis import get_pvgis_optima, get_renewables_ninja_data
 
 logger = logging.getLogger(__name__)
@@ -140,7 +141,7 @@ async def disaggregate_readings(
         WHERE dataset_id = $1""",
         elec_meter_dataset_id,
     )
-    elec_df = pd.DataFrame.from_records(elec_dataset, columns=["start_ts", "end_ts", "consumption_kwh"])
+    elec_df = pd.DataFrame.from_records(cast(RecordMapping, elec_dataset), columns=["start_ts", "end_ts", "consumption_kwh"])
 
     row = await pool.fetchrow(
         """

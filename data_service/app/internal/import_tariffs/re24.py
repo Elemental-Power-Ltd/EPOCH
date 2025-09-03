@@ -168,7 +168,7 @@ async def get_re24_approximate_ppa(
         http_client=http_client,
     )
     weather_df = (
-        pd.DataFrame.from_records(dict(item) for item in weather_records)
+        pd.DataFrame.from_records([dict(item) for item in weather_records])
         .set_index("timestamp")
         .resample(pd.Timedelta(minutes=30))
         .mean()

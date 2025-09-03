@@ -5,12 +5,11 @@ import contextvars
 import datetime
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Annotated, Any, Never
+from typing import Annotated, Never
 
 from fastapi import Depends, FastAPI
-from pydantic import BaseModel, Field
 
-from .dependencies import db, get_db_pool, get_http_client, get_secrets_dependency, get_thread_pool, get_vae_model
+from .dependencies import db, get_db_pool, get_http_client, get_secrets_dep, get_thread_pool, get_vae_model
 from .job_queue import TerminateTaskGroup, TrackingQueue, mark_remaining_jobs_as_error, process_jobs
 
 NUM_WORKERS = 2
@@ -30,24 +29,11 @@ async def get_job_queue() -> TrackingQueue:
     """
     global _QUEUE
     if _QUEUE is None:
-        _QUEUE = TrackingQueue(pool=await get_db_pool().__anext__())
+        _QUEUE = TrackingQueue(pool=await get_db_pool())
     return _QUEUE
 
 
 JobQueueDep = Annotated[TrackingQueue, Depends(get_job_queue)]
-
-
-class WorkerStatus(BaseModel):
-    """Status of a given worker job."""
-
-    name: str = Field(description="Human-readable name of this worker process")
-    exception: str | None = Field(default=None, description="The exception that caused this job to fail, if any")
-    is_running: bool = Field(default=False, description="Whether this job is running (either awaiting a job or working).")
-    current_job: str | None = Field(default=None, description="The type of the current job that this worker is running.")
-    current_job_id: int | None = Field(default=None, description="The ID of the current job that this worker is running.")
-    started_at: datetime.datetime | None = Field(default=None, description="The time this worker picked up the current job.")
-    coro: str | None = Field(description="Name of the coroutine this worker is working on.")
-    ctx: dict[str, Any] | None = Field(description="Full context dictionary this worker is acting within.")
 
 
 @asynccontextmanager
@@ -70,9 +56,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
                         process_jobs(
                             queue,
                             pool=db.pool,
-                            http_client=await get_http_client().__anext__(),
+                            http_client=await get_http_client(),
                             vae=await get_vae_model(),
-                            secrets_env=await get_secrets_dependency(),
+                            secrets_env=get_secrets_dep(),
                             ignore_exceptions=True,
                         ),
                         name=f"Worker {idx}",

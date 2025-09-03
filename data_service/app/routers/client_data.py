@@ -17,7 +17,7 @@ from pydantic_core._pydantic_core import ValidationError
 
 from app.routers.heating_load.phpp import list_phpp
 
-from ..dependencies import DatabaseDep, DatabasePoolDep
+from ..dependencies import DatabasePoolDep
 from ..internal.utils.uuid import uuid7
 from ..models.client_data import SolarLocation
 from ..models.core import (
@@ -282,7 +282,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
 
 
 @router.post("/add-client", tags=["db", "add"])
-async def add_client(client_data: ClientData, conn: DatabaseDep) -> tuple[ClientData, str]:
+async def add_client(client_data: ClientData, pool: DatabasePoolDep) -> ClientData:
     """
     Add a new client into the database.
 
@@ -295,16 +295,16 @@ async def add_client(client_data: ClientData, conn: DatabaseDep) -> tuple[Client
 
     Parameters
     ----------
-    *client_data*
+    client_data
         Metadata about the client, currently a client_id and name pair.
 
     Returns
     -------
-    client_data, status
-        Original client data and Postgres response.
+    client_data
+        Original client data
     """
     try:
-        status = await conn.execute(
+        status = await pool.execute(
             """
             INSERT INTO client_info.clients (
                 client_id,
@@ -316,11 +316,11 @@ async def add_client(client_data: ClientData, conn: DatabaseDep) -> tuple[Client
     except asyncpg.exceptions.UniqueViolationError as ex:
         raise HTTPException(400, f"Client ID {client_data.client_id} already exists in the database.") from ex
     logger.info(f"Inserted client {client_data.client_id} with return status {status}")
-    return (client_data, status)
+    return client_data
 
 
 @router.post("/add-site", tags=["db", "add"])
-async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, str]:
+async def add_site(site_data: SiteData, pool: DatabasePoolDep) -> tuple[SiteData, str]:
     """
     Add a new site into the database.
 
@@ -337,8 +337,6 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
 
     Parameters
     ----------
-    request
-        Internal FastAPI request object
     site_data
         Metadata about the site, including client_id, site_id, name, location, coordinates and address.
 
@@ -347,7 +345,7 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
         Data you inserted and postgres response string.
     """
     try:
-        status = await conn.execute(
+        status = await pool.execute(
             """
             INSERT INTO
                 client_info.site_info (
@@ -386,7 +384,7 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
 
 
 @router.post("/list-clients", tags=["db", "list"])
-async def list_clients(conn: DatabaseDep) -> list[ClientIdNamePair]:
+async def list_clients(pool: DatabasePoolDep) -> list[ClientIdNamePair]:
     """
     Get a list of all the clients we have, and their human readable names.
 
@@ -400,7 +398,7 @@ async def list_clients(conn: DatabaseDep) -> list[ClientIdNamePair]:
     -------
     list of (client_id, name) pairs, where `client_id` is the DB foreign key and `name` is human readable.
     """
-    res = await conn.fetch("""
+    res = await pool.fetch("""
         SELECT DISTINCT
             client_id,
             name
@@ -409,7 +407,7 @@ async def list_clients(conn: DatabaseDep) -> list[ClientIdNamePair]:
 
 
 @router.post("/list-sites", tags=["db", "list"])
-async def list_sites(client_id: ClientID, conn: DatabaseDep) -> list[SiteIdNamePair]:
+async def list_sites(client_id: ClientID, pool: DatabasePoolDep) -> list[SiteIdNamePair]:
     """
     Get all the sites associated with a particular client, including their human readable names.
 
@@ -422,14 +420,14 @@ async def list_sites(client_id: ClientID, conn: DatabaseDep) -> list[SiteIdNameP
     -------
     list of (site_id, name) pairs where `site_id` is the database foreign key and `name` is human readable.
     """
-    res = await conn.fetch(
+    res = await pool.fetch(
         """
         SELECT DISTINCT
             site_id,
             name
         FROM client_info.site_info
         WHERE client_id = $1
-        ORDER BY site_id ASC""",
+        ORDER BY name ASC""",
         client_id.client_id,
     )
     return [SiteIdNamePair(site_id=item[0], name=item[1]) for item in res]
@@ -461,7 +459,7 @@ async def get_solar_locations(site_id: SiteID, pool: DatabasePoolDep) -> list[So
     list[SolarLocation]
         List of all potential solar locations at the site, ordered alphabetically by their location ID
     """
-    res: list[asyncpg.Record] | None = await pool.fetch(
+    res = await pool.fetch(
         """
         SELECT
             site_id,
@@ -478,8 +476,7 @@ async def get_solar_locations(site_id: SiteID, pool: DatabasePoolDep) -> list[So
         """,
         site_id.site_id,
     )
-    if res is None:
-        return []
+
     return [
         SolarLocation(
             site_id=item["site_id"],

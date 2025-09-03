@@ -119,6 +119,7 @@ class HeatingLoadRequest(RequestBase):
     )
 
     surveyed_sizes: SurveyedSizes | None = pydantic.Field(description="Surveyed sizes of the building in m2", default=None)
+    seed: int | None = pydantic.Field(default=None, description="Random seed used to ensure reproducibility")
 
     @pydantic.model_validator(mode="after")
     def check_timestamps_valid(self) -> Self:
@@ -205,3 +206,15 @@ class InterventionCostRequest(pydantic.BaseModel):
 class InterventionCostResult(pydantic.BaseModel):
     breakdown: dict[InterventionEnum, float]
     total: float
+
+
+class PhppMetadata(pydantic.BaseModel):
+    """Metadata for a PHPP, including the file it came from and some non-element data that might be useful."""
+
+    filename: str | None
+    site_id: site_id_t
+    internal_volume: float = pydantic.Field(description="Air volume in m3 within the envelope of this building.")
+    air_changes: float = pydantic.Field(description="Air changes per hour in this building as estimated during survey.")
+    floor_area: float
+    structure_id: dataset_id_t
+    created_at: pydantic.AwareDatetime
