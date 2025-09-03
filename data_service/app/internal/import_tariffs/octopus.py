@@ -297,7 +297,7 @@ async def get_shapeshifters_rates(
         "https://api.octopus.energy/v1/graphql/",
         data={"query": query, "variables": json.dumps({"productCode": underlying_tariff, "postcode": postcode})},
     )
-    assert resp.status_code == 200, resp.text
+    assert resp.is_success, resp.text
     try:
         data = resp.json()["data"]["energyProduct"]["tariffs"]["edges"][0]["node"]
         return {"day": float(data["day"]), "night": float(data["night"]), "peak": float(data["peak"])}

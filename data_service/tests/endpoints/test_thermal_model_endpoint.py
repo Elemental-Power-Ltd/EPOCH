@@ -12,6 +12,7 @@ from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetTypeEnum
 from app.models.heating_load import HeatingLoadRequest, ThermalModelResult
 from app.routers.heating_load.thermal_model import file_params_with_db
+import numpy as np
 
 from .conftest import get_pool_hack
 
@@ -137,7 +138,7 @@ class TestThermalModelEndpoint:
                     start_ts=start_ts,
                     end_ts=end_ts,
                     structure_id=task_id,
-                    seed=int(3.141592653 * 10**9),
+                    seed=int(np.pi * 10**9),
                 ).model_dump_json()
             ),
         )

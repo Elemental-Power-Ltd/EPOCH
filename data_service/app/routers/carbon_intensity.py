@@ -181,6 +181,7 @@ async def fetch_carbon_intensity_batch(
         subdata = subdata["data"]
 
     for item in subdata:
+        print(item)
         entry: CarbonIntensityRawEntry = {
             "start_ts": pd.to_datetime(item["from"]),
             "end_ts": pd.to_datetime(item["to"]),

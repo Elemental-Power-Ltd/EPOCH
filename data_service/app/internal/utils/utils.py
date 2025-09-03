@@ -12,7 +12,7 @@ import urllib
 from collections.abc import Sequence
 from hashlib import sha256
 from typing import Any
-
+from ..epl_typing import Jsonable
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -277,7 +277,8 @@ def chunk_time_period(
     return new_time_pairs
 
 
-def url_to_hash(url: str, params: dict[str, Any] | None = None, max_len: int | None = None) -> str:
+def url_to_hash(url: str, params: dict[str, Any] | None = None, json: dict[str, Jsonable] | None = None, 
+                data: dict[str, Jsonable] | None = None, max_len: int | None = None) -> str:
     """
     Take a given URL and set of query params, and translate into a string SHA-256 hash.
 
@@ -305,6 +306,13 @@ def url_to_hash(url: str, params: dict[str, Any] | None = None, max_len: int | N
         # and sort them for consistency
         encoded_params = urllib.parse.urlencode({key: params[key] for key in sorted(params.keys())})
         hasher.update(encoded_params.encode("utf-8"))
+    if json:
+        encoded_json = urllib.parse.urlencode({key: json[key] for key in sorted(json.keys())})
+        hasher.update(encoded_json.encode("utf-8"))    
+
+    if data:
+        encoded_data = urllib.parse.urlencode({key: data[key] for key in sorted(data.keys())})
+        hasher.update(encoded_data.encode("utf-8"))    
     str_hash = str(hasher.hexdigest())
     if max_len is None:
         return str_hash
