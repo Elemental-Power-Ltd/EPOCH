@@ -2,7 +2,6 @@ from collections import OrderedDict
 
 import pytest
 from fastapi.encoders import jsonable_encoder
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from app.internal.queue import IQueue
@@ -35,7 +34,7 @@ class TestQueueEndpoint:
         assert response.status_code == 200, response.text
 
     @pytest.mark.asyncio
-    async def test_clear_queue(self, client: TestClient) -> None:
+    async def test_clear_queue(self, client: AsyncClient) -> None:
         """
         Test /clear-queue endpoint.
         """

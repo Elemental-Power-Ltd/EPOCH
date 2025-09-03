@@ -43,12 +43,12 @@ class MockedHttpClient(httpx.AsyncClient):
     def __init__(self, tmp_path: Path, **kwargs: Any):
         self.tmp_path = tmp_path
 
-    def transmit_results(self, **kwargs: Any):
+    def transmit_results(self, **kwargs: Any) -> None:
         result = kwargs.get("json")
-        with open(Path(self.tmp_path, f"{result['tasks']['task_id']}.json"), "w") as f:
+        with open(Path(self.tmp_path, f"{result['tasks']['task_id']}.json"), "w") as f:  # type: ignore
             json.dump(kwargs.get("json"), f)
 
-    async def get_result_configuration(self, url: str, **kwargs: Any):
+    async def get_result_configuration(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("json"))
         stored_result_configuration = Path(".", "tests", "data", "result_configuration", f"{url_params}.json")
         if stored_result_configuration.exists():
@@ -58,10 +58,10 @@ class MockedHttpClient(httpx.AsyncClient):
             stored_result_configuration.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
-    def transmit_task(self):
+    def transmit_task(self) -> None:
         pass
 
-    async def get_dataset_bundles_list(self, url: str, **kwargs: Any):
+    async def get_dataset_bundles_list(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("json"))
         stored_dataset_bundles_list = Path(".", "tests", "data", "list_dataset_bundles", f"{url_params}.json")
         if stored_dataset_bundles_list.exists():
@@ -71,7 +71,7 @@ class MockedHttpClient(httpx.AsyncClient):
             stored_dataset_bundles_list.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
-    async def get_dataset_bundle(self, url: str, **kwargs: Any):
+    async def get_dataset_bundle(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_dataset_bundle = Path(".", "tests", "data", "get_dataset_bundle", f"{url_params}.json")
         if stored_dataset_bundle.exists():
@@ -81,7 +81,7 @@ class MockedHttpClient(httpx.AsyncClient):
             stored_dataset_bundle.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
-    async def get_bundle_contents_list(self, url: str, **kwargs: Any):
+    async def get_bundle_contents_list(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_bundle_contents_list = Path(".", "tests", "data", "list_bundle_contents", f"{url_params}.json")
         if stored_bundle_contents_list.exists():
@@ -91,7 +91,7 @@ class MockedHttpClient(httpx.AsyncClient):
             stored_bundle_contents_list.write_text(json.dumps(data, indent=4, sort_keys=True))
             return cast(Jsonable, data)
 
-    async def get_specific_datasets(self, url: str, **kwargs: Any):
+    async def get_specific_datasets(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("json"))
         stored_specific_datasets = Path(".", "tests", "data", "get_specific_datasets", f"{url_params}.json")
         if stored_specific_datasets.exists():
@@ -104,31 +104,35 @@ class MockedHttpClient(httpx.AsyncClient):
     async def post(self, url: str | httpx._urls.URL, **kwargs: Any) -> httpx._models.Response:
         """Mock known posts requests by loading the data from files."""
 
-        if str(url) == _DB_URL + "/add-optimisation-results":
+        url = str(url)
+
+        if url == _DB_URL + "/add-optimisation-results":
             self.transmit_results(**kwargs)
 
-        elif str(url) == _DB_URL + "/get-result-configuration":
+        elif url == _DB_URL + "/get-result-configuration":
             stored_result_configuration = await self.get_result_configuration(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_result_configuration)
 
-        elif str(url) == _DB_URL + "/add-optimisation-task":
+        elif url == _DB_URL + "/add-optimisation-task":
             self.transmit_task()
 
-        elif str(url) == _DB_URL + "/list-dataset-bundles":
+        elif url == _DB_URL + "/list-dataset-bundles":
             stored_dataset_bundles_list = await self.get_dataset_bundles_list(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_dataset_bundles_list)
 
-        elif str(url) == _DB_URL + "/get-dataset-bundle":
+        elif url == _DB_URL + "/get-dataset-bundle":
             stored_dataset_bundle = await self.get_dataset_bundle(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_dataset_bundle)
 
-        elif str(url) == _DB_URL + "/list-bundle-contents":
+        elif url == _DB_URL + "/list-bundle-contents":
             stored_bundle_contents_list = await self.get_bundle_contents_list(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_bundle_contents_list)
 
-        elif str(url) == _DB_URL + "/get-specific-datasets":
+        elif url == _DB_URL + "/get-specific-datasets":
             stored_specific_datasets = await self.get_specific_datasets(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_specific_datasets)
+
+        return httpx.Response(status_code=400, text="No matching URL mock found.")
 
 
 @pytest_asyncio.fixture()

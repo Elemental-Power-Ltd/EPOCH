@@ -112,7 +112,9 @@ async def process_requests(q: IQueue, http_client: HTTPClient) -> None:
 
 
 @router.post("/submit-task")
-async def submit_task(request: Request, endpoint_task: EndpointTask, http_client: HttpClientDep) -> TaskResponse:
+async def submit_task(
+    request: Request, endpoint_task: EndpointTask, http_client: HttpClientDep, queue: QueueDep
+) -> TaskResponse:
     """
     Add optimisation task to queue.
 
@@ -134,7 +136,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, http_client
         epoch_version=simulator_version,
     )
 
-    response = await submit_portfolio(request=request, task=epp_task, http_client=http_client)
+    response = await submit_portfolio(task=epp_task, http_client=http_client, queue=queue)
     return response
 
 

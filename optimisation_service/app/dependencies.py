@@ -2,7 +2,6 @@ import datetime
 import typing
 import urllib
 from collections import OrderedDict
-from collections.abc import Generator
 from hashlib import sha256
 from typing import Any
 
@@ -59,7 +58,7 @@ class LRUCache:
     When the cache exceeds the maximum size, the least recently used item is automatically evicted.
     """
 
-    def __init__(self, max_size=50):
+    def __init__(self, max_size: int = 50):
         """
         Initialize the LRUCache.
 
@@ -69,9 +68,9 @@ class LRUCache:
             Maximum number of items the cache can hold.
         """
         self.max_size = max_size
-        self.cache = OrderedDict()
+        self.cache: OrderedDict[str, httpx._models.Response] = OrderedDict()
 
-    def get(self, key):
+    def get(self, key: str) -> httpx._models.Response | None:
         """
         Retrieve an item from the cache.
 
@@ -93,7 +92,7 @@ class LRUCache:
         self.cache.move_to_end(key)
         return self.cache[key]
 
-    def set(self, key, value):
+    def set(self, key: str, value: httpx._models.Response) -> None:
         """
         Add or update an item in the cache.
 
@@ -120,7 +119,7 @@ class LRUCache:
 class CachedAsyncClient(httpx.AsyncClient):
     """Async HTTPX client with bundle caching."""
 
-    def __init__(self, max_cache_size=50, **kwargs: Any):
+    def __init__(self, max_cache_size: int = 50, **kwargs: Any):
         """
         Initialize the CachedAsyncClient.
 
@@ -136,14 +135,11 @@ class CachedAsyncClient(httpx.AsyncClient):
         """Post request with bundle caching."""
         if str(url) == _DB_URL + "/get-dataset-bundle":
             params = kwargs.get("params")
-            key = url_to_hash(url=url, params=params)
-            print(f"Cache key: {key}")
+            key = url_to_hash(url=str(url), params=params)
             cached = self.cache.get(key)
             if cached is not None:
-                print("Key in cache")
+                print(f"Loaded bundle {params['bundle_id']} from cache.")  # type: ignore
                 return cached
-
-            print(f"Key not in cache: {self.cache.cache}")
 
             response = await super().post(url, params=params)
             self.cache.set(key, response)
@@ -184,7 +180,7 @@ async def get_http_client() -> CachedAsyncClient:
 _QUEUE: IQueue | None = None
 
 
-def get_queue() -> Generator[IQueue]:
+def get_queue() -> IQueue:
     """
     Get the queue with tasks in it.
 

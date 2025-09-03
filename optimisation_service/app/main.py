@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     http_client = await get_http_client()
     async with asyncio.TaskGroup() as tg:
         _ = tg.create_task(process_requests(q=queue, http_client=http_client))
-        yield  # type: ignore
+        yield
         # Shutdown events
         queue.shutdown()
         await queue.join()
