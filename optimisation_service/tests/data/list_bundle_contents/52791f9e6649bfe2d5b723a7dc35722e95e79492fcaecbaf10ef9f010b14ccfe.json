@@ -1,0 +1,156 @@
+{
+    "ASHPData": {
+        "created_at": "2025-09-01T14:50:54.226972Z",
+        "dataset_id": "00000000-0000-4000-8000-000000000000",
+        "dataset_subtype": null,
+        "dataset_type": "ASHPData",
+        "end_ts": "2023-01-01T00:00:00Z",
+        "num_entries": 17520,
+        "resolution": "PT30M",
+        "start_ts": "2022-01-01T00:00:00Z"
+    },
+    "CarbonIntensity": {
+        "created_at": "2025-09-01T14:50:54.226972Z",
+        "dataset_id": "019905c2-75db-7177-b125-c8b1f65c8753",
+        "dataset_subtype": null,
+        "dataset_type": "CarbonIntensity",
+        "end_ts": "2023-01-01T00:00:00Z",
+        "num_entries": 17520,
+        "resolution": "PT30M",
+        "start_ts": "2022-01-01T00:00:00Z"
+    },
+    "ElectricityMeterData": {
+        "created_at": "2025-09-01T14:50:54.226972Z",
+        "dataset_id": "82142655-6ead-400b-86af-191f34540c75",
+        "dataset_subtype": null,
+        "dataset_type": "ElectricityMeterData",
+        "end_ts": "2023-01-01T00:00:00Z",
+        "num_entries": 17520,
+        "resolution": "PT30M",
+        "start_ts": "2022-01-01T00:00:00Z"
+    },
+    "ElectricityMeterDataSynthesised": {
+        "created_at": "2025-09-01T14:50:54.226972Z",
+        "dataset_id": "019905c2-761a-7264-b4a8-36927b962a66",
+        "dataset_subtype": null,
+        "dataset_type": "ElectricityMeterDataSynthesised",
+        "end_ts": "2023-01-01T00:00:00Z",
+        "num_entries": 17520,
+        "resolution": "PT30M",
+        "start_ts": "2022-01-01T00:00:00Z"
+    },
+    "GasMeterData": {
+        "created_at": "2025-09-01T14:50:54.226972Z",
+        "dataset_id": "dbd8fa8a-93ce-4dca-ab27-5e69db3718de",
+        "dataset_subtype": null,
+        "dataset_type": "GasMeterData",
+        "end_ts": "2023-01-01T00:00:00Z",
+        "num_entries": 17520,
+        "resolution": "PT30M",
+        "start_ts": "2022-01-01T00:00:00Z"
+    },
+    "HeatingLoad": [
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-75a5-70c6-80cb-9b5f3054eca0",
+            "dataset_subtype": "[]",
+            "dataset_type": "HeatingLoad",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        },
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-75a8-7091-88e7-dabe3eaa9528",
+            "dataset_subtype": "[\"loft\"]",
+            "dataset_type": "HeatingLoad",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        },
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-75c3-76e5-ba02-93c1eb1bd7ab",
+            "dataset_subtype": "[\"double_glazing\"]",
+            "dataset_type": "HeatingLoad",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        },
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-75d8-77d7-a0c0-d6953796c202",
+            "dataset_subtype": "[\"cladding\"]",
+            "dataset_type": "HeatingLoad",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        }
+    ],
+    "ImportTariff": [
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-75f6-7404-8fdc-19c68a5bedd4",
+            "dataset_subtype": "\"fixed\"",
+            "dataset_type": "ImportTariff",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        },
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-760e-7745-9411-87efe4ad5a04",
+            "dataset_subtype": "\"agile\"",
+            "dataset_type": "ImportTariff",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        },
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-7611-75c9-acb1-94d02d71938e",
+            "dataset_subtype": "\"peak\"",
+            "dataset_type": "ImportTariff",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        },
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-7614-71b5-a424-4b3933b77d96",
+            "dataset_subtype": "\"overnight\"",
+            "dataset_type": "ImportTariff",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        }
+    ],
+    "PHPP": null,
+    "RenewablesGeneration": [
+        {
+            "created_at": "2025-09-01T14:50:54.226972Z",
+            "dataset_id": "019905c2-7618-7700-adf0-b829a5358f51",
+            "dataset_subtype": "\"default\"",
+            "dataset_type": "RenewablesGeneration",
+            "end_ts": "2023-01-01T00:00:00Z",
+            "num_entries": 17520,
+            "resolution": "PT30M",
+            "start_ts": "2022-01-01T00:00:00Z"
+        }
+    ],
+    "SiteBaseline": null,
+    "ThermalModel": null,
+    "Weather": null,
+    "bundle_id": "019905c2-7592-700c-9775-fa40e0982281",
+    "end_ts": "2023-01-01T00:00:00Z",
+    "site_id": "bircotes_leisure_centre",
+    "start_ts": "2022-01-01T00:00:00Z"
+}
