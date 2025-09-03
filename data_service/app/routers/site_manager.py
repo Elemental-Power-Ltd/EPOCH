@@ -353,7 +353,9 @@ async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> Datase
     if not bundles:
         raise HTTPException(404, f"Didn't find any bundled datasets for {site_id.site_id}, try generating some.")
 
-    latest_bundle_id = max([item for item in bundles if item.is_complete and not item.is_error], key=lambda x: x.created_at).bundle_id
+    latest_bundle_id = max(
+        [item for item in bundles if item.is_complete and not item.is_error], key=lambda x: x.created_at
+    ).bundle_id
     bundle_contents = await list_bundle_contents(latest_bundle_id, pool)
     if bundle_contents is None:
         raise HTTPException(404, f"Didn't find any bundled datasets for {site_id.site_id}, try generating some.")
