@@ -10,9 +10,10 @@ from pydantic import UUID7, AwareDatetime
 from app.dependencies import HTTPClient
 from app.models.core import Site, Task
 from app.models.database import bundle_id_t, dataset_id_t
-from app.models.simulate import EpochInputData, LegacyResultReproConfig, NewResultReproConfig, result_repro_config_t
+from app.models.simulate import EpochInputData, LegacyResultReproConfig
 from app.models.site_data import DatasetTypeEnum, EpochSiteData, SiteDataEntries, SiteMetaData
 
+from .results import get_result_configuration
 from .utils import _DB_URL
 
 logger = logging.getLogger("default")
@@ -67,7 +68,7 @@ async def get_latest_site_data_bundle(site_data: SiteMetaData, http_client: HTTP
 
     site_data.start_ts, site_data.end_ts = await get_bundle_timestamps(bundle_id=site_data.bundle_id, http_client=http_client)
 
-    epoch_data = transform_all_input_data(site_data_entries, site_data.start_ts, site_data.end_ts)
+    epoch_data = site_data_entries_to_epoch_site_data(site_data_entries, site_data.start_ts, site_data.end_ts)
 
     return epoch_data
 
@@ -152,7 +153,9 @@ async def get_bundle_timestamps(bundle_id: bundle_id_t, http_client: HTTPClient)
     return (starts_ts, end_ts)
 
 
-def transform_all_input_data(site_data_entries: SiteDataEntries, start_ts: datetime, end_ts: datetime) -> EpochSiteData:
+def site_data_entries_to_epoch_site_data(
+    site_data_entries: SiteDataEntries, start_ts: datetime, end_ts: datetime
+) -> EpochSiteData:
     """
     Transform a response from /get-latest-datasets into EPOCH ingestable data.
 
@@ -226,33 +229,9 @@ async def get_saved_epoch_input(portfolio_id: dataset_id_t, site_id: str, http_c
         site_data_entries = await get_bundled_data(bundle_id=bundle_id, http_client=http_client)
         start_ts, end_ts = await get_bundle_timestamps(bundle_id=bundle_id, http_client=http_client)
 
-    epoch_data = transform_all_input_data(site_data_entries, start_ts, end_ts)
+    epoch_data = site_data_entries_to_epoch_site_data(site_data_entries, start_ts, end_ts)
 
     return EpochInputData(task_data=task_data, site_data=epoch_data)
-
-
-async def get_result_configuration(portfolio_id: dataset_id_t, http_client: HTTPClient) -> result_repro_config_t:
-    """
-    Get the configuration that was used to generate a portfolio result that is stored in the database.
-
-    Parameters
-    ----------
-    portfolio_id
-        UUID associated with a portfolio optimisation result.
-    http_client
-        Asynchronous HTTP client to use for requests.
-
-    Returns
-    -------
-    ResultReproConfig
-        Portfolio configuration
-    """
-    response = await http_client.post(url=_DB_URL + "/get-result-configuration", json={"result_id": str(portfolio_id)})
-    data = response.json()
-    logger.info(f"Got result configuration: {data}")
-    if "site_data" in data:
-        return LegacyResultReproConfig.model_validate(data)
-    return NewResultReproConfig.model_validate(data)
 
 
 async def fetch_specific_datasets(site_data: SiteMetaData, http_client: HTTPClient) -> SiteDataEntries:

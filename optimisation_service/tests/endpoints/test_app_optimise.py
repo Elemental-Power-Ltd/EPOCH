@@ -3,8 +3,9 @@ import os
 import time
 from pathlib import Path
 
+import pytest
 from fastapi.encoders import jsonable_encoder
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from app.internal.database.results import process_results
 from app.models.core import Task
@@ -24,17 +25,23 @@ from app.models.result import OptimisationResult
 
 
 class TestSubmitPortfolioTask:
-    def test_good_task(self, client: TestClient, result_tmp_path: Path, default_task: Task) -> None:
+    @pytest.mark.asyncio
+    async def test_good_task(self, client: AsyncClient, result_tmp_path: Path, default_task: Task) -> None:
         """
         Test /submit-portfolio-task endpoint.
         """
-        response = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
+        response = await client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
         assert response.status_code == 200, response.text
-        while str(default_task.task_id) in client.post("/queue-status").json()["queue"]:
+        is_finished = False
+        while not is_finished:
+            queue_status_response = await client.post("/queue-status")
+            queue = queue_status_response.json()["queue"]
+            is_finished = str(default_task.task_id) not in queue
             time.sleep(1)
         assert os.path.isfile(Path(result_tmp_path, f"{default_task.task_id}.json"))
 
-    def test_empty_search_space(self, client: TestClient, default_task: Task) -> None:
+    @pytest.mark.asyncio
+    async def test_empty_search_space(self, client: AsyncClient, default_task: Task) -> None:
         """
         Test /submit-portfolio-task endpoint.
         """
@@ -105,7 +112,7 @@ class TestSubmitPortfolioTask:
         for site in default_task.portfolio:
             site.site_range = empty_site_range
 
-        response = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
+        response = await client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
         assert response.status_code == 400, response.text
 
 

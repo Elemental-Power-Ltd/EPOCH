@@ -8,24 +8,24 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .dependencies import get_http_client
+from .dependencies import get_http_client, get_queue
 from .internal.log import logger
 from .routers import epl_queue, metrics, optimise, simulate
-from .routers.epl_queue import IQueue
 from .routers.optimise import process_requests
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Create queue that is served by process_requests from moment app is created until it is closed."""
-    q = IQueue(maxsize=20)
-    app.state.q = q
+    queue = get_queue()
     app.state.start_time = datetime.datetime.now(datetime.UTC)
-    http_client = await get_http_client().__anext__()
-    # https://textual.textualize.io/blog/2023/02/11/the-heisenbug-lurking-in-your-async-code/
-    app.state._queue_task = asyncio.create_task(process_requests(q=q, http_client=http_client))
-    yield
-    app.state._queue_task.cancel()
+    http_client = await get_http_client()
+    async with asyncio.TaskGroup() as tg:
+        _ = tg.create_task(process_requests(q=queue, http_client=http_client))
+        yield  # type: ignore
+        # Shutdown events
+        queue.shutdown()
+        await queue.join()
 
 
 app = FastAPI(lifespan=lifespan, title="Optimisation", root_path="/api/optimisation")

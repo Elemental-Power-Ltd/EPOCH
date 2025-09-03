@@ -1,3 +1,4 @@
+import json
 import random
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -5,7 +6,6 @@ from pathlib import Path
 import pytest
 from epoch_simulator import SimulationResult, aggregate_site_results
 
-from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.epoch_utils import simulation_result_to_metric_dict
 from app.internal.ga_utils import ProblemInstance
 from app.internal.site_range import REPEAT_COMPONENTS
@@ -35,6 +35,23 @@ _DATA_PATH = Path("tests", "data")
 # set a few fields in the SimulationResult with random values
 _METRICS = ["total_capex", "total_electricity_used", "total_ch_shortfall"]
 _COMPARISON = ["operating_balance", "npv_balance", "combined_carbon_balance"]
+
+
+def load_epoch_data_from_file(path: Path) -> EpochSiteData:
+    """
+    Load EpochSiteData from file path.
+
+    Parameters
+    ----------
+    path
+        Path to EpochSiteData (including filename: *.json).
+
+    Returns
+    -------
+    epoch_data
+        Contents of file converted to EpochSiteData.
+    """
+    return EpochSiteData.model_validate(json.loads(path.read_text()))
 
 
 @pytest.fixture

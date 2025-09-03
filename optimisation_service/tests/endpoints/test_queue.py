@@ -3,41 +3,43 @@ from collections import OrderedDict
 import pytest
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
+from app.internal.queue import IQueue
 from app.internal.uuid7 import uuid7
-from app.main import app
 from app.models.core import Task
 from app.models.epl_queue import task_state
-from app.routers.epl_queue import IQueue
 
 
 class TestQueueEndpoint:
-    def test_queue_status(self) -> None:
+    @pytest.mark.asyncio
+    async def test_queue_status(self, client: AsyncClient) -> None:
         """
         Test /queue-status endpoint.
         """
-        with TestClient(app) as client:
-            response = client.post("/queue-status")
-            assert response.status_code == 200, response.text
+        response = await client.post("/queue-status")
+        assert response.status_code == 200, response.text
 
     @pytest.mark.slow
-    def test_cancel_task(self, client: TestClient, default_task: Task) -> None:
+    @pytest.mark.asyncio
+    async def test_cancel_task(self, client: AsyncClient, default_task: Task) -> None:
         """
         Test /cancel-task endpoint.
         """
-        _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
+        _ = await client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
         default_task.task_id = uuid7()
-        _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
+        _ = await client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
         default_task.task_id = uuid7()
-        _ = client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
-        response = client.post("/cancel-task", params={"task_id": str(default_task.task_id)})
+        _ = await client.post("/submit-portfolio-task", json=jsonable_encoder(default_task))
+        response = await client.post("/cancel-task", params={"task_id": str(default_task.task_id)})
         assert response.status_code == 200, response.text
 
-    def test_clear_queue(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_clear_queue(self, client: TestClient) -> None:
         """
         Test /clear-queue endpoint.
         """
-        response = client.post("/clear-queue")
+        response = await client.post("/clear-queue")
         assert response.status_code == 200, response.text
 
 
@@ -70,7 +72,7 @@ class TestQueue:
         """
         q = IQueue()
         await q.put(default_task)
-        task, _ = await q.get()
+        task = await q.get()
         assert isinstance(task, Task)
 
     @pytest.mark.asyncio

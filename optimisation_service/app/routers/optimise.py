@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 
-from app.dependencies import HTTPClient, HttpClientDep
+from app.dependencies import HTTPClient, HttpClientDep, QueueDep
 from app.internal.bayesian.bayesian import Bayesian
 from app.internal.constraints import apply_default_constraints
 from app.internal.database.results import process_results, transmit_results
@@ -16,6 +16,7 @@ from app.internal.database.site_data import fetch_portfolio_data
 from app.internal.database.tasks import transmit_task
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
+from app.internal.queue import IQueue
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.core import (
     EndpointTask,
@@ -23,7 +24,6 @@ from app.models.core import (
     Task,
     TaskResponse,
 )
-from app.routers.epl_queue import IQueue
 
 
 class OptimiserFunc(Enum):
@@ -139,7 +139,7 @@ async def submit_task(request: Request, endpoint_task: EndpointTask, http_client
 
 
 @router.post("/submit-portfolio-task")
-async def submit_portfolio(request: Request, task: Task, http_client: HttpClientDep) -> TaskResponse:
+async def submit_portfolio(task: Task, http_client: HttpClientDep, queue: QueueDep) -> TaskResponse:
     """
     Add portfolio optimisation task to queue.
 
@@ -152,11 +152,10 @@ async def submit_portfolio(request: Request, task: Task, http_client: HttpClient
     """
     logger.info(f"Received task - assigned id: {task.task_id}.")
 
-    q: IQueue = request.app.state.q
-    if q.full():
+    if queue.full():
         logger.warning("Queue full.")
         raise HTTPException(status_code=503, detail="Task queue is full.")
-    if task.task_id in q.q.keys():
+    if task.task_id in queue.q.keys():
         logger.warning(f"{task.task_id} already in queue.")
         raise HTTPException(status_code=400, detail="Task already in queue.")
     if sum(count_parameters_to_optimise(site.site_range) for site in task.portfolio) < 1:
@@ -173,7 +172,7 @@ async def submit_portfolio(request: Request, task: Task, http_client: HttpClient
         task.epoch_version = simulator_version
         save_parameters(task=task)
         await transmit_task(task=task, http_client=http_client)
-        await q.put(task)
+        await queue.put(task)
         return TaskResponse(task_id=task.task_id)
     except httpx.HTTPStatusError as e:
         logger.warning(f"Failed to add task to database: {e.response.text!s}")

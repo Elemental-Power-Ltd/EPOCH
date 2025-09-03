@@ -4,6 +4,7 @@ import logging
 import httpx
 from fastapi.encoders import jsonable_encoder
 
+from app.dependencies import HTTPClient
 from app.internal.epoch_utils import simulation_result_to_pydantic
 from app.internal.ga_utils import strip_annotations
 from app.internal.uuid7 import uuid7
@@ -14,7 +15,9 @@ from app.models.core import (
     Task,
     TaskResult,
 )
+from app.models.database import dataset_id_t
 from app.models.result import OptimisationResult
+from app.models.simulate import LegacyResultReproConfig, NewResultReproConfig, result_repro_config_t
 
 from .utils import _DB_URL
 
@@ -78,3 +81,27 @@ async def transmit_results(results: OptimisationResultEntry, http_client: httpx.
     """
     logger.info("Adding results to database.")
     await http_client.post(url=_DB_URL + "/add-optimisation-results", json=jsonable_encoder(results))
+
+
+async def get_result_configuration(portfolio_id: dataset_id_t, http_client: HTTPClient) -> result_repro_config_t:
+    """
+    Get the configuration that was used to generate a portfolio result that is stored in the database.
+
+    Parameters
+    ----------
+    portfolio_id
+        UUID associated with a portfolio optimisation result.
+    http_client
+        Asynchronous HTTP client to use for requests.
+
+    Returns
+    -------
+    ResultReproConfig
+        Portfolio configuration
+    """
+    response = await http_client.post(url=_DB_URL + "/get-result-configuration", json={"result_id": str(portfolio_id)})
+    data = response.json()
+    logger.info(f"Got result configuration: {data}")
+    if "site_data" in data:
+        return LegacyResultReproConfig.model_validate(data)
+    return NewResultReproConfig.model_validate(data)
