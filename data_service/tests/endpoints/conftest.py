@@ -15,7 +15,7 @@ import json
 import sys
 from collections.abc import AsyncGenerator, Coroutine
 from pathlib import Path
-from typing import Any, Self, cast
+from typing import Any, Self
 
 import asyncpg
 import httpx
@@ -33,7 +33,6 @@ from app.dependencies import (
     get_secrets_dep,
     get_vae_model,
 )
-from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
 from app.job_queue import TerminateTaskGroup, TrackingQueue, process_jobs
@@ -104,21 +103,20 @@ class MockedHttpClient(httpx.AsyncClient):
         Make an HTTP POST request, but actually load it from a file.
 
         Data are stored in JSON files with the filenames being the hash of the relevant URL plus any parameters.
-        
+
         Returns
         -------
         Successful response with JSON from file
         """
-
         base_dir = Path(".", "tests", "data")
         url = str(url)
         if url.startswith("https://api.octopus.energy/v1/graphql/"):
             directory = base_dir / "octopus"
         else:
             raise ValueError(f"Unhandled post {url}")
-        
+
         url_params = url_to_hash(url, kwargs.get("params"), kwargs.get("json"), kwargs.get("data"))
-        
+
         stored_path = directory / f"{url_params}.json"
         if DO_MOCK and stored_path.exists():
             external_data = json.loads(stored_path.read_text())
@@ -129,9 +127,9 @@ class MockedHttpClient(httpx.AsyncClient):
                 return external_resp
             external_data = external_resp.json()
             stored_path.write_text(json.dumps(external_data, indent=4, sort_keys=True))
-      
+
         return httpx.Response(200, json=external_data)
-    
+
     # The httpx typing is gross so let's just bodge it and carry on
     async def get(self, url: httpx.URL | str, **kwargs: Any) -> Coroutine[Any, Any, httpx.Response] | httpx.Response:  # type: ignore
         """
@@ -145,9 +143,9 @@ class MockedHttpClient(httpx.AsyncClient):
         """
         url = str(url)
         base_dir = Path(".", "tests", "data")
-        
+
         if url.startswith("https://api.octopus.energy/v1/"):
-            directory = base_dir / "octopus"    
+            directory = base_dir / "octopus"
         elif url.startswith("https://api.carbonintensity.org.uk/regional/"):
             directory = base_dir / "carbon_intensity"
         elif url.startswith("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"):
@@ -160,7 +158,7 @@ class MockedHttpClient(httpx.AsyncClient):
             directory = base_dir / "re24"
         else:
             raise ValueError(f"Unhandled GET {url}")
-        
+
         # no data or JSON or a GET request
         url_params = url_to_hash(url, kwargs.get("params"))
         stored_path = directory / f"{url_params}.json"

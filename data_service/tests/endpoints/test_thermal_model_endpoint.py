@@ -4,6 +4,7 @@ import datetime
 import json
 
 import httpx
+import numpy as np
 import pytest
 import pytest_asyncio
 
@@ -12,7 +13,6 @@ from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetTypeEnum
 from app.models.heating_load import HeatingLoadRequest, ThermalModelResult
 from app.routers.heating_load.thermal_model import file_params_with_db
-import numpy as np
 
 from .conftest import get_pool_hack
 
