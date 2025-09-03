@@ -176,7 +176,6 @@ async def client(result_tmp_path: Path) -> AsyncGenerator[AsyncClient]:
             )
             yield client
             await queue.join()
-            raise TerminateTaskGroup()
     except* TerminateTaskGroup:
         pass
 
