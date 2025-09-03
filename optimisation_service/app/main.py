@@ -21,11 +21,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.start_time = datetime.datetime.now(datetime.UTC)
     http_client = await get_http_client()
     async with asyncio.TaskGroup() as tg:
-        _ = tg.create_task(process_requests(q=queue, http_client=http_client))
+        task = tg.create_task(process_requests(q=queue, http_client=http_client))
         yield
         # Shutdown events
         queue.shutdown()
         await queue.join()
+        task.cancel()
 
 
 app = FastAPI(lifespan=lifespan, title="Optimisation", root_path="/api/optimisation")

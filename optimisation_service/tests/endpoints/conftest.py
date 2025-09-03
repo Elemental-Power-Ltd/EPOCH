@@ -23,7 +23,6 @@ from app.models.optimisers import (
     NSGA2Optimiser,
     OptimiserStr,
 )
-from app.routers.epl_queue import TerminateTaskGroup
 from app.routers.optimise import process_requests
 
 type Jsonable = dict[str, Jsonable] | list[Jsonable] | str | int | float | bool | None
@@ -148,7 +147,7 @@ async def client(result_tmp_path: Path) -> AsyncGenerator[AsyncClient]:
         # it'll helpfully try to reuse a connection between event loops and then fall over.
         return MockedHttpClient(tmp_path=result_tmp_path)
 
-    queue = IQueue(maxsize=10)
+    queue = IQueue(maxsize=20)
 
     def override_get_queue() -> IQueue:
         return queue
@@ -156,28 +155,25 @@ async def client(result_tmp_path: Path) -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides[get_http_client] = override_get_http_client
     app.dependency_overrides[get_queue] = override_get_queue
 
-    queue = IQueue(maxsize=20)
     app.state.start_time = datetime.datetime.now(datetime.UTC)
 
-    try:
-        async with (
-            AsyncClient(
-                transport=ASGITransport(app),
-                base_url="http://localhost",
-            ) as client,
-            asyncio.TaskGroup() as tg,
-        ):
-            # We also have to set up the queue handling task
-            _ = tg.create_task(
-                process_requests(
-                    q=queue,
-                    http_client=override_get_http_client(),
-                )
+    async with (
+        AsyncClient(
+            transport=ASGITransport(app),
+            base_url="http://localhost",
+        ) as client,
+        asyncio.TaskGroup() as tg,
+    ):
+        # We also have to set up the queue handling task
+        task = tg.create_task(
+            process_requests(
+                q=queue,
+                http_client=override_get_http_client(),
             )
-            yield client
-            await queue.join()
-    except* TerminateTaskGroup:
-        pass
+        )
+        yield client
+        await queue.join()
+        task.cancel()
 
 
 @pytest.fixture

@@ -10,13 +10,6 @@ from app.models.epl_queue import QueueStatus, task_state
 logger = logging.getLogger("default")
 
 
-class TerminateTaskGroup(Exception):
-    """Exception raised to terminate a task group.
-
-    Use this to end the processing of a queue.
-    """
-
-
 router = APIRouter()
 
 
