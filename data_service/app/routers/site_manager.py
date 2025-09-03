@@ -1095,7 +1095,7 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
                 on dl.bundle_id = dm.bundle_id
             LEFT JOIN client_info.solar_locations AS sl
                 ON sl.renewables_location_id = REPLACE(dl.dataset_subtype, '"', '')
-            WHERE dataset_type = 'RenewablesGeneration' WHERE dm.bundle_id = $1
+            WHERE dataset_type = 'RenewablesGeneration' AND dm.bundle_id = $1
             ORDER BY dataset_order ASC;""",
             bundle_id,
         )
