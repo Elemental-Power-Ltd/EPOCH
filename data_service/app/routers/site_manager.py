@@ -57,6 +57,7 @@ type to_generate_t = dict[DatasetTypeEnum, RequestBase | Sequence[RequestBase]]
 logger = logging.getLogger(__name__)
 
 
+@warnings.deprecated("Prefer list-dataset-bundles")
 @router.post("/list-datasets", tags=["db", "list"])
 async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[DatasetTypeEnum, list[DatasetEntry]]:
     """
@@ -115,6 +116,8 @@ async def list_bundle_contents(bundle_id: dataset_id_t, pool: DatabasePoolDep) -
     If there is not a bundle with this ID, this returns None.
     This gives you more metadata about each entry than the `list-dataset-bundles` without actually
     returning all of the entries within a bundle.
+    This will flag if a bundle is complete or has errored if it was generated via the queue.
+    For a manually generated bundle, these default to `is_complete=True` and `is_error=False`.
 
     Parameters
     ----------
@@ -126,36 +129,62 @@ async def list_bundle_contents(bundle_id: dataset_id_t, pool: DatabasePoolDep) -
     Returns
     -------
     DatasetList
-        Contents of the latest bundle, in the right order, if one exists
+        Contents of the specified bundle, in the right order, if one exists
     None
         If no bundles exist
     """
-    latest_bundle = await pool.fetchrow(
+    # We do this slightly weird subselect to avoid over-joining on the dataset links
+    # before the aggregation happens (otherwise you get N_links * N_status tasks)
+    # (because they all share a bundle ID and we don't record the dataset IDs)
+    bundle_contents = await pool.fetchrow(
         """
         SELECT
-            m.bundle_id,
-            ANY_VALUE(start_ts) AS start_ts,
-            ANY_VALUE(end_ts) AS end_ts,
-            ANY_VALUE(created_at) AS created_at,
-            ANY_VALUE(site_id) AS site_id,
+            dm.bundle_id,
+            ANY_VALUE(dm.start_ts) AS start_ts,
+            ANY_VALUE(dm.end_ts) AS end_ts,
+            ANY_VALUE(dm.created_at) AS created_at,
+            ANY_VALUE(dm.site_id) AS site_id,
             ARRAY_AGG(dataset_type ORDER BY dataset_order ASC) AS dataset_types,
             ARRAY_AGG(dataset_subtype ORDER BY dataset_order ASC) AS dataset_subtypes,
-            ARRAY_AGG(dataset_id ORDER BY dataset_order ASC) AS dataset_ids
-        FROM data_bundles.metadata AS m
+            ARRAY_AGG(dataset_id ORDER BY dataset_order ASC) AS dataset_ids,
+            ANY_VALUE(dm.is_complete) AS is_complete,
+            ANY_VALUE(dm.is_error) AS is_error
+        FROM (
+            SELECT
+                m.bundle_id,
+                ANY_VALUE(m.start_ts) AS start_ts,
+                ANY_VALUE(m.end_ts) AS end_ts,
+                ANY_VALUE(m.created_at) AS created_at,
+                ANY_VALUE(m.site_id) AS site_id,
+                BOOL_AND(COALESCE(js.job_status, 'completed') = 'completed') AS is_complete,
+                BOOL_OR(js.job_status = 'error') AS is_error
+            FROM data_bundles.metadata AS m
+            LEFT JOIN
+                job_queue.job_status AS js
+            ON m.bundle_id = js.bundle_id
+            WHERE m.bundle_id = $1
+            GROUP BY m.bundle_id
+            LIMIT 1
+        ) AS dm
         LEFT JOIN
             data_bundles.dataset_links AS dl
-        ON dl.bundle_id = m.bundle_id
-        WHERE m.bundle_id = $1
-        GROUP BY m.bundle_id
-        ORDER BY created_at DESC
+        ON dl.bundle_id = dm.bundle_id
+        GROUP BY dm.bundle_id
         LIMIT 1""",
         bundle_id,
     )
-    if latest_bundle is None:
+    if bundle_contents is None:
         return None
 
-    bundle_id, start_ts, end_ts, created_at, site_id, dataset_types, dataset_subtypes, dataset_ids = latest_bundle
-
+    bundle_id, start_ts, end_ts, created_at, site_id, dataset_types, dataset_subtypes, dataset_ids, is_complete, is_error = (
+        bundle_contents
+    )
+    # If we've got None values because the tasks weren't queued, fill these in with the defaults
+    # which are probably is_error = False and is_complete = True
+    if is_error is None:
+        is_error = DatasetList.model_fields["is_error"].get_default()
+    if is_complete is None:
+        is_complete = DatasetList.model_fields["is_default"].get_default()
     RESOLUTION = datetime.timedelta(minutes=30)
     NUM_ENTRIES = (end_ts - start_ts) / RESOLUTION
 
@@ -163,6 +192,8 @@ async def list_bundle_contents(bundle_id: dataset_id_t, pool: DatabasePoolDep) -
         site_id=site_id,
         start_ts=start_ts,
         end_ts=end_ts,
+        is_complete=is_complete,
+        is_error=is_error,
         bundle_id=bundle_id,
         SiteBaseline=DatasetEntry(
             dataset_id=dataset_ids[dataset_types.index(DatasetTypeEnum.SiteBaseline)],
@@ -306,8 +337,8 @@ async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> Datase
     Get the most recent datasets of each type for this site.
 
     This endpoint is the main one you'd want to call if you are interested in running EPOCH.
-    Note that you may still need to call `generate-*` if the datasets in here are too old, or
-    not listed at all.
+    This will retrieve the most recent bundle that has completed generation.
+    If the bundle is partially generated, we'll return the next most recent bundle (so be careful about this changing).-
 
     Parameters
     ----------
@@ -316,13 +347,13 @@ async def list_latest_datasets(site_id: SiteID, pool: DatabasePoolDep) -> Datase
 
     Returns
     -------
-        A {dataset_type: most recent dataset entry} dictionary for each available dataset type.
+        The latest complete, non-errored dataset bundle that you can go on to retrieve
     """
     bundles = await list_dataset_bundles(site_id, pool)
     if not bundles:
         raise HTTPException(404, f"Didn't find any bundled datasets for {site_id.site_id}, try generating some.")
 
-    latest_bundle_id = max(bundles, key=lambda x: x.created_at).bundle_id
+    latest_bundle_id = max([item for item in bundles if item.is_complete and not item.is_error], key=lambda x: x.created_at).bundle_id
     bundle_contents = await list_bundle_contents(latest_bundle_id, pool)
     if bundle_contents is None:
         raise HTTPException(404, f"Didn't find any bundled datasets for {site_id.site_id}, try generating some.")
@@ -336,6 +367,7 @@ async def get_dataset_bundle(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> 
 
     A bundle is a collection of datasets for a single site, often created at the same time.
     A bundle isn't guaranteed to be complete, but most likely will be.
+    This doesn't check for completeness and will return an incomplete or errored bundle if you ask for one.
 
     Parameters
     ----------
@@ -418,17 +450,23 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
             ANY_VALUE(start_ts) AS start_ts,
             ANY_VALUE(end_ts) AS end_ts,
             ANY_VALUE(created_at) AS created_at,
-            ARRAY_AGG(dataset_type) AS available_datasets
+            ARRAY_AGG(dataset_type) AS available_datasets,
+            ARRAY_AGG(js.job_status) AS job_status,
+            BOOL_AND(COALESCE(js.job_status, 'completed') = 'completed') AS is_complete,
+            COALESCE(BOOL_OR(js.job_status = 'error'), false) AS is_error
         FROM data_bundles.metadata AS m
         LEFT JOIN
             data_bundles.dataset_links AS dl
         ON dl.bundle_id = m.bundle_id
+        LEFT JOIN
+            job_queue.job_status AS js
+        ON js.bundle_id = m.bundle_id
         WHERE m.site_id = $1
         GROUP BY m.bundle_id
         ORDER BY created_at ASC""",
         site_id.site_id,
     )
-    if bundle_entries is None or not bundle_entries:
+    if not bundle_entries:
         # We got no available bundles for this site, so return an empty list
         return []
     # TODO (2025-05-09): Do we instead want to return something that looks a bit more like a DatasetEntry,
@@ -440,6 +478,8 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
         DatasetBundleMetadata(
             bundle_id=item["bundle_id"],
             name=item["name"],
+            is_complete=item["is_complete"],
+            is_error=item["is_error"],
             site_id=item["site_id"],
             start_ts=item["start_ts"],
             end_ts=item["end_ts"],
@@ -715,8 +755,13 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
 
         baseline_task = tg.create_task(
             pool.fetchval(
-                """SELECT baseline_id FROM client_info.site_baselines
-                          WHERE site_id = $1 ORDER BY created_at DESC LIMIT 1""",
+                """
+                SELECT
+                    baseline_id
+                FROM client_info.site_baselines
+                WHERE site_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1""",
                 params.site_id,
             )
         )
