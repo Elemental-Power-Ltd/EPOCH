@@ -860,7 +860,7 @@ def select_best_shared_arma_model(
     """
     best_result: ArmaFitResult | None = None
     n_series, series_len = data.shape
-    n_obs = n_series*series_len
+    n_obs = n_series * series_len
 
     for p, q in itertools.product(range(p_max + 1), range(q_max + 1)):
         if p == q == 0:
@@ -890,9 +890,7 @@ def select_best_shared_arma_model(
 
 
 def fit_residual_model(
-    resids: pd.DataFrame,
-    vae_struct: pd.DataFrame | None = None,
-    verbose: bool = False
+    resids: pd.DataFrame, vae_struct: pd.DataFrame | None = None, verbose: bool = False
 ) -> tuple[pd.DataFrame, sm.OLS | None, ArmaProcess, float]:
     """
     Fit a crude trend to the given residuals and then fit an ARMA process to the detrended residuals.
@@ -927,13 +925,11 @@ def fit_residual_model(
 
     if vae_struct is not None:
         resids_detrended_stable, var_lm = stabilise_variance(
-            resids_detrended,
-            vae_struct + np.tile(trend, (resids_detrended.shape[0],1))
+            resids_detrended, vae_struct + np.tile(trend, (resids_detrended.shape[0], 1))
         )
     else:
         resids_detrended_stable, var_lm = stabilise_variance(
-            resids_detrended,
-            pd.DataFrame(np.tile(trend, (resids_detrended.shape[0],1)))
+            resids_detrended, pd.DataFrame(np.tile(trend, (resids_detrended.shape[0], 1)))
         )
 
     best = select_best_shared_arma_model(resids_detrended_stable.to_numpy(), p_max=3, q_max=3)
@@ -959,11 +955,8 @@ def fit_residual_model(
     trend_as_df = pd.DataFrame(trend, index=resids.columns).T
     return trend_as_df, var_lm, ARMA_model, ARMA_scale
 
-def fit_pooled_spline(
-    resids: pd.DataFrame,
-    smooth_factor: float | None = None,
-    order: int = 3
-) -> pd.Series:
+
+def fit_pooled_spline(resids: pd.DataFrame, smooth_factor: float | None = None, order: int = 3) -> pd.Series:
     """
     Fit a pooled penalised spline f(t) to input residuals.
 
@@ -1006,12 +999,13 @@ def fit_pooled_spline(
 
     spline = UnivariateSpline(t, y_bar, w=w, k=order, s=smooth_factor)
     f_hat = pd.Series(spline(t), index=resids.columns)
-    return f_hat#, spline
+    return f_hat  # , spline
+
 
 def stabilise_variance(
     ts: pd.DataFrame,
     structure: pd.DataFrame,
-) -> tuple[pd.Series,sm.OLS]:
+) -> tuple[pd.Series, sm.OLS]:
     """
     Stabilise the variance of a heteroskedastic time series.
 
@@ -1038,23 +1032,20 @@ def stabilise_variance(
     log_var = np.log(np.maximum(var_t_est, np.finfo(float).eps))
 
     S = structure.mean(axis=0).to_numpy()  # regressing against S captures level-dependent variance
-    dS = np.diff(S, prepend=S[0])   # regressing against abs(dS) captures bursts during sudden structural changes
-    X = np.column_stack([S, S**2, np.abs(dS)]) # regressing against S^2 captures nonlinear effects
+    dS = np.diff(S, prepend=S[0])  # regressing against abs(dS) captures bursts during sudden structural changes
+    X = np.column_stack([S, S**2, np.abs(dS)])  # regressing against S^2 captures nonlinear effects
     X = sm.add_constant(X)
 
     lin_model = sm.OLS(log_var, X).fit()
     log_var_fitted = lin_model.predict(X)
     var_fitted = np.exp(log_var_fitted)
-    ts_std = ts/np.sqrt(var_fitted)
+    ts_std = ts / np.sqrt(var_fitted)
 
     ts_std_as_df = pd.DataFrame(ts_std, index=ts.index)
     return ts_std_as_df, lin_model
 
-def predict_var_mean_batched(
-    model: sm.OLS,
-    observed_structure: pd.DataFrame,
-    min_var=1e-8
-) -> npt.NDArray[np.floating]:
+
+def predict_var_mean_batched(model: sm.OLS, observed_structure: pd.DataFrame, min_var=1e-8) -> npt.NDArray[np.floating]:
     """
     Compute plug-in variance trajectories for multiple observations of the structural predictor.
 
@@ -1078,12 +1069,11 @@ def predict_var_mean_batched(
         Predicted variance trajectories for each realisation and time point, computed as exp(X @ beta).
     """
     S = observed_structure.to_numpy(dtype=float)
-    dS = np.concatenate([np.zeros((S.shape[0],1)),
-                        np.diff(S, axis=1)], axis=1)
+    dS = np.concatenate([np.zeros((S.shape[0], 1)), np.diff(S, axis=1)], axis=1)
 
     # Build X tensor in the same order as model.params; here we assume ['const','S','S2','abs_dS']
     X = np.stack([np.ones_like(S), S, S**2, np.abs(dS)], axis=-1)
 
-    beta = model.params#.to_numpy()
-    logv = np.einsum('p,mnp->mn', beta, X)
+    beta = model.params  # .to_numpy()
+    logv = np.einsum("p,mnp->mn", beta, X)
     return np.exp(np.maximum(logv, np.log(min_var)))

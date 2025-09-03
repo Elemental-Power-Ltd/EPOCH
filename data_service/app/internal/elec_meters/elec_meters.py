@@ -278,8 +278,8 @@ def daily_to_hh_eload(
 
         # rescale baseline / peak of approximate profiles to match daily aggregates for active days
         # this is used to calculate residuals and also provide structure for the log-variance regression in fit_residual_model()
-        scaling_factors_obs = daily_active_baselined / np.sum(vae_obs, axis=1)[:,None]
-            # force an extra axis to satisfy np broadcasting rules
+        scaling_factors_obs = daily_active_baselined / np.sum(vae_obs, axis=1)[:, None]
+        # force an extra axis to satisfy np broadcasting rules
         target_hh_active_approx_df = pd.DataFrame(
             np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs * np.tile(scaling_factors_obs, (1, 48)),
             columns=timestamp_headers,
@@ -346,9 +346,7 @@ def daily_to_hh_eload(
         ]
     )
     # - scale by fitted heteroskedasticity factors
-    var_factors_inactive = predict_var_mean_batched(
-        var_model_inactive, target_hh_df[~target_active_mask]
-    )
+    var_factors_inactive = predict_var_mean_batched(var_model_inactive, target_hh_df[~target_active_mask])
     target_hh_df[~target_active_mask] += np.sqrt(var_factors_inactive) * sims
 
     # - repeat for active dates
@@ -357,9 +355,7 @@ def daily_to_hh_eload(
     sims = np.asarray(
         [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
     )
-    var_factors_active = predict_var_mean_batched(
-        var_model_active, target_hh_df[target_active_mask]
-    )
+    var_factors_active = predict_var_mean_batched(var_model_active, target_hh_df[target_active_mask])
     target_hh_df[target_active_mask] += np.sqrt(var_factors_active) * sims
 
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
