@@ -325,13 +325,14 @@ def daily_to_hh_eload(
         ARMA_scale_active = ARMA_model_active_dict["sigma"]
         ARMA_scale_inactive = ARMA_model_inactive_dict["sigma"]
         reference_daily_active_std = ARMA_model_active_dict["daily_active_std"]
-        default_clipping_dict = json.loads(Path(resid_model_path, "default_clipping_values.json").read_text())
-        default_active_daily_bc_med = default_clipping_dict["daily_median_baselined_consumption_active"]
-        default_inactive_daily_bc_med = default_clipping_dict["daily_median_baselined_consumption_inactive"]
-        hh_default_active_bc_min = default_clipping_dict["hh_min_baselined_consumption_active"]
-        hh_default_inactive_bc_min = default_clipping_dict["hh_min_baselined_consumption_inactive"]
-        hh_default_active_bc_max = default_clipping_dict["hh_max_baselined_consumption_active"]
-        hh_default_inactive_bc_max = default_clipping_dict["hh_max_baselined_consumption_inactive"]
+        default_clipping_active_dict = json.loads(Path(resid_model_path, "default_clipping_values_active.json").read_text())
+        default_clipping_inactive_dict = json.loads(Path(resid_model_path, "default_clipping_values_inactive.json").read_text())
+        default_active_daily_bc_med = default_clipping_active_dict["daily_median_baselined_consumption"]
+        default_inactive_daily_bc_med = default_clipping_inactive_dict["daily_median_baselined_consumption"]
+        hh_default_active_bc_min = default_clipping_active_dict["hh_min_baselined_consumption"]
+        hh_default_inactive_bc_min = default_clipping_inactive_dict["hh_min_baselined_consumption"]
+        hh_default_active_bc_max = default_clipping_active_dict["hh_max_baselined_consumption"]
+        hh_default_inactive_bc_max = default_clipping_inactive_dict["hh_max_baselined_consumption"]
 
     target_active_mask = np.isin(target_hh_df.index, hh_active_approx_df.index).astype(bool)
     num_inactive, num_active = target_daily_inactive_df.shape[0], target_daily_active_df.shape[0]
