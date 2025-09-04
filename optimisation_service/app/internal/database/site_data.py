@@ -38,11 +38,11 @@ async def fetch_portfolio_data(task: Task, http_client: HTTPClient) -> None:
     async with asyncio.TaskGroup() as tg:
         site_to_task = {}
         for site in task.portfolio:
-            t = tg.create_task(get_latest_site_data_bundle(site_data=site.site_data, http_client=http_client))
-            site_to_task[site] = t
+            async_task = tg.create_task(get_latest_site_data_bundle(site_data=site.site_data, http_client=http_client))
+            site_to_task[site.site_data.site_id] = async_task
 
-    for site, t in site_to_task.items():
-        site._epoch_data = t.result()
+    for site in task.portfolio:
+        site._epoch_data = site_to_task[site.site_data.site_id].result()
         # Check here that the data is good, as we partially constructed the site
         # before we got going.
         site = Site.model_validate(site)
