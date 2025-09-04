@@ -298,10 +298,10 @@ def daily_to_hh_eload(
         target_hh_inactive_residuals = target_hh_obs_baselined[~is_active_mask]
 
         # then model the residuals: extract the trend and fit an ARMA model to the noise
-        target_hh_inactive_residtrend_df, var_model_inactive, ARMA_model_inactive, ARMA_scale_inactive = fit_residual_model(
+        target_hh_inactive_residtrend_df, var_model_inactive, ARMA_model_inactive, ARMA_scale_inactive, min_noise_inactive, max_noise_inactive = fit_residual_model(
             target_hh_inactive_residuals, vae_struct=None, verbose=True
         )
-        target_hh_active_residtrend_df, var_model_active, ARMA_model_active, ARMA_scale_active = fit_residual_model(
+        target_hh_active_residtrend_df, var_model_active, ARMA_model_active, ARMA_scale_active, min_noise_active, max_noise_active = fit_residual_model(
             target_hh_active_residuals, vae_struct=target_hh_active_approx_df, verbose=True
         )
     else:
@@ -353,7 +353,7 @@ def daily_to_hh_eload(
     # - scale by fitted heteroskedasticity factors
     var_factors_inactive = np.exp(var_model_inactive.predict())
     scaled_sims = np.sqrt(var_factors_inactive) * sims
-    target_hh_df[~target_active_mask] += scaled_sims
+    target_hh_df[~target_active_mask] += np.clip(scaled_sims, min_noise_inactive, max_noise_inactive)
 
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
@@ -363,7 +363,7 @@ def daily_to_hh_eload(
     )
     var_factors_active = np.exp(var_model_active.predict())
     scaled_sims = np.sqrt(var_factors_active) * sims
-    target_hh_df[target_active_mask] += scaled_sims
+    target_hh_df[target_active_mask] += np.clip(scaled_sims, min_noise_active, max_noise_active)
 
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     return HHDataFrame(

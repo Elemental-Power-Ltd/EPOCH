@@ -891,7 +891,7 @@ def select_best_shared_arma_model(
 
 def fit_residual_model(
     resids: pd.DataFrame, vae_struct: pd.DataFrame | None = None, verbose: bool = False
-) -> tuple[pd.DataFrame, sm.OLS | None, ArmaProcess, float]:
+) -> tuple[pd.DataFrame, sm.OLS | None, ArmaProcess, float, pd.Series, pd.Series]:
     """
     Fit a crude trend to the given residuals and then fit an ARMA process to the detrended residuals.
 
@@ -952,8 +952,12 @@ def fit_residual_model(
     else:
         logger.info("No valid ARMA model found.")
 
+    # finally, grab the min/max detrended residuals to clip the simulated detrended residuals for safety
+    min_detrended_resids = resids_detrended.min(axis=0)
+    max_detrended_resids = resids_detrended.max(axis=0)
+
     trend_as_df = pd.DataFrame(trend, index=resids.columns).T
-    return trend_as_df, var_lm, ARMA_model, ARMA_scale
+    return trend_as_df, var_lm, ARMA_model, ARMA_scale, min_detrended_resids, max_detrended_resids
 
 
 def fit_pooled_spline(resids: pd.DataFrame, smooth_factor: float | None = None, order: int = 3) -> pd.Series:
