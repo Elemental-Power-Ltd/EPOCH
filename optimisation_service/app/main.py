@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         yield
         # Shutdown events
         try:
-            asyncio.wait_for(queue.join(), timeout=10.0)
+            await asyncio.wait_for(queue.join(), timeout=10.0)
         except TimeoutError:
             print("Failed to shutdown queue.")
         task.cancel()
