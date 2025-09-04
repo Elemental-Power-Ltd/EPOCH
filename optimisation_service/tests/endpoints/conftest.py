@@ -38,7 +38,7 @@ class MockedHttpClient(httpx.AsyncClient):
 
     def __init__(self, tmp_path: Path, **kwargs: Any):
         self.tmp_path = tmp_path
-        super.__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def transmit_results(self, **kwargs: Any) -> None:
         result = kwargs.get("json")
