@@ -216,14 +216,17 @@ def daily_to_hh_eload(
     )
 
     # generate a normalised approximate profile for each active day
-    vae_output_np = generate_approx_daily_profiles(model, consumption_scaled)
+    # we should sample multiple profiles for each day and calculate a mean intraday profile to pass forward
+    num_reps = 100
+    vae_output_np = generate_approx_daily_profiles(model, np.repeat(consumption_scaled, repeats=num_reps, axis=0))
+    vae_output_mean_np = vae_output_np.reshape(num_reps,-1,48).mean(axis=0)
 
     # rescale baseline / peak of approximate profiles to match daily aggregates
     #   - do this before adding noise to avoid overly scaling the noise
     timestamp_headers = pd.date_range("00:00", "23:30", freq="30min").time
-    scaling_factors = target_daily_active_df["consumption_baselined"] / np.sum(vae_output_np, axis=1)
+    scaling_factors = target_daily_active_df["consumption_baselined"] / np.sum(vae_output_mean_np, axis=1)
     hh_active_approx_df = pd.DataFrame(
-        np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T + vae_output_np * np.tile(scaling_factors, (48, 1)).T,
+        np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T + vae_output_mean_np * np.tile(scaling_factors, (48, 1)).T,
         columns=timestamp_headers,
         index=target_daily_active_df.index,
     )
@@ -274,14 +277,16 @@ def daily_to_hh_eload(
         )
 
         # generate a normalised approximate profile for each active day
-        vae_obs = generate_approx_daily_profiles(model, obs_consumption_scaled)
+        num_reps = 500
+        vae_obs = generate_approx_daily_profiles(model, np.repeat(obs_consumption_scaled, repeats=num_reps, axis=0))
+        vae_obs_mean = vae_obs.reshape(num_reps,-1,48).mean(axis=0)
 
         # rescale baseline / peak of approximate profiles to match daily aggregates for active days
         # this is used to calculate residuals and also provide structure for the log-variance regression in fit_residual_model()
-        scaling_factors_obs = daily_active_baselined / np.sum(vae_obs, axis=1)[:, None]
+        scaling_factors_obs = daily_active_baselined / np.sum(vae_obs_mean, axis=1)[:, None]
         # force an extra axis to satisfy np broadcasting rules
         target_hh_active_approx_df = pd.DataFrame(
-            np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs * np.tile(scaling_factors_obs, (1, 48)),
+            np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs_mean * np.tile(scaling_factors_obs, (1, 48)),
             columns=timestamp_headers,
             index=target_hh_obs_daily_active.index,
         )
