@@ -53,7 +53,7 @@ async def cancel_task_in_queue(task_id: dataset_id_t, queue: QueueDep) -> str:
     str
         Indicative string about what we just did
     """
-    if queue.q[task_id].state == task_state.QUEUED:
+    if queue[task_id].state == task_state.QUEUED:
         queue.cancel(task_id)
         return "Task cancelled."
 

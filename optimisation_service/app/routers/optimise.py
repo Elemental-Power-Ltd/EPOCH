@@ -163,7 +163,7 @@ async def submit_portfolio(task: Task, http_client: HttpClientDep, queue: QueueD
     if queue.full():
         logger.warning("Queue full.")
         raise HTTPException(status_code=503, detail="Task queue is full.")
-    if task.task_id in queue.q.keys():
+    if task.task_id in queue:
         logger.warning(f"{task.task_id} already in queue.")
         raise HTTPException(status_code=400, detail="Task already in queue.")
     if sum(count_parameters_to_optimise(site.site_range) for site in task.portfolio) < 1:

@@ -31,6 +31,38 @@ class IQueue(asyncio.Queue[Task]):
         self.q: OrderedDict[dataset_id_t, QueueElem] = OrderedDict()
         self.q_len = maxsize
 
+    def __getitem__(self, key: dataset_id_t) -> QueueElem:
+        """
+        Retrieve a queued element by its dataset id.
+
+        Parameters
+        ----------
+        key
+            The dataset id used as the key in the queue.
+
+        Returns
+        -------
+        QueueElem
+            The element associated with the given dataset id.
+        """
+        return self.q[key]
+
+    def __contains__(self, key: dataset_id_t) -> bool:
+        """
+        Check if the queue contains an element with the given dataset id.
+
+        Parameters
+        ----------
+        key
+            The dataset identifier to look for in the queue.
+
+        Returns
+        -------
+        bool
+            True if the key is present, False otherwise.
+        """
+        return key in self.q
+
     async def put(self, task: Task) -> None:
         """
         Add task in queue.
