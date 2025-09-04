@@ -340,8 +340,8 @@ def daily_to_hh_eload(
         default_var_factors_inactive = json.loads(Path(resid_model_path, "default_var_factors_inactive.json").read_text())
         default_clipping_active_dict = json.loads(Path(resid_model_path, "default_clipping_values_active.json").read_text())
         default_clipping_inactive_dict = json.loads(Path(resid_model_path, "default_clipping_values_inactive.json").read_text())
-        default_active_daily_bc_med = default_clipping_active_dict["daily_median_baselined_consumption"]
-        default_inactive_daily_bc_med = default_clipping_inactive_dict["daily_median_baselined_consumption"]
+        default_active_daily_bc_med = default_clipping_active_dict["daily_median_baselined_consumption"]  # noqa: F841
+        default_inactive_daily_bc_med = default_clipping_inactive_dict["daily_median_baselined_consumption"]  # noqa: F841
         hh_default_active_bc_min = pd.Series(default_clipping_active_dict["hh_min_baselined_consumption"])
         hh_default_inactive_bc_min = pd.Series(default_clipping_inactive_dict["hh_min_baselined_consumption"])
         hh_default_active_bc_max = pd.Series(default_clipping_active_dict["hh_max_baselined_consumption"])
@@ -427,8 +427,8 @@ def daily_to_hh_eload(
             target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
         ).T
     else:
-        # scale the defaults according to the median daily (baselined) consumption for in/active days. Use medians because scaling
-        # by the min daily (baselined) consumption is nontrivial (min hh value not necessarily in same day as min daily value)
+        # scale the defaults according to the median daily (baselined) consumption for in/active days. Use medians because using
+        # the min daily (baselined) consumption is nontrivial (min hh value not necessarily in same day as min daily value)
         active_scaling_factor = 1.0  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
         inactive_scaling_factor = 1.0  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
 
