@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 
 from app.dependencies import HTTPClient, HttpClientDep, QueueDep
 from app.internal.bayesian.bayesian import Bayesian
@@ -73,20 +73,22 @@ def check_epoch_version() -> str | None:
     return simulator_version
 
 
-async def process_requests(q: IQueue, http_client: HTTPClient) -> None:
+async def process_requests(queue: IQueue, http_client: HTTPClient) -> None:
     """
     Loop to process tasks in queue.
 
     Parameters
     ----------
-    q
-        Queue to process.
+    queue
+        Asyncio queue containing oustanding optimisation tasks.
+    http_client
+        Asynchronous HTTP client to use for requests.
     """
     logger.info("Initialising worker loop.")
     check_epoch_version()
     while True:
         logger.info("Awaiting next task from queue.")
-        task = await q.get()
+        task = await queue.get()
         try:
             logger.info(f"Optimising {task.task_id}.")
             loop = asyncio.get_event_loop()
@@ -108,20 +110,22 @@ async def process_requests(q: IQueue, http_client: HTTPClient) -> None:
             logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)
             pass
         simulate_scenario.cache_clear()
-        q.mark_task_done(task)
+        queue.mark_task_done(task)
 
 
 @router.post("/submit-task")
-async def submit_task(
-    request: Request, endpoint_task: EndpointTask, http_client: HttpClientDep, queue: QueueDep
-) -> TaskResponse:
+async def submit_task(endpoint_task: EndpointTask, http_client: HttpClientDep, queue: QueueDep) -> TaskResponse:
     """
     Add optimisation task to queue.
 
     Parameters
     ----------
-    Task
-        Optimisation task to be added to queue.
+    endpoint_task
+        Site optimisation task to be added to queue.
+    http_client
+        Asynchronous HTTP client to use for requests.
+    queue
+        Asyncio queue containing oustanding optimisation tasks.
     """
     site = Site(name=endpoint_task.site_data.site_id, site_range=endpoint_task.site_range, site_data=endpoint_task.site_data)
     simulator_version = get_epoch_version()
@@ -148,9 +152,11 @@ async def submit_portfolio(task: Task, http_client: HttpClientDep, queue: QueueD
     Parameters
     ----------
     task
-        Task to be added to queue.
+        Portfolio optimisation task to be added to queue.
     http_client
         Asynchronous HTTP client to use for requests.
+    queue
+        Asyncio queue containing oustanding optimisation tasks.
     """
     logger.info(f"Received task - assigned id: {task.task_id}.")
 

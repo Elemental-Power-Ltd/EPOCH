@@ -169,6 +169,10 @@ def site_data_entries_to_epoch_site_data(
     ----------
     site_data_entries
         The site data entries returned from the database
+    start_ts
+        Start timestamp of the data.
+    end_ts
+        End timestamp of the data.
 
     Returns
     -------

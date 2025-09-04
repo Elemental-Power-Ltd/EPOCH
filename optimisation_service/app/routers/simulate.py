@@ -122,12 +122,10 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> Ful
 
     Parameters
     ----------
-    data_manager
-        A data manager to handle IO operations
-    dataset_entries
-        The full timeseries for the site
+    epoch_data
+        The EPOCH SiteData represented in JSON.
     task_data
-        The EPOCH TaskData represented in JSON
+        The EPOCH TaskData represented in JSON.
 
     Returns
     -------

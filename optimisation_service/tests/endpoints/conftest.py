@@ -41,6 +41,7 @@ class MockedHttpClient(httpx.AsyncClient):
 
     def __init__(self, tmp_path: Path, **kwargs: Any):
         self.tmp_path = tmp_path
+        super.__init__(**kwargs)
 
     def transmit_results(self, **kwargs: Any) -> None:
         result = kwargs.get("json")
@@ -177,7 +178,7 @@ async def client(result_tmp_path: Path) -> AsyncGenerator[AsyncClient]:
         # We also have to set up the queue handling task
         task = tg.create_task(
             process_requests(
-                q=queue,
+                queue=queue,
                 http_client=override_get_http_client(),
             )
         )

@@ -77,6 +77,8 @@ async def transmit_results(results: OptimisationResultEntry, http_client: HTTPCl
     ----------
     results
         List of optimisation results.
+    http_client
+        Asynchronous HTTP client to use for requests.
     """
     logger.info("Adding results to database.")
     await http_client.post(url=_DB_URL + "/add-optimisation-results", json=jsonable_encoder(results))

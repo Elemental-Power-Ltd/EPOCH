@@ -21,12 +21,14 @@ async def get_queue_status(request: Request, queue: QueueDep) -> QueueStatus:
     Parameters
     ----------
     request
-        Internal FastAPI request with queue state
+        Internal FastAPI request.
     queue
+        Asyncio queue containing oustanding optimisation tasks.
 
     Returns
     -------
     QueueStatus
+        Overview of sasks in queue and service uptime.
     """
     time_now = datetime.datetime.now(datetime.UTC)
     return QueueStatus(queue=queue.uncancelled(), service_uptime=time_now - request.app.state.start_time)
@@ -43,6 +45,8 @@ async def cancel_task_in_queue(task_id: dataset_id_t, queue: QueueDep) -> str:
     ----------
     task_id
         UUID of task to cancel.
+    queue
+        Asyncio queue containing oustanding optimisation tasks.
 
     Returns
     -------
@@ -75,8 +79,8 @@ async def clear_queue(queue: QueueDep) -> str:
 
     Parameters
     ----------
-    request
-        Internal FastAPI request with queue state
+    queue
+        Asyncio queue containing oustanding optimisation tasks.
 
     Returns
     -------
