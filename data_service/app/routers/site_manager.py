@@ -5,6 +5,7 @@ import datetime
 import json
 import logging
 import uuid
+import warnings
 from collections.abc import Sequence
 
 from fastapi import APIRouter, HTTPException
@@ -32,7 +33,7 @@ from ..models.electricity_load import ElectricalLoadRequest
 from ..models.heating_load import HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
-from ..models.site_manager import DatasetBundleMetadata, DatasetList
+from ..models.site_manager import DatasetBundleMetadata, DatasetList, SiteDataEntry
 from .client_data import get_solar_locations
 
 router = APIRouter()
@@ -427,6 +428,69 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
         )
         for item in bundle_entries
     ]
+
+
+@warnings.deprecated("Prefer get-dataset-bundle.")
+@router.post("/get-specific-datasets", tags=["db", "get"])
+async def get_specific_datasets(site_data: DatasetList | SiteDataEntry, pool: DatabasePoolDep) -> SiteDataEntries:
+    """
+    Get specific datasets with chosen IDs for a given site.
+
+    If you have not requested a dataset (its entry is None in the DatasetList), then you'll receive None for that dataset.
+    The usual workflow is to call list-latest-datasets yourself, look up each dataset in your own cache, and then
+    request the get-specific-datasets that you require.
+    You should prefer to use get-dataset-bundle.
+
+    Parameters
+    ----------
+    site_data
+        A specification for the required site data; UUIDs of the datasets of each type you wish to request.
+        You can hand back either the DatasetList you received from list-latest-datasets, or a RemoteMetaData of dataset IDs
+        that you have curated yourself.
+
+    Returns
+    -------
+        The site data with full time series for each data source
+    """
+    # If we've received a DatasetList with all the metadata about each dataset, we turn it into
+    # a DatasetList here which is just the IDs, which are easier to request.
+    if isinstance(site_data, DatasetList):
+        new_site_data = SiteDataEntry(site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts)
+
+        for key in DatasetTypeEnum:
+            # Model dump will also dump the sub keys from RemoteMetadata into dicts with a "dataset_id" key
+            # and some other stuff that we throw away.
+            curr_entries = site_data.model_dump()[key]
+            if isinstance(curr_entries, list):
+                curr_id = [item["dataset_id"] for item in curr_entries]
+            elif isinstance(curr_entries, dict):
+                curr_id = curr_entries["dataset_id"]
+            else:
+                curr_id = None
+            new_site_data.__setattr__(key, curr_id)
+        site_data = new_site_data
+    site_data_ids: dict[DatasetTypeEnum, DatasetIDWithTime | MultipleDatasetIDWithTime] = {}
+    for dataset_type in DatasetTypeEnum:
+        site_data_entry: dataset_id_t | list[dataset_id_t] | None = site_data.__getattribute__(dataset_type.value)
+        # We have to handle multiple dataset requests slightly differently to the single dataset requests.
+        if isinstance(site_data_entry, list):
+            # Skip the zero length lists, if any have snuck through
+            if not site_data_entry:
+                continue
+            site_data_ids[dataset_type] = MultipleDatasetIDWithTime(
+                dataset_id=site_data_entry, start_ts=site_data.start_ts, end_ts=site_data.end_ts
+            )
+        elif site_data_entry is not None:
+            site_data_ids[dataset_type] = DatasetIDWithTime(
+                dataset_id=site_data_entry, start_ts=site_data.start_ts, end_ts=site_data.end_ts
+            )
+        else:
+            # We got no dataset here, so skip it.
+            continue
+    try:
+        return await fetch_all_input_data(site_data_ids, pool=pool)
+    except KeyError as ex:
+        raise HTTPException(400, f"Missing dataset {ex}. Did you run generate-all for this site?") from ex
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])
