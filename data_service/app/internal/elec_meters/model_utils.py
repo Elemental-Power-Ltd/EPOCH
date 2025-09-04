@@ -924,11 +924,11 @@ def fit_residual_model(
     resids_detrended = resids.sub(trend)
 
     if vae_struct is not None:
-        resids_detrended_stable, var_lm = stabilise_variance(
+        resids_detrended_stable, logvar_lm = stabilise_variance(
             resids_detrended, [vae_struct, pd.DataFrame(np.tile(trend, (resids_detrended.shape[0], 1)))]
         )
     else:
-        resids_detrended_stable, var_lm = stabilise_variance(
+        resids_detrended_stable, logvar_lm = stabilise_variance(
             resids_detrended, [pd.DataFrame(np.tile(trend, (resids_detrended.shape[0], 1)))]
         )
 
@@ -957,7 +957,7 @@ def fit_residual_model(
     max_detrended_resids = resids_detrended.max(axis=0)
 
     trend_as_df = pd.DataFrame(trend, index=resids.columns).T
-    return trend_as_df, var_lm, ARMA_model, ARMA_scale, min_detrended_resids, max_detrended_resids
+    return trend_as_df, logvar_lm, ARMA_model, ARMA_scale, min_detrended_resids, max_detrended_resids
 
 
 def fit_pooled_spline(resids: pd.DataFrame, smooth_factor: float | None = None, order: int = 3) -> pd.Series:
