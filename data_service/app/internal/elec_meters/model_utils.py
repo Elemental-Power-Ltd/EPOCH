@@ -1050,37 +1050,3 @@ def stabilise_variance(
 
     ts_std_as_df = pd.DataFrame(ts_std, index=ts.index)
     return ts_std_as_df, lin_model
-
-
-def predict_var_mean_batched(model: sm.OLS, observed_structure: pd.DataFrame, min_var=1e-8) -> npt.NDArray[np.floating]:
-    """
-    Compute plug-in variance trajectories for multiple observations of the structural predictor.
-
-    `model` is assumed to have been returned by `stabilise_variance`, and contains a fitted linear model regressing log-variance
-    against the structure vector and related derivatives.
-
-    Parameters
-    ----------
-    model : statsmodels.regression.linear_model.RegressionResults
-        Fitted OLS (or GLS) model with predictors in the order
-        [const, S, S^2, np.abs(dS)]
-    observed_structure : pandas.DataFrame, shape (m, n)
-        Matrix of structural paths from the offsets, scaled VAE & deterministic residuals combined.
-        Rows correspond to independent realisations, columns to time points.
-    min_var : float, default=1e-8
-        Minimum variance floor to enforce numerical stability when exponentiating log-variance predictions.
-
-    Returns
-    -------
-    var_hat : ndarray, shape (m, n)
-        Predicted variance trajectories for each realisation and time point, computed as exp(X @ beta).
-    """
-    S = observed_structure.to_numpy(dtype=float)
-    dS = np.concatenate([np.zeros((S.shape[0], 1)), np.diff(S, axis=1)], axis=1)
-
-    # Build X tensor in the same order as model.params; here we assume ['const','S','S2','abs_dS']
-    X = np.stack([np.ones_like(S), S, S**2, np.abs(dS)], axis=-1)
-
-    beta = model.params  # .to_numpy()
-    logv = np.einsum("p,mnp->mn", beta, X)
-    return np.exp(np.maximum(logv, np.log(min_var)))
