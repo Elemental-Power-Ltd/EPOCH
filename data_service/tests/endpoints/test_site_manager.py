@@ -492,6 +492,7 @@ class TestDatasetBundles:
         assert all(item["is_complete"] for item in data)
         assert all(not item["is_error"] for item in data)
 
+
 class TestBundleHints:
     """Test that we can get hints about bundles."""
 
@@ -515,4 +516,3 @@ class TestBundleHints:
         assert hints_resp.heating is None
         assert hints_resp.tariffs is None
         assert hints_resp.renewables is None
-
