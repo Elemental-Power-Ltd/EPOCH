@@ -10,7 +10,7 @@ from pydantic import UUID7, AwareDatetime
 
 from app.dependencies import HTTPClient
 from app.models.core import Site, Task
-from app.models.database import bundle_id_t, dataset_id_t
+from app.models.database import BundleMetadata, bundle_id_t, dataset_id_t
 from app.models.simulate import EpochInputData, LegacyResultReproConfig
 from app.models.site_data import DatasetTypeEnum, EpochSiteData, SiteDataEntries, SiteMetaData
 
@@ -65,21 +65,29 @@ async def get_latest_site_data_bundle(site_data: SiteMetaData, http_client: HTTP
         Data about timeseries inputs for EPOCH to use
     """
     if site_data.bundle_id is None:
-        bundle_id = await get_latest_bundle_id(
+        bundle_metadata = await get_latest_bundle_metadata(
             site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts, http_client=http_client
         )
-        site_data.bundle_id = bundle_id
+        site_data.bundle_id, site_data.start_ts, site_data.end_ts = (
+            bundle_metadata.bundle_id,
+            bundle_metadata.start_ts,
+            bundle_metadata.end_ts,
+        )
+    else:
+        site_data.start_ts, site_data.end_ts = await get_bundle_timestamps(
+            bundle_id=site_data.bundle_id, http_client=http_client
+        )
 
     site_data_entries = await get_bundled_data(bundle_id=site_data.bundle_id, http_client=http_client)
-
-    site_data.start_ts, site_data.end_ts = await get_bundle_timestamps(bundle_id=site_data.bundle_id, http_client=http_client)
 
     epoch_data = site_data_entries_to_epoch_site_data(site_data_entries, site_data.start_ts, site_data.end_ts)
 
     return epoch_data
 
 
-async def get_latest_bundle_id(site_id: str, start_ts: AwareDatetime, end_ts: AwareDatetime, http_client: HTTPClient) -> UUID7:
+async def get_latest_bundle_metadata(
+    site_id: str, start_ts: AwareDatetime, end_ts: AwareDatetime, http_client: HTTPClient
+) -> BundleMetadata:
     """
     Get the bundle_id of the last created bundle with matching start timestamp.
 
@@ -110,7 +118,12 @@ async def get_latest_bundle_id(site_id: str, start_ts: AwareDatetime, end_ts: Aw
     if not matching_bundles:
         raise ValueError(f"Unable to find a bundle with matching start and end timestamps: {start_ts}, {end_ts}")
 
-    return cast(UUID7, max(matching_bundles, key=operator.itemgetter("created_at"))["bundle_id"])
+    bundle = max(matching_bundles, key=operator.itemgetter("created_at"))
+    bundle_id = cast(UUID7, bundle["bundle_id"])
+    bundle_start_ts = cast(AwareDatetime, bundle["start_ts"])
+    bundle_end_ts = cast(AwareDatetime, bundle["end_ts"])
+
+    return BundleMetadata(bundle_id=bundle_id, start_ts=bundle_start_ts, end_ts=bundle_end_ts)
 
 
 async def get_bundled_data(bundle_id: bundle_id_t, http_client: HTTPClient) -> SiteDataEntries:
