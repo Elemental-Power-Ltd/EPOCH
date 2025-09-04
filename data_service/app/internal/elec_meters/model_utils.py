@@ -808,7 +808,7 @@ def fit_shared_arma_model(
                 y,
                 order=(p, 0, q),
                 trend="n",
-                enforce_stationarity=True,
+                enforce_stationarity=False,
                 enforce_invertibility=True,
             )
             for y in data
