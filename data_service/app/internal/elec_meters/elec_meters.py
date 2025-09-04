@@ -19,7 +19,7 @@ from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, SquareHHDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
-from .model_utils import fit_residual_model, predict_var_mean_batched, split_and_baseline_active_days
+from .model_utils import fit_residual_model, split_and_baseline_active_days
 from .vae_2_0 import VAE
 
 
@@ -219,7 +219,7 @@ def daily_to_hh_eload(
     # we should sample multiple profiles for each day and calculate a mean intraday profile to pass forward
     num_reps = 100
     vae_output_np = generate_approx_daily_profiles(model, np.repeat(consumption_scaled, repeats=num_reps, axis=0))
-    vae_output_mean_np = vae_output_np.reshape(num_reps,-1,48).mean(axis=0)
+    vae_output_mean_np = vae_output_np.reshape(num_reps, -1, 48).mean(axis=0)
 
     # rescale baseline / peak of approximate profiles to match daily aggregates
     #   - do this before adding noise to avoid overly scaling the noise
@@ -279,14 +279,15 @@ def daily_to_hh_eload(
         # generate a normalised approximate profile for each active day
         num_reps = 500
         vae_obs = generate_approx_daily_profiles(model, np.repeat(obs_consumption_scaled, repeats=num_reps, axis=0))
-        vae_obs_mean = vae_obs.reshape(num_reps,-1,48).mean(axis=0)
+        vae_obs_mean = vae_obs.reshape(num_reps, -1, 48).mean(axis=0)
 
         # rescale baseline / peak of approximate profiles to match daily aggregates for active days
         # this is used to calculate residuals and also provide structure for the log-variance regression in fit_residual_model()
         scaling_factors_obs = daily_active_baselined / np.sum(vae_obs_mean, axis=1)[:, None]
         # force an extra axis to satisfy np broadcasting rules
         target_hh_active_approx_df = pd.DataFrame(
-            np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs_mean * np.tile(scaling_factors_obs, (1, 48)),
+            np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T
+            + vae_obs_mean * np.tile(scaling_factors_obs, (1, 48)),
             columns=timestamp_headers,
             index=target_hh_obs_daily_active.index,
         )
@@ -298,12 +299,22 @@ def daily_to_hh_eload(
         target_hh_inactive_residuals = target_hh_obs_baselined[~is_active_mask]
 
         # then model the residuals: extract the trend and fit an ARMA model to the noise
-        target_hh_inactive_residtrend_df, var_model_inactive, ARMA_model_inactive, ARMA_scale_inactive, min_noise_inactive, max_noise_inactive = fit_residual_model(
-            target_hh_inactive_residuals, vae_struct=None, verbose=True
-        )
-        target_hh_active_residtrend_df, var_model_active, ARMA_model_active, ARMA_scale_active, min_noise_active, max_noise_active = fit_residual_model(
-            target_hh_active_residuals, vae_struct=target_hh_active_approx_df, verbose=True
-        )
+        (
+            target_hh_inactive_residtrend_df,
+            var_model_inactive,
+            ARMA_model_inactive,
+            ARMA_scale_inactive,
+            min_noise_inactive,
+            max_noise_inactive,
+        ) = fit_residual_model(target_hh_inactive_residuals, vae_struct=None, verbose=True)
+        (
+            target_hh_active_residtrend_df,
+            var_model_active,
+            ARMA_model_active,
+            ARMA_scale_active,
+            min_noise_active,
+            max_noise_active,
+        ) = fit_residual_model(target_hh_active_residuals, vae_struct=target_hh_active_approx_df, verbose=True)
 
         # finally, record the min / max observed hh data for clipping the final simulations
         hh_obs_active_min = target_hh_obs_baselined[is_active_mask].min(axis=0)
@@ -394,38 +405,62 @@ def daily_to_hh_eload(
     # perform a final clipping of the _baselined_ simulations to keep all hh simulations within the observed/default bounds
     # also scale the clipped baselined sims to ensure they match the observed daily aggregates
     if use_client_hh:
-        target_hh_active_baselined = target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+        target_hh_active_baselined = (
+            target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+        )
         target_hh_active_baselined = target_hh_active_baselined.clip(hh_obs_active_min, hh_obs_active_max, axis=1)
-        target_hh_active_baselined *= np.tile(target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48,1)).T
-        target_hh_df[target_active_mask] = target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+        target_hh_active_baselined *= np.tile(
+            target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48, 1)
+        ).T
+        target_hh_df[target_active_mask] = (
+            target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+        )
 
-        target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48))
+        target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(
+            target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+        )
         target_hh_inactive_baselined = target_hh_inactive_baselined.clip(hh_obs_inactive_min, hh_obs_inactive_max, axis=1)
-        target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48))
-        target_hh_df[~target_active_mask] *= np.tile(target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)).T
+        target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(
+            target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+        )
+        target_hh_df[~target_active_mask] *= np.tile(
+            target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
+        ).T
     else:
         # scale the defaults according to the median daily (baselined) consumption for in/active days. Use medians because scaling
         # by the min daily (baselined) consumption is nontrivial (min hh value not necessarily in same day as min daily value)
-        active_scaling_factor = 1.0 # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
-        inactive_scaling_factor = 1.0 # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
+        active_scaling_factor = 1.0  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
+        inactive_scaling_factor = 1.0  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
 
-        target_hh_active_baselined = target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+        target_hh_active_baselined = (
+            target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+        )
         target_hh_active_baselined = target_hh_active_baselined.clip(
             (active_scaling_factor * hh_default_active_bc_min).values,
             (active_scaling_factor * hh_default_active_bc_max).values,
-            axis=1
-            )
-        target_hh_active_baselined *= np.tile(target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48,1)).T
-        target_hh_df[target_active_mask] = target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+            axis=1,
+        )
+        target_hh_active_baselined *= np.tile(
+            target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48, 1)
+        ).T
+        target_hh_df[target_active_mask] = (
+            target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+        )
 
-        target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48))
+        target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(
+            target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+        )
         target_hh_inactive_baselined = target_hh_inactive_baselined.clip(
             (inactive_scaling_factor * hh_default_inactive_bc_min).values,
             (inactive_scaling_factor * hh_default_inactive_bc_max).values,
-            axis=1
-            )
-        target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48))
-        target_hh_df[~target_active_mask] *= np.tile(target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48,1)).T
+            axis=1,
+        )
+        target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(
+            target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+        )
+        target_hh_df[~target_active_mask] *= np.tile(
+            target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
+        ).T
 
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     return HHDataFrame(
