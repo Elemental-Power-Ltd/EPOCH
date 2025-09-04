@@ -1,4 +1,5 @@
 import datetime
+import logging
 import typing
 import urllib
 from collections import OrderedDict
@@ -10,6 +11,8 @@ from fastapi import Depends
 
 from app.internal.database.utils import _DB_URL
 from app.internal.queue import IQueue
+
+logger = logging.getLogger("default")
 
 type Jsonable = dict[str, Jsonable] | list[Jsonable] | str | int | float | bool | None
 
@@ -138,13 +141,12 @@ class CachedAsyncClient(httpx.AsyncClient):
             key = url_to_hash(url=str(url), params=params)
             cached = self.cache.get(key)
             if cached is not None:
-                print(f"Loaded bundle {params['bundle_id']} from cache.")  # type: ignore
                 return cached
 
             response = await super().post(url, params=params)
             self.cache.set(key, response)
 
-            print(f"Added key to cache: {self.cache.cache}")
+            logger.debug(f"Added key to cache: {self.cache.cache}")
             return response
 
         return await super().post(url=url, **kwargs)

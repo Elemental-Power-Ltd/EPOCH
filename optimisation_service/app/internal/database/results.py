@@ -1,7 +1,6 @@
 import datetime
 import logging
 
-import httpx
 from fastapi.encoders import jsonable_encoder
 
 from app.dependencies import HTTPClient
@@ -70,7 +69,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
     return OptimisationResultEntry(portfolio=portfolios, tasks=tasks)
 
 
-async def transmit_results(results: OptimisationResultEntry, http_client: httpx.AsyncClient) -> None:
+async def transmit_results(results: OptimisationResultEntry, http_client: HTTPClient) -> None:
     """
     Transmit optimisation results to database.
 

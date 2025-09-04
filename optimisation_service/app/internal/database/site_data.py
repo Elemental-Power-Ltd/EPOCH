@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import operator
 from datetime import datetime
@@ -34,9 +35,14 @@ async def fetch_portfolio_data(task: Task, http_client: HTTPClient) -> None:
     -------
     None
     """
-    # TODO: makes this async
-    for site in task.portfolio:
-        site._epoch_data = await get_latest_site_data_bundle(site_data=site.site_data, http_client=http_client)
+    async with asyncio.TaskGroup() as tg:
+        site_to_task = {}
+        for site in task.portfolio:
+            t = tg.create_task(get_latest_site_data_bundle(site_data=site.site_data, http_client=http_client))
+            site_to_task[site] = t
+
+    for site, t in site_to_task.items():
+        site._epoch_data = t.result()
         # Check here that the data is good, as we partially constructed the site
         # before we got going.
         site = Site.model_validate(site)
@@ -122,7 +128,7 @@ async def get_bundled_data(bundle_id: bundle_id_t, http_client: HTTPClient) -> S
     -------
         Dictionary of datasets associated with the bundle.
     """
-    response = await http_client.post(url=_DB_URL + "/get-dataset-bundle", params={"bundle_id": str(bundle_id)}, timeout=30.0)
+    response = await http_client.post(url=_DB_URL + "/get-dataset-bundle", params={"bundle_id": str(bundle_id)})
     site_data_entries = response.json()
     try:
         site_data_entries = SiteDataEntries.model_validate(site_data_entries)
@@ -146,7 +152,7 @@ async def get_bundle_timestamps(bundle_id: bundle_id_t, http_client: HTTPClient)
     -------
         Tuple with start and end timestamps.
     """
-    response = await http_client.post(url=_DB_URL + "/list-bundle-contents", params={"bundle_id": str(bundle_id)}, timeout=30.0)
+    response = await http_client.post(url=_DB_URL + "/list-bundle-contents", params={"bundle_id": str(bundle_id)})
     bundle_content = response.json()
     starts_ts: AwareDatetime = bundle_content["start_ts"]
     end_ts: AwareDatetime = bundle_content["end_ts"]
