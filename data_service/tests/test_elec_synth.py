@@ -1,0 +1,249 @@
+"""Test the properties of the electricity load synthesiser, mostly through daily_to_hh_eload."""
+
+import datetime
+import itertools
+from pathlib import Path
+from typing import cast
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from app.dependencies import load_vae_2_0
+from app.internal.elec_meters import daily_to_hh_eload
+from app.internal.elec_meters.preprocessing_2_0 import hh_to_square
+from app.internal.elec_meters.vae_2_0 import VAE
+from app.internal.epl_typing import DailyDataFrame, HHDataFrame
+from app.internal.gas_meters import parse_half_hourly
+
+
+@pytest.fixture(scope="class")
+def vae_model() -> VAE:
+    """Load the VAE model."""
+    return load_vae_2_0()
+
+
+@pytest.fixture(scope="class")
+def hh_df() -> HHDataFrame:
+    """Get HH dataframe from a real site."""
+    return parse_half_hourly("./tests/data/test_elec.csv").rename(columns={"consumption": "consumption_kwh"})
+
+
+@pytest.fixture(scope="class")
+def daily_df(hh_df: HHDataFrame) -> DailyDataFrame:
+    """Resample HH dataframe into consistent days.."""
+    new_df = hh_df.resample(pd.Timedelta(days=1)).sum(numeric_only=True)
+    new_df["start_ts"] = new_df.index
+    new_df["end_ts"] = new_df.index + pd.Timedelta(days=1)
+    return cast(DailyDataFrame, new_df)
+
+
+@pytest.fixture(scope="class")
+def rng() -> np.random.Generator:
+    """Get a repeatable RNG with an arbitrary seed."""
+    return np.random.default_rng(seed=int(np.pi * 2**32))
+
+
+class TestElecSynthStatisticsWithObserved:
+    """Test the statistical properties of the electricity synthesiser."""
+
+    @pytest.fixture(scope="class")
+    def synthesised_eload(
+        self, vae_model: VAE, hh_df: HHDataFrame, daily_df: DailyDataFrame, rng: np.random.Generator
+    ) -> HHDataFrame:
+        """Get a synthetic eload from an observed HH dataframe."""
+        square_df = hh_to_square(hh_df).ffill().bfill()
+        return daily_to_hh_eload(daily_df=daily_df, model=vae_model, target_hh_observed_df=square_df, rng=rng)
+
+    def test_all_readings_positive(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that we are always consuming electricity."""
+        assert (synthesised_eload.consumption_kwh >= 0).all(), "Got negative readings"
+
+    def test_readings_non_zero(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that we consume at least some electricity."""
+        assert synthesised_eload.consumption_kwh.sum() > 0, "Total usage was zero"
+
+    def test_usage_every_day(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that we draw power every day."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        unique_days = set(synthesised_eload.index.date)
+        for date in unique_days:
+            in_day_mask = synthesised_eload.index == date
+            in_day_df = synthesised_eload[in_day_mask]
+            assert in_day_df["consumption_kwh"].sum() > 0, f"No usage on {date}"
+
+    def test_midnights_similar(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that the jump from 23:30 to 00:30 is small."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        near_midnight_mask = np.logical_or(
+            synthesised_eload.index.time == datetime.time(hour=23, minute=30),
+            synthesised_eload.index.time == datetime.time(hour=0, minute=30),
+        )
+        near_midnight_df = synthesised_eload[near_midnight_mask]
+        for i in range(0, len(near_midnight_df), 2):
+            start, end = near_midnight_df["consumption_kwh"].iloc[i], near_midnight_df["consumption_kwh"].ilocs[i + 1]
+            THRESH = 0.1 * start
+            diff = np.abs(end - start)
+            assert diff < THRESH, f"Difference between days {diff} greater than {THRESH}"
+
+    def test_days_higher_mean(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that there is more usage during the day than at night."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        # Note that these masks don't overlap, so that we've got clearer day/night periods to compare
+        is_day_mask = np.logical_and(synthesised_eload.index.hour >= 9, synthesised_eload.index.hour <= 17)
+        is_night_mask = np.logical_or(synthesised_eload.index.hour <= 6, synthesised_eload.index.hour >= 20)
+        # Make sure it's a bit biggers
+        assert (
+            synthesised_eload.loc[is_day_mask, "consumption_kwh"].mean()
+            > synthesised_eload.loc[is_night_mask, "consumption_kwh"].mean() * 1.1
+        )
+
+    def test_days_higher_variance(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that the variance during the day is greater than the night variance."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        # Note that these masks don't overlap, so that we've got clearer day/night periods to compare
+        is_day_mask = np.logical_and(synthesised_eload.index.hour >= 9, synthesised_eload.index.hour <= 17)
+        is_night_mask = np.logical_or(synthesised_eload.index.hour <= 6, synthesised_eload.index.hour >= 20)
+        # Make sure it's a bit biggers
+        assert (
+            cast(float, synthesised_eload.loc[is_day_mask, "consumption_kwh"].var(numeric_only=True))
+            > cast(float, synthesised_eload.loc[is_night_mask, "consumption_kwh"].var(numeric_only=True)) * 1.1
+        )
+
+    def test_hh_readings_distinct(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that the half hourly readings each day are different."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        unique_days = set(synthesised_eload.index.date)
+        for date in unique_days:
+            in_day_mask = synthesised_eload.index == date
+            in_day_df = synthesised_eload[in_day_mask]
+            # forgive a few clashes
+            assert len(set(in_day_df["consumption_kwh"])) > 44, f"Not enough unique entries on {date}"
+
+    def test_no_two_days_alike(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that all the days are different to one another."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        unique_days = set(synthesised_eload.index.date)
+
+        for d1, d2 in itertools.combinations(unique_days, 2):
+            if d1 == d2:
+                continue
+            in_d1_mask = synthesised_eload.index == d1
+            in_d2_mask = synthesised_eload.index == d2
+            in_d1_df = synthesised_eload[in_d1_mask]
+            in_d2_df = synthesised_eload[in_d2_mask]
+            # forgive a few clashes
+            assert not (in_d1_df["consumption_kwh"] == in_d2_df["consumption_kwh"]).all(), f"{d1} readings same as {d2}"
+
+
+class TestElecSynthStatisticsWithModelPath:
+    """Test the statistical properties of the electricity synthesiser using the resid model path."""
+
+    @pytest.fixture(scope="class")
+    def synthesised_eload(self, vae_model: VAE, daily_df: DailyDataFrame, rng: np.random.Generator) -> HHDataFrame:
+        """Get a synthesised eload with the pretrained resids."""
+        RESID_MODEL_PATH = Path(".", "models", "draft", "32 - trained - QB")
+        return daily_to_hh_eload(daily_df=daily_df, model=vae_model, resid_model_path=RESID_MODEL_PATH, rng=rng)
+
+    def test_all_readings_positive(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that we are always consuming electricity."""
+        assert (synthesised_eload.consumption_kwh >= 0).all()
+
+    def test_readings_non_zero(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that we consume at least some electricity."""
+        assert synthesised_eload.consumption_kwh.sum() > 0
+
+    def test_usage_every_day(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that we draw power every day."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        unique_days = set(synthesised_eload.index.date)
+        for date in unique_days:
+            in_day_mask = synthesised_eload.index == date
+            in_day_df = synthesised_eload[in_day_mask]
+            assert in_day_df["consumption_kwh"].sum() > 0, f"No usage on {date}"
+
+    def test_midnights_similar(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that the jump from 23:30 to 00:30 is small."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        near_midnight_mask = np.logical_or(
+            synthesised_eload.index.time == datetime.time(hour=23, minute=30),
+            synthesised_eload.index.time == datetime.time(hour=0, minute=30),
+        )
+        near_midnight_df = synthesised_eload[near_midnight_mask]
+        for i in range(0, len(near_midnight_df), 2):
+            start, end = near_midnight_df["consumption_kwh"].iloc[i], near_midnight_df["consumption_kwh"].iloc[i + 1]
+            THRESH = 0.1 * start
+            assert np.abs(end - start) < THRESH
+
+    def test_days_higher_mean(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that there is more usage during the day than at night."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        # Note that these masks don't overlap, so that we've got clearer day/night periods to compare
+        is_day_mask = np.logical_and(synthesised_eload.index.hour >= 9, synthesised_eload.index.hour <= 17)
+        is_night_mask = np.logical_or(synthesised_eload.index.hour <= 6, synthesised_eload.index.hour >= 20)
+        # Make sure it's a bit biggers
+        assert (
+            synthesised_eload.loc[is_day_mask, "consumption_kwh"].mean()
+            > synthesised_eload.loc[is_night_mask, "consumption_kwh"].mean() * 1.1
+        )
+
+    def test_days_higher_variance(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that the variance during the day is greater than the night variance."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        # Note that these masks don't overlap, so that we've got clearer day/night periods to compare
+        is_day_mask = np.logical_and(synthesised_eload.index.hour >= 9, synthesised_eload.index.hour <= 17)
+        is_night_mask = np.logical_or(synthesised_eload.index.hour <= 6, synthesised_eload.index.hour >= 20)
+        # Make sure it's a bit biggers
+        assert (
+            cast(float, synthesised_eload.loc[is_day_mask, "consumption_kwh"].var(numeric_only=True))
+            > cast(float, synthesised_eload.loc[is_night_mask, "consumption_kwh"].var(numeric_only=True)) * 1.1
+        )
+
+    def test_hh_readings_distinct(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that the half hourly readings each day are different."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        unique_days = set(synthesised_eload.index.date)
+        for date in unique_days:
+            in_day_mask = synthesised_eload.index == date
+            in_day_df = synthesised_eload[in_day_mask]
+            # forgive a few clashes
+            assert len(set(in_day_df["consumption_kwh"])) > 44, f"Not enough unique entries on {date}"
+
+    def test_no_two_days_alike(self, synthesised_eload: HHDataFrame) -> None:
+        """Test that all the days are different to one another."""
+        assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
+        unique_days = set(synthesised_eload.index.date)
+
+        for d1, d2 in itertools.combinations(unique_days, 2):
+            if d1 == d2:
+                continue
+            in_d1_mask = synthesised_eload.index == d1
+            in_d2_mask = synthesised_eload.index == d2
+            in_d1_df = synthesised_eload[in_d1_mask]
+            in_d2_df = synthesised_eload[in_d2_mask]
+            # forgive a few clashes
+            assert not (in_d1_df["consumption_kwh"] == in_d2_df["consumption_kwh"]).all(), f"{d1} readings same as {d2}"
+
+
+class TestObservedData:
+    """Test that we can use funny bits of observed data."""
+
+    def test_observed_from_other_year(
+        self, vae_model: VAE, hh_df: HHDataFrame, daily_df: DailyDataFrame, rng: np.random.Generator
+    ) -> None:
+        """Test that we can use observed data from a different period."""
+        square_df = hh_to_square(hh_df).ffill().bfill()
+        square_df.index -= pd.Timedelta(days=365)
+        # This should return okay
+        new_df = daily_to_hh_eload(daily_df=daily_df, model=vae_model, target_hh_observed_df=square_df, rng=rng)
+        assert isinstance(new_df, pd.DataFrame)
+
+    def test_partial_observed(
+        self, vae_model: VAE, hh_df: HHDataFrame, daily_df: DailyDataFrame, rng: np.random.Generator
+    ) -> None:
+        """Test that we can use partial observed data."""
+        square_df = hh_to_square(hh_df).ffill().bfill()
+        square_df = square_df[:90]
+        # This should return okay
+        new_df = daily_to_hh_eload(daily_df=daily_df, model=vae_model, target_hh_observed_df=square_df, rng=rng)
+        assert isinstance(new_df, pd.DataFrame)
