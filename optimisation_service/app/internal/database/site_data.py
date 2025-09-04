@@ -303,8 +303,8 @@ def validate_for_necessary_datasets(site_data: SiteMetaData) -> None:
     missing_datasets: list[DatasetTypeEnum] = [key for key in necessary_datasets if getattr(site_data, key) is None]
 
     if (
-        site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterData) is None
-        and site_data.__getattribute__(DatasetTypeEnum.ElectricityMeterDataSynthesised) is None
+        getattr(site_data, DatasetTypeEnum.ElectricityMeterData.value, None) is None
+        and getattr(site_data, DatasetTypeEnum.ElectricityMeterDataSynthesised.value, None) is None
     ):
         missing_datasets.append(DatasetTypeEnum.ElectricityMeterData)
 
