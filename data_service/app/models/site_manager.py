@@ -44,6 +44,8 @@ class DatasetList(pydantic.BaseModel):
     site_id: site_id_t
     start_ts: pydantic.AwareDatetime
     end_ts: pydantic.AwareDatetime
+    is_complete: bool = pydantic.Field(default=False, description="True if this bundle is finished generating.")
+    is_error: bool = pydantic.Field(default=False, description="True if any generation task for this dataset errored.")
     bundle_id: dataset_id_t | None = pydantic.Field(default=None, description="The bundle these datasets came from")
     SiteBaseline: DatasetEntry | None = pydantic.Field(default=None)
     HeatingLoad: list[DatasetEntry] | DatasetEntry | None = pydantic.Field(default=None)
@@ -90,6 +92,10 @@ class DatasetBundleMetadata(pydantic.BaseModel):
 
     bundle_id: dataset_id_t = pydantic.Field(description="The ID of this bundle of datasets")
     name: str | None = pydantic.Field(default=None, description="Human readable name of this dataset bundle.")
+    is_complete: bool = pydantic.Field(default=True, description="True if this bundle has finished generating.")
+    is_error: bool = pydantic.Field(
+        default=False, description="True if this bundle has suffered an error during the generating process."
+    )
     site_id: site_id_t = site_id_field
     start_ts: pydantic.AwareDatetime | None = pydantic.Field(
         default=None, description="The earliest timestamp for each of the datasets in this bundle, if applicable."

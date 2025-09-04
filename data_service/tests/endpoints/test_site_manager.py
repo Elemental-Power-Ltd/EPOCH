@@ -171,16 +171,18 @@ class TestGenerateAll:
         assert generate_result.status_code == 200, generate_result.text
         # Check that they're all generated
         iters = 0
+        bundle_id = generate_result.json()["bundle_id"]
         while True:
-            q_resp = await client.post("list-queue-contents", params={"bundle_id": generate_result.json()["bundle_id"]})
+            q_resp = await client.post("list-bundle-contents", params={"bundle_id": bundle_id})
             assert q_resp.is_success, q_resp.text
             data = q_resp.json()
-            if iters == 0 and not data:
-                pytest.fail("Nothing queued")
-            if not data:
-                # This means the queue is empty!
-                break
 
+            if data["is_error"]:
+                pytest.fail("Bundle creation failed")
+
+            if data["is_complete"]:
+                # Job done, the bundle is ready
+                break
             # This is our backup bailout clause to prevent the tests
             # hanging
             await asyncio.sleep(1.0)
@@ -487,7 +489,8 @@ class TestDatasetBundles:
         data = result.json()
         assert len(data) == 2
         assert {item["bundle_id"] for item in data} == {str(DEMO_UUID), str(DEMO_UUID_2)}
-
+        assert all(item["is_complete"] for item in data)
+        assert all(not item["is_error"] for item in data)
 
 class TestBundleHints:
     """Test that we can get hints about bundles."""
@@ -512,3 +515,4 @@ class TestBundleHints:
         assert hints_resp.heating is None
         assert hints_resp.tariffs is None
         assert hints_resp.renewables is None
+
