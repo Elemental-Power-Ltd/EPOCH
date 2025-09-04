@@ -24,8 +24,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         task = tg.create_task(process_requests(queue=queue, http_client=http_client))
         yield
         # Shutdown events
-        queue.shutdown()
-        await queue.join()
+        try:
+            asyncio.wait_for(queue.join(), timeout=10.0)
+        except TimeoutError:
+            print("Failed to shutdown queue.")
         task.cancel()
 
 

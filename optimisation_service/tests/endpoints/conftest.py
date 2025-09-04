@@ -180,7 +180,10 @@ async def client(result_tmp_path: Path) -> AsyncGenerator[AsyncClient]:
             )
         )
         yield client
-        await queue.join()
+        try:
+            await asyncio.wait_for(queue.join(), timeout=10.0)
+        except TimeoutError:
+            print("Failed to shutdown queue.")
         task.cancel()
 
 
