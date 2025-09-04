@@ -11,7 +11,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from pandas.core.api import DataFrame as DataFrame
 
-from app.dependencies import HTTPClient, get_http_client, get_queue, url_to_hash
+from app.dependencies import HTTPClient, Jsonable, get_http_client, get_queue, url_to_hash
 from app.internal.database.utils import _DB_URL
 from app.internal.queue import IQueue
 from app.main import app
@@ -24,9 +24,6 @@ from app.models.optimisers import (
     OptimiserStr,
 )
 from app.routers.optimise import process_requests
-
-type Jsonable = dict[str, Jsonable] | list[Jsonable] | str | int | float | bool | None
-
 
 _http_client = AsyncClient(headers=[("Connection", "close")], timeout=60.0)
 
