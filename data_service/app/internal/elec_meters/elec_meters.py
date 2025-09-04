@@ -351,8 +351,9 @@ def daily_to_hh_eload(
         ]
     )
     # - scale by fitted heteroskedasticity factors
-    var_factors_inactive = predict_var_mean_batched(var_model_inactive, target_hh_df[~target_active_mask])
-    target_hh_df[~target_active_mask] += np.sqrt(var_factors_inactive) * sims
+    var_factors_inactive = np.exp(var_model_inactive.predict())
+    scaled_sims = np.sqrt(var_factors_inactive) * sims
+    target_hh_df[~target_active_mask] += scaled_sims
 
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
@@ -360,8 +361,9 @@ def daily_to_hh_eload(
     sims = np.asarray(
         [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
     )
-    var_factors_active = predict_var_mean_batched(var_model_active, target_hh_df[target_active_mask])
-    target_hh_df[target_active_mask] += np.sqrt(var_factors_active) * sims
+    var_factors_active = np.exp(var_model_active.predict())
+    scaled_sims = np.sqrt(var_factors_active) * sims
+    target_hh_df[target_active_mask] += scaled_sims
 
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     return HHDataFrame(
