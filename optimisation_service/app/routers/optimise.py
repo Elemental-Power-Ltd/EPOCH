@@ -39,6 +39,8 @@ class OptimiserFunc(Enum):
 router = APIRouter()
 logger = logging.getLogger("default")
 
+_EPOCH_VERSION: str | None = None
+
 
 def get_epoch_version() -> str:
     """
@@ -49,9 +51,13 @@ def get_epoch_version() -> str:
         A version string (probably Major.Minor.Patch)
 
     """
-    import epoch_simulator
+    global _EPOCH_VERSION
+    if _EPOCH_VERSION is None:
+        import epoch_simulator
 
-    return epoch_simulator.__version__  # type: ignore
+        _EPOCH_VERSION = epoch_simulator.__version__  # type: ignore
+
+    return _EPOCH_VERSION
 
 
 def check_epoch_version() -> str | None:
