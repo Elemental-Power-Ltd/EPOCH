@@ -925,11 +925,11 @@ def fit_residual_model(
 
     if vae_struct is not None:
         resids_detrended_stable, var_lm = stabilise_variance(
-            resids_detrended, vae_struct + np.tile(trend, (resids_detrended.shape[0], 1))
+            resids_detrended, [vae_struct, pd.DataFrame(np.tile(trend, (resids_detrended.shape[0], 1)))]
         )
     else:
         resids_detrended_stable, var_lm = stabilise_variance(
-            resids_detrended, pd.DataFrame(np.tile(trend, (resids_detrended.shape[0], 1)))
+            resids_detrended, [pd.DataFrame(np.tile(trend, (resids_detrended.shape[0], 1)))]
         )
 
     best = select_best_shared_arma_model(resids_detrended_stable.to_numpy(), p_max=3, q_max=3)
@@ -1004,7 +1004,7 @@ def fit_pooled_spline(resids: pd.DataFrame, smooth_factor: float | None = None, 
 
 def stabilise_variance(
     ts: pd.DataFrame,
-    structure: pd.DataFrame,
+    structure_list: list[pd.DataFrame],
 ) -> tuple[pd.Series, sm.OLS]:
     """
     Stabilise the variance of a heteroskedastic time series.
@@ -1019,9 +1019,10 @@ def stabilise_variance(
     ----------
     ts
         a DataFrame containing a set of heteroskedastic observed time series; axis 1 is of length 48
-    structure
-        a DataFrame containing a structural component for `ts`, or a proxy thereof; same shape as `ts`;
-        to be used as a predictor for the time-varying variance in `ts`
+    structure_list
+        a list of DataFrames, each containing a structural component for `ts`, or a proxy thereof; to be used as a predictor for
+        the time-varying variance in `ts`
+        each DataFrame is the same shape as `ts`
 
     Returns
     -------
@@ -1031,9 +1032,11 @@ def stabilise_variance(
     var_t_est = ts.var(axis=0, ddof=1).to_numpy()
     log_var = np.log(np.maximum(var_t_est, np.finfo(float).eps))
 
-    S = structure.mean(axis=0).to_numpy()  # regressing against S captures level-dependent variance
-    dS = np.diff(S, prepend=S[0])  # regressing against abs(dS) captures bursts during sudden structural changes
-    X = np.column_stack([S, S**2, np.abs(dS)])  # regressing against S^2 captures nonlinear effects
+    X = pd.DataFrame(index=range(48))
+    for structure in structure_list:
+        S = structure.mean(axis=0).to_numpy()  # regressing against S captures level-dependent variance
+        dS = np.diff(S, prepend=S[0])  # regressing against abs(dS) captures bursts during sudden structural changes
+        X = np.column_stack([X, S, S**2, np.abs(dS)])  # regressing against S^2 captures nonlinear effects
     X = sm.add_constant(X)
 
     lin_model = sm.OLS(log_var, X).fit()
