@@ -15,13 +15,13 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import torch
-from govuk_bank_holidays.bank_holidays import BankHolidays  # type: ignore
 from scipy.stats import median_abs_deviation
 from sklearn.preprocessing import StandardScaler  # type: ignore
 from torch.utils.data import DataLoader, Dataset
 
 from app.internal.elec_meters.model_utils import CustomMinMaxScaler, RBFTimestampEncoder
 from app.internal.epl_typing import HHDataFrame, SquareHHDataFrame
+from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
 
 class SplitDataDict(TypedDict):  # noqa: D101
@@ -237,7 +237,7 @@ def clean_time_series(
     return df_clean
 
 
-def add_covariates(df: pd.DataFrame) -> pd.DataFrame:
+def add_covariates(df: pd.DataFrame, division: UKCountryEnum = UKCountryEnum.England) -> pd.DataFrame:
     """
     Add covariates to a dataframe which marks if a day is a holiday or weekend.
 
@@ -252,9 +252,7 @@ def add_covariates(df: pd.DataFrame) -> pd.DataFrame:
     """
     assert isinstance(df.index, pd.DatetimeIndex)
     # Fetch UK bank holidays and convert dates to a set for fast lookup
-    bh = BankHolidays(use_cached_holidays=True)
-    uk_holidays = bh.get_holidays()
-    holiday_dates = frozenset(pd.Timestamp(event["date"]) for event in uk_holidays)
+    holiday_dates = frozenset(get_bank_holidays(division))
 
     def is_holiday_or_weekend(date: pd.Timestamp) -> bool:
         """

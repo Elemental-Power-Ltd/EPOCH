@@ -41,6 +41,7 @@ async def generate_electricity_load(
     -------
     Metadata about the generated synthetic half hourly dataset, that you can now request with `get-electrical-load`
     """
+    logger = logging.getLogger(__name__)
     async with pool.acquire() as conn:
         ds_meta = await conn.fetchrow(
             """SELECT site_id, fuel_type, reading_type FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""",
@@ -148,14 +149,14 @@ async def generate_electricity_load(
         return cast(SquareHHDataFrame, new_df)
 
     if reading_type == "halfhourly":
+        logger.info("Generating electricity load with observed HH")
         resid_model_path = None
         target_hh_observed_df = halfhourly_to_square(raw_df)
     else:
-        print("Using stored resid")
-        resid_model_path = Path("models", "draft", "32 - trained - QB")
+        logger.info("Generating electricity load with pretrained ARIMA")
+        resid_model_path = Path("models", "draft", "35 - trained - AH")
         target_hh_observed_df = None
 
-    print(synthetic_daily_df.shape, params.start_ts, params.end_ts)
     synthetic_hh_df = daily_to_hh_eload(
         synthetic_daily_df,
         model=vae,

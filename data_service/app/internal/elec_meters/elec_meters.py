@@ -191,13 +191,80 @@ def daily_to_hh_eload(
     -------
     Pandas dataframe with halfhourly electricity consumptions. Watch out, as we've put these back into UTC times.
     """
-    if (resid_model_path is None) == (target_hh_observed_df is None):
-        raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided.")
+    if resid_model_path is not None and target_hh_observed_df is not None:
+        raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided both")
 
+    if resid_model_path:
+        return daily_to_hh_eload_pretrained(
+            daily_df=daily_df,
+            model=model,
+            resid_model_path=resid_model_path,
+            weekend_inds=weekend_inds,
+            division=division,
+            rng=rng,
+        )
+
+    if target_hh_observed_df is not None:
+        return daily_to_hh_eload_observed(
+            daily_df=daily_df,
+            model=model,
+            target_hh_observed_df=target_hh_observed_df,
+            weekend_inds=weekend_inds,
+            division=division,
+            rng=rng,
+        )
+
+    raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided neither.")
+
+
+def daily_to_hh_eload_observed(
+    daily_df: DailyDataFrame,
+    model: VAE,
+    target_hh_observed_df: SquareHHDataFrame,
+    weekend_inds: Container[int] = {
+        6,
+    },
+    division: UKCountryEnum = UKCountryEnum.England,
+    rng: np.random.Generator | None = None,
+) -> HHDataFrame:
+    """
+    Turn a set of daily electricity usages into half hourly meter data.
+
+    This works by randomly sampling some point in a latent space and augmenting with the aggregated consumption for the given
+    day. We then use a VAE decoder to generate an approximate hh profile, which we refine using time series models trained on
+    either a default site or hh data provided by the client.
+
+    If you've only got monthly data, try resampling to daily using `monthly_to_daily_eload` or similar.
+
+    Parameters
+    ----------
+    daily_df
+        Dataframe with start_ts, end_ts and electricity consumption readings in kWh
+    model
+        A model, probably a VAE, with a decode method and some latent dimension.
+    resid_model_path
+        A pathlib.Path object that gives the path identifier for the directory containing the model files that are to be used as
+        a default model for the residuals. For now, assume only one set of default models - one active, one inactive.
+        All model files for the residuals have the suffix `default_`.
+    target_hh_observed_df
+        A set of half-hourly data for the client's target site, which can be used to train a model for the residuals.
+        It must have a column `consumption_kWh` (note capital W)
+        Exactly one of resid_model_path or target_hh_observed_df must be provided. The data in target_hh_observed_df must
+        correspond to dates provided in daily_df
+    weekend_inds
+        A set specifying the regular 'non-active' days of the week for the site; default is {6,} for Queen's Buildings.
+        This should match the indices provided by .dayofweek
+    division
+        Which the division of the UK to use to determine the public holidays.
+    rng
+        Numpy random generator for reproducible results
+
+    Returns
+    -------
+    Pandas dataframe with halfhourly electricity consumptions. Watch out, as we've put these back into UTC times.
+    """
     if rng is None:
         rng = np.random.default_rng()
-
-    use_client_hh = False if target_hh_observed_df is None else True
 
     # extract 'start_ts' from first record in daily_df, for later use, and discard 'start_ts', 'end_ts' columns
     initial_start_ts = daily_df.start_ts.min()
@@ -241,137 +308,90 @@ def daily_to_hh_eload(
     # create copy of dataframe to hold final data
     target_hh_df = pd.concat([hh_inactive_approx_df, hh_active_approx_df], axis=0).sort_index()
 
-    if use_client_hh:
-        # split client hh data into active and inactive days
-        assert target_hh_observed_df is not None, "Asked to use_client_hh but got a None target_hh_observed_df"
-        assert not target_hh_observed_df.empty, "Asked to use_client_hh but got an empty target_hh_observed_df"
-        assert is_valid_square_hh_dataframe(target_hh_observed_df), "Got a target_hh_observed_df that isn't a valid square HH"
-        target_hh_obs_daily = cast(DailyDataFrame, pd.DataFrame(target_hh_observed_df.sum(axis=1), columns=["consumption_kwh"]))
-        target_hh_obs_daily_active, _ = split_and_baseline_active_days(
-            target_hh_obs_daily, weekend_inds=weekend_inds, division=division
-        )
+    assert not target_hh_observed_df.empty, "Asked to use_client_hh but got an empty target_hh_observed_df"
+    assert is_valid_square_hh_dataframe(target_hh_observed_df), "Got a target_hh_observed_df that isn't a valid square HH"
+    target_hh_obs_daily = cast(DailyDataFrame, pd.DataFrame(target_hh_observed_df.sum(axis=1), columns=["consumption_kwh"]))
+    target_hh_obs_daily_active, _ = split_and_baseline_active_days(
+        target_hh_obs_daily, weekend_inds=weekend_inds, division=division
+    )
 
-        is_active_mask = target_hh_observed_df.index.isin(target_hh_obs_daily_active.index)
-        assert np.any(is_active_mask), "Must have at least one active day."
-        assert not np.all(is_active_mask), "Must have at least one inactive day."
-        # baseline all days (active and inactive):
-        # - for active days, this is subtracting the 'offset' calculated using the appropriate nearest inactive day
-        # - for inactive days, this is simply centering the data / zeroing the daily mean
-        target_hh_obs_baselined = target_hh_observed_df.copy()
-        target_hh_obs_baselined[is_active_mask] -= target_hh_obs_daily_active["offsets"].to_numpy()[:, np.newaxis] / 48
-        target_hh_obs_baselined[~is_active_mask] -= (
-            target_hh_obs_baselined[~is_active_mask].mean(axis=1).to_numpy()[:, np.newaxis]
-        )
-        target_hh_obs_baselined[is_active_mask] = target_hh_obs_baselined[is_active_mask].ffill().bfill()
-        target_hh_obs_baselined[~is_active_mask] = target_hh_obs_baselined[~is_active_mask].ffill().bfill()
+    is_active_mask = target_hh_observed_df.index.isin(target_hh_obs_daily_active.index)
+    assert np.any(is_active_mask), "Must have at least one active day."
+    assert not np.all(is_active_mask), "Must have at least one inactive day."
+    # baseline all days (active and inactive):
+    # - for active days, this is subtracting the 'offset' calculated using the appropriate nearest inactive day
+    # - for inactive days, this is simply centering the data / zeroing the daily mean
+    target_hh_obs_baselined = target_hh_observed_df.copy()
+    target_hh_obs_baselined[is_active_mask] -= target_hh_obs_daily_active["offsets"].to_numpy()[:, np.newaxis] / 48
+    target_hh_obs_baselined[~is_active_mask] -= target_hh_obs_baselined[~is_active_mask].mean(axis=1).to_numpy()[:, np.newaxis]
+    target_hh_obs_baselined[is_active_mask] = target_hh_obs_baselined[is_active_mask].ffill().bfill()
+    target_hh_obs_baselined[~is_active_mask] = target_hh_obs_baselined[~is_active_mask].ffill().bfill()
 
-        # then establish the residuals, assuming that these limited data are to be modelled using the generated VAE output
-        # - vae_output used to model the intraday profile on active days; baselined inactive days are simply relabelled here
-        # We generate a new VAE output as we can't guarantee that these data are the same shape as the target data
-        # (for example, we might have observed data for two years but want to generate for one)
-        daily_active_baselined = target_hh_obs_baselined[is_active_mask].sum(axis=1).to_numpy().reshape(-1, 1)
-        obs_scaler = sklearn.preprocessing.StandardScaler()
-        obs_consumption_scaled = torch.tensor(
-            obs_scaler.fit_transform(daily_active_baselined),
-            dtype=torch.float32,
-        )
+    # then establish the residuals, assuming that these limited data are to be modelled using the generated VAE output
+    # - vae_output used to model the intraday profile on active days; baselined inactive days are simply relabelled here
+    # We generate a new VAE output as we can't guarantee that these data are the same shape as the target data
+    # (for example, we might have observed data for two years but want to generate for one)
+    daily_active_baselined = target_hh_obs_baselined[is_active_mask].sum(axis=1).to_numpy().reshape(-1, 1)
+    obs_scaler = sklearn.preprocessing.StandardScaler()
+    obs_consumption_scaled = torch.tensor(
+        obs_scaler.fit_transform(daily_active_baselined),
+        dtype=torch.float32,
+    )
 
-        # generate a normalised approximate profile for each active day
-        num_reps = 500
-        vae_obs = generate_approx_daily_profiles(model, np.repeat(obs_consumption_scaled, repeats=num_reps, axis=0))
-        vae_obs_mean = vae_obs.reshape(num_reps, -1, 48).mean(axis=0)
+    # generate a normalised approximate profile for each active day
+    num_reps = 500
+    vae_obs = generate_approx_daily_profiles(model, np.repeat(obs_consumption_scaled, repeats=num_reps, axis=0))
+    vae_obs_mean = vae_obs.reshape(num_reps, -1, 48).mean(axis=0)
 
-        # rescale baseline / peak of approximate profiles to match daily aggregates for active days
-        # this is used to calculate residuals and also provide structure for the log-variance regression in fit_residual_model()
-        scaling_factors_obs = daily_active_baselined / np.sum(vae_obs_mean, axis=1)[:, None]
-        # force an extra axis to satisfy np broadcasting rules
-        target_hh_active_approx_df = pd.DataFrame(
-            np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T
-            + vae_obs_mean * np.tile(scaling_factors_obs, (1, 48)),
-            columns=timestamp_headers,
-            index=target_hh_obs_daily_active.index,
-        )
+    # rescale baseline / peak of approximate profiles to match daily aggregates for active days
+    # this is used to calculate residuals and also provide structure for the log-variance regression in fit_residual_model()
+    scaling_factors_obs = daily_active_baselined / np.sum(vae_obs_mean, axis=1)[:, np.newaxis]
+    # force an extra axis to satisfy np broadcasting rules
+    target_hh_active_approx_df = pd.DataFrame(
+        np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs_mean * np.tile(scaling_factors_obs, (1, 48)),
+        columns=timestamp_headers,
+        index=target_hh_obs_daily_active.index,
+    )
 
-        target_hh_active_residuals = cast(  # type: ignore
-            SquareHHDataFrame,
-            target_hh_observed_df[is_active_mask] - target_hh_active_approx_df,
-        )
-        target_hh_inactive_residuals = target_hh_obs_baselined[~is_active_mask]
+    target_hh_active_residuals = cast(  # type: ignore
+        SquareHHDataFrame,
+        target_hh_observed_df[is_active_mask] - target_hh_active_approx_df,
+    )
+    target_hh_inactive_residuals = target_hh_obs_baselined[~is_active_mask]
 
-        # then model the residuals: extract the trend and fit an ARMA model to the noise
-        (
-            target_hh_inactive_residtrend_df,
-            var_model_inactive,
-            ARMA_model_inactive,
-            ARMA_scale_inactive,
-            min_noise_inactive,
-            max_noise_inactive,
-        ) = fit_residual_model(target_hh_inactive_residuals, vae_struct=None, verbose=True)
-        (
-            target_hh_active_residtrend_df,
-            var_model_active,
-            ARMA_model_active,
-            ARMA_scale_active,
-            min_noise_active,
-            max_noise_active,
-        ) = fit_residual_model(target_hh_active_residuals, vae_struct=target_hh_active_approx_df, verbose=True)
+    # then model the residuals: extract the trend and fit an ARMA model to the noise
+    (
+        target_hh_inactive_residtrend_df,
+        var_model_inactive,
+        ARMA_model_inactive,
+        ARMA_scale_inactive,
+        min_noise_inactive,
+        max_noise_inactive,
+    ) = fit_residual_model(target_hh_inactive_residuals, vae_struct=None, verbose=True)
+    (
+        target_hh_active_residtrend_df,
+        var_model_active,
+        ARMA_model_active,
+        ARMA_scale_active,
+        min_noise_active,
+        max_noise_active,
+    ) = fit_residual_model(target_hh_active_residuals, vae_struct=target_hh_active_approx_df, verbose=True)
 
-        # finally, record the min / max observed hh data for clipping the final simulations
-        hh_obs_active_min = target_hh_obs_baselined[is_active_mask].min(axis=0)
-        hh_obs_inactive_min = target_hh_obs_baselined[~is_active_mask].min(axis=0)
-        hh_obs_active_max = target_hh_obs_baselined[is_active_mask].max(axis=0)
-        hh_obs_inactive_max = target_hh_obs_baselined[~is_active_mask].max(axis=0)
-    else:
-        # load defaults for the residual trends, ARMA noise models, and the std devation of the daily data for active days
-        # that was used to train these defaults
-        # TODO (JSM 2025-08-06) Should we move all logic for loading residual models to .model_utils?
-        assert resid_model_path is not None
-        assert resid_model_path.is_dir(), f"Resid model path {resid_model_path} is not a directory"
-        default_hh_active_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_active.csv"))
-        default_hh_inactive_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_inactive.csv"))
-        ARMA_model_active_dict = json.loads(Path(resid_model_path, "default_ARMA_model_active.json").read_text())
-        ARMA_model_inactive_dict = json.loads(Path(resid_model_path, "default_ARMA_model_inactive.json").read_text())
-        ARMA_model_active = ArmaProcess(ARMA_model_active_dict["ar_params"], ARMA_model_active_dict["ma_params"])
-        ARMA_model_inactive = ArmaProcess(ARMA_model_inactive_dict["ar_params"], ARMA_model_inactive_dict["ma_params"])
-        ARMA_scale_active = ARMA_model_active_dict["sigma"]
-        ARMA_scale_inactive = ARMA_model_inactive_dict["sigma"]
-        reference_daily_active_std = ARMA_model_active_dict["daily_active_std"]
-        default_var_factors_active = json.loads(Path(resid_model_path, "default_var_factors_active.json").read_text())
-        default_var_factors_inactive = json.loads(Path(resid_model_path, "default_var_factors_inactive.json").read_text())
-        default_clipping_active_dict = json.loads(Path(resid_model_path, "default_clipping_values_active.json").read_text())
-        default_clipping_inactive_dict = json.loads(Path(resid_model_path, "default_clipping_values_inactive.json").read_text())
-        default_active_daily_bc_med = default_clipping_active_dict["daily_median_baselined_consumption"]  # noqa: F841
-        default_inactive_daily_bc_med = default_clipping_inactive_dict["daily_median_baselined_consumption"]  # noqa: F841
-        hh_default_active_bc_min = pd.Series(default_clipping_active_dict["hh_min_baselined_consumption"])
-        hh_default_inactive_bc_min = pd.Series(default_clipping_inactive_dict["hh_min_baselined_consumption"])
-        hh_default_active_bc_max = pd.Series(default_clipping_active_dict["hh_max_baselined_consumption"])
-        hh_default_inactive_bc_max = pd.Series(default_clipping_inactive_dict["hh_max_baselined_consumption"])
-        min_noise_active = default_clipping_active_dict["hh_min_noise"]
-        max_noise_active = default_clipping_active_dict["hh_max_noise"]
-        min_noise_inactive = default_clipping_inactive_dict["hh_min_noise"]
-        max_noise_inactive = default_clipping_inactive_dict["hh_max_noise"]
+    # finally, record the min / max observed hh data for clipping the final simulations
+    hh_obs_active_min = target_hh_obs_baselined[is_active_mask].min(axis=0)
+    hh_obs_inactive_min = target_hh_obs_baselined[~is_active_mask].min(axis=0)
+    hh_obs_active_max = target_hh_obs_baselined[is_active_mask].max(axis=0)
+    hh_obs_inactive_max = target_hh_obs_baselined[~is_active_mask].max(axis=0)
 
     target_active_mask = np.isin(target_hh_df.index, hh_active_approx_df.index).astype(bool)
     num_inactive, num_active = target_daily_inactive_df.shape[0], target_daily_active_df.shape[0]
     # add fitted trends
-    if use_client_hh:
-        target_hh_df[~target_active_mask] += np.tile(target_hh_inactive_residtrend_df, (num_inactive, 1))
-        target_hh_df[target_active_mask] += np.tile(target_hh_active_residtrend_df, (num_active, 1))
-    else:
-        target_hh_df[~target_active_mask] += np.tile(default_hh_inactive_residtrend_df, (num_inactive, 1))
-        target_hh_df[target_active_mask] += np.tile(default_hh_active_residtrend_df, (num_active, 1))
-
-    # Add noise from fitted ARMA distributions, incorporating heteroskedasticity
-    # - first, if needed, scale the ARMA_scale_* parameters using the daily aggregate values for the target site
-    if not use_client_hh:
-        ARMA_scale_active_target = (
-            ARMA_scale_active * target_daily_active_df["consumption_baselined"].std() / reference_daily_active_std
-        )
-        ARMA_scale_inactive_target = ARMA_scale_active_target.copy()
-    else:
-        # don't rescale -- if we've used (some) hh data from the client, this is as good as we're going to get
-        ARMA_scale_inactive_target = ARMA_scale_inactive
-        ARMA_scale_active_target = ARMA_scale_active
+    target_hh_df[~target_active_mask] += np.tile(target_hh_inactive_residtrend_df, (num_inactive, 1))
+    target_hh_df[target_active_mask] += np.tile(target_hh_active_residtrend_df, (num_active, 1))
+    # Add noise from fitted ARMA distributions, incorporating heteroskedasticitye
+    # don't rescale -- if we've used (some) hh data from the client, this is as good as we're going to get
+    ARMA_scale_inactive_target = ARMA_scale_inactive
+    ARMA_scale_active_target = ARMA_scale_active
 
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
@@ -380,11 +400,9 @@ def daily_to_hh_eload(
         for i in range(num_inactive)
     ])
     # - scale by fitted heteroskedasticity factors
-    if use_client_hh:
-        var_factors_inactive = np.exp(var_model_inactive.predict())
-        scaled_sims = np.sqrt(var_factors_inactive) * sims
-    else:
-        scaled_sims = np.sqrt(default_var_factors_inactive) * sims
+    var_factors_inactive = np.exp(var_model_inactive.predict())
+    scaled_sims = np.sqrt(var_factors_inactive) * sims
+
     target_hh_df[~target_active_mask] += np.clip(scaled_sims, min_noise_inactive, max_noise_inactive)
 
     # - repeat for active dates
@@ -393,72 +411,234 @@ def daily_to_hh_eload(
     sims = np.asarray([
         ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
     ])
-    if use_client_hh:
-        var_factors_active = np.exp(var_model_active.predict())
-        scaled_sims = np.sqrt(var_factors_active) * sims
-    else:
-        scaled_sims = np.sqrt(default_var_factors_active) * sims
+
+    var_factors_active = np.exp(var_model_active.predict())
+    scaled_sims = np.sqrt(var_factors_active) * sims
     target_hh_df[target_active_mask] += np.clip(scaled_sims, min_noise_active, max_noise_active)
 
     # perform a final clipping of the _baselined_ simulations to keep all hh simulations within the observed/default bounds
     # also scale the clipped baselined sims to ensure they match the observed daily aggregates
-    if use_client_hh:
-        target_hh_active_baselined = (
-            target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
-        )
-        target_hh_active_baselined = target_hh_active_baselined.clip(hh_obs_active_min, hh_obs_active_max, axis=1)
-        target_hh_active_baselined *= np.tile(
-            target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48, 1)
-        ).T
-        target_hh_df[target_active_mask] = (
-            target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
-        )
+    target_hh_active_baselined = target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+    target_hh_active_baselined = target_hh_active_baselined.clip(hh_obs_active_min, hh_obs_active_max, axis=1)
+    target_hh_active_baselined *= np.tile(
+        target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48, 1)
+    ).T
+    target_hh_df[target_active_mask] = target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
 
-        target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(
-            target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
-        )
-        target_hh_inactive_baselined = target_hh_inactive_baselined.clip(hh_obs_inactive_min, hh_obs_inactive_max, axis=1)
-        target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(
-            target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
-        )
-        target_hh_df[~target_active_mask] *= np.tile(
-            target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
-        ).T
-    else:
-        # scale the defaults according to the median daily (baselined) consumption for in/active days. Use medians because using
-        # the min daily (baselined) consumption is nontrivial (min hh value not necessarily in same day as min daily value)
-        active_scaling_factor = 1.0  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
-        inactive_scaling_factor = 1.0  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
+    target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(
+        target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+    )
+    target_hh_inactive_baselined = target_hh_inactive_baselined.clip(hh_obs_inactive_min, hh_obs_inactive_max, axis=1)
+    target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(
+        target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+    )
+    target_hh_df[~target_active_mask] *= np.tile(
+        target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
+    ).T
 
-        target_hh_active_baselined = (
-            target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+    start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
+    return HHDataFrame(
+        pd.DataFrame(
+            index=pd.DatetimeIndex(
+                start_ts,
+                name="start_ts",
+            ),
+            # Each row is one day, so we could also express this
+            # as a concat over [i, :], but this saves some memory and mucking around.
+            data={
+                "consumption_kwh": np.ravel(target_hh_df, order="C"),
+                "end_ts": start_ts + pd.Timedelta(minutes=30),
+                "start_ts": start_ts,
+            },
         )
-        target_hh_active_baselined = target_hh_active_baselined.clip(
-            (active_scaling_factor * hh_default_active_bc_min).values,
-            (active_scaling_factor * hh_default_active_bc_max).values,
-            axis=1,
-        )
-        target_hh_active_baselined *= np.tile(
-            target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48, 1)
-        ).T
-        target_hh_df[target_active_mask] = (
-            target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
-        )
+    )
 
-        target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(
-            target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
-        )
-        target_hh_inactive_baselined = target_hh_inactive_baselined.clip(
-            (inactive_scaling_factor * hh_default_inactive_bc_min).values,
-            (inactive_scaling_factor * hh_default_inactive_bc_max).values,
-            axis=1,
-        )
-        target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(
-            target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
-        )
-        target_hh_df[~target_active_mask] *= np.tile(
-            target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
-        ).T
+
+def daily_to_hh_eload_pretrained(
+    daily_df: DailyDataFrame,
+    model: VAE,
+    resid_model_path: pathlib.Path,
+    weekend_inds: Container[int] = {
+        6,
+    },
+    division: UKCountryEnum = UKCountryEnum.England,
+    rng: np.random.Generator | None = None,
+) -> HHDataFrame:
+    """
+    Turn a set of daily electricity usages into half hourly meter data.
+
+    This works by randomly sampling some point in a latent space and augmenting with the aggregated consumption for the given
+    day. We then use a VAE decoder to generate an approximate hh profile, which we refine using time series models trained on
+    either a default site or hh data provided by the client.
+
+    If you've only got monthly data, try resampling to daily using `monthly_to_daily_eload` or similar.
+
+    Parameters
+    ----------
+    daily_df
+        Dataframe with start_ts, end_ts and electricity consumption readings in kWh
+    model
+        A model, probably a VAE, with a decode method and some latent dimension.
+    resid_model_path
+        A pathlib.Path object that gives the path identifier for the directory containing the model files that are to be used as
+        a default model for the residuals. For now, assume only one set of default models - one active, one inactive.
+        All model files for the residuals have the suffix `default_`.
+    target_hh_observed_df
+        A set of half-hourly data for the client's target site, which can be used to train a model for the residuals.
+        It must have a column `consumption_kWh` (note capital W)
+        Exactly one of resid_model_path or target_hh_observed_df must be provided. The data in target_hh_observed_df must
+        correspond to dates provided in daily_df
+    weekend_inds
+        A set specifying the regular 'non-active' days of the week for the site; default is {6,} for Queen's Buildings.
+        This should match the indices provided by .dayofweek
+    division
+        Which the division of the UK to use to determine the public holidays.
+    rng
+        Numpy random generator for reproducible results
+
+    Returns
+    -------
+    Pandas dataframe with halfhourly electricity consumptions. Watch out, as we've put these back into UTC times.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    # extract 'start_ts' from first record in daily_df, for later use, and discard 'start_ts', 'end_ts' columns
+    initial_start_ts = daily_df.start_ts.min()
+    final_end_ts = daily_df.end_ts.max()
+    daily_df = daily_df.drop(columns=["start_ts", "end_ts"])
+
+    # split daily data into active and inactive days; remove baseline from active days
+    target_daily_active_df, target_daily_inactive_df = split_and_baseline_active_days(
+        daily_df, weekend_inds=weekend_inds, division=division
+    )
+    # scale the baselined daily consumption data for active days, using a *new* StandardScaler
+    aggregate_scaler_new = sklearn.preprocessing.StandardScaler()
+    consumption_scaled = torch.tensor(
+        aggregate_scaler_new.fit_transform(target_daily_active_df["consumption_baselined"].to_numpy().reshape(-1, 1)),
+        dtype=torch.float32,
+    )
+
+    # generate a normalised approximate profile for each active day
+    # we should sample multiple profiles for each day and calculate a mean intraday profile to pass forward
+    num_reps = 100
+    vae_output_np = generate_approx_daily_profiles(model, np.repeat(consumption_scaled, repeats=num_reps, axis=0))
+    vae_output_mean_np = vae_output_np.reshape(num_reps, -1, 48).mean(axis=0)
+
+    # rescale baseline / peak of approximate profiles to match daily aggregates
+    #   - do this before adding noise to avoid overly scaling the noise
+    timestamp_headers = pd.date_range("00:00", "23:30", freq="30min").time
+    scaling_factors = target_daily_active_df["consumption_baselined"] / np.sum(vae_output_mean_np, axis=1)
+    hh_active_approx_df = pd.DataFrame(
+        np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T + vae_output_mean_np * np.tile(scaling_factors, (48, 1)).T,
+        columns=timestamp_headers,
+        index=target_daily_active_df.index,
+    )
+
+    # generate hh profiles for inactive days - just divide daily values by 48
+    hh_inactive_approx_df = pd.DataFrame(
+        np.tile(target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)),
+        columns=timestamp_headers,
+        index=target_daily_inactive_df.index,
+    )
+
+    # create copy of dataframe to hold final data
+    target_hh_df = pd.concat([hh_inactive_approx_df, hh_active_approx_df], axis=0).sort_index()
+
+    # load defaults for the residual trends, ARMA noise models, and the std devation of the daily data for active days
+    # that was used to train these defaults
+    # TODO (JSM 2025-08-06) Should we move all logic for loading residual models to .model_utils?
+    assert resid_model_path is not None
+    assert resid_model_path.is_dir(), f"Resid model path {resid_model_path} is not a directory"
+    default_hh_active_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_active.csv"))
+    default_hh_inactive_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_inactive.csv"))
+    ARMA_model_active_dict = json.loads(Path(resid_model_path, "default_ARMA_model_active.json").read_text())
+    ARMA_model_inactive_dict = json.loads(Path(resid_model_path, "default_ARMA_model_inactive.json").read_text())
+    ARMA_model_active = ArmaProcess(ARMA_model_active_dict["ar_params"], ARMA_model_active_dict["ma_params"])
+    ARMA_model_inactive = ArmaProcess(ARMA_model_inactive_dict["ar_params"], ARMA_model_inactive_dict["ma_params"])
+    ARMA_scale_active = ARMA_model_active_dict["sigma"]
+    _ = ARMA_model_inactive_dict["sigma"]
+    reference_daily_active_std = ARMA_model_active_dict["daily_active_std"]
+    default_var_factors_active = json.loads(Path(resid_model_path, "default_var_factors_active.json").read_text())
+    default_var_factors_inactive = json.loads(Path(resid_model_path, "default_var_factors_inactive.json").read_text())
+    default_clipping_active_dict = json.loads(Path(resid_model_path, "default_clipping_values_active.json").read_text())
+    default_clipping_inactive_dict = json.loads(Path(resid_model_path, "default_clipping_values_inactive.json").read_text())
+    _ = default_clipping_active_dict["daily_median_baselined_consumption"]
+    _ = default_clipping_inactive_dict["daily_median_baselined_consumption"]
+    hh_default_active_bc_min = pd.Series(default_clipping_active_dict["hh_min_baselined_consumption"])
+    hh_default_inactive_bc_min = pd.Series(default_clipping_inactive_dict["hh_min_baselined_consumption"])
+    hh_default_active_bc_max = pd.Series(default_clipping_active_dict["hh_max_baselined_consumption"])
+    hh_default_inactive_bc_max = pd.Series(default_clipping_inactive_dict["hh_max_baselined_consumption"])
+    min_noise_active = default_clipping_active_dict["hh_min_noise"]
+    max_noise_active = default_clipping_active_dict["hh_max_noise"]
+    min_noise_inactive = default_clipping_inactive_dict["hh_min_noise"]
+    max_noise_inactive = default_clipping_inactive_dict["hh_max_noise"]
+
+    target_active_mask = np.isin(target_hh_df.index, hh_active_approx_df.index).astype(bool)
+    num_inactive, num_active = target_daily_inactive_df.shape[0], target_daily_active_df.shape[0]
+    target_hh_df[~target_active_mask] += np.tile(default_hh_inactive_residtrend_df, (num_inactive, 1))
+    target_hh_df[target_active_mask] += np.tile(default_hh_active_residtrend_df, (num_active, 1))
+
+    # Add noise from fitted ARMA distributions, incorporating heteroskedasticity
+    # - first, if needed, scale the ARMA_scale_* parameters using the daily aggregate values for the target site
+
+    ARMA_scale_active_target = (
+        ARMA_scale_active * target_daily_active_df["consumption_baselined"].std() / reference_daily_active_std
+    )
+    ARMA_scale_inactive_target = ARMA_scale_active_target.copy()
+
+    # - then pre-generate white noise to reduce runtime...
+    eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
+    sims = np.asarray([
+        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        for i in range(num_inactive)
+    ])
+    # - scale by fitted heteroskedasticity factors
+    scaled_sims = np.sqrt(default_var_factors_inactive) * sims
+    target_hh_df[~target_active_mask] += np.clip(scaled_sims, min_noise_inactive, max_noise_inactive)
+
+    # - repeat for active dates
+    num_active = target_daily_active_df.shape[0]
+    eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
+    sims = np.asarray([
+        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+    ])
+
+    scaled_sims = np.sqrt(default_var_factors_active) * sims
+    target_hh_df[target_active_mask] += np.clip(scaled_sims, min_noise_active, max_noise_active)
+
+    # perform a final clipping of the _baselined_ simulations to keep all hh simulations within the observed/default bounds
+    # also scale the clipped baselined sims to ensure they match the observed daily aggregates
+    # scale the defaults according to the median daily (baselined) consumption for in/active days. Use medians because using
+    # the min daily (baselined) consumption is nontrivial (min hh value not necessarily in same day as min daily value)
+    active_scaling_factor = 1.0  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
+    inactive_scaling_factor = 1.0  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
+
+    target_hh_active_baselined = target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+    target_hh_active_baselined = target_hh_active_baselined.clip(
+        (active_scaling_factor * hh_default_active_bc_min).values,
+        (active_scaling_factor * hh_default_active_bc_max).values,
+        axis=1,
+    )
+    target_hh_active_baselined *= np.tile(
+        target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48, 1)
+    ).T
+    target_hh_df[target_active_mask] = target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+
+    target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(
+        target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+    )
+    target_hh_inactive_baselined = target_hh_inactive_baselined.clip(
+        (inactive_scaling_factor * hh_default_inactive_bc_min).values,
+        (inactive_scaling_factor * hh_default_inactive_bc_max).values,
+        axis=1,
+    )
+    target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(
+        target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+    )
+    target_hh_df[~target_active_mask] *= np.tile(
+        target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
+    ).T
 
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     return HHDataFrame(
@@ -517,8 +697,7 @@ def monthly_to_hh_eload(
 
 
 def generate_approx_daily_profiles(
-    VAE_model: VAE,
-    consumption_scaled: torch.Tensor,
+    VAE_model: VAE, consumption_scaled: torch.Tensor, rng: torch.Generator | None = None
 ) -> npt.NDArray[np.floating]:
     """
     Use the decoder component of a trained VAE to generate approximate intraday electricity demand profiles.
@@ -550,33 +729,26 @@ def generate_approx_daily_profiles(
     """
     # generate a normalised approximate profile for each active day
     VAE_model.eval()
-    with torch.no_grad():
-        # Sample from the latent distribution, MV Gaussian with mean 0 and variance 1.
-        # This should be of shape [1, days in dataset, latent_dim]
-        zs = torch.randn(size=[1, consumption_scaled.shape[0], VAE_model.latent_dim], dtype=torch.float32)
-
-        # Use the decoder part of the VAE, with random latent space (so it's not always the same)
-        # and some conditioning variables.
-        vae_output_tf = VAE_model.decode(zs, torch.abs(consumption_scaled), torch.zeros(1, 13), torch.zeros(1, 13), seq_len=48)
-    vae_output = vae_output_tf.squeeze().detach().cpu().numpy()
-
-    # get rid of profiles that are negative and most profiles that start before 7am or end after 8pm
-    active_day_first_hh = 14  # 07:00 - 07:30
-    active_day_last_hh = -9  # 19:30 - 20:00
-    problem_inds = np.where(
-        (np.sum(vae_output[:, :active_day_first_hh], axis=1) > 0.05)
-        | (np.sum(vae_output[:, active_day_last_hh + 1 :], axis=1) > 0.05)
-        | (np.sum(vae_output, axis=1) < 0.1)
-    )[0]
+    # Start off with an empty set of outputs with them all "problematic"
+    vae_output = np.empty([consumption_scaled.shape[0], 48])
+    problem_inds = list(range(consumption_scaled.shape[0]))
     while len(problem_inds) > 5:
-        zs = torch.randn(size=[1, len(problem_inds), VAE_model.latent_dim], dtype=torch.float32)
-        # Use the decoder part of the VAE, with random latent space (so it's not always the same)
-        # and some conditioning variables.
-        vae_output_new_tf = VAE_model.decode(
-            zs, torch.abs(consumption_scaled[problem_inds]), torch.zeros(1, 13), torch.zeros(1, 13), seq_len=48
-        )
-        vae_output_new = vae_output_new_tf.squeeze().detach().cpu().numpy()
+        with torch.no_grad():
+            # Sample from the latent distribution, MV Gaussian with mean 0 and variance 1.
+            # This should be of shape [1, days in dataset, latent_dim]
+            zs = torch.randn(size=[1, len(problem_inds), VAE_model.latent_dim], generator=rng, dtype=torch.float32)
+
+            # Use the decoder part of the VAE, with random latent space (so it's not always the same)
+            # and some conditioning variables.
+            vae_output_tf = VAE_model.decode(
+                zs, torch.abs(consumption_scaled[problem_inds]), torch.zeros(1, 13), torch.zeros(1, 13), seq_len=48
+            )
+        vae_output_new = vae_output_tf.squeeze().detach().cpu().numpy()
         vae_output[problem_inds, :] = vae_output_new
+
+        # get rid of profiles that are negative and most profiles that start before 7am or end after 8pm
+        active_day_first_hh = 14  # 07:00 - 07:30
+        active_day_last_hh = -9  # 19:30 - 20:00
         problem_inds = np.where(
             (np.sum(vae_output[:, :active_day_first_hh], axis=1) > 0.05)
             | (np.sum(vae_output[:, active_day_last_hh + 1 :], axis=1) > 0.05)
