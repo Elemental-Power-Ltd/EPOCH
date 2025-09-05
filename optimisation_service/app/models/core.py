@@ -9,6 +9,7 @@ from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr, model_validator
 
+from app.internal.epoch.version import get_epoch_version
 from app.internal.uuid7 import uuid7
 from app.models.constraints import Constraints
 from app.models.database import dataset_id_t
@@ -19,14 +20,6 @@ from app.models.optimisers import OptimiserTypes
 from app.models.site_data import EpochSiteData, SiteMetaData
 
 logger = logging.getLogger("default")
-
-# We try to import the EPOCH simulator here to use it in the TaskData if it wasn't provided.
-try:
-    import epoch_simulator
-
-    epoch_version_ = epoch_simulator.__version__  # type: ignore
-except ImportError:
-    epoch_version_ = None
 
 
 class Site(BaseModel):
@@ -118,7 +111,7 @@ class Task(BaseModel):
         default_factory=uuid7,
         description="Unique ID (generally a UUIDv7) of an optimisation task.",
     )
-    epoch_version: str | None = Field(description="EPOCH version that this task was submitted for", default=epoch_version_)
+    epoch_version: str | None = Field(description="EPOCH version that this task was submitted for", default=get_epoch_version())
 
 
 class TaskResponse(BaseModel):

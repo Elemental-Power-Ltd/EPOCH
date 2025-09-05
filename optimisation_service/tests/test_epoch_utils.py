@@ -13,7 +13,7 @@ from epoch_simulator import (
     TaskData,
 )
 
-from app.internal.epoch_utils import (
+from app.internal.epoch.converters import (
     convert_TaskData_to_pydantic,
     simulation_result_to_metric_dict,
 )

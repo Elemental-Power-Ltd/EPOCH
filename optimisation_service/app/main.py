@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -8,18 +9,21 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.internal.epoch.version import get_epoch_version
 from app.internal.task_processor import process_tasks
 
 from .dependencies import get_http_client, get_queue
-from .internal.log import logger
 from .routers import epl_queue, metrics, optimise, simulate
+
+logger = logging.getLogger("default")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Create queue that is served by process_requests from moment app is created until it is closed."""
-    queue = get_queue()
     app.state.start_time = datetime.datetime.now(datetime.UTC)
+    logger.info(f"Using EPOCH version: {get_epoch_version()}")
+    queue = get_queue()
     http_client = await get_http_client()
     async with asyncio.TaskGroup() as tg:
         task = tg.create_task(process_tasks(queue=queue, http_client=http_client))

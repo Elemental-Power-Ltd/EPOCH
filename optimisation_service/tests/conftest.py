@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from epoch_simulator import SimulationResult, aggregate_site_results
 
-from app.internal.epoch_utils import simulation_result_to_metric_dict
+from app.internal.epoch.converters import simulation_result_to_metric_dict
 from app.internal.ga_utils import ProblemInstance
 from app.internal.site_range import REPEAT_COMPONENTS
 from app.models.constraints import Constraints
