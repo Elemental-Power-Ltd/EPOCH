@@ -5,8 +5,11 @@ This module provides functions for preparing data for the TransformerVAE model,
 including loading, cleaning and sequence preparation.
 """
 
+import datetime
+import itertools
+from collections import defaultdict
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -16,12 +19,10 @@ from govuk_bank_holidays.bank_holidays import BankHolidays  # type: ignore
 from scipy.stats import median_abs_deviation
 from sklearn.preprocessing import StandardScaler  # type: ignore
 from torch.utils.data import DataLoader, Dataset
-from app.internal.epl_typing import HHDataFrame, SquareHHDataFrame
+
 from app.internal.elec_meters.model_utils import CustomMinMaxScaler, RBFTimestampEncoder
-from collections import defaultdict
-import itertools
-import datetime
-from typing import cast
+from app.internal.epl_typing import HHDataFrame, SquareHHDataFrame
+
 
 class SplitDataDict(TypedDict):  # noqa: D101
     hh_train: npt.NDArray[np.floating]
@@ -745,12 +746,14 @@ def hh_to_square(hh_df: HHDataFrame) -> SquareHHDataFrame:
     -------
     SquareHHDataFrame
     """
-    all_hours = [datetime.time(h, m) for h, m in itertools.product(range(0, 24), (0, 30))]
+    assert isinstance(hh_df.index, pd.DatetimeIndex), "Provided dataframe must have a DatetimeIndex"
+    all_hours = list(itertools.starmap(datetime.time, itertools.product(range(0, 24), (0, 30))))
+
     rows: dict[datetime.date, dict[datetime.time, float]] = defaultdict(dict)
-    assert isinstance(hh_df.index, pd.DatetimeIndex)
-    for time, usage in zip(hh_df.index, hh_df["consumption_kwh"]):
+    for time, usage in zip(hh_df.index, hh_df["consumption_kwh"], strict=True):
         time_col = datetime.time(hour=time.hour, minute=time.minute)
         rows[time.date()][time_col] = usage
+
     new_df = pd.DataFrame.from_dict(rows, orient="index", columns=all_hours)
     new_df.index = pd.DatetimeIndex(new_df.index)
     return cast(SquareHHDataFrame, new_df)
