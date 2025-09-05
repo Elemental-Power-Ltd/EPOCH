@@ -375,12 +375,10 @@ def daily_to_hh_eload(
 
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
-    sims = np.asarray(
-        [
-            ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-            for i in range(num_inactive)
-        ]
-    )
+    sims = np.asarray([
+        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        for i in range(num_inactive)
+    ])
     # - scale by fitted heteroskedasticity factors
     if use_client_hh:
         var_factors_inactive = np.exp(var_model_inactive.predict())
@@ -392,9 +390,9 @@ def daily_to_hh_eload(
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
-    sims = np.asarray(
-        [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
-    )
+    sims = np.asarray([
+        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+    ])
     if use_client_hh:
         var_factors_active = np.exp(var_model_active.predict())
         scaled_sims = np.sqrt(var_factors_active) * sims

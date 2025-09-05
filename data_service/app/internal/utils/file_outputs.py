@@ -33,17 +33,15 @@ def to_rgen_csv(df: HHDataFrame, fname: os.PathLike | str = "CSVRGen.csv") -> No
     df = HHDataFrame(df.resample(pd.Timedelta(hours=1)).mean().interpolate(method="time"))
     solar_gen = df["power"].to_numpy(dtype=np.float32)
     assert isinstance(df.index, pd.DatetimeIndex), "Must be a DatetimeIndex-ed dataframe"
-    new_df = pd.DataFrame(
-        {
-            "HoY": [hour_of_year(ts) for ts in df.index],
-            "Date": df.index.strftime("%d-%b"),
-            "Start Time": df.index.strftime("%H:%M"),
-            "RGen1": solar_gen,
-            "RGen2": np.zeros_like(solar_gen),
-            "RGen3": np.zeros_like(solar_gen),
-            "RGen4": np.zeros_like(solar_gen),
-        }
-    )
+    new_df = pd.DataFrame({
+        "HoY": [hour_of_year(ts) for ts in df.index],
+        "Date": df.index.strftime("%d-%b"),
+        "Start Time": df.index.strftime("%H:%M"),
+        "RGen1": solar_gen,
+        "RGen2": np.zeros_like(solar_gen),
+        "RGen3": np.zeros_like(solar_gen),
+        "RGen4": np.zeros_like(solar_gen),
+    })
     new_df.to_csv(fname, index=False)
 
 
@@ -67,17 +65,15 @@ def to_hload_csv(df: HHDataFrame, fname: os.PathLike | str = "CSVHLoad.csv") -> 
     df = HHDataFrame(df.resample(pd.Timedelta(hours=1)).mean().interpolate(method="time"))
     heating_load = df["heating_power"].to_numpy(dtype=np.float32)
     assert isinstance(df.index, pd.DatetimeIndex), "Must be a DatetimeIndex-ed dataframe"
-    new_df = pd.DataFrame(
-        {
-            "HoY": [hour_of_year(ts) for ts in df.index],
-            "Date": df.index.strftime("%d-%b"),
-            "Start Time": df.index.strftime("%H:%M"),
-            "HLoad1": heating_load,
-            "HLoad2": np.zeros_like(heating_load),
-            "HLoad3": np.zeros_like(heating_load),
-            "HLoad4": np.zeros_like(heating_load),
-        }
-    )
+    new_df = pd.DataFrame({
+        "HoY": [hour_of_year(ts) for ts in df.index],
+        "Date": df.index.strftime("%d-%b"),
+        "Start Time": df.index.strftime("%H:%M"),
+        "HLoad1": heating_load,
+        "HLoad2": np.zeros_like(heating_load),
+        "HLoad3": np.zeros_like(heating_load),
+        "HLoad4": np.zeros_like(heating_load),
+    })
     new_df.to_csv(fname, index=False)
 
 
@@ -100,12 +96,10 @@ def to_airtemp_csv(df: WeatherDataFrame, fname: os.PathLike | str = "CSVAirtemp.
     """
     df = WeatherDataFrame(df.resample(pd.Timedelta(hours=1)).mean().interpolate(method="time"))
     assert isinstance(df.index, pd.DatetimeIndex), "Must be a DatetimeIndex-ed dataframe"
-    new_df = pd.DataFrame(
-        {
-            "HoY": [hour_of_year(ts) for ts in df.index],
-            "Date": df.index.strftime("%d-%b"),
-            "Start Time": df.index.strftime("%H:%M"),
-            "Air-temp": df["temp"],
-        }
-    )
+    new_df = pd.DataFrame({
+        "HoY": [hour_of_year(ts) for ts in df.index],
+        "Date": df.index.strftime("%d-%b"),
+        "Start Time": df.index.strftime("%H:%M"),
+        "Air-temp": df["temp"],
+    })
     new_df.to_csv(fname, index=False)
