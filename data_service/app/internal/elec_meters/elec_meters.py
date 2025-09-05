@@ -548,7 +548,6 @@ def daily_to_hh_eload_pretrained(
     # load defaults for the residual trends, ARMA noise models, and the std devation of the daily data for active days
     # that was used to train these defaults
     # TODO (JSM 2025-08-06) Should we move all logic for loading residual models to .model_utils?
-    assert resid_model_path is not None
     assert resid_model_path.is_dir(), f"Resid model path {resid_model_path} is not a directory"
     default_hh_active_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_active.csv"))
     default_hh_inactive_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_inactive.csv"))

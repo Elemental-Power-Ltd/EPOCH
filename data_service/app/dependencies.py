@@ -21,8 +21,7 @@ import torch
 from fastapi import Depends
 
 from .epl_secrets import SecretDict, get_secrets_environment
-from .internal.elec_meters import VAE
-from .internal.elec_meters.vae_2_0 import VAE as VAE_2_0
+from .internal.elec_meters.vae import VAE
 
 logger = logging.getLogger("default")
 
@@ -106,7 +105,7 @@ http_client = httpx.AsyncClient(
     limits=http_limits,
 )
 
-elec_vae_mdl: VAE | VAE_2_0 | None = None
+elec_vae_mdl: VAE | None = None
 
 
 async def get_http_client() -> AsyncGenerator[HTTPClient]:
@@ -154,7 +153,7 @@ async def get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
     yield db.pool
 
 
-async def get_vae_model(use_new: bool = True) -> VAE | VAE_2_0:
+async def get_vae_model() -> VAE:
     """
     Get a loaded VAE model.
 
@@ -162,10 +161,7 @@ async def get_vae_model(use_new: bool = True) -> VAE | VAE_2_0:
     """
     global elec_vae_mdl
     if elec_vae_mdl is None:
-        if use_new:
-            elec_vae_mdl = load_vae_2_0()
-        else:
-            elec_vae_mdl = load_vae()
+        elec_vae_mdl = load_vae()
     return elec_vae_mdl
 
 
@@ -210,36 +206,11 @@ SecretsDep = typing.Annotated[SecretDict, Depends(get_secrets_dependency)]
 DatabaseDep = typing.Annotated[DBConnection, Depends(get_db_conn)]
 DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
-VaeDep = typing.Annotated[VAE_2_0, Depends(get_vae_model)]
+VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
 ProcessPoolDep = typing.Annotated[ProcessPoolExecutor, Depends(get_process_pool)]
 
 
 def find_model_path(base_dir: Path = Path(".")) -> Path:
-    """
-    Search upwards from this directory to find the models directory.
-
-    This is useful if you're loading from a notebooks directory.
-
-    Parameters
-    ----------
-    base_dir
-        Initial directory to look in. We'll check for a given models suffix here, and then check "..", "../.." etc.
-
-    Returns
-    -------
-        Fully resolved path to elecVAE_weights.pth
-    """
-    final_dir = Path("models", "final", "elecVAE_weights.pth")
-
-    fpath = base_dir / final_dir
-    for _ in range(3):
-        if fpath.exists():
-            return fpath.resolve()
-        fpath = Path("..") / fpath
-    raise FileNotFoundError(f"Could not find {final_dir}")
-
-
-def find_model_path_2_0(base_dir: Path = Path(".")) -> Path:
     """
     Search upwards from this directory to find the models directory for the 2.0 version.
 
@@ -254,7 +225,7 @@ def find_model_path_2_0(base_dir: Path = Path(".")) -> Path:
     -------
         Fully resolved path to elecVAE_weights.pth
     """
-    final_dir = Path("models", "draft", "32 - trained - QB", "elecVAE_weights.pth")
+    final_dir = Path("models", "draft", "35 - trained - AH", "elecVAE_weights.pth")
 
     fpath = base_dir / final_dir
     for _ in range(3):
@@ -265,15 +236,8 @@ def find_model_path_2_0(base_dir: Path = Path(".")) -> Path:
 
 
 def load_vae() -> VAE:
-    """Load the VAE from a file, with the relevant sizes."""
-    mdl = VAE(input_dim=1, aggregate_dim=1, date_dim=13, latent_dim=5, hidden_dim=64, num_layers=1)
-    mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
-    return mdl
-
-
-def load_vae_2_0() -> VAE_2_0:
     """Load the new VAE from a file, with the relevant sizes."""
-    mdl = VAE_2_0(
+    mdl = VAE(
         input_dim=1,
         aggregate_dim=1,
         date_dim=13,
@@ -284,5 +248,5 @@ def load_vae_2_0() -> VAE_2_0:
         num_layers_decoder=1,
         dropout_decoder=0.1,
     )
-    mdl.load_state_dict(torch.load(find_model_path_2_0(), weights_only=True))
+    mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
     return mdl
