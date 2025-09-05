@@ -20,7 +20,7 @@ from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFram
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
 from .model_utils import fit_residual_model, split_and_baseline_active_days
-from .vae_2_0 import VAE
+from .vae import VAE
 
 
 def is_valid_square_hh_dataframe(obj: Any) -> TypeGuard[SquareHHDataFrame]:

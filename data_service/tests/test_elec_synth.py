@@ -11,8 +11,8 @@ import pytest
 
 from app.dependencies import load_vae_2_0
 from app.internal.elec_meters import daily_to_hh_eload
-from app.internal.elec_meters.preprocessing_2_0 import hh_to_square
-from app.internal.elec_meters.vae_2_0 import VAE
+from app.internal.elec_meters.preprocessing import hh_to_square
+from app.internal.elec_meters.vae import VAE
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame
 from app.internal.gas_meters import parse_half_hourly
 

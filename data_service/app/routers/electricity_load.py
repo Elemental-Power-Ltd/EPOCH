@@ -1,7 +1,6 @@
 """API endpoints for electrical loads, including resampling."""
 
 import datetime
-import itertools
 import logging
 from pathlib import Path
 from typing import cast
@@ -12,7 +11,8 @@ from fastapi import APIRouter, HTTPException
 
 from app.dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
 from app.internal.elec_meters import daily_to_hh_eload, day_type, monthly_to_daily_eload
-from app.internal.epl_typing import DailyDataFrame, MonthlyDataFrame, SquareHHDataFrame
+from app.internal.elec_meters.preprocessing import hh_to_square
+from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame
 from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.utils import get_bank_holidays
 from app.internal.utils.uuid import uuid7
@@ -118,40 +118,10 @@ async def generate_electricity_load(
     # TODO (2025-08-21 MHJB): check this toggle is correct for resid_model_path and target_hh_observed_df
     # do I need to rename the columns?
 
-    def halfhourly_to_square(raw_df: pd.DataFrame) -> SquareHHDataFrame:
-        """
-        Create a SquareHHDataFrame with columns 00:00, 00:30 and rows of dates from a rowwise.
-
-        Parameters
-        ----------
-        raw_df
-            Dataframe with entries like (start_ts, end_ts, consumption) ideally halfhourly
-
-        Returns
-        -------
-        SqaureHHDataFrame
-            Dataframe with columns like 00:00, 00:30, 01:00, ...
-        """
-        rows = []
-        assert isinstance(raw_df.index, pd.DatetimeIndex)
-        dates = sorted(set(raw_df.index.date))
-        for date in dates:
-            day_df = raw_df[raw_df.index.date == date]
-            row: dict[datetime.time, float] = {
-                datetime.time(hour=idx.hour, minute=idx.minute, second=0): value
-                for idx, value in zip(day_df.index, day_df["consumption_kwh"], strict=True)
-            }
-            rows.append(row)
-        all_hours = [datetime.time(hour=hour, minute=minute) for hour, minute in itertools.product(range(0, 24), [0, 30])]
-        # If our half hourly readings are missing (e.g. the first reading is at 01:00) then fill them in roughly
-        # from the nearby days.
-        new_df = pd.DataFrame.from_records(rows, columns=all_hours, index=pd.DatetimeIndex(dates)).ffill().bfill()
-        return cast(SquareHHDataFrame, new_df)
-
     if reading_type == "halfhourly":
         logger.info("Generating electricity load with observed HH")
         resid_model_path = None
-        target_hh_observed_df = halfhourly_to_square(raw_df)
+        target_hh_observed_df = hh_to_square(cast(HHDataFrame, raw_df))
     else:
         logger.info("Generating electricity load with pretrained ARIMA")
         resid_model_path = Path("models", "draft", "35 - trained - AH")
