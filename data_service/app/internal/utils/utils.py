@@ -255,12 +255,10 @@ def chunk_time_period(
     time_pairs: list[tuple[datetime.datetime, datetime.datetime]]
     if (end_ts - start_ts) >= freq:
         time_pairs = list(
-            itertools.pairwise(
-                [
-                    *list(pd.date_range(start_ts, end_ts, freq=freq)),
-                    end_ts,
-                ]
-            )
+            itertools.pairwise([
+                *list(pd.date_range(start_ts, end_ts, freq=freq)),
+                end_ts,
+            ])
         )
     else:
         time_pairs = [(start_ts, end_ts)]

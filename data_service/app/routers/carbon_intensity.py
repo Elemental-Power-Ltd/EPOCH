@@ -87,20 +87,16 @@ def interpolate_carbon_intensity(
     for key in keys:
         # We re-do the xs each time as we have to check if the relevant key is in this entry,
         # which is might not be.
-        xp = np.asarray(
-            [
-                (item["start_ts"] - start_ts).total_seconds()
-                for item in raw_data
-                if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
-            ]
-        )
-        yp = np.asarray(
-            [
-                item[key]  # type: ignore
-                for item in raw_data
-                if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
-            ]
-        )
+        xp = np.asarray([
+            (item["start_ts"] - start_ts).total_seconds()
+            for item in raw_data
+            if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
+        ])
+        yp = np.asarray([
+            item[key]  # type: ignore
+            for item in raw_data
+            if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
+        ])
         if len(xp) == 0 or len(yp) == 0:
             # We've got nothing here!
             interpolated_vals = np.full_like(xp, np.nan)

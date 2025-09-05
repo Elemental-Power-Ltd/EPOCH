@@ -34,13 +34,13 @@ from ..models.core import (
     dataset_id_t,
 )
 from ..models.electricity_load import ElectricalLoadRequest
-from ..models.import_tariffs import SyntheticTariffEnum, TariffRequest
 from ..models.heating_load import (
     HeatingLoadMetadata,
     HeatingLoadModelEnum,
     HeatingLoadRequest,
     InterventionEnum,
 )
+from ..models.import_tariffs import SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import BundleHints, DatasetBundleMetadata, DatasetList, SiteDataEntry
 from .client_data import get_solar_locations
