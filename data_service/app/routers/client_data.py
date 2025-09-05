@@ -516,6 +516,7 @@ async def add_solar_locations(location: SolarLocation, pool: DatabasePoolDep) ->
     location
         The location just added to the database
     """
+    assert location.renewables_location_id is not None, "Renewables Location ID must not be None"
     if not location.renewables_location_id.startswith(location.site_id):
         raise HTTPException(
             422,
