@@ -5,8 +5,11 @@ This module provides functions for preparing data for the TransformerVAE model,
 including loading, cleaning and sequence preparation.
 """
 
+import datetime
+import itertools
+from collections import defaultdict
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -18,6 +21,7 @@ from sklearn.preprocessing import StandardScaler  # type: ignore
 from torch.utils.data import DataLoader, Dataset
 
 from app.internal.elec_meters.model_utils import CustomMinMaxScaler, RBFTimestampEncoder
+from app.internal.epl_typing import HHDataFrame, SquareHHDataFrame
 
 
 class SplitDataDict(TypedDict):  # noqa: D101
@@ -722,3 +726,34 @@ def prepare_data_pipeline(
         "dbg_cleaneddata": df_clean,
         "dbg_hhdata": hh_data,
     }
+
+
+def hh_to_square(hh_df: HHDataFrame) -> SquareHHDataFrame:
+    """
+    Turn a half hourly dataframe into a square one.
+
+    A square dataframe has columns 00:00, 00:30 etc
+    and rows of days.
+
+    You may need to fill NaNs outside of this function.
+
+    Parameters
+    ----------
+    hh_df
+        Half hourly dataframe with datetime index and consumption_kwh col
+
+    Returns
+    -------
+    SquareHHDataFrame
+    """
+    assert isinstance(hh_df.index, pd.DatetimeIndex), "Provided dataframe must have a DatetimeIndex"
+    all_hours = list(itertools.starmap(datetime.time, itertools.product(range(0, 24), (0, 30))))
+
+    rows: dict[datetime.date, dict[datetime.time, float]] = defaultdict(dict)
+    for time, usage in zip(hh_df.index, hh_df["consumption_kwh"], strict=True):
+        time_col = datetime.time(hour=time.hour, minute=time.minute)
+        rows[time.date()][time_col] = usage
+
+    new_df = pd.DataFrame.from_dict(rows, orient="index", columns=all_hours)
+    new_df.index = pd.DatetimeIndex(new_df.index)
+    return cast(SquareHHDataFrame, new_df)
