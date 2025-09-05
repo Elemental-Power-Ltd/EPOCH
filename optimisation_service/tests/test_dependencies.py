@@ -1,5 +1,3 @@
-import asyncio
-import time
 from typing import Any
 
 import httpx
@@ -16,30 +14,24 @@ class TestCachedAsyncClient:
         """Test that post requests to "/get-dataset-bundle" get cached by the client."""
         fake_response = httpx.Response(200, json={"ok": True})
 
-        mock_post_delay = 10
-
-        async def delayed_post(*args: Any, **kwargs: Any) -> httpx.Response:
-            await asyncio.sleep(mock_post_delay)
+        async def mock_post(*args: Any, **kwargs: Any) -> httpx.Response:
             return fake_response
 
-        mocker.patch("httpx.AsyncClient.post", side_effect=delayed_post)
+        mock_post = mocker.patch("httpx.AsyncClient.post", side_effect=mock_post)
 
         client = CachedAsyncClient()
 
-        start_time = time.perf_counter()
-        response = await client.post(url=_DB_URL + "/get-dataset-bundle")
-        end_time = time.perf_counter()
-
-        elapsed = end_time - start_time
+        response = await client.post(url=_DB_URL + "/get-dataset-bundle", params={"bundle_id": str(123)})
 
         assert response == fake_response
-        assert mock_post_delay <= elapsed, f"Post request took {elapsed:.2f} seconds, expected at least {mock_post_delay}"
+        assert mock_post.call_count == 1
 
-        start_time = time.perf_counter()
-        response = await client.post(url=_DB_URL + "/get-dataset-bundle")
-        end_time = time.perf_counter()
-
-        elapsed = end_time - start_time
+        response = await client.post(url=_DB_URL + "/get-dataset-bundle", params={"bundle_id": str(123)})
 
         assert response == fake_response
-        assert elapsed < 1, f"Post request took {elapsed:.2f} seconds, expected less than {1}"
+        assert mock_post.call_count == 1
+
+        response = await client.post(url=_DB_URL + "/get-dataset-bundle", params={"bundle_id": str(321)})
+
+        assert response == fake_response
+        assert mock_post.call_count == 2
