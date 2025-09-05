@@ -227,6 +227,10 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("total_electricity_import_cost", &SimulationMetrics::total_electricity_import_cost)
 		.def_readwrite("total_electricity_export_gain", &SimulationMetrics::total_electricity_export_gain)
 
+		.def_readwrite("total_heat_load", &SimulationMetrics::total_heat_load)
+		.def_readwrite("total_dhw_load", &SimulationMetrics::total_dhw_load)
+		.def_readwrite("total_ch_load", &SimulationMetrics::total_ch_load)
+
 		.def_readwrite("total_meter_cost", &SimulationMetrics::total_meter_cost)
 		.def_readwrite("total_operating_cost", &SimulationMetrics::total_operating_cost)
 		.def_readwrite("total_annualised_cost", &SimulationMetrics::total_annualised_cost)
@@ -249,6 +253,8 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("Heat_surplus", &ReportData::Heat_surplus)
 		.def_readonly("Hotel_load", &ReportData::Hotel_load)
 		.def_readonly("Heatload", &ReportData::Heatload)
+		.def_readonly("CH_demand", &ReportData::CH_demand)
+		.def_readonly("DHW_demand", &ReportData::DHW_demand)
 		.def_readonly("PVdcGen", &ReportData::PVdcGen)
 		.def_readonly("PVacGen", &ReportData::PVacGen)
 		.def_readonly("EV_targetload", &ReportData::EV_targetload)

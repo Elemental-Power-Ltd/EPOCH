@@ -10,6 +10,10 @@ void addMetrics(const SimulationMetrics& from, SimulationMetrics& to) {
 	to.total_electricity_curtailed += from.total_electricity_curtailed;
 	to.total_electricity_used += from.total_electricity_used;
 
+	to.total_heat_load += from.total_heat_load;
+	to.total_dhw_load += from.total_dhw_load;
+	to.total_ch_load += from.total_ch_load;
+
 	to.total_electrical_shortfall += from.total_electrical_shortfall;
 	to.total_heat_shortfall += from.total_heat_shortfall;
 	to.total_ch_shortfall += from.total_ch_shortfall;

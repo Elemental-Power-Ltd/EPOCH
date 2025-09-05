@@ -41,6 +41,8 @@ public:
     void Report(ReportData& reportData) {
         // report target load to allow calculation of revenue missed
         reportData.Hotel_load = mTargetLoad_e;
+        reportData.CH_demand = mTargetHeat_h;
+        reportData.DHW_demand = mTargetDHW_h;
         reportData.Heatload = mTargetHeat_h + mTargetDHW_h;
     }
 

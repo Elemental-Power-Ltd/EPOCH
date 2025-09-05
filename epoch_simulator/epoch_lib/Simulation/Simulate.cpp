@@ -349,9 +349,14 @@ SimulationMetrics Simulator::calculateMetrics(const TaskData& taskData, const Re
 		- (metrics.total_electricity_exported + metrics.total_electricity_curtailed);
 
 	metrics.total_electrical_shortfall = reportData.Actual_import_shortfall.sum();
+
 	metrics.total_heat_shortfall = reportData.Heat_shortfall.sum();
 	metrics.total_ch_shortfall = reportData.CH_shortfall.sum();
 	metrics.total_dhw_shortfall = reportData.DHW_Shortfall.sum();
+
+	metrics.total_ch_load = reportData.CH_demand.sum() - metrics.total_ch_shortfall;
+	metrics.total_dhw_load = reportData.DHW_demand.sum() - metrics.total_dhw_shortfall;
+	metrics.total_heat_load = metrics.total_dhw_load + metrics.total_ch_load;
 
 	// financial totals in £
 	metrics.total_capex = usage.capex_breakdown.total_capex;

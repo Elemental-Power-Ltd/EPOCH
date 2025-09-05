@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "3.1.0";
+const std::string EPOCH_VERSION = "3.2.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -26,6 +26,8 @@ struct ReportData {
 	// Hotel
 	year_TS Hotel_load;
 	year_TS Heatload;
+	year_TS CH_demand;
+	year_TS DHW_demand;
 
 	// PV
 	year_TS PVdcGen;
@@ -102,6 +104,10 @@ struct SimulationMetrics {
 	float total_electricity_exported;
 	float total_electricity_curtailed;
 	float total_electricity_used;
+
+	float total_heat_load;
+	float total_dhw_load;
+	float total_ch_load;
 
 	float total_electrical_shortfall;
 	float total_heat_shortfall;

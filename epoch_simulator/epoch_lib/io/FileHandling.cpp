@@ -255,6 +255,8 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& repo
 	outFile << "Heat_surplus" << ",";
 	outFile << "Hotel_load" << ",";
 	outFile << "Heatload" << ",";
+	outFile << "CH_demand" << ",";
+	outFile << "DHW_demand" << ",";
 	outFile << "PVdcGen" << ",";
 	outFile << "PVacGen" << ",";
 	outFile << "EV_targetload" << ",";
@@ -290,6 +292,8 @@ void writeTimeSeriesToCSV(std::filesystem::path filepath, const ReportData& repo
 			<< valueOrEmpty(reportData.Heat_shortfall, i) << ","
 			<< valueOrEmpty(reportData.Heat_surplus, i) << ","
 			<< valueOrEmpty(reportData.Hotel_load, i) << ","
+			<< valueOrEmpty(reportData.CH_demand, i) << ","
+			<< valueOrEmpty(reportData.DHW_demand, i) << ","
 			<< valueOrEmpty(reportData.Heatload, i) << ","
 			<< valueOrEmpty(reportData.PVdcGen, i) << ","
 			<< valueOrEmpty(reportData.PVacGen, i) << ","
