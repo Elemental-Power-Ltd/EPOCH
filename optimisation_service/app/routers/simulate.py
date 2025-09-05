@@ -5,7 +5,8 @@ import logging
 from epoch_simulator import Simulator, TaskData
 from fastapi import APIRouter
 
-from app.internal.datamanager import DataManagerDep
+from app.dependencies import HttpClientDep
+from app.internal.database.site_data import get_latest_site_data_bundle, get_saved_epoch_input
 from app.internal.epoch_utils import simulation_result_to_pydantic
 from app.models.epoch_types import ReportData
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
@@ -22,7 +23,7 @@ logger = logging.getLogger("default")
 
 
 @router.post("/run-simulation")
-async def run_simulation(request: RunSimulationRequest, data_manager: DataManagerDep) -> FullResult:
+async def run_simulation(request: RunSimulationRequest, http_client: HttpClientDep) -> FullResult:
     """
     Run a simulation of a single site in EPOCH with full reporting enabled.
 
@@ -30,8 +31,8 @@ async def run_simulation(request: RunSimulationRequest, data_manager: DataManage
     ----------
     request
         Details about the simulation to reproduce
-    data_manager
-        Data manager with a database connection
+    http_client
+        Asynchronous HTTP client to use for requests.
 
     Returns
     -------
@@ -39,13 +40,13 @@ async def run_simulation(request: RunSimulationRequest, data_manager: DataManage
     """
     logger.info("Running single simulation")
 
-    epoch_data = await data_manager.get_latest_site_data(request.site_data)
+    epoch_data = await get_latest_site_data_bundle(site_data=request.site_data, http_client=http_client)
 
     return do_simulation(epoch_data, request.task_data)
 
 
 @router.post("/reproduce-simulation")
-async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager: DataManagerDep) -> FullResult:
+async def reproduce_simulation(request: ReproduceSimulationRequest, http_client: HttpClientDep) -> FullResult:
     """
     Re-run a simulation of EPOCH with full reporting enabled.
 
@@ -57,21 +58,23 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, data_manager
     ----------
     request
         Details about the simulation to reproduce
-    data_manager
-        Data manager with a database connection
+    http_client
+        Asynchronous HTTP client to use for requests.
 
     Returns
     -------
         Full result from the simulation
     """
     logger.info(f"Reproducing simulation for {request.site_id} from portfolio {request.portfolio_id}")
-    saved_input = await data_manager.get_saved_epoch_input(request.portfolio_id, request.site_id)
+    saved_input = await get_saved_epoch_input(
+        portfolio_id=request.portfolio_id, site_id=request.site_id, http_client=http_client
+    )
 
     return do_simulation(saved_input.site_data, saved_input.task_data)
 
 
 @router.post("/get-latest-site-data")
-async def get_latest_site_data(site_data: SiteMetaData, data_manager: DataManagerDep) -> EpochSiteData:
+async def get_latest_site_data(site_data: SiteMetaData, http_client: HttpClientDep) -> EpochSiteData:
     """
     Serve an EPOCH compatible SiteData using the most recent bundle for this site.
 
@@ -79,18 +82,18 @@ async def get_latest_site_data(site_data: SiteMetaData, data_manager: DataManage
     ----------
     site_data
         Data to request from the database
-    data_manager
-        Data handler with database connection
+    http_client
+        Asynchronous HTTP client to use for requests.
 
     Returns
     -------
         Site data in EPOCH format
     """
-    return await data_manager.get_latest_site_data(site_data)
+    return await get_latest_site_data_bundle(site_data=site_data, http_client=http_client)
 
 
 @router.post("/get-saved-site-data")
-async def get_saved_site_data(request: GetSavedSiteDataRequest, data_manager: DataManagerDep) -> EpochSiteData:
+async def get_saved_site_data(request: GetSavedSiteDataRequest, http_client: HttpClientDep) -> EpochSiteData:
     """
     Fetch the exact SiteData that was used to produce a result in the database.
 
@@ -98,14 +101,16 @@ async def get_saved_site_data(request: GetSavedSiteDataRequest, data_manager: Da
     ----------
     request
         Request to send to the database
-    data_manager
-        Data manager with database connection
+    http_client
+        Asynchronous HTTP client to use for requests.
 
     Returns
     -------
         Parsed data in EPOCH format
     """
-    saved_input = await data_manager.get_saved_epoch_input(request.portfolio_id, request.site_id)
+    saved_input = await get_saved_epoch_input(
+        portfolio_id=request.portfolio_id, site_id=request.site_id, http_client=http_client
+    )
     return saved_input.site_data
 
 
@@ -117,12 +122,10 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> Ful
 
     Parameters
     ----------
-    data_manager
-        A data manager to handle IO operations
-    dataset_entries
-        The full timeseries for the site
+    epoch_data
+        The EPOCH SiteData represented in JSON.
     task_data
-        The EPOCH TaskData represented in JSON
+        The EPOCH TaskData represented in JSON.
 
     Returns
     -------

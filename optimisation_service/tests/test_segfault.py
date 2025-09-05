@@ -2,10 +2,9 @@ from pathlib import Path
 
 from epoch_simulator import Simulator, TaskData
 
-from app.internal.datamanager import load_epoch_data_from_file
 from app.models.epoch_types.site_range_type import Config
 
-from .conftest import _DATA_PATH
+from .conftest import _DATA_PATH, load_epoch_data_from_file
 
 
 def test_good_taskdata(default_config: Config) -> None:

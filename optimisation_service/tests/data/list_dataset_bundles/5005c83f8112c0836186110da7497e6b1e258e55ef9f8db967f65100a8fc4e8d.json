@@ -1,0 +1,26 @@
+[
+    {
+        "available_datasets": [
+            "GasMeterData",
+            "ElectricityMeterData",
+            "ASHPData",
+            "HeatingLoad",
+            "HeatingLoad",
+            "HeatingLoad",
+            "HeatingLoad",
+            "ImportTariff",
+            "ImportTariff",
+            "ImportTariff",
+            "ImportTariff",
+            "RenewablesGeneration",
+            "ElectricityMeterDataSynthesised",
+            "CarbonIntensity"
+        ],
+        "bundle_id": "019905bf-d058-741f-8a9b-5b7d18bfb133",
+        "created_at": "2025-09-01T14:48:00.856456Z",
+        "end_ts": "2023-01-01T00:00:00Z",
+        "name": null,
+        "site_id": "amcott_house",
+        "start_ts": "2022-01-01T00:00:00Z"
+    }
+]

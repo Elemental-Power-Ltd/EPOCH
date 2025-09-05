@@ -13,7 +13,6 @@ from epoch_simulator import (
     TaskData,
 )
 
-from app.internal.datamanager import load_epoch_data_from_file
 from app.internal.epoch_utils import (
     convert_TaskData_to_pydantic,
     simulation_result_to_metric_dict,
@@ -21,7 +20,7 @@ from app.internal.epoch_utils import (
 from app.models.epoch_types.site_range_type import Config
 from app.models.metrics import _METRICS
 
-from .conftest import _DATA_PATH
+from .conftest import _DATA_PATH, load_epoch_data_from_file
 
 
 def test_convert_sim_result(default_config: Config) -> None:
