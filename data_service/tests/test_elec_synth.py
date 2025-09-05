@@ -3,7 +3,7 @@
 import datetime
 import itertools
 from pathlib import Path
-from typing import cast, Literal
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -66,7 +66,8 @@ def synthesised_eload(
 ) -> HHDataFrame:
     """Create a synthesised eload depending on the mode.
 
-    This is a bit of indirection to allow pytest to use fixtures as parametrizations."""
+    This is a bit of indirection to allow pytest to use fixtures as parametrizations.
+    """
     if request.param == "observed":
         return synthesised_eload_observed
 
@@ -149,7 +150,7 @@ class TestElecSynthStatistics:
             )
 
     def test_mean_preserved(self, hh_df: HHDataFrame, synthesised_eload: HHDataFrame) -> None:
-        """Test that the overall and daily means are preserved"""
+        """Test that the overall and daily means are preserved."""
         assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
         assert isinstance(hh_df.index, pd.DatetimeIndex)
         expected_mean = hh_df["consumption_kwh"].mean()
