@@ -14,6 +14,7 @@ from pandas.core.api import DataFrame as DataFrame
 from app.dependencies import HTTPClient, Jsonable, get_http_client, get_queue, url_to_hash
 from app.internal.database.utils import _DB_URL
 from app.internal.queue import IQueue
+from app.internal.task_processor import process_tasks
 from app.main import app
 from app.models.constraints import Constraints
 from app.models.core import Site, Task
@@ -23,7 +24,6 @@ from app.models.optimisers import (
     NSGA2Optimiser,
     OptimiserStr,
 )
-from app.routers.optimise import process_requests
 
 _http_client = AsyncClient(headers=[("Connection", "close")], timeout=60.0)
 
@@ -174,7 +174,7 @@ async def client(result_tmp_path: Path) -> AsyncGenerator[AsyncClient]:
     ):
         # We also have to set up the queue handling task
         task = tg.create_task(
-            process_requests(
+            process_tasks(
                 queue=queue,
                 http_client=override_get_http_client(),
             )

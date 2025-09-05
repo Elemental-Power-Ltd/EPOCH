@@ -8,10 +8,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.internal.task_processor import process_tasks
+
 from .dependencies import get_http_client, get_queue
 from .internal.log import logger
 from .routers import epl_queue, metrics, optimise, simulate
-from .routers.optimise import process_requests
 
 
 @asynccontextmanager
@@ -21,7 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.start_time = datetime.datetime.now(datetime.UTC)
     http_client = await get_http_client()
     async with asyncio.TaskGroup() as tg:
-        task = tg.create_task(process_requests(queue=queue, http_client=http_client))
+        task = tg.create_task(process_tasks(queue=queue, http_client=http_client))
         yield
         # Shutdown events
         try:

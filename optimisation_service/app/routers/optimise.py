@@ -1,120 +1,22 @@
-import asyncio
-import datetime
 import logging
-from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
 from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, HTTPException
 
-from app.dependencies import HTTPClient, HttpClientDep, QueueDep
-from app.internal.bayesian.bayesian import Bayesian
+from app.dependencies import HttpClientDep, QueueDep
 from app.internal.constraints import apply_default_constraints
-from app.internal.database.results import process_results, transmit_results
 from app.internal.database.site_data import fetch_portfolio_data
 from app.internal.database.tasks import transmit_task
-from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
-from app.internal.portfolio_simulator import simulate_scenario
-from app.internal.queue import IQueue
+from app.internal.epoch_utils import get_epoch_version
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.core import (
     Task,
     TaskResponse,
 )
 
-
-class OptimiserFunc(Enum):
-    """Mapping of optimiser types to optimiser class."""
-
-    # TODO (2025-08-08 MHJB): should this be a dict instead? feels weird as an enum.
-    NSGA2 = NSGA2
-    SeparatedNSGA2xNSGA2 = SeparatedNSGA2xNSGA2
-    SeparatedNSGA2 = SeparatedNSGA2
-    Bayesian = Bayesian
-
-
 router = APIRouter()
 logger = logging.getLogger("default")
-
-_EPOCH_VERSION: str | None = None
-
-
-def get_epoch_version() -> str:
-    """
-    Get the version of the epoch.
-
-    Returns
-    -------
-        A version string (probably Major.Minor.Patch)
-
-    """
-    global _EPOCH_VERSION
-    if _EPOCH_VERSION is None:
-        import epoch_simulator
-
-        _EPOCH_VERSION = epoch_simulator.__version__  # type: ignore
-
-    return _EPOCH_VERSION
-
-
-def check_epoch_version() -> str | None:
-    """
-    Check that we can get the epoch_simulator's version and log it for information.
-
-    Returns
-    -------
-    str | None
-        The version string of the epoch_simulator (if available, None otherwise)
-    """
-    try:
-        simulator_version = get_epoch_version()
-        logger.info(f"Using EPOCH version: {simulator_version}")
-    except Exception as e:
-        simulator_version = None
-        logger.warning(f"Failed to fetch epoch_simulator version! {e}")
-
-    return simulator_version
-
-
-async def process_requests(queue: IQueue, http_client: HTTPClient) -> None:
-    """
-    Loop to process tasks in queue.
-
-    Parameters
-    ----------
-    queue
-        Asyncio queue containing oustanding optimisation tasks.
-    http_client
-        Asynchronous HTTP client to use for requests.
-    """
-    logger.info("Initialising worker loop.")
-    check_epoch_version()
-    while True:
-        logger.info("Awaiting next task from queue.")
-        task = await queue.get()
-        try:
-            logger.info(f"Optimising {task.task_id}.")
-            loop = asyncio.get_event_loop()
-            optimiser = OptimiserFunc[task.optimiser.name].value(**dict(task.optimiser.hyperparameters))
-            with ThreadPoolExecutor() as executor:
-                results = await loop.run_in_executor(
-                    executor,
-                    lambda: optimiser.run(  # noqa: B023
-                        objectives=task.objectives,  # noqa: B023
-                        constraints=task.portfolio_constraints,  # noqa: B023
-                        portfolio=task.portfolio,  # noqa: B023
-                    ),
-                )
-            logger.info(f"Finished optimising {task.task_id}.")
-            completed_at = datetime.datetime.now(datetime.UTC)
-            payload = process_results(task, results, completed_at)
-            await transmit_results(results=payload, http_client=http_client)
-        except Exception:
-            logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)
-            pass
-        simulate_scenario.cache_clear()
-        queue.mark_task_done(task)
 
 
 @router.post("/submit-portfolio-task")

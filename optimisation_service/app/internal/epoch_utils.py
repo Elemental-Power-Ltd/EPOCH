@@ -1,6 +1,7 @@
 """Wrappers for Epoch that are more ergonomic for python."""
 
 import json
+import logging
 from typing import cast
 
 from epoch_simulator import CapexBreakdown, SimulationResult, TaskData
@@ -9,7 +10,48 @@ from app.models.core import CostInfo, Grade, SimulationMetrics
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric, MetricValues
 
+logger = logging.getLogger("default")
+
 type Jsonable = float | int | str | dict[str, Jsonable]
+
+_EPOCH_VERSION: str | None = None
+
+
+def get_epoch_version() -> str:
+    """
+    Get the version of the epoch.
+
+    Returns
+    -------
+        A version string (probably Major.Minor.Patch)
+
+    """
+    global _EPOCH_VERSION
+    if _EPOCH_VERSION is None:
+        import epoch_simulator
+
+        _EPOCH_VERSION = epoch_simulator.__version__  # type: ignore
+
+    return _EPOCH_VERSION
+
+
+def check_epoch_version() -> str | None:
+    """
+    Check that we can get the epoch_simulator's version and log it for information.
+
+    Returns
+    -------
+    str | None
+        The version string of the epoch_simulator (if available, None otherwise)
+    """
+    try:
+        simulator_version = get_epoch_version()
+        logger.info(f"Using EPOCH version: {simulator_version}")
+    except Exception as e:
+        simulator_version = None
+        logger.warning(f"Failed to fetch epoch_simulator version! {e}")
+
+    return simulator_version
 
 
 def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list[CostInfo]:
@@ -28,14 +70,10 @@ def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list
     costs = []
 
     if capex_breakdown.building_fabric_capex > 0:
-        costs.append(
-            CostInfo(name="Building Fabric", component="building", cost=capex_breakdown.building_fabric_capex)
-        )
+        costs.append(CostInfo(name="Building Fabric", component="building", cost=capex_breakdown.building_fabric_capex))
 
     if capex_breakdown.dhw_capex > 0:
-        costs.append(
-            CostInfo(name="Hot Water Cylinder", component="hot_water_cylinder", cost=capex_breakdown.dhw_capex)
-        )
+        costs.append(CostInfo(name="Hot Water Cylinder", component="hot_water_cylinder", cost=capex_breakdown.dhw_capex))
 
     total_ev_capex = capex_breakdown.ev_charger_cost + capex_breakdown.ev_charger_install
     if total_ev_capex > 0:
@@ -47,24 +85,18 @@ def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list
                 name="Electric Vehicle Chargers",
                 component="electric_vehicles",
                 cost=total_ev_capex,
-                sub_components=[charger_cost, install_cost]
+                sub_components=[charger_cost, install_cost],
             )
         )
 
     if capex_breakdown.gas_heater_capex > 0:
-        costs.append(
-            CostInfo(name="Gas Heater", component="gas_heater", cost=capex_breakdown.gas_heater_capex)
-        )
+        costs.append(CostInfo(name="Gas Heater", component="gas_heater", cost=capex_breakdown.gas_heater_capex))
 
     if capex_breakdown.grid_capex > 0:
-        costs.append(
-            CostInfo(name="Grid Upgrade", component="grid", cost=capex_breakdown.grid_capex)
-        )
+        costs.append(CostInfo(name="Grid Upgrade", component="grid", cost=capex_breakdown.grid_capex))
 
     if capex_breakdown.heatpump_capex > 0:
-        costs.append(
-            CostInfo(name="Heat Pump", component="heat_pump", cost=capex_breakdown.heatpump_capex)
-        )
+        costs.append(CostInfo(name="Heat Pump", component="heat_pump", cost=capex_breakdown.heatpump_capex))
 
     ess_capex = capex_breakdown.ess_pcs_capex + capex_breakdown.ess_enclosure_capex + capex_breakdown.ess_enclosure_disposal
     if ess_capex > 0:
@@ -77,17 +109,22 @@ def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list
                 name="Energy Storage System",
                 component="energy_storage_system",
                 cost=ess_capex,
-                sub_components=[pcs_cost, enclosure_cost, enclosure_disposal, enclosure_disposal]
+                sub_components=[pcs_cost, enclosure_cost, enclosure_disposal, enclosure_disposal],
             )
         )
 
-    total_pv_capex = (capex_breakdown.pv_panel_capex + capex_breakdown.pv_roof_capex
-                      + capex_breakdown.pv_ground_capex + capex_breakdown.pv_BoP_capex)
+    total_pv_capex = (
+        capex_breakdown.pv_panel_capex
+        + capex_breakdown.pv_roof_capex
+        + capex_breakdown.pv_ground_capex
+        + capex_breakdown.pv_BoP_capex
+    )
     if total_pv_capex > 0:
         panel_capex = CostInfo(name="Panel", cost=capex_breakdown.pv_panel_capex)
         # for simplicity, combine ground_capex and roof_capex into a single installation line item
-        install_capex = CostInfo(name="Panel Installation",
-                                 cost=capex_breakdown.pv_ground_capex + capex_breakdown.pv_roof_capex)
+        install_capex = CostInfo(
+            name="Panel Installation", cost=capex_breakdown.pv_ground_capex + capex_breakdown.pv_roof_capex
+        )
         balance_of_plant = CostInfo(name="Balance of Plant", cost=capex_breakdown.pv_BoP_capex)
 
         costs.append(
@@ -95,7 +132,7 @@ def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list
                 name="Solar Panels",
                 component="solar_panels",
                 cost=total_pv_capex,
-                sub_components=[panel_capex, install_capex, balance_of_plant]
+                sub_components=[panel_capex, install_capex, balance_of_plant],
             )
         )
 
@@ -131,10 +168,12 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
     baseline = sim_result.baseline_metrics
 
     # we have to do an awkward conversion between two enums with the same values here
-    scenario_grade = Grade[
-        scenario.environmental_impact_grade.name] if scenario.environmental_impact_grade is not None else None
-    baseline_grade = Grade[
-        baseline.environmental_impact_grade.name] if baseline.environmental_impact_grade is not None else None
+    scenario_grade = (
+        Grade[scenario.environmental_impact_grade.name] if scenario.environmental_impact_grade is not None else None
+    )
+    baseline_grade = (
+        Grade[baseline.environmental_impact_grade.name] if baseline.environmental_impact_grade is not None else None
+    )
 
     return SimulationMetrics(
         # Comparison metrics
@@ -147,7 +186,6 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
         carbon_balance_scope_2=comp.carbon_balance_scope_2,
         carbon_balance_total=comp.combined_carbon_balance,
         carbon_cost=comp.carbon_cost,
-
         # Scenario Metrics
         total_gas_used=scenario.total_gas_used,
         total_electricity_imported=scenario.total_electricity_imported,
@@ -159,26 +197,20 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
         total_heat_shortfall=scenario.total_heat_shortfall,
         total_ch_shortfall=scenario.total_ch_shortfall,
         total_dhw_shortfall=scenario.total_dhw_shortfall,
-
         capex=scenario.total_capex,
         total_gas_import_cost=scenario.total_gas_import_cost,
         total_electricity_import_cost=scenario.total_electricity_import_cost,
         total_electricity_export_gain=scenario.total_electricity_export_gain,
-
         total_meter_cost=scenario.total_meter_cost,
         total_operating_cost=scenario.total_operating_cost,
         annualised_cost=scenario.total_annualised_cost,
         total_net_present_value=scenario.total_net_present_value,
-
         total_scope_1_emissions=scenario.total_scope_1_emissions,
         total_scope_2_emissions=scenario.total_scope_2_emissions,
         total_combined_carbon_emissions=scenario.total_combined_carbon_emissions,
-
         scenario_environmental_impact_score=scenario.environmental_impact_score,
         scenario_environmental_impact_grade=scenario_grade,
-
         scenario_capex_breakdown=convert_capex_breakdown_to_pydantic(sim_result.scenario_capex_breakdown),
-
         # Baseline Metrics
         baseline_gas_used=baseline.total_gas_used,
         baseline_electricity_imported=baseline.total_electricity_imported,
@@ -186,24 +218,19 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
         baseline_electricity_exported=baseline.total_electricity_exported,
         baseline_electricity_curtailed=baseline.total_electricity_curtailed,
         baseline_electricity_used=baseline.total_electricity_used,
-
         baseline_electrical_shortfall=baseline.total_electrical_shortfall,
         baseline_heat_shortfall=baseline.total_heat_shortfall,
         baseline_ch_shortfall=baseline.total_ch_shortfall,
         baseline_dhw_shortfall=baseline.total_dhw_shortfall,
-
         baseline_gas_import_cost=baseline.total_gas_import_cost,
         baseline_electricity_import_cost=baseline.total_electricity_import_cost,
         baseline_electricity_export_gain=baseline.total_electricity_export_gain,
-
         baseline_meter_cost=baseline.total_meter_cost,
         baseline_operating_cost=baseline.total_operating_cost,
         baseline_net_present_value=baseline.total_net_present_value,
-
         baseline_scope_1_emissions=baseline.total_scope_1_emissions,
         baseline_scope_2_emissions=baseline.total_scope_2_emissions,
         baseline_combined_carbon_emissions=baseline.total_combined_carbon_emissions,
-
         baseline_environmental_impact_score=baseline.environmental_impact_score,
         baseline_environmental_impact_grade=baseline_grade,
     )
