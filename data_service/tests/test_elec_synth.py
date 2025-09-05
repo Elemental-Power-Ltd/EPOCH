@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.dependencies import load_vae_2_0
+from app.dependencies import load_vae
 from app.internal.elec_meters import daily_to_hh_eload
 from app.internal.elec_meters.preprocessing import hh_to_square
 from app.internal.elec_meters.vae import VAE
@@ -20,7 +20,7 @@ from app.internal.gas_meters import parse_half_hourly
 @pytest.fixture(scope="class")
 def vae_model() -> VAE:
     """Load the VAE model."""
-    return load_vae_2_0()
+    return load_vae()
 
 
 @pytest.fixture(scope="class")
@@ -44,7 +44,6 @@ def rng() -> np.random.Generator:
     return np.random.default_rng(seed=int(np.pi * 2**32))
 
 
-@pytest.fixture(scope="class")
 def synthesised_eload_observed(
     vae_model: VAE, hh_df: HHDataFrame, daily_df: DailyDataFrame, rng: np.random.Generator
 ) -> HHDataFrame:
@@ -53,7 +52,6 @@ def synthesised_eload_observed(
     return daily_to_hh_eload(daily_df=daily_df, model=vae_model, target_hh_observed_df=square_df, rng=rng)
 
 
-@pytest.fixture(scope="class")
 def synthesised_eload_model_path(vae_model: VAE, daily_df: DailyDataFrame, rng: np.random.Generator) -> HHDataFrame:
     """Get a synthesised eload with the pretrained resids."""
     RESID_MODEL_PATH = Path(".", "models", "draft", "35 - trained - AH")
@@ -62,17 +60,17 @@ def synthesised_eload_model_path(vae_model: VAE, daily_df: DailyDataFrame, rng: 
 
 @pytest.fixture(scope="class")
 def synthesised_eload(
-    request: pytest.FixtureRequest, synthesised_eload_observed: HHDataFrame, synthesised_eload_model_path: HHDataFrame
+    request: pytest.FixtureRequest, vae_model: VAE, hh_df: HHDataFrame, daily_df: DailyDataFrame, rng: np.random.Generator
 ) -> HHDataFrame:
     """Create a synthesised eload depending on the mode.
 
     This is a bit of indirection to allow pytest to use fixtures as parametrizations.
     """
     if request.param == "observed":
-        return synthesised_eload_observed
+        return synthesised_eload_observed(vae_model=vae_model, hh_df=hh_df, daily_df=daily_df, rng=rng)
 
     if request.param == "model_path":
-        return synthesised_eload_model_path
+        return synthesised_eload_model_path(vae_model=vae_model, daily_df=daily_df, rng=rng)
 
     raise ValueError(f"Bad request param {request.param}")
 

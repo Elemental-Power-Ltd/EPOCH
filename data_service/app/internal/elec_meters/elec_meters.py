@@ -194,7 +194,7 @@ def daily_to_hh_eload(
     if resid_model_path is not None and target_hh_observed_df is not None:
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided both")
 
-    if resid_model_path:
+    if resid_model_path is not None:
         return daily_to_hh_eload_pretrained(
             daily_df=daily_df,
             model=model,
@@ -529,8 +529,10 @@ def daily_to_hh_eload_pretrained(
     #   - do this before adding noise to avoid overly scaling the noise
     timestamp_headers = pd.date_range("00:00", "23:30", freq="30min").time
     scaling_factors = target_daily_active_df["consumption_baselined"] / np.sum(vae_output_mean_np, axis=1)
+
     hh_active_approx_df = pd.DataFrame(
-        np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T + vae_output_mean_np * np.tile(scaling_factors, (48, 1)).T,
+        (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
+        + vae_output_mean_np * scaling_factors.to_numpy()[:, np.newaxis],
         columns=timestamp_headers,
         index=target_daily_active_df.index,
     )
@@ -548,6 +550,7 @@ def daily_to_hh_eload_pretrained(
     # load defaults for the residual trends, ARMA noise models, and the std devation of the daily data for active days
     # that was used to train these defaults
     # TODO (JSM 2025-08-06) Should we move all logic for loading residual models to .model_utils?
+    assert resid_model_path is not None
     assert resid_model_path.is_dir(), f"Resid model path {resid_model_path} is not a directory"
     default_hh_active_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_active.csv"))
     default_hh_inactive_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_inactive.csv"))
@@ -575,8 +578,9 @@ def daily_to_hh_eload_pretrained(
 
     target_active_mask = np.isin(target_hh_df.index, hh_active_approx_df.index).astype(bool)
     num_inactive, num_active = target_daily_inactive_df.shape[0], target_daily_active_df.shape[0]
-    target_hh_df[~target_active_mask] += np.tile(default_hh_inactive_residtrend_df, (num_inactive, 1))
-    target_hh_df[target_active_mask] += np.tile(default_hh_active_residtrend_df, (num_active, 1))
+
+    target_hh_df[~target_active_mask] += default_hh_inactive_residtrend_df.to_numpy()
+    target_hh_df[target_active_mask] += default_hh_active_residtrend_df.to_numpy()
 
     # Add noise from fitted ARMA distributions, incorporating heteroskedasticity
     # - first, if needed, scale the ARMA_scale_* parameters using the daily aggregate values for the target site
@@ -613,31 +617,37 @@ def daily_to_hh_eload_pretrained(
     active_scaling_factor = 1.0  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
     inactive_scaling_factor = 1.0  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
 
-    target_hh_active_baselined = target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+    target_hh_active_baselined = (
+        target_hh_df[target_active_mask] - target_daily_active_df["offsets"].to_numpy()[:, np.newaxis] / 48
+    )
     target_hh_active_baselined = target_hh_active_baselined.clip(
         (active_scaling_factor * hh_default_active_bc_min).values,
         (active_scaling_factor * hh_default_active_bc_max).values,
         axis=1,
     )
-    target_hh_active_baselined *= np.tile(
-        target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48, 1)
-    ).T
-    target_hh_df[target_active_mask] = target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
-
-    target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(
-        target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+    target_hh_active_baselined *= (
+        target_daily_active_df["consumption_baselined"].to_numpy()[:, np.newaxis]
+        / target_hh_active_baselined.sum(axis=1).to_numpy()[:, np.newaxis]
     )
+
+    target_hh_df[target_active_mask] = (
+        target_hh_active_baselined + (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
+    )
+
+    target_hh_inactive_baselined = target_hh_df[~target_active_mask] - (target_daily_inactive_df / 48).to_numpy(dtype=float)
     target_hh_inactive_baselined = target_hh_inactive_baselined.clip(
         (inactive_scaling_factor * hh_default_inactive_bc_min).values,
         (inactive_scaling_factor * hh_default_inactive_bc_max).values,
         axis=1,
     )
-    target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(
-        target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+
+    target_hh_df[~target_active_mask] = (
+        target_hh_inactive_baselined + (target_daily_inactive_df / 48).to_numpy(dtype=float)[:, 0][:, np.newaxis]
     )
-    target_hh_df[~target_active_mask] *= np.tile(
-        target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
-    ).T
+    target_hh_df[~target_active_mask] *= (
+        target_daily_inactive_df["consumption_kwh"].to_numpy()[:, np.newaxis]
+        / target_hh_df[~target_active_mask].sum(axis=1).to_numpy()[:, np.newaxis]
+    )
 
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     return HHDataFrame(
