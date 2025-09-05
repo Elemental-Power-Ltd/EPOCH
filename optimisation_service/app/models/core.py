@@ -98,19 +98,6 @@ class Site(BaseModel):
         return self
 
 
-class EndpointTask(Site):
-    optimiser: OptimiserTypes = Field(description="Optimiser name and hyperparameters.")
-    objectives: list[Metric] = Field(examples=[["carbon_cost"]], description="List of objectives to optimise for.")
-    created_at: AwareDatetime = Field(
-        default_factory=lambda: datetime.datetime.now(datetime.UTC),
-        description="The time this Task was created and added to the queue.",
-    )
-    client_id: str = Field(
-        examples=["demo"],
-        description="The database ID for a client, all lower case, joined by underscores.",
-    )
-
-
 class Task(BaseModel):
     name: str = Field(description="Human readable name for a portfolio task, e.g. 'Demonstration v1'.")
     optimiser: OptimiserTypes = Field(description="Optimiser name and hyperparameters.")
@@ -150,13 +137,15 @@ class Grade(StrEnum):
 
 class CostInfo(BaseModel):
     name: str = Field(examples=["Solar Panel"], description="Display name for this cost item.")
-    component: str | None = Field(examples=["solar_panel"],
-                                  description="Key of the EPOCH component type this cost belongs to.", default=None)
-    cost: float = Field(examples=[1200.0],
-                        description="The net cost of the item in pounds, including all sub_components minus any funding.")
+    component: str | None = Field(
+        examples=["solar_panel"], description="Key of the EPOCH component type this cost belongs to.", default=None
+    )
+    cost: float = Field(
+        examples=[1200.0], description="The net cost of the item in pounds, including all sub_components minus any funding."
+    )
     sub_components: list[CostInfo] = Field(
-        description="The sub-components that make up this cost item, or the empty list if there are none.",
-        default_factory=list)
+        description="The sub-components that make up this cost item, or the empty list if there are none.", default_factory=list
+    )
 
 
 class SimulationMetrics(BaseModel):
@@ -239,10 +228,8 @@ class SimulationMetrics(BaseModel):
     total_scope_2_emissions: float | None = Field(description="Total Scope 2 emissions (kg CO2e).", default=None)
     total_combined_carbon_emissions: float | None = Field(description="Scope 1 and Scope 2 emissions (kg CO2e).", default=None)
 
-    scenario_environmental_impact_score: int | None = Field(
-        description="environmental impact score based on SAP", default=None)
-    scenario_environmental_impact_grade: Grade | None = Field(
-        description="environmental impact grade (A-G)", default=None)
+    scenario_environmental_impact_score: int | None = Field(description="environmental impact score based on SAP", default=None)
+    scenario_environmental_impact_grade: Grade | None = Field(description="environmental impact grade (A-G)", default=None)
     scenario_capex_breakdown: list[CostInfo] | None = Field(description="Breakdown of scenario expenditure.", default=None)
 
     baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh).", default=None)
@@ -295,9 +282,11 @@ class SimulationMetrics(BaseModel):
         description="Baseline Scope 1 and Scope 2 emissions (kg CO2e).", default=None
     )
     baseline_environmental_impact_score: int | None = Field(
-        description="baseline environmental impact score based on SAP", default=None)
+        description="baseline environmental impact score based on SAP", default=None
+    )
     baseline_environmental_impact_grade: Grade | None = Field(
-        description="baseline environmental impact grade (A-G)", default=None)
+        description="baseline environmental impact grade (A-G)", default=None
+    )
 
 
 class SiteOptimisationResult(BaseModel):

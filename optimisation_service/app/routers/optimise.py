@@ -19,8 +19,6 @@ from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.queue import IQueue
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.core import (
-    EndpointTask,
-    Site,
     Task,
     TaskResponse,
 )
@@ -117,37 +115,6 @@ async def process_requests(queue: IQueue, http_client: HTTPClient) -> None:
             pass
         simulate_scenario.cache_clear()
         queue.mark_task_done(task)
-
-
-@router.post("/submit-task")
-async def submit_task(endpoint_task: EndpointTask, http_client: HttpClientDep, queue: QueueDep) -> TaskResponse:
-    """
-    Add optimisation task to queue.
-
-    Parameters
-    ----------
-    endpoint_task
-        Site optimisation task to be added to queue.
-    http_client
-        Asynchronous HTTP client to use for requests.
-    queue
-        Asyncio queue containing oustanding optimisation tasks.
-    """
-    site = Site(name=endpoint_task.site_data.site_id, site_range=endpoint_task.site_range, site_data=endpoint_task.site_data)
-    simulator_version = get_epoch_version()
-    epp_task = Task(
-        name=endpoint_task.name,
-        optimiser=endpoint_task.optimiser,
-        objectives=endpoint_task.objectives,
-        created_at=endpoint_task.created_at,
-        portfolio=[site],
-        client_id=endpoint_task.client_id,
-        portfolio_constraints={},
-        epoch_version=simulator_version,
-    )
-
-    response = await submit_portfolio(task=epp_task, http_client=http_client, queue=queue)
-    return response
 
 
 @router.post("/submit-portfolio-task")
