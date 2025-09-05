@@ -5,19 +5,19 @@ import logging
 import pathlib
 from collections.abc import Container
 from enum import StrEnum
-from typing import Any, Self, TypedDict, cast
+from typing import Any, Literal, Self, TypedDict, cast
 
 import joblib
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import statsmodels.api as sm
+import statsmodels.api as sm  # type: ignore
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import OptimizeResult, minimize
 from sklearn.base import TransformerMixin  # type: ignore
 from sklearn.preprocessing import MinMaxScaler, StandardScaler  # type: ignore
 from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction  # type: ignore
-from statsmodels.tsa.api import ARIMA, ArmaProcess
+from statsmodels.tsa.api import ARIMA, ArmaProcess  # type: ignore
 
 from app.internal.epl_typing import DailyDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
@@ -958,7 +958,7 @@ def fit_residual_model(
     return trend_as_df, logvar_lm, ARMA_model, ARMA_scale, min_detrended_resids, max_detrended_resids
 
 
-def fit_pooled_spline(resids: pd.DataFrame, smooth_factor: float | None = None, order: int = 3) -> pd.Series:
+def fit_pooled_spline(resids: pd.DataFrame, smooth_factor: float | None = None, order: Literal[1, 2, 3, 4, 5] = 3) -> pd.Series:
     """
     Fit a pooled penalised spline f(t) to input residuals.
 
@@ -1007,7 +1007,7 @@ def fit_pooled_spline(resids: pd.DataFrame, smooth_factor: float | None = None, 
 def stabilise_variance(
     ts: pd.DataFrame,
     structure_list: list[pd.DataFrame],
-) -> tuple[pd.Series, sm.OLS]:
+) -> tuple[pd.DataFrame, sm.OLS]:
     """
     Stabilise the variance of a heteroskedastic time series.
 
@@ -1034,7 +1034,7 @@ def stabilise_variance(
     var_t_est = ts.var(axis=0, ddof=1).to_numpy()
     log_var = np.log(np.maximum(var_t_est, np.finfo(float).eps))
 
-    X = pd.DataFrame(index=range(48))
+    X: pd.DataFrame | npt.NDArray = pd.DataFrame(index=range(48))
     for structure in structure_list:
         S = structure.mean(axis=0).to_numpy()  # regressing against S captures level-dependent variance
         dS = np.diff(S, prepend=S[0])  # regressing against abs(dS) captures bursts during sudden structural changes

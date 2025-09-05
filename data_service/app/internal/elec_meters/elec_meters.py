@@ -293,7 +293,8 @@ def daily_to_hh_eload_observed(
     timestamp_headers = pd.date_range("00:00", "23:30", freq="30min").time
     scaling_factors = target_daily_active_df["consumption_baselined"] / np.sum(vae_output_mean_np, axis=1)
     hh_active_approx_df = pd.DataFrame(
-        np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T + vae_output_mean_np * np.tile(scaling_factors, (48, 1)).T,
+        (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
+        + vae_output_mean_np * scaling_factors.to_numpy()[:, np.newaxis],
         columns=timestamp_headers,
         index=target_daily_active_df.index,
     )
@@ -348,7 +349,7 @@ def daily_to_hh_eload_observed(
     scaling_factors_obs = daily_active_baselined / np.sum(vae_obs_mean, axis=1)[:, np.newaxis]
     # force an extra axis to satisfy np broadcasting rules
     target_hh_active_approx_df = pd.DataFrame(
-        np.tile(target_hh_obs_daily_active["offsets"] / 48, (48, 1)).T + vae_obs_mean * np.tile(scaling_factors_obs, (1, 48)),
+        (target_hh_obs_daily_active["offsets"] / 48).to_numpy()[:, np.newaxis] + vae_obs_mean * scaling_factors_obs,
         columns=timestamp_headers,
         index=target_hh_obs_daily_active.index,
     )
@@ -400,6 +401,7 @@ def daily_to_hh_eload_observed(
         for i in range(num_inactive)
     ])
     # - scale by fitted heteroskedasticity factors
+    assert var_model_inactive is not None
     var_factors_inactive = np.exp(var_model_inactive.predict())
     scaled_sims = np.sqrt(var_factors_inactive) * sims
 
@@ -412,30 +414,40 @@ def daily_to_hh_eload_observed(
         ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
     ])
 
+    assert var_model_active is not None
     var_factors_active = np.exp(var_model_active.predict())
     scaled_sims = np.sqrt(var_factors_active) * sims
     target_hh_df[target_active_mask] += np.clip(scaled_sims, min_noise_active, max_noise_active)
 
     # perform a final clipping of the _baselined_ simulations to keep all hh simulations within the observed/default bounds
     # also scale the clipped baselined sims to ensure they match the observed daily aggregates
-    target_hh_active_baselined = target_hh_df[target_active_mask] - np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
+    target_hh_active_baselined = (
+        target_hh_df[target_active_mask] - (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
+    )
     target_hh_active_baselined = target_hh_active_baselined.clip(hh_obs_active_min, hh_obs_active_max, axis=1)
-    target_hh_active_baselined *= np.tile(
-        target_daily_active_df["consumption_baselined"] / target_hh_active_baselined.sum(axis=1), (48, 1)
-    ).T
-    target_hh_df[target_active_mask] = target_hh_active_baselined + np.tile(target_daily_active_df["offsets"] / 48, (48, 1)).T
-
-    target_hh_inactive_baselined = target_hh_df[~target_active_mask] - np.tile(
-        target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
+    target_hh_active_baselined *= (
+        target_daily_active_df["consumption_baselined"].to_numpy()[:, np.newaxis]
+        / target_hh_active_baselined.sum(axis=1).to_numpy()[:, np.newaxis]
     )
-    target_hh_inactive_baselined = target_hh_inactive_baselined.clip(hh_obs_inactive_min, hh_obs_inactive_max, axis=1)
-    target_hh_df[~target_active_mask] = target_hh_inactive_baselined + np.tile(
-        target_daily_inactive_df.to_numpy(dtype=float) / 48, (1, 48)
-    )
-    target_hh_df[~target_active_mask] *= np.tile(
-        target_daily_inactive_df["consumption_kwh"] / target_hh_df[~target_active_mask].sum(axis=1), (48, 1)
-    ).T
 
+    target_hh_df[target_active_mask] = (
+        target_hh_active_baselined + (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
+    )
+
+    target_hh_inactive_baselined = target_hh_df[~target_active_mask] - (target_daily_inactive_df / 48).to_numpy(dtype=float)
+    target_hh_inactive_baselined = target_hh_inactive_baselined.clip(
+        hh_obs_inactive_min,
+        hh_obs_inactive_max,
+        axis=1,
+    )
+
+    target_hh_df[~target_active_mask] = (
+        target_hh_inactive_baselined + (target_daily_inactive_df / 48).to_numpy(dtype=float)[:, 0][:, np.newaxis]
+    )
+    target_hh_df[~target_active_mask] *= (
+        target_daily_inactive_df["consumption_kwh"].to_numpy()[:, np.newaxis]
+        / target_hh_df[~target_active_mask].sum(axis=1).to_numpy()[:, np.newaxis]
+    )
     start_ts = pd.date_range(initial_start_ts, final_end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
     return HHDataFrame(
         pd.DataFrame(
@@ -618,7 +630,7 @@ def daily_to_hh_eload_pretrained(
     inactive_scaling_factor = 1.0  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
 
     target_hh_active_baselined = (
-        target_hh_df[target_active_mask] - target_daily_active_df["offsets"].to_numpy()[:, np.newaxis] / 48
+        target_hh_df[target_active_mask] - (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
     )
     target_hh_active_baselined = target_hh_active_baselined.clip(
         (active_scaling_factor * hh_default_active_bc_min).values,
@@ -706,7 +718,7 @@ def monthly_to_hh_eload(
 
 
 def generate_approx_daily_profiles(
-    VAE_model: VAE, consumption_scaled: torch.Tensor, rng: torch.Generator | None = None
+    VAE_model: VAE, consumption_scaled: torch.Tensor | npt.NDArray, rng: torch.Generator | None = None
 ) -> npt.NDArray[np.floating]:
     """
     Use the decoder component of a trained VAE to generate approximate intraday electricity demand profiles.
@@ -740,7 +752,7 @@ def generate_approx_daily_profiles(
     VAE_model.eval()
     # Start off with an empty set of outputs with them all "problematic"
     vae_output = np.empty([consumption_scaled.shape[0], 48])
-    problem_inds = list(range(consumption_scaled.shape[0]))
+    problem_inds = np.array(list(range(consumption_scaled.shape[0])))
     while len(problem_inds) > 5:
         with torch.no_grad():
             # Sample from the latent distribution, MV Gaussian with mean 0 and variance 1.
