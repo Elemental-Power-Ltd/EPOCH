@@ -22,22 +22,6 @@ from ..epl_typing import Jsonable
 logger = logging.getLogger("default")
 
 
-def typename(x: Any) -> str:
-    """
-    Get a string representation of the name of a class.
-
-    Parameters
-    ----------
-    x
-        Any python object
-
-    Returns
-    -------
-        String of the name, e.g. typename(1) == "int"
-    """
-    return type(x).__name__
-
-
 def hour_of_year(ts: pd.Timestamp) -> float:
     """
     Convert a given timestamp to being the indexed hour of year (starting at 1).
@@ -181,26 +165,6 @@ def split_into_sessions[T: (float, int, datetime.datetime, datetime.date, pd.Tim
     # Make sure we get the last one as well!
     sessions.append(curr_session)
     return sessions
-
-
-def add_epoch_fields(non_epoch_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Add EPOCH date and time columns to a given dataframe.
-
-    EPOCH currently needs the columns 'Date', 'StartTime' and 'HourOfYear',
-    although it doesn't read all of them.
-    This may change in future, so the additions are grouped together here.
-
-    """
-    assert isinstance(non_epoch_df.index, pd.DatetimeIndex), (
-        f"Dataframes for EPOCH must have a DateTimeIndex but got {type(non_epoch_df.index)}"
-    )
-
-    non_epoch_df["Date"] = non_epoch_df.index.strftime("%d-%b")
-    non_epoch_df["StartTime"] = non_epoch_df.index.strftime("%H:%M")
-    non_epoch_df["HourOfYear"] = non_epoch_df.index.map(hour_of_year)
-
-    return non_epoch_df
 
 
 def symlog[T: (float, npt.NDArray[np.floating])](x: T, c: float = 1.0 / np.log(10.0)) -> T:
