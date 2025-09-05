@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
 
 from app.dependencies import HTTPClient
 from app.internal.bayesian.bayesian import Bayesian
@@ -11,18 +10,17 @@ from app.internal.epoch_utils import check_epoch_version
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.queue import IQueue
+from app.models.algorithms import Algorithm
+from app.models.optimisers import OptimiserStr
 
 logger = logging.getLogger("default")
 
-
-class OptimiserFunc(Enum):
-    """Mapping of optimiser types to optimiser class."""
-
-    # TODO (2025-08-08 MHJB): should this be a dict instead? feels weird as an enum.
-    NSGA2 = NSGA2
-    SeparatedNSGA2xNSGA2 = SeparatedNSGA2xNSGA2
-    SeparatedNSGA2 = SeparatedNSGA2
-    Bayesian = Bayesian
+_ALGORITHM_MAP: dict[OptimiserStr, type[Algorithm]] = {
+    OptimiserStr.NSGA2: NSGA2,
+    OptimiserStr.SeparatedNSGA2xNSGA2: SeparatedNSGA2xNSGA2,
+    OptimiserStr.SeparatedNSGA2: SeparatedNSGA2,
+    OptimiserStr.Bayesian: Bayesian,
+}
 
 
 async def process_tasks(queue: IQueue, http_client: HTTPClient) -> None:
@@ -44,7 +42,7 @@ async def process_tasks(queue: IQueue, http_client: HTTPClient) -> None:
         try:
             logger.info(f"Optimising {task.task_id}.")
             loop = asyncio.get_event_loop()
-            optimiser = OptimiserFunc[task.optimiser.name].value(**dict(task.optimiser.hyperparameters))
+            optimiser = _ALGORITHM_MAP[task.optimiser.name](**dict(task.optimiser.hyperparameters))
             with ThreadPoolExecutor() as executor:
                 results = await loop.run_in_executor(
                     executor,
