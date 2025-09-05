@@ -1,7 +1,5 @@
 import React, {useEffect} from 'react';
-import './App.css';
 import {Tab, Tabs, Box, Select, SelectChangeEvent, MenuItem, useMediaQuery} from '@mui/material';
-import {ThemeProvider} from "@mui/material/styles";
 
 import OptimisationContainer from "./Containers/Optimise";
 import ResultsContainer from "./Containers/Results";
@@ -13,11 +11,11 @@ import NotALogin from "./Components/Login/NotALogin";
 import {useEpochStore} from "./State/Store";
 import {listClients, listSites} from "./endpoints";
 import {BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate} from "react-router-dom";
-import {getAppTheme} from "./Colours";
+
+import AppTheme from "./AppTheme";
+import DeveloperSettings from "./Components/Settings/DeveloperSettings.tsx";
 
 function App() {
-    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-
     const selectedClient = useEpochStore((state) => state.global.selectedClient);
     const availableClients = useEpochStore((state) => state.global.availableClients);
 
@@ -65,9 +63,19 @@ function App() {
         }
     };
 
+    const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
+
+    const [isDarkMode, setIsDarkMode] = React.useState(systemPrefersDark);
+    const [isInformedEmbed, setIsInformedEmbed] = React.useState(false);
+    const [devOpen, setDevOpen] = React.useState(false);
+
+    const handleEpochClick: React.MouseEventHandler<HTMLHeadingElement> = (e) => {
+        if (e.detail === 3) setDevOpen(true); // triple-click
+    };
+
     return (
         <BrowserRouter>
-            <ThemeProvider theme={getAppTheme(prefersDarkMode)}>
+            <AppTheme isDarkMode={isDarkMode} isInformedEmbed={isInformedEmbed}>
                 <div className="fixed-tabs">
                     <Box
                         display="flex"
@@ -89,8 +97,7 @@ function App() {
                     </Box>
                 </div>
 
-                <h1>Epoch</h1>
-
+                <h1 onClick={handleEpochClick}>Epoch</h1>
 
                 {noClient ? <NotALogin/> :
                     <Box className="content">
@@ -108,7 +115,17 @@ function App() {
                         </Routes>
                     </Box>
                 }
-            </ThemeProvider>
+
+
+                <DeveloperSettings
+                  open={devOpen}
+                  onClose={() => setDevOpen(false)}
+                  isDarkMode={isDarkMode}
+                  setIsDarkMode={setIsDarkMode}
+                  isInformedEmbed={isInformedEmbed}
+                  setIsInformedEmbed={setIsInformedEmbed}
+                />
+            </AppTheme>
         </BrowserRouter>
     );
 }

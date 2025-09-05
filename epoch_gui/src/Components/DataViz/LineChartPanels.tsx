@@ -1,10 +1,9 @@
 import React, {useState} from "react";
 // @ts-ignore
 import Plot from "react-plotly.js"
-import {FormControl, InputLabel, Select, MenuItem, useMediaQuery, ListSubheader} from "@mui/material"
+import {FormControl, InputLabel, Select, MenuItem, ListSubheader, useTheme} from "@mui/material"
 
 import {color_map, lineChartDefaults} from "./GraphConfig";
-import {getAppTheme} from "../../Colours";
 import {ensureContrastHue} from "./GraphUtils";
 import {DataAnnotationMap} from "./TimeSeriesAnnotations";
 
@@ -44,12 +43,17 @@ export const LineChartPanels: React.FC<LineChartPanelProps> = ({
         );
     };
 
-    // we're using the theme's paper colour for both the plot and paper parts to the plot
-    // (this is closer to what plotly does by default and looks a bit better)
-    const isDarkMode = useMediaQuery('(prefers-color-scheme: dark)')
-    const theme = getAppTheme(isDarkMode);
-    const paper_bgcolor = theme.palette.background.paper;
-    const plot_bgcolor = theme.palette.background.paper;
+
+    const theme = useTheme();
+    const isDarkMode = theme.palette.mode === 'dark';
+
+    // Conditional logic to use the paper colour in dark mode and the default colour in light mode
+    const plot_bgcolor = isDarkMode
+        ? theme.palette.background.paper
+        : theme.palette.background.default;
+    const paper_bgcolor = isDarkMode
+        ? theme.palette.background.paper
+        : theme.palette.background.default;
 
 
     const buildPlotData = (
@@ -113,6 +117,7 @@ export const LineChartPanels: React.FC<LineChartPanelProps> = ({
             showlegend: false,
             paper_bgcolor: paper_bgcolor,
             plot_bgcolor: plot_bgcolor,
+            font: {color: theme.palette.text.primary},
         };
     };
 

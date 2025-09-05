@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from "react";
-import {Alert, Button} from '@mui/material';
+import {Alert, Button, Collapse} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import dayjs, {Dayjs} from 'dayjs';
 
 import {NonNullReportDataType, ReportDataType, SimulationResult} from "../../Models/Endpoints";
@@ -12,14 +13,15 @@ import {removeEmptyVectors} from "./GraphUtils";
 import {DataAnnotationMap, getAnnotatedSeries} from "./TimeSeriesAnnotations";
 
 interface DataVizProps {
-    result: SimulationResult
+    result: SimulationResult;
+    // We present slightly different styling for the Informed embed
+    isInformedEmbed?: boolean;
 }
 
-const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
+const DataVizContainer: React.FC<DataVizProps> = ({ result, isInformedEmbed = false }) => {
     if (result.report_data === null) {
         return <Alert severity="error">Result contains no time series!</Alert>
     }
-
 
     const reportData = removeEmptyVectors(getNonNullReportData(result.report_data));
 
@@ -36,6 +38,10 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
 
     const fullTimeSeries = getAnnotatedSeries(result.task_data, result.site_data!, reportData);
     const [rangedData, setRangedData] = useState<DataAnnotationMap>(fullTimeSeries);
+
+    // EPOCH GUI shows line charts by default, Informed Embed does not
+    const [embedOpen, setEmbedOpen] = useState(false);
+    const showLineCharts = isInformedEmbed ? embedOpen : true;
 
     // Initial states - variable for reacting to browser window size
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -80,7 +86,7 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
 
 
     return (
-        <div style={{//border: '2px dotted rgb(96 139 168)',
+        <div style={{
             display: 'flex', flexDirection: 'column',
             margin: '1em 0 0 0', width: '100%', alignItems: 'center', justifySelf: 'center',
             boxSizing: 'border-box'
@@ -96,7 +102,36 @@ const DataVizContainer: React.FC<DataVizProps> = ({result}) => {
             />
 
             <StackedBarChart rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth}/>
-            <LineChartPanels rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth}/>
+
+            {isInformedEmbed && (
+                <Button
+                    variant="text"
+                    onClick={() => setEmbedOpen(v => !v)}
+                    startIcon={
+                        <ExpandMoreIcon
+                            style={{
+                                transform: showLineCharts ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 200ms'
+                            }}
+                        />
+                    }
+                    aria-expanded={showLineCharts}
+                    aria-controls="line-chart-panels"
+                    style={{ marginTop: '0.5em' }}
+                >
+                    {showLineCharts ? 'Hide line plots' : 'Show line plots'}
+                </Button>
+            )}
+
+            {isInformedEmbed ? (
+                <Collapse in={showLineCharts} unmountOnExit>
+                    <div id="line-chart-panels">
+                        <LineChartPanels rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth} />
+                    </div>
+                </Collapse>
+            ) : (
+                <LineChartPanels rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth} />
+            )}
 
             <Button
                 variant="outlined"

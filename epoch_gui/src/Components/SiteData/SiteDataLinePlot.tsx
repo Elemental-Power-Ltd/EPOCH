@@ -1,8 +1,7 @@
 import React from "react";
 // @ts-ignore
 import Plot from "react-plotly.js"
-import {Box, Grid, useMediaQuery} from "@mui/material";
-import {getAppTheme} from "../../Colours";
+import {Box, Grid, useTheme} from "@mui/material";
 
 interface yEntry {
     name: string,
@@ -19,10 +18,16 @@ interface SiteDataLinePlotProps {
 export const SiteDataLinePlot: React.FC<SiteDataLinePlotProps> = (
     {title, xData, yData, yLabel}) => {
 
-    const isDarkMode = useMediaQuery('(prefers-color-scheme: dark)')
-    const theme = getAppTheme(isDarkMode);
-    const paper_bgcolor = theme.palette.background.paper;
-    const plot_bgcolor = theme.palette.background.paper;
+    const theme = useTheme();
+    const isDarkMode = theme.palette.mode === 'dark';
+
+    // Conditional logic to use the paper colour in dark mode and the default colour in light mode
+    const plot_bgcolor = isDarkMode
+        ? theme.palette.background.paper
+        : theme.palette.background.default;
+    const paper_bgcolor = isDarkMode
+        ? theme.palette.background.paper
+        : theme.palette.background.default;
 
     return (
         <Grid item xs={12} md={6}>
@@ -60,6 +65,7 @@ export const SiteDataLinePlot: React.FC<SiteDataLinePlotProps> = (
                             r: 20,
                             b: 60  // bottom margin prevent the x-axis overlapping with the chart
                         },
+                        font: {color: theme.palette.text.primary},
                     }}
                     useResizeHandler={true}
                     style={{width: "100%", height: "100%"}}

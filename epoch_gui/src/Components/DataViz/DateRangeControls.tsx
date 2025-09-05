@@ -89,7 +89,7 @@ export const DateRangeControls: React.FC<DateRangeControlProps> = (
             </Grid>
 
             {/* Buttons to add/subtract 1 day/month */}
-            <Grid item xs={12}>
+            <Grid item xs={12} container justifyContent="center">
                 <Tooltip title="Back 1 Month">
                     <IconButton
                         aria-label="subtract-month"

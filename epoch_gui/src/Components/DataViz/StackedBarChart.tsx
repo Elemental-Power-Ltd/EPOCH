@@ -1,7 +1,7 @@
 import React, {useState} from "react";
 // @ts-ignore
 import Plot from "react-plotly.js"
-import {FormControl, InputLabel, Select, MenuItem, useMediaQuery} from "@mui/material"
+import {FormControl, InputLabel, Select, MenuItem, useTheme} from "@mui/material"
 
 import {
     color_map,
@@ -20,7 +20,6 @@ import {
     stackbarGroups,
     StackbarOption,
 } from "./GraphConfig";
-import {getAppTheme} from "../../Colours";
 import {DataAnnotationMap} from "./TimeSeriesAnnotations";
 
 interface StackedBarChartProps {
@@ -33,7 +32,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
     rangedData, xValues, windowWidth
 }) => {
 
-    const [selectedStackbarGroups, setSelectedStackbarGroups] = useState<StackbarOption>('all');
+    const [selectedStackbarGroups, setSelectedStackbarGroups] = useState<StackbarOption>('elec');
 
     // Remove any entries that aren't in default lists; change sign of negative data
     const filteredAndRangedData = Object.fromEntries(
@@ -229,13 +228,16 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
     }
 
 
-    // we're using the theme's paper colour for both the plot and paper parts to the plot
-    // (this is closer to what plotly does by default and looks a bit better)
-    const isDarkMode = useMediaQuery('(prefers-color-scheme: dark)')
-    const theme = getAppTheme(isDarkMode);
-    const paper_bgcolor = theme.palette.background.paper;
-    const plot_bgcolor = theme.palette.background.paper;
+    const theme = useTheme();
+    const isDarkMode = theme.palette.mode === 'dark';
 
+    // Conditional logic to use the paper colour in dark mode and the default colour in light mode
+    const plot_bgcolor = isDarkMode
+        ? theme.palette.background.paper
+        : theme.palette.background.default;
+    const paper_bgcolor = isDarkMode
+        ? theme.palette.background.paper
+        : theme.palette.background.default;
 
     const layout = {
         title: `Half-hourly energy balances across the site`,
@@ -268,6 +270,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
         height: windowWidth * 0.95 * 0.4, // Adjust height as needed
         paper_bgcolor: paper_bgcolor,
         plot_bgcolor: plot_bgcolor,
+        font: {color: theme.palette.text.primary},
     }
 
 
