@@ -140,11 +140,11 @@ class CustomPymooNSGA2(Pymoo_NSGA2):
                 self.pop_size += max(1, int(self.pop_size_incr_scalar * self.pop_size))
                 self.n_offsprings += max(1, int(self.pop_size_incr_scalar * self.n_offsprings))
 
-                logger.warning(
-                    "The pop size + number of offspring has reached the max number of individuals permitted,"
-                    f"capping the pop size and number of offspring to {self.pop_size} and {self.n_offsprings} respectively."
-                )
                 if self.pop_size + self.n_offsprings > MAX_NUMBER_INDIVIDUALS:
+                    logger.warning(
+                        "The pop size + number of offspring has reached the max number of individuals permitted,"
+                        f"capping the pop size and number of offspring to {self.pop_size} and {self.n_offsprings} respectively."
+                    )
                     self.pop_size = int(self.pop_size_perc * MAX_NUMBER_INDIVIDUALS)
                     self.n_offsprings = int(MAX_NUMBER_INDIVIDUALS - self.pop_size)
 
