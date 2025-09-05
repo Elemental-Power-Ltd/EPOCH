@@ -127,6 +127,24 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
         format: fmtEnergy,
         color: shortfallColour,
     },
+    total_heat_load: {
+        key: "total_heat_load",
+        label: "Heat Load",
+        icon: "Gas",
+        format: fmtEnergy
+    },
+    total_dhw_load: {
+        key: "total_dhw_load",
+        label: "DHW Load",
+        icon: "Gas",
+        format: fmtEnergy
+    },
+    total_ch_load: {
+        key: "total_ch_load",
+        label: "CH Load",
+        icon: "Gas",
+        format: fmtEnergy
+    },
     total_heat_shortfall: {
         key: "total_heat_shortfall",
         label: "Heat Shortfall",
@@ -214,6 +232,24 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
         label: "Baseline Electrical Shortfall",
         icon: "Electricity",
         format: fmtEnergy,
+    },
+    baseline_heat_load: {
+        key: "baseline_heat_load",
+        label: "Baseline Heat Load",
+        icon: "Gas",
+        format: fmtEnergy
+    },
+    baseline_dhw_load: {
+        key: "baseline_dhw_load",
+        label: "Baseline DHW Load",
+        icon: "Gas",
+        format: fmtEnergy
+    },
+    baseline_ch_load: {
+        key: "baseline_ch_load",
+        label: "Baseline CH Load",
+        icon: "Gas",
+        format: fmtEnergy
     },
     baseline_heat_shortfall: {
         key: "baseline_heat_shortfall",

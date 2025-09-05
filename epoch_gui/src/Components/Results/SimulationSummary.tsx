@@ -83,6 +83,24 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           "total_dhw_shortfall",
       ]
 
+      const scenarioHeat: MetricKey[] = [
+          "total_heat_load",
+          "total_dhw_load",
+          "total_ch_load",
+      ]
+
+      const baselineHeat: MetricKey[] = [
+          "baseline_heat_load",
+          "baseline_dhw_load",
+          "baseline_ch_load",
+      ]
+
+      const heatOnlyShortfall: MetricKey[] = [
+          "total_heat_shortfall",
+          "total_dhw_shortfall",
+          "total_ch_shortfall",
+      ]
+
       const scenarioMeter: MetricKey[] = [
           "total_gas_import_cost",
           "total_electricity_import_cost",
@@ -169,14 +187,14 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
         <Box>
           {tabValue === 0 && (renderTab([overviewCarbon, overviewFinancial]))}
           {tabValue === 1 && (renderTab([scenarioEnergy, baselineEnergy, shortfalls]))}
-          {tabValue === 2 && (renderTab([scenarioMeter, baselineMeter]))}
-          {tabValue === 3 && (renderTab([financial1, financial2]))}
-          {tabValue === 4 && (renderTab([scenarioCarbon, baselineCarbon]))}
-          {tabValue === 5 && (renderCapexBreakdown())}
+          {tabValue === 2 && (renderTab([scenarioHeat, baselineHeat, heatOnlyShortfall]))}
+          {tabValue === 3 && (renderTab([scenarioMeter, baselineMeter]))}
+          {tabValue === 4 && (renderTab([financial1, financial2]))}
+          {tabValue === 5 && (renderTab([scenarioCarbon, baselineCarbon]))}
+          {tabValue === 6 && (renderCapexBreakdown())}
 
-
-          {tabValue === 6 && (<TaskDataViewer data={scenario!}/>)}
-          {tabValue === 7 && (<TaskDataViewer data={baseline!}/>)}
+          {tabValue === 7 && (<TaskDataViewer data={scenario!}/>)}
+          {tabValue === 8 && (<TaskDataViewer data={baseline!}/>)}
         </Box>
       )
     }
@@ -192,6 +210,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
         <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
           <Tab label={"Overview"}/>
           <Tab label={"Energy"}/>
+          <Tab label={"Heat"}/>
           <Tab label={"Meter"}/>
           <Tab label={"Financial"}/>
           <Tab label={"Carbon"}/>

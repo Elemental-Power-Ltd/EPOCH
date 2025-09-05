@@ -68,8 +68,11 @@ export interface SiteMetrics {
     total_electricity_exported?: number;
     total_electricity_curtailed?: number;
     total_electricity_used?: number;
-
     total_electrical_shortfall?: number;
+
+    total_heat_load?: number;
+    total_dhw_load?: number;
+    total_ch_load?: number;
     total_heat_shortfall?: number;
     total_ch_shortfall?: number;
     total_dhw_shortfall?: number;
@@ -99,8 +102,11 @@ export interface SiteMetrics {
     baseline_electricity_exported?: number;
     baseline_electricity_curtailed?: number;
     baseline_electricity_used?: number;
-
     baseline_electrical_shortfall?: number;
+
+    baseline_heat_load?: number;
+    baseline_dhw_load?: number;
+    baseline_ch_load?: number;
     baseline_heat_shortfall?: number;
     baseline_ch_shortfall?: number;
     baseline_dhw_shortfall?: number;

@@ -50,6 +50,8 @@ const staticAnnotationsMap: AnnotationMap = {
     "CH_shortfall": {name: "CH Shortfall", units: "kWh", type: "Output"},
     "DHW_Shortfall": {name: "DHW Shortfall", units: "kWh", type: "Output"},
     "Heatload": {name: "Heat Load", units: "kWh", type: "Output"},
+    "CH_demand": {name: "CH Demand", units: "kWh", type: "Output"},
+    "DHW_demand": {name: "DHW Demand", units: "kWh", type: "Output"},
     "GasCH_load": {name: "Gas CH Load", units: "kWh", type: "Output"},
 
     // Input (fields in SiteData)

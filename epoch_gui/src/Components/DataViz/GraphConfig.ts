@@ -23,6 +23,8 @@ export const color_map = {
     'Data_centre_available_hot_heat': ' #edd980', // Yellow ("Free heat" in M-VEST)
     'GasCH_load':                   ' #ff6347', // *Tomato red 
     'Heatload':                     ' #964B00', // Brown-red (as in M-VEST)
+    'CH_demand':                    ' #964B00', // Brown-red (copying Heatload)
+    'DHW_demand':                   ' #964B00', // Brown-red (copying Heatload)
     'Heat_shortfall':               ' #ff0000', // Red (as in M-VEST)
     'CH_shortfall':                 ' #c70039',
     'DHW_Shortfall':                ' #ff5733',
