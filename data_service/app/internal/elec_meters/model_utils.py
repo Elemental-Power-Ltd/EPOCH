@@ -141,16 +141,14 @@ class CustomMinMaxScaler(MinMaxScaler):
         X = np.asarray(X)
         if self.axis == 1:
             return cast(npt.NDArray[np.floating], (X.T * self.scale_ + self.min_).T)
-        else:
-            return cast(npt.NDArray[np.floating], X * self.scale_ + self.min_)
+        return cast(npt.NDArray[np.floating], X * self.scale_ + self.min_)
 
     def inverse_transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Perform the inverse transformation on the data using the custom-fitted MinMaxScaler."""
         X = np.asarray(X)
         if self.axis == 1:
             return cast(npt.NDArray[np.floating], ((X.T - self.min_) / self.scale_).T)
-        else:
-            return cast(npt.NDArray[np.floating], (X - self.min_) / self.scale_)
+        return cast(npt.NDArray[np.floating], (X - self.min_) / self.scale_)
 
     def fit_transform(
         self, X: npt.NDArray[np.floating], y: npt.NDArray[np.floating] | None = None, **fit_params: dict
@@ -444,15 +442,15 @@ def allocate_active_offsets(
     """
     match method:
         case OffsetMethodEnum.MinWeekly:
-            active_daily_offset = handle_offsets_min_weekly(active_daily, inactive_daily)
+            return handle_offsets_min_weekly(active_daily, inactive_daily)
         case OffsetMethodEnum.Recent:
-            active_daily_offset = handle_offsets_recent(active_daily, inactive_daily)
+            return handle_offsets_recent(active_daily, inactive_daily)
         case OffsetMethodEnum.RecentOrNext:
-            active_daily_offset = handle_offsets_recent_or_next(active_daily, inactive_daily)
+            return handle_offsets_recent_or_next(active_daily, inactive_daily)
         case OffsetMethodEnum.DetectChgpt:
-            active_daily_offset = handle_offsets_chgpt(active_daily, inactive_daily)
+            return handle_offsets_chgpt(active_daily, inactive_daily)
 
-    return active_daily_offset
+    raise ValueError(f"Bad value for offset method: {method}")
 
 
 def handle_offsets_min_weekly(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> npt.NDArray[np.floating]:
