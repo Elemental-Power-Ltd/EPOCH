@@ -15,6 +15,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pydantic_core._pydantic_core import ValidationError
 
+from app.routers.heating_load.phpp import list_phpp
+
 from ..dependencies import DatabaseDep, DatabasePoolDep
 from ..internal.utils.uuid import uuid7
 from ..models.client_data import SolarLocation
@@ -60,6 +62,16 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
     -------
     None
     """
+    if baseline.building is not None and baseline.building.floor_area is None:
+        all_phpps = await list_phpp(site_id=site_id, pool=pool)
+        if all_phpps:
+            latest_phpp = max(all_phpps, key=lambda x: x.created_at)
+            logger.warning(f"No floor area provided for {site_id.site_id}, and found a PHPP with ID {latest_phpp.structure_id}")
+            latest_floor_area = latest_phpp.floor_area
+            baseline.building.floor_area = latest_floor_area
+        else:
+            logger.warning(f"No floor area provided for {site_id.site_id}, and couldn't find any PHPPs")
+
     try:
         await pool.execute(
             """
@@ -346,8 +358,7 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
                 coordinates,
                 address,
                 epc_lmk,
-                dec_lmk,
-                floor_area)
+                dec_lmk)
             VALUES (
                 $1,
                 $2,
@@ -356,8 +367,7 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
                 $5,
                 $6,
                 $7,
-                $8,
-                $9)""",
+                $8)""",
             site_data.client_id,
             site_data.site_id,
             site_data.name,
@@ -366,7 +376,6 @@ async def add_site(site_data: SiteData, conn: DatabaseDep) -> tuple[SiteData, st
             site_data.address,
             site_data.epc_lmk,
             site_data.dec_lmk,
-            site_data.floor_area,
         )
         logger.info(f"Inserted client {site_data.client_id} with return status {status}")
     except asyncpg.exceptions.UniqueViolationError as ex:
@@ -510,6 +519,7 @@ async def add_solar_locations(location: SolarLocation, pool: DatabasePoolDep) ->
     location
         The location just added to the database
     """
+    assert location.renewables_location_id is not None, "Renewables Location ID must not be None"
     if not location.renewables_location_id.startswith(location.site_id):
         raise HTTPException(
             422,
@@ -600,7 +610,6 @@ async def get_site_data(site_id: SiteID, pool: DatabasePoolDep) -> SiteData:
             address,
             epc_lmk,
             dec_lmk,
-            floor_area
         FROM
             client_info.site_info
         WHERE
@@ -620,5 +629,4 @@ async def get_site_data(site_id: SiteID, pool: DatabasePoolDep) -> SiteData:
         address=result["address"],
         epc_lmk=result["epc_lmk"],
         dec_lmk=result["dec_lmk"],
-        floor_area=result["floor_area"],
     )

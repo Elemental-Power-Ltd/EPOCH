@@ -6,7 +6,6 @@ import datetime
 import json
 import uuid
 
-import asyncpg
 import httpx
 import numpy as np
 import pytest
@@ -18,17 +17,9 @@ from app.internal.site_manager.bundles import insert_dataset_bundle
 from app.internal.utils.uuid import uuid7
 from app.models.heating_load import InterventionEnum
 from app.models.site_manager import DatasetBundleMetadata
+from app.routers.site_manager import get_bundle_hints
 
-
-async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
-    """
-    Get the demo database from the pool as a filthy hack.
-
-    This hack was implemented on 2025-05-07, so please replace with a proper fixture in the future.
-    """
-    from app.dependencies import get_db_pool
-
-    return await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+from .conftest import get_pool_hack
 
 
 @pytest_asyncio.fixture
@@ -178,6 +169,27 @@ class TestGenerateAll:
         )
 
         assert generate_result.status_code == 200, generate_result.text
+        # Check that they're all generated
+        iters = 0
+        bundle_id = generate_result.json()["bundle_id"]
+        while True:
+            q_resp = await client.post("list-bundle-contents", params={"bundle_id": bundle_id})
+            assert q_resp.is_success, q_resp.text
+            data = q_resp.json()
+
+            if data["is_error"]:
+                pytest.fail("Bundle creation failed")
+
+            if data["is_complete"]:
+                # Job done, the bundle is ready
+                break
+            # This is our backup bailout clause to prevent the tests
+            # hanging
+            await asyncio.sleep(1.0)
+            iters += 1
+            if iters > 120:
+                pytest.fail("Generate-all didn't empty in 2 minutes")
+
         list_result = await client.post(
             "/list-latest-datasets",
             json={
@@ -187,8 +199,8 @@ class TestGenerateAll:
             },
         )
         assert list_result.status_code == 200, list_result.text
-        assert list_result.json()["ElectricityMeterDataSynthesised"] is not None
-        assert list_result.json()["bundle_id"] is not None
+        assert list_result.json()["ElectricityMeterDataSynthesised"] is not None, "ElectricityMeterDataSynthesised is None"
+        assert list_result.json()["bundle_id"] is not None, "bundle id is None"
 
         data_result = await client.post(
             "/get-latest-datasets",
@@ -477,3 +489,30 @@ class TestDatasetBundles:
         data = result.json()
         assert len(data) == 2
         assert {item["bundle_id"] for item in data} == {str(DEMO_UUID), str(DEMO_UUID_2)}
+        assert all(item["is_complete"] for item in data)
+        assert all(not item["is_error"] for item in data)
+
+
+class TestBundleHints:
+    """Test that we can get hints about bundles."""
+
+    @pytest.mark.asyncio
+    async def test_empty_bundle_hints(self, client: httpx.AsyncClient) -> None:
+        """Test that we can get boring hints for an empty bundle."""
+        DEMO_UUID = uuid.UUID(int=1, version=4)
+        pool = await get_pool_hack(client)
+        test_bundle = DatasetBundleMetadata(
+            bundle_id=DEMO_UUID,
+            name="Test Bundle",
+            start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
+            end_ts=datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC),
+            site_id="demo_london",
+        )
+        res = await insert_dataset_bundle(bundle_metadata=test_bundle, pool=pool)
+        assert res == DEMO_UUID
+
+        hints_resp = await get_bundle_hints(bundle_id=DEMO_UUID, pool=pool)
+        assert hints_resp.baseline is None
+        assert hints_resp.heating is None
+        assert hints_resp.tariffs is None
+        assert hints_resp.renewables is None

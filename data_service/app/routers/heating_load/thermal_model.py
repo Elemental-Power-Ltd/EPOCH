@@ -31,7 +31,6 @@ from ...models.core import DatasetID, DatasetTypeEnum, SiteID, uuid_t
 from ...models.heating_load import ThermalModelResult
 from ...models.thermal_model import ThermalModelRequest
 from ...models.weather import WeatherRequest
-from ..client_data import get_location
 from ..meter_data import get_meter_data
 from ..weather import get_weather
 from .router import api_router
@@ -198,8 +197,18 @@ async def fit_thermal_model_endpoint(
         await get_thermal_model(pool=pool, dataset_id=DatasetID(dataset_id=item.dataset_id)) for item in all_thermal_metadata
     ]
 
+    async def get_location(site_id: str) -> str:
+        location = await pool.fetchval(
+            """SELECT location FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
+            site_id,
+        )
+        if location is None:
+            raise HTTPException(400, f"Couldn't find a location for {site_id}")
+        assert isinstance(location, str)
+        return location
+
     async with asyncio.TaskGroup() as tg:
-        location_task = tg.create_task(get_location(SiteID(site_id=params.site_id), pool=pool))
+        location_task = tg.create_task(get_location(params.site_id))
         gas_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), pool=pool))
         elec_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool))
 

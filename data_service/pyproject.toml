@@ -63,6 +63,7 @@ ignore = [
     "PLR0914", # too many local variables
     "PLR0915", # too many statements
     "PLR0917", # too many positional arguments
+    "TRY301", # raise to inner function
 ]
 
 [tool.ruff.lint.flake8-pytest-style]
@@ -90,7 +91,9 @@ ignore_errors = true
 dialect = "postgres"
 max_line_length = 128
 templater = "python"
+ignore = "templating"
 large_file_skip_byte_limit = 20000 # ignore the big first file
+
 
 [tool.sqlfluff.rules.capitalisation.keywords]
 capitalisation_policy = "upper"

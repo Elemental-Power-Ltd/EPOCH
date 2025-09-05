@@ -219,7 +219,6 @@ class SiteData(pydantic.BaseModel):
     dec_lmk: str | None = pydantic.Field(
         description="LMK for the latest Commercial Display Energy Certificate for this building", default=None
     )
-    floor_area: float | None = pydantic.Field(description="Floor area in m^2 used for efficiency metrics", default=None)
 
 
 class BundleEntryMetadata(pydantic.BaseModel):

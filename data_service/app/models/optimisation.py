@@ -1,5 +1,7 @@
 """Models for EPOCH/GA optimisation tasks, both queuing and completing."""
 
+from __future__ import annotations
+
 # ruff: noqa: D101
 import datetime
 import math
@@ -8,31 +10,38 @@ from enum import StrEnum
 import pydantic
 from pydantic import BaseModel, Field
 
-from ..internal.utils.uuid import uuid7
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
 from .epoch_types import TaskDataPydantic
 from .site_manager import SiteDataEntry
 from .site_range import SiteRange
 
 
-class SiteMetrics(BaseModel):
-    """Metrics for a single site within a portfolio."""
+class Grade(StrEnum):
+    A = "A"
+    B = "B"
+    C = "C"
+    D = "D"
+    E = "E"
+    F = "F"
+    G = "G"
 
-    carbon_balance_scope_1: float | None = Field(
-        description="Direct carbon emissions saved by this scenario on this site.", default=None, examples=[None, math.pi]
+
+class CostInfo(BaseModel):
+    name: str = Field(examples=["Solar Panel"], description="Display name for this cost item.")
+    component: str | None = Field(
+        examples=["solar_panel"], description="Key of the EPOCH component type this cost belongs to.", default=None
     )
-    carbon_balance_scope_2: float | None = Field(
-        description="Net kg CO2e over the lifetime of these interventions for scope 2 on this site.", default=None
+    cost: float = Field(
+        examples=[1200.0], description="The net cost of the item in pounds, including all sub_components minus any funding."
     )
-    carbon_balance_total: float | None = Field(
-        description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
-        default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
-        if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
-        else None,
+    sub_components: list[CostInfo] = Field(
+        description="The sub-components that make up this cost item, or the empty list if there are none.", default_factory=list
     )
-    carbon_cost: float | None = Field(
-        description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
-    )
+
+
+class SimulationMetrics(BaseModel):
+    """Metrics for a site or portfolio of sites."""
+
     meter_balance: float | None = Field(
         description="Monetary savings from importing and exporting fuel/electricity when compared against the baseline.",
         default=None,
@@ -45,95 +54,130 @@ class SiteMetrics(BaseModel):
         default=None,
     )
     npv_balance: float | None = Field(
-        description="The change in Net Present Value between the baseline and the scenario for this site.", default=None
+        description="The change in Net Present Value between the baseline and the scenario.", default=None
     )
-    capex: float | None = Field(description="Cost to install this scenario on this site.", default=None)
     payback_horizon: float | None = Field(
-        description="Years for this scenario to pay back on this site (if very large, represents no payback ever.)",
+        description="Years for this scenario to pay back (if very large, represents no payback ever.)",
         default=None,
     )
-    annualised_cost: float | None = Field(
-        description="Cost of running this scenario (including amortised deprecation) on this site.", default=None
+    carbon_balance_scope_1: float | None = Field(
+        description="Direct carbon emissions saved by this scenario.", default=None, examples=[None, math.pi]
     )
-    total_gas_used: float | None = Field(description="Total gas imported (kWh) for this site", default=None)
+    carbon_balance_scope_2: float | None = Field(
+        description="Net kg CO2e over the lifetime of these interventions for scope 2.", default=None
+    )
+    carbon_balance_total: float | None = Field(
+        description="Net kg CO2e saved from both scope 1 and scope 2 emissions",
+        default=None,
+    )
+    carbon_cost: float | None = Field(description="Net £ per t CO2e over the lifetime of these interventions.", default=None)
+    total_gas_used: float | None = Field(description="Total gas imported (kWh).", default=None)
     total_electricity_imported: float | None = Field(
-        description="Total electricity imported from the grid (kWh) for this site", default=None
+        description="Total electricity imported from the grid (kWh).", default=None
     )
-    total_electricity_generated: float | None = Field(
-        description="Total electricity generated on-site (kWh) for this site", default=None
+    total_electricity_generated: float | None = Field(description="Total electricity generated on-site (kWh).", default=None)
+    total_electricity_exported: float | None = Field(description="Total electricity exported to the grid (kWh).", default=None)
+    total_electricity_curtailed: float | None = Field(
+        description="Total electricity surplus that could not be exported (kWh).", default=None
     )
-    total_electricity_exported: float | None = Field(
-        description="Total electricity exported to the grid (kWh) for this site", default=None
-    )
+    total_electricity_used: float | None = Field(description="Total electricity used (kWh).", default=None)
     total_electrical_shortfall: float | None = Field(
-        description="Total electrical shortfall (kWh) when compared to the demand for this site", default=None
+        description="Total electrical shortfall (kWh) when compared to the demand.", default=None
     )
     total_heat_shortfall: float | None = Field(
-        description="Total heat shortfall (kWh) when compared to the demand for this site", default=None
+        description="Total heat shortfall (kWh) when compared to the demand.", default=None
     )
     total_ch_shortfall: float | None = Field(
-        description="Total central heating (CH) shortfall (kWh) when compared to the demand for this site", default=None
+        description="Total central heating (CH) shortfall (kWh) when compared to the demand.", default=None
     )
     total_dhw_shortfall: float | None = Field(
-        description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand for this site", default=None
+        description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand.", default=None
     )
-    total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
+    capex: float | None = Field(description="Cost to install this scenario.", default=None)
+    total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas.", default=None)
     total_electricity_import_cost: float | None = Field(
-        description="Total spend (£) importing electricity from the grid for this site", default=None
+        description="Total spend (£) importing electricity from the grid.", default=None
     )
     total_electricity_export_gain: float | None = Field(
-        description="Total income (£) exporting electricity to this grid for this site", default=None
+        description="Total income (£) exporting electricity to this grid.", default=None
     )
+
     total_meter_cost: float | None = Field(
         description="Total cost of importing fuel/electricity minus revenue from exporting.", default=None
     )
     total_operating_cost: float | None = Field(
-        description="Total meter cost minus operating costs for components for this site.", default=None
+        description="Total meter cost minus operating costs for components.", default=None
+    )
+    annualised_cost: float | None = Field(
+        description="Cost of running this scenario (including amortised deprecation).", default=None
     )
     total_net_present_value: float | None = Field(
-        description="Net Present Value after repeating the simulation for the configured number of years for this site.",
+        description="Net Present Value after repeating the simulation for the configured number of years.",
         default=None,
     )
+    total_scope_1_emissions: float | None = Field(description="Total Scope 1 emissions (kg CO2e).", default=None)
+    total_scope_2_emissions: float | None = Field(description="Total Scope 2 emissions (kg CO2e).", default=None)
+    total_combined_carbon_emissions: float | None = Field(description="Scope 1 and Scope 2 emissions (kg CO2e).", default=None)
 
-    baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) for this site", default=None)
+    scenario_environmental_impact_score: int | None = Field(description="environmental impact score based on SAP", default=None)
+    scenario_environmental_impact_grade: Grade | None = Field(description="environmental impact grade (A-G)", default=None)
+
+    scenario_capex_breakdown: list[CostInfo] | None = Field(description="Breakdown of scenario expenditure.", default=None)
+
+    baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh).", default=None)
     baseline_electricity_imported: float | None = Field(
-        description="Baseline electricity imported from the grid (kWh) for this site", default=None
+        description="Baseline electricity imported from the grid (kWh).", default=None
     )
     baseline_electricity_generated: float | None = Field(
-        description="Baseline electricity generated on-site (kWh) for this site", default=None
+        description="Baseline electricity generated on-site (kWh).", default=None
     )
     baseline_electricity_exported: float | None = Field(
-        description="Baseline electricity exported to the grid (kWh) for this site", default=None
+        description="Baseline electricity exported to the grid (kWh).", default=None
     )
+    baseline_electricity_curtailed: float | None = Field(
+        description="Baseline electricity surplus that could not be exported (kWh).", default=None
+    )
+    baseline_electricity_used: float | None = Field(description="Baseline electricity used (kWh).", default=None)
+
     baseline_electrical_shortfall: float | None = Field(
-        description="Baseline electrical shortfall (kWh) when compared to the demand for this site", default=None
+        description="Baseline electrical shortfall (kWh) when compared to the demand.", default=None
     )
     baseline_heat_shortfall: float | None = Field(
-        description="Baseline heat shortfall (kWh) when compared to the demand for this site", default=None
+        description="Baseline heat shortfall (kWh) when compared to the demand.", default=None
     )
     baseline_ch_shortfall: float | None = Field(
-        description="Baseline central heating (CH) shortfall (kWh) when compared to the demand for this site", default=None
+        description="Baseline central heating (CH) shortfall (kWh) when compared to the demand.", default=None
     )
     baseline_dhw_shortfall: float | None = Field(
-        description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand for this site", default=None
+        description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand.", default=None
     )
-    baseline_gas_import_cost: float | None = Field(description="Total spend (£) importing gas for the site", default=None)
+    baseline_gas_import_cost: float | None = Field(description="Total spend (£) importing gas.", default=None)
     baseline_electricity_import_cost: float | None = Field(
-        description="Baseline spend (£) importing electricity from the grid for this site", default=None
+        description="Baseline spend (£) importing electricity from the grid.", default=None
     )
     baseline_electricity_export_gain: float | None = Field(
-        description="Baseline income (£) exporting electricity to this grid for this site", default=None
+        description="Baseline income (£) exporting electricity to this grid.", default=None
     )
     baseline_meter_cost: float | None = Field(
         description="Baseline cost of importing fuel/electricity minus revenue from exporting.", default=None
     )
     baseline_operating_cost: float | None = Field(
-        description="Baseline meter cost minus operating costs for components for this site.", default=None
+        description="Baseline meter cost minus operating costs for components.", default=None
     )
     baseline_net_present_value: float | None = Field(
-        description="Baseline Net Present Value after repeating the simulation for the configured number of years "
-        "for this site.",
+        description="Baseline Net Present Value after repeating the simulation for the configured number of years.",
         default=None,
+    )
+    baseline_scope_1_emissions: float | None = Field(description="Baseline Scope 1 emissions (kg CO2e).", default=None)
+    baseline_scope_2_emissions: float | None = Field(description="Baseline Scope 2 emissions (kg CO2e).", default=None)
+    baseline_combined_carbon_emissions: float | None = Field(
+        description="Baseline Scope 1 and Scope 2 emissions (kg CO2e).", default=None
+    )
+    baseline_environmental_impact_score: int | None = Field(
+        description="baseline environmental impact score based on SAP", default=None
+    )
+    baseline_environmental_impact_grade: Grade | None = Field(
+        description="baseline environmental impact grade (A-G)", default=None
     )
 
 
@@ -148,140 +192,7 @@ class SiteOptimisationResult(pydantic.BaseModel):
     scenario: TaskDataPydantic = pydantic.Field(
         description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
     )
-    metrics: SiteMetrics = pydantic.Field(description="The metrics calculated for this site.")
-
-
-class PortfolioMetrics(BaseModel):
-    """Metrics for the whole portfolio."""
-
-    carbon_balance_scope_1: float | None = Field(
-        description="Direct carbon emissions saved by this entire portfolio of scenarios.",
-        default=None,
-        examples=[None, math.pi],
-    )
-    carbon_balance_scope_2: float | None = Field(
-        description="Indirect scope 2 carbon emissions saved by this entire portfolio of scenarios.", default=None
-    )
-    carbon_balance_total: float | None = Field(
-        description="Scope 1 + 2 emissions across this portfolio in kg CO2e; None if either is unset",
-        default_factory=lambda data: (data["carbon_balance_scope_1"] + data["carbon_balance_scope_2"])
-        if data.get("carbon_balance_scope_1") is not None and data.get("carbon_balance_scope_2") is not None
-        else None,
-    )
-    carbon_cost: float | None = Field(
-        description="Net £ per t CO2e over the lifetime of these interventions on this site.", default=None
-    )
-    meter_balance: float | None = Field(
-        description="Monetary savings across the portfolio "
-        "from importing and exporting fuel/electricity when compared against the baseline.",
-        default=None,
-    )
-    operating_balance: float | None = Field(
-        description="Monetary savings across the portfolio from fuel, electricity and opex when compared against the baseline.",
-        default=None,
-    )
-    cost_balance: float | None = Field(
-        description="Monetary savings across the portfolio "
-        "from fuel, electricity, opex and annualised cost when compared against the baseline.",
-        default=None,
-    )
-    npv_balance: float | None = Field(
-        description="The change in Net Present Value between the baseline and the scenario over the portfolio.", default=None
-    )
-    capex: float | None = Field(description="Cost to install this scenario on entire portfolio of scenarios.", default=None)
-    payback_horizon: float | None = Field(
-        description="Years for these scenarios to pay back across this portfolio.", default=None
-    )
-    annualised_cost: float | None = Field(
-        description="Cost of running these scenario (including amortised deprecation) across this portfolio", default=None
-    )
-    total_gas_used: float | None = Field(description="Total gas imported (kWh) across this portfolio", default=None)
-    total_electricity_imported: float | None = Field(
-        description="Total electricity imported from the grid (kWh) across this portfolio", default=None
-    )
-    total_electricity_generated: float | None = Field(
-        description="Total electricity generated on-site (kWh) across this portfolio", default=None
-    )
-    total_electricity_exported: float | None = Field(
-        description="Total electricity exported to the grid (kWh) across this portfolio", default=None
-    )
-    total_electrical_shortfall: float | None = Field(
-        description="Total electrical shortfall (kWh) when compared to the demand across this portfolio", default=None
-    )
-    total_heat_shortfall: float | None = Field(
-        description="Total heat shortfall (kWh) when compared to the demand across this portfolio", default=None
-    )
-    total_ch_shortfall: float | None = Field(
-        description="Total central heating (CH) shortfall (kWh) when compared to the demand across this portfolio", default=None
-    )
-    total_dhw_shortfall: float | None = Field(
-        description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None,
-    )
-    total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas across this portfolio", default=None)
-    total_electricity_import_cost: float | None = Field(
-        description="Total spend (£) importing electricity from the grid across this portfolio", default=None
-    )
-    total_electricity_export_gain: float | None = Field(
-        description="Total income (£) exporting electricity to this grid across this portfolio", default=None
-    )
-    total_meter_cost: float | None = Field(
-        description="Total cost of importing fuel/electricity minus revenue from exporting across this portfolio.", default=None
-    )
-    total_operating_cost: float | None = Field(
-        description="Total meter cost minus operating costs for components across this portfolio.", default=None
-    )
-    total_net_present_value: float | None = Field(
-        description="Net Present Value after repeating the simulation for the configured number of years "
-        "across this portfolio.",
-        default=None,
-    )
-
-    baseline_gas_used: float | None = Field(description="Baseline gas imported (kWh) across this portfolio", default=None)
-    baseline_electricity_imported: float | None = Field(
-        description="Baseline electricity imported from the grid (kWh) across this portfolio", default=None
-    )
-    baseline_electricity_generated: float | None = Field(
-        description="Baseline electricity generated on-site (kWh) across this portfolio", default=None
-    )
-    baseline_electricity_exported: float | None = Field(
-        description="Baseline electricity exported to the grid (kWh) across this portfolio", default=None
-    )
-    baseline_electrical_shortfall: float | None = Field(
-        description="Baseline electrical shortfall (kWh) when compared to the demand across this portfolio", default=None
-    )
-    baseline_heat_shortfall: float | None = Field(
-        description="Baseline heat shortfall (kWh) when compared to the demand across this portfolio", default=None
-    )
-    baseline_ch_shortfall: float | None = Field(
-        description="Baseline central heating (CH) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None,
-    )
-    baseline_dhw_shortfall: float | None = Field(
-        description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand across this portfolio",
-        default=None,
-    )
-    baseline_gas_import_cost: float | None = Field(
-        description="Baseline spend (£) importing gas across this portfolio", default=None
-    )
-    baseline_electricity_import_cost: float | None = Field(
-        description="Baseline spend (£) importing electricity from the grid across this portfolio", default=None
-    )
-    baseline_electricity_export_gain: float | None = Field(
-        description="Baseline income (£) exporting electricity to this grid across this portfolio", default=None
-    )
-    baseline_meter_cost: float | None = Field(
-        description="Baseline cost of importing fuel/electricity minus revenue from exporting across this portfolio.",
-        default=None,
-    )
-    baseline_operating_cost: float | None = Field(
-        description="Baseline meter cost minus operating costs for components across this portfolio.", default=None
-    )
-    baseline_net_present_value: float | None = Field(
-        description="Baseline Net Present Value after repeating the simulation for the configured number of years "
-        "across this portfolio.",
-        default=None,
-    )
+    metrics: SimulationMetrics = pydantic.Field(description="The metrics calculated for this site.")
 
 
 class PortfolioOptimisationResult(pydantic.BaseModel):
@@ -292,7 +203,7 @@ class PortfolioOptimisationResult(pydantic.BaseModel):
         description="Individual ID representing this entry in the portfolio pareto front,"
         + " used to link to SiteOptimisationResults."
     )
-    metrics: PortfolioMetrics = pydantic.Field(description="The metrics calculated across the whole portfolio.")
+    metrics: SimulationMetrics = pydantic.Field(description="The metrics calculated across the whole portfolio.")
     site_results: list[SiteOptimisationResult] | None = pydantic.Field(
         default=None,
         description="Individual site results for this Portfolio."
@@ -430,19 +341,6 @@ class TaskConfig(pydantic.BaseModel):
         description="The objectives that we're interested in, provided as a list."
         + "Objective that aren't provided here aren't included in the opimisation.",
     )
-    input_data: dict[site_id_t, SiteDataEntry] = pydantic.Field(
-        examples=[
-            {
-                "demo_london": {
-                    "site_id": "demo_london",
-                    "start_ts": "2025-01-01T00:00:00Z",
-                    "duration": "1Y",
-                    "dataset_ids": {"HeatingLoad": uuid7()},
-                }
-            }
-        ],
-        description="Where the data for this calculation are coming from, per-site",
-    )
     optimiser: Optimiser = pydantic.Field(
         description="The optimisation algorithm for the backend to use in these calculations."
     )
@@ -453,12 +351,23 @@ class TaskConfig(pydantic.BaseModel):
     epoch_version: str | None = pydantic.Field(
         default=None, description="The EPOCH version this task was created with; None if unknown"
     )
+    bundle_ids: dict[site_id_t, dataset_id_t] = pydantic.Field(description="The data bundle id for each site.")
 
 
 class ResultReproConfig(pydantic.BaseModel):
     portfolio_id: dataset_id_t
     task_data: dict[site_id_t, TaskDataPydantic]
+
+
+class NewResultReproConfig(ResultReproConfig):
+    bundle_ids: dict[site_id_t, dataset_id_t]
+
+
+class LegacyResultReproConfig(ResultReproConfig):
     site_data: dict[site_id_t, SiteDataEntry]
+
+
+type result_repro_config_t = NewResultReproConfig | LegacyResultReproConfig
 
 
 class OptimisationTaskListEntry(pydantic.BaseModel):

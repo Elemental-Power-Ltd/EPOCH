@@ -9,6 +9,8 @@ import httpx
 import numpy as np
 import pydantic
 import pytest
+import pytest_asyncio
+from fastapi.encoders import jsonable_encoder
 
 from app.internal.utils.uuid import uuid7
 from app.models.epoch_types import TaskDataPydantic
@@ -17,22 +19,37 @@ from app.models.optimisation import (
     OptimisationResultEntry,
     Optimiser,
     OptimiserEnum,
-    PortfolioMetrics,
     PortfolioOptimisationResult,
-    SiteMetrics,
+    SimulationMetrics,
     SiteOptimisationResult,
     TaskConfig,
     TaskResult,
 )
 from app.models.site_manager import SiteDataEntry
 
+from .conftest import get_pool_hack
+
 
 class TestOptimisationTaskDatabase:
     """Integration tests for adding and querying optimisation tasks."""
 
-    @pytest.fixture
-    def sample_task_config(self) -> TaskConfig:
+    @pytest_asyncio.fixture
+    async def sample_task_config(self, client: httpx.AsyncClient) -> TaskConfig:
         """Create a sample task to put in our database."""
+        bundle_id = uuid7()
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": str(bundle_id),
+                "name": "Task Config Tests",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
         return TaskConfig(
             task_id=uuid7(),
             task_name="test_task_config",
@@ -53,17 +70,10 @@ class TestOptimisationTaskDatabase:
                 }
             },
             objectives=["capex", "carbon_balance"],
-            input_data={
-                "demo_london": SiteDataEntry(
-                    site_id="demo_london",
-                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid7(),
-                )
-            },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
             epoch_version="1.2.3",
+            bundle_ids={"demo_london": bundle_id},
         )
 
     @pytest.fixture
@@ -82,7 +92,7 @@ class TestOptimisationTaskDatabase:
         return PortfolioOptimisationResult(
             portfolio_id=uuid7(),
             task_id=sample_task_config.task_id,
-            metrics=PortfolioMetrics(
+            metrics=SimulationMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
                 cost_balance=3.0,
@@ -114,7 +124,7 @@ class TestOptimisationTaskDatabase:
             portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
             site_id="demo_london",
             scenario=sample_scenario,
-            metrics=SiteMetrics(
+            metrics=SimulationMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
                 cost_balance=3.0,
@@ -317,46 +327,6 @@ class TestOptimisationTaskDatabase:
         )
 
     @pytest.mark.asyncio
-    async def test_can_get_portfolio_results_carbon_balance_total(
-        self,
-        sample_task_config: TaskConfig,
-        sample_portfolio_optimisation_result: PortfolioOptimisationResult,
-        sample_site_optimisation_result: SiteOptimisationResult,
-        client: httpx.AsyncClient,
-    ) -> None:
-        """Test that we can get a portfolio result with a total carbon balance correct."""
-        result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
-        assert result.status_code == 200, result.text
-        sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
-        opt_result = await client.post(
-            "/add-optimisation-results",
-            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result]).model_dump_json(),
-        )
-        assert opt_result.status_code == 200, opt_result.text
-
-        get_result = await client.post(
-            "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
-        )
-        assert get_result.status_code == 200, get_result.text
-        portfolio_results = get_result.json()["portfolio_results"]
-        assert portfolio_results[0]["task_id"] == str(sample_task_config.task_id)
-        assert portfolio_results[0]["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
-        expected_total = (
-            portfolio_results[0]["metrics"]["carbon_balance_scope_1"]
-            + portfolio_results[0]["metrics"]["carbon_balance_scope_2"]
-        )
-        assert portfolio_results[0]["metrics"]["carbon_balance_total"] is not None
-        assert portfolio_results[0]["metrics"]["carbon_balance_total"] == expected_total
-
-        # and check it's there for the sites
-        expected_total = (
-            portfolio_results[0]["site_results"][0]["metrics"]["carbon_balance_scope_1"]
-            + portfolio_results[0]["site_results"][0]["metrics"]["carbon_balance_scope_2"]
-        )
-        assert portfolio_results[0]["site_results"][0]["metrics"]["carbon_balance_total"] is not None
-        assert portfolio_results[0]["site_results"][0]["metrics"]["carbon_balance_total"] == expected_total
-
-    @pytest.mark.asyncio
     async def test_can_handle_result_with_no_metrics(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
         """Test that we can add a result with no metrics and get it back."""
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
@@ -365,7 +335,7 @@ class TestOptimisationTaskDatabase:
         empty_portfolio_result = PortfolioOptimisationResult(
             portfolio_id=uuid7(),
             task_id=sample_task_config.task_id,
-            metrics=PortfolioMetrics(),  # no metrics recorded
+            metrics=SimulationMetrics(),  # no metrics recorded
             site_results=[],
         )
 
@@ -420,14 +390,7 @@ class TestOptimisationTaskDatabase:
         repro_data = repro_result.json()
         assert repro_data["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
 
-        assert isinstance(sample_task_config.input_data["demo_london"], SiteDataEntry)
-        assert (
-            datetime.datetime.fromisoformat(repro_data["site_data"]["demo_london"]["start_ts"])
-            == sample_task_config.input_data["demo_london"].start_ts
-        )
-        assert repro_data["site_data"]["demo_london"] == json.loads(
-            sample_task_config.input_data["demo_london"].model_dump_json()
-        )
+        assert repro_data["bundle_ids"]["demo_london"] == str(sample_task_config.bundle_ids["demo_london"])
         assert repro_data["task_data"] == {
             sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()
         }
@@ -479,13 +442,183 @@ class TestOptimisationTaskDatabase:
         assert len(tasks) == 1, "There should be exactly one listed task."
         assert tasks[0]["n_saved"] == 2, f"Expected n_saved to be 2 - got {tasks[0]['n_saved']} instead."
 
+    @pytest.mark.asyncio
+    async def test_can_insert_legacy_task_config(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
+        """
+        Test that we can insert legacy task config into the database.
+
+        Legacy task configs include site data but don't have bundle_ids.
+        """
+        pool = await get_pool_hack(client)
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO
+                        optimisation.task_config (
+                            task_id,
+                            client_id,
+                            task_name,
+                            optimiser_type,
+                            optimiser_hyperparameters,
+                            created_at,
+                            objectives,
+                            portfolio_constraints,
+                            epoch_version)
+                        VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8,
+                        $9)""",
+                    sample_task_config.task_id,
+                    sample_task_config.client_id,
+                    sample_task_config.task_name,
+                    sample_task_config.optimiser.name,
+                    json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
+                    sample_task_config.created_at,
+                    json.dumps(jsonable_encoder(sample_task_config.objectives)),
+                    json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
+                    sample_task_config.epoch_version,
+                )
+
+                site_data = SiteDataEntry(
+                    site_id="demo_london",
+                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                    HeatingLoad=uuid7(),
+                )
+
+                await conn.copy_records_to_table(
+                    schema_name="optimisation",
+                    table_name="site_task_config",
+                    records=[
+                        (
+                            sample_task_config.task_id,
+                            site_id,
+                            json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
+                            json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
+                            json.dumps(jsonable_encoder(site_data)),
+                        )
+                        for site_id, _ in sample_task_config.bundle_ids.items()
+                    ],
+                    columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
+                )
+
+    @pytest.mark.asyncio
+    async def test_can_get_legacy_task_config(
+        self,
+        sample_task_config: TaskConfig,
+        client: httpx.AsyncClient,
+        sample_portfolio_optimisation_result: PortfolioOptimisationResult,
+        sample_site_optimisation_result: SiteOptimisationResult,
+    ) -> None:
+        """
+        Test that we can get legacy task config from the database.
+
+        Legacy task configs include site data but don't have bundle_ids.
+        """
+        pool = await get_pool_hack(client)
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO
+                        optimisation.task_config (
+                            task_id,
+                            client_id,
+                            task_name,
+                            optimiser_type,
+                            optimiser_hyperparameters,
+                            created_at,
+                            objectives,
+                            portfolio_constraints,
+                            epoch_version)
+                        VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8,
+                        $9)""",
+                    sample_task_config.task_id,
+                    sample_task_config.client_id,
+                    sample_task_config.task_name,
+                    sample_task_config.optimiser.name,
+                    json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
+                    sample_task_config.created_at,
+                    json.dumps(jsonable_encoder(sample_task_config.objectives)),
+                    json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
+                    sample_task_config.epoch_version,
+                )
+
+                site_data = SiteDataEntry(
+                    site_id="demo_london",
+                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                    HeatingLoad=uuid7(),
+                )
+
+                await conn.copy_records_to_table(
+                    schema_name="optimisation",
+                    table_name="site_task_config",
+                    records=[
+                        (
+                            sample_task_config.task_id,
+                            site_id,
+                            json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
+                            json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
+                            json.dumps(jsonable_encoder(site_data)),
+                        )
+                        for site_id in sample_task_config.portfolio_range.keys()
+                    ],
+                    columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
+                )
+
+        sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
+        opt_result = await client.post(
+            "/add-optimisation-results",
+            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result]).model_dump_json(),
+        )
+        assert opt_result.status_code == 200, opt_result.text
+
+        repro_result = await client.post(
+            "/get-result-configuration",
+            content=json.dumps({"result_id": str(sample_portfolio_optimisation_result.portfolio_id)}),
+        )
+        assert repro_result.status_code == 200, repro_result.text
+        assert repro_result.json()["site_data"] == {
+            site_id: jsonable_encoder(site_data) for site_id, _ in sample_task_config.bundle_ids.items()
+        }
+
 
 class TestOptimisationTaskDatabaseUUID4:
     """Integration tests for adding and querying optimisation tasks with old-style UUID4s."""
 
-    @pytest.fixture
-    def sample_task_config(self) -> TaskConfig:
+    @pytest_asyncio.fixture
+    async def sample_task_config(self, client: httpx.AsyncClient) -> TaskConfig:
         """Create a sample task to put in our database."""
+        bundle_id = uuid.uuid4()
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        bundle_resp = await client.post(
+            "/create-bundle",
+            json={
+                "bundle_id": str(bundle_id),
+                "name": "Task Config Tests",
+                "site_id": "demo_london",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert bundle_resp.is_success
         return TaskConfig(
             task_id=uuid.uuid4(),
             task_name="test_task_config",
@@ -506,17 +639,10 @@ class TestOptimisationTaskDatabaseUUID4:
                 }
             },
             objectives=["capex", "carbon_balance"],
-            input_data={
-                "demo_london": SiteDataEntry(
-                    site_id="demo_london",
-                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid.uuid4(),
-                )
-            },
             optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
             created_at=datetime.datetime.now(datetime.UTC),
             epoch_version="v1.2.3",
+            bundle_ids={"demo_london": bundle_id},
         )
 
     @pytest.fixture
@@ -535,7 +661,7 @@ class TestOptimisationTaskDatabaseUUID4:
         return PortfolioOptimisationResult(
             portfolio_id=uuid.uuid4(),
             task_id=sample_task_config.task_id,
-            metrics=PortfolioMetrics(
+            metrics=SimulationMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
                 cost_balance=3.0,
@@ -567,7 +693,7 @@ class TestOptimisationTaskDatabaseUUID4:
             portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
             site_id="demo_london",
             scenario=sample_scenario,
-            metrics=SiteMetrics(
+            metrics=SimulationMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
                 cost_balance=3.0,
@@ -770,46 +896,6 @@ class TestOptimisationTaskDatabaseUUID4:
         )
 
     @pytest.mark.asyncio
-    async def test_can_get_portfolio_results_carbon_balance_total(
-        self,
-        sample_task_config: TaskConfig,
-        sample_portfolio_optimisation_result: PortfolioOptimisationResult,
-        sample_site_optimisation_result: SiteOptimisationResult,
-        client: httpx.AsyncClient,
-    ) -> None:
-        """Test that we can get a portfolio result with a total carbon balance correct."""
-        result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
-        assert result.status_code == 200, result.text
-        sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
-        opt_result = await client.post(
-            "/add-optimisation-results",
-            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result]).model_dump_json(),
-        )
-        assert opt_result.status_code == 200, opt_result.text
-
-        get_result = await client.post(
-            "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
-        )
-        assert get_result.status_code == 200, get_result.text
-        portfolio_results = get_result.json()["portfolio_results"]
-        assert portfolio_results[0]["task_id"] == str(sample_task_config.task_id)
-        assert portfolio_results[0]["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
-        expected_total = (
-            portfolio_results[0]["metrics"]["carbon_balance_scope_1"]
-            + portfolio_results[0]["metrics"]["carbon_balance_scope_2"]
-        )
-        assert portfolio_results[0]["metrics"]["carbon_balance_total"] is not None
-        assert portfolio_results[0]["metrics"]["carbon_balance_total"] == expected_total
-
-        # and check it's there for the sites
-        expected_total = (
-            portfolio_results[0]["site_results"][0]["metrics"]["carbon_balance_scope_1"]
-            + portfolio_results[0]["site_results"][0]["metrics"]["carbon_balance_scope_2"]
-        )
-        assert portfolio_results[0]["site_results"][0]["metrics"]["carbon_balance_total"] is not None
-        assert portfolio_results[0]["site_results"][0]["metrics"]["carbon_balance_total"] == expected_total
-
-    @pytest.mark.asyncio
     async def test_can_handle_result_with_no_metrics(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
         """Test that we can add a result with no metrics and get it back."""
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
@@ -818,7 +904,7 @@ class TestOptimisationTaskDatabaseUUID4:
         empty_portfolio_result = PortfolioOptimisationResult(
             portfolio_id=uuid7(),
             task_id=sample_task_config.task_id,
-            metrics=PortfolioMetrics(),  # no metrics recorded
+            metrics=SimulationMetrics(),  # no metrics recorded
             site_results=[],
         )
 
@@ -873,14 +959,7 @@ class TestOptimisationTaskDatabaseUUID4:
         repro_data = repro_result.json()
         assert repro_data["portfolio_id"] == str(sample_portfolio_optimisation_result.portfolio_id)
 
-        assert isinstance(sample_task_config.input_data["demo_london"], SiteDataEntry)
-        assert (
-            datetime.datetime.fromisoformat(repro_data["site_data"]["demo_london"]["start_ts"])
-            == sample_task_config.input_data["demo_london"].start_ts
-        )
-        assert repro_data["site_data"]["demo_london"] == json.loads(
-            sample_task_config.input_data["demo_london"].model_dump_json()
-        )
+        assert repro_data["bundle_ids"]["demo_london"] == str(sample_task_config.bundle_ids["demo_london"])
         assert repro_data["task_data"] == {
             sample_site_optimisation_result.site_id: sample_site_optimisation_result.scenario.model_dump()
         }
@@ -931,3 +1010,159 @@ class TestOptimisationTaskDatabaseUUID4:
         # There should be exactly one task with n_saved = 2
         assert len(tasks) == 1, "There should be exactly one listed task."
         assert tasks[0]["n_saved"] == 2, f"Expected n_saved to be 2 - got {tasks[0]['n_saved']} instead."
+
+    @pytest.mark.asyncio
+    async def test_can_insert_legacy_task_config(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
+        """
+        Test that we can insert legacy task config into the database.
+
+        Legacy task configs include site data but don't have bundle_ids.
+        """
+        pool = await get_pool_hack(client)
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO
+                        optimisation.task_config (
+                            task_id,
+                            client_id,
+                            task_name,
+                            optimiser_type,
+                            optimiser_hyperparameters,
+                            created_at,
+                            objectives,
+                            portfolio_constraints,
+                            epoch_version)
+                        VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8,
+                        $9)""",
+                    sample_task_config.task_id,
+                    sample_task_config.client_id,
+                    sample_task_config.task_name,
+                    sample_task_config.optimiser.name,
+                    json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
+                    sample_task_config.created_at,
+                    json.dumps(jsonable_encoder(sample_task_config.objectives)),
+                    json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
+                    sample_task_config.epoch_version,
+                )
+
+                site_data = SiteDataEntry(
+                    site_id="demo_london",
+                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                    HeatingLoad=uuid7(),
+                )
+
+                await conn.copy_records_to_table(
+                    schema_name="optimisation",
+                    table_name="site_task_config",
+                    records=[
+                        (
+                            sample_task_config.task_id,
+                            site_id,
+                            json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
+                            json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
+                            json.dumps(jsonable_encoder(site_data)),
+                        )
+                        for site_id, _ in sample_task_config.bundle_ids.items()
+                    ],
+                    columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
+                )
+
+    @pytest.mark.asyncio
+    async def test_can_get_legacy_task_config(
+        self,
+        sample_task_config: TaskConfig,
+        client: httpx.AsyncClient,
+        sample_portfolio_optimisation_result: PortfolioOptimisationResult,
+        sample_site_optimisation_result: SiteOptimisationResult,
+    ) -> None:
+        """
+        Test that we can get legacy task config from the database.
+
+        Legacy task configs include site data but don't have bundle_ids.
+        """
+        pool = await get_pool_hack(client)
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO
+                        optimisation.task_config (
+                            task_id,
+                            client_id,
+                            task_name,
+                            optimiser_type,
+                            optimiser_hyperparameters,
+                            created_at,
+                            objectives,
+                            portfolio_constraints,
+                            epoch_version)
+                        VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8,
+                        $9)""",
+                    sample_task_config.task_id,
+                    sample_task_config.client_id,
+                    sample_task_config.task_name,
+                    sample_task_config.optimiser.name,
+                    json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
+                    sample_task_config.created_at,
+                    json.dumps(jsonable_encoder(sample_task_config.objectives)),
+                    json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
+                    sample_task_config.epoch_version,
+                )
+
+                site_data = SiteDataEntry(
+                    site_id="demo_london",
+                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                    HeatingLoad=uuid7(),
+                )
+
+                await conn.copy_records_to_table(
+                    schema_name="optimisation",
+                    table_name="site_task_config",
+                    records=[
+                        (
+                            sample_task_config.task_id,
+                            site_id,
+                            json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
+                            json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
+                            json.dumps(jsonable_encoder(site_data)),
+                        )
+                        for site_id in sample_task_config.portfolio_range.keys()
+                    ],
+                    columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
+                )
+
+        sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
+        opt_result = await client.post(
+            "/add-optimisation-results",
+            content=OptimisationResultEntry(portfolio=[sample_portfolio_optimisation_result]).model_dump_json(),
+        )
+        assert opt_result.status_code == 200, opt_result.text
+
+        repro_result = await client.post(
+            "/get-result-configuration",
+            content=json.dumps({"result_id": str(sample_portfolio_optimisation_result.portfolio_id)}),
+        )
+        assert repro_result.status_code == 200, repro_result.text
+        assert repro_result.json()["site_data"] == {
+            site_id: jsonable_encoder(site_data) for site_id, _ in sample_task_config.bundle_ids.items()
+        }

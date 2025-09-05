@@ -192,6 +192,11 @@ class HeatingLoadMetadata(pydantic.BaseModel):
         examples=[HeatingLoadModelEnum.Regression, HeatingLoadModelEnum.PHPP],
         description="Which method was used to generate this heating load",
     )
+    peak_hload: float | None = Field(
+        default=None,
+        description="Peak heating load in kW associated with this set of interventions."
+        " May be higher than that actually experienced during the dataset.",
+    )
 
 
 class InterventionCostRequest(pydantic.BaseModel):

@@ -1,15 +1,15 @@
 BEGIN;
 
-DROP INDEX heating_synthesised_dataset_id_idx;
-DROP INDEX tariffs_electricity_dataset_id_idx;
-DROP INDEX carbon_intensity_grid_co2_dataset_id_idx;
-DROP INDEX client_meters_electricity_meters_synthesised_dataset_id_idx;
-DROP INDEX renewables_solar_pv_dataset_id_idx;
+DROP INDEX heating.heating_synthesised_dataset_id_idx;
+DROP INDEX tariffs.tariffs_electricity_dataset_id_idx;
+DROP INDEX carbon_intensity.carbon_intensity_grid_co2_dataset_id_idx;
+DROP INDEX client_meters.client_meters_electricity_meters_synthesised_dataset_id_idx;
+DROP INDEX renewables.renewables_solar_pv_dataset_id_idx;
 
-DROP INDEX heating_metadata_site_id_idx;
-DROP INDEX tariffs_metadata_site_id_idx;
-DROP INDEX carbon_intensity_metadata_site_id_idx;
-DROP INDEX client_meters_metadata_site_id_idx;
-DROP INDEX renewables_metadata_site_id_idx;
+DROP INDEX heating.heating_metadata_site_id_idx;
+DROP INDEX tariffs.tariffs_metadata_site_id_idx;
+DROP INDEX carbon_intensity.carbon_intensity_metadata_site_id_idx;
+DROP INDEX client_meters.client_meters_metadata_site_id_idx;
+DROP INDEX renewables.renewables_metadata_site_id_idx;
 
 END;
