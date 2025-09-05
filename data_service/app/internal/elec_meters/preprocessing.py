@@ -313,7 +313,7 @@ def create_hh_daily_data(
     # create start and end timestamps for each day's data; should be same length as daily_data
     start_times = daily_groups.first().index.astype(np.int64) // 10**9
     # UNIX timestamps -- seconds since 1970-01-01T00:00:00
-    end_times = start_times + (24 * 60 * 60)  # end times
+    end_times = start_times + datetime.timedelta(days=1).total_seconds() # end times
 
     start_times_arr = start_times.to_numpy().reshape(-1, 1)
     end_times_arr = end_times.to_numpy().reshape(-1, 1)
