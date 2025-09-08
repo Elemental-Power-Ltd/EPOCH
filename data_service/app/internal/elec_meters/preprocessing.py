@@ -733,8 +733,6 @@ def hh_to_square(hh_df: HHDataFrame) -> SquareHHDataFrame:
     A square dataframe has columns 00:00, 00:30 etc
     and rows of days.
 
-    You may need to fill NaNs outside of this function.
-
     Parameters
     ----------
     hh_df
@@ -754,4 +752,5 @@ def hh_to_square(hh_df: HHDataFrame) -> SquareHHDataFrame:
 
     new_df = pd.DataFrame.from_dict(rows, orient="index", columns=all_hours)
     new_df.index = pd.DatetimeIndex(new_df.index)
+    new_df = new_df.sort_index().ffill().bfill()
     return cast(SquareHHDataFrame, new_df)

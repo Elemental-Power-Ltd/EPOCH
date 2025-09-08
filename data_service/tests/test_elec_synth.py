@@ -76,6 +76,7 @@ def synthesised_eload(
 
 
 @pytest.mark.parametrize("synthesised_eload", ["observed", "model_path"], indirect=True)
+@pytest.mark.slow
 class TestElecSynthStatistics:
     """Test the statistical properties of the electricity synthesiser."""
 
