@@ -149,11 +149,9 @@ def daily_to_hh_eload(
     model: VAE,
     resid_model_path: pathlib.Path | None = None,
     target_hh_observed_df: SquareHHDataFrame | None = None,
-    weekend_inds: frozenset[int] = frozenset(
-        {
-            6,
-        }
-    ),
+    weekend_inds: frozenset[int] = frozenset({
+        6,
+    }),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -199,7 +197,7 @@ def daily_to_hh_eload(
     weekend_inds = frozenset(weekend_inds)  # to guarantee immutability
 
     if resid_model_path is not None:
-        return daily_to_hh_eload_pretrained(
+        new_df = daily_to_hh_eload_pretrained(
             daily_df=daily_df,
             model=model,
             resid_model_path=resid_model_path,
@@ -208,8 +206,8 @@ def daily_to_hh_eload(
             rng=rng,
         )
 
-    if target_hh_observed_df is not None:
-        return daily_to_hh_eload_observed(
+    elif target_hh_observed_df is not None:
+        new_df = daily_to_hh_eload_observed(
             daily_df=daily_df,
             model=model,
             target_hh_observed_df=target_hh_observed_df,
@@ -218,18 +216,25 @@ def daily_to_hh_eload(
             rng=rng,
         )
 
-    raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided neither.")
+    else:
+        raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided neither.")
+
+    # Where we've got negative readings as a result of noise or numerical error, replace them with NaNs and fill in
+    # the gap with interpolation between the nearest good readings.
+    # If the negative readings are at the start or end, bfill or ffill them away.
+    is_negative = new_df["consumption_kwh"] < 0
+    new_df.loc[is_negative, "consumption_kwh"] = float("NaN")
+    new_df["consumption_kwh"] = new_df["consumption_kwh"].interpolate(method="time").ffill().bfill()
+    return new_df
 
 
 def daily_to_hh_eload_observed(
     daily_df: DailyDataFrame,
     model: VAE,
     target_hh_observed_df: SquareHHDataFrame,
-    weekend_inds: frozenset[int] = frozenset(
-        {
-            6,
-        }
-    ),
+    weekend_inds: frozenset[int] = frozenset({
+        6,
+    }),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -290,7 +295,7 @@ def daily_to_hh_eload_observed(
 
     # generate a normalised approximate profile for each active day
     # we should sample multiple profiles for each day and calculate a mean intraday profile to pass forward
-    num_reps = 100
+    num_reps = min(100, len(daily_df))
     vae_output_np = generate_approx_daily_profiles(model, np.repeat(consumption_scaled, repeats=num_reps, axis=0))
     vae_output_mean_np = vae_output_np.reshape(num_reps, -1, 48).mean(axis=0)
 
@@ -331,8 +336,8 @@ def daily_to_hh_eload_observed(
     target_hh_obs_baselined = target_hh_observed_df.copy()
     target_hh_obs_baselined[is_active_mask] -= target_hh_obs_daily_active["offsets"].to_numpy()[:, np.newaxis] / 48
     target_hh_obs_baselined[~is_active_mask] -= target_hh_obs_baselined[~is_active_mask].mean(axis=1).to_numpy()[:, np.newaxis]
-    target_hh_obs_baselined[is_active_mask] = target_hh_obs_baselined[is_active_mask].ffill().bfill()
-    target_hh_obs_baselined[~is_active_mask] = target_hh_obs_baselined[~is_active_mask].ffill().bfill()
+    target_hh_obs_baselined[is_active_mask] = target_hh_obs_baselined[is_active_mask]
+    target_hh_obs_baselined[~is_active_mask] = target_hh_obs_baselined[~is_active_mask]
 
     # then establish the residuals, assuming that these limited data are to be modelled using the generated VAE output
     # - vae_output used to model the intraday profile on active days; baselined inactive days are simply relabelled here
@@ -402,12 +407,10 @@ def daily_to_hh_eload_observed(
 
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
-    sims = np.asarray(
-        [
-            ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-            for i in range(num_inactive)
-        ]
-    )
+    sims = np.asarray([
+        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        for i in range(num_inactive)
+    ])
     # - scale by fitted heteroskedasticity factors
     assert var_model_inactive is not None
     var_factors_inactive = np.exp(var_model_inactive.predict())
@@ -418,9 +421,9 @@ def daily_to_hh_eload_observed(
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
-    sims = np.asarray(
-        [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
-    )
+    sims = np.asarray([
+        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+    ])
 
     assert var_model_active is not None
     var_factors_active = np.exp(var_model_active.predict())
@@ -429,10 +432,12 @@ def daily_to_hh_eload_observed(
 
     # perform a final clipping of the _baselined_ simulations to keep all hh simulations within the observed/default bounds
     # also scale the clipped baselined sims to ensure they match the observed daily aggregates
+    # We clip to slightly larger / smaller than what we actually observed, and note that each is 10% larger
+    # (not 0.9 and 1.1) because the baselined values will often be negative.
     target_hh_active_baselined = (
         target_hh_df[target_active_mask] - (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
     )
-    target_hh_active_baselined = target_hh_active_baselined.clip(hh_obs_active_min, hh_obs_active_max, axis=1)
+    target_hh_active_baselined = target_hh_active_baselined.clip(hh_obs_active_min * 1.1, hh_obs_active_max * 1.1, axis=1)
     target_hh_active_baselined *= (
         target_daily_active_df["consumption_baselined"].to_numpy()[:, np.newaxis]
         / target_hh_active_baselined.sum(axis=1).to_numpy()[:, np.newaxis]
@@ -444,8 +449,8 @@ def daily_to_hh_eload_observed(
 
     target_hh_inactive_baselined = target_hh_df[~target_active_mask] - (target_daily_inactive_df / 48).to_numpy(dtype=float)
     target_hh_inactive_baselined = target_hh_inactive_baselined.clip(
-        hh_obs_inactive_min,
-        hh_obs_inactive_max,
+        hh_obs_inactive_min * 1.1,
+        hh_obs_inactive_max * 1.1,
         axis=1,
     )
 
@@ -478,11 +483,9 @@ def daily_to_hh_eload_pretrained(
     daily_df: DailyDataFrame,
     model: VAE,
     resid_model_path: pathlib.Path,
-    weekend_inds: frozenset[int] = frozenset(
-        {
-            6,
-        }
-    ),
+    weekend_inds: frozenset[int] = frozenset({
+        6,
+    }),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -614,12 +617,10 @@ def daily_to_hh_eload_pretrained(
 
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
-    sims = np.asarray(
-        [
-            ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-            for i in range(num_inactive)
-        ]
-    )
+    sims = np.asarray([
+        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        for i in range(num_inactive)
+    ])
     # - scale by fitted heteroskedasticity factors
     scaled_sims = np.sqrt(default_var_factors_inactive) * sims
     target_hh_df[~target_active_mask] += np.clip(scaled_sims, min_noise_inactive, max_noise_inactive)
@@ -627,9 +628,9 @@ def daily_to_hh_eload_pretrained(
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
-    sims = np.asarray(
-        [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
-    )
+    sims = np.asarray([
+        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+    ])
 
     scaled_sims = np.sqrt(default_var_factors_active) * sims
     target_hh_df[target_active_mask] += np.clip(scaled_sims, min_noise_active, max_noise_active)
@@ -638,8 +639,8 @@ def daily_to_hh_eload_pretrained(
     # also scale the clipped baselined sims to ensure they match the observed daily aggregates
     # scale the defaults according to the median daily (baselined) consumption for in/active days. Use medians because using
     # the min daily (baselined) consumption is nontrivial (min hh value not necessarily in same day as min daily value)
-    active_scaling_factor = 1.0  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
-    inactive_scaling_factor = 1.0  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
+    active_scaling_factor = 1.1  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
+    inactive_scaling_factor = 1.1  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
 
     target_hh_active_baselined = (
         target_hh_df[target_active_mask] - (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
@@ -773,9 +774,7 @@ def generate_approx_daily_profiles(
 
             # Use the decoder part of the VAE, with random latent space (so it's not always the same)
             # and some conditioning variables.
-            vae_output_tf = VAE_model.decode(
-                zs, torch.abs(consumption_scaled[problem_inds]), torch.zeros(1, 13), torch.zeros(1, 13), seq_len=48
-            )
+            vae_output_tf = VAE_model.decode(zs, aggregate=torch.abs(consumption_scaled[problem_inds]), seq_len=48)
         vae_output_new = vae_output_tf.squeeze().detach().cpu().numpy()
         vae_output[problem_inds, :] = vae_output_new
 

@@ -4,7 +4,7 @@ import itertools
 import logging
 import pathlib
 from enum import StrEnum
-from typing import Any, Literal, Self, TypedDict, cast
+from typing import Literal, Self, TypedDict, cast
 
 import joblib
 import numpy as np
@@ -13,9 +13,7 @@ import pandas as pd
 import statsmodels.api as sm  # type: ignore
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import OptimizeResult, minimize
-from sklearn.base import TransformerMixin  # type: ignore
 from sklearn.preprocessing import MinMaxScaler, StandardScaler  # type: ignore
-from sklego.preprocessing.repeatingbasis import RepeatingBasisFunction  # type: ignore
 from statsmodels.tsa.api import ARIMA, ArmaProcess  # type: ignore
 
 from app.internal.epl_typing import DailyDataFrame
@@ -49,8 +47,6 @@ class ScalerTypeEnum(StrEnum):
 
     Data = "data"
     Aggregate = "aggregate"
-    StartTime = "start_time"
-    EndTime = "end_time"
     Train = "train"
     Val = "val"
     Test = "test"
@@ -157,99 +153,6 @@ class CustomMinMaxScaler(MinMaxScaler):
         return cast(npt.NDArray[np.floating], super().fit_transform(X, y, **fit_params))
 
 
-class RBFTimestampEncoder(TransformerMixin):
-    """
-    A wrapper class around the RepeatingBasisFunction class from scikit-lego.
-
-    This class performs preprocessing on the input X before calling the
-    transform() method of the RepeatingBasisFunction class.
-    """
-
-    def __init__(self, n_periods: int, input_range: tuple[int, int]):
-        """
-        Initialize the wrapper class.
-
-        Args:
-            **kwargs: Keyword arguments passed to the RepeatingBasisFunction
-                constructor.
-        """
-        self.basis_function = RepeatingBasisFunction(n_periods=n_periods, input_range=input_range)
-        self.is_fitted = False
-        self.n_periods = n_periods
-
-    def _preprocess(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.integer]:
-        """
-        Apply preprocessing to the input X.
-
-        Args:
-            X (numpy.ndarray): The input data.
-
-        Returns
-        -------
-            numpy.ndarray: The preprocessed data.
-        """
-        # Preprocess the data: X is an ndarray, with each element being
-        # a Unix timestamp in seconds. Instead, we want to know the day
-        # of the year
-        # TODO (2024-09-24 JSM): inputs are being coerced to and from
-        # datetime types, to minimise disruption before demo day. Let's
-        # streamline this.
-        # TODO (2024-10-01 MHJB): the type hints are actually correct here, but pandas complains anyway
-        X_dates = pd.to_datetime(X.flatten(), unit="s", origin="unix")  # type: ignore
-        X_dayofyear = X_dates.dayofyear.to_numpy().reshape(-1, 1)
-        return X_dayofyear
-
-    def fit(self, X: npt.NDArray[np.floating]) -> Self:
-        """
-        Fit the RepeatingBasisFunction instance and perform any preprocessing.
-
-        Args:
-            X (numpy.ndarray): The input data.
-
-        Returns
-        -------
-            self
-        """
-        X_preprocessed = self._preprocess(X)
-        self.basis_function.fit(X_preprocessed)
-        self.is_fitted = True
-        return self
-
-    def transform(self, X: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
-        """
-        Transform the input data using the RepeatingBasisFunction.
-
-        Args:
-            X (numpy.ndarray): The input data.
-
-        Returns
-        -------
-            numpy.ndarray: The transformed data.
-        """
-        if not self.is_fitted:
-            raise ValueError("The model needs to be fitted before transforming data.")
-        X_preprocessed = self._preprocess(X)
-        result: npt.NDArray[np.floating] = self.basis_function.transform(X_preprocessed)
-        return result
-
-    def fit_transform(
-        self, X: npt.NDArray[np.floating], y: npt.NDArray[np.floating] | None = None, **fit_params: Any
-    ) -> npt.NDArray[np.floating]:
-        """
-        Fit the RepeatingBasisFunction instance and transform the input data.
-
-        Args:
-            X (numpy.ndarray): The input data.
-
-        Returns
-        -------
-            numpy.ndarray: The transformed data.
-        """
-        if not self.is_fitted:
-            self.fit(X)
-        return self.transform(X)
-
-
 def load_StandardScaler(path: pathlib.Path, refresh: bool = False) -> StandardScaler:
     """
     Load a saved StandardScaler from a file.
@@ -324,46 +227,9 @@ def load_CustomMinMaxScaler(path: pathlib.Path, refresh: bool = False) -> Custom
     return scaler
 
 
-def load_RBFTimestampEncoder(path: pathlib.Path, refresh: bool = False) -> RBFTimestampEncoder:
-    """
-    Load a saved instance of RBFTimestampEncoder (which we treat as a scaler) from a joblib file.
-
-    Parameters
-    ----------
-    path (str)
-        Path to the saved joblib file.
-    refresh
-        Whether we should re-save these to a file after loading.
-        This is useful if you have updated scikit learn and it's complaining!
-
-    Returns
-    -------
-    scaler
-        The loaded RBFTimestampEncoder object.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the specified file does not exist.
-    ValueError
-        If the loaded object is not a RBFTimestampEncoder.
-    """
-    try:
-        scaler = joblib.load(path)
-        if not isinstance(scaler, RBFTimestampEncoder):
-            raise TypeError("Loaded object is not an RBFTimestampEncoder")
-
-        if refresh:
-            joblib.dump(scaler, path)
-    except FileNotFoundError as ex:
-        raise FileNotFoundError(f"No scaler found at {path}") from ex
-
-    return scaler
-
-
 def load_all_scalers(
-    directory: pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = False, use_new: bool = True
-) -> dict[ScalerTypeEnum, CustomMinMaxScaler | RBFTimestampEncoder | StandardScaler]:
+    directory: pathlib.Path = pathlib.Path(".", "models", "final", "scalers"), refresh: bool = False
+) -> dict[ScalerTypeEnum, CustomMinMaxScaler | StandardScaler]:
     """
     Load all the scalers found within a specific directory.
 
@@ -378,34 +244,16 @@ def load_all_scalers(
     Returns
     -------
     Dictionary of scalers with the type as the key and the scaler object as the value.
-
     """
-    if use_new:
-        return {
-            ScalerTypeEnum.Train: load_CustomMinMaxScaler(
-                directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.Val: load_CustomMinMaxScaler(
-                directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.Test: load_CustomMinMaxScaler(
-                directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.Aggregate: load_StandardScaler(
-                directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(
-                directory / "elecTransformerVAE_start_time_scaler.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(
-                directory / "elecTransformerVAE_end_time_scaler.joblib", refresh=refresh
-            ),
-        }
     return {
-        ScalerTypeEnum.Data: load_StandardScaler(directory / "elecVAE_data_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.Aggregate: load_StandardScaler(directory / "elecVAE_aggregate_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(directory / "elecVAE_start_time_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(directory / "elecVAE_end_time_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.Train: load_CustomMinMaxScaler(
+            directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh
+        ),
+        ScalerTypeEnum.Val: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh),
+        ScalerTypeEnum.Test: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh),
+        ScalerTypeEnum.Aggregate: load_StandardScaler(
+            directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh
+        ),
     }
 
 
