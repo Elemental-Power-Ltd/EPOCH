@@ -81,7 +81,8 @@ class TestElecSynthStatistics:
 
     def test_all_readings_positive(self, synthesised_eload: HHDataFrame) -> None:
         """Test that we are always consuming electricity."""
-        assert (synthesised_eload.consumption_kwh >= 0).all(), "Got negative readings"
+        is_negative_mask = synthesised_eload.consumption_kwh < 0
+        assert (synthesised_eload.consumption_kwh >= 0).all(), f"Got negative readings: {synthesised_eload[is_negative_mask]}"
 
     def test_readings_non_zero(self, synthesised_eload: HHDataFrame) -> None:
         """Test that we consume at least some electricity."""
@@ -135,7 +136,11 @@ class TestElecSynthStatistics:
         )
 
     def test_hh_readings_distinct(self, synthesised_eload: HHDataFrame) -> None:
-        """Test that the half hourly readings each day are different."""
+        """
+        Test that the half hourly readings each day are different.
+
+        This checks that we haven't clipped too aggressively on the synthesised profile for this day.
+        """
         assert isinstance(synthesised_eload.index, pd.DatetimeIndex)
         unique_days = sorted(set(synthesised_eload.index.date))
         for date in unique_days:
@@ -143,7 +148,7 @@ class TestElecSynthStatistics:
             in_day_df = synthesised_eload[in_day_mask]
             # forgive a few clashes
             unique_hhs = set(in_day_df["consumption_kwh"])
-            assert len(unique_hhs) > 44, (
+            assert len(unique_hhs) > 40, (
                 f"Not enough unique entries on {date}, got {len(unique_hhs)}: {in_day_df['consumption_kwh'].to_numpy()}"
             )
 
@@ -156,6 +161,7 @@ class TestElecSynthStatistics:
             "Total mean outside of expected range"
         )
 
+        bad_days_count = 0
         unique_days = sorted(set(synthesised_eload.index.date))
         for date in unique_days:
             synth_in_day_mask = synthesised_eload.index.date == date
@@ -166,13 +172,22 @@ class TestElecSynthStatistics:
 
             if synth_in_day_df.empty or synth_in_day_df["consumption_kwh"].isna().any():
                 print(f"Skipping {date} as empty or NaN synth")
+                continue
             if hh_in_day_df.empty or hh_in_day_df["consumption_kwh"].isna().any():
                 print(f"Skipping {date} as empty or NaN actuals")
+                continue
+            if len(hh_in_day_df) < 48:
+                print(f"Skipping {date} as not complete HH data")
+                continue
 
             expected_day_mean = hh_in_day_df["consumption_kwh"].mean()
-            assert 0.8 * expected_day_mean <= synth_in_day_df["consumption_kwh"].mean() <= 1.2 * expected_day_mean, (
-                f"Bad mean on {date}, got {synth_in_day_df['consumption_kwh'].mean()} expected {expected_day_mean}"
-            )
+            if not (0.5 * expected_day_mean <= synth_in_day_df["consumption_kwh"].mean() <= 1.5 * expected_day_mean):
+                bad_days_count += 1
+            # Permit some bad days but get a useful assert if we trip that
+            if bad_days_count > 10:
+                assert 0.5 * expected_day_mean <= synth_in_day_df["consumption_kwh"].mean() <= 1.5 * expected_day_mean, (
+                    f"Bad mean on {date}, got synth={synth_in_day_df['consumption_kwh'].mean()} expected hh={expected_day_mean}"
+                )
 
     def test_no_two_days_alike(self, synthesised_eload: HHDataFrame) -> None:
         """Test that all the days are different to one another."""

@@ -195,7 +195,7 @@ def daily_to_hh_eload(
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided both")
 
     if resid_model_path is not None:
-        return daily_to_hh_eload_pretrained(
+        new_df = daily_to_hh_eload_pretrained(
             daily_df=daily_df,
             model=model,
             resid_model_path=resid_model_path,
@@ -204,8 +204,8 @@ def daily_to_hh_eload(
             rng=rng,
         )
 
-    if target_hh_observed_df is not None:
-        return daily_to_hh_eload_observed(
+    elif target_hh_observed_df is not None:
+        new_df = daily_to_hh_eload_observed(
             daily_df=daily_df,
             model=model,
             target_hh_observed_df=target_hh_observed_df,
@@ -214,7 +214,16 @@ def daily_to_hh_eload(
             rng=rng,
         )
 
-    raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided neither.")
+    else:
+        raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided neither.")
+
+    # Where we've got negative readings as a result of noise or numerical error, replace them with NaNs and fill in
+    # the gap with interpolation between the nearest good readings.
+    # If the negative readings are at the start or end, bfill or ffill them away.
+    is_negative = new_df["consumption_kwh"] < 0
+    new_df.loc[is_negative, "consumption_kwh"] = float("NaN")
+    new_df["consumption_kwh"] = new_df["consumption_kwh"].interpolate(method="time").ffill().bfill()
+    return new_df
 
 
 def daily_to_hh_eload_observed(
@@ -284,7 +293,7 @@ def daily_to_hh_eload_observed(
 
     # generate a normalised approximate profile for each active day
     # we should sample multiple profiles for each day and calculate a mean intraday profile to pass forward
-    num_reps = 100
+    num_reps = min(100, len(daily_df))
     vae_output_np = generate_approx_daily_profiles(model, np.repeat(consumption_scaled, repeats=num_reps, axis=0))
     vae_output_mean_np = vae_output_np.reshape(num_reps, -1, 48).mean(axis=0)
 
@@ -325,8 +334,8 @@ def daily_to_hh_eload_observed(
     target_hh_obs_baselined = target_hh_observed_df.copy()
     target_hh_obs_baselined[is_active_mask] -= target_hh_obs_daily_active["offsets"].to_numpy()[:, np.newaxis] / 48
     target_hh_obs_baselined[~is_active_mask] -= target_hh_obs_baselined[~is_active_mask].mean(axis=1).to_numpy()[:, np.newaxis]
-    target_hh_obs_baselined[is_active_mask] = target_hh_obs_baselined[is_active_mask].ffill().bfill()
-    target_hh_obs_baselined[~is_active_mask] = target_hh_obs_baselined[~is_active_mask].ffill().bfill()
+    target_hh_obs_baselined[is_active_mask] = target_hh_obs_baselined[is_active_mask]  # .ffill().bfill()
+    target_hh_obs_baselined[~is_active_mask] = target_hh_obs_baselined[~is_active_mask]  # .ffill().bfill()
 
     # then establish the residuals, assuming that these limited data are to be modelled using the generated VAE output
     # - vae_output used to model the intraday profile on active days; baselined inactive days are simply relabelled here
@@ -421,10 +430,12 @@ def daily_to_hh_eload_observed(
 
     # perform a final clipping of the _baselined_ simulations to keep all hh simulations within the observed/default bounds
     # also scale the clipped baselined sims to ensure they match the observed daily aggregates
+    # We clip to slightly larger / smaller than what we actually observed, and note that each is 10% larger
+    # (not 0.9 and 1.1) because the baselined values will often be negative.
     target_hh_active_baselined = (
         target_hh_df[target_active_mask] - (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
     )
-    target_hh_active_baselined = target_hh_active_baselined.clip(hh_obs_active_min, hh_obs_active_max, axis=1)
+    target_hh_active_baselined = target_hh_active_baselined.clip(hh_obs_active_min * 1.1, hh_obs_active_max * 1.1, axis=1)
     target_hh_active_baselined *= (
         target_daily_active_df["consumption_baselined"].to_numpy()[:, np.newaxis]
         / target_hh_active_baselined.sum(axis=1).to_numpy()[:, np.newaxis]
@@ -436,8 +447,8 @@ def daily_to_hh_eload_observed(
 
     target_hh_inactive_baselined = target_hh_df[~target_active_mask] - (target_daily_inactive_df / 48).to_numpy(dtype=float)
     target_hh_inactive_baselined = target_hh_inactive_baselined.clip(
-        hh_obs_inactive_min,
-        hh_obs_inactive_max,
+        hh_obs_inactive_min * 1.1,
+        hh_obs_inactive_max * 1.1,
         axis=1,
     )
 
@@ -626,8 +637,8 @@ def daily_to_hh_eload_pretrained(
     # also scale the clipped baselined sims to ensure they match the observed daily aggregates
     # scale the defaults according to the median daily (baselined) consumption for in/active days. Use medians because using
     # the min daily (baselined) consumption is nontrivial (min hh value not necessarily in same day as min daily value)
-    active_scaling_factor = 1.0  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
-    inactive_scaling_factor = 1.0  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
+    active_scaling_factor = 1.1  # target_daily_active_df["consumption_baselined"].median() / default_active_daily_bc_med
+    inactive_scaling_factor = 1.1  # target_daily_inactive_df["consumption_kwh"].median() / default_inactive_daily_bc_med
 
     target_hh_active_baselined = (
         target_hh_df[target_active_mask] - (target_daily_active_df["offsets"] / 48).to_numpy()[:, np.newaxis]
