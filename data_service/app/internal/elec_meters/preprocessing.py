@@ -19,7 +19,7 @@ from scipy.stats import median_abs_deviation
 from sklearn.preprocessing import StandardScaler  # type: ignore
 from torch.utils.data import DataLoader, Dataset
 
-from app.internal.elec_meters.model_utils import CustomMinMaxScaler, RBFTimestampEncoder
+from app.internal.elec_meters.model_utils import CustomMinMaxScaler
 from app.internal.epl_typing import HHDataFrame, SquareHHDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
@@ -27,28 +27,14 @@ from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 class SplitDataDict(TypedDict):  # noqa: D101
     hh_train: npt.NDArray[np.floating]
     daily_train: npt.NDArray[np.floating]
-    start_times_train: npt.NDArray[np.floating]
-    end_times_train: npt.NDArray[np.floating]
-    unscaled_start_times_train: npt.NDArray[np.floating]
-    unscaled_end_times_train: npt.NDArray[np.floating]
     hh_val: npt.NDArray[np.floating]
     daily_val: npt.NDArray[np.floating]
-    start_times_val: npt.NDArray[np.floating]
-    end_times_val: npt.NDArray[np.floating]
-    unscaled_start_times_val: npt.NDArray[np.floating]
-    unscaled_end_times_val: npt.NDArray[np.floating]
     hh_test: npt.NDArray[np.floating]
     daily_test: npt.NDArray[np.floating]
-    start_times_test: npt.NDArray[np.floating]
-    end_times_test: npt.NDArray[np.floating]
     data_scaler_train: CustomMinMaxScaler | None
     data_scaler_val: CustomMinMaxScaler | None
     data_scaler_test: CustomMinMaxScaler | None
     aggregate_scaler: StandardScaler | None
-    start_time_scaler: RBFTimestampEncoder
-    end_time_scaler: RBFTimestampEncoder
-    unscaled_start_times_test: npt.NDArray[np.floating]
-    unscaled_end_times_test: npt.NDArray[np.floating]
     hh_train_scales: npt.NDArray[np.floating] | None
     hh_train_mins: npt.NDArray[np.floating] | None
     hh_val_scales: npt.NDArray[np.floating] | None
@@ -64,22 +50,14 @@ class DataPipelineDict(TypedDict):  # noqa: D101
     features_dim: int
     hh_train: npt.NDArray[np.floating]
     daily_train: npt.NDArray[np.floating]
-    unscaled_start_times_train: npt.NDArray[np.floating]
-    unscaled_end_times_train: npt.NDArray[np.floating]
     hh_val: npt.NDArray[np.floating]
     daily_val: npt.NDArray[np.floating]
-    unscaled_start_times_val: npt.NDArray[np.floating]
-    unscaled_end_times_val: npt.NDArray[np.floating]
     hh_test: npt.NDArray[np.floating]
     daily_test: npt.NDArray[np.floating]
-    unscaled_start_times_test: npt.NDArray[np.floating]
-    unscaled_end_times_test: npt.NDArray[np.floating]
     data_scaler_train: CustomMinMaxScaler | None
     data_scaler_val: CustomMinMaxScaler | None
     data_scaler_test: CustomMinMaxScaler | None
     aggregate_scaler: StandardScaler | None
-    start_time_scaler: RBFTimestampEncoder | None
-    end_time_scaler: RBFTimestampEncoder | None
     dbg_loadeddata: pd.DataFrame
     dbg_cleaneddata: pd.DataFrame
     dbg_hhdata: npt.NDArray[np.floating]
@@ -88,13 +66,7 @@ class DataPipelineDict(TypedDict):  # noqa: D101
 class TimeSeriesDataset(Dataset):
     """Dataset class for time series data with half-hourly values and daily aggregates."""
 
-    def __init__(
-        self,
-        hh_data: npt.NDArray[np.floating],
-        daily_data: npt.NDArray[np.floating],
-        start_times: npt.NDArray[np.floating],
-        end_times: npt.NDArray[np.floating],
-    ):
+    def __init__(self, hh_data: npt.NDArray[np.floating], daily_data: npt.NDArray[np.floating]):
         """
         Initialize the dataset.
 
@@ -109,8 +81,6 @@ class TimeSeriesDataset(Dataset):
         """
         self.hh_data = hh_data
         self.daily_data = daily_data
-        self.start_times = start_times
-        self.end_times = end_times
 
         # Calculate derived properties
         self.n_samples = hh_data.shape[0]
@@ -135,8 +105,6 @@ class TimeSeriesDataset(Dataset):
         return {
             "data": torch.tensor(self.hh_data[idx], dtype=torch.float),
             "aggregate": torch.tensor(self.daily_data[idx], dtype=torch.float),
-            "start_time": torch.tensor(self.start_times[idx], dtype=torch.float),  # UNIX time, in seconds
-            "end_time": torch.tensor(self.end_times[idx], dtype=torch.float),  # UNIX time, in seconds
         }
 
 
@@ -462,37 +430,15 @@ def split_data(
         daily_test = aggregate_scaler.transform(daily_test.reshape((n_days - val_end), n_features))
         daily_test = daily_test.reshape((n_days - val_end), 1, n_features)
 
-    # Always transform the start and end times
-    start_time_scaler = RBFTimestampEncoder(n_periods=13, input_range=(1, 365))
-    end_time_scaler = RBFTimestampEncoder(n_periods=13, input_range=(1, 365))
-    start_times_train = start_time_scaler.fit_transform(unscaled_start_times_train)
-    end_times_train = end_time_scaler.fit_transform(unscaled_end_times_train)
-    start_times_val = start_time_scaler.transform(unscaled_start_times_val)
-    end_times_val = end_time_scaler.transform(unscaled_end_times_val)
-    start_times_test = start_time_scaler.transform(unscaled_start_times_test)
-    end_times_test = end_time_scaler.transform(unscaled_end_times_test)
-
     # create multi-day samples within train/val/test sets using a sliding window
     hh_train = create_sliding_windows(hh_train, window_size, window_stride)
     daily_train = create_sliding_windows(daily_train, window_size, window_stride)
-    start_times_train = create_sliding_windows(start_times_train, window_size, window_stride)
-    end_times_train = create_sliding_windows(end_times_train, window_size, window_stride)
-    unscaled_start_times_train = create_sliding_windows(unscaled_start_times_train, window_size, window_stride)
-    unscaled_end_times_train = create_sliding_windows(unscaled_end_times_train, window_size, window_stride)
 
     hh_val = create_sliding_windows(hh_val, window_size, window_stride)
     daily_val = create_sliding_windows(daily_val, window_size, window_stride)
-    start_times_val = create_sliding_windows(start_times_val, window_size, window_stride)
-    end_times_val = create_sliding_windows(end_times_val, window_size, window_stride)
-    unscaled_start_times_val = create_sliding_windows(unscaled_start_times_val, window_size, window_stride)
-    unscaled_end_times_val = create_sliding_windows(unscaled_end_times_val, window_size, window_stride)
 
     hh_test = create_sliding_windows(hh_test, window_size, window_stride)
     daily_test = create_sliding_windows(daily_test, window_size, window_stride)
-    start_times_test = create_sliding_windows(start_times_test, window_size, window_stride)
-    end_times_test = create_sliding_windows(end_times_test, window_size, window_stride)
-    unscaled_start_times_test = create_sliding_windows(unscaled_start_times_test, window_size, window_stride)
-    unscaled_end_times_test = create_sliding_windows(unscaled_end_times_test, window_size, window_stride)
 
     # until now, missing data (nans) have been kept in to preserve time ordering
     # some days will contain nans and these will appear in multiple multi-day windows
@@ -501,24 +447,18 @@ def split_data(
     if to_drop.size != 0:
         hh_train = np.delete(hh_train, to_drop, axis=0)
         daily_train = np.delete(daily_train, to_drop, axis=0)
-        start_times_train = np.delete(start_times_train, to_drop, axis=0)
-        end_times_train = np.delete(end_times_train, to_drop, axis=0)
         unscaled_start_times_train = np.delete(unscaled_start_times_train, to_drop, axis=0)
         unscaled_end_times_train = np.delete(unscaled_end_times_train, to_drop, axis=0)
     to_drop = np.where(np.isnan(daily_val))[0]
     if to_drop.size != 0:
         hh_val = np.delete(hh_val, to_drop, axis=0)
         daily_val = np.delete(daily_val, to_drop, axis=0)
-        start_times_val = np.delete(start_times_val, to_drop, axis=0)
-        end_times_val = np.delete(end_times_val, to_drop, axis=0)
         unscaled_start_times_val = np.delete(unscaled_start_times_val, to_drop, axis=0)
         unscaled_end_times_val = np.delete(unscaled_end_times_val, to_drop, axis=0)
     to_drop = np.where(np.isnan(daily_test))[0]
     if to_drop.size != 0:
         hh_test = np.delete(hh_test, to_drop, axis=0)
         daily_test = np.delete(daily_test, to_drop, axis=0)
-        start_times_test = np.delete(start_times_test, to_drop, axis=0)
-        end_times_test = np.delete(end_times_test, to_drop, axis=0)
         unscaled_start_times_test = np.delete(unscaled_start_times_test, to_drop, axis=0)
         unscaled_end_times_test = np.delete(unscaled_end_times_test, to_drop, axis=0)
 
@@ -530,28 +470,14 @@ def split_data(
     return {
         "hh_train": hh_train,
         "daily_train": daily_train,
-        "start_times_train": start_times_train,
-        "end_times_train": end_times_train,
-        "unscaled_start_times_train": unscaled_start_times_train,
-        "unscaled_end_times_train": unscaled_end_times_train,
         "hh_val": hh_val,
         "daily_val": daily_val,
-        "start_times_val": start_times_val,
-        "end_times_val": end_times_val,
-        "unscaled_start_times_val": unscaled_start_times_val,
-        "unscaled_end_times_val": unscaled_end_times_val,
         "hh_test": hh_test,
         "daily_test": daily_test,
-        "start_times_test": start_times_test,
-        "end_times_test": end_times_test,
         "data_scaler_train": data_scaler_train,
         "data_scaler_val": data_scaler_val,
         "data_scaler_test": data_scaler_test,
         "aggregate_scaler": aggregate_scaler,
-        "start_time_scaler": start_time_scaler,
-        "end_time_scaler": end_time_scaler,
-        "unscaled_start_times_test": unscaled_start_times_test,
-        "unscaled_end_times_test": unscaled_end_times_test,
         "hh_train_scales": hh_train_scales,
         "hh_train_mins": hh_train_mins,
         "hh_val_scales": hh_val_scales,
@@ -564,12 +490,8 @@ def split_data(
 def create_data_loaders(
     hh_train: npt.NDArray[np.floating],
     daily_train: npt.NDArray[np.floating],
-    start_times_train: npt.NDArray[np.floating],
-    end_times_train: npt.NDArray[np.floating],
     hh_val: npt.NDArray[np.floating],
     daily_val: npt.NDArray[np.floating],
-    start_times_val: npt.NDArray[np.floating],
-    end_times_val: npt.NDArray[np.floating],
     batch_size: int = 32,
     num_workers: int = 4,
 ) -> tuple[DataLoader, DataLoader]:
@@ -603,8 +525,8 @@ def create_data_loaders(
     -------
         Tuple of (train_loader, val_loader)
     """
-    train_dataset = TimeSeriesDataset(hh_train, daily_train, start_times_train, end_times_train)
-    val_dataset = TimeSeriesDataset(hh_val, daily_val, start_times_val, end_times_val)
+    train_dataset = TimeSeriesDataset(hh_train, daily_train)
+    val_dataset = TimeSeriesDataset(hh_val, daily_val)
 
     # Set the number of threads before DataLoader or any parallel tasks
     torch.set_num_threads(1)
@@ -677,20 +599,14 @@ def prepare_data_pipeline(
     train_loader, val_loader = create_data_loaders(
         split_data_dict["hh_train"],
         split_data_dict["daily_train"],
-        split_data_dict["start_times_train"],
-        split_data_dict["end_times_train"],
         split_data_dict["hh_val"],
         split_data_dict["daily_val"],
-        split_data_dict["start_times_val"],
-        split_data_dict["end_times_val"],
         batch_size,
     )
 
     test_dataset = TimeSeriesDataset(
         split_data_dict["hh_test"],
         split_data_dict["daily_test"],
-        split_data_dict["start_times_test"],
-        split_data_dict["end_times_test"],
     )
 
     # Set the number of threads before DataLoader or any parallel tasks
@@ -704,22 +620,14 @@ def prepare_data_pipeline(
         "features_dim": features_dim,
         "hh_train": split_data_dict["hh_train"],
         "daily_train": split_data_dict["daily_train"],
-        "unscaled_start_times_train": split_data_dict["unscaled_start_times_train"],
-        "unscaled_end_times_train": split_data_dict["unscaled_end_times_train"],
         "hh_val": split_data_dict["hh_val"],
         "daily_val": split_data_dict["daily_val"],
-        "unscaled_start_times_val": split_data_dict["unscaled_start_times_val"],
-        "unscaled_end_times_val": split_data_dict["unscaled_end_times_val"],
         "hh_test": split_data_dict["hh_test"],
         "daily_test": split_data_dict["daily_test"],
-        "unscaled_start_times_test": split_data_dict["unscaled_start_times_test"],
-        "unscaled_end_times_test": split_data_dict["unscaled_end_times_test"],
         "data_scaler_train": split_data_dict["data_scaler_train"],
         "data_scaler_val": split_data_dict["data_scaler_val"],
         "data_scaler_test": split_data_dict["data_scaler_test"],
         "aggregate_scaler": split_data_dict["aggregate_scaler"],
-        "start_time_scaler": split_data_dict["start_time_scaler"],
-        "end_time_scaler": split_data_dict["end_time_scaler"],
         "dbg_loadeddata": df,
         "dbg_cleaneddata": df_clean,
         "dbg_hhdata": hh_data,

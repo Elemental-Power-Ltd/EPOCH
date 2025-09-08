@@ -336,8 +336,8 @@ def daily_to_hh_eload_observed(
     target_hh_obs_baselined = target_hh_observed_df.copy()
     target_hh_obs_baselined[is_active_mask] -= target_hh_obs_daily_active["offsets"].to_numpy()[:, np.newaxis] / 48
     target_hh_obs_baselined[~is_active_mask] -= target_hh_obs_baselined[~is_active_mask].mean(axis=1).to_numpy()[:, np.newaxis]
-    target_hh_obs_baselined[is_active_mask] = target_hh_obs_baselined[is_active_mask]  # .ffill().bfill()
-    target_hh_obs_baselined[~is_active_mask] = target_hh_obs_baselined[~is_active_mask]  # .ffill().bfill()
+    target_hh_obs_baselined[is_active_mask] = target_hh_obs_baselined[is_active_mask]
+    target_hh_obs_baselined[~is_active_mask] = target_hh_obs_baselined[~is_active_mask]
 
     # then establish the residuals, assuming that these limited data are to be modelled using the generated VAE output
     # - vae_output used to model the intraday profile on active days; baselined inactive days are simply relabelled here
@@ -774,9 +774,7 @@ def generate_approx_daily_profiles(
 
             # Use the decoder part of the VAE, with random latent space (so it's not always the same)
             # and some conditioning variables.
-            vae_output_tf = VAE_model.decode(
-                zs, torch.abs(consumption_scaled[problem_inds]), torch.zeros(1, 13), torch.zeros(1, 13), seq_len=48
-            )
+            vae_output_tf = VAE_model.decode(zs, aggregate=torch.abs(consumption_scaled[problem_inds]), seq_len=48)
         vae_output_new = vae_output_tf.squeeze().detach().cpu().numpy()
         vae_output[problem_inds, :] = vae_output_new
 

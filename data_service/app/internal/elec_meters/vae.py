@@ -49,8 +49,6 @@ class VAE(nn.Module):  # noqa: D101
     def __init__(
         self,
         input_dim: int,
-        aggregate_dim: int,
-        date_dim: int,
         latent_dim: int,
         hidden_dim_encoder: int = 64,
         hidden_dim_decoder: int = 64,
@@ -112,7 +110,9 @@ class VAE(nn.Module):  # noqa: D101
         self.dropout_decoder_flag = dropout_decoder is not None  # whether we're using dropout in the decoder module
 
     def encode(
-        self, x: torch.Tensor, aggregate: torch.Tensor, start_date: torch.Tensor, end_date: torch.Tensor
+        self,
+        x: torch.Tensor,
+        aggregate: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Encode the input data into a latent space representation.
@@ -123,10 +123,6 @@ class VAE(nn.Module):  # noqa: D101
             Time series data of shape [batch_size, n_days, 48, input_dim]
         aggregate (Tensor)
             Aggregate values (non-temporal); tensor of shape [batch_size, n_days, 1]
-        start_date (Tensor)
-            Start date of the period (non-temporal); tensor of shape [batch_size, n_days, 1]
-        end_date (Tensor)
-            End date of the period (non-temporal); tensor of shape [batch_size, n_days, 1]
 
         Returns
         -------
@@ -176,9 +172,7 @@ class VAE(nn.Module):  # noqa: D101
         eps = torch.randn_like(std)  # Sample from a standard normal distribution
         return mu + eps * std  # Reparameterization trick
 
-    def decode(
-        self, z: torch.Tensor, aggregate: torch.Tensor, start_date: torch.Tensor, end_date: torch.Tensor, seq_len: int
-    ) -> torch.Tensor:
+    def decode(self, z: torch.Tensor, aggregate: torch.Tensor, seq_len: int) -> torch.Tensor:
         """
         Decode the latent vector into a reconstructed time series.
 
@@ -188,10 +182,6 @@ class VAE(nn.Module):  # noqa: D101
             Latent vector of shape (batch_size, n_days, latent_dim).
         aggregate (Tensor)
             Aggregate values (non-temporal) of shape (batch_size, n_days, 1).
-        start_date (Tensor)
-            Start date of the period (non-temporal) of shape (batch_size, n_days, 1).
-        end_date (Tensor)
-            End date of the period (non-temporal) of shape (batch_size, n_days, 1).
         seq_len (int)
             The length of the time series sequence (number of time steps).
 
@@ -271,7 +261,7 @@ class VAE(nn.Module):  # noqa: D101
         # Input shape checking
         if len(x.shape) != 4 or x.shape[3] != 1:
             raise ValueError(f"Expected input 'x' to have shape (batch_size, n_days, seq_len, 1), but got {x.shape}")
-        mu, log_var = self.encode(x, aggregate, start_date, end_date)
+        mu, log_var = self.encode(x, aggregate)
         z = self.reparameterize(mu, log_var)
 
-        return {"reconstructed": self.decode(z, aggregate, start_date, end_date, x.shape[2]), "mu": mu, "logvar": log_var}
+        return {"reconstructed": self.decode(z, aggregate, x.shape[2]), "mu": mu, "logvar": log_var}
