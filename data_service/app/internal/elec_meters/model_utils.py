@@ -761,8 +761,8 @@ def joint_nll(params: npt.NDArray[np.floating], models: list[ARIMA]) -> float:
             if not np.isfinite(ll):  # invalid region
                 return np.inf
             total -= ll  # negative log likelihood
-        except Exception:
-            return np.inf  # penalise with infinite loss for e.g., LU decomposition failure
+        except (np.linalg.LinAlgError, ValueError): # catch errors due to bad model specification, e.g. LU decomposition failure
+            return np.inf  # penalise these with infinite loss
     return total
 
 
@@ -811,7 +811,7 @@ def fit_shared_arma_model(
             )
             for y in data
         ]
-    except Exception:  # if model creation within the fitting function failed, skip this choice of (p,q)
+    except ValueError:  # if invalid values of p,q, are attempted, skip this choice of (p,q)
         return None
 
     sigma2_init = np.mean(data.var(axis=1))  # better scalar init for sigma-sq, compared to data.var()
