@@ -54,7 +54,7 @@ def synthesised_eload_observed(
 
 def synthesised_eload_model_path(vae_model: VAE, daily_df: DailyDataFrame, rng: np.random.Generator) -> HHDataFrame:
     """Get a synthesised eload with the pretrained resids."""
-    RESID_MODEL_PATH = Path(".", "models", "draft", "35 - trained - AH")
+    RESID_MODEL_PATH = Path(".", "models", "final", "arima")
     return daily_to_hh_eload(daily_df=daily_df, model=vae_model, resid_model_path=RESID_MODEL_PATH, rng=rng)
 
 
