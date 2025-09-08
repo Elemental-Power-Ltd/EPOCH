@@ -132,7 +132,7 @@ async def generate_electricity_load(
         model=vae,
         resid_model_path=resid_model_path,
         target_hh_observed_df=target_hh_observed_df,
-        weekend_inds={5, 6},
+        weekend_inds=frozenset({5, 6}),
     )
 
     metadata = ElectricalLoadMetadata(
