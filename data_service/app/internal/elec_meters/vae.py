@@ -199,8 +199,8 @@ class VAE(nn.Module):  # noqa: D101
         -------
         Tensor: Reconstructed time series of shape (batch_size, n_days, seq_len, input_dim).
         """
-        batch_size, n_days, _ = z.shape
-
+        batch_size, n_days, latent_dim = z.shape
+        assert latent_dim == self.latent_dim, f"Wrong latent dimension in {z.shape} (should be last dimension)"
         # Reshape inputs for VAE decoder to treat each day independently
         z = z.reshape(batch_size * n_days, -1)
         aggregate = aggregate.reshape(batch_size * n_days, -1)

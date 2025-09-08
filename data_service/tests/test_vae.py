@@ -72,10 +72,11 @@ class TestVAE:
                 .transform(daily_df["end_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
                 .astype(np.float32)
             )
-            zs = torch.randn(size=[daily_df.shape[0], model.latent_dim], dtype=torch.float32)
-            result_scaled = model.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
-            result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
-            assert result.shape == (29, 48)
+            zs = torch.randn(size=[1, daily_df.shape[0], model.latent_dim], dtype=torch.float32)
+            result_scaled = (
+                model.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48).squeeze().detach().numpy()
+            )
+            assert result_scaled.shape == (29, 48)
 
     def test_trained(self) -> None:
         """Test that we can use a pre-baked trained model with random data."""
@@ -103,7 +104,13 @@ class TestVAE:
                 .transform(daily_df["end_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
                 .astype(np.float32)
             )
-            zs = torch.randn(size=[daily_df.shape[0], elec_vae_mdl.latent_dim], dtype=torch.float32)
-            result_scaled = elec_vae_mdl.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
-            result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
-            assert result.shape == (29, 48)
+            # Batch size, n days, latent dim
+            zs = torch.randn(size=[1, daily_df.shape[0], elec_vae_mdl.latent_dim], dtype=torch.float32)
+            result_scaled = (
+                elec_vae_mdl.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
+                .squeeze()
+                .detach()
+                .numpy()
+            )
+            # result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
+            assert result_scaled.shape == (29, 48)

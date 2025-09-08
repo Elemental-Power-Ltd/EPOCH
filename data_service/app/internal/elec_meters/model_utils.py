@@ -363,7 +363,7 @@ def load_RBFTimestampEncoder(path: pathlib.Path, refresh: bool = False) -> RBFTi
 
 
 def load_all_scalers(
-    directory: pathlib.Path = pathlib.Path(".", "models", "final"), refresh: bool = False, use_new: bool = True
+    directory: pathlib.Path = pathlib.Path(".", "models", "final", "scalers"), refresh: bool = False
 ) -> dict[ScalerTypeEnum, CustomMinMaxScaler | RBFTimestampEncoder | StandardScaler]:
     """
     Load all the scalers found within a specific directory.
@@ -379,34 +379,22 @@ def load_all_scalers(
     Returns
     -------
     Dictionary of scalers with the type as the key and the scaler object as the value.
-
     """
-    if use_new:
-        return {
-            ScalerTypeEnum.Train: load_CustomMinMaxScaler(
-                directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.Val: load_CustomMinMaxScaler(
-                directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.Test: load_CustomMinMaxScaler(
-                directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.Aggregate: load_StandardScaler(
-                directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(
-                directory / "elecTransformerVAE_start_time_scaler.joblib", refresh=refresh
-            ),
-            ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(
-                directory / "elecTransformerVAE_end_time_scaler.joblib", refresh=refresh
-            ),
-        }
     return {
-        ScalerTypeEnum.Data: load_StandardScaler(directory / "elecVAE_data_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.Aggregate: load_StandardScaler(directory / "elecVAE_aggregate_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(directory / "elecVAE_start_time_scaler.joblib", refresh=refresh),
-        ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(directory / "elecVAE_end_time_scaler.joblib", refresh=refresh),
+        ScalerTypeEnum.Train: load_CustomMinMaxScaler(
+            directory / "elecTransformerVAE_data_scaler_train.joblib", refresh=refresh
+        ),
+        ScalerTypeEnum.Val: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_val.joblib", refresh=refresh),
+        ScalerTypeEnum.Test: load_CustomMinMaxScaler(directory / "elecTransformerVAE_data_scaler_test.joblib", refresh=refresh),
+        ScalerTypeEnum.Aggregate: load_StandardScaler(
+            directory / "elecTransformerVAE_aggregate_scaler.joblib", refresh=refresh
+        ),
+        ScalerTypeEnum.StartTime: load_RBFTimestampEncoder(
+            directory / "elecTransformerVAE_start_time_scaler.joblib", refresh=refresh
+        ),
+        ScalerTypeEnum.EndTime: load_RBFTimestampEncoder(
+            directory / "elecTransformerVAE_end_time_scaler.joblib", refresh=refresh
+        ),
     }
 
 
