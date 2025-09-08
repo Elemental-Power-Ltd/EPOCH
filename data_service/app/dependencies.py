@@ -208,6 +208,7 @@ DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
 VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
 ProcessPoolDep = typing.Annotated[ProcessPoolExecutor, Depends(get_process_pool)]
+ThreadPoolDep = typing.Annotated[ThreadPoolExecutor, Depends(get_thread_pool)]
 
 
 def find_model_path(base_dir: Path = Path(".")) -> Path:

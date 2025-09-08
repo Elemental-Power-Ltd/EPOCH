@@ -1,6 +1,8 @@
 """API endpoints for electrical loads, including resampling."""
 
+import asyncio
 import datetime
+import functools
 import logging
 from pathlib import Path
 from typing import cast
@@ -9,7 +11,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from app.dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
+from app.dependencies import DatabaseDep, DatabasePoolDep, ThreadPoolDep, VaeDep
 from app.internal.elec_meters import daily_to_hh_eload, day_type, monthly_to_daily_eload
 from app.internal.elec_meters.preprocessing import hh_to_square
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame
@@ -25,7 +27,7 @@ router = APIRouter()
 
 @router.post("/generate-electricity-load", tags=["electricity", "generate"])
 async def generate_electricity_load(
-    params: ElectricalLoadRequest, vae: VaeDep, pool: DatabasePoolDep, http_client: HttpClientDep
+    params: ElectricalLoadRequest, vae: VaeDep, pool: DatabasePoolDep, thread_pool: ThreadPoolDep
 ) -> ElectricalLoadMetadata:
     """
     Generate a synthetic electrical load from a set of real data.
@@ -127,12 +129,17 @@ async def generate_electricity_load(
         resid_model_path = Path("models", "final", "arima")
         target_hh_observed_df = None
 
-    synthetic_hh_df = daily_to_hh_eload(
-        synthetic_daily_df,
-        model=vae,
-        resid_model_path=resid_model_path,
-        target_hh_observed_df=target_hh_observed_df,
-        weekend_inds=frozenset({5, 6}),
+    loop = asyncio.get_running_loop()
+    synthetic_hh_df = await loop.run_in_executor(
+        thread_pool,
+        functools.partial(
+            daily_to_hh_eload,
+            synthetic_daily_df,
+            model=vae,
+            resid_model_path=resid_model_path,
+            target_hh_observed_df=target_hh_observed_df,
+            weekend_inds=frozenset({5, 6}),
+        ),
     )
 
     metadata = ElectricalLoadMetadata(
