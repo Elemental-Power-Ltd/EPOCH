@@ -122,7 +122,6 @@ async def generate_electricity_load(
         logger.info("Generating electricity load with observed HH")
         resid_model_path = None
         target_hh_observed_df = hh_to_square(cast(HHDataFrame, raw_df))
-        print(target_hh_observed_df)
     else:
         logger.info("Generating electricity load with pretrained ARIMA")
         resid_model_path = Path("models", "final", "arima")
