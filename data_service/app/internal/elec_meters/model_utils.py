@@ -659,7 +659,7 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
 
 
 def split_and_baseline_active_days(
-    df_daily_all: DailyDataFrame, weekend_inds: Container[int] = (5, 6), division: UKCountryEnum = UKCountryEnum.England
+    df_daily_all: DailyDataFrame, weekend_inds: frozenset[int] = frozenset({5, 6}), division: UKCountryEnum = UKCountryEnum.England
 ) -> tuple[DailyDataFrame, DailyDataFrame]:
     """
     Extract "inactive days" (i.e. weekend/holidays) from daily aggregates; use these to baseline the remaining days.
