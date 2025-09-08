@@ -690,7 +690,6 @@ def kl_annealing_scheduler(
         return target_weight
 
 
-
 def train_model(
     model: VAE,
     train_loader: DataLoader,

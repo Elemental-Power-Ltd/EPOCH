@@ -3,7 +3,6 @@
 import itertools
 import logging
 import pathlib
-from collections.abc import Container
 from enum import StrEnum
 from typing import Any, Literal, Self, TypedDict, cast
 
@@ -659,7 +658,9 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
 
 
 def split_and_baseline_active_days(
-    df_daily_all: DailyDataFrame, weekend_inds: frozenset[int] = frozenset({5, 6}), division: UKCountryEnum = UKCountryEnum.England
+    df_daily_all: DailyDataFrame,
+    weekend_inds: frozenset[int] = frozenset({5, 6}),
+    division: UKCountryEnum = UKCountryEnum.England,
 ) -> tuple[DailyDataFrame, DailyDataFrame]:
     """
     Extract "inactive days" (i.e. weekend/holidays) from daily aggregates; use these to baseline the remaining days.
@@ -761,7 +762,10 @@ def joint_nll(params: npt.NDArray[np.floating], models: list[ARIMA]) -> float:
             if not np.isfinite(ll):  # invalid region
                 return np.inf
             total -= ll  # negative log likelihood
-        except (np.linalg.LinAlgError, ValueError): # catch errors due to bad model specification, e.g. LU decomposition failure
+        except (
+            np.linalg.LinAlgError,
+            ValueError,
+        ):  # catch errors due to bad model specification, e.g. LU decomposition failure
             return np.inf  # penalise these with infinite loss
     return total
 

@@ -149,9 +149,11 @@ def daily_to_hh_eload(
     model: VAE,
     resid_model_path: pathlib.Path | None = None,
     target_hh_observed_df: SquareHHDataFrame | None = None,
-    weekend_inds: frozenset[int] = frozenset({
-        6,
-    }),
+    weekend_inds: frozenset[int] = frozenset(
+        {
+            6,
+        }
+    ),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -194,7 +196,7 @@ def daily_to_hh_eload(
     if resid_model_path is not None and target_hh_observed_df is not None:
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided both")
 
-    weekend_inds = frozenset(weekend_inds) # to guarantee immutability
+    weekend_inds = frozenset(weekend_inds)  # to guarantee immutability
 
     if resid_model_path is not None:
         return daily_to_hh_eload_pretrained(
@@ -223,9 +225,11 @@ def daily_to_hh_eload_observed(
     daily_df: DailyDataFrame,
     model: VAE,
     target_hh_observed_df: SquareHHDataFrame,
-    weekend_inds: frozenset[int] = frozenset({
-        6,
-    }),
+    weekend_inds: frozenset[int] = frozenset(
+        {
+            6,
+        }
+    ),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -398,10 +402,12 @@ def daily_to_hh_eload_observed(
 
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
-    sims = np.asarray([
-        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-        for i in range(num_inactive)
-    ])
+    sims = np.asarray(
+        [
+            ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+            for i in range(num_inactive)
+        ]
+    )
     # - scale by fitted heteroskedasticity factors
     assert var_model_inactive is not None
     var_factors_inactive = np.exp(var_model_inactive.predict())
@@ -412,9 +418,9 @@ def daily_to_hh_eload_observed(
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
-    sims = np.asarray([
-        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
-    ])
+    sims = np.asarray(
+        [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
+    )
 
     assert var_model_active is not None
     var_factors_active = np.exp(var_model_active.predict())
@@ -472,9 +478,11 @@ def daily_to_hh_eload_pretrained(
     daily_df: DailyDataFrame,
     model: VAE,
     resid_model_path: pathlib.Path,
-    weekend_inds: frozenset[int] = frozenset({
-        6,
-    }),
+    weekend_inds: frozenset[int] = frozenset(
+        {
+            6,
+        }
+    ),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -606,10 +614,12 @@ def daily_to_hh_eload_pretrained(
 
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
-    sims = np.asarray([
-        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-        for i in range(num_inactive)
-    ])
+    sims = np.asarray(
+        [
+            ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+            for i in range(num_inactive)
+        ]
+    )
     # - scale by fitted heteroskedasticity factors
     scaled_sims = np.sqrt(default_var_factors_inactive) * sims
     target_hh_df[~target_active_mask] += np.clip(scaled_sims, min_noise_inactive, max_noise_inactive)
@@ -617,9 +627,9 @@ def daily_to_hh_eload_pretrained(
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
-    sims = np.asarray([
-        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
-    ])
+    sims = np.asarray(
+        [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
+    )
 
     scaled_sims = np.sqrt(default_var_factors_active) * sims
     target_hh_df[target_active_mask] += np.clip(scaled_sims, min_noise_active, max_noise_active)
