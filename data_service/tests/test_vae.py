@@ -18,9 +18,9 @@ class TestScalers:
     def test_yearly_invariant(self) -> None:
         """Test that the same day in different years is encoded the same."""
         encoder = RBFTimestampEncoder(n_periods=13, input_range=(1, 365))
-        data = np.array([
-            datetime.datetime(year=y, month=2, day=27, tzinfo=datetime.UTC).timestamp() for y in range(2000, 2025)
-        ])
+        data = np.array(
+            [datetime.datetime(year=y, month=2, day=27, tzinfo=datetime.UTC).timestamp() for y in range(2000, 2025)]
+        )
         result = encoder.fit_transform(data)
         assert result.shape == (25, 13)
         for i in range(25):
@@ -51,11 +51,13 @@ class TestVAE:
             ),
         }
 
-        daily_df = pd.DataFrame({
-            "start_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
-            "end_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
-            "consumption_kwh": 10000 * np.random.default_rng().random(size=29),
-        })
+        daily_df = pd.DataFrame(
+            {
+                "start_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
+                "end_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
+                "consumption_kwh": 10000 * np.random.default_rng().random(size=29),
+            }
+        )
         with torch.no_grad():
             consumption_scaled = torch.from_numpy(
                 scalers[ScalerTypeEnum.Aggregate]
@@ -83,11 +85,13 @@ class TestVAE:
         elec_vae_mdl = load_vae()
         scalers = load_all_scalers()
 
-        daily_df = pd.DataFrame({
-            "start_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
-            "end_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
-            "consumption_kwh": 10000 * np.random.default_rng().random(size=29),
-        })
+        daily_df = pd.DataFrame(
+            {
+                "start_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
+                "end_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
+                "consumption_kwh": 10000 * np.random.default_rng().random(size=29),
+            }
+        )
         with torch.no_grad():
             consumption_scaled = torch.from_numpy(
                 scalers[ScalerTypeEnum.Aggregate]

@@ -3,7 +3,6 @@
 import itertools
 import logging
 import pathlib
-from collections.abc import Container
 from enum import StrEnum
 from typing import Any, Literal, Self, TypedDict, cast
 
@@ -647,7 +646,9 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
 
 
 def split_and_baseline_active_days(
-    df_daily_all: DailyDataFrame, weekend_inds: Container[int] = (5, 6), division: UKCountryEnum = UKCountryEnum.England
+    df_daily_all: DailyDataFrame,
+    weekend_inds: frozenset[int] = frozenset({5, 6}),
+    division: UKCountryEnum = UKCountryEnum.England,
 ) -> tuple[DailyDataFrame, DailyDataFrame]:
     """
     Extract "inactive days" (i.e. weekend/holidays) from daily aggregates; use these to baseline the remaining days.
@@ -749,8 +750,11 @@ def joint_nll(params: npt.NDArray[np.floating], models: list[ARIMA]) -> float:
             if not np.isfinite(ll):  # invalid region
                 return np.inf
             total -= ll  # negative log likelihood
-        except Exception:
-            return np.inf  # penalise with infinite loss for e.g., LU decomposition failure
+        except (
+            np.linalg.LinAlgError,
+            ValueError,
+        ):  # catch errors due to bad model specification, e.g. LU decomposition failure
+            return np.inf  # penalise these with infinite loss
     return total
 
 
@@ -799,7 +803,7 @@ def fit_shared_arma_model(
             )
             for y in data
         ]
-    except Exception:  # if model creation within the fitting function failed, skip this choice of (p,q)
+    except ValueError:  # if invalid values of p,q, are attempted, skip this choice of (p,q)
         return None
 
     sigma2_init = np.mean(data.var(axis=1))  # better scalar init for sigma-sq, compared to data.var()
