@@ -26,6 +26,10 @@ class SimulationMetrics:
     total_electricity_curtailed: float
     total_electricity_used: float
 
+    total_heat_load: float
+    total_dhw_load: float
+    total_ch_load: float
+
     total_electrical_shortfall: float
     total_heat_shortfall: float
     total_ch_shortfall: float

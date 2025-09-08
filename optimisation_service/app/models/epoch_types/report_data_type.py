@@ -15,7 +15,9 @@ class ReportData(BaseModel):
 
     # Hotel
     Hotel_load: list[float] | None = Field(default=None, description="Time series of the baseline electrical load in kWh.")
-    Heatload: list[float] | None = Field(default=None, description="Time series of the baseline heat load in kWh.")
+    Heatload: list[float] | None = Field(default=None, description="Time series of the heat demand in kWh; reduced by insulation.")
+    CH_demand: list[float] | None = Field(default=None, description="Time series of Central Heating demand in kWh.")
+    DHW_demand: list[float] | None = Field(default=None, description="Time series of Domestic Hot Water demand in kWh.")
 
     # PV
     PVdcGen: list[float] | None = Field(default=None, description="Time series of DC solar generation in kWh.")
