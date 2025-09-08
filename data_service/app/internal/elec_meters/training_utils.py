@@ -667,7 +667,7 @@ def kl_annealing_scheduler(
     if annealing_strategy == "sigmoid":
         if annealing_epochs > 0:
             x = 10 * (adjusted_epoch - annealing_epochs / 2) / annealing_epochs
-            return target_weight / (1 + np.exp(-x))
+            return cast(float, target_weight / (1 + np.exp(-x)))
         else:
             return target_weight
 
