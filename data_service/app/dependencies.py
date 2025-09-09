@@ -208,6 +208,7 @@ DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
 VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
 ProcessPoolDep = typing.Annotated[ProcessPoolExecutor, Depends(get_process_pool)]
+ThreadPoolDep = typing.Annotated[ThreadPoolExecutor, Depends(get_thread_pool)]
 
 
 def find_model_path(base_dir: Path = Path(".")) -> Path:
@@ -225,7 +226,7 @@ def find_model_path(base_dir: Path = Path(".")) -> Path:
     -------
         Fully resolved path to elecVAE_weights.pth
     """
-    final_dir = Path("models", "draft", "35 - trained - AH", "elecVAE_weights.pth")
+    final_dir = Path("models", "final")
 
     fpath = base_dir / final_dir
     for _ in range(3):
@@ -235,12 +236,24 @@ def find_model_path(base_dir: Path = Path(".")) -> Path:
     raise FileNotFoundError(f"Could not find {final_dir}")
 
 
-def load_vae() -> VAE:
-    """Load the new VAE from a file, with the relevant sizes."""
+def load_vae(device: torch.device | None = None) -> VAE:
+    """
+    Load the new VAE from a file, with the relevant sizes.
+
+    Parameters
+    ----------
+    device
+        Pytorch device to use. If None, use the CPU.
+
+    Returns
+    -------
+    VAE
+        Loaded VAE with weights initialised.
+    """
+    if device is None:
+        device = torch.device("cpu")
     mdl = VAE(
         input_dim=1,
-        aggregate_dim=1,
-        date_dim=13,
         latent_dim=16,
         hidden_dim_encoder=16,
         hidden_dim_decoder=8,
@@ -248,5 +261,5 @@ def load_vae() -> VAE:
         num_layers_decoder=1,
         dropout_decoder=0.1,
     )
-    mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
+    mdl.load_state_dict(torch.load(find_model_path() / "vae" / "elecVAE_weights.pth", weights_only=True, map_location=device))
     return mdl
