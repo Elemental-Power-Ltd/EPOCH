@@ -762,7 +762,7 @@ def generate_approx_daily_profiles(
             # Use the decoder part of the VAE, with random latent space (so it's not always the same)
             # and some conditioning variables.
             vae_output_tf = VAE_model.decode(
-                zs, torch.abs(consumption_scaled[problem_inds]), torch.zeros(1, 13), torch.zeros(1, 13), seq_len=48
+                zs, torch.abs(consumption_scaled[problem_inds]), seq_len=48
             )
         vae_output_new = vae_output_tf.squeeze().detach().cpu().numpy()
         vae_output[problem_inds, :] = vae_output_new
