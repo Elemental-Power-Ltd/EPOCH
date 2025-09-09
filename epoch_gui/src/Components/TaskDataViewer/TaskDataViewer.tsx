@@ -191,6 +191,13 @@ const ComponentDetails: React.FC<{
             return null; // Skip missing fields
           }
 
+          if (fieldName === "send_temp") {
+            // the flow temperature is misleading as we ignore the value and hardcode behaviour in EPOCH
+            // while this is the case, we'll omit it from display
+            // see: issue#137
+            return null;
+          }
+
           const value = formatField(componentData[fieldName], info.unit);
           return (
             <Typography key={fieldName} variant="body2" sx={{ mb: 0.5 }}>
