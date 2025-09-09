@@ -69,7 +69,7 @@ class DayTypeEnum(enum.IntEnum):
 # Split of days across 3 classes; median aggregate power in each class for a set of office data.
 DAY_TYPE_WEIGHTS = pd.DataFrame(
     index=[DayTypeEnum.MondayOrFriday, DayTypeEnum.MidWeek, DayTypeEnum.WeekendOrHoliday],
-    data={"median_weight": [0.25, 0.25, 0.19]},
+    data={"median_weight": [1.607, 2.505, 1.325]},
 )
 DAY_TYPE_WEIGHTS /= DAY_TYPE_WEIGHTS["median_weight"].sum()
 
@@ -149,11 +149,7 @@ def daily_to_hh_eload(
     model: VAE,
     resid_model_path: pathlib.Path | None = None,
     target_hh_observed_df: SquareHHDataFrame | None = None,
-    weekend_inds: frozenset[int] = frozenset(
-        {
-            6,
-        }
-    ),
+    weekend_inds: frozenset[int] = frozenset({5, 6}),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -182,7 +178,7 @@ def daily_to_hh_eload(
         Exactly one of resid_model_path or target_hh_observed_df must be provided. The data in target_hh_observed_df must
         correspond to dates provided in daily_df
     weekend_inds
-        A frozenset specifying the regular 'non-active' days of the week for the site; default is {6,} for Queen's Buildings.
+        A frozenset specifying the regular 'non-active' days of the week for the site; defaults to (5,6) for Saturday and Sunday
         This should match the indices provided by .dayofweek
     division
         Which the division of the UK to use to determine the public holidays.
@@ -225,11 +221,7 @@ def daily_to_hh_eload_observed(
     daily_df: DailyDataFrame,
     model: VAE,
     target_hh_observed_df: SquareHHDataFrame,
-    weekend_inds: frozenset[int] = frozenset(
-        {
-            6,
-        }
-    ),
+    weekend_inds: frozenset[int] = frozenset({5, 6}),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -258,7 +250,7 @@ def daily_to_hh_eload_observed(
         Exactly one of resid_model_path or target_hh_observed_df must be provided. The data in target_hh_observed_df must
         correspond to dates provided in daily_df
     weekend_inds
-        A frozenset specifying the regular 'non-active' days of the week for the site; default is {6,} for Queen's Buildings.
+        A frozenset specifying the regular 'non-active' days of the week for the site; defaults to (5,6) for Saturday and Sunday
         This should match the indices provided by .dayofweek
     division
         Which the division of the UK to use to determine the public holidays.
@@ -478,11 +470,7 @@ def daily_to_hh_eload_pretrained(
     daily_df: DailyDataFrame,
     model: VAE,
     resid_model_path: pathlib.Path,
-    weekend_inds: frozenset[int] = frozenset(
-        {
-            6,
-        }
-    ),
+    weekend_inds: frozenset[int] = frozenset({5, 6}),
     division: UKCountryEnum = UKCountryEnum.England,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
@@ -511,7 +499,7 @@ def daily_to_hh_eload_pretrained(
         Exactly one of resid_model_path or target_hh_observed_df must be provided. The data in target_hh_observed_df must
         correspond to dates provided in daily_df
     weekend_inds
-        A frozenset specifying the regular 'non-active' days of the week for the site; default is {6,} for Queen's Buildings.
+        A frozenset specifying the regular 'non-active' days of the week for the site; defaults to (5,6) for Saturday and Sunday
         This should match the indices provided by .dayofweek
     division
         Which the division of the UK to use to determine the public holidays.
