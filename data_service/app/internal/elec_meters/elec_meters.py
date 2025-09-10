@@ -124,13 +124,15 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
 
     # to make monthly transitions more smooth, distribute monthly usage across weeks before applying weights
     m = monthly_df.set_index("start_ts")[["consumption_kwh"]]
-    m_days_in_reading = pd.DataFrame(((monthly_df.end_ts - monthly_df.start_ts) / pd.Timedelta(days=1) + 1).values, index=m.index)
+    m_days_in_reading = pd.DataFrame(
+        ((monthly_df.end_ts - monthly_df.start_ts) / pd.Timedelta(days=1) + 1).values, index=m.index
+    )
 
     # broadcast to daily and split total evenly across days of that month
     idx = pd.date_range(monthly_df["start_ts"].min(), monthly_df["end_ts"].max(), freq="D")
     daily_tot = m.reindex(idx, method="ffill")
-    daily_days_in_month = m_days_in_reading.reindex(idx, method="ffill")
-    daily = daily_tot.div(daily_days_in_month.values, axis=0)
+    daily_days_in_reading = m_days_in_reading.reindex(idx, method="ffill")
+    daily = daily_tot.div(daily_days_in_reading.values, axis=0)
 
     weekly = daily.resample(
         rule="7D", origin="start", label="left", closed="left"
@@ -154,6 +156,8 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
         day_types = week_dates.map(lambda d: day_type(d, public_holidays))
         day_type_counts = day_types.value_counts(normalize=False, ascending=True)
         day_type_weights = DAY_TYPE_WEIGHTS["median_weight"] / day_type_counts
+        if len(week_dates) < 7:
+            day_type_weights *= DAY_TYPE_WEIGHTS.sum()
 
         # We do this weird binding to prevent the internal loop of `.map` from using the wrong values of aggregate
         # and weights.
