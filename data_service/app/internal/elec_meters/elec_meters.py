@@ -121,12 +121,26 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
         return DailyDataFrame(monthly_df)
     daily_usages = []
     public_holidays = frozenset(get_bank_holidays())
-    for start_ts, end_ts, aggregate in zip(monthly_df.start_ts, monthly_df.end_ts, monthly_df.consumption_kwh, strict=False):
-        month_dates = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(days=1), normalize=True, inclusive="both")
+    # to make monthly transitions more smooth, distribute monthly usage across weeks before applying weights
+    m = monthly_df.set_index("start_ts")[["consumption_kwh"]]
+    # broadcast to daily and split total evenly across days of that month
+    idx = pd.date_range(m.index.min(), m.index.max() + pd.offsets.MonthEnd(1), freq='D')
+    daily_tot = m.reindex(idx, method='ffill')
+    daily = daily_tot.div(pd.Index(idx).days_in_month, axis=0)
+    weekly = daily.resample(rule="7D", origin="start", label="left", closed="left")   # use "7D" rather than e.g. "W-MON" to align with start of data, not calendar
+    weekly_sum = weekly.sum()
+    weekly_day_count = weekly.count() # because there might not be a full week at the end
+    weekly_df = pd.DataFrame({
+        "start_ts": weekly_sum.index,
+        "end_ts": weekly_sum.index+pd.to_timedelta(weekly_day_count.to_numpy().ravel()-1, unit="D"),
+        "consumption_kwh": weekly_sum["consumption_kwh"]
+        })
+    for start_ts, end_ts, aggregate in zip(weekly_df.start_ts, weekly_df.end_ts, weekly_df.consumption_kwh, strict=False):
+        week_dates = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(days=1), normalize=True, inclusive="both")
 
         # For this "month", get the type of each day and how many of each type of day there are.
         # Then use this to weight the daily aggregrate.
-        day_types = month_dates.map(lambda d: day_type(d, public_holidays))
+        day_types = week_dates.map(lambda d: day_type(d, public_holidays))
         day_type_counts = day_types.value_counts(normalize=False, ascending=True)
         day_type_weights = DAY_TYPE_WEIGHTS["median_weight"] / day_type_counts
 
@@ -135,12 +149,18 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
         # See https://docs.astral.sh/ruff/rules/function-uses-loop-variable/
         daily_usage = day_types.map(lambda day, agg=aggregate, weights=day_type_weights: agg * weights[day])
 
-        daily_usages.append(pd.DataFrame(index=month_dates, data=daily_usage, columns=["consumption_kwh"]))
+        daily_usages.append(pd.DataFrame(index=week_dates, data=daily_usage, columns=["consumption_kwh"]))
 
     total_daily_df = DailyDataFrame(pd.concat(daily_usages))
     total_daily_df.index.name = "start_ts"
     total_daily_df["start_ts"] = total_daily_df.index
     total_daily_df["end_ts"] = total_daily_df.index + pd.Timedelta(days=1)
+
+    # rescale to align monthly totals with observed values
+    scaling_factors_monthly = monthly_df.set_index("start_ts").consumption_kwh / total_daily_df.consumption_kwh.resample("MS").sum()
+    scaling_factors_daily = scaling_factors_monthly.reindex(total_daily_df.index, method="ffill")
+    total_daily_df["consumption_kwh_2"] = total_daily_df.consumption_kwh * scaling_factors_daily
+
     return total_daily_df
 
 
