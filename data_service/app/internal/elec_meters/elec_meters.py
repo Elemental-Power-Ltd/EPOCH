@@ -121,24 +121,27 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
         return DailyDataFrame(monthly_df)
     daily_usages = []
     public_holidays = frozenset(get_bank_holidays())
+
     # to make monthly transitions more smooth, distribute monthly usage across weeks before applying weights
     m = monthly_df.set_index("start_ts")[["consumption_kwh"]]
+    m_days_in_month = pd.DataFrame(m.index.days_in_month, index=m.index)
+
     # broadcast to daily and split total evenly across days of that month
-    idx = pd.date_range(m.index.min(), m.index.max() + pd.offsets.MonthEnd(1), freq="D")
-    daily_tot = m.reindex(idx, method="ffill")
-    daily = daily_tot.div(pd.Index(idx).days_in_month, axis=0)
-    weekly = daily.resample(
-        rule="7D", origin="start", label="left", closed="left"
-    )  # use "7D" rather than e.g. "W-MON" to align with start of data, not calendar
+    idx = pd.date_range(monthly_df["start_ts"].min(), monthly_df["end_ts"].max(), freq='D')
+    daily_tot = m.reindex(idx, method='ffill')
+    daily_days_in_month = m_days_in_month.reindex(idx, method='ffill')
+    daily = daily_tot.div(daily_days_in_month.values, axis=0)
+
+    weekly = daily.resample(rule="7D", origin="start", label="left", closed="left")   # use "7D" rather than e.g. "W-MON" to align with start of data, not calendar
     weekly_sum = weekly.sum()
-    weekly_day_count = weekly.count()  # because there might not be a full week at the end
-    weekly_df = pd.DataFrame(
-        {
-            "start_ts": weekly_sum.index,
-            "end_ts": weekly_sum.index + pd.to_timedelta(weekly_day_count.to_numpy().ravel() - 1, unit="D"),
-            "consumption_kwh": weekly_sum["consumption_kwh"],
-        }
-    )
+    weekly_day_count = weekly.count() # because there might not be a full week at the end
+
+    weekly_df = pd.DataFrame({
+        "start_ts": weekly_sum.index,
+        "end_ts": weekly_sum.index+pd.to_timedelta(weekly_day_count.to_numpy().ravel()-1, unit="D"),
+        "consumption_kwh": weekly_sum["consumption_kwh"]
+        })
+
     for start_ts, end_ts, aggregate in zip(weekly_df.start_ts, weekly_df.end_ts, weekly_df.consumption_kwh, strict=False):
         week_dates = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(days=1), normalize=True, inclusive="both")
 
@@ -161,9 +164,11 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     total_daily_df["end_ts"] = total_daily_df.index + pd.Timedelta(days=1)
 
     # rescale to align monthly totals with observed values
-    scaling_factors_monthly = (
-        monthly_df.set_index("start_ts").consumption_kwh / total_daily_df.consumption_kwh.resample("MS").sum()
-    )
+    first_day = total_daily_df.index[0]
+    shift = pd.offsets.Day(first_day.day - 1)
+    denom = total_daily_df.shift(freq=-shift).consumption_kwh.resample("MS", label="left", closed="left").sum()
+    denom.index = [first_day + pd.DateOffset(months=i) for i in range(len(denom))]
+    scaling_factors_monthly = monthly_df.set_index("start_ts").consumption_kwh / denom
     scaling_factors_daily = scaling_factors_monthly.reindex(total_daily_df.index, method="ffill")
     total_daily_df["consumption_kwh_2"] = total_daily_df.consumption_kwh * scaling_factors_daily
 
