@@ -15,7 +15,7 @@ import pandas as pd
 import sklearn.preprocessing  # type: ignore
 import torch
 from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
-
+from scipy.interpolate import Akima1DInterpolator
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, SquareHHDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
@@ -118,9 +118,10 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     Pandas dataframe with weighted daily electricity consumptions.
     """
     if monthly_df.empty:
-        return DailyDataFrame(monthly_df)
-    daily_usages = []
+        return cast(DailyDataFrame, monthly_df)
+
     public_holidays = frozenset(get_bank_holidays())
+<<<<<<< HEAD
 
     # to make monthly transitions more smooth, distribute monthly usage across weeks before applying weights
     m = monthly_df.set_index("start_ts")[["consumption_kwh"]]
@@ -158,19 +159,35 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
         day_type_weights = DAY_TYPE_WEIGHTS["median_weight"] / day_type_counts
         if len(week_dates) < 7:
             day_type_weights *= DAY_TYPE_WEIGHTS.sum()
+=======
+   
+    # To get daily readings, interpolate between the usage per day from this month and the next one
 
-        # We do this weird binding to prevent the internal loop of `.map` from using the wrong values of aggregate
-        # and weights.
-        # See https://docs.astral.sh/ruff/rules/function-uses-loop-variable/
-        daily_usage = day_types.map(lambda day, agg=aggregate, weights=day_type_weights: agg * weights[day])
+>>>>>>> dc3f7d5 (Fixed monthly to daily eload)
 
-        daily_usages.append(pd.DataFrame(index=week_dates, data=daily_usage, columns=["consumption_kwh"]))
+    m_df = monthly_df.copy()
+    m_df["days_in_reading"] = (m_df["end_ts"] - m_df["start_ts"]) / pd.Timedelta(days=1)
+    m_df["consumption_kwh"] /= m_df["days_in_reading"]
 
-    total_daily_df = DailyDataFrame(pd.concat(daily_usages))
-    total_daily_df.index.name = "start_ts"
-    total_daily_df["start_ts"] = total_daily_df.index
-    total_daily_df["end_ts"] = total_daily_df.index + pd.Timedelta(days=1)
+    # Create a new daily index of every day between the first and last readings
+    min_x = m_df["start_ts"].min()
+    max_x = m_df["end_ts"].max()
+    idx = pd.date_range(min_x, max_x, freq=pd.Timedelta(days=1))
+    
+    # Set up an interpolator:
+    # - Keep the x values close to 0 by interpolating relative to the start day
+    # - Assign each "reading average daily usage" to the midpoint of each reading
+    # - Pad with the start and end values to get the right gradients at the end
+    midpoints = m_df["start_ts"]  + (m_df.end_ts - m_df.start_ts) / 2.0
+    xs = np.pad((midpoints - min_x).dt.total_seconds().to_numpy(),
+                (1, 1),
+                mode="constant",
+                constant_values=(0.0, (max_x - min_x).total_seconds()))
+    ys = np.pad(m_df["consumption_kwh"].to_numpy(), (1, 1), mode="edge")
 
+    new_xs = (idx - min_x).total_seconds().to_numpy()
+
+<<<<<<< HEAD
     # rescale to align monthly totals with observed values
     first_day = total_daily_df.index[0]
     shift = pd.offsets.Day(first_day.day - 1)
@@ -179,8 +196,28 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     scaling_factors_monthly = monthly_df.set_index("start_ts").consumption_kwh / denom
     scaling_factors_daily = scaling_factors_monthly.reindex(total_daily_df.index, method="ffill")
     total_daily_df["consumption_kwh_2"] = total_daily_df.consumption_kwh * scaling_factors_daily
+=======
+    # Try different kinds of interpolator here!
+    interpolator =  Akima1DInterpolator(xs, ys, extrapolate=False)
+    
+    daily_df = pd.DataFrame(index=idx, data={"consumption_kwh": interpolator(new_xs)})
+>>>>>>> dc3f7d5 (Fixed monthly to daily eload)
 
-    return total_daily_df
+    # However, this might not give the correct pattern of usage per day type that we expect.
+    # Instead, re-weight the daily readings so that the ratio of MF:TWT:SS is what we'd expect
+    day_type_fracs = daily_df.groupby(lambda d: day_type(d, public_holidays)).sum()
+    day_type_fracs /= day_type_fracs.sum()
+    day_type_fracs["expected"] = DAY_TYPE_WEIGHTS["median_weight"]
+    reweighting = (day_type_fracs["expected"] / day_type_fracs["consumption_kwh"]).to_dict()
+
+    weights_by_day = daily_df.index.map(lambda d: reweighting[day_type(d, public_holidays)])
+    daily_df["consumption_kwh"] *= weights_by_day
+
+    # Rescale so the total value is the same.
+    # Note that rescaling such that each "monthly" reading is preserved will cause artefacts as we don't
+    # guarantee that the interpolator preserves the mean within a given month.
+    daily_df["consumption_kwh"] *= monthly_df["consumption_kwh"].sum() / daily_df["consumption_kwh"].sum()
+    return daily_df
 
 
 def daily_to_hh_eload(
@@ -433,12 +470,10 @@ def daily_to_hh_eload_observed(
 
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
-    sims = np.asarray(
-        [
-            ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-            for i in range(num_inactive)
-        ]
-    )
+    sims = np.asarray([
+        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        for i in range(num_inactive)
+    ])
     # - scale by fitted heteroskedasticity factors
     assert var_model_inactive is not None
     var_factors_inactive = np.exp(var_model_inactive.predict())
@@ -449,9 +484,9 @@ def daily_to_hh_eload_observed(
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
-    sims = np.asarray(
-        [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
-    )
+    sims = np.asarray([
+        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+    ])
 
     assert var_model_active is not None
     var_factors_active = np.exp(var_model_active.predict())
@@ -641,12 +676,10 @@ def daily_to_hh_eload_pretrained(
 
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
-    sims = np.asarray(
-        [
-            ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
-            for i in range(num_inactive)
-        ]
-    )
+    sims = np.asarray([
+        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        for i in range(num_inactive)
+    ])
     # - scale by fitted heteroskedasticity factors
     scaled_sims = np.sqrt(default_var_factors_inactive) * sims
     target_hh_df[~target_active_mask] += np.clip(scaled_sims, min_noise_inactive, max_noise_inactive)
@@ -654,9 +687,9 @@ def daily_to_hh_eload_pretrained(
     # - repeat for active dates
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
-    sims = np.asarray(
-        [ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)]
-    )
+    sims = np.asarray([
+        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+    ])
 
     scaled_sims = np.sqrt(default_var_factors_active) * sims
     target_hh_df[target_active_mask] += np.clip(scaled_sims, min_noise_active, max_noise_active)
