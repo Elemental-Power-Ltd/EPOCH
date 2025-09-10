@@ -127,20 +127,24 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     m_days_in_month = pd.DataFrame(m.index.days_in_month, index=m.index)
 
     # broadcast to daily and split total evenly across days of that month
-    idx = pd.date_range(monthly_df["start_ts"].min(), monthly_df["end_ts"].max(), freq='D')
-    daily_tot = m.reindex(idx, method='ffill')
-    daily_days_in_month = m_days_in_month.reindex(idx, method='ffill')
+    idx = pd.date_range(monthly_df["start_ts"].min(), monthly_df["end_ts"].max(), freq="D")
+    daily_tot = m.reindex(idx, method="ffill")
+    daily_days_in_month = m_days_in_month.reindex(idx, method="ffill")
     daily = daily_tot.div(daily_days_in_month.values, axis=0)
 
-    weekly = daily.resample(rule="7D", origin="start", label="left", closed="left")   # use "7D" rather than e.g. "W-MON" to align with start of data, not calendar
+    weekly = daily.resample(
+        rule="7D", origin="start", label="left", closed="left"
+    )  # use "7D" rather than e.g. "W-MON" to align with start of data, not calendar
     weekly_sum = weekly.sum()
-    weekly_day_count = weekly.count() # because there might not be a full week at the end
+    weekly_day_count = weekly.count()  # because there might not be a full week at the end
 
-    weekly_df = pd.DataFrame({
-        "start_ts": weekly_sum.index,
-        "end_ts": weekly_sum.index+pd.to_timedelta(weekly_day_count.to_numpy().ravel()-1, unit="D"),
-        "consumption_kwh": weekly_sum["consumption_kwh"]
-        })
+    weekly_df = pd.DataFrame(
+        {
+            "start_ts": weekly_sum.index,
+            "end_ts": weekly_sum.index + pd.to_timedelta(weekly_day_count.to_numpy().ravel() - 1, unit="D"),
+            "consumption_kwh": weekly_sum["consumption_kwh"],
+        }
+    )
 
     for start_ts, end_ts, aggregate in zip(weekly_df.start_ts, weekly_df.end_ts, weekly_df.consumption_kwh, strict=False):
         week_dates = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(days=1), normalize=True, inclusive="both")
