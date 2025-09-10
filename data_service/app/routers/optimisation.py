@@ -332,7 +332,7 @@ async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) ->
             tc.client_id,
             tc.task_name
         ORDER BY
-            created_at ASC;
+            created_at DESC;
         """,
         client_id.client_id,
     )
