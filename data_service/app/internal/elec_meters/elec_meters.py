@@ -138,14 +138,12 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     # - Assign each "reading average daily usage" to the midpoint of each reading
     # - Pad with the start and end values to get the right gradients at the end
     midpoints = m_df["start_ts"] + ((m_df["end_ts"] - m_df["start_ts"]) / 2.0)
-    print(midpoints)
     xs = np.pad(
         (midpoints - min_x).dt.total_seconds().to_numpy(),
         (1, 1),
         mode="constant",
         constant_values=(0.0, (max_x - min_x).total_seconds()),
     )
-    print(xs)
     ys = np.pad(m_df["consumption_kwh"].to_numpy(), (1, 1), mode="edge")
 
     new_xs = (idx - min_x).total_seconds().to_numpy()
