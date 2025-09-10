@@ -102,10 +102,13 @@ class TestUploadMeterData:
     async def test_upload_and_get_resampled_electricity_load(self, client: httpx.AsyncClient) -> None:
         raw_data = parse_half_hourly("./tests/data/test_elec.csv")
         raw_data["start_ts"] = raw_data.index
+        print(raw_data.head())
         month_starts = raw_data[["start_ts"]].resample("1MS").min()
         month_ends = raw_data[["end_ts"]].resample("1MS").max()
         data = raw_data[["consumption"]].resample("1MS").sum()
-        data["end_ts"] = np.minimum(month_ends.to_numpy()[:, 0], (data.index + pd.offsets.MonthEnd()).to_numpy())
+        data["end_ts"] = np.minimum(
+            month_ends.to_numpy()[:, 0], (data.index + pd.offsets.MonthEnd() + pd.Timedelta(days=1)).to_numpy()
+        )
         data["start_ts"] = np.maximum(month_starts.to_numpy()[:, 0], (data.index).to_numpy())
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "manual"}
 

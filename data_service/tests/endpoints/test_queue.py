@@ -4,17 +4,17 @@ import asyncio
 import datetime
 import json
 from asyncio import create_task
-from typing import cast
 from concurrent.futures import ThreadPoolExecutor
+from typing import cast
 
 import httpx
 import pytest
 import pytest_asyncio
 
-from app.dependencies import load_vae
+from app.dependencies import get_thread_pool, load_vae
 from app.epl_secrets import SecretDict
-from app.internal.epl_typing import Jsonable, db_pool_t
 from app.internal.elec_meters.vae import VAE
+from app.internal.epl_typing import Jsonable, db_pool_t
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.site_manager.bundles import insert_dataset_bundle
 from app.internal.utils.uuid import uuid7
@@ -337,7 +337,7 @@ class TestQueueEndpoints:
                 http_client=internal_client,
                 vae=cast(VAE, None),
                 secrets_env=cast(SecretDict, None),
-                thread_pool=cast(ThreadPoolExecutor, None)
+                thread_pool=cast(ThreadPoolExecutor, None),
             )
         )
 
@@ -386,18 +386,17 @@ class TestQueueEndpoints:
 
         try:
             async with asyncio.TaskGroup() as tg:
-                with ThreadPoolExecutor() as tpe:
-                    _ = tg.create_task(
-                        process_jobs(
-                            queue_fixture,
-                            pool=pool,
-                            http_client=internal_client,
-                            vae=load_vae(),
-                            secrets_env=cast(SecretDict, None),
-                            thread_pool=tpe,
-                            ignore_exceptions=False,
-                        )
+                _ = tg.create_task(
+                    process_jobs(
+                        queue_fixture,
+                        pool=pool,
+                        http_client=internal_client,
+                        vae=load_vae(),
+                        secrets_env=cast(SecretDict, None),
+                        thread_pool=await get_thread_pool(),
+                        ignore_exceptions=False,
                     )
+                )
                 await queue_fixture.join()
                 raise TerminateTaskGroup()
         except* TerminateTaskGroup:
@@ -571,7 +570,7 @@ class TestQueueEndpoints:
                         vae=cast(VAE, None),
                         secrets_env=cast(SecretDict, None),
                         ignore_exceptions=False,
-                        thread_pool=cast(ThreadPoolExecutor, None)
+                        thread_pool=cast(ThreadPoolExecutor, None),
                     )
                 )
                 await queue_fixture.join()

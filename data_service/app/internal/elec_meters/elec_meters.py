@@ -14,8 +14,9 @@ import numpy.typing as npt
 import pandas as pd
 import sklearn.preprocessing  # type: ignore
 import torch
-from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
 from scipy.interpolate import Akima1DInterpolator
+from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
+
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, SquareHHDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
@@ -121,51 +122,10 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
         return cast(DailyDataFrame, monthly_df)
 
     public_holidays = frozenset(get_bank_holidays())
-<<<<<<< HEAD
-
-    # to make monthly transitions more smooth, distribute monthly usage across weeks before applying weights
-    m = monthly_df.set_index("start_ts")[["consumption_kwh"]]
-    m_days_in_reading = pd.DataFrame(
-        ((monthly_df.end_ts - monthly_df.start_ts) / pd.Timedelta(days=1) + 1).values, index=m.index
-    )
-
-    # broadcast to daily and split total evenly across days of that month
-    idx = pd.date_range(monthly_df["start_ts"].min(), monthly_df["end_ts"].max(), freq="D")
-    daily_tot = m.reindex(idx, method="ffill")
-    daily_days_in_reading = m_days_in_reading.reindex(idx, method="ffill")
-    daily = daily_tot.div(daily_days_in_reading.values, axis=0)
-
-    weekly = daily.resample(
-        rule="7D", origin="start", label="left", closed="left"
-    )  # use "7D" rather than e.g. "W-MON" to align with start of data, not calendar
-    weekly_sum = weekly.sum()
-    weekly_day_count = weekly.count()  # because there might not be a full week at the end
-
-    weekly_df = pd.DataFrame(
-        {
-            "start_ts": weekly_sum.index,
-            "end_ts": weekly_sum.index + pd.to_timedelta(weekly_day_count.to_numpy().ravel() - 1, unit="D"),
-            "consumption_kwh": weekly_sum["consumption_kwh"],
-        }
-    )
-
-    for start_ts, end_ts, aggregate in zip(weekly_df.start_ts, weekly_df.end_ts, weekly_df.consumption_kwh, strict=False):
-        week_dates = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(days=1), normalize=True, inclusive="both")
-
-        # For this "month", get the type of each day and how many of each type of day there are.
-        # Then use this to weight the daily aggregrate.
-        day_types = week_dates.map(lambda d: day_type(d, public_holidays))
-        day_type_counts = day_types.value_counts(normalize=False, ascending=True)
-        day_type_weights = DAY_TYPE_WEIGHTS["median_weight"] / day_type_counts
-        if len(week_dates) < 7:
-            day_type_weights *= DAY_TYPE_WEIGHTS.sum()
-=======
-   
     # To get daily readings, interpolate between the usage per day from this month and the next one
 
->>>>>>> dc3f7d5 (Fixed monthly to daily eload)
-
-    m_df = monthly_df.copy()
+    m_df = monthly_df.copy().sort_index()
+    print(m_df.head()[["start_ts", "end_ts"]])
     m_df["days_in_reading"] = (m_df["end_ts"] - m_df["start_ts"]) / pd.Timedelta(days=1)
     m_df["consumption_kwh"] /= m_df["days_in_reading"]
 
@@ -173,35 +133,32 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     min_x = m_df["start_ts"].min()
     max_x = m_df["end_ts"].max()
     idx = pd.date_range(min_x, max_x, freq=pd.Timedelta(days=1))
-    
+
     # Set up an interpolator:
     # - Keep the x values close to 0 by interpolating relative to the start day
     # - Assign each "reading average daily usage" to the midpoint of each reading
     # - Pad with the start and end values to get the right gradients at the end
-    midpoints = m_df["start_ts"]  + (m_df.end_ts - m_df.start_ts) / 2.0
-    xs = np.pad((midpoints - min_x).dt.total_seconds().to_numpy(),
-                (1, 1),
-                mode="constant",
-                constant_values=(0.0, (max_x - min_x).total_seconds()))
+    midpoints = m_df["start_ts"] + ((m_df["end_ts"] - m_df["start_ts"]) / 2.0)
+    print(midpoints)
+    xs = np.pad(
+        (midpoints - min_x).dt.total_seconds().to_numpy(),
+        (1, 1),
+        mode="constant",
+        constant_values=(0.0, (max_x - min_x).total_seconds()),
+    )
+    print(xs)
     ys = np.pad(m_df["consumption_kwh"].to_numpy(), (1, 1), mode="edge")
 
     new_xs = (idx - min_x).total_seconds().to_numpy()
 
-<<<<<<< HEAD
-    # rescale to align monthly totals with observed values
-    first_day = total_daily_df.index[0]
-    shift = pd.offsets.Day(first_day.day - 1)
-    denom = total_daily_df.shift(freq=-shift).consumption_kwh.resample("MS", label="left", closed="left").sum()
-    denom.index = [first_day + pd.DateOffset(months=i) for i in range(len(denom))]
-    scaling_factors_monthly = monthly_df.set_index("start_ts").consumption_kwh / denom
-    scaling_factors_daily = scaling_factors_monthly.reindex(total_daily_df.index, method="ffill")
-    total_daily_df["consumption_kwh_2"] = total_daily_df.consumption_kwh * scaling_factors_daily
-=======
     # Try different kinds of interpolator here!
-    interpolator =  Akima1DInterpolator(xs, ys, extrapolate=False)
-    
+    interpolator = Akima1DInterpolator(xs, ys, extrapolate=False)
+
     daily_df = pd.DataFrame(index=idx, data={"consumption_kwh": interpolator(new_xs)})
->>>>>>> dc3f7d5 (Fixed monthly to daily eload)
+    # Trim out any negatives that the interpolator might have put in
+    # by replacing them with NaN and then interpolating
+    daily_df.loc[daily_df["consumption_kwh"] < 0, daily_df["consumption_kwh"]] = float("NaN")
+    daily_df["consumption_kwh"].interpolate(method="time")
 
     # However, this might not give the correct pattern of usage per day type that we expect.
     # Instead, re-weight the daily readings so that the ratio of MF:TWT:SS is what we'd expect
@@ -217,7 +174,7 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     # Note that rescaling such that each "monthly" reading is preserved will cause artefacts as we don't
     # guarantee that the interpolator preserves the mean within a given month.
     daily_df["consumption_kwh"] *= monthly_df["consumption_kwh"].sum() / daily_df["consumption_kwh"].sum()
-    return daily_df
+    return cast(DailyDataFrame, daily_df)
 
 
 def daily_to_hh_eload(
@@ -825,7 +782,8 @@ def generate_approx_daily_profiles(
     # Start off with an empty set of outputs with them all "problematic"
     vae_output = np.empty([consumption_scaled.shape[0], 48])
     problem_inds = np.array(list(range(consumption_scaled.shape[0])))
-    while len(problem_inds) > 5:
+    rejection_iterations = 0
+    while len(problem_inds) > 5 and rejection_iterations < 100:
         with torch.no_grad():
             # Sample from the latent distribution, MV Gaussian with mean 0 and variance 1.
             # This should be of shape [1, days in dataset, latent_dim]
@@ -845,5 +803,7 @@ def generate_approx_daily_profiles(
             | (np.sum(vae_output[:, active_day_last_hh + 1 :], axis=1) > 0.05)
             | (np.sum(vae_output, axis=1) < 0.1)
         )[0]
+
+        rejection_iterations += 1
 
     return vae_output
