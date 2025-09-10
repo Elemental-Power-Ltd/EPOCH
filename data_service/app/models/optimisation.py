@@ -390,3 +390,8 @@ class OptimisationTaskListEntry(pydantic.BaseModel):
         examples=["PT4.297311S"],
         description="Time it took to calculate this set of results." + " None if the task didn't complete.",
     )
+    created_at: pydantic.AwareDatetime = pydantic.Field(
+        description="The time this Task was created and added to the queue.",
+    )
+    epoch_version: str | None = pydantic.Field(description="The version of EPOCH used to generate these results.")
+    objectives: list[str] = pydantic.Field(description="The objectives this task was optimised for.")
