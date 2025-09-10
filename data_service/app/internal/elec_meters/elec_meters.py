@@ -124,12 +124,12 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
 
     # to make monthly transitions more smooth, distribute monthly usage across weeks before applying weights
     m = monthly_df.set_index("start_ts")[["consumption_kwh"]]
-    m_days_in_month = pd.DataFrame(m.index.days_in_month, index=m.index)
+    m_days_in_reading = pd.DataFrame(((monthly_df.end_ts-monthly_df.start_ts)/pd.Timedelta(days=1)).values, index=m.index)
 
     # broadcast to daily and split total evenly across days of that month
     idx = pd.date_range(monthly_df["start_ts"].min(), monthly_df["end_ts"].max(), freq="D")
     daily_tot = m.reindex(idx, method="ffill")
-    daily_days_in_month = m_days_in_month.reindex(idx, method="ffill")
+    daily_days_in_month = m_days_in_reading.reindex(idx, method="ffill")
     daily = daily_tot.div(daily_days_in_month.values, axis=0)
 
     weekly = daily.resample(
