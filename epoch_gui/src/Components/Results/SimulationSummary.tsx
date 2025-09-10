@@ -60,42 +60,46 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           "payback_horizon",
       ]
 
-      const scenarioEnergy: MetricKey[] = [
-          "total_gas_used",
+      const overviewShortfall: MetricKey[] = [
+          "total_electrical_shortfall",
+          "total_heat_shortfall"
+      ]
+
+      const scenarioElectricity: MetricKey[] = [
+          "total_electricity_used",
           "total_electricity_imported",
           "total_electricity_exported",
+          "total_electricity_generated",
           "total_electricity_curtailed",
-          "total_electricity_used",
       ]
 
-      const baselineEnergy: MetricKey[] = [
-          "baseline_gas_used",
+      const baselineElectricity: MetricKey[] = [
+          "baseline_electricity_used",
           "baseline_electricity_imported",
           "baseline_electricity_exported",
+          "baseline_electricity_generated",
           "baseline_electricity_curtailed",
-          "baseline_electricity_used",
       ]
 
-      const shortfalls: MetricKey[] = [
+      const elecShortfall: MetricKey[] = [
           "total_electrical_shortfall",
-          "total_heat_shortfall",
-          "total_ch_shortfall",
-          "total_dhw_shortfall",
       ]
 
       const scenarioHeat: MetricKey[] = [
           "total_heat_load",
           "total_dhw_load",
           "total_ch_load",
+          "total_gas_used",
       ]
 
       const baselineHeat: MetricKey[] = [
           "baseline_heat_load",
           "baseline_dhw_load",
           "baseline_ch_load",
+          "baseline_gas_used",
       ]
 
-      const heatOnlyShortfall: MetricKey[] = [
+      const heatShortfall: MetricKey[] = [
           "total_heat_shortfall",
           "total_dhw_shortfall",
           "total_ch_shortfall",
@@ -185,9 +189,9 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
 
       return (
         <Box>
-          {tabValue === 0 && (renderTab([overviewCarbon, overviewFinancial]))}
-          {tabValue === 1 && (renderTab([scenarioEnergy, baselineEnergy, shortfalls]))}
-          {tabValue === 2 && (renderTab([scenarioHeat, baselineHeat, heatOnlyShortfall]))}
+          {tabValue === 0 && (renderTab([overviewCarbon, overviewFinancial, overviewShortfall]))}
+          {tabValue === 1 && (renderTab([scenarioElectricity, baselineElectricity, elecShortfall]))}
+          {tabValue === 2 && (renderTab([scenarioHeat, baselineHeat, heatShortfall]))}
           {tabValue === 3 && (renderTab([scenarioMeter, baselineMeter]))}
           {tabValue === 4 && (renderTab([financial1, financial2]))}
           {tabValue === 5 && (renderTab([scenarioCarbon, baselineCarbon]))}
@@ -209,7 +213,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
 
         <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
           <Tab label={"Overview"}/>
-          <Tab label={"Energy"}/>
+          <Tab label={"Electricity"}/>
           <Tab label={"Heat"}/>
           <Tab label={"Meter"}/>
           <Tab label={"Financial"}/>
