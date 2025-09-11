@@ -9,12 +9,14 @@ import asyncio
 import datetime
 import json
 import logging
+from typing import cast
 
 import httpx
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 
-from ..dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, SecretsDep
+from ..dependencies import DatabasePoolDep, HttpClientDep, SecretsDep
+from ..internal.epl_typing import RecordMapping
 from ..internal.pvgis import get_pvgis_optima, get_renewables_ninja_data, get_renewables_ninja_wind_data
 from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils.uuid import uuid7
@@ -33,7 +35,7 @@ logger = logging.getLogger("default")
 
 
 @router.post("/get-pv-optima", tags=["solar_pv", "get"])
-async def get_pv_optima(request: Request, site_id: SiteID, conn: DatabaseDep) -> PVOptimaResult:
+async def get_pv_optima(site_id: SiteID, pool: DatabasePoolDep, http_client: HttpClientDep) -> PVOptimaResult:
     """
     Get some optimal angles and azimuths for this specific site.
 
@@ -52,11 +54,11 @@ async def get_pv_optima(request: Request, site_id: SiteID, conn: DatabaseDep) ->
     -------
     information about the optimal azimuth, tilt, and some metadata about the technologies used.
     """
-    latitude, longitude = await conn.fetchval(
+    latitude, longitude = await pool.fetchval(
         """SELECT coordinates FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
         site_id.site_id,
     )
-    optima = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=request.state.http_client)
+    optima = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=http_client)
     return optima
 
 
@@ -120,6 +122,7 @@ async def generate_renewables_generation(
             azimuth=azimuth,
             tilt=tilt,
             client=http_client,
+            api_key=secrets_env["RENEWABLES_NINJA_API_KEY"],
         )
     except httpx.ReadTimeout as ex:
         raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex
@@ -232,6 +235,7 @@ async def generate_wind_generation(
             end_ts=params.end_ts,
             turbine=params.turbine,
             height=params.height,
+            api_key=secrets_env["RENEWABLES_NINJA_API_KEY"],
         )
     except httpx.ReadTimeout as ex:
         raise HTTPException(400, "Call to renewables.ninja timed out, please wait before trying again.") from ex
@@ -360,7 +364,9 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
         )
         if not dataset:
             raise HTTPException(400, f"No data found for dataset_id={dataset_id!s} between {start_ts} and {end_ts}.")
-        renewables_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "solar_generation"], index="start_ts")
+        renewables_df = pd.DataFrame.from_records(
+            cast(RecordMapping, dataset), columns=["start_ts", "end_ts", "solar_generation"], index="start_ts"
+        )
         renewables_df = renewables_df.reindex(
             index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
         )
@@ -376,8 +382,11 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
                 tg.create_task(get_single_renewables_df(dataset_id, params.start_ts, params.end_ts, pool))
                 for dataset_id in params.dataset_id
             ]
-    except ExceptionGroup as ex:
-        raise ex.exceptions[0] from ex
+    except* Exception as exes:
+        # Turn all the horrible ExceptionGroup entries into a nice FastAPI HTTPException
+        raise HTTPException(
+            400, str([item.detail if hasattr(item, "detail") else str(item) for item in exes.exceptions])
+        ) from exes
 
     return EpochRenewablesEntry(
         timestamps=all_dfs[0].result().index.to_list(), data=[df.result()["solar_generation"].to_list() for df in all_dfs]

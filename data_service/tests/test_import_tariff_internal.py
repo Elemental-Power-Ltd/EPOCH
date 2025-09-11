@@ -127,14 +127,14 @@ class TestShapeShifterTariffs:
         """Test that we get a useful error for a bad tariff."""
         with pytest.raises(ValueError, match="NOT_A_REAL_TARIFF"):
             async with MockedHttpClient() as client:
-                _ = await it.get_shapeshifters_rates(postcode="SW1A 0AA", client=client, underlying_tariff="NOT_A_REAL_TARIFF")
+                await it.get_shapeshifters_rates(postcode="SW1A 0AA", client=client, underlying_tariff="NOT_A_REAL_TARIFF")
 
     @pytest.mark.asyncio
     async def test_real_bad_postcode(self) -> None:
         """Test that we get a useful error for a bad postcode."""
         with pytest.raises(ValueError, match="BAD_POSTCODE"):
             async with MockedHttpClient() as client:
-                _ = await it.get_shapeshifters_rates(
+                await it.get_shapeshifters_rates(
                     postcode="BAD_POSTCODE", client=client, underlying_tariff="BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
                 )
 

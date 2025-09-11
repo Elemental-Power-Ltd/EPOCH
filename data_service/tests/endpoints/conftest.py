@@ -15,7 +15,7 @@ import json
 import sys
 from collections.abc import AsyncGenerator, Coroutine
 from pathlib import Path
-from typing import Any, Self, cast
+from typing import Any, Self
 
 import asyncpg
 import httpx
@@ -30,11 +30,10 @@ from app.dependencies import (
     get_db_conn,
     get_db_pool,
     get_http_client,
-    get_secrets_dependency,
+    get_secrets_dep,
     get_thread_pool,
     get_vae_model,
 )
-from app.internal.epl_typing import Jsonable
 from app.internal.utils.database_utils import get_migration_files
 from app.internal.utils.utils import url_to_hash
 from app.job_queue import TerminateTaskGroup, TrackingQueue, process_jobs
@@ -99,231 +98,82 @@ class MockedHttpClient(httpx.AsyncClient):
 
     def __init__(self, *args, **kwargs) -> Self:  # type: ignore
         super().__init__(*args, **kwargs)
-        self.octopus_requests = {"cached": 0, "uncached": 0}
-        self.visualcrossing_requests = {"cached": 0, "uncached": 0}
 
-    async def get_tariff_from_file(self, url: str, **kwargs: Any) -> Jsonable:
+    async def post(self, url: httpx.URL | str, **kwargs: Any) -> Coroutine[Any, Any, httpx.Response] | httpx.Response:  # type: ignore
         """
-        Get a stored tariff from a file when requesting an URL.
+        Make an HTTP POST request, but actually load it from a file.
 
-        Files are found in "get_tariff_from_file" and should be found in ./tests/data/{filename}.json
-        with the slashes removed.
-
-        Parameters
-        ----------
-        url
-            Octopus API URl you want
+        Data are stored in JSON files with the filenames being the hash of the relevant URL plus any parameters.
 
         Returns
         -------
-            contents of the JSON file, or None if not found
+        Successful response with JSON from file
         """
-        url_params = url_to_hash(url, kwargs.get("params"))
-        stored_tariff = Path(".", "tests", "data", "octopus", f"{url_params}.json")
-        if stored_tariff.exists() and DO_MOCK:
-            self.octopus_requests["cached"] += 1
-            return cast(Jsonable, json.loads(stored_tariff.read_text()))
+        base_dir = Path(".", "tests", "data")
+        url = str(url)
+        if url.startswith("https://api.octopus.energy/v1/graphql/"):
+            directory = base_dir / "octopus"
         else:
-            self.octopus_requests["uncached"] += 1
-            data = (await _http_client.get(url, **kwargs)).json()
-            stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
+            raise ValueError(f"Unhandled post {url}")
 
-    async def cache_ci_data(self, url: str, **kwargs: Any) -> Jsonable:
-        """
-        Get some data from CarbonIntensity, and store it in a JSON file.
+        url_params = url_to_hash(url, kwargs.get("params"), kwargs.get("json"), kwargs.get("data"))
 
-        Accessing the CarbonIntensity API is very slow, so check the DO_RATE_LIMIT class variable if needed.
-
-        Parameters
-        ----------
-        url
-            Base URL, which should be https://api.carbonintensity.org.uk/regional/intensity/
-
-        Returns
-        -------
-            Response from VC, ideally via the stored file.
-        """
-        url_params = url_to_hash(url, kwargs.get("params"))
-        stored_tariff = Path(".", "tests", "data", "carbon_intensity", f"{url_params}.json")
-        if stored_tariff.exists() and DO_MOCK:
-            return cast(Jsonable, json.loads(stored_tariff.read_text()))
+        stored_path = directory / f"{url_params}.json"
+        if DO_MOCK and stored_path.exists():
+            external_data = json.loads(stored_path.read_text())
         else:
-            data = (await _http_client.get(url, **kwargs)).json()
-            stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
+            external_resp = await _http_client.post(url, **kwargs)
+            if not external_resp.is_success:
+                # Forward any errors we got
+                return external_resp
+            external_data = external_resp.json()
+            stored_path.write_text(json.dumps(external_data, indent=4, sort_keys=True))
 
-    async def cache_vc_data(self, url: str, **kwargs: Any) -> Jsonable:
-        """
-        Get some data from VisualCrossing, and store it in a JSON file.
-
-        These files are large and ugly, so watch out!
-        Ignores URL parameters in the file store.
-
-        Parameters
-        ----------
-        url
-            Base URL, which should be https://www.renewables.ninja/api/data/pv
-
-        Returns
-        -------
-            Response from VC, ideally via the stored file.
-        """
-        url_params = url_to_hash(url, kwargs.get("params"))
-        stored_tariff = Path(".", "tests", "data", "visual_crossing", f"{url_params}.json")
-        if stored_tariff.exists() and DO_MOCK:
-            self.visualcrossing_requests["cached"] += 1
-            return cast(Jsonable, json.loads(stored_tariff.read_text()))
-        else:
-            self.visualcrossing_requests["uncached"] += 1
-            data = (await _http_client.get(url, **kwargs)).json()
-            stored_tariff.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
-
-    async def cache_renewables_ninja_data(self, url: str, **kwargs: Any) -> Jsonable:
-        """
-        Get some data from renewables.ninja, and store it in a JSON file.
-
-        Note that we need the "params" passed to the kwargs, as that's the structure of their API.
-        This will create a really very ugly filename in "./data/pvgis".
-
-        Parameters
-        ----------
-        url
-            Base URL, which should be https://www.renewables.ninja/api/data/pv
-        kwargs
-            params
-                key value dict of parameters passed to RN
-
-        Returns
-        -------
-            Response from RN, ideally via the stored file.
-        """
-        # Read the parameters passed to the endpoint to get a horrible _key_value_ type string.
-        url_params = url_to_hash(url, kwargs.get("params"))
-        stored_rn = Path(".", "tests", "data", "renewables_ninja", f"{url_params}.json")
-        if stored_rn.exists() and DO_MOCK:
-            return cast(Jsonable, json.loads(stored_rn.read_text()))
-        else:
-            data = (await _http_client.get(url, **kwargs)).json()
-            stored_rn.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
-
-    async def cache_pvgis_data(self, url: str, **kwargs: Any) -> Jsonable:
-        """
-        Get some data from PVGIS, and store it in a JSON file.
-
-        Note that we need the "params" passed to the kwargs, as that's the structure of their API.
-        This will create a really very ugly filename in "./data/pvgis".
-
-        Parameters
-        ----------
-        url
-            Base URL, which should be https://re.jrc.ec.europa.eu/api/PVcalc
-        kwargs
-            params
-                key value dict of parameters passed to PVGIS
-
-        Returns
-        -------
-            Response from PVGIS, ideally via the stored file.
-        """
-        # Read the parameters passed to the endpoint to get a horrible _key_value_ type string.
-        url_params = url_to_hash(url, kwargs.get("params"))
-        stored_rn = Path(".", "tests", "data", "pvgis", f"{url_params}.json")
-        if stored_rn.exists() and DO_MOCK:
-            return cast(Jsonable, json.loads(stored_rn.read_text()))
-        else:
-            print(f"Getting from {url}, {kwargs}")
-            data = (await _http_client.get(url, **kwargs)).json()
-            stored_rn.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
-
-    async def cache_re24_data(self, url: str, **kwargs: Any) -> Jsonable:
-        """
-        Get some data from RE24, and store it in a JSON file.
-
-        Note that we need the "params" passed to the kwargs, as that's the structure of their API.
-
-        Parameters
-        ----------
-        url
-            Base URL, which should be https://api.re24.energy/v1/data/prices/nordpool
-        kwargs
-            params
-                key value dict of parameters passed to RE24, including start and end timesstamps
-
-        Returns
-        -------
-            Response from RE24, ideally via the stored file.
-        """
-        # Read the parameters passed to the endpoint, but do not get the header as they contain an API key!
-        url_params = url_to_hash(url, kwargs.get("params"))
-        stored_re24 = Path(".", "tests", "data", "re24", f"{url_params}.json")
-        if stored_re24.exists():
-            return cast(Jsonable, json.loads(stored_re24.read_text()))
-        else:
-            data = (await _http_client.get(url, **kwargs)).json()
-            stored_re24.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
+        return httpx.Response(200, json=external_data)
 
     # The httpx typing is gross so let's just bodge it and carry on
     async def get(self, url: httpx.URL | str, **kwargs: Any) -> Coroutine[Any, Any, httpx.Response] | httpx.Response:  # type: ignore
         """
-        Make an HTTP GET request to the relevant tariff, but actually load it from the file.
+        Make an HTTP GET request to the relevant 3rd party, but actually load it from the file.
 
-        Files are found in "get_tariff_from_file" and should be found in ./tests/data/{filename}.json
-        with the slashes removed.
+        Data are stored in JSON files with the filenames being the hash of the relevant URL plus any parameters.
 
         Returns
         -------
-            HTTPX status, 200 if file found, 404 otherwise.
+            Successful response with data from cache
         """
-        print("Getting via mocked client", url)
         url = str(url)
-        if url.startswith("https://api.octopus.energy/v1/products/"):
-            maybe_tariff_data = await self.get_tariff_from_file(url, **kwargs)
-            if maybe_tariff_data is not None:
-                return httpx.Response(status_code=200, json=maybe_tariff_data)
+        base_dir = Path(".", "tests", "data")
 
-        if url.startswith("https://api.carbonintensity.org.uk/regional/intensity/"):
-            maybe_ci_data = await self.cache_ci_data(url, **kwargs)
-            if maybe_ci_data is not None:
-                return httpx.Response(status_code=200, json=maybe_ci_data)
+        if url.startswith("https://api.octopus.energy/v1/"):
+            directory = base_dir / "octopus"
         elif url.startswith("https://api.carbonintensity.org.uk/regional/"):
-            return httpx.Response(
-                status_code=200,
-                json={
-                    "data": [
-                        {"regionid": 10, "dnoregion": "UKPN East", "shortname": "East England", "postcode": "SW1A", "data": []}
-                    ]
-                },
-            )
+            directory = base_dir / "carbon_intensity"
+        elif url.startswith("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"):
+            directory = base_dir / "visual_crossing"
+        elif url.startswith("https://re.jrc.ec.europa.eu/api/PVcalc"):
+            directory = base_dir / "pvgis"
+        elif url.startswith("https://www.renewables.ninja/api/"):
+            directory = base_dir / "renewables_ninja"
+        elif url.startswith("https://api.re24.energy/v1/data/prices/nordpool"):
+            directory = base_dir / "re24"
+        else:
+            raise ValueError(f"Unhandled GET {url}")
 
-        if str(url) == "https://www.gov.uk/bank-holidays.json":
-            bank_holiday_path = Path(".", "tests", "data", "bank-holidays.json")
-            return httpx.Response(status_code=200, json=json.loads(bank_holiday_path.read_text()))
+        # no data or JSON or a GET request
+        url_params = url_to_hash(url, kwargs.get("params"))
+        stored_path = directory / f"{url_params}.json"
+        if DO_MOCK and stored_path.exists():
+            external_data = json.loads(stored_path.read_text())
+        else:
+            external_resp = await _http_client.get(url, **kwargs)
+            if not external_resp.is_success:
+                # Forward any errors we got
+                return external_resp
+            external_data = external_resp.json()
+            stored_path.write_text(json.dumps(external_data, indent=4, sort_keys=True))
 
-        if url.startswith("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"):
-            maybe_vc_data = await self.cache_vc_data(url, **kwargs)
-            if maybe_vc_data is not None:
-                return httpx.Response(status_code=200, json=maybe_vc_data)
-
-        if url.startswith("https://re.jrc.ec.europa.eu/api/PVcalc"):
-            maybe_pvgis_data = await self.cache_pvgis_data(url, **kwargs)
-            if maybe_pvgis_data is not None:
-                return httpx.Response(status_code=200, json=maybe_pvgis_data)
-
-        if url.startswith("https://www.renewables.ninja/api/"):
-            maybe_rn_data = await self.cache_renewables_ninja_data(url, **kwargs)
-            if maybe_rn_data is not None:
-                return httpx.Response(status_code=200, json=maybe_rn_data)
-
-        if url.startswith("https://api.re24.energy/v1/data/prices/nordpool"):
-            maybe_re24_data = await self.cache_re24_data(url, **kwargs)
-            if maybe_re24_data is not None:
-                return httpx.Response(status_code=200, json=maybe_re24_data)
-        return httpx.Response(status_code=404, text=f"Trying to get an unhandled URL with mock client: {url}")
+        return httpx.Response(status_code=200, json=external_data)
 
 
 @pytest_asyncio.fixture
@@ -341,7 +191,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
     await db.create_pool()
     assert db.pool is not None, "Could not create database pool"
 
-    async def override_get_db_pool() -> AsyncGenerator[asyncpg.pool.Pool]:
+    def override_get_db_pool() -> asyncpg.pool.Pool:
         """
         Override the database creation with our database from this file.
 
@@ -349,7 +199,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
         and not the global `db` object we use elsewhere.
         """
         assert db.pool is not None, "Database pool not yet created."
-        yield db.pool
+        return db.pool
 
     async def override_get_db_conn() -> AsyncGenerator[DBConnection]:
         """
@@ -378,7 +228,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
         return MockedHttpClient()
         # return _http_client
 
-    queue = TrackingQueue(pool=await override_get_db_pool().__anext__())
+    queue = TrackingQueue(pool=await override_get_db_pool())
 
     def override_get_job_queue() -> TrackingQueue:
         return queue
@@ -401,10 +251,10 @@ async def client() -> AsyncGenerator[AsyncClient]:
                 _ = tg.create_task(
                     process_jobs(
                         queue=override_get_job_queue(),
-                        pool=await override_get_db_pool().__anext__(),
+                        pool=override_get_db_pool(),
                         http_client=override_get_http_client(),
                         vae=await get_vae_model(),
-                        secrets_env=await get_secrets_dependency(),
+                        secrets_env=get_secrets_dep(),
                         thread_pool=await get_thread_pool(),
                         ignore_exceptions=True,
                     )
@@ -444,7 +294,7 @@ async def get_pool_hack(client: httpx.AsyncClient) -> asyncpg.Pool:
     """
     from app.dependencies import get_db_pool
 
-    return await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+    return await client._transport.app.dependency_overrides[get_db_pool]()  # type: ignore
 
 
 def get_internal_client_hack(client: httpx.AsyncClient) -> httpx.AsyncClient:

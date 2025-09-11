@@ -12,12 +12,13 @@ import pandas as pd
 import pytest
 import pytest_asyncio
 
-from app.dependencies import get_db_pool, get_http_client
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.pvgis import get_pvgis_optima
 from app.internal.solar_pv.disaggregate import disaggregate_readings
 from app.internal.utils.uuid import uuid7
+
+from .conftest import get_internal_client_hack, get_pool_hack
 
 
 @pytest_asyncio.fixture
@@ -363,8 +364,8 @@ class TestPVGIS:
     @pytest.mark.asyncio
     async def test_pvgis_optima(self, client: httpx.AsyncClient) -> None:
         """That that we can get PVGIS optima without an error."""
-        external_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
-        result = await get_pvgis_optima(external_client, latitude=51.0, longitude=0.10, tracking=False)
+        inner_client = get_internal_client_hack(client)
+        result = await get_pvgis_optima(inner_client, latitude=51.0, longitude=0.10, tracking=False)
         assert result.tilt == 39
         assert result.altitude == 61.0
         assert result.azimuth == 180
@@ -408,14 +409,14 @@ class TestDisaggregate:
 
         # The HTTP client we pass as a fixture is only useful for accessing endpoints and creates
         # a mocked HTTP client for external use; the pool is spun up per test.
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
-        external_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        pool = await get_pool_hack(client)
+        inner_client = get_internal_client_hack(client)
         disaggregated_df = await disaggregate_readings(
             elec_meter_dataset_id=cast(UUID, elec_meter_meta["dataset_id"]),
             azimuth=None,
             tilt=None,
             pool=pool,
-            http_client=external_client,
+            http_client=inner_client,
             system_size=1.0,
         )
         assert not disaggregated_df.empty
@@ -433,14 +434,14 @@ class TestDisaggregate:
 
         # The HTTP client we pass as a fixture is only useful for accessing endpoints and creates
         # a mocked HTTP client for external use; the pool is spun up per test.
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
-        external_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        pool = await get_pool_hack(client)
+        inner_client = get_internal_client_hack(client)
         disaggregated_df = await disaggregate_readings(
             elec_meter_dataset_id=cast(UUID, elec_meter_meta["dataset_id"]),
             azimuth=None,
             tilt=None,
             pool=pool,
-            http_client=external_client,
+            http_client=inner_client,
             system_size=1.0,
         )
         assert not disaggregated_df.empty
@@ -456,14 +457,14 @@ class TestDisaggregate:
 
         # The HTTP client we pass as a fixture is only useful for accessing endpoints and creates
         # a mocked HTTP client for external use; the pool is spun up per test.
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
-        external_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        pool = await get_pool_hack(client)
+        inner_client = get_internal_client_hack(client)
         disaggregated_df = await disaggregate_readings(
             elec_meter_dataset_id=cast(UUID, elec_meter_meta["dataset_id"]),
             azimuth=None,
             tilt=None,
             pool=pool,
-            http_client=external_client,
+            http_client=inner_client,
             system_size=1.0,
         )
         disaggregated_big_df = await disaggregate_readings(
@@ -471,7 +472,7 @@ class TestDisaggregate:
             azimuth=None,
             tilt=None,
             pool=pool,
-            http_client=external_client,
+            http_client=inner_client,
             system_size=10.0,
         )
         assert not disaggregated_df.empty

@@ -15,19 +15,7 @@ from app.routers.client_data import get_baseline
 
 from ..dependencies import DatabasePoolDep
 from ..internal.epl_typing import Jsonable
-from ..internal.site_manager import (
-    list_ashp_datasets,
-    list_carbon_intensity_datasets,
-    list_elec_datasets,
-    list_elec_synthesised_datasets,
-    list_gas_datasets,
-    list_heating_load_datasets,
-    list_import_tariff_datasets,
-    list_renewables_generation_datasets,
-    list_thermal_models,
-)
 from ..internal.site_manager.bundles import file_self_with_bundle, insert_dataset_bundle
-from ..internal.site_manager.dataset_lists import list_baseline_datasets
 from ..internal.site_manager.fetch_data import fetch_all_input_data
 from ..internal.utils.uuid import uuid7
 from ..lifespan import JobQueueDep
@@ -52,11 +40,10 @@ from ..models.heating_load import (
     HeatingLoadRequest,
     InterventionEnum,
 )
-from ..models.import_tariffs import EpochTariffEntry, SyntheticTariffEnum, TariffRequest
+from ..models.import_tariffs import SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import BundleHints, DatasetBundleMetadata, DatasetList, SiteDataEntry
 from .client_data import get_solar_locations
-from .import_tariffs import get_import_tariffs
 
 router = APIRouter()
 
@@ -64,57 +51,6 @@ MULTIPLE_DATASET_ENDPOINTS = {DatasetTypeEnum.HeatingLoad, DatasetTypeEnum.Renew
 NULL_UUID = uuid.UUID(int=0, version=4)
 type to_generate_t = dict[DatasetTypeEnum, RequestBase | Sequence[RequestBase]]
 logger = logging.getLogger(__name__)
-
-
-@warnings.deprecated("Prefer list-dataset-bundles")
-@router.post("/list-datasets", tags=["db", "list"])
-async def list_datasets(site_id: SiteIDWithTime, pool: DatabasePoolDep) -> dict[DatasetTypeEnum, list[DatasetEntry]]:
-    """
-    Get all the datasets associated with a particular site, in the form of a list of UUID strings.
-
-    This covers datasets across all types; it is your responsibility to then pass them to the correct endpoints
-    (for example, sending a dataset ID corresponding to a gas dataset will not work when requesting renewables.)
-    This will make multiple database calls, as doing it all in a single SQL query caused a terrible mess.
-
-    Parameters
-    ----------
-    *site_id*
-        Database ID for the site you are interested in.
-
-    Returns
-    -------
-    A list of UUID dataset strings, with the earliest at the start and the latest at the end.
-    """
-    async with asyncio.TaskGroup() as tg:
-        baseline_task = tg.create_task(list_baseline_datasets(site_id, pool))
-        gas_task = tg.create_task(list_gas_datasets(site_id, pool))
-        elec_task = tg.create_task(list_elec_datasets(site_id, pool))
-        elec_synth_task = tg.create_task(list_elec_synthesised_datasets(site_id, pool))
-        import_tariff_task = tg.create_task(list_import_tariff_datasets(site_id, pool))
-        renewables_generation_task = tg.create_task(list_renewables_generation_datasets(site_id, pool))
-        heating_load_task = tg.create_task(list_heating_load_datasets(site_id, pool))
-        carbon_intensity_task = tg.create_task(list_carbon_intensity_datasets(site_id, pool))
-        ashp_task = tg.create_task(list_ashp_datasets())
-        thermal_model_task = tg.create_task(list_thermal_models(site_id, pool))
-
-    res = {
-        DatasetTypeEnum.SiteBaseline: baseline_task.result(),
-        DatasetTypeEnum.GasMeterData: gas_task.result(),
-        DatasetTypeEnum.ElectricityMeterData: elec_task.result(),
-        DatasetTypeEnum.ElectricityMeterDataSynthesised: elec_synth_task.result(),
-        DatasetTypeEnum.ImportTariff: import_tariff_task.result(),
-        DatasetTypeEnum.RenewablesGeneration: renewables_generation_task.result(),
-        DatasetTypeEnum.HeatingLoad: heating_load_task.result(),
-        DatasetTypeEnum.CarbonIntensity: carbon_intensity_task.result(),
-        DatasetTypeEnum.ThermalModel: thermal_model_task.result(),
-    }
-    # If we didn't get any real datasets, then
-    # don't insert a dummy ASHP dataset
-    if any(val is not None for val in res.values()):
-        res[DatasetTypeEnum.ASHPData] = ashp_task.result()
-    logger.info(f"Returning {len(res)} datasets for {site_id}")
-
-    return res
 
 
 @router.post("/list-bundle-contents", tags=["db", "bundle"])
@@ -564,49 +500,6 @@ async def get_specific_datasets(site_data: DatasetList | SiteDataEntry, pool: Da
         return await fetch_all_input_data(site_data_ids, pool=pool)
     except KeyError as ex:
         raise HTTPException(400, f"Missing dataset {ex}. Did you run generate-all for this site?") from ex
-
-
-@router.post("/get-latest-tariffs", tags=["db", "tariff"])
-async def get_latest_tariffs(site_data: SiteIDWithTime, pool: DatabasePoolDep) -> EpochTariffEntry:
-    """
-    Get the latest Import Tariff entries for a given site.
-
-    This will endeavour to get the most recently generated synthetic tariff of each type.
-    If a given tariff type isn't in the database, we skip it.
-    The Fixed tariff is generally at index 0.
-
-    This is most useful as a sub-call as part of another dataset getting function.
-
-    Parameters
-    ----------
-    site_data
-        Metadata about the site to get, including a site ID. All other fields except site_id are ignored.
-    pool
-        Database pool
-
-    Raises
-    ------
-    KeyError
-        if there are no ImportTariffs generated.
-
-    Returns
-    -------
-    EpochTariffEntry
-        Tariff entries in an EPOCH friendly format.
-    """
-    site_data_info = await list_latest_datasets(site_data, pool=pool)
-    if site_data_info.ImportTariff is None:
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Requested latest tariffs for {site_data.site_id} but None were available.")
-        return EpochTariffEntry(timestamps=[], data=[])
-    params = MultipleDatasetIDWithTime(
-        dataset_id=[item.dataset_id for item in site_data_info.ImportTariff]
-        if isinstance(site_data_info.ImportTariff, list)
-        else [site_data_info.ImportTariff.dataset_id],
-        start_ts=site_data.start_ts,
-        end_ts=site_data.end_ts,
-    )
-    return await get_import_tariffs(params, pool)
 
 
 @router.post("/get-latest-datasets", tags=["db", "get"])

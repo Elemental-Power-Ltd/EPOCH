@@ -178,9 +178,9 @@ class TrackingQueue(asyncio.Queue[tuple[int, GenericJobRequest]]):
         list[GenericJobRequest]
             List of requests in the queue at the moment you called this.
         """
-        assert hasattr(self, "_queue"), "Internal queue not initialised"
-        assert self._queue is not None, "Internal queue not initialised"
-        return [item[1] for item in self._queue]
+        assert hasattr(self, "_queue"), "Internal queue not initialised"  # pyright: ignore[reportAttributeAccessIssue]
+        assert self._queue is not None, "Internal queue not initialised"  # pyright: ignore[reportAttributeAccessIssue]
+        return [item[1] for item in self._queue]  # pyright: ignore[reportAttributeAccessIssue]
 
     async def put(self, item: GenericJobRequest) -> None:  # type: ignore[override]
         """
@@ -417,6 +417,7 @@ async def process_jobs(
                 case ElectricalLoadRequest():
                     future = await generate_electricity_load(params=job, vae=vae, pool=pool, thread_pool=thread_pool)
                 case RenewablesRequest():
+                    print(secrets_env)
                     future = await generate_renewables_generation(
                         params=job, pool=pool, http_client=http_client, secrets_env=secrets_env
                     )

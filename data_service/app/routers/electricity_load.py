@@ -12,10 +12,10 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from app.dependencies import DatabaseDep, DatabasePoolDep, ThreadPoolDep, VaeDep
+from app.dependencies import DatabasePoolDep, ThreadPoolDep, VaeDep
 from app.internal.elec_meters import daily_to_hh_eload, day_type, monthly_to_daily_eload
 from app.internal.elec_meters.preprocessing import hh_to_square
-from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame
+from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, RecordMapping
 from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.utils import get_bank_holidays
 from app.internal.utils.uuid import uuid7
@@ -71,7 +71,7 @@ async def generate_electricity_load(
             params.dataset_id,
         )
 
-    raw_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "consumption_kwh"])
+    raw_df = pd.DataFrame.from_records(cast(RecordMapping, dataset), columns=["start_ts", "end_ts", "consumption_kwh"])
     raw_df.index = pd.DatetimeIndex(pd.to_datetime(raw_df["start_ts"]))
 
     if reading_type != "halfhourly":
@@ -248,7 +248,7 @@ async def generate_electricity_load(
 
 
 @router.post("/get-electricity-load", tags=["get", "electricity"])
-async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> EpochElectricityEntry:
+async def get_electricity_load(params: DatasetIDWithTime, pool: DatabasePoolDep) -> EpochElectricityEntry:
     """
     Get a (possibly synthesised) half hourly electricity load dataset.
 
@@ -272,7 +272,7 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     *HTTPException(400)*
         If the requested meter dataset is half hourly.
     """
-    rdgs_fuel_synthetic = await conn.fetchrow(
+    rdgs_fuel_synthetic = await pool.fetchrow(
         """
         SELECT
             reading_type,
@@ -302,7 +302,7 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     else:
         table_name = "electricity_meters"
 
-    res = await conn.fetch(
+    res = await pool.fetch(
         f"""
         SELECT
             start_ts,
@@ -319,7 +319,7 @@ async def get_electricity_load(params: DatasetIDWithTime, conn: DatabaseDep) -> 
     )
 
     elec_df = pd.DataFrame.from_records(
-        res, columns=["start_ts", "end_ts", "consumption_kwh"], coerce_float=["consumption_kwh"], index="start_ts"
+        cast(RecordMapping, res), columns=["start_ts", "end_ts", "consumption_kwh"], coerce_float=True, index="start_ts"
     )
     elec_df["start_ts"] = elec_df.index
     in_timestamps_mask = np.logical_and(elec_df.start_ts >= params.start_ts, elec_df.end_ts <= params.end_ts)
@@ -365,20 +365,19 @@ async def get_blended_electricity_load(
     if real_params is None and synthetic_params is None:
         raise HTTPException(400, "Got None for both real and synthetic electrical datasets. Are they both missing?")
     logger = logging.getLogger(__name__)
-    async with pool.acquire() as conn:
-        if real_params is not None:
-            try:
-                real_data = await get_electricity_load(real_params, conn=conn)
-            except HTTPException as ex:
-                logger.warning(f"Couldn't get electricity load data for {real_params}, returning only synthetic. Due to {ex}")
-                real_data = EpochElectricityEntry(timestamps=[], data=[])
+    if real_params is not None:
+        try:
+            real_data = await get_electricity_load(real_params, pool=pool)
+        except HTTPException as ex:
+            logger.info(f"Couldn't get electricity load data for {real_params}, returning only synthetic. Due to {ex}")
+            real_data = EpochElectricityEntry(timestamps=[], data=[])
 
-        if synthetic_params is not None:
-            synth_data = await get_electricity_load(synthetic_params, conn=conn)
-        else:
-            # Early return as we've got no synthetic data
-            logger.warning(f"Got no synthetic data, returning only {real_params}")
-            return real_data
+    if synthetic_params is not None:
+        synth_data = await get_electricity_load(synthetic_params, pool=pool)
+    else:
+        # Early return as we've got no synthetic data
+        logger.info(f"Got no synthetic data, returning only {real_params}")
+        return real_data
 
     # The EPOCH format makes it a bit hard to just zip these together, so
     # assume each entry is uniquely identified by a (Date, StartTime) pair

@@ -7,9 +7,10 @@ import httpx
 import pandas as pd
 import pytest
 
-from app.dependencies import get_db_pool, get_http_client
 from app.internal.import_tariffs.re24 import get_re24_approximate_ppa
 from app.models.core import SiteIDWithTime
+
+from .conftest import get_internal_client_hack, get_pool_hack
 
 
 @pytest.fixture
@@ -430,8 +431,8 @@ class TestRE24PPA:
     @pytest.mark.asyncio
     async def test_units_correct(self, client: httpx.AsyncClient) -> None:
         """Test that we get the units correct in p / kWh."""
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
-        inner_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        pool = await get_pool_hack(client)
+        inner_client = get_internal_client_hack(client)
         result = await get_re24_approximate_ppa(
             params=SiteIDWithTime(
                 site_id="demo_london",
@@ -449,8 +450,8 @@ class TestRE24PPA:
     @pytest.mark.asyncio
     async def test_get_three(self, client: httpx.AsyncClient) -> None:
         """Test that we get three tiers of prices."""
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
-        inner_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        pool = await get_pool_hack(client)
+        inner_client = get_internal_client_hack(client)
         result = await get_re24_approximate_ppa(
             params=SiteIDWithTime(
                 site_id="demo_london",
@@ -467,8 +468,8 @@ class TestRE24PPA:
     @pytest.mark.asyncio
     async def test_dataframe_grid(self, client: httpx.AsyncClient) -> None:
         """Test that we can handle a grid dataframe tariff."""
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
-        inner_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        pool = await get_pool_hack(client)
+        inner_client = get_internal_client_hack(client)
         start_ts = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC)
         grid_tariff = pd.DataFrame(index=pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30)), data={"cost": [100.0]})
@@ -485,8 +486,8 @@ class TestRE24PPA:
     @pytest.mark.asyncio
     async def test_dataframe_varying_grid(self, client: httpx.AsyncClient) -> None:
         """Test that we can handle a varying grid dataframe tariff."""
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
-        inner_client = client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
+        pool = await get_pool_hack(client)
+        inner_client = get_internal_client_hack(client)
         start_ts = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC)
         grid_tariff = pd.DataFrame(index=pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30)), data={"cost": [100.0]})

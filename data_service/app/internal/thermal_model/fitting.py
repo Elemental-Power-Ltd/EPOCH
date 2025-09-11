@@ -11,7 +11,7 @@ from bayes_opt import BayesianOptimization, SequentialDomainReductionTransformer
 from sklearn.metrics import r2_score  # type: ignore
 
 from ...models.heating_load import InterventionEnum, ThermalModelResult
-from ..epl_typing import HHDataFrame
+from ..epl_typing import HHDataFrame, SeedLike
 from ..gas_meters.domestic_hot_water import get_poisson_weights
 from .building_fabric import apply_interventions_to_structure
 from .heat_capacities import U_VALUES_PATH
@@ -56,6 +56,7 @@ def parameters_to_loss(
     start_ts: datetime.datetime | None = None,
     end_ts: datetime.datetime | None = None,
     u_values_path: Path = U_VALUES_PATH,
+    seed: SeedLike | None = None,
 ) -> float:
     """
     Calculate the gas usage loss for a specific set of parameters.
@@ -109,6 +110,7 @@ def parameters_to_loss(
             start_ts=start_ts,
             end_ts=end_ts,
             u_values_path=u_values_path,
+            seed=seed,
         )
     except AssertionError:
         # We need the "bad" outcome to roughly match the scale of the good outcomes,
@@ -155,6 +157,7 @@ def simulate_parameters(
     dt: datetime.timedelta | None = None,
     interventions: list[InterventionEnum] | list[str] | None = None,
     u_values_path: Path = U_VALUES_PATH,
+    seed: SeedLike | None = None,
 ) -> pd.DataFrame:
     """
     Calculate the gas usage loss for a specific set of parameters.
@@ -211,7 +214,7 @@ def simulate_parameters(
 
     DHW_EVENT_SIZE = 1.0
     dhw_weights = get_poisson_weights(HHDataFrame(sim_df)) * dhw_usage
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed=seed)
     total_dhw_usage = rng.poisson(dhw_weights, dhw_weights.size) * DHW_EVENT_SIZE
     sim_df["dhw"] = total_dhw_usage
     return sim_df
@@ -223,6 +226,7 @@ def calculate_thermal_model_r2(
     weather_df: pd.DataFrame,
     elec_df: pd.DataFrame | None = None,
     u_values_path: Path = U_VALUES_PATH,
+    seed: SeedLike | None = None,
 ) -> float:
     """
     Calculate how effective this thermal model is at reproducing the actual gas meter data.
@@ -267,6 +271,7 @@ def calculate_thermal_model_r2(
         dt=None,
         interventions=None,
         u_values_path=u_values_path,
+        seed=seed,
     )
 
     sim_gas_usages = []
@@ -291,6 +296,7 @@ def fit_to_gas_usage(
     n_iter: int = 300,
     hints: ThermalModelResult | list[ThermalModelResult] | None = None,
     u_values_path: Path = U_VALUES_PATH,
+    seed: SeedLike | None = None,
 ) -> ThermalModelResult:
     """
     Fit some building parameters to a gas consumption pattern.
@@ -344,9 +350,11 @@ def fit_to_gas_usage(
             start_ts=None,  # calculate automatically from gas meters
             end_ts=None,  # calculate automatically from gas meters
             u_values_path=u_values_path,
+            seed=seed,
         ),
         pbounds=pbounds,
         bounds_transformer=SequentialDomainReductionTransformer(),
+        random_state=seed,
     )
 
     if hints is None:
@@ -399,6 +407,7 @@ def fit_to_gas_usage(
         weather_df=weather_df,
         elec_df=elec_df,
         u_values_path=u_values_path,
+        seed=seed,
     )
     return ThermalModelResult(
         scale_factor=opt.max["params"]["scale_factor"],

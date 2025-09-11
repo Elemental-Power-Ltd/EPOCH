@@ -7,10 +7,13 @@ Currently just uses Octopus data, but will likely use RE24 data in future.
 import datetime
 import itertools
 import logging
+from typing import cast
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
+
+from app.internal.epl_typing import RecordMapping
 
 from ..dependencies import DatabasePoolDep, HttpClientDep
 from ..internal.client_data import get_postcode
@@ -457,7 +460,7 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
             raise ValueError(
                 f"Could not get an ImportTariff dataset for {dataset_id} between {params.start_ts} and {params.end_ts}."
             )
-        df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "unit_cost"])
+        df = pd.DataFrame.from_records(cast(RecordMapping, res), index="start_ts", columns=["start_ts", "end_ts", "unit_cost"])
         df.index = pd.to_datetime(df.index, utc=True)
         df = df.resample(pd.Timedelta(minutes=30)).max().ffill()
         dfs.append(df)

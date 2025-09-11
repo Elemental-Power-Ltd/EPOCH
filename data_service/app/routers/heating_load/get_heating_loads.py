@@ -11,8 +11,11 @@ heating-related data in formats compatible with the EPOCH energy modeling system
 import asyncio
 import datetime
 import json
+from typing import cast
 
 import pandas as pd
+
+from app.internal.epl_typing import RecordMapping
 
 from ...dependencies import DatabasePoolDep
 from ...models.core import DatasetID, DatasetIDWithTime, MultipleDatasetIDWithTime, dataset_id_t
@@ -82,7 +85,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             start_ts,
             end_ts,
         )
-        heating_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "heating"])
+        heating_df = pd.DataFrame.from_records(cast(RecordMapping, res), index="start_ts", columns=["start_ts", "heating"])
         heating_df.index = pd.to_datetime(heating_df.index)
         return heating_df
 
@@ -125,7 +128,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             else:
                 thermal_model_dataset_id = metadata["params"]["thermal_model_dataset_id"]
             model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_dataset_id), pool=pool)
-            return await get_heating_cost_thermal_model(model, interventions=metadata["interventions"], pool=db_pool)
+            return await get_heating_cost_thermal_model(model, interventions=metadata["interventions"])
         else:
             # However, if we don't have a thermal model then we have no idea of the size,
             # so look the generic cost up in the DB.
@@ -215,7 +218,7 @@ async def get_dhw_load(params: DatasetIDWithTime, pool: DatabasePoolDep) -> Epoc
         params.start_ts,
         params.end_ts,
     )
-    dhw_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "dhw"])
+    dhw_df = pd.DataFrame.from_records(cast(RecordMapping, res), index="start_ts", columns=["start_ts", "end_ts", "dhw"])
 
     return EpochDHWEntry(timestamps=dhw_df.index.to_list(), data=dhw_df["dhw"].to_list())
 
@@ -252,6 +255,8 @@ async def get_air_temp(params: DatasetIDWithTime, pool: DatabasePoolDep) -> Epoc
         params.start_ts,
         params.end_ts,
     )
-    dhw_df = pd.DataFrame.from_records(res, index="start_ts", columns=["start_ts", "end_ts", "air_temperature"])
+    dhw_df = pd.DataFrame.from_records(
+        cast(RecordMapping, res), index="start_ts", columns=["start_ts", "end_ts", "air_temperature"]
+    )
 
     return EpochAirTempEntry(timestamps=dhw_df.index.to_list(), data=dhw_df["air_temperature"].to_list())

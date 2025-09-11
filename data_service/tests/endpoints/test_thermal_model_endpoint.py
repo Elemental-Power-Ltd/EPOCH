@@ -4,15 +4,17 @@ import datetime
 import json
 
 import httpx
+import numpy as np
 import pytest
 import pytest_asyncio
 
-from app.dependencies import get_db_pool
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetTypeEnum
 from app.models.heating_load import HeatingLoadRequest, ThermalModelResult
 from app.routers.heating_load.thermal_model import file_params_with_db
+
+from .conftest import get_pool_hack
 
 
 @pytest_asyncio.fixture
@@ -116,9 +118,7 @@ class TestThermalModelEndpoint:
         start_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC)
         task_id = uuid7()
-        # TODO (2025-03-03): This is an absolutely filthy way to get the testing database
-        # pool connection! Do it properly with a DB fixture or a called endpoint.
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+        pool = await get_pool_hack(client)
         await file_params_with_db(
             pool=pool,
             site_id="demo_london",
@@ -138,6 +138,7 @@ class TestThermalModelEndpoint:
                     start_ts=start_ts,
                     end_ts=end_ts,
                     structure_id=task_id,
+                    seed=int(np.pi * 10**9),
                 ).model_dump_json()
             ),
         )

@@ -8,10 +8,11 @@ Use strong typing as much as possible to avoid errors, and add extra types here 
 
 import functools
 import warnings
-from collections.abc import Callable, Mapping
-from typing import NewType
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, NewType
 
 import asyncpg
+import numpy as np
 import pandas as pd
 
 
@@ -42,3 +43,5 @@ SquareHHDataFrame = NewType("SquareHHDataFrame", pd.DataFrame)
 type db_pool_t = asyncpg.pool.Pool
 type db_conn_t = db_pool_t | asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
 type Jsonable = dict[str, Jsonable] | list[Jsonable] | str | int | float | bool | None
+type SeedLike = int | np.random.RandomState
+type RecordMapping = Sequence[Mapping[str, Any]]

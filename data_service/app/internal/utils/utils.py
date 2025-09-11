@@ -17,23 +17,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from ..epl_typing import Jsonable
+
 logger = logging.getLogger("default")
-
-
-def typename(x: Any) -> str:
-    """
-    Get a string representation of the name of a class.
-
-    Parameters
-    ----------
-    x
-        Any python object
-
-    Returns
-    -------
-        String of the name, e.g. typename(1) == "int"
-    """
-    return type(x).__name__
 
 
 def hour_of_year(ts: pd.Timestamp) -> float:
@@ -181,26 +167,6 @@ def split_into_sessions[T: (float, int, datetime.datetime, datetime.date, pd.Tim
     return sessions
 
 
-def add_epoch_fields(non_epoch_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Add EPOCH date and time columns to a given dataframe.
-
-    EPOCH currently needs the columns 'Date', 'StartTime' and 'HourOfYear',
-    although it doesn't read all of them.
-    This may change in future, so the additions are grouped together here.
-
-    """
-    assert isinstance(non_epoch_df.index, pd.DatetimeIndex), (
-        f"Dataframes for EPOCH must have a DateTimeIndex but got {type(non_epoch_df.index)}"
-    )
-
-    non_epoch_df["Date"] = non_epoch_df.index.strftime("%d-%b")
-    non_epoch_df["StartTime"] = non_epoch_df.index.strftime("%H:%M")
-    non_epoch_df["HourOfYear"] = non_epoch_df.index.map(hour_of_year)
-
-    return non_epoch_df
-
-
 def symlog[T: (float, npt.NDArray[np.floating])](x: T, c: float = 1.0 / np.log(10.0)) -> T:
     """
     Symmetric function with log-like properties.
@@ -275,7 +241,13 @@ def chunk_time_period(
     return new_time_pairs
 
 
-def url_to_hash(url: str, params: dict[str, Any] | None = None, max_len: int | None = None) -> str:
+def url_to_hash(
+    url: str,
+    params: dict[str, Any] | None = None,
+    json: dict[str, Jsonable] | None = None,
+    data: dict[str, Jsonable] | None = None,
+    max_len: int | None = None,
+) -> str:
     """
     Take a given URL and set of query params, and translate into a string SHA-256 hash.
 
@@ -303,6 +275,13 @@ def url_to_hash(url: str, params: dict[str, Any] | None = None, max_len: int | N
         # and sort them for consistency
         encoded_params = urllib.parse.urlencode({key: params[key] for key in sorted(params.keys())})
         hasher.update(encoded_params.encode("utf-8"))
+    if json:
+        encoded_json = urllib.parse.urlencode({key: json[key] for key in sorted(json.keys())})
+        hasher.update(encoded_json.encode("utf-8"))
+
+    if data:
+        encoded_data = urllib.parse.urlencode({key: data[key] for key in sorted(data.keys())})
+        hasher.update(encoded_data.encode("utf-8"))
     str_hash = str(hasher.hexdigest())
     if max_len is None:
         return str_hash

@@ -16,6 +16,7 @@ class ThermalModelRequest(RequestBase):
         description="Number of Bayesian optimisation iterations to try in the fitting process",
         examples=[10, 100, 500],
     )
+    seed: int | None = None
 
 
 class ThermalModelHeatingLoadRequest(RequestBase):

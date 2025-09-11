@@ -7,9 +7,10 @@ import json
 import pytest
 from httpx import AsyncClient
 
-from app.dependencies import get_db_pool
 from app.internal.utils.uuid import uuid7
 from app.models.core import ClientData, SiteData
+
+from .conftest import get_pool_hack
 
 
 class TestClientData:
@@ -23,8 +24,8 @@ class TestClientData:
     async def test_add_client(self, client: AsyncClient) -> None:
         client_data = ClientData(client_id="new_client", name="New Client")
         response = await client.post("/add-client", json=client_data.model_dump())
-        assert response.status_code == 200
-        assert response.json()[0] == client_data.model_dump()
+        assert response.is_success
+        assert response.json() == client_data.model_dump()
 
     @pytest.mark.asyncio
     async def test_add_client_duplicate(self, client: AsyncClient) -> None:
@@ -38,7 +39,7 @@ class TestClientData:
     @pytest.mark.asyncio
     async def test_list_sites(self, client: AsyncClient) -> None:
         response = await client.post("/list-sites", json={"client_id": "demo"})
-        assert response.status_code == 200
+        assert response.is_success
         assert len(response.json()) == 2
         assert response.json()[0]["site_id"] == "demo_cardiff"
         assert response.json()[1]["site_id"] == "demo_london"
@@ -54,7 +55,7 @@ class TestClientData:
             address="123 Demo Street, Worksop, DN12 3AB",
         )
         response = await client.post("/add-site", json=site_data.model_dump())
-        assert response.status_code == 200
+        assert response.is_success
         assert SiteData(**response.json()[0]) == site_data
 
     @pytest.mark.asyncio
@@ -89,7 +90,7 @@ class TestClientData:
     @pytest.mark.asyncio
     async def test_get_location(self, client: AsyncClient) -> None:
         response = await client.post("/get-location", json={"site_id": "demo_london"})
-        assert response.status_code == 200
+        assert response.is_success
         assert response.json() == "London"
 
     @pytest.mark.asyncio
@@ -106,7 +107,7 @@ class TestSiteBaseline:
     async def test_get_baseline_real_site(self, client: AsyncClient) -> None:
         """Test that we can get the baseline for a real site."""
         response = await client.post("/get-site-baseline", json={"site_id": "demo_london"})
-        assert response.status_code == 200
+        assert response.is_success
 
     @pytest.mark.asyncio
     async def test_get_baseline_fake_site(self, client: AsyncClient) -> None:
@@ -134,9 +135,9 @@ class TestSiteBaseline:
         response = await client.post(
             "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
         )
-        assert response.status_code == 200, response.text
+        assert response.is_success, response.text
         response = await client.post("/get-site-baseline", json={"site_id": "demo_london"})
-        assert response.status_code == 200, response.text
+        assert response.is_success, response.text
         returned_baseline = response.json()
         for key, val in baseline.items():
             assert key in returned_baseline
@@ -155,9 +156,7 @@ class TestSiteBaseline:
     async def test_cant_retrieve_bad_baseline(self, client: AsyncClient) -> None:
         """Test that we retrieve the stored baseline correctly."""
         baseline = {"bad_component": {"bad_subkey": "bad_value"}}
-        # TODO (2025-03-03): This is an absolutely filthy way to get the testing database
-        # pool connection! Do it properly with a DB fixture or a called endpoint.
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+        pool = await get_pool_hack(client)
         await pool.execute(
             """INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
             uuid7(),
@@ -173,7 +172,7 @@ class TestSiteBaseline:
         baseline = {"grid": {"bad_subkey": "bad_value"}}
         # TODO (2025-03-03): This is an absolutely filthy way to get the testing database
         # pool connection! Do it properly with a DB fixture or a called endpoint.
-        pool = await client._transport.app.dependency_overrides[get_db_pool]().__anext__()  # type: ignore
+        pool = await get_pool_hack(client)
         await pool.execute(
             """INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
             uuid7(),

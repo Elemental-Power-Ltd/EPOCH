@@ -24,10 +24,10 @@ import pandas as pd
 from fastapi import HTTPException
 
 from ...dependencies import DatabasePoolDep, HttpClientDep
-from ...internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
+from ...internal.epl_typing import HHDataFrame, MonthlyDataFrame, RecordMapping, WeatherDataFrame, db_pool_t
 from ...internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
-from ...internal.site_manager import list_thermal_models
 from ...internal.site_manager.bundles import file_self_with_bundle
+from ...internal.site_manager.dataset_lists import list_thermal_models
 from ...internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from ...internal.thermal_model.bait import weather_dataset_to_dataframe
 from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
@@ -47,7 +47,7 @@ from .router import api_router
 from .thermal_model import get_thermal_model
 
 
-async def get_site_id_for_heating_load(dataset_id: dataset_id_t, pool: DatabasePoolDep) -> site_id_t:
+async def get_site_id_for_heating_load(dataset_id: dataset_id_t, pool: db_pool_t) -> site_id_t:
     """
     Get the site ID associated with a given gas meter dataset.
 
@@ -143,7 +143,7 @@ async def select_regression_thermal_phpp(params: HeatingLoadRequest, pool: Datab
             bundle_metadata=params.bundle_metadata,  # Make sure we pass the bundle metadata along!
         )
 
-    available_thermal_model_ids = await list_thermal_models(site_id=SiteID(site_id=site_id), pool=pool)
+    available_thermal_model_ids = await list_thermal_models(site_id=site_id, pool=pool)
 
     if not available_thermal_model_ids:
         logger.debug("Using regression instead of thermal as we didn't get any thermal model metadata.")
@@ -286,7 +286,9 @@ async def generate_heating_load_regression_impl(
         ORDER BY start_ts ASC""",
         params.dataset_id,
     )
-    gas_df = pd.DataFrame.from_records(gas_res, columns=["start_ts", "end_ts", "consumption"], index="start_ts")
+    gas_df = pd.DataFrame.from_records(
+        cast(RecordMapping, gas_res), columns=["start_ts", "end_ts", "consumption"], index="start_ts"
+    )
     gas_df["start_ts"] = gas_df.index
     if gas_df.empty:
         raise HTTPException(
@@ -532,6 +534,7 @@ async def generate_thermal_model_heating_load(
         end_ts=params.end_ts,
         weather_df=weather_df,
         interventions=params.interventions,
+        seed=params.seed,
     )
     # We simulated at a much lower timestep than we want for EPOCH, so
     # regroup it here by adding up the heating demands

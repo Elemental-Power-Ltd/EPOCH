@@ -40,6 +40,8 @@ dnspython==2.7.0
     # via email-validator
 email-validator==2.2.0
     # via fastapi
+et-xmlfile==2.0.0
+    # via openpyxl
 fastapi==0.115.13
     # via -r requirements.in
 fastapi-cli==0.0.7
@@ -89,7 +91,7 @@ narwhals==1.44.0
     # via scikit-lego
 networkx==3.5
     # via torch
-numpy==2.3.1
+numpy==2.3.3
     # via
     #   -r requirements.in
     #   bayesian-optimization
@@ -99,13 +101,20 @@ numpy==2.3.1
     #   patsy
     #   scikit-learn
     #   scipy
+    #   statsmodels
 openpyxl==3.1.5
+    # via -r requirements.in
 packaging==25.0
-    # via matplotlib
-pandas==2.3.0
+    # via
+    #   matplotlib
+    #   statsmodels
+pandas==2.3.2
     # via
     #   -r requirements.in
     #   scikit-lego
+    #   statsmodels
+patsy==1.0.1
+    # via statsmodels
 pillow==11.2.1
     # via matplotlib
 pydantic==2.11.7
