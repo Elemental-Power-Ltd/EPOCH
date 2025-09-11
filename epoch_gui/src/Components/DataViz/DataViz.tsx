@@ -133,14 +133,16 @@ const DataVizContainer: React.FC<DataVizProps> = ({ result, isInformedEmbed = fa
                 <LineChartPanels rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth} />
             )}
 
-            <Button
-                variant="outlined"
-                onClick={() => onClickDownloadReportData(reportData)}
-                startIcon={<DownloadIcon/>}
-                style={{marginTop: '1em'}}
-            >
-                Download CSV
-            </Button>
+            {!isInformedEmbed &&
+                <Button
+                    variant="outlined"
+                    onClick={() => onClickDownloadReportData(reportData)}
+                    startIcon={<DownloadIcon/>}
+                    style={{marginTop: '1em'}}
+                >
+                    Download CSV
+                </Button>
+            }
         </div>
     );
 }
