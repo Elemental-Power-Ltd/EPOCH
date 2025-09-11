@@ -11,15 +11,10 @@ import httpx
 import pytest
 import pytest_asyncio
 
-<<<<<<< HEAD
-from app.dependencies import get_secrets_dep, load_vae
-from app.internal.epl_typing import Jsonable
-=======
-from app.dependencies import get_thread_pool, load_vae
+from app.dependencies import get_thread_pool, get_secrets_dep, load_vae
 from app.epl_secrets import SecretDict
 from app.internal.elec_meters.vae import VAE
 from app.internal.epl_typing import Jsonable, db_pool_t
->>>>>>> main
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.site_manager.bundles import insert_dataset_bundle
 from app.internal.utils.uuid import uuid7
