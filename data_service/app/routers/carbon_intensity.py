@@ -97,12 +97,7 @@ def interpolate_carbon_intensity(
             for item in raw_data
             if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
         ])
-        if len(xp) == 0 or len(yp) == 0:
-            # We've got nothing here!
-            interpolated_vals = np.full_like(xp, np.nan)
-        else:
-            interpolated_vals = np.interp(xs, xp, yp)
-        interpolated_data[key] = interpolated_vals
+        interpolated_data[key] = np.full_like(xp, np.nan) if len(xp) == 0 or len(yp) == 0 else np.interp(xs, xp, yp)
 
     return [
         {

@@ -272,6 +272,7 @@ async def get_electricity_load(params: DatasetIDWithTime, pool: DatabasePoolDep)
     *HTTPException(400)*
         If the requested meter dataset is half hourly.
     """
+    logger = logging.getLogger(__name__)
     rdgs_fuel_synthetic = await pool.fetchrow(
         """
         SELECT
@@ -322,7 +323,7 @@ async def get_electricity_load(params: DatasetIDWithTime, pool: DatabasePoolDep)
     in_timestamps_mask = np.logical_and(elec_df.start_ts >= params.start_ts, elec_df.end_ts <= params.end_ts)
     elec_df = elec_df[in_timestamps_mask]
     if elec_df.empty:
-        logging.warning(
+        logger.warning(
             f"Got an empty electricity meter dataset for {params.dataset_id} between {params.start_ts} and {params.end_ts}"
         )
         return EpochElectricityEntry(timestamps=[], data=[])

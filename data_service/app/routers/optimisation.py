@@ -779,27 +779,26 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
     -------
         All of the configuration data necessary to reproduce this simulation
     """
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT
-                stc.site_data,
-                stc.site_id,
-                stc.bundle_id,
-                sr.scenario
-            FROM
-                optimisation.site_results AS sr
-            LEFT JOIN
-                optimisation.portfolio_results AS pr
-                ON sr.portfolio_id = pr.portfolio_id
-            LEFT JOIN
-                optimisation.site_task_config AS stc
-                ON pr.task_id = stc.task_id
-            WHERE
-                sr.portfolio_id = $1
-            """,
-            result_id.result_id,
-        )
+    rows = await pool.fetch(
+        """
+        SELECT
+            stc.site_data,
+            stc.site_id,
+            stc.bundle_id,
+            sr.scenario
+        FROM
+            optimisation.site_results AS sr
+        LEFT JOIN
+            optimisation.portfolio_results AS pr
+            ON sr.portfolio_id = pr.portfolio_id
+        LEFT JOIN
+            optimisation.site_task_config AS stc
+            ON pr.task_id = stc.task_id
+        WHERE
+            sr.portfolio_id = $1
+        """,
+        result_id.result_id,
+    )
 
     if rows is None:
         raise HTTPException(400, f"No task configuration exists for result with id {result_id.result_id}")

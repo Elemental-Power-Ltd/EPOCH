@@ -37,7 +37,7 @@ JobQueueDep = Annotated[TrackingQueue, Depends(get_job_queue)]
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
+async def lifespan(app: FastAPI) -> AsyncIterator[Never]:  # noqa: ARG001
     """Set up a long clients: a database pool and an HTTP client."""
     # Startup events
     loop = asyncio.get_running_loop()

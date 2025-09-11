@@ -237,9 +237,7 @@ class VAE(nn.Module):  # noqa: D101
         output = output.reshape(batch_size, n_days, seq_len, -1)  # Shape: (batch_size, n_days, seq_len, input_dim)
         return cast(torch.Tensor, output)
 
-    def forward(
-        self, x: torch.Tensor, aggregate: torch.Tensor, start_date: torch.Tensor, end_date: torch.Tensor
-    ) -> dict[str, torch.Tensor]:
+    def forward(self, x: torch.Tensor, aggregate: torch.Tensor) -> dict[str, torch.Tensor]:
         """
         Forward pass through the VAE: encode, reparameterize, and decode.
 

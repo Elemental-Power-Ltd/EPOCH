@@ -101,7 +101,11 @@ class CustomMinMaxScaler(MinMaxScaler):
         self.axis = axis
         super().__init__(feature_range=feature_range, copy=copy, clip=clip)
 
-    def fit(self, X: npt.NDArray[np.floating], y: npt.NDArray[np.floating] | None = None) -> Self:
+    def fit(
+        self,
+        X: npt.NDArray[np.floating],
+        y: npt.NDArray[np.floating] | None = None,  # noqa: ARG002
+    ) -> Self:
         """
         Fit the instance: perform any preprocessing and calculate the custom min and standard max.
 

@@ -87,7 +87,11 @@ def assign_hh_dhw_even(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float) -
     return hh_gas_df
 
 
-def assign_hh_dhw_greedy(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float) -> HHDataFrame:
+def assign_hh_dhw_greedy(
+    hh_gas_df: HHDataFrame,
+    dhw_kwh: float,
+    hdd_kwh: float,  # noqa: ARG001
+) -> HHDataFrame:
     """
     Assign domestic hot water and heating splits to high resolution gas data.
 

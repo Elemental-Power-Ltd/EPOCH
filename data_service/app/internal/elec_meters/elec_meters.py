@@ -426,7 +426,11 @@ def daily_to_hh_eload_observed(
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
     sims = np.asarray([
-        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        ARMA_model_inactive.generate_sample(
+            nsample=48,
+            scale=1.0,
+            distrvs=lambda size, e=eps[i]: e,  # noqa: ARG005
+        )
         for i in range(num_inactive)
     ])
     # - scale by fitted heteroskedasticity factors
@@ -440,7 +444,12 @@ def daily_to_hh_eload_observed(
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
     sims = np.asarray([
-        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+        ARMA_model_active.generate_sample(
+            nsample=48,
+            scale=1.0,
+            distrvs=lambda size, e=eps[i]: e,  # noqa: ARG005
+        )
+        for i in range(num_active)
     ])
 
     assert var_model_active is not None
@@ -632,7 +641,11 @@ def daily_to_hh_eload_pretrained(
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
     sims = np.asarray([
-        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        ARMA_model_inactive.generate_sample(
+            nsample=48,
+            scale=1.0,
+            distrvs=lambda size, e=eps[i]: e,  # noqa: ARG005
+        )
         for i in range(num_inactive)
     ])
     # - scale by fitted heteroskedasticity factors
@@ -643,7 +656,8 @@ def daily_to_hh_eload_pretrained(
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
     sims = np.asarray([
-        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)  # noqa: ARG005
+        for i in range(num_active)
     ])
 
     scaled_sims = np.sqrt(default_var_factors_active) * sims
