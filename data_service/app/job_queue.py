@@ -354,6 +354,7 @@ async def process_jobs(
     http_client: AsyncClient,
     vae: VAE,
     secrets_env: SecretDict,
+    thread_pool: ThreadPoolExecutor,
     ignore_exceptions: bool = False,
 ) -> None:
     """
@@ -414,7 +415,7 @@ async def process_jobs(
                 case HeatingLoadRequest():
                     future = await generate_heating_load(params=job, pool=pool, http_client=http_client)
                 case ElectricalLoadRequest():
-                    future = await generate_electricity_load(params=job, vae=vae, pool=pool)
+                    future = await generate_electricity_load(params=job, vae=vae, pool=pool, thread_pool=thread_pool)
                 case RenewablesRequest():
                     print(secrets_env)
                     future = await generate_renewables_generation(
@@ -429,9 +430,8 @@ async def process_jobs(
                 case ASyncFunctionRequest():
                     future = await job.func(*job.args, **job.kwargs)
                 case SyncFunctionRequest():
-                    with ThreadPoolExecutor() as thread_pool:
-                        loop = asyncio.get_running_loop()
-                        await loop.run_in_executor(thread_pool, job.func, *job.args, **job.kwargs)
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(thread_pool, job.func, *job.args, **job.kwargs)
                 case _:
                     raise ValueError(f"Unhandled {type(job)}")
             logger.info(future)

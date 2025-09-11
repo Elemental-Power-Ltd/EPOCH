@@ -10,45 +10,18 @@ import torch
 from sklearn.preprocessing import StandardScaler  # type: ignore
 
 from app.dependencies import load_vae
-from app.internal.elec_meters.model_utils import RBFTimestampEncoder, ScalerTypeEnum, load_all_scalers
+from app.internal.elec_meters.model_utils import ScalerTypeEnum, load_all_scalers
 from app.internal.elec_meters.vae import VAE
-
-
-class TestScalers:
-    def test_yearly_invariant(self) -> None:
-        """Test that the same day in different years is encoded the same."""
-        encoder = RBFTimestampEncoder(n_periods=13, input_range=(1, 365))
-        data = np.array([
-            datetime.datetime(year=y, month=2, day=27, tzinfo=datetime.UTC).timestamp() for y in range(2000, 2025)
-        ])
-        result = encoder.fit_transform(data)
-        assert result.shape == (25, 13)
-        for i in range(25):
-            assert np.all(result[i, :] == result[0, :])
-
-    def test_months_work(self) -> None:
-        """Test that the encoding roughly represents months."""
-        for month in range(1, 12):
-            encoder = RBFTimestampEncoder(n_periods=13, input_range=(1, 365))
-            data = np.array([datetime.datetime(year=2024, month=month, day=15, tzinfo=datetime.UTC).timestamp()])
-            result = encoder.fit_transform(data)[0, :]
-            assert np.argmax(result) == month or np.argmax(result) == month - 1
 
 
 class TestVAE:
     def test_untrained(self) -> None:
         """Test that we can use an untrained model with the right shapes."""
-        model = VAE(input_dim=1, aggregate_dim=1, date_dim=13, latent_dim=5)
+        model = VAE(input_dim=1, latent_dim=5)
 
         scalers = {
             ScalerTypeEnum.Aggregate: StandardScaler().fit(np.array([0.0, 10000]).reshape(-1, 1)),
             ScalerTypeEnum.Data: StandardScaler().fit(np.array([0.0, 10000]).reshape(-1, 1)),
-            ScalerTypeEnum.StartTime: RBFTimestampEncoder(n_periods=13, input_range=(1, 365)).fit(
-                np.array([datetime.datetime(year=2024, month=i, day=1, tzinfo=datetime.UTC).timestamp() for i in range(1, 12)])
-            ),
-            ScalerTypeEnum.EndTime: RBFTimestampEncoder(n_periods=13, input_range=(1, 365)).fit(
-                np.array([datetime.datetime(year=2024, month=i, day=1, tzinfo=datetime.UTC).timestamp() for i in range(1, 12)])
-            ),
         }
 
         daily_df = pd.DataFrame({
@@ -62,20 +35,9 @@ class TestVAE:
                 .transform(daily_df["consumption_kwh"].to_numpy().reshape(-1, 1))
                 .astype(np.float32)
             )
-            start_date_scaled = torch.from_numpy(
-                scalers[ScalerTypeEnum.StartTime]
-                .transform(daily_df["start_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
-                .astype(np.float32)
-            )
-            end_date_scaled = torch.from_numpy(
-                scalers[ScalerTypeEnum.EndTime]
-                .transform(daily_df["end_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
-                .astype(np.float32)
-            )
-            zs = torch.randn(size=[daily_df.shape[0], model.latent_dim], dtype=torch.float32)
-            result_scaled = model.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
-            result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
-            assert result.shape == (29, 48)
+            zs = torch.randn(size=[1, daily_df.shape[0], model.latent_dim], dtype=torch.float32)
+            result_scaled = model.decode(zs, consumption_scaled, seq_len=48).squeeze().detach().numpy()
+            assert result_scaled.shape == (29, 48)
 
     def test_trained(self) -> None:
         """Test that we can use a pre-baked trained model with random data."""
@@ -93,17 +55,8 @@ class TestVAE:
                 .transform(daily_df["consumption_kwh"].to_numpy().reshape(-1, 1))
                 .astype(np.float32)
             )
-            start_date_scaled = torch.from_numpy(
-                scalers[ScalerTypeEnum.StartTime]
-                .transform(daily_df["start_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
-                .astype(np.float32)
-            )
-            end_date_scaled = torch.from_numpy(
-                scalers[ScalerTypeEnum.EndTime]
-                .transform(daily_df["end_ts"].to_numpy(dtype="datetime64[s]").reshape(-1, 1))
-                .astype(np.float32)
-            )
-            zs = torch.randn(size=[daily_df.shape[0], elec_vae_mdl.latent_dim], dtype=torch.float32)
-            result_scaled = elec_vae_mdl.decode(zs, consumption_scaled, start_date_scaled, end_date_scaled, seq_len=48)
-            result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
-            assert result.shape == (29, 48)
+            # Batch size, n days, latent dim
+            zs = torch.randn(size=[1, daily_df.shape[0], elec_vae_mdl.latent_dim], dtype=torch.float32)
+            result_scaled = elec_vae_mdl.decode(zs, consumption_scaled, seq_len=48).squeeze().detach().numpy()
+            # result = scalers[ScalerTypeEnum.Data].inverse_transform(result_scaled.squeeze().detach().numpy())
+            assert result_scaled.shape == (29, 48)

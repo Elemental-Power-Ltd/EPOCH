@@ -11,5 +11,6 @@ pydantic
 python-multipart
 scikit-learn
 scipy
+statsmodels
 torch
 sklego

@@ -31,6 +31,7 @@ from app.dependencies import (
     get_db_pool,
     get_http_client,
     get_secrets_dep,
+    get_thread_pool,
     get_vae_model,
 )
 from app.internal.utils.database_utils import get_migration_files
@@ -254,6 +255,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
                         http_client=override_get_http_client(),
                         vae=await get_vae_model(),
                         secrets_env=get_secrets_dep(),
+                        thread_pool=await get_thread_pool(),
                         ignore_exceptions=True,
                     )
                 )

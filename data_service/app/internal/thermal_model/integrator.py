@@ -225,7 +225,11 @@ def simulate(
             if edge_attrs.get("radiative") is not None:
                 if isinstance(edge_attrs.get("radiative"), BoilerRadiativeLink):
                     edge_attrs["radiative"].step(
-                        u_attrs, v_attrs, dt.total_seconds(), graph.nodes[BuildingElement.InternalAir]["temperature"]
+                        u_attrs,
+                        v_attrs,
+                        dt.total_seconds(),
+                        graph.nodes[BuildingElement.InternalAir]["temperature"],
+                        timestamp=(start_ts + i * dt),
                     )
                 else:
                     edge_attrs["radiative"].step(u_attrs, v_attrs, dt.total_seconds())
@@ -239,7 +243,9 @@ def simulate(
         total_energy_change = sum(item for _, item in graph.nodes(data="energy_change"))
         # This error case when fitting or generating a heating load generally means your
         # parameters are bad. Try again with new parameters or a shorter timestep.
-        assert abs(total_energy_change) < 1, f"Energy change must be < 1e-8, got {total_energy_change}"
+        if abs(total_energy_change) > 1:
+            print([(u, temp) for (u, temp) in graph.nodes(data="temperature")])
+            assert abs(total_energy_change) < 1, f"Energy change must be < 1e-8, got {total_energy_change} in step {i}"
 
         update_temperatures(graph)
 
@@ -261,6 +267,8 @@ def simulate(
     df["heating_usage"] = -joule_to_kwh(df["heating_usage"])
     df["start_ts"] = df.index
     df["end_ts"] = df.index + dt
+    for node in graph.nodes:
+        df[f"temperature_{node}"] = temperatures[node]
     return df
 
 

@@ -21,7 +21,7 @@ import torch
 from fastapi import Depends
 
 from .epl_secrets import SecretDict, get_secrets_environment
-from .internal.elec_meters import VAE
+from .internal.elec_meters.vae import VAE
 
 logger = logging.getLogger("default")
 
@@ -91,6 +91,19 @@ class Database:
 
 
 db = Database(host=os.environ.get("EP_DATABASE_HOST", "localhost"))
+
+# These limits are enormous to make sure that we don't saturate the AsyncConnnections
+# https://github.com/encode/httpx/discussions/3084
+http_limits = httpx.Limits(max_keepalive_connections=10000, keepalive_expiry=datetime.timedelta(seconds=30).total_seconds())
+http_client = httpx.AsyncClient(
+    timeout=httpx.Timeout(
+        pool=None,
+        connect=datetime.timedelta(minutes=10).total_seconds(),
+        read=datetime.timedelta(minutes=10).total_seconds(),
+        write=None,
+    ),
+    limits=http_limits,
+)
 
 elec_vae_mdl: VAE | None = None
 
@@ -200,11 +213,12 @@ DatabasePoolDep = typing.Annotated[asyncpg.pool.Pool, Depends(get_db_pool)]
 HttpClientDep = typing.Annotated[HTTPClient, Depends(get_http_client)]
 VaeDep = typing.Annotated[VAE, Depends(get_vae_model)]
 ProcessPoolDep = typing.Annotated[ProcessPoolExecutor, Depends(get_process_pool)]
+ThreadPoolDep = typing.Annotated[ThreadPoolExecutor, Depends(get_thread_pool)]
 
 
 def find_model_path(base_dir: Path = Path(".")) -> Path:
     """
-    Search upwards from this directory to find the models directory.
+    Search upwards from this directory to find the models directory for the 2.0 version.
 
     This is useful if you're loading from a notebooks directory.
 
@@ -217,7 +231,7 @@ def find_model_path(base_dir: Path = Path(".")) -> Path:
     -------
         Fully resolved path to elecVAE_weights.pth
     """
-    final_dir = Path("models", "final", "elecVAE_weights.pth")
+    final_dir = Path("models", "final")
 
     fpath = base_dir / final_dir
     for _ in range(3):
@@ -227,8 +241,30 @@ def find_model_path(base_dir: Path = Path(".")) -> Path:
     raise FileNotFoundError(f"Could not find {final_dir}")
 
 
-def load_vae() -> VAE:
-    """Load the VAE from a file, with the relevant sizes."""
-    mdl = VAE(input_dim=1, aggregate_dim=1, date_dim=13, latent_dim=5, hidden_dim=64, num_layers=1)
-    mdl.load_state_dict(torch.load(find_model_path(), weights_only=True))
+def load_vae(device: torch.device | None = None) -> VAE:
+    """
+    Load the new VAE from a file, with the relevant sizes.
+
+    Parameters
+    ----------
+    device
+        Pytorch device to use. If None, use the CPU.
+
+    Returns
+    -------
+    VAE
+        Loaded VAE with weights initialised.
+    """
+    if device is None:
+        device = torch.device("cpu")
+    mdl = VAE(
+        input_dim=1,
+        latent_dim=16,
+        hidden_dim_encoder=16,
+        hidden_dim_decoder=8,
+        num_layers_encoder=2,
+        num_layers_decoder=1,
+        dropout_decoder=0.1,
+    )
+    mdl.load_state_dict(torch.load(find_model_path() / "vae" / "elecVAE_weights.pth", weights_only=True, map_location=device))
     return mdl
