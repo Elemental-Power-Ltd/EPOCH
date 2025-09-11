@@ -450,10 +450,9 @@ class TestOptimisationTaskDatabase:
         Legacy task configs include site data but don't have bundle_ids.
         """
         pool = await get_pool_hack(client)
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """
+        async with pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                """
                     INSERT INTO
                         optimisation.task_config (
                             task_id,
@@ -475,39 +474,39 @@ class TestOptimisationTaskDatabase:
                         $7,
                         $8,
                         $9)""",
-                    sample_task_config.task_id,
-                    sample_task_config.client_id,
-                    sample_task_config.task_name,
-                    sample_task_config.optimiser.name,
-                    json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
-                    sample_task_config.created_at,
-                    json.dumps(jsonable_encoder(sample_task_config.objectives)),
-                    json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
-                    sample_task_config.epoch_version,
-                )
+                sample_task_config.task_id,
+                sample_task_config.client_id,
+                sample_task_config.task_name,
+                sample_task_config.optimiser.name,
+                json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
+                sample_task_config.created_at,
+                json.dumps(jsonable_encoder(sample_task_config.objectives)),
+                json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
+                sample_task_config.epoch_version,
+            )
 
-                site_data = SiteDataEntry(
-                    site_id="demo_london",
-                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid7(),
-                )
+            site_data = SiteDataEntry(
+                site_id="demo_london",
+                start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                HeatingLoad=uuid7(),
+            )
 
-                await conn.copy_records_to_table(
-                    schema_name="optimisation",
-                    table_name="site_task_config",
-                    records=[
-                        (
-                            sample_task_config.task_id,
-                            site_id,
-                            json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
-                            json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
-                            json.dumps(jsonable_encoder(site_data)),
-                        )
-                        for site_id, _ in sample_task_config.bundle_ids.items()
-                    ],
-                    columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
-                )
+            await conn.copy_records_to_table(
+                schema_name="optimisation",
+                table_name="site_task_config",
+                records=[
+                    (
+                        sample_task_config.task_id,
+                        site_id,
+                        json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
+                        json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
+                        json.dumps(jsonable_encoder(site_data)),
+                    )
+                    for site_id, _ in sample_task_config.bundle_ids.items()
+                ],
+                columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
+            )
 
     @pytest.mark.asyncio
     async def test_can_get_legacy_task_config(
@@ -523,10 +522,9 @@ class TestOptimisationTaskDatabase:
         Legacy task configs include site data but don't have bundle_ids.
         """
         pool = await get_pool_hack(client)
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """
+        async with pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                """
                     INSERT INTO
                         optimisation.task_config (
                             task_id,
@@ -548,39 +546,39 @@ class TestOptimisationTaskDatabase:
                         $7,
                         $8,
                         $9)""",
-                    sample_task_config.task_id,
-                    sample_task_config.client_id,
-                    sample_task_config.task_name,
-                    sample_task_config.optimiser.name,
-                    json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
-                    sample_task_config.created_at,
-                    json.dumps(jsonable_encoder(sample_task_config.objectives)),
-                    json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
-                    sample_task_config.epoch_version,
-                )
+                sample_task_config.task_id,
+                sample_task_config.client_id,
+                sample_task_config.task_name,
+                sample_task_config.optimiser.name,
+                json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
+                sample_task_config.created_at,
+                json.dumps(jsonable_encoder(sample_task_config.objectives)),
+                json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
+                sample_task_config.epoch_version,
+            )
 
-                site_data = SiteDataEntry(
-                    site_id="demo_london",
-                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid7(),
-                )
+            site_data = SiteDataEntry(
+                site_id="demo_london",
+                start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                HeatingLoad=uuid7(),
+            )
 
-                await conn.copy_records_to_table(
-                    schema_name="optimisation",
-                    table_name="site_task_config",
-                    records=[
-                        (
-                            sample_task_config.task_id,
-                            site_id,
-                            json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
-                            json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
-                            json.dumps(jsonable_encoder(site_data)),
-                        )
-                        for site_id in sample_task_config.portfolio_range.keys()
-                    ],
-                    columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
-                )
+            await conn.copy_records_to_table(
+                schema_name="optimisation",
+                table_name="site_task_config",
+                records=[
+                    (
+                        sample_task_config.task_id,
+                        site_id,
+                        json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
+                        json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
+                        json.dumps(jsonable_encoder(site_data)),
+                    )
+                    for site_id in sample_task_config.portfolio_range
+                ],
+                columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
+            )
 
         sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
         opt_result = await client.post(
@@ -1019,10 +1017,9 @@ class TestOptimisationTaskDatabaseUUID4:
         Legacy task configs include site data but don't have bundle_ids.
         """
         pool = await get_pool_hack(client)
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """
+        async with pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                """
                     INSERT INTO
                         optimisation.task_config (
                             task_id,
@@ -1044,39 +1041,39 @@ class TestOptimisationTaskDatabaseUUID4:
                         $7,
                         $8,
                         $9)""",
-                    sample_task_config.task_id,
-                    sample_task_config.client_id,
-                    sample_task_config.task_name,
-                    sample_task_config.optimiser.name,
-                    json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
-                    sample_task_config.created_at,
-                    json.dumps(jsonable_encoder(sample_task_config.objectives)),
-                    json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
-                    sample_task_config.epoch_version,
-                )
+                sample_task_config.task_id,
+                sample_task_config.client_id,
+                sample_task_config.task_name,
+                sample_task_config.optimiser.name,
+                json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
+                sample_task_config.created_at,
+                json.dumps(jsonable_encoder(sample_task_config.objectives)),
+                json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
+                sample_task_config.epoch_version,
+            )
 
-                site_data = SiteDataEntry(
-                    site_id="demo_london",
-                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid7(),
-                )
+            site_data = SiteDataEntry(
+                site_id="demo_london",
+                start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                HeatingLoad=uuid7(),
+            )
 
-                await conn.copy_records_to_table(
-                    schema_name="optimisation",
-                    table_name="site_task_config",
-                    records=[
-                        (
-                            sample_task_config.task_id,
-                            site_id,
-                            json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
-                            json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
-                            json.dumps(jsonable_encoder(site_data)),
-                        )
-                        for site_id, _ in sample_task_config.bundle_ids.items()
-                    ],
-                    columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
-                )
+            await conn.copy_records_to_table(
+                schema_name="optimisation",
+                table_name="site_task_config",
+                records=[
+                    (
+                        sample_task_config.task_id,
+                        site_id,
+                        json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
+                        json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
+                        json.dumps(jsonable_encoder(site_data)),
+                    )
+                    for site_id, _ in sample_task_config.bundle_ids.items()
+                ],
+                columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
+            )
 
     @pytest.mark.asyncio
     async def test_can_get_legacy_task_config(
@@ -1092,10 +1089,9 @@ class TestOptimisationTaskDatabaseUUID4:
         Legacy task configs include site data but don't have bundle_ids.
         """
         pool = await get_pool_hack(client)
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """
+        async with pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                """
                     INSERT INTO
                         optimisation.task_config (
                             task_id,
@@ -1117,39 +1113,39 @@ class TestOptimisationTaskDatabaseUUID4:
                         $7,
                         $8,
                         $9)""",
-                    sample_task_config.task_id,
-                    sample_task_config.client_id,
-                    sample_task_config.task_name,
-                    sample_task_config.optimiser.name,
-                    json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
-                    sample_task_config.created_at,
-                    json.dumps(jsonable_encoder(sample_task_config.objectives)),
-                    json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
-                    sample_task_config.epoch_version,
-                )
+                sample_task_config.task_id,
+                sample_task_config.client_id,
+                sample_task_config.task_name,
+                sample_task_config.optimiser.name,
+                json.dumps(jsonable_encoder(sample_task_config.optimiser.hyperparameters)),
+                sample_task_config.created_at,
+                json.dumps(jsonable_encoder(sample_task_config.objectives)),
+                json.dumps(jsonable_encoder(sample_task_config.portfolio_constraints)),
+                sample_task_config.epoch_version,
+            )
 
-                site_data = SiteDataEntry(
-                    site_id="demo_london",
-                    start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
-                    end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
-                    HeatingLoad=uuid7(),
-                )
+            site_data = SiteDataEntry(
+                site_id="demo_london",
+                start_ts=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+                end_ts=datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC),
+                HeatingLoad=uuid7(),
+            )
 
-                await conn.copy_records_to_table(
-                    schema_name="optimisation",
-                    table_name="site_task_config",
-                    records=[
-                        (
-                            sample_task_config.task_id,
-                            site_id,
-                            json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
-                            json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
-                            json.dumps(jsonable_encoder(site_data)),
-                        )
-                        for site_id in sample_task_config.portfolio_range.keys()
-                    ],
-                    columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
-                )
+            await conn.copy_records_to_table(
+                schema_name="optimisation",
+                table_name="site_task_config",
+                records=[
+                    (
+                        sample_task_config.task_id,
+                        site_id,
+                        json.dumps(jsonable_encoder(sample_task_config.site_constraints[site_id])),  # type: ignore
+                        json.dumps(jsonable_encoder(sample_task_config.portfolio_range[site_id])),
+                        json.dumps(jsonable_encoder(site_data)),
+                    )
+                    for site_id in sample_task_config.portfolio_range
+                ],
+                columns=["task_id", "site_id", "site_constraints", "site_range", "site_data"],
+            )
 
         sample_portfolio_optimisation_result.site_results = [sample_site_optimisation_result]
         opt_result = await client.post(

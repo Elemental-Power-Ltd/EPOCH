@@ -334,8 +334,7 @@ def create_simple_structure(
         air_volume=air_volume,
         u_values_path=u_values_path,
     )
-    G = add_heating_system_to_graph(G, design_flow_temperature=design_flow_temperature, n_radiators=n_radiators)
-    return G
+    return add_heating_system_to_graph(G, design_flow_temperature=design_flow_temperature, n_radiators=n_radiators)
 
 
 def create_structure_from_params(

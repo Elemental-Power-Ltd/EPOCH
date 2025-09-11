@@ -156,7 +156,7 @@ async def get_day_and_night_rates(tariff_name: str, region_code: GSPEnum, client
     base_url = f"https://api.octopus.energy/v1/products/{tariff_name}/"
 
     tariff_meta = await client.get(base_url)
-    if not tariff_meta.status_code == 200:
+    if tariff_meta.status_code != 200:
         if tariff_meta.json()["detail"] == "No EnergyProduct matches the given query.":
             raise ValueError(f"{tariff_name} is not a valid tariff: {tariff_meta.json()['detail']}")
         raise ValueError(tariff_meta.text)
@@ -215,7 +215,7 @@ async def get_fixed_rates(tariff_name: str, region_code: GSPEnum, client: httpx.
     base_url = f"https://api.octopus.energy/v1/products/{tariff_name}/"
 
     tariff_meta = await client.get(base_url)
-    if not tariff_meta.status_code == 200:
+    if tariff_meta.status_code != 200:
         if tariff_meta.json()["detail"] == "No EnergyProduct matches the given query.":
             raise ValueError(f"{tariff_name} is not a valid tariff: {tariff_meta.json()['detail']}")
         raise ValueError(tariff_meta.text)

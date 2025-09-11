@@ -444,10 +444,7 @@ def parse_horizontal_monthly_only_end_year(fname: os.PathLike | str | BinaryIO) 
         if end_y < 2000:
             end_y += 2000
 
-        if start_m < end_m:
-            start_y = end_y
-        else:
-            start_y = end_y - 1
+        start_y = end_y if start_m < end_m else end_y - 1
 
         start_ts = datetime.datetime(year=start_y, month=start_m, day=start_d, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=end_y, month=end_m, day=end_d, tzinfo=datetime.UTC)

@@ -16,7 +16,8 @@ from app.internal.gas_meters import (
 def create_sample_df(start_date: str, periods: int) -> HHDataFrame:
     """Create a dataframe with random data."""
     date_range = pd.date_range(start=start_date, periods=periods, freq=pd.Timedelta(minutes=30))
-    df = pd.DataFrame({"consumption": np.random.rand(periods) * 10, "hdd": np.random.rand(periods) * 5}, index=date_range)
+    rng = np.random.default_rng()
+    df = pd.DataFrame({"consumption": rng.random(periods) * 10, "hdd": rng.random(periods) * 5}, index=date_range)
     return HHDataFrame(df)
 
 

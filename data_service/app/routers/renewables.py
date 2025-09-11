@@ -58,8 +58,7 @@ async def get_pv_optima(site_id: SiteID, pool: DatabasePoolDep, http_client: Htt
         """SELECT coordinates FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
         site_id.site_id,
     )
-    optima = await get_pvgis_optima(latitude=latitude, longitude=longitude, client=http_client)
-    return optima
+    return await get_pvgis_optima(latitude=latitude, longitude=longitude, client=http_client)
 
 
 @router.post("/generate-renewables-generation", tags=["generate", "solar_pv"])
@@ -140,10 +139,9 @@ async def generate_renewables_generation(
         # associated with a site
         renewables_location_id=params.renewables_location_id if params.renewables_location_id != "default" else None,
     )
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                """INSERT INTO
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            """INSERT INTO
                     renewables.metadata (
                         dataset_id,
                         site_id,
@@ -158,30 +156,30 @@ async def generate_renewables_generation(
                         $4,
                         $5,
                         $6)""",
-                metadata.dataset_id,
-                metadata.site_id,
-                metadata.created_at,
-                metadata.data_source,
-                json.dumps(metadata.parameters),
-                metadata.renewables_location_id,
-            )
+            metadata.dataset_id,
+            metadata.site_id,
+            metadata.created_at,
+            metadata.data_source,
+            json.dumps(metadata.parameters),
+            metadata.renewables_location_id,
+        )
 
-            await conn.copy_records_to_table(
-                schema_name="renewables",
-                table_name="solar_pv",
-                columns=["dataset_id", "start_ts", "end_ts", "solar_generation"],
-                records=zip(
-                    [metadata.dataset_id for _ in renewables_df.index],
-                    renewables_df.index,
-                    renewables_df.index + pd.Timedelta(hours=1),  # assume that we got consistent data from RN
-                    renewables_df.pv,
-                    strict=True,
-                ),
-            )
+        await conn.copy_records_to_table(
+            schema_name="renewables",
+            table_name="solar_pv",
+            columns=["dataset_id", "start_ts", "end_ts", "solar_generation"],
+            records=zip(
+                [metadata.dataset_id for _ in renewables_df.index],
+                renewables_df.index,
+                renewables_df.index + pd.Timedelta(hours=1),  # assume that we got consistent data from RN
+                renewables_df.pv,
+                strict=True,
+            ),
+        )
 
-            if params.bundle_metadata is not None:
-                assert params.bundle_metadata.dataset_type == DatasetTypeEnum.RenewablesGeneration
-                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+        if params.bundle_metadata is not None:
+            assert params.bundle_metadata.dataset_type == DatasetTypeEnum.RenewablesGeneration
+            await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
 
     logger.info(f"Solar PV generation {metadata.dataset_id} at {params.renewables_location_id} completed.")
     return metadata
@@ -250,10 +248,9 @@ async def generate_wind_generation(
         site_id=params.site_id,
         parameters=params.model_dump_json(),
     )
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                """
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            """
                 INSERT INTO
                     renewables.metadata (
                         dataset_id,
@@ -267,15 +264,15 @@ async def generate_wind_generation(
                         $3,
                         $4,
                         $5)""",
-                metadata.dataset_id,
-                metadata.site_id,
-                metadata.created_at,
-                metadata.data_source,
-                json.dumps(metadata.parameters),
-            )
+            metadata.dataset_id,
+            metadata.site_id,
+            metadata.created_at,
+            metadata.data_source,
+            json.dumps(metadata.parameters),
+        )
 
-            await conn.executemany(
-                """INSERT INTO
+        await conn.executemany(
+            """INSERT INTO
                         renewables.wind (
                             dataset_id,
                             start_ts,
@@ -287,18 +284,18 @@ async def generate_wind_generation(
                         $2,
                         $3,
                         $4)""",
-                zip(
-                    [metadata.dataset_id for _ in renewables_df.index],
-                    renewables_df.index,
-                    renewables_df.index + pd.Timedelta(hours=1),  # assume that we got consistent data from RN
-                    renewables_df.wind,
-                    strict=True,
-                ),
-            )
+            zip(
+                [metadata.dataset_id for _ in renewables_df.index],
+                renewables_df.index,
+                renewables_df.index + pd.Timedelta(hours=1),  # assume that we got consistent data from RN
+                renewables_df.wind,
+                strict=True,
+            ),
+        )
 
-            if params.bundle_metadata is not None:
-                assert params.bundle_metadata.dataset_type == DatasetTypeEnum.RenewablesGeneration
-                await file_self_with_bundle(pool, params.bundle_metadata)
+        if params.bundle_metadata is not None:
+            assert params.bundle_metadata.dataset_type == DatasetTypeEnum.RenewablesGeneration
+            await file_self_with_bundle(pool, params.bundle_metadata)
     return metadata
 
 
@@ -346,7 +343,7 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
         -------
         Single half hourly renewables DF
         """
-        dataset = await pool.fetch(
+        dataset = await db_pool.fetch(
             """
             SELECT
                 start_ts,

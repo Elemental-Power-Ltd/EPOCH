@@ -60,54 +60,53 @@ async def upload_phpp(
         created_at=datetime.datetime.now(datetime.UTC),
     )
     logger.info("Adding parsed PHPP to database", str(metadata.model_dump_json()))
-    async with pool.acquire() as conn:
+    async with pool.acquire() as conn, conn.transaction():
         # Insert the metadata and the records as part of a transaction so
         # they don't slip if something goes wrong
-        async with conn.transaction():
-            await conn.execute(
-                """
-                INSERT INTO heating.structure_metadata (
-                    structure_id,
-                    site_id,
-                    internal_volume,
-                    air_changes,
-                    floor_area,
-                    filename,
-                    created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)""",
-                metadata.structure_id,
-                metadata.site_id,
-                metadata.internal_volume,
-                metadata.air_changes,
-                metadata.floor_area,
-                metadata.filename,
-                metadata.created_at,
-            )
+        await conn.execute(
+            """
+            INSERT INTO heating.structure_metadata (
+                structure_id,
+                site_id,
+                internal_volume,
+                air_changes,
+                floor_area,
+                filename,
+                created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+            metadata.structure_id,
+            metadata.site_id,
+            metadata.internal_volume,
+            metadata.air_changes,
+            metadata.floor_area,
+            metadata.filename,
+            metadata.created_at,
+        )
 
-            await conn.copy_records_to_table(
-                schema_name="heating",
-                table_name="structure_elements",
-                columns=[
-                    "structure_id",
-                    "element_id",
-                    "element_name",
-                    "element_group",
-                    "area",
-                    "angle",
-                    "u_value",
-                    "area_type",
-                ],
-                records=zip(
-                    itertools.repeat(metadata.structure_id, len(parsed_df)),
-                    parsed_df.index,
-                    parsed_df.name,
-                    parsed_df.group,
-                    [item if not pd.isna(item) else None for item in parsed_df.area],
-                    [item if not pd.isna(item) else None for item in parsed_df.angle],
-                    [item if not pd.isna(item) else None for item in parsed_df.u_value],
-                    parsed_df.area_type,
-                    strict=True,
-                ),
-            )
+        await conn.copy_records_to_table(
+            schema_name="heating",
+            table_name="structure_elements",
+            columns=[
+                "structure_id",
+                "element_id",
+                "element_name",
+                "element_group",
+                "area",
+                "angle",
+                "u_value",
+                "area_type",
+            ],
+            records=zip(
+                itertools.repeat(metadata.structure_id, len(parsed_df)),
+                parsed_df.index,
+                parsed_df.name,
+                parsed_df.group,
+                [item if not pd.isna(item) else None for item in parsed_df.area],
+                [item if not pd.isna(item) else None for item in parsed_df.angle],
+                [item if not pd.isna(item) else None for item in parsed_df.u_value],
+                parsed_df.area_type,
+                strict=True,
+            ),
+        )
     return metadata
 
 

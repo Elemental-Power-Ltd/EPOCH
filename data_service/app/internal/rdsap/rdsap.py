@@ -274,10 +274,7 @@ def environmental_impact_rating(co2_emissions: float, total_floor_area: float) -
     """
     carbon_factor = co2_emissions / (total_floor_area + 45)
 
-    if carbon_factor >= 28.3:
-        ei_rating = 200 - 0.95 * np.log10(carbon_factor)
-    else:
-        ei_rating = 100 - 1.34 * carbon_factor
+    ei_rating = 200 - 0.95 * np.log10(carbon_factor) if carbon_factor >= 28.3 else 100 - 1.34 * carbon_factor
 
     return int(max(ei_rating, 1))
 
@@ -312,10 +309,7 @@ def energy_cost_rating(sap_energy_cost: float, total_floor_area: float) -> int:
     deflator = 0.36
     energy_cost_factor = deflator * sap_energy_cost / (total_floor_area + 45)
 
-    if energy_cost_factor >= 3.5:
-        ec_rating = 108.8 - 120.5 * np.log10(energy_cost_factor)
-    else:
-        ec_rating = 100 - 16.21 * energy_cost_factor
+    ec_rating = 108.8 - 120.5 * np.log10(energy_cost_factor) if energy_cost_factor >= 3.5 else 100 - 16.21 * energy_cost_factor
 
     return int(max(ec_rating, 1))
 

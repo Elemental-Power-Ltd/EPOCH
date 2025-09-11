@@ -417,7 +417,6 @@ async def process_jobs(
                 case ElectricalLoadRequest():
                     future = await generate_electricity_load(params=job, vae=vae, pool=pool, thread_pool=thread_pool)
                 case RenewablesRequest():
-                    print(secrets_env)
                     future = await generate_renewables_generation(
                         params=job, pool=pool, http_client=http_client, secrets_env=secrets_env
                     )

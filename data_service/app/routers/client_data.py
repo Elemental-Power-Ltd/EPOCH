@@ -160,7 +160,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
 
         # We only want the most recent baseline config, so select them ordered by their created_at timestamps.
         # The rest are stored only for historical interest, or for different EPOCH versions.
-        baseline_rec = await pool.fetchrow(
+        return await pool.fetchrow(
             """
             SELECT
                 baseline
@@ -170,7 +170,6 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
             ORDER BY created_at DESC LIMIT 1""",
             site_id.site_id,
         )
-        return baseline_rec
 
     async def get_baseline_from_dataset_id(dataset_id: DatasetID) -> asyncpg.Record | None:
         """
@@ -206,7 +205,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
 
         # We only want the most recent baseline config, so select them ordered by their created_at timestamps.
         # The rest are stored only for historical interest, or for different EPOCH versions.
-        baseline_rec = await pool.fetchrow(
+        return await pool.fetchrow(
             """
             SELECT
                 baseline
@@ -215,7 +214,6 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
             WHERE baseline_id = $1""",
             dataset_id.dataset_id,
         )
-        return baseline_rec
 
     if isinstance(site_or_dataset_id, SiteID):
         baseline_rec = await get_baseline_from_site_id(site_id=site_or_dataset_id)
@@ -255,7 +253,7 @@ async def get_baseline(site_or_dataset_id: SiteID | DatasetID, pool: DatabasePoo
             if key not in TaskData.model_fields:
                 raise HTTPException(400, f"Bad component in stored baseline: {key}")
             if isinstance(subdict, dict):
-                for subkey in subdict.keys():
+                for subkey in subdict:
                     expected_type = TaskData.model_fields[key].annotation
                     found_in_any = False
                     for subtype in typing.get_args(expected_type):

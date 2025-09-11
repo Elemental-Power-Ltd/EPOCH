@@ -166,7 +166,7 @@ class TestQueue:
                 for _ in range(10):
                     await queue_fixture.put(DummyRequest(0.1))
                 await queue_fixture.join()
-                raise TerminateTaskGroup()
+                raise TerminateTaskGroup
         except* TerminateTaskGroup:
             pass
 
@@ -253,7 +253,7 @@ class TestQueue:
                     )
                 )
                 await queue_fixture.join()
-                raise TerminateTaskGroup()
+                raise TerminateTaskGroup
         except* TerminateTaskGroup:
             pass
 
@@ -398,7 +398,7 @@ class TestQueueEndpoints:
                     )
                 )
                 await queue_fixture.join()
-                raise TerminateTaskGroup()
+                raise TerminateTaskGroup
         except* TerminateTaskGroup:
             pass
 
@@ -457,7 +457,7 @@ class TestQueueEndpoints:
                     )
                 )
                 await queue_fixture.join()
-                raise TerminateTaskGroup()
+                raise TerminateTaskGroup
         except* TerminateTaskGroup:
             pass
 
@@ -515,7 +515,7 @@ class TestQueueEndpoints:
                     )
                 )
                 await queue_fixture.join()
-                raise TerminateTaskGroup()
+                raise TerminateTaskGroup
         except* TerminateTaskGroup:
             pass
 
@@ -574,7 +574,7 @@ class TestQueueEndpoints:
                     )
                 )
                 await queue_fixture.join()
-                raise TerminateTaskGroup()
+                raise TerminateTaskGroup
         except* TerminateTaskGroup:
             pass
 
@@ -633,7 +633,7 @@ class TestQueueEndpoints:
                     )
                 )
                 await queue_fixture.join()
-                raise TerminateTaskGroup()
+                raise TerminateTaskGroup
         except* TerminateTaskGroup:
             pass
 
@@ -688,7 +688,7 @@ class TestGenerateAllQueue:
                     )
                 )
                 await queue_fixture.join()
-                raise TerminateTaskGroup()
+                raise TerminateTaskGroup
         except* TerminateTaskGroup:
             pass
 

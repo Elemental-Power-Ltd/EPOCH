@@ -99,41 +99,42 @@ async def generate_heating_load(
     heating_load_metadata
         Some useful information about the heating load we've inserted into the database.
     """
-    async with pool.acquire() as conn:
-        res = await conn.fetchrow(
-            """
-            SELECT
-                location,
-                s.site_id,
-                m.reading_type,
-                m.fuel_type
-            FROM client_meters.metadata AS m
-            LEFT JOIN client_info.site_info AS s
-            ON s.site_id = m.site_id WHERE dataset_id = $1
-            LIMIT 1""",
-            params.dataset_id,
-        )
+    logger = logging.getLogger(__name__)
 
-        if res is None:
-            raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
+    res = await pool.fetchrow(
+        """
+        SELECT
+            location,
+            s.site_id,
+            m.reading_type,
+            m.fuel_type
+        FROM client_meters.metadata AS m
+        LEFT JOIN client_info.site_info AS s
+        ON s.site_id = m.site_id WHERE dataset_id = $1
+        LIMIT 1""",
+        params.dataset_id,
+    )
 
-        location, site_id, reading_type, fuel_type = res
-        if location is None:
-            raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
+    if res is None:
+        raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
 
-        if fuel_type != "gas":
-            raise HTTPException(400, f"Dataset ID {params.dataset_id} is for fuel type {fuel_type}, not gas.")
-        res = await conn.fetch(
-            """
-            SELECT
-                start_ts,
-                end_ts,
-                consumption_kwh as consumption
-            FROM client_meters.gas_meters
-            WHERE dataset_id = $1
-            ORDER BY start_ts ASC""",
-            params.dataset_id,
-        )
+    location, site_id, reading_type, fuel_type = res
+    if location is None:
+        raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
+
+    if fuel_type != "gas":
+        raise HTTPException(400, f"Dataset ID {params.dataset_id} is for fuel type {fuel_type}, not gas.")
+    res = await pool.fetch(
+        """
+        SELECT
+            start_ts,
+            end_ts,
+            consumption_kwh as consumption
+        FROM client_meters.gas_meters
+        WHERE dataset_id = $1
+        ORDER BY start_ts ASC""",
+        params.dataset_id,
+    )
 
     gas_df = pd.DataFrame.from_records(res, columns=["start_ts", "end_ts", "consumption"], index="start_ts")
     gas_df["start_ts"] = gas_df.index
@@ -143,10 +144,10 @@ async def generate_heating_load(
             f"Got an empty dataset for {location} between {params.start_ts} and {params.end_ts}",
         )
     if reading_type == "halfhourly":
-        logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location} so resampling.")
+        logger.info(f"Got reading type {reading_type} for {params.dataset_id} in {location} so resampling.")
         gas_df = hh_gas_to_monthly(HHDataFrame(gas_df))
     elif reading_type in {"automatic", "manual"}:
-        logging.info(f"Got reading type {reading_type} for {params.dataset_id} in {location}.")
+        logger.info(f"Got reading type {reading_type} for {params.dataset_id} in {location}.")
         gas_df = MonthlyDataFrame(gas_df)
         gas_df["days"] = (gas_df["end_ts"] - gas_df["start_ts"]).dt.total_seconds() / pd.Timedelta(days=1).total_seconds()
     else:
@@ -154,24 +155,24 @@ async def generate_heating_load(
 
     if gas_df.shape[0] < 3:
         raise HTTPException(400, f"Dataset covered too little time: {gas_df.index.min()} to {gas_df.index.max()}")
-    async with pool.acquire() as conn:
-        fit_weather_df = weather_dataset_to_dataframe(
-            await get_weather(
-                WeatherRequest(location=location, start_ts=gas_df["start_ts"].min(), end_ts=gas_df["end_ts"].max()),
-                conn=conn,
-                http_client=http_client,
-            )
-        )
 
-        fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df, apply_bait=params.apply_bait)
-        changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions)
-        forecast_weather_df = weather_dataset_to_dataframe(
-            await get_weather(
-                WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
-                conn=conn,
-                http_client=http_client,
-            )
+    fit_weather_df = weather_dataset_to_dataframe(
+        await get_weather(
+            WeatherRequest(location=location, start_ts=gas_df["start_ts"].min(), end_ts=gas_df["end_ts"].max()),
+            pool=pool,
+            http_client=http_client,
         )
+    )
+
+    fitted_coefs = fit_bait_and_model(gas_df, fit_weather_df, apply_bait=params.apply_bait)
+    changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions)
+    forecast_weather_df = weather_dataset_to_dataframe(
+        await get_weather(
+            WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+            pool=pool,
+            http_client=http_client,
+        )
+    )
 
     # We do this two step resampling to make sure we don't drop the last 23:30 entry if required
     forecast_weather_df = WeatherDataFrame(
@@ -218,10 +219,9 @@ async def generate_heating_load(
         "params": json.dumps({"source_dataset_id": str(params.dataset_id), **changed_coefs.model_dump()}),
         "interventions": [item.value for item in params.interventions],
     }
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                """
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            """
                 INSERT INTO
                     heating.metadata (
                         dataset_id,
@@ -229,14 +229,14 @@ async def generate_heating_load(
                         created_at,
                         params)
                 VALUES ($1, $2, $3, $4)""",
-                metadata["dataset_id"],
-                metadata["site_id"],
-                metadata["created_at"],
-                metadata["params"],
-            )
+            metadata["dataset_id"],
+            metadata["site_id"],
+            metadata["created_at"],
+            metadata["params"],
+        )
 
-            await conn.executemany(
-                """
+        await conn.executemany(
+            """
                 INSERT INTO
                     heating.synthesised (
                         dataset_id,
@@ -246,16 +246,16 @@ async def generate_heating_load(
                         dhw,
                         air_temperature)
                 VALUES ($1, $2, $3, $4, $5, $6)""",
-                zip(
-                    [metadata["dataset_id"] for _ in heating_df.index],
-                    heating_df.index,
-                    heating_df.index + pd.Timedelta(minutes=30),
-                    heating_df["heating"],
-                    heating_df["dhw"],
-                    heating_df["air_temperature"],
-                    strict=True,
-                ),
-            )
+            zip(
+                [metadata["dataset_id"] for _ in heating_df.index],
+                heating_df.index,
+                heating_df.index + pd.Timedelta(minutes=30),
+                heating_df["heating"],
+                heating_df["dhw"],
+                heating_df["air_temperature"],
+                strict=True,
+            ),
+        )
     return HeatingLoadMetadata(**metadata)
 
 

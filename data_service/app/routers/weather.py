@@ -253,75 +253,74 @@ async def get_weather(
             session_max_ts,
             http_client=http_client,
         )
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                # We do this odd two-step copy because we might be writing to the cache repeatedly from two different tasks.
-                # Those will show a UniqueViolationError, so we create a temporary table, copy the records over, and
-                # ignore any clashes.
-                # We can't use a WHERE NOT EXISTS clause because the other task might be actively writing to the table
-                # as we go along, which trips us up.
-                # Track unique tables by the hash of the weather request and a counting suffix.
-                # If you send two identical requests from two different threads at exactly the same time,
-                # you're on your own.
+        async with pool.acquire() as conn, conn.transaction():
+            # We do this odd two-step copy because we might be writing to the cache repeatedly from two different tasks.
+            # Those will show a UniqueViolationError, so we create a temporary table, copy the records over, and
+            # ignore any clashes.
+            # We can't use a WHERE NOT EXISTS clause because the other task might be actively writing to the table
+            # as we go along, which trips us up.
+            # Track unique tables by the hash of the weather request and a counting suffix.
+            # If you send two identical requests from two different threads at exactly the same time,
+            # you're on your own.
 
-                global WEATHER_TEMP_IDX
-                temp_suffix = str(abs(hash(weather_request.model_dump_json())))
-                temp_table_name = f"weather_temp_{temp_suffix}_{WEATHER_TEMP_IDX}"
-                WEATHER_TEMP_IDX += 1
+            global WEATHER_TEMP_IDX
+            temp_suffix = str(abs(hash(weather_request.model_dump_json())))
+            temp_table_name = f"weather_temp_{temp_suffix}_{WEATHER_TEMP_IDX}"
+            WEATHER_TEMP_IDX += 1
 
-                await conn.execute(f"CREATE TEMPORARY TABLE {temp_table_name} (LIKE weather.visual_crossing)")
+            await conn.execute(f"CREATE TEMPORARY TABLE {temp_table_name} (LIKE weather.visual_crossing)")
 
-                await conn.copy_records_to_table(
-                    table_name=temp_table_name,
-                    columns=[
-                        "timestamp",
-                        "location",
-                        "temp",
-                        "humidity",
-                        "precip",
-                        "precipprob",
-                        "snow",
-                        "snowdepth",
-                        "windgust",
-                        "windspeed",
-                        "winddir",
-                        "pressure",
-                        "cloudcover",
-                        "solarradiation",
-                        "solarenergy",
-                        "dniradiation",
-                        "difradiation",
-                    ],
-                    records=[
-                        (
-                            item["timestamp"],
-                            weather_request.location,
-                            item["temp"],
-                            item["humidity"],
-                            item["precip"],
-                            item["precipprob"],
-                            item["snow"],
-                            item["snowdepth"],
-                            item["windgust"],
-                            item["windspeed"],
-                            item["winddir"],
-                            item["pressure"],
-                            item["cloudcover"],
-                            item["solarradiation"],
-                            item["solarenergy"],
-                            item["dniradiation"],
-                            item["difradiation"],
-                        )
-                        for item in vc_recs
-                    ],
-                )
-                await conn.execute(f"""
+            await conn.copy_records_to_table(
+                table_name=temp_table_name,
+                columns=[
+                    "timestamp",
+                    "location",
+                    "temp",
+                    "humidity",
+                    "precip",
+                    "precipprob",
+                    "snow",
+                    "snowdepth",
+                    "windgust",
+                    "windspeed",
+                    "winddir",
+                    "pressure",
+                    "cloudcover",
+                    "solarradiation",
+                    "solarenergy",
+                    "dniradiation",
+                    "difradiation",
+                ],
+                records=[
+                    (
+                        item["timestamp"],
+                        weather_request.location,
+                        item["temp"],
+                        item["humidity"],
+                        item["precip"],
+                        item["precipprob"],
+                        item["snow"],
+                        item["snowdepth"],
+                        item["windgust"],
+                        item["windspeed"],
+                        item["winddir"],
+                        item["pressure"],
+                        item["cloudcover"],
+                        item["solarradiation"],
+                        item["solarenergy"],
+                        item["dniradiation"],
+                        item["difradiation"],
+                    )
+                    for item in vc_recs
+                ],
+            )
+            await conn.execute(f"""
                     INSERT INTO weather.visual_crossing
                     (SELECT
                         t.*
                     FROM {temp_table_name} AS t)
                     ON CONFLICT (location, timestamp) DO NOTHING""")
-                await conn.execute(f"DROP TABLE {temp_table_name}")
+            await conn.execute(f"DROP TABLE {temp_table_name}")
 
     # Now re-query the data we just fetched for a consistent view
     res = await pool.fetch(

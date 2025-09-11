@@ -54,9 +54,7 @@ def is_valid_square_hh_dataframe(obj: Any) -> TypeGuard[SquareHHDataFrame]:
     if pd.isna(obj).any().any():
         return False
 
-    if not isinstance(obj.index, pd.DatetimeIndex):
-        return False
-    return True
+    return isinstance(obj.index, pd.DatetimeIndex)
 
 
 class DayTypeEnum(enum.IntEnum):
@@ -221,7 +219,7 @@ def daily_to_hh_eload(
     """
     if resid_model_path is not None and target_hh_observed_df is not None:
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided both")
-    elif resid_model_path is None and target_hh_observed_df is None:
+    if resid_model_path is None and target_hh_observed_df is None:
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided neither.")
     weekend_inds = frozenset(weekend_inds)  # to guarantee immutability
 

@@ -545,8 +545,7 @@ async def create_bundle(bundle_metadata: DatasetBundleMetadata, pool: DatabasePo
     dataset_id_t
         The ID of the newly created bundle.
     """
-    resp = await insert_dataset_bundle(bundle_metadata, pool)
-    return resp
+    return await insert_dataset_bundle(bundle_metadata, pool)
 
 
 @router.post("/list-queue-contents")

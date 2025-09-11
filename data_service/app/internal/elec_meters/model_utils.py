@@ -409,8 +409,7 @@ def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: 
     # then create a mask that selects the indices for which is the smaller positive diff
     use_prevoffset = prev_inactive_posdiff <= next_inactive_posdiff
     # select the previous or next inactive day accordingly
-    active_daily_offset = np.where(use_prevoffset, prev_inactive, next_inactive)
-    return active_daily_offset
+    return np.where(use_prevoffset, prev_inactive, next_inactive)
 
 
 def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> npt.NDArray[np.floating]:
@@ -852,8 +851,7 @@ def fit_pooled_spline(resids: pd.DataFrame, smooth_factor: float | None = None, 
         smooth_factor = float(n)
 
     spline = UnivariateSpline(t, y_bar, w=w, k=order, s=smooth_factor)
-    f_hat = pd.Series(spline(t), index=resids.columns)
-    return f_hat  # , spline
+    return pd.Series(spline(t), index=resids.columns)
 
 
 def stabilise_variance(

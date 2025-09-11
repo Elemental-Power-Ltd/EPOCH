@@ -126,10 +126,7 @@ def load_time_series(file_path: Path, date_column: str = "date", value_column: s
         DataFrame with time series data
     """
     # Load data
-    if value_column is None:
-        df = pd.read_csv(file_path)
-    else:
-        df = pd.read_csv(file_path, usecols=[date_column, value_column])
+    df = pd.read_csv(file_path) if value_column is None else pd.read_csv(file_path, usecols=[date_column, value_column])
 
     # Convert date column to datetime
     df[date_column] = pd.to_datetime(df[date_column], format="mixed")

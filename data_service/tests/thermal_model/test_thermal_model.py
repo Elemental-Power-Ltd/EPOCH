@@ -180,7 +180,7 @@ class TestStaticHeatLoss:
         assert heat_losses[BuildingElement.InternalAir, BuildingElement.ExternalAir] == pytest.approx(-5766.75)
         assert heat_losses[BuildingElement.InternalAir, BuildingElement.Roof] == pytest.approx(-660.00)
         assert sum(heat_losses[BuildingElement.InternalAir, window] for window in windows) == pytest.approx(-111.84)
-        assert {item[1] for item in heat_losses.keys()} == {
+        assert {item[1] for item in heat_losses} == {
             *walls,
             *windows,
             BuildingElement.Floor,

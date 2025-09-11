@@ -174,13 +174,10 @@ class TestElecSynthStatistics:
             hh_in_day_df = hh_df[hh_in_day_mask]
 
             if synth_in_day_df.empty or synth_in_day_df["consumption_kwh"].isna().any():
-                print(f"Skipping {date} as empty or NaN synth")
                 continue
             if hh_in_day_df.empty or hh_in_day_df["consumption_kwh"].isna().any():
-                print(f"Skipping {date} as empty or NaN actuals")
                 continue
             if len(hh_in_day_df) < 48:
-                print(f"Skipping {date} as not complete HH data")
                 continue
 
             expected_day_mean = hh_in_day_df["consumption_kwh"].mean()

@@ -297,10 +297,7 @@ async def get_electricity_load(params: DatasetIDWithTime, pool: DatabasePoolDep)
     if fuel_type != "elec":
         raise HTTPException(400, f"Requested dataset {params.dataset_id} was for {fuel_type}, not 'elec' ")
 
-    if is_synthesised:
-        table_name = "electricity_meters_synthesised"
-    else:
-        table_name = "electricity_meters"
+    table_name = "electricity_meters_synthesised" if is_synthesised else "electricity_meters"
 
     res = await pool.fetch(
         f"""

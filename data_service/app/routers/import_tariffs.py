@@ -163,9 +163,9 @@ async def list_import_tariffs(params: SiteIDWithTime, http_client: HttpClientDep
             else None,
             valid_to=datetime.datetime.fromisoformat(item["available_to"]) if item.get("available_to") is not None else None,
             provider=TariffProviderEnum.octopus,
-            is_tracker=True if item.get("is_tracker") == "true" else False,
-            is_prepay=True if item.get("is_prepay") == "true" else False,
-            is_variable=True if item.get("is_variable") == "true" else False,
+            is_tracker=item.get("is_tracker") == "true",
+            is_prepay=item.get("is_prepay") == "true",
+            is_variable=item.get("is_variable") == "true",
         )
 
     tariff_list = (
@@ -361,13 +361,12 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
     price_df["start_ts"] = price_df.index
     price_df["end_ts"] = price_df.index + pd.Timedelta(minutes=30)
     # Note that it doesn't matter that we've got "too  much" tariff data here, as we'll sort it out when we get it.
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            # We insert the dataset ID into metadata, but we must wait to validate the
-            # actual data insert until the end
-            await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
-            await conn.execute(
-                """
+    async with pool.acquire() as conn, conn.transaction():
+        # We insert the dataset ID into metadata, but we must wait to validate the
+        # actual data insert until the end
+        await conn.execute("SET CONSTRAINTS tariffs.electricity_dataset_id_metadata_fkey DEFERRED;")
+        await conn.execute(
+            """
                 INSERT INTO
                     tariffs.metadata (
                         dataset_id,
@@ -387,31 +386,31 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
                         $6,
                         $7,
                         $8)""",
-                metadata.dataset_id,
-                metadata.site_id,
-                metadata.created_at,
-                metadata.provider,
-                metadata.product_name,
-                metadata.tariff_name,
-                metadata.valid_from,
-                metadata.valid_to,
-            )
+            metadata.dataset_id,
+            metadata.site_id,
+            metadata.created_at,
+            metadata.provider,
+            metadata.product_name,
+            metadata.tariff_name,
+            metadata.valid_from,
+            metadata.valid_to,
+        )
 
-            await conn.copy_records_to_table(
-                table_name="electricity",
-                schema_name="tariffs",
-                records=zip(
-                    itertools.repeat(metadata.dataset_id, len(price_df)),
-                    price_df["start_ts"],
-                    price_df["end_ts"],
-                    price_df["cost"],
-                    strict=True,
-                ),
-                columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
-            )
+        await conn.copy_records_to_table(
+            table_name="electricity",
+            schema_name="tariffs",
+            records=zip(
+                itertools.repeat(metadata.dataset_id, len(price_df)),
+                price_df["start_ts"],
+                price_df["end_ts"],
+                price_df["cost"],
+                strict=True,
+            ),
+            columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
+        )
 
-            if params.bundle_metadata is not None:
-                await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
+        if params.bundle_metadata is not None:
+            await file_self_with_bundle(conn, bundle_metadata=params.bundle_metadata)
     logger.info(f"Import tariff generation {metadata.dataset_id} of type {params.tariff_name} completed.")
     return metadata
 

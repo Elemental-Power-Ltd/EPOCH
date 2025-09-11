@@ -46,11 +46,16 @@ select = [
     "FAST", # fastAPI
     "D", # pydocstyle
     "PLR",
-    #"NPY",
-    #"ICN",
-    #"LOG",
+    "NPY",
+    "ICN",
+    "LOG",
     "FURB",
     "TRY",
+    "T", # flake8-print
+    "RET", # flake8-return
+    "RSE", # flake8-raise 
+    "SIM", # flake8-simplify
+    "ARG", # flake8-unused-arguments
     # "DOC", # docstring contents
 ]
 ignore = [

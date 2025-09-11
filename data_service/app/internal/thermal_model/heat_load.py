@@ -34,8 +34,7 @@ def generate_heat_load(structure: HeatNetwork, weather_df: pd.DataFrame, elec_df
         structure, external_df=weather_df, elec_df=elec_df, start_ts=start_ts, end_ts=end_ts, dt=pd.Timedelta(minutes=3)
     )
 
-    hload = sim_df["heating_usage"].resample(pd.Timedelta(minutes=30)).sum()
-    return hload
+    return sim_df["heating_usage"].resample(pd.Timedelta(minutes=30)).sum()
 
 
 def apply_fabric_intervention_to_parameters(params: ThermalModelResult, intervention: InterventionEnum) -> ThermalModelResult:

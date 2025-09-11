@@ -84,7 +84,7 @@ async def get_re24_wholesale_tariff(
     returned_json = resp.json()
     if "data" not in returned_json and returned_json.get("message") == "Forbidden":
         raise ValueError(f"Error from RE24: {returned_json['message']}. Check your API key?")
-    elif "data" not in returned_json and "message" in returned_json:
+    if "data" not in returned_json and "message" in returned_json:
         raise ValueError(f"Didn't get data in JSON from RE24: {returned_json['message']}")
     wholesale_df = pd.DataFrame.from_records(returned_json["data"])
     wholesale_df["timestamp"] = pd.to_datetime(wholesale_df["timestamp"])

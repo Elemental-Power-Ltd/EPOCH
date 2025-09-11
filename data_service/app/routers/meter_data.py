@@ -59,10 +59,9 @@ async def upload_meter_entries(pool: DatabasePoolDep, entries: MeterEntries) -> 
             f"Fuel type {entries.metadata.fuel_type} is not supported. Please select from ('gas', 'elec')",
         )
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                """
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            """
                 INSERT INTO
                     client_meters.metadata (
                         dataset_id,
@@ -80,21 +79,21 @@ async def upload_meter_entries(pool: DatabasePoolDep, entries: MeterEntries) -> 
                         $5,
                         $6,
                         $7)""",
-                entries.metadata.dataset_id,
-                entries.metadata.created_at,
-                entries.metadata.site_id,
-                entries.metadata.fuel_type,
-                entries.metadata.reading_type,
-                entries.metadata.filename,
-                entries.metadata.is_synthesised,
-            )
+            entries.metadata.dataset_id,
+            entries.metadata.created_at,
+            entries.metadata.site_id,
+            entries.metadata.fuel_type,
+            entries.metadata.reading_type,
+            entries.metadata.filename,
+            entries.metadata.is_synthesised,
+        )
 
-            await conn.copy_records_to_table(
-                table_name=table_name,
-                schema_name="client_meters",
-                records=[(entries.metadata.dataset_id, item.start_ts, item.end_ts, item.consumption) for item in entries.data],
-                columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
-            )
+        await conn.copy_records_to_table(
+            table_name=table_name,
+            schema_name="client_meters",
+            records=[(entries.metadata.dataset_id, item.start_ts, item.end_ts, item.consumption) for item in entries.data],
+            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
+        )
 
     return entries.metadata
 

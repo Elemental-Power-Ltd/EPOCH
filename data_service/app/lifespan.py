@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
             # We've received a SIGTERM so wait 10s for stragglers to finish, then kill the task
             # and tidy up.
             await asyncio.wait_for(queue.join(), FINAL_JOIN_TIMEOUT.total_seconds())
-            raise TerminateTaskGroup()
+            raise TerminateTaskGroup
     except* TerminateTaskGroup:
         pass
     except* TimeoutError:

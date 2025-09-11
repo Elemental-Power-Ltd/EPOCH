@@ -35,8 +35,7 @@ def fill_in_half_hourly(gas_df: HHDataFrame) -> HHDataFrame:
     # and use that to reconstruct them. This might be weird if we have multiple
     # entries per hh?
     gas_df["end_ts"] = gas_df.index + pd.to_timedelta(gas_df["timedelta"], unit="s")
-    gas_df = HHDataFrame(gas_df.drop(columns="timedelta"))
-    return gas_df
+    return HHDataFrame(gas_df.drop(columns="timedelta"))
 
 
 def hh_gas_to_monthly(hh_gas_df: HHDataFrame) -> MonthlyDataFrame:
