@@ -1,18 +1,23 @@
 """API endpoints for electrical loads, including resampling."""
 
+import asyncio
 import datetime
+import functools
+import itertools
 import logging
+from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from app.dependencies import DatabaseDep, DatabasePoolDep, HttpClientDep, VaeDep
-from app.internal.elec_meters import daily_to_hh_eload, day_type, load_all_scalers, monthly_to_daily_eload
-from app.internal.epl_typing import DailyDataFrame, MonthlyDataFrame
+from app.dependencies import DatabaseDep, DatabasePoolDep, ThreadPoolDep, VaeDep
+from app.internal.elec_meters import daily_to_hh_eload, day_type, monthly_to_daily_eload
+from app.internal.elec_meters.preprocessing import hh_to_square
+from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame
 from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.utils import get_bank_holidays
-from app.internal.utils.bank_holidays import UKCountryEnum
 from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetIDWithTime, DatasetTypeEnum, FuelEnum
 from app.models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
@@ -20,10 +25,12 @@ from app.models.meter_data import ReadingTypeEnum
 
 router = APIRouter()
 
+WEEKEND_INDS = frozenset({5, 6})
+
 
 @router.post("/generate-electricity-load", tags=["electricity", "generate"])
 async def generate_electricity_load(
-    params: ElectricalLoadRequest, vae: VaeDep, pool: DatabasePoolDep, http_client: HttpClientDep
+    params: ElectricalLoadRequest, vae: VaeDep, pool: DatabasePoolDep, thread_pool: ThreadPoolDep
 ) -> ElectricalLoadMetadata:
     """
     Generate a synthetic electrical load from a set of real data.
@@ -39,6 +46,7 @@ async def generate_electricity_load(
     -------
     Metadata about the generated synthetic half hourly dataset, that you can now request with `get-electrical-load`
     """
+    logger = logging.getLogger(__name__)
     async with pool.acquire() as conn:
         ds_meta = await conn.fetchrow(
             """SELECT site_id, fuel_type, reading_type FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""",
@@ -66,15 +74,15 @@ async def generate_electricity_load(
     raw_df = pd.DataFrame.from_records(dataset, columns=["start_ts", "end_ts", "consumption_kwh"])
     raw_df.index = pd.DatetimeIndex(pd.to_datetime(raw_df["start_ts"]))
 
-    public_holidays = get_bank_holidays(UKCountryEnum.England)
     if reading_type != "halfhourly":
-        daily_df = monthly_to_daily_eload(MonthlyDataFrame(raw_df), public_holidays=public_holidays)
+        daily_df = monthly_to_daily_eload(MonthlyDataFrame(raw_df))
     else:
         # We've got half hourly data, so we can skip the horrible daily profiles bit
         daily_df = DailyDataFrame(raw_df[["consumption_kwh"]].resample(pd.Timedelta(days=1)).sum())
         daily_df["start_ts"] = daily_df.index
         daily_df["end_ts"] = daily_df.index + pd.Timedelta(days=1)
 
+    public_holidays = get_bank_holidays()
     weekly_type_df = (
         daily_df[["consumption_kwh"]]
         .groupby([lambda dt, ph=public_holidays: day_type(dt, public_holidays=ph), lambda dt: dt.weekofyear])
@@ -111,7 +119,62 @@ async def generate_electricity_load(
     synthetic_daily_df["consumption_kwh"] = all_consumptions
     synthetic_daily_df["start_ts"] = synthetic_daily_df.index
     synthetic_daily_df["end_ts"] = synthetic_daily_df.index + pd.Timedelta(days=1)
-    synthetic_hh_df = daily_to_hh_eload(synthetic_daily_df, scalers=load_all_scalers(), model=vae)
+
+    if reading_type == "halfhourly":
+        logger.info("Generating electricity load with observed HH")
+        resid_model_path = None
+        target_hh_observed_df = hh_to_square(cast(HHDataFrame, raw_df))
+    else:
+        logger.info("Generating electricity load with pretrained ARIMA")
+        resid_model_path = Path("models", "final", "arima")
+        target_hh_observed_df = None
+
+    loop = asyncio.get_running_loop()
+    synthetic_hh_df = await loop.run_in_executor(
+        thread_pool,
+        functools.partial(
+            daily_to_hh_eload,
+            synthetic_daily_df,
+            model=vae,
+            resid_model_path=resid_model_path,
+            target_hh_observed_df=target_hh_observed_df,
+            weekend_inds=WEEKEND_INDS,
+        ),
+    )
+
+    # If we used the observed data, then there's a chance we get either negative or enormous days.
+    # Patch those out with model path data.
+    # This upper threshold is either a kettle + an oven for a small site, or a whole day's usage in a single reading.
+    OVER_THRESHOLD = max(2.5, synthetic_hh_df["consumption_kwh"].mean() * 48)
+    is_bad_mask = np.logical_or(
+        synthetic_hh_df["consumption_kwh"].to_numpy() >= OVER_THRESHOLD, synthetic_hh_df["consumption_kwh"].to_numpy() < 0.0
+    )
+    if np.any(is_bad_mask) and target_hh_observed_df is not None:
+        new_synth_hh_df = await loop.run_in_executor(
+            thread_pool,
+            functools.partial(
+                daily_to_hh_eload,
+                synthetic_daily_df,
+                model=vae,
+                resid_model_path=Path("models", "final", "arima"),
+                target_hh_observed_df=None,
+                weekend_inds=WEEKEND_INDS,
+            ),
+        )
+        assert isinstance(synthetic_hh_df.index, pd.DatetimeIndex)
+        for day in sorted(set(synthetic_hh_df.index.date)):
+            in_day_mask = synthetic_hh_df.index.date == day
+            # This is true if there are any entries in this day that are bad.
+            # In that case, sub out the entire day.
+            if np.any(np.logical_and(in_day_mask, is_bad_mask)):
+                synthetic_hh_df[in_day_mask] = new_synth_hh_df[in_day_mask].to_numpy()
+
+    # As a final check, interpolate any remaining bad entries.
+    is_bad_mask = np.logical_or(
+        synthetic_hh_df["consumption_kwh"].to_numpy() >= OVER_THRESHOLD, synthetic_hh_df["consumption_kwh"].to_numpy() < 0.0
+    )
+    synthetic_hh_df.loc[is_bad_mask, "consumption_kwh"] = float("NaN")
+    synthetic_hh_df["consumption_kwh"] = synthetic_hh_df["consumption_kwh"].interpolate(method="time")
 
     metadata = ElectricalLoadMetadata(
         dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
@@ -122,7 +185,7 @@ async def generate_electricity_load(
         filename=str(params.dataset_id),
         is_synthesised=True,
     )
-    synthetic_hh_df["dataset_id"] = metadata.dataset_id
+
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
@@ -148,9 +211,14 @@ async def generate_electricity_load(
         await conn.copy_records_to_table(
             table_name="electricity_meters_synthesised",
             schema_name="client_meters",
-            records=synthetic_hh_df.itertuples(index=False),
-            columns=synthetic_hh_df.columns.to_list(),
-            timeout=10,
+            records=zip(
+                itertools.repeat(metadata.dataset_id, len(synthetic_hh_df)),
+                synthetic_hh_df["start_ts"],
+                synthetic_hh_df["end_ts"],
+                synthetic_hh_df["consumption_kwh"],
+                strict=True,
+            ),
+            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
         if params.bundle_metadata is not None:

@@ -547,12 +547,10 @@ async def generate_thermal_model_heating_load(
         dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         site_id=params.site_id,
         created_at=datetime.datetime.now(datetime.UTC),
-        params=json.dumps(
-            {
-                "thermal_model_dataset_id": str(params.structure_id),
-                "generation_method": HeatingLoadModelEnum.ThermalModel,
-            }
-        ),
+        params=json.dumps({
+            "thermal_model_dataset_id": str(params.structure_id),
+            "generation_method": HeatingLoadModelEnum.ThermalModel,
+        }),
         interventions=params.interventions,
         generation_method=HeatingLoadModelEnum.ThermalModel,
     )

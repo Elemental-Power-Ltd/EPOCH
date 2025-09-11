@@ -73,6 +73,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
                             http_client=await get_http_client().__anext__(),
                             vae=await get_vae_model(),
                             secrets_env=await get_secrets_dependency(),
+                            thread_pool=thread_pool,
                             ignore_exceptions=True,
                         ),
                         name=f"Worker {idx}",
