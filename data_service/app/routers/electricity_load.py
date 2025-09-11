@@ -3,6 +3,7 @@
 import asyncio
 import datetime
 import functools
+import itertools
 import logging
 from pathlib import Path
 from typing import cast
@@ -23,6 +24,8 @@ from app.models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRe
 from app.models.meter_data import ReadingTypeEnum
 
 router = APIRouter()
+
+WEEKEND_INDS = frozenset({5, 6})
 
 
 @router.post("/generate-electricity-load", tags=["electricity", "generate"])
@@ -117,9 +120,6 @@ async def generate_electricity_load(
     synthetic_daily_df["start_ts"] = synthetic_daily_df.index
     synthetic_daily_df["end_ts"] = synthetic_daily_df.index + pd.Timedelta(days=1)
 
-    # TODO (2025-08-21 MHJB): check this toggle is correct for resid_model_path and target_hh_observed_df
-    # do I need to rename the columns?
-
     if reading_type == "halfhourly":
         logger.info("Generating electricity load with observed HH")
         resid_model_path = None
@@ -138,9 +138,43 @@ async def generate_electricity_load(
             model=vae,
             resid_model_path=resid_model_path,
             target_hh_observed_df=target_hh_observed_df,
-            weekend_inds=frozenset({5, 6}),
+            weekend_inds=WEEKEND_INDS,
         ),
     )
+
+    # If we used the observed data, then there's a chance we get either negative or enormous days.
+    # Patch those out with model path data.
+    # This upper threshold is either a kettle + an oven for a small site, or a whole day's usage in a single reading.
+    OVER_THRESHOLD = max(2.5, synthetic_hh_df["consumption_kwh"].mean() * 48)
+    is_bad_mask = np.logical_or(
+        synthetic_hh_df["consumption_kwh"].to_numpy() >= OVER_THRESHOLD, synthetic_hh_df["consumption_kwh"].to_numpy() < 0.0
+    )
+    if np.any(is_bad_mask) and target_hh_observed_df is not None:
+        new_synth_hh_df = await loop.run_in_executor(
+            thread_pool,
+            functools.partial(
+                daily_to_hh_eload,
+                synthetic_daily_df,
+                model=vae,
+                resid_model_path=Path("models", "final", "arima"),
+                target_hh_observed_df=None,
+                weekend_inds=WEEKEND_INDS,
+            ),
+        )
+        assert isinstance(synthetic_hh_df.index, pd.DatetimeIndex)
+        for day in sorted(set(synthetic_hh_df.index.date)):
+            in_day_mask = synthetic_hh_df.index.date == day
+            # This is true if there are any entries in this day that are bad.
+            # In that case, sub out the entire day.
+            if np.any(np.logical_and(in_day_mask, is_bad_mask)):
+                synthetic_hh_df[in_day_mask] = new_synth_hh_df[in_day_mask].to_numpy()
+
+    # As a final check, interpolate any remaining bad entries.
+    is_bad_mask = np.logical_or(
+        synthetic_hh_df["consumption_kwh"].to_numpy() >= OVER_THRESHOLD, synthetic_hh_df["consumption_kwh"].to_numpy() < 0.0
+    )
+    synthetic_hh_df.loc[is_bad_mask, "consumption_kwh"] = float("NaN")
+    synthetic_hh_df["consumption_kwh"] = synthetic_hh_df["consumption_kwh"].interpolate(method="time")
 
     metadata = ElectricalLoadMetadata(
         dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
@@ -151,7 +185,7 @@ async def generate_electricity_load(
         filename=str(params.dataset_id),
         is_synthesised=True,
     )
-    synthetic_hh_df["dataset_id"] = metadata.dataset_id
+
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
@@ -177,9 +211,14 @@ async def generate_electricity_load(
         await conn.copy_records_to_table(
             table_name="electricity_meters_synthesised",
             schema_name="client_meters",
-            records=synthetic_hh_df.itertuples(index=False),
-            columns=synthetic_hh_df.columns.to_list(),
-            timeout=10,
+            records=zip(
+                itertools.repeat(metadata.dataset_id, len(synthetic_hh_df)),
+                synthetic_hh_df["start_ts"],
+                synthetic_hh_df["end_ts"],
+                synthetic_hh_df["consumption_kwh"],
+                strict=True,
+            ),
+            columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
 
         if params.bundle_metadata is not None:

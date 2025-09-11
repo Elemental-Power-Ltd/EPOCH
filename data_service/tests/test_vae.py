@@ -24,11 +24,13 @@ class TestVAE:
             ScalerTypeEnum.Data: StandardScaler().fit(np.array([0.0, 10000]).reshape(-1, 1)),
         }
 
-        daily_df = pd.DataFrame({
-            "start_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
-            "end_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
-            "consumption_kwh": 10000 * np.random.default_rng().random(size=29),
-        })
+        daily_df = pd.DataFrame(
+            {
+                "start_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
+                "end_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
+                "consumption_kwh": 10000 * np.random.default_rng().random(size=29),
+            }
+        )
         with torch.no_grad():
             consumption_scaled = torch.from_numpy(
                 scalers[ScalerTypeEnum.Aggregate]
@@ -44,11 +46,13 @@ class TestVAE:
         elec_vae_mdl = load_vae()
         scalers = load_all_scalers()
 
-        daily_df = pd.DataFrame({
-            "start_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
-            "end_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
-            "consumption_kwh": 10000 * np.random.default_rng().random(size=29),
-        })
+        daily_df = pd.DataFrame(
+            {
+                "start_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
+                "end_ts": [datetime.datetime(year=2024, month=1, day=i, tzinfo=datetime.UTC) for i in range(1, 30)],
+                "consumption_kwh": 10000 * np.random.default_rng().random(size=29),
+            }
+        )
         with torch.no_grad():
             consumption_scaled = torch.from_numpy(
                 scalers[ScalerTypeEnum.Aggregate]

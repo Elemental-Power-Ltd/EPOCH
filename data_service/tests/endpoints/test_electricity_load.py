@@ -52,6 +52,7 @@ class TestUploadMeterData:
             },
         )
         assert result.is_success, result.text
+        assert all(item > 0 for item in result.json()["data"]), "Got negative results"
 
     @pytest.mark.asyncio
     async def test_upload_pre_parsed_with_specified(self, client: httpx.AsyncClient) -> None:
