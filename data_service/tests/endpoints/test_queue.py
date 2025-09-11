@@ -11,7 +11,7 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from app.dependencies import get_thread_pool, get_secrets_dep, load_vae
+from app.dependencies import get_secrets_dep, get_thread_pool, load_vae
 from app.epl_secrets import SecretDict
 from app.internal.elec_meters.vae import VAE
 from app.internal.epl_typing import Jsonable, db_pool_t
@@ -86,8 +86,8 @@ class TestQueue:
         consumer = asyncio.create_task(
             process_jobs(
                 queue_fixture,
-                pool=None,  # type: ignore
-                http_client=None,  # type: ignore
+                pool=cast(db_pool_t, None),
+                http_client=cast(httpx.AsyncClient, None),
                 vae=cast(VAE, None),
                 secrets_env=cast(SecretDict, None),
                 thread_pool=cast(ThreadPoolExecutor, None),
@@ -102,8 +102,8 @@ class TestQueue:
         consumer = create_task(
             process_jobs(
                 queue_fixture,
-                pool=None,  # type: ignore
-                http_client=None,  # type: ignore
+                pool=cast(db_pool_t, None),
+                http_client=cast(httpx.AsyncClient, None),
                 vae=cast(VAE, None),
                 secrets_env=cast(SecretDict, None),
                 thread_pool=cast(ThreadPoolExecutor, None),
@@ -127,7 +127,7 @@ class TestQueue:
         consumer = create_task(
             process_jobs(
                 queue_fixture,
-                pool=None,  # type: ignore
+                pool=cast(db_pool_t, None),
                 http_client=cast(httpx.AsyncClient, None),
                 vae=cast(VAE, None),
                 secrets_env=cast(SecretDict, None),

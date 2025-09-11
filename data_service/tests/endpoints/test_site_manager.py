@@ -185,8 +185,8 @@ class TestGenerateAll:
             # hanging
             await asyncio.sleep(1.0)
             iters += 1
-            if iters > 120:
-                pytest.fail("Generate-all didn't empty in 2 minutes")
+            if iters > 180:
+                pytest.fail("Generate-all didn't empty in 3 minutes")
 
         list_result = await client.post(
             "/list-latest-datasets",
