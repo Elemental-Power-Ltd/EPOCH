@@ -21,10 +21,14 @@ classifiers = [
 exclude = ["*.ipynb", "app/models/epoch_types/"]
 line-length = 128
 
+[tool.ruff.format]
+preview = true
+
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.lint]
+preview = true
 select = [
     "E", # pycodestyle errors
     "W", # pycodestyle warning
