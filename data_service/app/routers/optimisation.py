@@ -302,6 +302,8 @@ async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) ->
     """
     Get all the optimisation tasks for a given client.
 
+    We return these from most to least recent.
+
     Parameters
     ----------
     client_id
@@ -317,10 +319,16 @@ async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) ->
             tc.task_id,
             tc.client_id,
             tc.task_name,
+            tc.created_at AS created_at,
+            ARRAY (
+                SELECT jsonb_array_elements_text(
+                    COALESCE(tc.objectives, '[]'::jsonb)
+                )
+            ) AS objectives,
+            tc.epoch_version as epoch_version,
             ANY_VALUE(tr.n_evals)   AS n_evals,
             COUNT(pr.task_id)       AS n_saved,
-            ANY_VALUE(tr.exec_time) AS exec_time,
-            ANY_VALUE(tc.created_at) AS created_at
+            ANY_VALUE(tr.exec_time) AS exec_time
         FROM optimisation.task_config AS tc
         LEFT JOIN optimisation.task_results AS tr
             ON tr.task_id = tc.task_id
@@ -330,9 +338,12 @@ async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) ->
         GROUP BY
             tc.task_id,
             tc.client_id,
-            tc.task_name
+            tc.task_name,
+            tc.created_at,
+            tc.objectives,
+            tc.epoch_version
         ORDER BY
-            created_at ASC;
+            created_at DESC;
         """,
         client_id.client_id,
     )
@@ -344,6 +355,9 @@ async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) ->
             n_evals=item["n_evals"],
             n_saved=item["n_saved"],
             exec_time=item["exec_time"],
+            created_at=item["created_at"],
+            epoch_version=item["epoch_version"],
+            objectives=item["objectives"]
         )
         for item in res
     ]
