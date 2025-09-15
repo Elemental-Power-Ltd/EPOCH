@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
 from .epoch_types import TaskDataPydantic
-from .site_manager import SiteDataEntry
+from .site_manager import BundleHints, SiteDataEntry
 from .site_range import SiteRange
 
 
@@ -240,6 +240,11 @@ class OptimisationResultsResponse(pydantic.BaseModel):
     )
     highlighted_results: list[HighlightedResult] = pydantic.Field(
         description="A list of highlighted results, containing a portfolio_id and the reason the result is highlighted."
+    )
+    hints: dict[site_id_t, BundleHints] = pydantic.Field(
+        default={},
+        description="Descriptive information about the data we've used to generate this result."
+        " This contains names and metadata about tariffs and renewables installations.",
     )
 
 
