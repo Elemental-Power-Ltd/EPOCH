@@ -118,6 +118,10 @@ class LRUCache:
             # Pop least recently used (first item)
             self.cache.popitem(last=False)
 
+    def clear(self) -> None:
+        """Clear the cache."""
+        self.cache.clear()
+
 
 class CachedAsyncClient(httpx.AsyncClient):
     """Async HTTPX client with bundle caching."""
