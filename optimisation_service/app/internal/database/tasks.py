@@ -39,5 +39,6 @@ async def transmit_task(task: Task, http_client: httpx.AsyncClient) -> None:
         "bundle_ids": bundle_ids,
         "portfolio_constraints": task.portfolio_constraints,
         "site_constraints": site_constraints,
+        "epoch_version": task.epoch_version,
     }
     await http_client.post(url=_DB_URL + "/add-optimisation-task", json=jsonable_encoder(data))

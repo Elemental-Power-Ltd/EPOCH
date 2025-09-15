@@ -188,6 +188,9 @@ class SimulationMetrics(BaseModel):
     total_electrical_shortfall: float | None = Field(
         description="Total electrical shortfall (kWh) when compared to the demand.", default=None
     )
+    total_heat_load: float | None = Field(description="Total heat used (kWh).", default=None)
+    total_dhw_load: float | None = Field(description="Total heat used for domestic hot water (kWh).", default=None)
+    total_ch_load: float | None = Field(description="Total heat used for central heating (kWh).", default=None)
     total_heat_shortfall: float | None = Field(
         description="Total heat shortfall (kWh) when compared to the demand.", default=None
     )
@@ -245,6 +248,10 @@ class SimulationMetrics(BaseModel):
     baseline_electrical_shortfall: float | None = Field(
         description="Baseline electrical shortfall (kWh) when compared to the demand.", default=None
     )
+    baseline_heat_load: float | None = Field(description="Baseline heat used (kWh).", default=None)
+    baseline_dhw_load: float | None = Field(description="Baseline heat used for domestic hot water (kWh).", default=None)
+    baseline_ch_load: float | None = Field(description="Baseline heat used for central heating (kWh).", default=None)
+
     baseline_heat_shortfall: float | None = Field(
         description="Baseline heat shortfall (kWh) when compared to the demand.", default=None
     )
