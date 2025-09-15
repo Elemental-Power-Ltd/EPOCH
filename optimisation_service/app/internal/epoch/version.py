@@ -19,6 +19,6 @@ def get_epoch_version() -> str:
     if _EPOCH_VERSION is None:
         import epoch_simulator
 
-        _EPOCH_VERSION = cast(str, epoch_simulator.__version__)
+        _EPOCH_VERSION = cast(str, epoch_simulator.__version__)  # type: ignore
 
     return _EPOCH_VERSION
