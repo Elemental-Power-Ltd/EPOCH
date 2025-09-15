@@ -120,14 +120,20 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
             ANY_VALUE(pr.metric_baseline_combined_carbon_emissions) as metric_baseline_combined_carbon_emissions,
 
             ARRAY_AGG(sr.*) AS site_results,
-            ARRAY_AGG(DISTINCT stc.bundle_id) AS site_bundle_ids
+            ANY_VALUE(stc.site_bundle_ids) AS site_bundle_ids
         FROM
             optimisation.portfolio_results AS pr
         LEFT JOIN
             optimisation.site_results AS sr
         ON pr.portfolio_id = sr.portfolio_id
         LEFT JOIN
-            optimisation.site_task_config AS stc
+            (
+                SELECT
+                    task_id,
+                    ARRAY_AGG(DISTINCT bundle_id) AS site_bundle_ids
+                FROM optimisation.site_task_config
+                GROUP BY task_id
+            ) AS stc
         ON stc.task_id = pr.task_id
         WHERE pr.task_id = $1
         GROUP BY (pr.task_id, pr.portfolio_id)
