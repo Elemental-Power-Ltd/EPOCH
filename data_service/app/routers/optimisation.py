@@ -140,7 +140,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
         if "site_bundle_ids" in item and item["site_bundle_ids"] is not None:
             bundle_set.update(item["site_bundle_ids"])
     async with asyncio.TaskGroup() as tg:
-        tasks = [tg.create_task(get_bundle_hints(bundle_id, pool)) for bundle_id in bundle_set]
+        tasks = [tg.create_task(get_bundle_hints(bundle_id, pool)) for bundle_id in bundle_set if bundle_id is not None]
 
     bundle_hints = {item.result().site_id: item.result() for item in tasks}
 
