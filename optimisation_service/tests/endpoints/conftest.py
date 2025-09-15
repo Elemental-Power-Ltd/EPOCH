@@ -11,7 +11,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from pandas.core.api import DataFrame as DataFrame
 
-from app.dependencies import HTTPClient, Jsonable, get_http_client, get_queue, url_to_hash
+from app.dependencies import CachedAsyncClient, HTTPClient, Jsonable, get_http_client, get_queue, url_to_hash
 from app.internal.database.utils import _DB_URL
 from app.internal.queue import IQueue
 from app.internal.task_processor import process_tasks
@@ -33,7 +33,7 @@ def result_tmp_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return tmp_path_factory.mktemp("results")
 
 
-class MockedHttpClient(httpx.AsyncClient):
+class MockedHttpClient(CachedAsyncClient):
     """An overridden HTTP client that gets responses from JSON files."""
 
     def __init__(self, tmp_path: Path, **kwargs: Any):

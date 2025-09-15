@@ -16,7 +16,7 @@ logger = logging.getLogger("default")
 
 type Jsonable = dict[str, Jsonable] | list[Jsonable] | str | int | float | bool | None
 
-type HTTPClient = httpx.AsyncClient
+type HTTPClient = CachedAsyncClient
 
 
 def url_to_hash(url: str, params: dict[str, Any] | None = None, max_len: int | None = None) -> str:
