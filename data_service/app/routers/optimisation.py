@@ -6,6 +6,7 @@ and then later on add the results.
 Each result is uniquely identified, and belongs to a set of results.
 """
 
+import asyncio
 import functools
 import json
 
@@ -32,6 +33,7 @@ from ..models.optimisation import (
     result_repro_config_t,
 )
 from ..models.site_manager import SiteDataEntry
+from .site_manager import get_bundle_hints
 
 router = APIRouter()
 
@@ -117,17 +119,30 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
             ANY_VALUE(pr.metric_baseline_scope_2_emissions) AS metric_baseline_scope_2_emissions,
             ANY_VALUE(pr.metric_baseline_combined_carbon_emissions) as metric_baseline_combined_carbon_emissions,
 
-            ARRAY_AGG(sr.*) AS site_results
+            ARRAY_AGG(sr.*) AS site_results,
+            ARRAY_AGG(DISTINCT stc.bundle_id) AS site_bundle_ids
         FROM
             optimisation.portfolio_results AS pr
         LEFT JOIN
             optimisation.site_results AS sr
         ON pr.portfolio_id = sr.portfolio_id
+        LEFT JOIN
+            optimisation.site_task_config AS stc
+        ON stc.task_id = pr.task_id
         WHERE pr.task_id = $1
         GROUP BY (pr.task_id, pr.portfolio_id)
         """,
         task_id.task_id,
     )
+
+    bundle_set = set()
+    for item in res:
+        if "site_bundle_ids" in item and item["site_bundle_ids"] is not None:
+            bundle_set.update(item["site_bundle_ids"])
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(get_bundle_hints(bundle_id, pool)) for bundle_id in bundle_set]
+
+    bundle_hints = {item.result().site_id: item.result() for item in tasks}
 
     # Bind a local NaN to num with the defaults set reasonably, just in case
     # any have slipped through.
@@ -136,7 +151,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
         nan=np.finfo(np.float32).max,  # be careful of this one!
         posinf=np.finfo(np.float32).max,
         neginf=np.finfo(np.float32).min,
-    )
+    )  # pyright: ignore[reportCallIssue]
     portfolio_results = [
         PortfolioOptimisationResult(
             task_id=item["task_id"],
@@ -294,7 +309,9 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
 
     highlighted_results = pick_highlighted_results(portfolio_results)
 
-    return OptimisationResultsResponse(portfolio_results=portfolio_results, highlighted_results=highlighted_results)
+    return OptimisationResultsResponse(
+        portfolio_results=portfolio_results, highlighted_results=highlighted_results, hints=bundle_hints
+    )
 
 
 @router.post("/list-optimisation-tasks")
@@ -357,7 +374,7 @@ async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) ->
             exec_time=item["exec_time"],
             created_at=item["created_at"],
             epoch_version=item["epoch_version"],
-            objectives=item["objectives"]
+            objectives=item["objectives"],
         )
         for item in res
     ]
