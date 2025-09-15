@@ -135,6 +135,13 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
         task_id.task_id,
     )
 
+    # We got bundle IDs with each row in the task simulator, but they'll almost always be the same.
+    # Get all the bundles that were used across the simulations (getting the total unique set,
+    # just in case any sites were missed in row[0])
+    # and get the hints for each one. Then, assign the hints per-bundle to the associated site.
+    # This should work as each site has a single dataset bundle by design, and each site should only
+    # have used one bundle in the entire simulation.
+    # Be careful in future if sites use different bundles and use a different key for the tasks then.
     bundle_set = set()
     for item in res:
         if "site_bundle_ids" in item and item["site_bundle_ids"] is not None:
