@@ -103,7 +103,6 @@ class TestUploadMeterData:
     async def test_upload_and_get_resampled_electricity_load(self, client: httpx.AsyncClient) -> None:
         raw_data = parse_half_hourly("./tests/data/test_elec.csv")
         raw_data["start_ts"] = raw_data.index
-        print(raw_data.head())
         month_starts = raw_data[["start_ts"]].resample("1MS").min()
         month_ends = raw_data[["end_ts"]].resample("1MS").max()
         data = raw_data[["consumption"]].resample("1MS").sum()

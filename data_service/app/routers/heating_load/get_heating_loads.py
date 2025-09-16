@@ -129,11 +129,10 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
                 thermal_model_dataset_id = metadata["params"]["thermal_model_dataset_id"]
             model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_dataset_id), pool=pool)
             return await get_heating_cost_thermal_model(model, interventions=metadata["interventions"])
-        else:
-            # However, if we don't have a thermal model then we have no idea of the size,
-            # so look the generic cost up in the DB.
-            res = await db_pool.fetchval(
-                """
+        # However, if we don't have a thermal model then we have no idea of the size,
+        # so look the generic cost up in the DB.
+        res = await db_pool.fetchval(
+            """
                 SELECT
                     SUM(cost)
                 FROM heating.metadata AS m
@@ -141,10 +140,10 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
                 ON
                     i.site_id = m.site_id AND i.intervention = ANY(m.interventions)
                 WHERE dataset_id = $1""",
-                dataset_id,
-            )
-            if res is None:
-                return 0.0
+            dataset_id,
+        )
+        if res is None:
+            return 0.0
         return float(res)
 
     async with asyncio.TaskGroup() as tg:

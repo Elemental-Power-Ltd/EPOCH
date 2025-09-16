@@ -87,7 +87,11 @@ def assign_hh_dhw_even(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float) -
     return hh_gas_df
 
 
-def assign_hh_dhw_greedy(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float) -> HHDataFrame:
+def assign_hh_dhw_greedy(
+    hh_gas_df: HHDataFrame,
+    dhw_kwh: float,
+    hdd_kwh: float,  # noqa: ARG001
+) -> HHDataFrame:
     """
     Assign domestic hot water and heating splits to high resolution gas data.
 
@@ -207,15 +211,9 @@ def get_poisson_weights(
 
     # We want the total sum of DHW to be 1 unit per day, such that we can scale this up later.
     # Is it correct to do this here?
-    if "end_ts" in gas_df.columns:
-        latest_day = gas_df["end_ts"].max()
-    else:
-        latest_day = gas_df.index.max()
+    latest_day = gas_df["end_ts"].max() if "end_ts" in gas_df.columns else gas_df.index.max()
 
-    if "start_ts" in gas_df.columns:
-        earliest_day = gas_df["start_ts"].min()
-    else:
-        earliest_day = gas_df.index.min()
+    earliest_day = gas_df["start_ts"].min() if "start_ts" in gas_df.columns else gas_df.index.min()
     days_involved = (latest_day - earliest_day).total_seconds() / (24 * 60 * 60)
     weights_arr = weights.to_numpy()
     weights_arr /= np.sum(weights_arr)

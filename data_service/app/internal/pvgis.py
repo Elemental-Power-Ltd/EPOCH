@@ -73,10 +73,7 @@ async def get_pvgis_optima(
     assert res.status_code == 200, f"Failed to get PVGIS optima: {res.status_code}, {res.text}"
     data = res.json()
 
-    if tracking:
-        mounting_system = "tracking"
-    else:
-        mounting_system = "fixed"
+    mounting_system = "tracking" if tracking else "fixed"
 
     return PVOptimaResult(
         azimuth=(180 + data["inputs"]["mounting_system"][mounting_system]["azimuth"]["value"]) % 360,

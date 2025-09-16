@@ -244,7 +244,6 @@ def simulate(
         # This error case when fitting or generating a heating load generally means your
         # parameters are bad. Try again with new parameters or a shorter timestep.
         if abs(total_energy_change) > 1:
-            print([(u, temp) for (u, temp) in graph.nodes(data="temperature")])
             assert abs(total_energy_change) < 1, f"Energy change must be < 1e-8, got {total_energy_change} in step {i}"
 
         update_temperatures(graph)
@@ -344,7 +343,7 @@ def simulate_midpoint(
 
         update_temperatures(graph)
 
-    df = pd.DataFrame(
+    return pd.DataFrame(
         index=times,
         data={
             "energy_changes": energy_changes[BuildingElement.InternalAir],
@@ -354,7 +353,6 @@ def simulate_midpoint(
             else [float("NaN") for _ in energy_changes[BuildingElement.InternalAir]],
         },
     )
-    return df
 
 
 @mark_unused
@@ -438,7 +436,7 @@ def simulate_heat_balance(
 
         update_temperatures_from_vec(graph, new_temp_vec)
 
-    df = pd.DataFrame(
+    return pd.DataFrame(
         index=times,
         # TODO (2024-12-11 MHJB): can we get the energy changes from the matrix? should be just the LHS times temperatures
         data={
@@ -447,4 +445,3 @@ def simulate_heat_balance(
             "heating_usage": energy_changes[BuildingElement.HeatSource],
         },
     )
-    return df

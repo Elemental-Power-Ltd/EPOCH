@@ -46,10 +46,7 @@ def get_migration_files(
     list[Path]
         Ordered list of up migrations.
     """
-    if direction == MigrationDirection.Up:
-        glob_suffix = "*.up.sql"
-    else:
-        glob_suffix = "*.down.sql"
+    glob_suffix = "*.up.sql" if direction == MigrationDirection.Up else "*.down.sql"
     all_files = [item.absolute() for item in directory.glob(glob_suffix)]
 
     return sorted(

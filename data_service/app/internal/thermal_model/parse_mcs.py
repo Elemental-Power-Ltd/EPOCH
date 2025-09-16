@@ -167,25 +167,25 @@ def parse_single_room(sheet: openpyxl.worksheet.worksheet.Worksheet) -> dict[str
         if "Room Dimensions" in row:
             current_element = "InternalAir"
             continue
-        elif "Floor" in row:
+        if "Floor" in row:
             current_element = "Floor"
             continue
-        elif "External Wall" in row:
+        if "External Wall" in row:
             current_element = "ExternalWall"
             continue
-        elif "Ceiling (Flat)" in row:
+        if "Ceiling (Flat)" in row:
             current_element = "Ceiling"
             continue
-        elif "Windows" in row:
+        if "Windows" in row:
             current_element = "Windows"
             continue
-        elif "Roof Glazing" in row:
+        if "Roof Glazing" in row:
             current_element = "RoofGlazing"
             continue
-        elif "External Doors" in row:
+        if "External Doors" in row:
             current_element = "ExternalDoors"
             continue
-        elif "Internal Walls" in row:
+        if "Internal Walls" in row:
             current_element = "InternalWalls"
             continue
 

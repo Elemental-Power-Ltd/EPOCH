@@ -97,12 +97,7 @@ def interpolate_carbon_intensity(
             for item in raw_data
             if item.get(key) is not None and np.isfinite(item[key])  # type: ignore
         ])
-        if len(xp) == 0 or len(yp) == 0:
-            # We've got nothing here!
-            interpolated_vals = np.full_like(xp, np.nan)
-        else:
-            interpolated_vals = np.interp(xs, xp, yp)
-        interpolated_data[key] = interpolated_vals
+        interpolated_data[key] = np.full_like(xp, np.nan) if len(xp) == 0 or len(yp) == 0 else np.interp(xs, xp, yp)
 
     return [
         {
@@ -177,7 +172,6 @@ async def fetch_carbon_intensity_batch(
         subdata = subdata["data"]
 
     for item in subdata:
-        print(item)
         entry: CarbonIntensityRawEntry = {
             "start_ts": pd.to_datetime(item["from"]),
             "end_ts": pd.to_datetime(item["to"]),
@@ -252,8 +246,7 @@ async def fetch_carbon_intensity(
     # This involves sorting, filter and interpolate it
     all_data = sorted(all_data, key=operator.itemgetter("start_ts"))
     new_times = pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
-    all_data = interpolate_carbon_intensity(new_times, all_data)
-    return all_data
+    return interpolate_carbon_intensity(new_times, all_data)
 
 
 @router.post("/generate-grid-co2", tags=["co2", "generate"])
@@ -304,10 +297,9 @@ async def generate_grid_co2(
         site_id=params.site_id,
     )
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                """
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            """
                 INSERT INTO
                     carbon_intensity.metadata (
                         dataset_id,
@@ -316,54 +308,54 @@ async def generate_grid_co2(
                         is_regional,
                         site_id)
                 VALUES ($1, $2, $3, $4, $5)""",
-                metadata.dataset_id,
-                metadata.created_at,
-                metadata.data_source,
-                metadata.is_regional,
-                metadata.site_id,
-            )
+            metadata.dataset_id,
+            metadata.created_at,
+            metadata.data_source,
+            metadata.is_regional,
+            metadata.site_id,
+        )
 
-            await conn.copy_records_to_table(
-                schema_name="carbon_intensity",
-                table_name="grid_co2",
-                columns=[
-                    "dataset_id",
-                    "start_ts",
-                    "end_ts",
-                    "forecast",
-                    "actual",
-                    "gas",
-                    "coal",
-                    "biomass",
-                    "nuclear",
-                    "hydro",
-                    "imports",
-                    "other",
-                    "wind",
-                    "solar",
-                ],
-                records=zip(
-                    itertools.repeat(metadata.dataset_id, len(all_data)),
-                    [item["start_ts"] for item in all_data],
-                    [item["end_ts"] for item in all_data],
-                    [item.get("forecast") for item in all_data],
-                    [item.get("actual") for item in all_data],
-                    [item.get("gas") for item in all_data],
-                    [item.get("coal") for item in all_data],
-                    [item.get("biomass") for item in all_data],
-                    [item.get("nuclear") for item in all_data],
-                    [item.get("hydro") for item in all_data],
-                    [item.get("imports") for item in all_data],
-                    [item.get("other") for item in all_data],
-                    [item.get("wind") for item in all_data],
-                    [item.get("solar") for item in all_data],
-                    strict=True,
-                ),
-            )
+        await conn.copy_records_to_table(
+            schema_name="carbon_intensity",
+            table_name="grid_co2",
+            columns=[
+                "dataset_id",
+                "start_ts",
+                "end_ts",
+                "forecast",
+                "actual",
+                "gas",
+                "coal",
+                "biomass",
+                "nuclear",
+                "hydro",
+                "imports",
+                "other",
+                "wind",
+                "solar",
+            ],
+            records=zip(
+                itertools.repeat(metadata.dataset_id, len(all_data)),
+                [item["start_ts"] for item in all_data],
+                [item["end_ts"] for item in all_data],
+                [item.get("forecast") for item in all_data],
+                [item.get("actual") for item in all_data],
+                [item.get("gas") for item in all_data],
+                [item.get("coal") for item in all_data],
+                [item.get("biomass") for item in all_data],
+                [item.get("nuclear") for item in all_data],
+                [item.get("hydro") for item in all_data],
+                [item.get("imports") for item in all_data],
+                [item.get("other") for item in all_data],
+                [item.get("wind") for item in all_data],
+                [item.get("solar") for item in all_data],
+                strict=True,
+            ),
+        )
 
-            if params.bundle_metadata is not None:
-                assert params.bundle_metadata.dataset_type == DatasetTypeEnum.CarbonIntensity
-                await file_self_with_bundle(pool=pool, bundle_metadata=params.bundle_metadata)
+        if params.bundle_metadata is not None:
+            assert params.bundle_metadata.dataset_type == DatasetTypeEnum.CarbonIntensity
+            await file_self_with_bundle(pool=pool, bundle_metadata=params.bundle_metadata)
 
     logger.info(f"Grid CO2 generation {metadata.dataset_id} completed.")
     return metadata

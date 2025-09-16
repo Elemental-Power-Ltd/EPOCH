@@ -42,7 +42,7 @@ class Database:
     ) -> None:
         if dsn is not None and host is not None:
             raise ValueError("Must provide either one of host or dsn, but got both.")
-        elif dsn is None and host is None:
+        if dsn is None and host is None:
             raise ValueError("Must provide either one of host or dsn, but got neither")
 
         self.dsn = dsn  # might be None
@@ -69,7 +69,7 @@ class Database:
         """
         if self.pool is not None:
             logger.warning("Pool aready created for DB")
-            return None
+            return
 
         try:
             if self.dsn is not None:
@@ -117,7 +117,7 @@ async def get_http_client() -> HTTPClient:
     """
     timeout_s_ = datetime.timedelta(seconds=60).total_seconds()
     http_limits = httpx.Limits(max_keepalive_connections=16, keepalive_expiry=timeout_s_)
-    http_client = httpx.AsyncClient(
+    return httpx.AsyncClient(
         timeout=httpx.Timeout(
             pool=None,
             connect=timeout_s_,
@@ -126,7 +126,6 @@ async def get_http_client() -> HTTPClient:
         ),
         limits=http_limits,
     )
-    return http_client
 
 
 async def get_db_conn() -> AsyncGenerator[DBConnection]:

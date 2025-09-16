@@ -188,5 +188,4 @@ async def get_home_mini_readings(
     df.export = df.export.astype(float)
     df.demand = df.demand.astype(float)
     df.consumptionDelta = df.consumptionDelta.astype(float)
-    df = df.set_index(df.start_ts).sort_index()
-    return df
+    return df.set_index(df.start_ts).sort_index()

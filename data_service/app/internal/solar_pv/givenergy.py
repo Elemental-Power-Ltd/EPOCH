@@ -136,7 +136,7 @@ def get_givenergy_day(
                 raise ValueError(
                     f"Couldn't find GivEnergy data for serial number {serial_number}." + " Is it the correct component?"
                 )
-            elif resp.json()["message"] == "This action is unauthorized.":
+            if resp.json()["message"] == "This action is unauthorized.":
                 raise ValueError(f"Unauthorized for serial number {serial_number}." + " Is it the correct component?")
             raise ValueError(resp.text)
 

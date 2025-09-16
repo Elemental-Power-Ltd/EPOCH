@@ -79,7 +79,7 @@ def celsius_to_kelvin[T: (npt.NDArray[np.floating], float, pd.Series)](temperatu
             f"{temperature} out of range of likely °C values [-50, 100). Have you already converted it?"
         )
     else:
-        assert np.all(np.logical_and(-50 <= temperature, temperature < 100)), (
+        assert np.all(np.logical_and(temperature >= -50, temperature < 100)), (
             f"{temperature} out of range of likely °C values [-50, 100). Have you already converted it?"
         )
     return temperature + 273.15
@@ -105,7 +105,7 @@ def kelvin_to_celsius[T: (npt.NDArray[np.floating], float, pd.Series)](temperatu
             f"{temperature} out of range of likely K values [0, 373.15]. Have you already converted it?"
         )
     else:
-        assert np.all(np.logical_and(0 <= temperature, temperature < 373.15)), (
+        assert np.all(np.logical_and(temperature >= 0, temperature < 373.15)), (
             f"{temperature} out of range of likely K values [0, 373.15]. Have you already converted it?"
         )
     return temperature - 273.15
@@ -150,7 +150,7 @@ def millibar_to_megapascal[T: (npt.NDArray[np.floating], float, pd.Series)](pres
             f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
         )
     else:
-        assert np.all(np.logical_and(800 < pressure, pressure < 1100)), (
+        assert np.all(np.logical_and(pressure > 800, pressure < 1100)), (
             f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
         )
     return pressure / 10000
@@ -179,7 +179,7 @@ def pa_to_mbar[T: (npt.NDArray[np.floating], float, pd.Series)](pressure: T) -> 
             f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
         )
     else:
-        assert np.all(np.logical_and(9e4 < pressure, pressure < 1.1e5)), (
+        assert np.all(np.logical_and(pressure > 9e4, pressure < 1.1e5)), (
             f"{pressure} out of range of likely mbar values [800, 1100). Have you already converted it?"
         )
     return pressure / 100
@@ -213,22 +213,22 @@ def relative_to_specific_humidity[T: (npt.NDArray[np.floating], float, pd.Series
     if isinstance(rel_hum, float | int):
         assert 0 <= rel_hum <= 100, f"Relative humidity must be in range [0, 100]. Got {rel_hum}"
     else:
-        bad_mask = ~np.logical_and(0.0 <= rel_hum, rel_hum <= 100.0)
-        assert np.all(np.logical_and(0.0 <= rel_hum, rel_hum <= 100.0)), (
+        bad_mask = ~np.logical_and(rel_hum >= 0.0, rel_hum <= 100.0)
+        assert np.all(np.logical_and(rel_hum >= 0.0, rel_hum <= 100.0)), (
             f"All relative humidities must be in range [0, 100]. Got {rel_hum[bad_mask]}."
         )
 
     if isinstance(air_temp, float | int):
         assert -50 <= air_temp < 100, f"{air_temp} out of range of likely °C values [-50, 100). Have you already converted it?"
     else:
-        assert np.all(np.logical_and(-50.0 <= air_temp, air_temp < 100.0)), (
+        assert np.all(np.logical_and(air_temp >= -50.0, air_temp < 100.0)), (
             f"{air_temp} out of range of likely °C values [-50, 100). Have you already converted it?"
         )
 
     if isinstance(air_pressure, float | int):
         assert 900 <= air_pressure < 1100, "air pressure must be in the range [900, 1100)"
     else:
-        assert np.all(np.logical_and(900 <= air_pressure, air_pressure < 1100.0)), (
+        assert np.all(np.logical_and(air_pressure >= 900, air_pressure < 1100.0)), (
             f"{air_pressure} out of range of likely values [900, 1100). Is it in the right units?"
         )
 

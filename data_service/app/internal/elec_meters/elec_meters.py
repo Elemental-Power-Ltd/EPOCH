@@ -54,9 +54,7 @@ def is_valid_square_hh_dataframe(obj: Any) -> TypeGuard[SquareHHDataFrame]:
     if pd.isna(obj).any().any():
         return False
 
-    if not isinstance(obj.index, pd.DatetimeIndex):
-        return False
-    return True
+    return isinstance(obj.index, pd.DatetimeIndex)
 
 
 class DayTypeEnum(enum.IntEnum):
@@ -221,7 +219,7 @@ def daily_to_hh_eload(
     """
     if resid_model_path is not None and target_hh_observed_df is not None:
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided both")
-    elif resid_model_path is None and target_hh_observed_df is None:
+    if resid_model_path is None and target_hh_observed_df is None:
         raise ValueError("Exactly one of 'resid_model_path' or 'target_hh_observed_df' must be provided but provided neither.")
     weekend_inds = frozenset(weekend_inds)  # to guarantee immutability
 
@@ -428,7 +426,11 @@ def daily_to_hh_eload_observed(
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
     sims = np.asarray([
-        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        ARMA_model_inactive.generate_sample(
+            nsample=48,
+            scale=1.0,
+            distrvs=lambda size, e=eps[i]: e,  # noqa: ARG005
+        )
         for i in range(num_inactive)
     ])
     # - scale by fitted heteroskedasticity factors
@@ -442,7 +444,12 @@ def daily_to_hh_eload_observed(
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
     sims = np.asarray([
-        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+        ARMA_model_active.generate_sample(
+            nsample=48,
+            scale=1.0,
+            distrvs=lambda size, e=eps[i]: e,  # noqa: ARG005
+        )
+        for i in range(num_active)
     ])
 
     assert var_model_active is not None
@@ -634,7 +641,11 @@ def daily_to_hh_eload_pretrained(
     # - then pre-generate white noise to reduce runtime...
     eps = rng.normal(scale=ARMA_scale_inactive_target, size=(num_inactive, 48))
     sims = np.asarray([
-        ARMA_model_inactive.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)
+        ARMA_model_inactive.generate_sample(
+            nsample=48,
+            scale=1.0,
+            distrvs=lambda size, e=eps[i]: e,  # noqa: ARG005
+        )
         for i in range(num_inactive)
     ])
     # - scale by fitted heteroskedasticity factors
@@ -645,7 +656,8 @@ def daily_to_hh_eload_pretrained(
     num_active = target_daily_active_df.shape[0]
     eps = rng.normal(scale=ARMA_scale_active_target, size=(num_active, 48))
     sims = np.asarray([
-        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e) for i in range(num_active)
+        ARMA_model_active.generate_sample(nsample=48, scale=1.0, distrvs=lambda size, e=eps[i]: e)  # noqa: ARG005
+        for i in range(num_active)
     ])
 
     scaled_sims = np.sqrt(default_var_factors_active) * sims

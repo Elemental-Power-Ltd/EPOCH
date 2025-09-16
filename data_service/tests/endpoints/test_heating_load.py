@@ -185,7 +185,6 @@ class TestHeatingLoad:
         assert got_metadata.status_code == 200, got_metadata.text
         got_datasets = got_metadata.json()
         assert "heat" in got_datasets, got_datasets.keys()
-        print(got_metadata.json()["heat"]["data"])
         assert len(got_datasets["heat"]["data"]) == 2
         assert got_datasets["heat"]["data"][1]["cost"] > 100
         assert len(got_datasets["heat"]["data"][1]["reduced_hload"]) == 1488
@@ -387,7 +386,6 @@ class TestPHPPHeatingLoad:
         hload_resp = await client.post("/get-heating-load", json={"dataset_id": dataset_ids})
         assert hload_resp.status_code == 200
         hload_data = hload_resp.json()["data"]
-        print(len(hload_data), hload_data[0].keys())
         all_costs = [item["cost"] for item in hload_data]
         # skip the "do nothing" cost
         assert all(item > 0 for item in all_costs[1:])

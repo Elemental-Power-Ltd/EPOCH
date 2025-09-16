@@ -119,10 +119,7 @@ def check_latitude_longitude(latitude: float, longitude: float) -> bool:
     if latitude < 49.959999905:
         return False
 
-    if latitude > 58.6350001085:
-        return False
-
-    return True
+    return not latitude > 58.6350001085
 
 
 def split_into_sessions[T: (float, int, datetime.datetime, datetime.date, pd.Timestamp)](

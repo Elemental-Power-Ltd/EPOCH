@@ -195,10 +195,9 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
     hload_df["hdd"] = hh_bait_hdd
 
     # TODO (2024-06-28 MHJB): Add different options for how to assign DHW and heating (even, greedy, poisson)
-    hload_df = assign_hh_dhw_even(hload_df, dhw_kwh=mdl.coef_[0, 0], hdd_kwh=mdl.coef_[0, 1])
+    return assign_hh_dhw_even(hload_df, dhw_kwh=mdl.coef_[0, 0], hdd_kwh=mdl.coef_[0, 1])
 
     # TODO (2024-06-28 MHJB): add a "normalise to monthly readings" feature
-    return hload_df
 
 
 def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame, apply_bait: bool = True) -> BaitAndModelCoefs:

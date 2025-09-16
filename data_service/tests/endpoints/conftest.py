@@ -261,7 +261,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
                 )
             yield client
             await queue.join()
-            raise TerminateTaskGroup()
+            raise TerminateTaskGroup
     except* TerminateTaskGroup:
         pass
 

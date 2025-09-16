@@ -37,7 +37,7 @@ JobQueueDep = Annotated[TrackingQueue, Depends(get_job_queue)]
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
+async def lifespan(app: FastAPI) -> AsyncIterator[Never]:  # noqa: ARG001
     """Set up a long clients: a database pool and an HTTP client."""
     # Startup events
     loop = asyncio.get_running_loop()
@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:
             # We've received a SIGTERM so wait 10s for stragglers to finish, then kill the task
             # and tidy up.
             await asyncio.wait_for(queue.join(), FINAL_JOIN_TIMEOUT.total_seconds())
-            raise TerminateTaskGroup()
+            raise TerminateTaskGroup
     except* TerminateTaskGroup:
         pass
     except* TimeoutError:

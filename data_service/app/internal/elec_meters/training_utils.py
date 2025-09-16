@@ -127,8 +127,7 @@ def load_and_process_DfT(file_path: pathlib.Path) -> pd.DataFrame:
     df.index = pd.to_datetime(df.index, dayfirst=True)
     # converts to a datetime index, preserves unit of measurement, expects day first
 
-    df = add_covariates(df)
-    return df
+    return add_covariates(df)
 
 
 def load_and_process_long(file_path: pathlib.Path) -> pd.DataFrame:
@@ -140,8 +139,7 @@ def load_and_process_long(file_path: pathlib.Path) -> pd.DataFrame:
     df = df.pivot_table(index="date", columns="time", values="value")
 
     df.index = pd.to_datetime(df.index, dayfirst=True)
-    df = add_covariates(df)
-    return df
+    return add_covariates(df)
 
 
 def vae_loss_function_simple(
@@ -217,8 +215,7 @@ def gaussian_lowpass_downsample(x: torch.Tensor, scale: int, kernel_size: int = 
 
     # Reshape and permute to [batch_size, n_days, -1, features]
     x = x.permute(0, 2, 1)
-    x = x.reshape(batch_size, n_days, -1, features)
-    return x
+    return x.reshape(batch_size, n_days, -1, features)
 
 
 def multiscale_l1_loss(
@@ -547,8 +544,7 @@ def kl_annealing_scheduler(
         if annealing_epochs > 0:
             x = 10 * (adjusted_epoch - annealing_epochs / 2) / annealing_epochs
             return cast(float, target_weight / (1 + np.exp(-x)))
-        else:
-            return target_weight
+        return target_weight
 
     if annealing_strategy == "cyclical":
         if annealing_epochs > 0:
@@ -557,16 +553,14 @@ def kl_annealing_scheduler(
             position = adjusted_epoch % cycle_size
             if cycle % 2 == 0:  # Even cycle: anneal
                 return start_weight + (target_weight - start_weight) * position / cycle_size
-            else:  # Odd cycle: use target weight
-                return target_weight
-        else:
+            # Odd cycle: use target weight
             return target_weight
+        return target_weight
 
     if annealing_strategy is None:
         return target_weight
-    else:
-        warnings.warn("Incorrect specification of annealing_strategy - defaulting to None", stacklevel=2)
-        return target_weight
+    warnings.warn("Incorrect specification of annealing_strategy - defaulting to None", stacklevel=2)
+    return target_weight
 
 
 def train_model(

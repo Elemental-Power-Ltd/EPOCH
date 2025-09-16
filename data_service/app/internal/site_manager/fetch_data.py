@@ -41,7 +41,7 @@ async def fetch_all_input_data(
 
         def result(self) -> None:
             """Return a boring None value for this dummy task."""
-            return None
+            return
 
     try:
         async with asyncio.TaskGroup() as tg:

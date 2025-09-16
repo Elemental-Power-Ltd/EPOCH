@@ -32,8 +32,7 @@ async def get_heating_cost_thermal_model(thermal_model: ThermalModelResult, inte
     float
         Cost in GBP of applying interventions to this building.
     """
-    costs = calculate_intervention_costs_params(thermal_model, interventions=interventions)
-    return costs
+    return calculate_intervention_costs_params(thermal_model, interventions=interventions)
 
 
 @api_router.post("/get-intervention-cost", tags=["get", "heating"])

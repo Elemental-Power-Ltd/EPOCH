@@ -43,7 +43,7 @@ async def get_wholesale_costs(
         base_url = "https://data.elexon.co.uk/bmrs/api/v1/balancing/pricing/market-index"
         params = {"from": s_ts.isoformat(), "to": e_ts.isoformat(), "format": "json", "dataProviders": "APXMIDP"}
         resp = await client.get(base_url, params=params)
-        if not resp.status_code == 200:
+        if resp.status_code != 200:
             logger.warning(f"Could not get data from Elexon for {resp.url}")
             continue
         all_data.extend(resp.json()["data"])
@@ -51,5 +51,4 @@ async def get_wholesale_costs(
     df = df.pivot_table(columns="dataProvider", index="startTime", values="price")
     df.index = pd.to_datetime(df.index, format="ISO8601")
     df = df.ffill().bfill()
-    df = df[["APXMIDP"]].rename(columns={"APXMIDP": "cost"})
-    return df
+    return df[["APXMIDP"]].rename(columns={"APXMIDP": "cost"})
