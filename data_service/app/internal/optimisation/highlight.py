@@ -58,7 +58,7 @@ def find_best_carbon_balance(portfolio_results: list[PortfolioOptimisationResult
             key=lambda r: (r.metrics.carbon_balance_scope_1 + r.metrics.carbon_balance_scope_2),  # type: ignore
         )
         return HighlightedResult(portfolio_id=best_carbon_balance.portfolio_id,
-                                 reason=HighlightReason.BestCarbonBalance, display_name="Best carbon balance")
+                                 reason=HighlightReason.BestCarbonBalance, display_name="Best carbon savings")
     return None
 
 
@@ -80,7 +80,7 @@ def find_best_cost_balance(portfolio_results: list[PortfolioOptimisationResult])
     if valid_cost:
         best_cost_balance = max(valid_cost, key=lambda r: r.metrics.cost_balance)  # type: ignore
         return HighlightedResult(portfolio_id=best_cost_balance.portfolio_id,
-                                 reason=HighlightReason.BestCostBalance, display_name="Best cost balance")
+                                 reason=HighlightReason.BestCostBalance, display_name="Best cost savings")
     return None
 
 
