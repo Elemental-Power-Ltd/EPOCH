@@ -16,7 +16,7 @@ logger = logging.getLogger("default")
 
 type Jsonable = dict[str, Jsonable] | list[Jsonable] | str | int | float | bool | None
 
-type HTTPClient = httpx.AsyncClient
+type HTTPClient = CachedAsyncClient
 
 
 def url_to_hash(url: str, params: dict[str, Any] | None = None, max_len: int | None = None) -> str:
@@ -117,6 +117,10 @@ class LRUCache:
         if len(self.cache) > self.max_size:
             # Pop least recently used (first item)
             self.cache.popitem(last=False)
+
+    def clear(self) -> None:
+        """Clear the cache."""
+        self.cache.clear()
 
 
 class CachedAsyncClient(httpx.AsyncClient):
