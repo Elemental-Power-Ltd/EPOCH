@@ -31,7 +31,7 @@ def find_best_payback_horizon(portfolio_results: list[PortfolioOptimisationResul
         return HighlightedResult(
             portfolio_id=best_payback.portfolio_id,
             reason=HighlightReason.BestPaybackHorizon,
-            display_name="Best payback horizon",
+            display_name="Best Payback Horizon",
             suggested_metric="payback_horizon"
         )
     return None
@@ -57,7 +57,7 @@ def find_best_carbon_savings(portfolio_results: list[PortfolioOptimisationResult
         return HighlightedResult(
             portfolio_id=best_carbon_balance.portfolio_id,
             reason=HighlightReason.BestCarbonBalance,
-            display_name="Best carbon savings",
+            display_name="Best Carbon Savings",
             suggested_metric="carbon_balance_total"
         )
     return None
@@ -83,7 +83,7 @@ def find_best_cost_savings(portfolio_results: list[PortfolioOptimisationResult])
         return HighlightedResult(
             portfolio_id=best_cost_balance.portfolio_id,
             reason=HighlightReason.BestCostBalance,
-            display_name="Best cost savings",
+            display_name="Best Cost Savings",
             suggested_metric="cost_balance"
         )
     return None
