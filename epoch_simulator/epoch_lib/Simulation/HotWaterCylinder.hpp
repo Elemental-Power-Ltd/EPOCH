@@ -16,7 +16,7 @@ public:
 		mTimestep_seconds(std::chrono::duration<float>(siteData.timestep_interval_s).count()),// set up timestep seconds in constructor
 		mTimestep_hours(siteData.timestep_hours),
 		mCapacity_h(calculate_Capacity_h()), // calculate tank energy capacity in constructor
-		mCylinderStartSoC_h(calculate_Capacity_h()), // set start SoC to full for now
+		mCylinderStartSoC_h(0.0), // set start SoC to empty; this will cause an initial charge but not give us free energy
 		mHeat_pump_power_h(heatPumpData.heat_power), // will need to calculate energy per timestep
 		mDHW_charging(Eigen::VectorXf::Zero(siteData.timesteps)),
 		mDHW_discharging(siteData.dhw_demand),
