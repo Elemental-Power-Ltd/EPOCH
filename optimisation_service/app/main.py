@@ -21,15 +21,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     queue = get_queue()
     app.state.start_time = datetime.datetime.now(datetime.UTC)
     http_client = await get_http_client()
-    async with asyncio.TaskGroup() as tg:
-        task = tg.create_task(process_tasks(queue=queue, http_client=http_client))
-        yield
-        # Shutdown events
-        try:
-            await asyncio.wait_for(queue.join(), timeout=10.0)
-        except TimeoutError:
-            print("Failed to shutdown queue.")
-        task.cancel()
+    try:
+        async with asyncio.TaskGroup() as tg:
+            task = tg.create_task(process_tasks(queue=queue, http_client=http_client))
+            yield
+            # Shutdown events
+            try:
+                await asyncio.wait_for(queue.join(), timeout=10.0)
+            except TimeoutError:
+                print("Failed to shutdown queue.")
+            task.cancel()
+    except* Exception as eg:
+        for e in eg.exceptions:
+            logger.exception("Got exception:", repr(e))
+        raise
 
 
 app = FastAPI(lifespan=lifespan, title="Optimisation", root_path="/api/optimisation")
