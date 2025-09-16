@@ -1,5 +1,4 @@
 import logging
-from typing import cast
 
 logger = logging.getLogger("default")
 
@@ -19,6 +18,6 @@ def get_epoch_version() -> str:
     if _EPOCH_VERSION is None:
         import epoch_simulator
 
-        _EPOCH_VERSION = cast(str, epoch_simulator.__version__)  # type: ignore
+        _EPOCH_VERSION = epoch_simulator.__version__
 
     return _EPOCH_VERSION
