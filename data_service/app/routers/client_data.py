@@ -28,6 +28,7 @@ from ..models.core import (
     SiteData,
     SiteID,
     SiteIdNamePair,
+    dataset_id_t,
     location_t,
 )
 from ..models.epoch_types.task_data_type import Building, Config, GasHeater, Grid, TaskData
@@ -38,7 +39,7 @@ logger = getLogger(__name__)
 
 
 @router.post("/add-site-baseline", tags=["db", "baseline", "site"])
-async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDep) -> None:
+async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDep) -> dataset_id_t:
     """
     Add the baseline configuration for a site in the database.
 
@@ -60,7 +61,8 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
 
     Returns
     -------
-    None
+    dataset_id_t
+        The ID of the newly inserted baseline.
     """
     if baseline.building is not None and baseline.building.floor_area is None:
         all_phpps = await list_phpp(site_id=site_id, pool=pool)
@@ -72,16 +74,19 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
         else:
             logger.warning(f"No floor area provided for {site_id.site_id}, and couldn't find any PHPPs")
 
+    baseline_id = uuid7()
     try:
         await pool.execute(
             """
             INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
-            uuid7(),
+            baseline_id,
             site_id.site_id,
             baseline.model_dump_json(),
         )
     except asyncpg.exceptions.ForeignKeyViolationError as ex:
         raise HTTPException(400, f"Site {site_id.site_id} not found in the database.") from ex
+    else:
+        return baseline_id
 
 
 async def get_default_baseline() -> TaskData:

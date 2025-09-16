@@ -658,7 +658,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         )
 
         baseline_task = tg.create_task(
-            pool.fetchval(
+            pool.fetchrow(
                 """
                 SELECT
                     baseline_id,
@@ -672,10 +672,13 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         )
     gas_meter_dataset_id = gas_dataset_task.result()
     elec_meter_dataset_id = elec_meter_dataset_task.result()
-    if baseline_task.result() is not None:
-        baseline_id, baseline_tariff_id = baseline_task.result()
+
+    baseline_result = baseline_task.result()
+    if baseline_result is not None:
+        baseline_id, baseline_tariff_id = baseline_result
     else:
         baseline_id, baseline_tariff_id = None, None
+
     if gas_meter_dataset_id is None:
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset_id is None:
