@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from epoch_simulator import Building, Simulator, TaskData
 
-from app.internal.epoch_utils import simulation_result_to_metric_dict
+from app.internal.epoch.converters import simulation_result_to_metric_dict
 from app.internal.portfolio_simulator import PortfolioSimulator, simulate_scenario
 from app.models.epoch_types.site_range_type import Config
 from app.models.ga_utils import AnnotatedTaskData

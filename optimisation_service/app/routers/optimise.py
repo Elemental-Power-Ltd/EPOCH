@@ -8,7 +8,6 @@ from app.dependencies import HttpClientDep, QueueDep
 from app.internal.constraints import apply_default_constraints
 from app.internal.database.site_data import fetch_portfolio_data
 from app.internal.database.tasks import transmit_task
-from app.internal.epoch_utils import get_epoch_version
 from app.internal.site_range import count_parameters_to_optimise
 from app.models.core import (
     Task,
@@ -51,8 +50,6 @@ async def submit_portfolio(task: Task, http_client: HttpClientDep, queue: QueueD
         task.portfolio, task.portfolio_constraints = apply_default_constraints(
             existing_portfolio=task.portfolio, existing_constraints=task.portfolio_constraints
         )
-        simulator_version = get_epoch_version()
-        task.epoch_version = simulator_version
         save_parameters(task=task)
         await transmit_task(task=task, http_client=http_client)
         await queue.put(task)

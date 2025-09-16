@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from app.dependencies import HTTPClient
 from app.internal.bayesian.bayesian import Bayesian
 from app.internal.database.results import process_results, transmit_results
-from app.internal.epoch_utils import check_epoch_version
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.queue import IQueue
@@ -35,7 +34,6 @@ async def process_tasks(queue: IQueue, http_client: HTTPClient) -> None:
         Asynchronous HTTP client to use for requests.
     """
     logger.info("Initialising worker loop.")
-    check_epoch_version()
     while True:
         logger.info("Awaiting next task from queue.")
         task = await queue.get()

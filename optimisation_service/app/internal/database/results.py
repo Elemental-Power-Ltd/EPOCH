@@ -4,7 +4,7 @@ import logging
 from fastapi.encoders import jsonable_encoder
 
 from app.dependencies import HTTPClient
-from app.internal.epoch_utils import simulation_result_to_pydantic
+from app.internal.epoch.converters import simulation_result_to_pydantic
 from app.internal.ga_utils import strip_annotations
 from app.internal.uuid7 import uuid7
 from app.models.core import (

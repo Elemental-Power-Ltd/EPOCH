@@ -7,7 +7,7 @@ from fastapi import APIRouter
 
 from app.dependencies import HttpClientDep
 from app.internal.database.site_data import get_latest_site_data_bundle, get_saved_epoch_input
-from app.internal.epoch_utils import simulation_result_to_pydantic
+from app.internal.epoch.converters import simulation_result_to_pydantic
 from app.models.epoch_types import ReportData
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.simulate import (

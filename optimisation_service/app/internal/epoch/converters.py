@@ -1,7 +1,6 @@
 """Wrappers for Epoch that are more ergonomic for python."""
 
 import json
-import logging
 from typing import cast
 
 from epoch_simulator import CapexBreakdown, SimulationResult, TaskData
@@ -10,48 +9,7 @@ from app.models.core import CostInfo, Grade, SimulationMetrics
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric, MetricValues
 
-logger = logging.getLogger("default")
-
 type Jsonable = float | int | str | dict[str, Jsonable]
-
-_EPOCH_VERSION: str | None = None
-
-
-def get_epoch_version() -> str:
-    """
-    Get the version of the epoch.
-
-    Returns
-    -------
-        A version string (probably Major.Minor.Patch)
-
-    """
-    global _EPOCH_VERSION
-    if _EPOCH_VERSION is None:
-        import epoch_simulator
-
-        _EPOCH_VERSION = epoch_simulator.__version__  # type: ignore
-
-    return _EPOCH_VERSION
-
-
-def check_epoch_version() -> str | None:
-    """
-    Check that we can get the epoch_simulator's version and log it for information.
-
-    Returns
-    -------
-    str | None
-        The version string of the epoch_simulator (if available, None otherwise)
-    """
-    try:
-        simulator_version = get_epoch_version()
-        logger.info(f"Using EPOCH version: {simulator_version}")
-    except Exception as e:
-        simulator_version = None
-        logger.warning(f"Failed to fetch epoch_simulator version! {e}")
-
-    return simulator_version
 
 
 def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list[CostInfo]:

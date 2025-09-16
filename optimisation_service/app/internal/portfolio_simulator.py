@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 from epoch_simulator import SimulationResult, Simulator, TaskData, aggregate_site_results
 
-from app.internal.epoch_utils import simulation_result_to_metric_dict
+from app.internal.epoch.converters import simulation_result_to_metric_dict
 from app.models.epoch_types.site_range_type import Config as PydanticConfig
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.result import PortfolioSolution, SiteSolution

@@ -9,6 +9,8 @@ You can't import this file, but it's useful for static analysis.
 import typing
 from enum import Enum
 
+__version__: str
+
 class RatingGrade(Enum):
     A = "A"
     B = "B"
