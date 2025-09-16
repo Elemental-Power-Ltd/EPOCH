@@ -18,6 +18,7 @@ from .import_tariffs import TariffMetadata
 class BundleHints(pydantic.BaseModel):
     """GUI suitable hints and metadata for bundled datasets."""
 
+    site_id: site_id_t = site_id_field
     renewables: list[SolarLocation] | None = pydantic.Field(
         default=None, description="Solar locations associated with each renewables generation."
     )

@@ -975,34 +975,98 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
     bundle_meta = await list_bundle_contents(bundle_id=bundle_id, pool=pool)
     assert bundle_meta is not None
 
-    if bundle_meta.SiteBaseline is not None:
-        baseline_id = bundle_meta.SiteBaseline.dataset_id
-        baseline = await get_baseline(site_or_dataset_id=DatasetID(dataset_id=baseline_id), pool=pool)
-    else:
-        baseline = None
+    # This requires a lot of requests, so do it in an async-y manner to get them all in parallel
+    async with asyncio.TaskGroup() as tg:
+        if bundle_meta.SiteBaseline is not None:
+            baseline_task = tg.create_task(
+                get_baseline(site_or_dataset_id=DatasetID(dataset_id=bundle_meta.SiteBaseline.dataset_id), pool=pool)
+            )
+        else:
+            baseline_task = None
 
-    if isinstance(bundle_meta.ImportTariff, list):
-        tariff_recs = await pool.fetch(
-            """
-            SELECT
-                tm.dataset_id,
-                dataset_order,
-                tm.provider,
-                tm.product_name,
-                tm.tariff_name,
-                tm.valid_from,
-                tm.valid_to
-            FROM data_bundles.dataset_links AS dl
-            LEFT JOIN data_bundles.metadata AS dm
-                on dl.bundle_id = dm.bundle_id
-            LEFT JOIN tariffs.metadata AS tm
-                ON dl.dataset_id = tm.dataset_id
-            WHERE
-                dataset_type = 'ImportTariff' AND dm.bundle_id = $1
-            ORDER BY dataset_order ASC""",
-            bundle_id,
-        )
-        tariff_hints = [
+        if isinstance(bundle_meta.ImportTariff, list):
+            tariff_task = tg.create_task(
+                pool.fetch(
+                    """
+                SELECT
+                    tm.dataset_id,
+                    dataset_order,
+                    tm.provider,
+                    tm.product_name,
+                    tm.tariff_name,
+                    tm.valid_from,
+                    tm.valid_to
+                FROM data_bundles.dataset_links AS dl
+                LEFT JOIN data_bundles.metadata AS dm
+                    on dl.bundle_id = dm.bundle_id
+                LEFT JOIN tariffs.metadata AS tm
+                    ON dl.dataset_id = tm.dataset_id
+                WHERE
+                    dataset_type = 'ImportTariff' AND dm.bundle_id = $1
+                ORDER BY dataset_order ASC""",
+                    bundle_id,
+                )
+            )
+        else:
+            tariff_task = None
+
+        if bundle_meta.RenewablesGeneration is not None:
+            solar_task = tg.create_task(
+                pool.fetch(
+                    """
+                SELECT
+                    dataset_id,
+                    dataset_order,
+                    renewables_location_id,
+                    sl.name,
+                    sl.mounting_type,
+                    sl.tilt,
+                    sl.azimuth,
+                    sl.maxpower
+                FROM data_bundles.dataset_links AS dl
+                LEFT JOIN data_bundles.metadata AS dm
+                    on dl.bundle_id = dm.bundle_id
+                LEFT JOIN client_info.solar_locations AS sl
+                    ON sl.renewables_location_id = REPLACE(dl.dataset_subtype, '"', '')
+                WHERE dataset_type = 'RenewablesGeneration' AND dm.bundle_id = $1
+                ORDER BY dataset_order ASC;""",
+                    bundle_id,
+                )
+            )
+        else:
+            solar_task = None
+
+        if bundle_meta.HeatingLoad is not None:
+            heating_task = tg.create_task(
+                pool.fetch(
+                    """
+                SELECT
+                    hm.dataset_id,
+                    dataset_order,
+                    hm.interventions,
+                    hm.params,
+                    hm.peak_hload,
+                    hm.created_at,
+                    hm.params['generation_method'] AS generation_method
+                FROM data_bundles.dataset_links AS dl
+                LEFT JOIN data_bundles.metadata AS dm
+                    on dl.bundle_id = dm.bundle_id
+                LEFT JOIN heating.metadata AS hm
+                    ON dl.dataset_id = hm.dataset_id
+                WHERE dataset_type = 'HeatingLoad' AND dm.bundle_id = $1
+                ORDER BY dataset_order ASC;""",
+                    bundle_id,
+                )
+            )
+
+        else:
+            heating_task = None
+
+    # Now we've got all the results, turn them into nice pydantic formats where needed
+    baseline = baseline_task.result() if baseline_task is not None else None
+
+    tariff_hints = (
+        [
             TariffMetadata(
                 dataset_id=item["dataset_id"],
                 site_id=bundle_meta.site_id,
@@ -1012,33 +1076,14 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
                 valid_from=item["valid_from"],
                 valid_to=item["valid_to"],
             )
-            for item in tariff_recs
+            for item in tariff_task.result()
         ]
-    else:
-        tariff_hints = None
+        if tariff_task is not None
+        else None
+    )
 
-    if bundle_meta.RenewablesGeneration is not None:
-        solar_locns_rec = await pool.fetch(
-            """
-            SELECT
-                dataset_id,
-                dataset_order,
-                renewables_location_id,
-                sl.name,
-                sl.mounting_type,
-                sl.tilt,
-                sl.azimuth,
-                sl.maxpower
-            FROM data_bundles.dataset_links AS dl
-            LEFT JOIN data_bundles.metadata AS dm
-                on dl.bundle_id = dm.bundle_id
-            LEFT JOIN client_info.solar_locations AS sl
-                ON sl.renewables_location_id = REPLACE(dl.dataset_subtype, '"', '')
-            WHERE dataset_type = 'RenewablesGeneration' AND dm.bundle_id = $1
-            ORDER BY dataset_order ASC;""",
-            bundle_id,
-        )
-        renewables_hints = [
+    renewables_hints = (
+        [
             SolarLocation(
                 site_id=bundle_meta.site_id,
                 renewables_location_id=item["renewables_location_id"],
@@ -1047,32 +1092,14 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
                 tilt=item["tilt"],
                 maxpower=item["maxpower"],
             )
-            for item in solar_locns_rec
+            for item in solar_task.result()
         ]
-    else:
-        renewables_hints = None
+        if solar_task is not None
+        else None
+    )
 
-    if bundle_meta.HeatingLoad is not None:
-        heating_recs = await pool.fetch(
-            """
-            SELECT
-                hm.dataset_id,
-                dataset_order,
-                hm.interventions,
-                hm.params,
-                hm.peak_hload,
-                hm.created_at,
-                hm.params['generation_method'] AS generation_method
-            FROM data_bundles.dataset_links AS dl
-            LEFT JOIN data_bundles.metadata AS dm
-                on dl.bundle_id = dm.bundle_id
-            LEFT JOIN heating.metadata AS hm
-                ON dl.dataset_id = hm.dataset_id
-            WHERE dataset_type = 'HeatingLoad' AND dm.bundle_id = $1
-            ORDER BY dataset_order ASC;""",
-            bundle_id,
-        )
-        heating_hints = [
+    heating_hints = (
+        [
             HeatingLoadMetadata(
                 site_id=bundle_meta.site_id,
                 dataset_id=item["dataset_id"],
@@ -1082,8 +1109,12 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
                 generation_method=HeatingLoadModelEnum(item["generation_method"].replace('"', "")),
                 peak_hload=item["peak_hload"],
             )
-            for item in heating_recs
+            for item in heating_task.result()
         ]
-    else:
-        heating_hints = None
-    return BundleHints(baseline=baseline, tariffs=tariff_hints, renewables=renewables_hints, heating=heating_hints)
+        if heating_task is not None
+        else None
+    )
+
+    return BundleHints(
+        site_id=bundle_meta.site_id, baseline=baseline, tariffs=tariff_hints, renewables=renewables_hints, heating=heating_hints
+    )
