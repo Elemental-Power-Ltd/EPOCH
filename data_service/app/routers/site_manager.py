@@ -7,6 +7,7 @@ import logging
 import uuid
 import warnings
 from collections.abc import Sequence
+from typing import cast
 
 from fastapi import APIRouter, HTTPException
 
@@ -660,7 +661,8 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
             pool.fetchval(
                 """
                 SELECT
-                    baseline_id
+                    baseline_id,
+                    tariff_id
                 FROM client_info.site_baselines
                 WHERE site_id = $1
                 ORDER BY created_at DESC
@@ -670,26 +672,60 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         )
     gas_meter_dataset_id = gas_dataset_task.result()
     elec_meter_dataset_id = elec_meter_dataset_task.result()
-    baseline_id = baseline_task.result()
+    if baseline_task.result() is not None:
+        baseline_id, baseline_tariff_id = baseline_task.result()
+    else:
+        baseline_id, baseline_tariff_id = None, None
     if gas_meter_dataset_id is None:
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset_id is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
 
-    if baseline_id is not None:
-        await file_self_with_bundle(
-            pool,
-            BundleEntryMetadata(
-                bundle_id=bundle_metadata.bundle_id,
-                dataset_id=baseline_id,
-                dataset_type=DatasetTypeEnum.SiteBaseline,
-                dataset_subtype=None,
-            ),
-        )
-
-    # Attach the two meter datasets we've used to this bundle
+    # Attach the two meter datasets we've used to this bundle, as well as the metadata about which
+    # baselines we're using.
+    # Do these as tasks to make DB scheduling easier.
     async with asyncio.TaskGroup() as tg:
-        gas_task_handle = tg.create_task(
+        if baseline_id is not None:
+            tg.create_task(
+                file_self_with_bundle(
+                    pool,
+                    BundleEntryMetadata(
+                        bundle_id=bundle_metadata.bundle_id,
+                        dataset_id=baseline_id,
+                        dataset_type=DatasetTypeEnum.SiteBaseline,
+                        dataset_subtype=None,
+                    ),
+                )
+            )
+        if baseline_tariff_id is not None:
+            tg.create_task(
+                file_self_with_bundle(
+                    pool,
+                    BundleEntryMetadata(
+                        bundle_id=bundle_metadata.bundle_id,
+                        dataset_id=baseline_tariff_id,
+                        dataset_type=DatasetTypeEnum.ImportTariff,
+                        # TODO (2025-09-16 MHJB): is this the correct type to give the baseline tariff?
+                        dataset_subtype="baseline",
+                        # The baseline tariff is always at index 0
+                        dataset_order=0,
+                    ),
+                )
+            )
+        # File the dummy ASHP datasets as part of the bundle
+        tg.create_task(
+            file_self_with_bundle(
+                pool,
+                BundleEntryMetadata(
+                    bundle_id=bundle_metadata.bundle_id,
+                    dataset_id=NULL_UUID,
+                    dataset_type=DatasetTypeEnum.ASHPData,
+                    dataset_subtype=None,
+                ),
+            )
+        )
+        # and finally, the gas and electricity meter data.
+        tg.create_task(
             file_self_with_bundle(
                 pool,
                 BundleEntryMetadata(
@@ -700,7 +736,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
                 ),
             )
         )
-        elec_task_handle = tg.create_task(
+        tg.create_task(
             file_self_with_bundle(
                 pool,
                 BundleEntryMetadata(
@@ -754,9 +790,20 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         SyntheticTariffEnum.Peak,
         SyntheticTariffEnum.Overnight,
         # SyntheticTariffEnum.ShapeShifter,
+        # SyntheticTariffEnum.PowerPurchaseAgreement,
     ]
     tariff_reqs = []
-    for idx, tariff_type in enumerate(CHOSEN_TARIFFS):
+    # Check if there are existing entries in this bundle, and start our counting off from there.
+    # Note that this doesn't happen as a task as it might be affected by the previous jobs.
+    max_existing_tariff_idx = await pool.fetchval(
+        """SELECT MAX(dataset_order) FROM data_bundles.dataset_links WHERE bundle_id = $1 AND dataset_type = $2""",
+        bundle_metadata.bundle_id,
+        DatasetTypeEnum.ImportTariff,
+    )
+    # If there is nothing in the database, start with the fixed tariff at 0.
+    # If not, then start from the next entry.
+    start_tariff_idx = 0 if max_existing_tariff_idx is None else max_existing_tariff_idx + 1
+    for idx, tariff_type in enumerate(CHOSEN_TARIFFS, start=start_tariff_idx):
         tariff_req = TariffRequest(
             site_id=params.site_id,
             tariff_name=tariff_type,
@@ -819,19 +866,6 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
     )
     await queue.put(elec_req)
 
-    # File the dummy ASHP datasets as part of the bundle
-    await file_self_with_bundle(
-        pool,
-        BundleEntryMetadata(
-            bundle_id=bundle_metadata.bundle_id,
-            dataset_id=NULL_UUID,
-            dataset_type=DatasetTypeEnum.ASHPData,
-            dataset_subtype=None,
-        ),
-    )
-    # Check that the gas and electricity metadata tasks were handled okay before we tidy up
-    _ = [gas_task_handle.result(), elec_task_handle.result()]
-
     RESOLUTION = datetime.timedelta(minutes=30)
     # These UUIDs are correct, but the metadata may change slightly (e.g. the created_at provided here is only an estimate).
     # We know that none of the requests here have bundle_metadatas of None, as we've specifically assigned them
@@ -854,7 +888,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         else None,
         HeatingLoad=[
             DatasetEntry(
-                dataset_id=ds_meta.bundle_metadata.dataset_id,  # type: ignore
+                dataset_id=cast(BundleEntryMetadata, ds_meta.bundle_metadata).dataset_id,
                 dataset_type=DatasetTypeEnum.HeatingLoad,
                 created_at=datetime.datetime.now(tz=datetime.UTC),
                 resolution=RESOLUTION,
@@ -875,7 +909,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
             num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
         CarbonIntensity=DatasetEntry(
-            dataset_id=grid_req.bundle_metadata.dataset_id,  # type: ignore
+            dataset_id=cast(BundleEntryMetadata, grid_req.bundle_metadata).dataset_id,
             dataset_type=DatasetTypeEnum.CarbonIntensity,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,
@@ -884,7 +918,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
             num_entries=(params.end_ts - params.start_ts) // RESOLUTION,
         ),
         ElectricityMeterDataSynthesised=DatasetEntry(
-            dataset_id=elec_req.bundle_metadata.dataset_id,  # type: ignore
+            dataset_id=cast(BundleEntryMetadata, elec_req.bundle_metadata).dataset_id,
             dataset_type=DatasetTypeEnum.ElectricityMeterDataSynthesised,
             created_at=datetime.datetime.now(tz=datetime.UTC),
             resolution=RESOLUTION,
@@ -894,7 +928,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         ),
         ImportTariff=[
             DatasetEntry(
-                dataset_id=ds_meta.bundle_metadata.dataset_id,  # type: ignore
+                dataset_id=cast(BundleEntryMetadata, ds_meta.bundle_metadata).dataset_id,
                 dataset_type=DatasetTypeEnum.ImportTariff,
                 created_at=datetime.datetime.now(tz=datetime.UTC),
                 dataset_subtype=ds_meta.tariff_name,
@@ -932,7 +966,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         else None,
         RenewablesGeneration=[
             DatasetEntry(
-                dataset_id=ds_meta.bundle_metadata.dataset_id,  # type: ignore
+                dataset_id=cast(BundleEntryMetadata, ds_meta.bundle_metadata).dataset_id,
                 dataset_type=DatasetTypeEnum.RenewablesGeneration,
                 created_at=datetime.datetime.now(tz=datetime.UTC),
                 resolution=RESOLUTION,

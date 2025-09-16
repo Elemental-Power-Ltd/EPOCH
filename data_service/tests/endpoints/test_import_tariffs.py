@@ -500,3 +500,132 @@ class TestRE24PPA:
         )
         assert len(result.cost.unique()) == 4
         assert not result["cost"].isna().any()
+
+
+class TestImportTariffSpecifiedCosts:
+    """Test that specifying the costs in the tariff request works."""
+
+    @pytest.mark.asyncio
+    async def test_fixed_costs_override(self, client: httpx.AsyncClient) -> None:
+        """Test that we can override the fixed costs."""
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "fixed",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "day_cost": 100.0,
+            },
+        )
+        assert response.is_success, response.text
+        metadata = response.json()
+        tariff_response = await client.post(
+            "/get-import-tariffs",
+            json={
+                "dataset_id": metadata["dataset_id"],
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert tariff_response.is_success, tariff_response.text
+        tariff_result = tariff_response.json()
+        assert all(item == 1.0 for item in tariff_result["data"][0])
+
+    @pytest.mark.asyncio
+    async def test_fixed_reject_bad_costs(self, client: httpx.AsyncClient) -> None:
+        """Test that we reject bad costs provided with a fixed tariff."""
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "fixed",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "day_cost": 100.0,
+                "night_cost": 50.0,
+                "peak_cost": 33.0,
+            },
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_fixed_reject_too_small_costs(self, client: httpx.AsyncClient) -> None:
+        """Test that we reject costs in £ / kWh."""
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "fixed",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "day_cost": 0.10,
+            },
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_overnight_costs_override(self, client: httpx.AsyncClient) -> None:
+        """Test that we can override costs provided with an overnight tariff."""
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "overnight",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "day_cost": 100.0,
+                "night_cost": 50.0,
+            },
+        )
+        assert response.is_success
+        tariff_response = await client.post(
+            "/get-import-tariffs",
+            json={
+                "dataset_id": response.json()["dataset_id"],
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert tariff_response.is_success, tariff_response.text
+        tariff_result = tariff_response.json()
+        assert all(item in {0.5, 1.0} for item in tariff_result["data"][0])
+
+    @pytest.mark.asyncio
+    async def test_peak_costs_override(self, client: httpx.AsyncClient) -> None:
+        """Test that we can override costs provided with a peak tariff."""
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "peak",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "day_cost": 100.0,
+                "night_cost": 50.0,
+                "peak_cost": 150.0,
+            },
+        )
+        assert response.is_success, response.text
+        tariff_response = await client.post(
+            "/get-import-tariffs",
+            json={
+                "dataset_id": response.json()["dataset_id"],
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+            },
+        )
+        assert tariff_response.is_success, tariff_response.text
+        tariff_result = tariff_response.json()
+        assert all(item in {0.5, 1.0, 1.50} for item in tariff_result["data"][0])
+        assert len(set(tariff_result["data"][0])) == 3

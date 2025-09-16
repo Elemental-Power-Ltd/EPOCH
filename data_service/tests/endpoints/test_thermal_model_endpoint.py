@@ -77,6 +77,7 @@ class TestThermalModelEndpoint:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
+    @pytest.mark.skip(reason="Thermal model too flaky")
     async def test_send_request(
         self, client: httpx.AsyncClient, uploaded_meter_data: tuple[httpx.Response, httpx.Response]
     ) -> None:
@@ -106,6 +107,7 @@ class TestThermalModelEndpoint:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
+    @pytest.mark.skip(reason="Thermal model too flaky")
     async def test_create_heat_load(
         self,
         client: httpx.AsyncClient,

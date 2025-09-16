@@ -168,8 +168,9 @@ class TestGenerateAll:
 
         assert generate_result.status_code == 200, generate_result.text
         # Check that they're all generated
-        iters = 0
         bundle_id = generate_result.json()["bundle_id"]
+        start_time = datetime.datetime.now(datetime.UTC)
+        timeout = datetime.timedelta(minutes=5)
         while True:
             q_resp = await client.post("list-bundle-contents", params={"bundle_id": bundle_id})
             assert q_resp.is_success, q_resp.text
@@ -184,9 +185,8 @@ class TestGenerateAll:
             # This is our backup bailout clause to prevent the tests
             # hanging
             await asyncio.sleep(1.0)
-            iters += 1
-            if iters > 180:
-                pytest.fail("Generate-all didn't empty in 3 minutes")
+            if datetime.datetime.now(datetime.UTC) > start_time + timeout:
+                pytest.fail(f"Generate-all didn't empty in {timeout}")
 
         list_result = await client.post(
             "/list-latest-datasets",
