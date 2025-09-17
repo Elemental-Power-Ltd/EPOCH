@@ -9,6 +9,7 @@ site has zero or more datasets of different kinds.
 import json
 import typing
 from logging import getLogger
+from typing import cast
 
 import asyncpg
 from fastapi import APIRouter, HTTPException
@@ -19,7 +20,7 @@ from app.routers.heating_load.phpp import list_phpp
 
 from ..dependencies import DatabasePoolDep
 from ..internal.utils.uuid import uuid7
-from ..models.client_data import SolarLocation
+from ..models.client_data import BaselineMetadata, SolarLocation
 from ..models.core import (
     ClientData,
     ClientID,
@@ -38,6 +39,48 @@ router = APIRouter()
 logger = getLogger(__name__)
 
 
+@router.post("/list-site-baselines", tags=["db", "baseline", "site"])
+async def list_site_baselines(site_id: SiteID, pool: DatabasePoolDep) -> list[BaselineMetadata]:
+    """
+    List all the available baselines for this site.
+
+    A baseline has a unique ID, a timestamp, a blob of JSON for the actual components, and maybe a tariff ID.
+
+    Parameters
+    ----------
+    site_id
+        ID of the site to look up a baseline for
+
+    pool
+        Database connection pool to look up into
+
+    Returns
+    -------
+    list[BaselineMetadata]
+        List of all available baselines for this site. An empty list if there are none, which would mean you get the
+        default baseline for your simulations of this site.
+        Note that we don't unpack the baseline JSON properly, as it might not be parseable as a valid TaskData.
+    """
+    res = await pool.fetch(
+        """
+        SELECT
+            baseline_id, created_at, baseline, tariff_id
+        FROM client_info.site_baselines
+        WHERE site_id = $1
+        ORDER BY created_at ASC""",
+        site_id.site_id,
+    )
+    return [
+        BaselineMetadata(
+            baseline_id=item["baseline_id"],
+            created_at=item["created_at"],
+            baseline=json.loads(item["baseline"]),
+            tariff_id=item["tariff_id"],
+        )
+        for item in res
+    ]
+
+
 @router.post("/add-site-baseline", tags=["db", "baseline", "site"])
 async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDep) -> dataset_id_t:
     """
@@ -49,6 +92,8 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
 
     This will override previous baselines that are stored in the database, as we only ever fetch the latest.
     Baselines are given a UUID when generated that you can use for a task_config object later on.
+    If there is an existing baseline in the database with a tariff set, we'll propagate that forwards to this new baseline
+    for you.
 
     Parameters
     ----------
@@ -74,14 +119,30 @@ async def add_baseline(site_id: SiteID, baseline: TaskData, pool: DatabasePoolDe
         else:
             logger.warning(f"No floor area provided for {site_id.site_id}, and couldn't find any PHPPs")
 
+    # Check if the previous baseline had a tariff ID, if so, re-use it.
+    baseline_tariff_id = cast(
+        dataset_id_t | None,
+        await pool.fetchval(
+            """
+            SELECT
+                tariff_id
+            FROM client_info.site_baselines
+            WHERE site_id = $1
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            site_id.site_id,
+        ),
+    )
     baseline_id = uuid7()
     try:
         await pool.execute(
             """
-            INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
+            INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline, tariff_id) VALUES ($1, $2, $3, $4)""",
             baseline_id,
             site_id.site_id,
             baseline.model_dump_json(),
+            baseline_tariff_id,
         )
     except asyncpg.exceptions.ForeignKeyViolationError as ex:
         raise HTTPException(400, f"Site {site_id.site_id} not found in the database.") from ex

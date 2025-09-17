@@ -35,6 +35,7 @@ from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils.uuid import uuid7
 from ..models.core import DatasetID, MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.import_tariffs import (
+    BaselineTariffRequest,
     EpochTariffEntry,
     GSPCodeResponse,
     GSPEnum,
@@ -94,22 +95,37 @@ POSTCODE_CACHE: dict[str, GSPCodeResponse] = {}
 
 @router.post("/add-baseline-tariff", tags=["baseline", "tariff"])
 async def add_baseline_tariff(
-    baseline_id: DatasetID, tariff_req: TariffRequest, pool: DatabasePoolDep, http_client: HttpClientDep
+    baseline_id: DatasetID, tariff_req: BaselineTariffRequest, pool: DatabasePoolDep, http_client: HttpClientDep
 ) -> TariffMetadata:
     """
     Generate a tariff and mark it as being the baseline tariff.
 
     The baseline tariff is the one that we compare costs to, and is always at index 0 when provided to EPOCH.
     This can be any sort of tariff, but is mostly commonly fixed.
-    Use the `tariff_req` parameter to set the tariff, without specifying any `bundle_metadata` as that will be handled
-    in `generate-all` and when fetching tariffs.
+
+    Use the `tariff_req` parameter to set the tariff.
+    Do not specify any `bundle_metadata` (it is specifically nulled out here!)
+    as that will be handled in `generate-all` and when fetching tariffs.
 
     Parameters
     ----------
     baseline_id
         ID of the baseline that you have created through `add-site-baseline`.
+
     tariff_req
         Request for the new tariff that you want to generate.
+
+    pool
+        Database pool with the baselines in
+
+    http_client
+        HTTP client used to contact third party tariff providers, if needed
+
+    Returns
+    -------
+    TariffMetadata
+        Information about the tariff you just generated.
+
     """
     new_tariff = await generate_import_tariffs(params=tariff_req, pool=pool, http_client=http_client)
     new_tariff_id = new_tariff.dataset_id

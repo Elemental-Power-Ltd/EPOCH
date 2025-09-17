@@ -45,7 +45,7 @@ class GSPCodeResponse(pydantic.BaseModel):
 class EpochTariffEntry(EpochEntry):
     data: list[list[float]] = pydantic.Field(
         examples=[[[0.324, 0.146], [0.163, 0.208]]],
-        description="List of import tariffs. Each import tariff is a list of Import costs for this time period in p / kWh.",
+        description="List of import tariffs. Each import tariff is a list of Import costs for this time period in £ / kWh.",
     )
 
 
@@ -139,6 +139,12 @@ class TariffRequest(RequestBase):
             raise ValueError("Got suspiciously high peak_cost: {self.peak_cost}. It should be in p / kWh.")
 
         return self
+
+
+class BaselineTariffRequest(TariffRequest):
+    """Request for creating a baseline tariff with the bundle metadata specifically excluded."""
+
+    bundle_metadata: None = None
 
 
 class TariffProviderEnum(StrEnum):

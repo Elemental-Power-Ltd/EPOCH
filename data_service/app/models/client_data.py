@@ -3,8 +3,10 @@
 
 import pydantic
 
+from app.internal.epl_typing import Jsonable
 from app.models.air_source_heat_pump import ASHPCOPResponse
 from app.models.carbon_intensity import EpochCarbonEntry
+from app.models.core import dataset_id_t
 from app.models.electricity_load import EpochElectricityEntry
 from app.models.epoch_types.task_data_type import TaskData
 from app.models.heating_load import EpochAirTempEntry, EpochDHWEntry, EpochHeatingEntry
@@ -43,3 +45,13 @@ class SiteDataEntries(pydantic.BaseModel):
 
     ashp_input: ASHPCOPResponse | None
     ashp_output: ASHPCOPResponse | None
+
+
+class BaselineMetadata(pydantic.BaseModel):
+    baseline_id: dataset_id_t = pydantic.Field(description="Unique ID for this baseline.")
+    created_at: pydantic.AwareDatetime = pydantic.Field(description="The time this baseline was created.")
+    baseline: dict[str, Jsonable] = pydantic.Field(
+        description="Un-parsed JSON of what the baseline for this site will be."
+        " This means you can list old baselines that might be potentially unparseable now."
+    )
+    tariff_id: dataset_id_t = pydantic.Field(description="Dataset ID for the baseline tariff associated with this baseline.")

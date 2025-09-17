@@ -662,8 +662,12 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
                 """
                 SELECT
                     baseline_id,
-                    tariff_id
+                    tariff_id,
+                    item.product_name AS baseline_tariff_type
                 FROM client_info.site_baselines
+                LEFT JOIN
+                    import_tariffs.metadata AS itm
+                ON itm.dataset_id = tariff_id
                 WHERE site_id = $1
                 ORDER BY created_at DESC
                 LIMIT 1""",
@@ -675,9 +679,9 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
 
     baseline_result = baseline_task.result()
     if baseline_result is not None:
-        baseline_id, baseline_tariff_id = baseline_result
+        baseline_id, baseline_tariff_id, baseline_tariff_type = baseline_result
     else:
-        baseline_id, baseline_tariff_id = None, None
+        baseline_id, baseline_tariff_id, baseline_tariff_type = None, None, None
 
     if gas_meter_dataset_id is None:
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
@@ -708,8 +712,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
                         bundle_id=bundle_metadata.bundle_id,
                         dataset_id=baseline_tariff_id,
                         dataset_type=DatasetTypeEnum.ImportTariff,
-                        # TODO (2025-09-16 MHJB): is this the correct type to give the baseline tariff?
-                        dataset_subtype="baseline",
+                        dataset_subtype=baseline_tariff_type,
                         # The baseline tariff is always at index 0
                         dataset_order=0,
                     ),
