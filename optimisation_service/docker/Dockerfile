@@ -1,4 +1,4 @@
-FROM ubuntu:24.10 AS epoch-build
+FROM ubuntu:25.04 AS epoch-build
 
 # Install vcpkg to the root directory, as sometimes that makes things easier?
 WORKDIR /
@@ -49,7 +49,7 @@ RUN rm -rf ./build \
     && strip /code/Epoch/build/epoch_main/Epoch
 
 # Put the FastAPI and python sections in their own container
-FROM ubuntu:24.10
+FROM ubuntu:25.04
 
 WORKDIR /code
 RUN apt-get update && apt-get install -y --no-install-recommends python3.13 python3.13-venv
