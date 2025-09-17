@@ -389,6 +389,7 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
     list[DatasetBundleMetadata]
         A list of the high-level metadata (ID, created_at, start_ts, end_ts) for the available bundles.
     """
+    # This interior join is to prevent getting repeated dataset types
     bundle_entries = await pool.fetch(
         """
         SELECT
@@ -398,13 +399,18 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
             ANY_VALUE(start_ts) AS start_ts,
             ANY_VALUE(end_ts) AS end_ts,
             ANY_VALUE(created_at) AS created_at,
-            ARRAY_AGG(dataset_type) AS available_datasets,
+            ANY_VALUE(dataset_type) AS available_datasets,
             ARRAY_AGG(js.job_status) AS job_status,
             BOOL_AND(COALESCE(js.job_status, 'completed') = 'completed') AS is_complete,
             COALESCE(BOOL_OR(js.job_status = 'error'), false) AS is_error
         FROM data_bundles.metadata AS m
-        LEFT JOIN
-            data_bundles.dataset_links AS dl
+        LEFT JOIN (
+            SELECT
+                bundle_id,
+                ARRAY_AGG(dataset_type) AS dataset_type
+            FROM data_bundles.dataset_links
+            GROUP BY bundle_id
+        ) AS dl
         ON dl.bundle_id = m.bundle_id
         LEFT JOIN
             job_queue.job_status AS js
