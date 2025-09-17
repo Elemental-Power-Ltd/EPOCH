@@ -14,6 +14,7 @@
       "maximum_output": 150,
       "gas_type": "NATURAL_GAS",
       "boiler_efficiency": 0.9,
+      "fixed_gas_price": 0.068,
       "incumbent": true,
       "age": 0,
       "lifetime": 10

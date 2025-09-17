@@ -116,6 +116,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("maximum_output", &GasCHData::maximum_output)
 		.def_readwrite("gas_type", &GasCHData::gas_type)
 		.def_readwrite("boiler_efficiency", &GasCHData::boiler_efficiency)
+		.def_readwrite("fixed_gas_price", &GasCHData::fixed_gas_price)
 		.def_readwrite("incumbent", &GasCHData::incumbent)
 		.def_readwrite("age", &GasCHData::age)
 		.def_readwrite("lifetime", &GasCHData::lifetime);

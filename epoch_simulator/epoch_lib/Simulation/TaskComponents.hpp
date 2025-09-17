@@ -83,6 +83,7 @@ struct GasCHData {
     float maximum_output = 40.0f;
     float boiler_efficiency = 0.9f;
     GasType gas_type = GasType::NATURAL_GAS;
+    float fixed_gas_price = 0.068f;
     bool incumbent = false;
     float age = 0;
     float lifetime = 10;
@@ -253,7 +254,7 @@ struct std::hash<GasCHData>
     {
         std::size_t h = 0;
         hash_combine(h,
-            gch.maximum_output, gch.boiler_efficiency, gch.gas_type, gch.incumbent, gch.age, gch.lifetime);
+            gch.maximum_output, gch.boiler_efficiency, gch.gas_type, gch.fixed_gas_price, gch.incumbent, gch.age, gch.lifetime);
         return h;
     }
 };

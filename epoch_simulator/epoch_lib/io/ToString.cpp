@@ -237,7 +237,8 @@ std::string gasHeaterToString(const GasCHData& gh) {
 	std::ostringstream oss;
 	oss << "<GasHeater maximum_output=" << gh.maximum_output
 		<< ", gas_type=" << enumToString(gh.gas_type)
-		<< ", boiler_efficiency=" << gh.boiler_efficiency 
+		<< ", boiler_efficiency=" << gh.boiler_efficiency
+		<< ", fixed_gas_price=" << gh.fixed_gas_price
 		<< ", incumbent=" << gh.incumbent
 		<< ", age=" << gh.age
 		<< ", lifetime=" << gh.lifetime 

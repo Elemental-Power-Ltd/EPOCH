@@ -170,6 +170,7 @@ void from_json(const json& j, GasCHData& gas_heater) {
 	j.at("maximum_output").get_to(gas_heater.maximum_output);
 	j.at("boiler_efficiency").get_to(gas_heater.boiler_efficiency);
 	j.at("gas_type").get_to(gas_heater.gas_type);
+	j.at("fixed_gas_price").get_to(gas_heater.fixed_gas_price);
 	j.at("incumbent").get_to(gas_heater.incumbent);
 	j.at("age").get_to(gas_heater.age);
 	j.at("lifetime").get_to(gas_heater.lifetime);
@@ -180,6 +181,7 @@ void to_json(json& j, const GasCHData& gas_heater) {
 		{"maximum_output", gas_heater.maximum_output},
 		{"boiler_efficiency", gas_heater.boiler_efficiency},
 		{"gas_type", gas_heater.gas_type},
+		{"fixed_gas_price", gas_heater.fixed_gas_price},
 		{"incumbent", gas_heater.incumbent},
 		{"age", gas_heater.age},
 		{"lifetime", gas_heater.lifetime}

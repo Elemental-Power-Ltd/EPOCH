@@ -8,7 +8,6 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 	UsageData usage{};
 
 	// TODO - extract these somewhere else (make this a class or put make these globals?)
-	const float mains_gas_price = 0.068f; // £/kWh  
 	const float LPG_cost_price = 0.122f; // £/kWh
 	const float mains_gas_kg_C02e = 0.201f; // kg/kWh(w2h) 
 	const float LPG_kg_C02e = 0.239f; // kg/kWh (well2heat)
@@ -17,11 +16,14 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 	const float EV_low_price = 0.45f; // £/kWh site price for destination EV charging, 22 kW and below
 	const float EV_high_price = 0.79f; //£/kWh site price for high power EV charging, 50 KW and above
 	const float high_priority_price = 0.50f; // £/kWh site price for data centre compute (hi priority load)
-	const float low_priority_price = mains_gas_price; // assume this is just the equivalent lowest cost fossil fuel derived heat
+
+	const float fallback_mains_gas_price = 0.068f; // necessary for cases where we have a mop component but no gas heater
+	// assume this is just the equivalent lowest cost fossil fuel derived hea
+	const float low_priority_price = taskData.gas_heater ? taskData.gas_heater->fixed_gas_price : fallback_mains_gas_price;
 
 	// supress unused warnings
-	(void)low_priority_price;
 	(void)EV_high_price;
+	(void)LPG_cost_price;
 
 	if (taskData.grid) {
 		// SiteData grid intensity is in g/kWh
@@ -37,7 +39,7 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 
 
 	if (taskData.gas_heater) {
-		float gas_price = taskData.gas_heater->gas_type == GasType::NATURAL_GAS ? mains_gas_price : LPG_cost_price;
+		float gas_price = taskData.gas_heater->fixed_gas_price;
 		float CO2e = taskData.gas_heater->gas_type == GasType::NATURAL_GAS ? mains_gas_kg_C02e : LPG_kg_C02e;
 
 		usage.fuel_cost = costVectors.gas_import_h.sum() * gas_price;
@@ -47,7 +49,7 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 	if (taskData.mop) {
 		// assume the counterfactual of LP heat is gas based heat emissions
 		usage.low_priority_kg_CO2e_avoided = costVectors.actual_low_priority_load_e.sum() * mains_gas_kg_C02e;
-		usage.low_priority_revenue = costVectors.actual_low_priority_load_e.sum() * mains_gas_price / boiler_efficiency;
+		usage.low_priority_revenue = costVectors.actual_low_priority_load_e.sum() * low_priority_price / boiler_efficiency;
 	}
 
 	if (taskData.data_centre) {
