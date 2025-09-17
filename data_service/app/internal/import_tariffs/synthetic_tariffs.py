@@ -73,7 +73,7 @@ def create_peak_tariff(
     night_cost
         Tariff night cost in p / kWh (00:30 to 07:30). If None, day costs the same as night.
     peak_cost
-        Tariff premium above day cost charged from 16:00 to 19:00.
+        Tariff night peak in p / kWh charged from 16:00 to 19:00. Not a delta, but the absolute cost.
 
     Returns
     -------
@@ -97,7 +97,7 @@ def create_peak_tariff(
     is_peak_mask = np.logical_and(
         datetime.time(hour=16, minute=0) <= utc_times.time, utc_times.time < datetime.time(hour=19, minute=0)
     )
-    df.loc[is_peak_mask, "cost"] += peak_cost
+    df.loc[is_peak_mask, "cost"] = peak_cost
     return df
 
 

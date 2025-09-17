@@ -192,9 +192,7 @@ class TestSyntheticTariffs:
         )
         df = it.create_peak_tariff(timestamps=dates, day_cost=fixed_cost, night_cost=night_cost, peak_cost=peak_premium)
         assert all(x == y for x, y in zip(dates, df.index, strict=True))
-        assert np.all(
-            np.logical_or.reduce([df["cost"] == fixed_cost, df["cost"] == night_cost, df["cost"] == fixed_cost + peak_premium])
-        )
+        assert np.all(np.logical_or.reduce([df["cost"] == fixed_cost, df["cost"] == night_cost, df["cost"] == peak_premium]))
 
 
 class TestTariffUtils:

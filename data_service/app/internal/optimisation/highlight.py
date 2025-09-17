@@ -28,11 +28,16 @@ def find_best_payback_horizon(portfolio_results: list[PortfolioOptimisationResul
     if valid_paybacks:
         best_payback = min(valid_paybacks, key=lambda payback: payback.metrics.payback_horizon)  # type: ignore
 
-        return HighlightedResult(portfolio_id=best_payback.portfolio_id, reason=HighlightReason.BestPaybackHorizon)
+        return HighlightedResult(
+            portfolio_id=best_payback.portfolio_id,
+            reason=HighlightReason.BestPaybackHorizon,
+            display_name="Best Payback Horizon",
+            suggested_metric="payback_horizon"
+        )
     return None
 
 
-def find_best_carbon_balance(portfolio_results: list[PortfolioOptimisationResult]) -> HighlightedResult | None:
+def find_best_carbon_savings(portfolio_results: list[PortfolioOptimisationResult]) -> HighlightedResult | None:
     """
     Find the result with the best combined scope 1 and scope 2 carbon balance from the portfolio results.
 
@@ -46,23 +51,21 @@ def find_best_carbon_balance(portfolio_results: list[PortfolioOptimisationResult
     -------
         A HighlightedResult or None
     """
-    valid_carbon = [
-        result
-        for result in portfolio_results
-        if result.metrics.carbon_balance_scope_1 is not None and result.metrics.carbon_balance_scope_2 is not None
-    ]
+    valid_carbon = [result for result in portfolio_results if result.metrics.carbon_balance_total is not None]
     if valid_carbon:
-        best_carbon_balance = max(
-            valid_carbon,
-            key=lambda r: (r.metrics.carbon_balance_scope_1 + r.metrics.carbon_balance_scope_2),  # type: ignore
+        best_carbon_balance = max(valid_carbon, key=lambda r: r.metrics.carbon_balance_total)  # type: ignore
+        return HighlightedResult(
+            portfolio_id=best_carbon_balance.portfolio_id,
+            reason=HighlightReason.BestCarbonBalance,
+            display_name="Best Carbon Savings",
+            suggested_metric="carbon_balance_total"
         )
-        return HighlightedResult(portfolio_id=best_carbon_balance.portfolio_id, reason=HighlightReason.BestCarbonBalance)
     return None
 
 
-def find_best_cost_balance(portfolio_results: list[PortfolioOptimisationResult]) -> HighlightedResult | None:
+def find_best_cost_savings(portfolio_results: list[PortfolioOptimisationResult]) -> HighlightedResult | None:
     """
-    Find the result with the best cost balance from the portfolio results.
+    Find the result with the best operating balance from the portfolio results.
 
     Returns None if there are no results with a valid cost balance.
 
@@ -74,10 +77,15 @@ def find_best_cost_balance(portfolio_results: list[PortfolioOptimisationResult])
     -------
         A HighlightedResult or None
     """
-    valid_cost = [result for result in portfolio_results if result.metrics.cost_balance is not None]
+    valid_cost = [result for result in portfolio_results if result.metrics.operating_balance is not None]
     if valid_cost:
         best_cost_balance = max(valid_cost, key=lambda r: r.metrics.cost_balance)  # type: ignore
-        return HighlightedResult(portfolio_id=best_cost_balance.portfolio_id, reason=HighlightReason.BestCostBalance)
+        return HighlightedResult(
+            portfolio_id=best_cost_balance.portfolio_id,
+            reason=HighlightReason.BestCostBalance,
+            display_name="Best Cost Savings",
+            suggested_metric="cost_balance"
+        )
     return None
 
 
@@ -106,10 +114,10 @@ def pick_highlighted_results(portfolio_results: list[PortfolioOptimisationResult
     if best_payback := find_best_payback_horizon(portfolio_results):
         results.append(best_payback)
 
-    if best_carbon_balance := find_best_carbon_balance(portfolio_results):
+    if best_carbon_balance := find_best_carbon_savings(portfolio_results):
         results.append(best_carbon_balance)
 
-    if best_cost_balance := find_best_cost_balance(portfolio_results):
+    if best_cost_balance := find_best_cost_savings(portfolio_results):
         results.append(best_cost_balance)
 
     return results
