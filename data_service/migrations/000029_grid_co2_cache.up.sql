@@ -2,22 +2,23 @@ BEGIN;
 
 CREATE TABLE carbon_intensity.grid_co2_cache (
     gsp_code TEXT NOT NULL,
-    start_ts timestamp with time zone NOT NULL,
-    end_ts timestamp with time zone NOT NULL,
-    forecast double precision,
-    actual double precision,
-    gas double precision,
-    coal double precision,
-    biomass double precision,
-    nuclear double precision,
-    hydro double precision,
-    imports double precision,
-    other double precision,
-    wind double precision,
-    solar double precision
-)  PARTITION BY LIST (gsp_code);
+    start_ts TIMESTAMPTZ NOT NULL,
+    end_ts TIMESTAMPTZ NOT NULL,
+    forecast DOUBLE PRECISION,
+    actual DOUBLE PRECISION,
+    gas DOUBLE PRECISION,
+    coal DOUBLE PRECISION,
+    biomass DOUBLE PRECISION,
+    nuclear DOUBLE PRECISION,
+    hydro DOUBLE PRECISION,
+    imports DOUBLE PRECISION,
+    other DOUBLE PRECISION,
+    wind DOUBLE PRECISION,
+    solar DOUBLE PRECISION
+) PARTITION BY LIST (gsp_code);
 
-CREATE UNIQUE INDEX carbon_intensity_grid_co2_cache_location_timestamp_idx ON ONLY carbon_intensity.grid_co2_cache USING btree (gsp_code, start_ts);
+CREATE UNIQUE INDEX carbon_intensity_grid_co2_cache_location_timestamp_idx
+ON carbon_intensity.grid_co2_cache USING btree (gsp_code, start_ts);
 
 -- This section is for "national" data
 CREATE TABLE carbon_intensity.grid_co2_cache_part_uk PARTITION OF carbon_intensity.grid_co2_cache FOR VALUES IN ('uk');
@@ -34,8 +35,5 @@ CREATE TABLE carbon_intensity.grid_co2_cache_part_l PARTITION OF carbon_intensit
 CREATE TABLE carbon_intensity.grid_co2_cache_part_m PARTITION OF carbon_intensity.grid_co2_cache FOR VALUES IN ('M');
 CREATE TABLE carbon_intensity.grid_co2_cache_part_n PARTITION OF carbon_intensity.grid_co2_cache FOR VALUES IN ('N');
 CREATE TABLE carbon_intensity.grid_co2_cache_part_p PARTITION OF carbon_intensity.grid_co2_cache FOR VALUES IN ('P');
-
-
-
 
 END;
