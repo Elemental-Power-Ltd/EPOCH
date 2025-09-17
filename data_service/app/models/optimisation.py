@@ -232,7 +232,8 @@ class HighlightedResult(pydantic.BaseModel):
     reason: HighlightReason = pydantic.Field(description="The reason the portfolio result is highlighted.")
     display_name: str = pydantic.Field(description="A human readable version of the highlight reason.")
     suggested_metric: str | None = pydantic.Field(
-        description="A key to the most appropriate metric to display/sort by when considering this result.")
+        description="A key to the most appropriate metric to display/sort by when considering this result."
+    )
 
 
 class OptimisationResultsResponse(pydantic.BaseModel):
