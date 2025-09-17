@@ -117,7 +117,10 @@ async def get_latest_bundle_metadata(
     matching_bundles = [
         bundle
         for bundle in bundles
-        if datetime.fromisoformat(bundle["start_ts"]) == start_ts and datetime.fromisoformat(bundle["end_ts"]) == end_ts
+        if datetime.fromisoformat(bundle["start_ts"]) == start_ts
+        and datetime.fromisoformat(bundle["end_ts"]) == end_ts
+        and bundle["is_complete"]
+        and not bundle["is_error"]
     ]
 
     if not matching_bundles:
