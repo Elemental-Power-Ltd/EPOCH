@@ -33,8 +33,9 @@ from ..internal.import_tariffs import (
 from ..internal.import_tariffs.re24 import get_re24_approximate_ppa
 from ..internal.site_manager.bundles import file_self_with_bundle
 from ..internal.utils.uuid import uuid7
-from ..models.core import MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
+from ..models.core import DatasetID, MultipleDatasetIDWithTime, SiteID, SiteIDWithTime
 from ..models.import_tariffs import (
+    BaselineTariffRequest,
     EpochTariffEntry,
     GSPCodeResponse,
     GSPEnum,
@@ -90,6 +91,48 @@ CARBON_INTENSITY_ID_TO_AREA_ID = {
 
 # Store the postcodes that we've already looked up to reduce 3rd party requests
 POSTCODE_CACHE: dict[str, GSPCodeResponse] = {}
+
+
+@router.post("/add-baseline-tariff", tags=["baseline", "tariff"])
+async def add_baseline_tariff(
+    baseline_id: DatasetID, tariff_req: BaselineTariffRequest, pool: DatabasePoolDep, http_client: HttpClientDep
+) -> TariffMetadata:
+    """
+    Generate a tariff and mark it as being the baseline tariff.
+
+    The baseline tariff is the one that we compare costs to, and is always at index 0 when provided to EPOCH.
+    This can be any sort of tariff, but is mostly commonly fixed.
+
+    Use the `tariff_req` parameter to set the tariff.
+    Do not specify any `bundle_metadata` (it is specifically nulled out here!)
+    as that will be handled in `generate-all` and when fetching tariffs.
+
+    Parameters
+    ----------
+    baseline_id
+        ID of the baseline that you have created through `add-site-baseline`.
+
+    tariff_req
+        Request for the new tariff that you want to generate.
+
+    pool
+        Database pool with the baselines in
+
+    http_client
+        HTTP client used to contact third party tariff providers, if needed
+
+    Returns
+    -------
+    TariffMetadata
+        Information about the tariff you just generated.
+
+    """
+    new_tariff = await generate_import_tariffs(params=tariff_req, pool=pool, http_client=http_client)
+    new_tariff_id = new_tariff.dataset_id
+    await pool.execute(
+        """UPDATE client_info.site_baselines SET tariff_id = $1 WHERE baseline_id = $2""", new_tariff_id, baseline_id.dataset_id
+    )
+    return new_tariff
 
 
 @router.post("/get-gsp-code", tags=["list", "tariff"])
@@ -251,10 +294,23 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
     """
     region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, pool=pool)).region_code
 
+    # Use these for tracking and returning metadata; they're frequently overwrittten by the
+    # lookups to Octopus.
+    day_cost, night_cost, peak_cost = None, None, None
     if isinstance(params.tariff_name, SyntheticTariffEnum):
         provider = TariffProviderEnum.Synthetic
         match params.tariff_name:
+            case SyntheticTariffEnum.Fixed:
+                logger.info(f"Generating a Fixed tariff in {region_code} between {params.start_ts} and {params.end_ts}")
+                underlying_tariff = "LOYAL-FIX-12M-23-12-30"
+                timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+                if params.day_cost is None:
+                    day_cost = await get_fixed_rates(tariff_name=underlying_tariff, region_code=region_code, client=http_client)
+                else:
+                    day_cost = params.day_cost
+                price_df = create_fixed_tariff(timestamps, fixed_cost=day_cost)
             case SyntheticTariffEnum.Agile:
+                # Note that this ignore the parameter costs you've provided.
                 logger.info(f"Generating an Agile-like tariff in {region_code} between {params.start_ts} and {params.end_ts}")
                 # Use these rounded dates to make sure everything resamples nicely and that we get the most recent data.
                 underlying_tariff = "RE24-NORDPOOL"
@@ -272,40 +328,70 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
                 logger.info(f"Generating a Peak tariff in {region_code} between {params.start_ts} and {params.end_ts}")
                 underlying_tariff = "LOYAL-FIX-12M-23-12-30"
                 timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
-                night_cost, day_cost = await get_day_and_night_rates(
-                    tariff_name=underlying_tariff, region_code=region_code, client=http_client
-                )
-                price_df = create_peak_tariff(
-                    timestamps, day_cost=day_cost, night_cost=day_cost * 0.49, peak_cost=day_cost * 0.5
-                )
+
+                if params.day_cost is None:
+                    # For the peak-y tariff, ignore the 'night' rates from Octopus as they're for Economy 7
+                    _, day_cost = await get_day_and_night_rates(
+                        tariff_name=underlying_tariff, region_code=region_code, client=http_client
+                    )
+                else:
+                    day_cost = params.day_cost
+
+                # For cosy Octopus, the nights are always 49% of the price of the day periods
+                night_cost = day_cost * 0.49 if params.night_cost is None else params.night_cost
+
+                # For Cosy Octopus, the 4-7pm peak is always 150% of the price of the day periods
+                peak_cost = day_cost * 1.5 if params.peak_cost is None else params.peak_cost
+
+                price_df = create_peak_tariff(timestamps, day_cost=day_cost, night_cost=night_cost, peak_cost=peak_cost)
             case SyntheticTariffEnum.Overnight:
                 logger.info(f"Generating an Overnight tariff in {region_code} between {params.start_ts} and {params.end_ts}")
                 underlying_tariff = "LOYAL-FIX-12M-23-12-30"
                 timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
-                night_cost, day_cost = await get_day_and_night_rates(
-                    tariff_name=underlying_tariff, region_code=region_code, client=http_client
-                )
+
+                if params.day_cost is None or params.night_cost is None:
+                    # If either of these costs is None, then get both of them and fill in whichever ones are missing
+                    # (this nested logic is to avoid an expensive 3rd party API call in get_day_and_night_rates)
+                    night_cost, day_cost = await get_day_and_night_rates(
+                        tariff_name=underlying_tariff, region_code=region_code, client=http_client
+                    )
+                    if params.night_cost is not None:
+                        night_cost = params.night_cost
+                    if params.day_cost is not None:
+                        day_cost = params.day_cost
+                else:
+                    night_cost, day_cost = params.night_cost, params.day_cost
+
                 price_df = create_day_and_night_tariff(timestamps, day_cost=day_cost, night_cost=night_cost)
-            case SyntheticTariffEnum.Fixed:
-                logger.info(f"Generating a Fixed tariff in {region_code} between {params.start_ts} and {params.end_ts}")
-                underlying_tariff = "LOYAL-FIX-12M-23-12-30"
-                timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
-                fixed_cost = await get_fixed_rates(tariff_name=underlying_tariff, region_code=region_code, client=http_client)
-                price_df = create_fixed_tariff(timestamps, fixed_cost=fixed_cost)
             case SyntheticTariffEnum.ShapeShifter:
                 logger.info(f"Generating a ShapeShifter tariff in {region_code} between {params.start_ts} and {params.end_ts}")
                 underlying_tariff = "BUS-12M-FIXED-SHAPE-SHIFTER-25-05-23"
                 timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
 
                 postcode = await get_postcode(params.site_id, pool=pool)
-                shapeshifter_costs = await get_shapeshifters_rates(
-                    postcode=postcode, client=http_client, underlying_tariff=underlying_tariff
-                )
+                if params.day_cost is None or params.night_cost is None or params.peak_cost is None:
+                    shapeshifter_costs = await get_shapeshifters_rates(
+                        postcode=postcode, client=http_client, underlying_tariff=underlying_tariff
+                    )
+                    day_cost, night_cost, peak_cost = (
+                        shapeshifter_costs["day"],
+                        shapeshifter_costs["night"],
+                        shapeshifter_costs["peak"],
+                    )
+                    if params.day_cost is not None:
+                        day_cost = params.day_cost
+                    if params.night_cost is not None:
+                        night_cost = params.night_cost
+                    if params.peak_cost is not None:
+                        peak_cost = params.peak_cost
+                else:
+                    day_cost, night_cost, peak_cost = params.day_cost, params.night_cost, params.peak_cost
+
                 price_df = create_shapeshifter_tariff(
                     timestamps,
-                    day_cost=shapeshifter_costs["day"],
-                    night_cost=shapeshifter_costs["night"],
-                    peak_cost=shapeshifter_costs["peak"],
+                    day_cost=day_cost,
+                    night_cost=night_cost,
+                    peak_cost=peak_cost,
                 )
             case SyntheticTariffEnum.PowerPurchaseAgreement:
                 logger.info("Generating a PPA")
@@ -345,6 +431,9 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
     if price_df.empty:
         raise HTTPException(400, f"Got an empty dataframe for {params.tariff_name}")
 
+    # Note that we don't write the day, night or peak costs to the database currently.
+    # They're mostly just there for you to check the responses when you get them, if needed.
+    # (the costs themselves are obvious in the time series)
     metadata = TariffMetadata(
         dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
         site_id=params.site_id,
@@ -352,6 +441,9 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
         provider=provider,
         product_name=params.tariff_name,
         tariff_name=underlying_tariff,
+        day_cost=day_cost,
+        night_cost=night_cost,
+        peak_cost=peak_cost,
         valid_from=None,
         valid_to=None,
     )
@@ -418,13 +510,14 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
 @router.post("/get-import-tariffs", tags=["get", "tariff"])
 async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePoolDep) -> EpochTariffEntry:
     """
-    Get the electricity import tariffs in p / kWh for this dataset.
+    Get the electricity import tariffs in £ / kWh for this dataset.
 
     You can create tariffs with the `generate-import-tariffs` endpoint.
     These are currently just Octopus time-of-use tariffs.
 
     It always returns 30 minute tariff intervals, regardless of the original source data.
     Tariffs will be forward-filled if they were originally sparser.
+    Watch out, as the unit costs in the database are in p / kWh but this returns £ / kWh.
 
     Parameters
     ----------
@@ -436,7 +529,7 @@ async def get_import_tariffs(params: MultipleDatasetIDWithTime, conn: DatabasePo
     Returns
     -------
     EpochTariffEntry
-        Tariff entries in an EPOCH friendly format.
+        Tariff entries with entrties in £ / kWh.
     """
     dfs: list[pd.DataFrame] = []
     for dataset_id in params.dataset_id:

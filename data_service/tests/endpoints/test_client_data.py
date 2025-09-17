@@ -197,6 +197,78 @@ class TestSiteBaseline:
         assert data["building"]["floor_area"] == 89.0
 
 
+class TestBaselineTariff:
+    @pytest.mark.asyncio
+    async def test_add_baseline_tariff(self, client: AsyncClient) -> None:
+        """Test that we can insert a baseline tariff."""
+        baseline = {
+            "building": {"floor_area": 89.0},
+        }
+        response = await client.post(
+            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
+        )
+        assert response.is_success
+        baseline_id = response.json()
+        response = await client.post("/get-site-baseline", json={"dataset_id": baseline_id})
+        assert response.is_success
+        data = response.json()
+        response = await client.post(
+            "/add-baseline-tariff",
+            json={
+                "tariff_req": {
+                    "site_id": "demo_london",
+                    "start_ts": "2022-01-01T00:00:00Z",
+                    "end_ts": "2022-02-01T00:00:00Z",
+                    "tariff_name": "fixed",
+                    "day_cost": 100.0,
+                },
+                "baseline_id": {"dataset_id": baseline_id},
+            },
+        )
+        assert response.is_success, response.text
+        data = response.json()
+        assert data["day_cost"] == 100.0
+
+    @pytest.mark.asyncio
+    async def test_pass_tariff_forward(self, client: AsyncClient) -> None:
+        """Test that we can carry a baseline tariff forward.s."""
+        baseline = {
+            "building": {"floor_area": 89.0},
+        }
+        response = await client.post(
+            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
+        )
+        assert response.is_success
+        baseline_id = response.json()
+
+        tariff_response = await client.post(
+            "/add-baseline-tariff",
+            json={
+                "tariff_req": {
+                    "site_id": "demo_london",
+                    "start_ts": "2022-01-01T00:00:00Z",
+                    "end_ts": "2022-02-01T00:00:00Z",
+                    "tariff_name": "fixed",
+                    "day_cost": 100.0,
+                },
+                "baseline_id": {"dataset_id": baseline_id},
+            },
+        )
+        assert tariff_response.is_success, tariff_response.text
+
+        baseline = {
+            "building": {"floor_area": 90.0},
+        }
+        response = await client.post(
+            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
+        )
+        list_resp = await client.post("/list-site-baselines", json={"site_id": "demo_london"})
+        assert list_resp.is_success, list_resp.text
+        list_data = list_resp.json()
+        assert list_data[0]["tariff_id"] == tariff_response.json()["dataset_id"], "Tariff ID missing from new entry"
+        assert list_data[1]["tariff_id"] == tariff_response.json()["dataset_id"], "Tariff ID missing from new entry"
+
+
 class TestSolarLocations:
     @pytest.mark.asyncio
     async def test_get_none_locations(self, client: AsyncClient) -> None:

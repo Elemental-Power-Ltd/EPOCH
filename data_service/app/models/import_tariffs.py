@@ -3,6 +3,7 @@
 # ruff: noqa: D101
 import datetime
 from enum import StrEnum
+from typing import Self
 
 import pydantic
 
@@ -43,7 +44,7 @@ class GSPCodeResponse(pydantic.BaseModel):
 
 class EpochTariffEntry(EpochEntry):
     data: list[list[float]] = pydantic.Field(
-        examples=[[[32.4, 14.6], [16.3, 20.8]]],
+        examples=[[[0.324, 0.146], [0.163, 0.208]]],
         description="List of import tariffs. Each import tariff is a list of Import costs for this time period in £ / kWh.",
     )
 
@@ -62,7 +63,28 @@ class TariffRequest(RequestBase):
     site_id: site_id_t = site_id_field
     tariff_name: SyntheticTariffEnum | str = pydantic.Field(
         examples=["E-1R-AGILE-24-04-03-A", "E-1R-COOP-FIX-12M-24-07-25-B"],
-        description="The specific region-containing tariff code for this tariff.",
+        description="Either a synthetic tariff type like `fixed`, `agile`, `overnight` which will cause"
+        " synthetic tariff generation, or a specific Octopus region-containing tariff code for this tariff.",
+    )
+    day_cost: float | None = pydantic.Field(
+        default=None,
+        examples=[23.7, 25.9, 14.0],
+        description="For a synthetic tariff, the fixed cost for 'day' periods in p/kWh."
+        " If None, will look up an Octopus tariff.",
+    )
+    night_cost: float | None = pydantic.Field(
+        default=None,
+        examples=[20.7, 22.9, 12.0],
+        description="For a synthetic tariff, the fixed cost for 'night' periods in p/kWh."
+        " Will most commonly be lower than 'day'."
+        " If None, will look up an Octopus tariff.",
+    )
+    peak_cost: float | None = pydantic.Field(
+        default=None,
+        examples=[33.7, 35.9, 24.0],
+        description="For a synthetic tariff, the fixed cost for 'peak' periods in p/kWh."
+        " Will most commonly be higher than 'day'."
+        " If None, will look up an Octopus tariff.",
     )
 
     @pydantic.field_validator("tariff_name", mode="before")
@@ -73,6 +95,56 @@ class TariffRequest(RequestBase):
             return SyntheticTariffEnum(v)
         except ValueError:
             return v
+
+    @pydantic.model_validator(mode="after")
+    def check_day_night_costs(self) -> Self:
+        """Check if the provided day/night costs make sense with the tariff option."""
+        if not isinstance(self.tariff_name, SyntheticTariffEnum):
+            if self.day_cost is not None:
+                raise ValueError(f"Specified an Octopus tariff {self.tariff_name} but also a day cost {self.day_cost}.")
+            if self.night_cost is not None:
+                raise ValueError(f"Specified an Octopus tariff {self.tariff_name} but also a night cost {self.night_cost}.")
+
+        if self.tariff_name == SyntheticTariffEnum.Fixed and self.night_cost is not None:
+            raise ValueError(f"Specified a synthetic Fixed tariff but also a night cost {self.night_cost}.")
+        if self.tariff_name == SyntheticTariffEnum.Fixed and self.peak_cost is not None:
+            raise ValueError(f"Specified a synthetic Fixed tariff but also a peak cost {self.peak_cost}.")
+
+        if self.tariff_name == SyntheticTariffEnum.Overnight and self.peak_cost is not None:
+            raise ValueError(f"Specified a synthetic Overnight tariff but also a peak cost {self.peak_cost}.")
+
+        if self.tariff_name == SyntheticTariffEnum.Agile and self.day_cost is not None:
+            raise ValueError(f"Specified a synthetic Agile tariff but also a day cost {self.day_cost}.")
+        if self.tariff_name == SyntheticTariffEnum.Agile and self.night_cost is not None:
+            raise ValueError(f"Specified a synthetic Agile tariff but also a night cost {self.night_cost}.")
+
+        return self
+
+    @pydantic.model_validator(mode="after")
+    def check_costs_right_units(self) -> Self:
+        """Check if the provided day/night costs are in p / kWh."""
+        if self.day_cost is not None and self.day_cost < 1.0:
+            raise ValueError("Got suspiciously low day_cost: {self.day_cost}. It should be in p / kWh.")
+        if self.day_cost is not None and self.day_cost > 100.0:
+            raise ValueError("Got suspiciously high day_cost: {self.day_cost}. It should be in p / kWh.")
+
+        if self.night_cost is not None and self.night_cost < 1.0:
+            raise ValueError("Got suspiciously low night_cost: {self.night_cost}. It should be in p / kWh.")
+        if self.night_cost is not None and self.night_cost > 100.0:
+            raise ValueError("Got suspiciously high night_cost: {self.night_cost}. It should be in p / kWh.")
+
+        if self.peak_cost is not None and self.peak_cost < 1.0:
+            raise ValueError("Got suspiciously low peak_cost: {self.peak_cost}. It should be in p / kWh.")
+        if self.peak_cost is not None and self.peak_cost > 200.0:
+            raise ValueError("Got suspiciously high peak_cost: {self.peak_cost}. It should be in p / kWh.")
+
+        return self
+
+
+class BaselineTariffRequest(TariffRequest):
+    """Request for creating a baseline tariff with the bundle metadata specifically excluded."""
+
+    bundle_metadata: None = None
 
 
 class TariffProviderEnum(StrEnum):
@@ -117,4 +189,24 @@ class TariffMetadata(pydantic.BaseModel):
         default=None,
         examples=[None, "2024-09-01T00:00:00Z"],
         description="The last time this tariff is valid for. May be None if we don't know.",
+    )
+    day_cost: float | None = pydantic.Field(
+        default=None,
+        examples=[23.7, 25.9, 14.0],
+        description="For a synthetic tariff, the fixed cost for 'day' periods in p/kWh."
+        " If None, it wasn't relevant for this tariff type.",
+    )
+    night_cost: float | None = pydantic.Field(
+        default=None,
+        examples=[20.7, 22.9, 12.0],
+        description="For a synthetic tariff, the fixed cost for 'night' periods in p / kWh."
+        " Will most commonly be lower than 'day'."
+        " If None, it wasn't relevant for this tariff type.",
+    )
+    peak_cost: float | None = pydantic.Field(
+        default=None,
+        examples=[33.7, 35.9, 24.0],
+        description="For a synthetic tariff, the fixed cost for 'peak' periods in p / kWh."
+        " Will most commonly be higher than 'day'."
+        " If None, it wasn't relevant for this tariff type.",
     )

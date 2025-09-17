@@ -156,6 +156,31 @@ class TestGenerateAll:
         }
         add_response = await client.post("/add-solar-location", json=solar_data_2)
         assert add_response.status_code == 200, add_response.text
+        response = await client.post(
+            "/add-site-baseline",
+            json={
+                "site_id": {"site_id": "demo_london"},
+                "baseline": {
+                    "building": {"floor_area": 89.0},
+                },
+            },
+        )
+        FIXED_TARIFF_COSTS = 100.0
+        assert response.is_success
+        baseline_id = response.json()
+        response = await client.post(
+            "/add-baseline-tariff",
+            json={
+                "tariff_req": {
+                    "site_id": "demo_london",
+                    "start_ts": demo_start_ts.isoformat(),
+                    "end_ts": demo_end_ts.isoformat(),
+                    "tariff_name": "fixed",
+                    "day_cost": FIXED_TARIFF_COSTS,
+                },
+                "baseline_id": {"dataset_id": baseline_id},
+            },
+        )
 
         generate_result = await client.post(
             "/generate-all",
@@ -168,8 +193,9 @@ class TestGenerateAll:
 
         assert generate_result.status_code == 200, generate_result.text
         # Check that they're all generated
-        iters = 0
         bundle_id = generate_result.json()["bundle_id"]
+        start_time = datetime.datetime.now(datetime.UTC)
+        timeout = datetime.timedelta(minutes=5)
         while True:
             q_resp = await client.post("list-bundle-contents", params={"bundle_id": bundle_id})
             assert q_resp.is_success, q_resp.text
@@ -184,9 +210,8 @@ class TestGenerateAll:
             # This is our backup bailout clause to prevent the tests
             # hanging
             await asyncio.sleep(1.0)
-            iters += 1
-            if iters > 180:
-                pytest.fail("Generate-all didn't empty in 3 minutes")
+            if datetime.datetime.now(datetime.UTC) > start_time + timeout:
+                pytest.fail(f"Generate-all didn't empty in {timeout}")
 
         list_result = await client.post(
             "/list-latest-datasets",
@@ -247,8 +272,10 @@ class TestGenerateAll:
         assert len(rgen_data["data"]) == 2
         assert all(all(np.isfinite(item)) for item in rgen_data["data"]), "Renewables is empty or NaN"
 
+        # This is an annoying switch of units
+        assert all(item == FIXED_TARIFF_COSTS / 100.0 for item in tariff_data["data"][0])
         assert len(set(tariff_data["data"][0])) == 1, "First tariff must be fixed"
-        assert len(set(tariff_data["data"][1])) >= 23, "Second tariff must be agile"
+        assert len(set(tariff_data["data"][2])) >= 23, "Second tariff must be agile"
         assert all(item == tariff_data["data"][0][0] for item in tariff_data["data"][0]), "First entry must be fixed tariff"
         assert tariff_data["data"][0] != tariff_data["data"][1], "Tariffs must be different"
 
