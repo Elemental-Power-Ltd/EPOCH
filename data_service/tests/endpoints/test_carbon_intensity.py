@@ -12,6 +12,8 @@ from httpx import AsyncClient
 from app.internal.utils.uuid import uuid7
 from app.routers.carbon_intensity import fetch_carbon_intensity
 
+from .conftest import get_internal_client_hack, get_pool_hack
+
 
 @pytest.fixture
 def demo_start_ts() -> datetime.datetime:
@@ -139,11 +141,9 @@ class TestCarbonIntensity:
             )
         ).json()
         assert all(item > 0 for item in grid_co2_result["data"])
-        assert (
-            len(grid_co2_result["data"])
-            == len(grid_co2_result["timestamps"])
-            == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
-        ), "Not enough entries in set"
+        expected_entries = (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        assert len(grid_co2_result["data"]) == expected_entries, "Not enough entries in set"
+        assert len(grid_co2_result["timestamps"]) == expected_entries, "Not enough entries in timestamps"
 
     @pytest.mark.asyncio
     async def test_check_right_length(
@@ -288,38 +288,106 @@ class TestFetchCarbonIntensity:
     """Tests for the specific fetching function."""
 
     @pytest.mark.asyncio
-    async def test_bad_dates(
-        self,
-    ) -> None:
+    async def test_bad_dates(self, client: AsyncClient) -> None:
         """Test that we fill in missing data between 2023-10-20T21:30:00Z and 2023-10-22T15:00:00Z."""
         bad_start_ts = datetime.datetime(year=2023, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
         bad_end_ts = datetime.datetime(year=2023, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
-        async with AsyncClient(timeout=60) as client:
-            res = await fetch_carbon_intensity(client=client, postcode="SW1A", start_ts=bad_start_ts, end_ts=bad_end_ts)
+        res = await fetch_carbon_intensity(
+            http_client=get_internal_client_hack(client),
+            postcode="SW1A",
+            start_ts=bad_start_ts,
+            end_ts=bad_end_ts,
+            pool=await get_pool_hack(client),
+        )
         for first, second in itertools.pairwise(res):
             assert first["end_ts"] == second["start_ts"]
         assert len(res) == 3 * 48, "Not enough results in response"
 
     @pytest.mark.asyncio
-    async def test_not_use_regional(
-        self,
-    ) -> None:
+    async def test_not_use_regional(self, client: AsyncClient) -> None:
         """Test that we fill in missing data between 2023-10-20T21:30:00Z and 2023-10-22T15:00:00Z without regional data."""
         bad_start_ts = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
         bad_end_ts = datetime.datetime(year=2024, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
-        async with AsyncClient(timeout=60) as client:
-            res = await fetch_carbon_intensity(client=client, postcode=None, start_ts=bad_start_ts, end_ts=bad_end_ts)
+
+        res = await fetch_carbon_intensity(
+            http_client=get_internal_client_hack(client),
+            postcode=None,
+            start_ts=bad_start_ts,
+            end_ts=bad_end_ts,
+            pool=await get_pool_hack(client),
+        )
         for first, second in itertools.pairwise(res):
             assert first["end_ts"] == second["start_ts"]
 
     @pytest.mark.asyncio
-    async def test_use_regional(
-        self,
-    ) -> None:
+    async def test_use_regional(self, client: AsyncClient) -> None:
         """Test that we get good regional data for a period without holes."""
         start_ts = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2024, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
-        async with AsyncClient(timeout=60) as client:
-            res = await fetch_carbon_intensity(client=client, postcode="SW1A 0AA", start_ts=start_ts, end_ts=end_ts)
+
+        res = await fetch_carbon_intensity(
+            http_client=get_internal_client_hack(client),
+            postcode="SW1A 0AA",
+            start_ts=start_ts,
+            end_ts=end_ts,
+            pool=await get_pool_hack(client),
+        )
         for first, second in itertools.pairwise(res):
+            assert first["end_ts"] == second["start_ts"]
+
+    @pytest.mark.asyncio
+    async def test_caching_faster(self, client: AsyncClient) -> None:
+        """Test that making a second request is faster."""
+        start_ts = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2024, month=10, day=23, hour=0, minute=0, tzinfo=datetime.UTC)
+
+        start_entries = await (await get_pool_hack(client)).fetchval("""SELECT COUNT(*) FROM carbon_intensity.grid_co2_cache""")
+        t1 = datetime.datetime.now(datetime.UTC)
+        res_1 = await fetch_carbon_intensity(
+            http_client=get_internal_client_hack(client),
+            postcode="SW1A 0AA",
+            start_ts=start_ts,
+            end_ts=end_ts,
+            pool=await get_pool_hack(client),
+        )
+        t2 = datetime.datetime.now(datetime.UTC)
+        res_2 = await fetch_carbon_intensity(
+            http_client=get_internal_client_hack(client),
+            postcode="SW1A 0AA",
+            start_ts=start_ts,
+            end_ts=end_ts,
+            pool=await get_pool_hack(client),
+        )
+        t3 = datetime.datetime.now(datetime.UTC)
+
+        end_entries = await (await get_pool_hack(client)).fetchval("""SELECT COUNT(*) FROM carbon_intensity.grid_co2_cache""")
+        assert start_entries == 0
+        assert end_entries >= 48 * 3, "Wrong number of cache entries"
+        assert len(res_1) == len(res_2)
+        # Add a bit of wiggle room here to prevent this being a flaky test!
+        assert (t2 - t1) + datetime.timedelta(seconds=10) > t3 - t2, "Second cached call was slower than first uncached call"
+
+    @pytest.mark.asyncio
+    async def test_caching_overlaps(self, client: AsyncClient) -> None:
+        """Test that getting cached overlaps is fine."""
+        start_1 = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
+        end_1 = datetime.datetime(year=2024, month=10, day=30, hour=0, minute=0, tzinfo=datetime.UTC)
+
+        start_2 = datetime.datetime(year=2024, month=10, day=25, hour=0, minute=0, tzinfo=datetime.UTC)
+        end_2 = datetime.datetime(year=2024, month=11, day=5, hour=0, minute=0, tzinfo=datetime.UTC)
+        await fetch_carbon_intensity(
+            http_client=get_internal_client_hack(client),
+            postcode="SW1A 0AA",
+            start_ts=start_1,
+            end_ts=end_1,
+            pool=await get_pool_hack(client),
+        )
+        res_2 = await fetch_carbon_intensity(
+            http_client=get_internal_client_hack(client),
+            postcode="SW1A 0AA",
+            start_ts=start_2,
+            end_ts=end_2,
+            pool=await get_pool_hack(client),
+        )
+        for first, second in itertools.pairwise(res_2):
             assert first["end_ts"] == second["start_ts"]

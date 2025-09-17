@@ -147,7 +147,7 @@ class MockedHttpClient(httpx.AsyncClient):
 
         if url.startswith("https://api.octopus.energy/v1/"):
             directory = base_dir / "octopus"
-        elif url.startswith("https://api.carbonintensity.org.uk/regional/"):
+        elif url.startswith("https://api.carbonintensity.org.uk/"):
             directory = base_dir / "carbon_intensity"
         elif url.startswith("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"):
             directory = base_dir / "visual_crossing"

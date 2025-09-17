@@ -19,6 +19,7 @@ import pydantic
 from fastapi import APIRouter, HTTPException
 
 from app.internal.epl_typing import RecordMapping
+from app.internal.utils import split_into_sessions
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.client_data import get_postcode
@@ -27,6 +28,7 @@ from ..internal.utils import chunk_time_period
 from ..internal.utils.uuid import uuid7
 from ..models.carbon_intensity import CarbonIntensityMetadata, EpochCarbonEntry, GridCO2Request
 from ..models.core import DatasetIDWithTime, DatasetTypeEnum
+from .import_tariffs import get_gsp_code_from_postcode
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -184,7 +186,7 @@ async def fetch_carbon_intensity_batch(
     return results
 
 
-async def fetch_carbon_intensity(
+async def fetch_carbon_intensity_remote(
     client: HTTPClient,
     postcode: str | None,
     start_ts: pydantic.AwareDatetime,
@@ -249,6 +251,216 @@ async def fetch_carbon_intensity(
     return interpolate_carbon_intensity(new_times, all_data)
 
 
+async def postcode_to_db_gsp(postcode: str | None, http_client: HttpClientDep) -> str:
+    """
+    Turn a postcode into a GSP that is suitable for the database.
+
+    If the postcode is None, then we'll return the string "uk" to map to the national carbon intensity table.
+    Otherwise, we'll return the single-letter GSP code for your region.
+
+    Parameters
+    ----------
+    postcode
+        Postcode with a space in the middle between incoming and outgoing to look up.
+    http_client
+        HTTP client used to request from the carbon intensity API
+
+    Returns
+    -------
+    str
+        single character if you provided a postcode e.g. "A" for Eastern England.
+    "uk"
+        If postcode is None
+    """
+    if postcode is None:
+        return "uk"
+    # Use the letters as they're a bit saner than the various IDs that are used.
+    gsp_code = await get_gsp_code_from_postcode(postcode.split(" ")[0], http_client=http_client)
+    # Octopus uses codes prefixed with "_" which is very annoying.
+    return gsp_code.region_code.value.replace("_", "")
+
+
+async def fetch_carbon_intensity(
+    pool: DatabasePoolDep,
+    postcode: str | None,
+    start_ts: pydantic.AwareDatetime,
+    end_ts: pydantic.AwareDatetime,
+    http_client: HttpClientDep,
+) -> list[CarbonIntensityRawEntry]:
+    """
+    Fetch data from the carbon intensity API, doing the cleaning and interpolation as necessary.
+
+    Will return a `forecast` carbon itensity and a breakdown if using regional, or an actual if not.
+    Individual fuels are interpolated where possible, which may not be accurate. There's no guarantee that
+    the fuel breakdown is correct, or provided by the 3rd party.
+
+    Parameters
+    ----------
+    client
+        HTTPX AsyncClient to make requests to the CarbonIntensity API with.
+
+    postcode
+        The entire postcode for this site with inbound and outbound codes split by a space (e.g. `SW1 1AA`).
+        If provided, we'll request data for this region. If not, we'll request national data.
+
+    start_ts
+        The earliest timestamp to request data for such that min(data["start_ts"]) == start_ts
+
+    end_ts
+        The latest timestamp to request data for, such that max(data["end_ts"]) == end_ts
+        We'll interpolate between these times if there's data missing on the service, and chunk the requests
+        to be in ~14 day periods and split across years (to avoid a bug in the 3rd party)
+
+    pool
+        Database pool to cache into
+
+    Returns
+    -------
+    results
+        A list of carbon intensity readings and their times.
+        These have been sorted and interpolated between the times.
+        Only returns the fields `actual`, and `forecast` currently, although the rest are cached.
+    """
+    gsp_code = await postcode_to_db_gsp(postcode, http_client=http_client)
+    rows = await pool.fetch(
+        """
+        SELECT
+            start_ts,
+            end_ts,
+            actual,
+            forecast
+        FROM carbon_intensity.grid_co2_cache
+        WHERE
+            start_ts >= $1 AND end_ts <= $2 AND gsp_code = $3
+        ORDER BY start_ts ASC""",
+        start_ts,
+        end_ts,
+        gsp_code,
+    )
+
+    # This slight offset to the end date is to make sure that we don't try to get data for the whole day
+    # on end_ts, which should be midnight at the next day.
+    expected_days = {
+        item.date() for item in pd.date_range(start_ts, end_ts - pd.Timedelta(seconds=1), freq=pd.Timedelta(days=1))
+    }
+    found_days = {item["start_ts"].date() for item in rows}
+    missing_days = sorted(expected_days - found_days)
+    if not missing_days:
+        # We've got everything! This is the happy path, and we're all good from here.
+        return [
+            CarbonIntensityRawEntry(
+                start_ts=item["start_ts"], end_ts=item["end_ts"], forecast=item["forecast"], actual=item["actual"]
+            )
+            for item in rows
+        ]
+
+    # otherwise we're in trouble and have to get the missing days.
+    # To do this, we try to make the minimum number of requests to the third party API as it's really slow.
+    # So split the missing days into chunks, e.g. 1, 2, 3, 10, 11, 12 will split into
+    # [[1, 2, 3], [10, 11, 12]]
+    # Then we group that into [(1, 3), (10, 12)]
+    # If any of those groups are too long, then chunk them up e.g.
+    # [(100, 120)] will be chunked into [(100, 113), (113, 120)]
+    MAX_PERIOD = pd.Timedelta(days=13)
+    day_sessions = split_into_sessions(
+        [pd.Timestamp(item, tz=datetime.UTC) for item in missing_days], max_diff=pd.Timedelta(days=1)
+    )
+    chunked_sessions = []
+    for session in day_sessions:
+        chunked_sessions.extend(chunk_time_period(min(session), max(session), freq=MAX_PERIOD, split_years=True))
+
+    # Get the data from the third party in batches, then re-assemble and sort it.
+    all_data: list[CarbonIntensityRawEntry] = []
+    async with aiometer.amap(
+        lambda ts_pair: fetch_carbon_intensity_batch(client=http_client, postcode=postcode, timestamps=ts_pair),
+        chunked_sessions,
+        # This is a horrible bodge, but for testing we have a mocked client
+        # where we want to do
+        max_at_once=1 if getattr(http_client, "DO_RATE_LIMIT", True) else None,
+        max_per_second=1 if getattr(http_client, "DO_RATE_LIMIT", True) else None,
+    ) as results:
+        async for result in results:
+            all_data.extend(result)
+
+    all_data = sorted(all_data, key=operator.itemgetter("start_ts"))
+    new_times = pd.date_range(start_ts, end_ts + pd.Timedelta(hours=1), freq=pd.Timedelta(minutes=30), inclusive="left")
+    interpolated_data = interpolate_carbon_intensity(new_times, all_data)
+
+    # We do this two step-copy to make sure that there are no clashes if we've requested overlapping periods of data.
+    async with pool.acquire() as conn, conn.transaction():
+        temp_table_suffix = int(abs(hash(datetime.datetime.now(datetime.UTC))))
+        temp_table_name = f"grid_co2_{temp_table_suffix}"
+        await conn.execute(f"CREATE TEMPORARY TABLE {temp_table_name} (LIKE carbon_intensity.grid_co2_cache)")
+        await conn.copy_records_to_table(
+            table_name=temp_table_name,
+            columns=[
+                "gsp_code",
+                "start_ts",
+                "end_ts",
+                "forecast",
+                "actual",
+                "gas",
+                "coal",
+                "biomass",
+                "nuclear",
+                "hydro",
+                "imports",
+                "other",
+                "wind",
+                "solar",
+            ],
+            records=[
+                (
+                    gsp_code,
+                    item["start_ts"],
+                    item["end_ts"],
+                    item.get("forecast"),
+                    item.get("actual"),
+                    item.get("gas"),
+                    item.get("coal"),
+                    item.get("biomass"),
+                    item.get("nuclear"),
+                    item.get("hydro"),
+                    item.get("imports"),
+                    item.get("other"),
+                    item.get("wind"),
+                    item.get("solar"),
+                )
+                for item in interpolated_data
+            ],
+        )
+        await conn.execute(f"""
+                INSERT INTO carbon_intensity.grid_co2_cache
+                (SELECT
+                    t.*
+                FROM {temp_table_name} AS t)
+                ON CONFLICT (gsp_code, start_ts) DO NOTHING""")
+        await conn.execute(f"DROP TABLE {temp_table_name}")
+
+    # Finally we're done, so return the good data that we've now filled in.
+    rows = await pool.fetch(
+        """
+        SELECT
+            start_ts,
+            end_ts,
+            actual,
+            forecast
+        FROM carbon_intensity.grid_co2_cache
+        WHERE
+            start_ts >= $1 AND end_ts <= $2 AND gsp_code = $3
+        ORDER BY start_ts ASC""",
+        start_ts,
+        end_ts,
+        gsp_code,
+    )
+    return [
+        CarbonIntensityRawEntry(
+            start_ts=item["start_ts"], end_ts=item["end_ts"], forecast=item["forecast"], actual=item["actual"]
+        )
+        for item in rows
+    ]
+
+
 @router.post("/generate-grid-co2", tags=["co2", "generate"])
 async def generate_grid_co2(
     params: GridCO2Request, pool: DatabasePoolDep, http_client: HttpClientDep
@@ -264,6 +476,7 @@ async def generate_grid_co2(
 
     This can be slow -- the rate limiting for the API is aggressive, so it
     takes approximately 1 second per 2 weeks of data.
+    There is underlying caching which will should make repeated requests faster.
 
     Parameters
     ----------
@@ -286,7 +499,7 @@ async def generate_grid_co2(
         logger.warning(f"No postcode found for {params.site_id}, using National data.")
 
     all_data = await fetch_carbon_intensity(
-        client=http_client, postcode=postcode, start_ts=params.start_ts, end_ts=params.end_ts
+        http_client=http_client, postcode=postcode, start_ts=params.start_ts, end_ts=params.end_ts, pool=pool
     )
 
     metadata = CarbonIntensityMetadata(

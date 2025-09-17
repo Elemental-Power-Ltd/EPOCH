@@ -227,7 +227,8 @@ async def get_weather(
         item.date()
         for item in pd.date_range(
             weather_request.start_ts,
-            weather_request.end_ts,
+            # This missing second is to make sure we don't try to get the date for the last day
+            weather_request.end_ts - pd.Timedelta(seconds=1),
             freq=pd.Timedelta(days=1),
             inclusive="left",
         )
