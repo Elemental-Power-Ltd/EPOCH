@@ -134,6 +134,7 @@ class GasHeater:
     maximum_output: float
     gas_type: GasType
     boiler_efficiency: float
+    fixed_gas_price: float
     incumbent: bool
     age: float
     lifetime: float
