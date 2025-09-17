@@ -7,11 +7,12 @@ from ...models.site_manager import DatasetBundleMetadata
 from ..epl_typing import db_conn_t
 
 
-async def file_self_with_bundle(pool: db_conn_t, bundle_metadata: BundleEntryMetadata) -> None:
+async def file_self_with_bundle(pool: db_conn_t, bundle_metadata: BundleEntryMetadata) -> bool:
     """
     File the completed generation of a dataset generation task with the database.
 
     This should be called at the end of any given process that creates a dataset which might be part of a bundle.
+    It won't re-link a dataset that already exists.
 
     Parameters
     ----------
@@ -22,24 +23,34 @@ async def file_self_with_bundle(pool: db_conn_t, bundle_metadata: BundleEntryMet
 
     Returns
     -------
-    None
-        You'll just have to hope it completed successfully
+    bool
+        True if this dataset already exists in the database
     """
-    await pool.execute(
+    already_exists = await pool.fetchval(
         """
-        INSERT INTO data_bundles.dataset_links (
-            bundle_id,
-            dataset_type,
-            dataset_subtype,
-            dataset_id,
-            dataset_order
-        ) VALUES ($1, $2, $3, $4, $5);""",
+        SELECT exists (
+            SELECT true FROM data_bundles.dataset_links WHERE bundle_id = $1 AND dataset_id = $2
+        )""",
         bundle_metadata.bundle_id,
-        bundle_metadata.dataset_type,
-        json.dumps(bundle_metadata.dataset_subtype) if bundle_metadata.dataset_subtype is not None else None,
         bundle_metadata.dataset_id,
-        bundle_metadata.dataset_order,
     )
+    if not already_exists:
+        await pool.execute(
+            """
+            INSERT INTO data_bundles.dataset_links (
+                bundle_id,
+                dataset_type,
+                dataset_subtype,
+                dataset_id,
+                dataset_order
+            ) VALUES ($1, $2, $3, $4, $5);""",
+            bundle_metadata.bundle_id,
+            bundle_metadata.dataset_type,
+            json.dumps(bundle_metadata.dataset_subtype) if bundle_metadata.dataset_subtype is not None else None,
+            bundle_metadata.dataset_id,
+            bundle_metadata.dataset_order,
+        )
+    return bool(already_exists)
 
 
 async def insert_dataset_bundle(bundle_metadata: DatasetBundleMetadata, pool: db_conn_t) -> dataset_id_t:
