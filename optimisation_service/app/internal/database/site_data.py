@@ -117,20 +117,29 @@ async def get_latest_bundle_metadata(
     matching_bundles = [
         bundle
         for bundle in bundles
-        if datetime.fromisoformat(bundle["start_ts"]) == start_ts
-        and datetime.fromisoformat(bundle["end_ts"]) == end_ts
-        and bundle["is_complete"]
-        and not bundle["is_error"]
+        if datetime.fromisoformat(bundle["start_ts"]) == start_ts and datetime.fromisoformat(bundle["end_ts"]) == end_ts
     ]
 
     if not matching_bundles:
         raise ValueError(f"Unable to find a bundle with matching start and end timestamps: {start_ts}, {end_ts}")
 
+    # If the bundle has no `is_complete` flag, it predates tracking that.
+    # Assume that it is complete in that case.
+    matching_bundles = [bundle for bundle in bundles if bundle.get("is_complete", True)]
+
+    if not matching_bundles:
+        raise ValueError("Unable to find a complete bundle; try waiting.")
+
+    # If the bundle has no `is_error` flag, it predates tracking that.
+    # Assume that it isn't errored in that case.
+    matching_bundles = [bundle for bundle in bundles if not bundle.get("is_error", False)]
+    if not matching_bundles:
+        raise ValueError("All completed bundles in this period have errors; try generating a new one.")
+
     bundle = max(matching_bundles, key=operator.itemgetter("created_at"))
     bundle_id = cast(UUID7, bundle["bundle_id"])
     bundle_start_ts = cast(AwareDatetime, bundle["start_ts"])
     bundle_end_ts = cast(AwareDatetime, bundle["end_ts"])
-
     return BundleMetadata(bundle_id=bundle_id, start_ts=bundle_start_ts, end_ts=bundle_end_ts)
 
 

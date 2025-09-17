@@ -58,7 +58,7 @@ async def submit_portfolio(task: Task, http_client: HttpClientDep, queue: QueueD
         logger.warning(f"Failed to add task to database: {e.response.text!s}")
         raise HTTPException(status_code=500, detail=f"Failed to add task to database: {e.response.text!s}") from e
     except Exception as e:
-        logger.warning(f"Failed to add task to queue: {type(e)}: {e!s}")
+        logger.warning(f"Failed to add task to queue: {type(e).__name__}: {e!s}")
         raise HTTPException(status_code=500, detail=f"Failed to add task to queue: {e!s}") from e
 
 
