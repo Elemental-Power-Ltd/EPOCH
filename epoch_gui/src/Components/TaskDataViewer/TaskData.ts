@@ -73,6 +73,7 @@ export interface GasHeater {
   maximum_output: number;
   gas_type: GasType;
   boiler_efficiency: number;
+  fixed_gas_price: number;
   incumbent: boolean;
   age: number;
   lifetime: number;

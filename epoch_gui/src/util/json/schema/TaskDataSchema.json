@@ -330,6 +330,13 @@
           "maximum": 1,
           "default": 0.9
         },
+        "fixed_gas_price": {
+          "type": "number",
+          "title": "Fixed Gas Price",
+          "description": "The price of gas in £/kWh.",
+          "minimum": 0,
+          "default": 0.068
+        },
         "incumbent": {
           "type": "boolean",
           "title": "Incumbent",
@@ -355,6 +362,7 @@
         "maximum_output",
         "gas_type",
         "boiler_efficiency",
+        "fixed_gas_price",
         "incumbent",
         "age",
         "lifetime"

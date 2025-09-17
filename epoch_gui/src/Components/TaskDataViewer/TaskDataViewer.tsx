@@ -114,6 +114,7 @@ const fieldMappings: {
     maximum_output:    { label: 'Maximum Output', unit: 'kW' },
     gas_type:          { label: 'Gas Type' },
     boiler_efficiency: { label: 'Boiler Efficiency', unit: 'decimal %'},
+    fixed_gas_price: {label: 'Fixed Gas Price', unit: '£'},
     incumbent: {label: 'Incumbent'},
     age: {label: 'Age'},
     lifetime: {label: 'Lifetime'},
