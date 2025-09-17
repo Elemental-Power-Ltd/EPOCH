@@ -35,11 +35,16 @@ async def fetch_portfolio_data(task: Task, http_client: HTTPClient) -> None:
     -------
     None
     """
-    async with asyncio.TaskGroup() as tg:
-        site_to_task = {}
-        for site in task.portfolio:
-            async_task = tg.create_task(get_latest_site_data_bundle(site_data=site.site_data, http_client=http_client))
-            site_to_task[site.site_data.site_id] = async_task
+    try:
+        async with asyncio.TaskGroup() as tg:
+            site_to_task = {}
+            for site in task.portfolio:
+                async_task = tg.create_task(get_latest_site_data_bundle(site_data=site.site_data, http_client=http_client))
+                site_to_task[site.site_data.site_id] = async_task
+    except* Exception as eg:
+        for e in eg.exceptions:
+            logger.exception("Got exception:", repr(e))
+        raise
 
     for site in task.portfolio:
         site._epoch_data = site_to_task[site.site_data.site_id].result()
