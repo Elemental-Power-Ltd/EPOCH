@@ -669,13 +669,13 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
                 SELECT
                     baseline_id,
                     tariff_id,
-                    item.product_name AS baseline_tariff_type
-                FROM client_info.site_baselines
+                    itm.product_name AS baseline_tariff_type
+                FROM client_info.site_baselines AS sb
                 LEFT JOIN
-                    import_tariffs.metadata AS itm
+                    tariffs.metadata AS itm
                 ON itm.dataset_id = tariff_id
-                WHERE site_id = $1
-                ORDER BY created_at DESC
+                WHERE sb.site_id = $1
+                ORDER BY sb.created_at DESC
                 LIMIT 1""",
                 params.site_id,
             )
