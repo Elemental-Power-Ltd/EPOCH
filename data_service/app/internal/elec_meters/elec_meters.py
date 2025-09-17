@@ -159,6 +159,7 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     # Instead, re-weight the daily readings so that the ratio of MF:TWT:SS is what we'd expect
     day_type_fracs = daily_df.groupby(lambda d: day_type(d, public_holidays)).sum()
     day_type_fracs /= day_type_fracs.sum()
+    day_type_fracs = day_type_fracs.copy()  # This helps alleviate fragmentation
     day_type_fracs["expected"] = DAY_TYPE_WEIGHTS["median_weight"]
     reweighting = (day_type_fracs["expected"] / day_type_fracs["consumption_kwh"]).to_dict()
 
