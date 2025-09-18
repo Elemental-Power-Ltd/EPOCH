@@ -152,7 +152,7 @@ def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
     daily_df = pd.DataFrame(index=idx, data={"consumption_kwh": interpolator(new_xs)})
     # Trim out any negatives that the interpolator might have put in
     # by replacing them with NaN and then interpolating
-    daily_df.loc[daily_df["consumption_kwh"] < 0, daily_df["consumption_kwh"]] = float("NaN")
+    daily_df.loc[daily_df["consumption_kwh"] < 0, "consumption_kwh"] = float("NaN")
     daily_df["consumption_kwh"].interpolate(method="time")
 
     # However, this might not give the correct pattern of usage per day type that we expect.
