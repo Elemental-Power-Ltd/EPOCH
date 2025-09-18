@@ -115,6 +115,7 @@ class MockedHttpClient(CachedAsyncClient):
 
         if url == _DB_URL + "/add-optimisation-results":
             self.transmit_results(**kwargs)
+            return httpx.Response(status_code=200)
 
         elif url == _DB_URL + "/get-result-configuration":
             stored_result_configuration = await self.get_result_configuration(url=url, **kwargs)
@@ -122,6 +123,7 @@ class MockedHttpClient(CachedAsyncClient):
 
         elif url == _DB_URL + "/add-optimisation-task":
             self.transmit_task()
+            return httpx.Response(status_code=200)
 
         elif url == _DB_URL + "/list-dataset-bundles":
             stored_dataset_bundles_list = await self.get_dataset_bundles_list(url=url, **kwargs)
@@ -185,6 +187,27 @@ async def client(result_tmp_path: Path) -> AsyncGenerator[AsyncClient]:
         except TimeoutError:
             print("Failed to shutdown queue.")
         task.cancel()
+
+
+def get_internal_client_hack(client: httpx.AsyncClient) -> MockedHttpClient:
+    """
+    Get the demo HTTP client that will maybe draw from a cache.
+
+    This hack was implemented on 18-09-2025, please replace with a proper fixture in the future.
+
+    Parameters
+    ----------
+    client
+        The mocked test client
+
+    Returns
+    -------
+    MockedHttpClient
+        Mocked HTTP client that will get from a cache if needed
+    """
+    from app.dependencies import get_http_client
+
+    return client._transport.app.dependency_overrides[get_http_client]()  # type: ignore
 
 
 @pytest.fixture

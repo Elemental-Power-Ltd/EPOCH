@@ -13,7 +13,7 @@ from app.internal.epoch.version import get_epoch_version
 from app.internal.task_processor import process_tasks
 
 from .dependencies import get_http_client, get_queue
-from .routers import epl_queue, metrics, optimise, simulate
+from .routers import epl_queue, merge, metrics, optimise, simulate
 
 logger = logging.getLogger("default")
 
@@ -74,3 +74,4 @@ app.include_router(optimise.router)
 app.include_router(epl_queue.router)
 app.include_router(simulate.router)
 app.include_router(metrics.router)
+app.include_router(merge.router)

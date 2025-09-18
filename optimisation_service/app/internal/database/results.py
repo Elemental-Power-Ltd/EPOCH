@@ -11,7 +11,6 @@ from app.models.core import (
     OptimisationResultEntry,
     PortfolioOptimisationResult,
     SiteOptimisationResult,
-    Task,
     TaskResult,
 )
 from app.models.database import dataset_id_t
@@ -23,7 +22,9 @@ from .utils import _DB_URL
 logger = logging.getLogger("default")
 
 
-def process_results(task: Task, results: OptimisationResult, completed_at: datetime.datetime) -> OptimisationResultEntry:
+def process_results(
+    task_id: dataset_id_t, results: OptimisationResult, completed_at: datetime.datetime
+) -> OptimisationResultEntry:
     """
     Process the results of a task, creating a portfolio result.
 
@@ -41,7 +42,7 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
     OptimisationResultEntry
         Format suitable to file in the database as a result with a new UUID
     """
-    logger.info(f"Postprocessing results of {task.task_id}.")
+    logger.info(f"Postprocessing results of {task_id}.")
     portfolios = []
     for portfolio_solution in results.solutions:
         portfolio_id = uuid7()
@@ -57,14 +58,14 @@ def process_results(task: Task, results: OptimisationResult, completed_at: datet
             )
         portfolios.append(
             PortfolioOptimisationResult(
-                task_id=task.task_id,
+                task_id=task_id,
                 portfolio_id=portfolio_id,
                 metrics=simulation_result_to_pydantic(portfolio_solution.simulation_result),
                 site_results=site_results,
             )
         )
 
-    tasks = TaskResult(task_id=task.task_id, n_evals=results.n_evals, exec_time=results.exec_time, completed_at=completed_at)
+    tasks = TaskResult(task_id=task_id, n_evals=results.n_evals, exec_time=results.exec_time, completed_at=completed_at)
 
     return OptimisationResultEntry(portfolio=portfolios, tasks=tasks)
 
