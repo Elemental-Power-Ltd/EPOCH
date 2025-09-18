@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "3.4.0";
+const std::string EPOCH_VERSION = "3.5.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -84,6 +84,7 @@ struct ScenarioComparison {
 	float npv_balance;
 
 	float payback_horizon_years;
+	std::optional<float> return_on_investment;
 
 	float carbon_balance_scope_1;
 	float carbon_balance_scope_2;

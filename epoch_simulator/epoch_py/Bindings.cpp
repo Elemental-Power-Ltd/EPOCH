@@ -194,6 +194,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("cost_balance", &ScenarioComparison::cost_balance)
 		.def_readwrite("npv_balance", &ScenarioComparison::npv_balance)
 		.def_readwrite("payback_horizon_years", &ScenarioComparison::payback_horizon_years)
+		.def_readwrite("return_on_investment", &ScenarioComparison::return_on_investment)
 		.def_readwrite("carbon_balance_scope_1", &ScenarioComparison::carbon_balance_scope_1)
 		.def_readwrite("carbon_balance_scope_2", &ScenarioComparison::carbon_balance_scope_2)
 		.def_readwrite("combined_carbon_balance", &ScenarioComparison::combined_carbon_balance)

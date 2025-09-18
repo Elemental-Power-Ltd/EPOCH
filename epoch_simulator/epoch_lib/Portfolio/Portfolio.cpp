@@ -52,7 +52,12 @@ SimulationResult aggregateSiteResults(const std::vector<SimulationResult>& siteR
 	}
 
 	portfolioResult.comparison.payback_horizon_years = calculate_payback_horizon(
-		portfolioResult.metrics.total_capex, portfolioResult.comparison.operating_balance);
+		portfolioResult.metrics.total_capex, portfolioResult.comparison.operating_balance
+	);
+
+	portfolioResult.comparison.return_on_investment = calculate_return_on_investment(
+		portfolioResult.metrics.total_capex, portfolioResult.comparison.operating_balance
+	);
 
 	portfolioResult.comparison.carbon_cost = calculate_carbon_cost(
 		portfolioResult.metrics.total_capex, portfolioResult.comparison.carbon_balance_scope_1);

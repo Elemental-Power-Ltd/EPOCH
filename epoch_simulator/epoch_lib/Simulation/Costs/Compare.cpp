@@ -32,6 +32,7 @@ ScenarioComparison compareScenarios(
 	comparison.cost_balance = comparison.meter_balance + baselineMetrics.total_annualised_cost - scenarioMetrics.total_annualised_cost;
 
 	comparison.payback_horizon_years = calculate_payback_horizon(scenarioUsage.capex_breakdown.total_capex, comparison.operating_balance);
+	comparison.return_on_investment = calculate_return_on_investment(scenarioUsage.capex_breakdown.total_capex, comparison.operating_balance);
 
 	comparison.carbon_balance_scope_1 = baselineUsage.carbon_scope_1_kg_CO2e - scenarioUsage.carbon_scope_1_kg_CO2e;
 	comparison.carbon_balance_scope_2 = baselineUsage.carbon_scope_2_kg_CO2e - scenarioUsage.carbon_scope_2_kg_CO2e;
@@ -67,6 +68,19 @@ float calculate_payback_horizon(float capex, float operating_balance) {
 	}
 };
 
+/**
+* This is effectively the inverse of payback horizon
+* Expressed as a decimal percentage of the capex that will be returned each year
+*/
+std::optional<float> calculate_return_on_investment(float capex, float operating_balance) {
+	if (capex <= 0) {
+		// if no money has been spent then this doesn't metric doesn't make sense
+		return std::nullopt;
+	}
+
+	// a negative ROI is perfectly possible if the scenario is more expensive to run than the baseline
+	return operating_balance / capex;	
+}
 
 /**
 *   Calculates the salix carbon cost of a scenario.
