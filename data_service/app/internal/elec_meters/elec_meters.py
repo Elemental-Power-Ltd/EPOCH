@@ -88,7 +88,8 @@ def day_type(date: datetime.date | pd.Timestamp, public_holidays: Container[date
     -------
     Enum marking the specific type of this day (may change in future)
     """
-    if date in public_holidays:
+    # Do this cast to make sure that we pick up the right type for the public holidays
+    if datetime.date(year=date.year, month=date.month, day=date.day) in public_holidays:
         return DayTypeEnum.WeekendOrHoliday
     # TODO: this would make an elegant switch-case
     if date.weekday() == 5 or date.weekday() == 6:
