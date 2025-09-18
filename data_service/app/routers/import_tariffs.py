@@ -93,6 +93,52 @@ CARBON_INTENSITY_ID_TO_AREA_ID = {
 POSTCODE_CACHE: dict[str, GSPCodeResponse] = {}
 
 
+async def get_gsp_code_from_postcode(inbound_postcode: str, http_client: HttpClientDep) -> GSPCodeResponse:
+    """
+    Get a Grid Supply Point code, including regional information.
+
+    This uses the National Grid ESO API to look up Grid Supply points
+    and Distribution Network Operators for a given site.
+    The site is looked up via its postcode and should exist in the database.
+
+    Parameters
+    ----------
+    inbound_postcode
+        Postcode of the site you want to look up. Ideally provide the inbound section e.g. "W1A" or an inbound outbound
+        pair separated by a space
+    http_client
+        HTTP client used to look this up in the carbon intensity geocoding API
+
+    Returns
+    -------
+    GSPCodeResponse
+        Details about the grid supply and DNO for this site.
+    """
+    # We've received a combined postcode, so split it.
+    if " " in inbound_postcode:
+        inbound_postcode, _ = inbound_postcode.split(" ")
+    if inbound_postcode in POSTCODE_CACHE:
+        return POSTCODE_CACHE[inbound_postcode]
+    ci_result = await http_client.get(f"https://api.carbonintensity.org.uk/regional/postcode/{inbound_postcode}")
+    if not ci_result.is_success or "data" not in ci_result.json():
+        if ci_result.status_code == 400 and ci_result.json()["error"]["message"] == "No postcode match can be found.":
+            raise ValueError(f"Got a bad postcode: {inbound_postcode}")
+        raise HTTPException(400, f"Got error from CarbonIntensity API: {ci_result.status_code}: {ci_result.json()}.")
+
+    region_id = ci_result.json()["data"][0]["regionid"]
+    dno_region_id = CARBON_INTENSITY_ID_TO_AREA_ID[region_id]
+    if dno_region_id is None:
+        raise HTTPException(400, f"A region ID without corresponding area id: {region_id}.")
+
+    POSTCODE_CACHE[inbound_postcode] = GSPCodeResponse(
+        ci_region_id=region_id,
+        dno_region_id=dno_region_id,
+        region_code=AREA_ID_TO_GSP[dno_region_id],
+        dno_region=ci_result.json()["data"][0]["dnoregion"],
+    )
+    return POSTCODE_CACHE[inbound_postcode]
+
+
 @router.post("/add-baseline-tariff", tags=["baseline", "tariff"])
 async def add_baseline_tariff(
     baseline_id: DatasetID, tariff_req: BaselineTariffRequest, pool: DatabasePoolDep, http_client: HttpClientDep
@@ -156,24 +202,7 @@ async def get_gsp_code(site_id: SiteID, http_client: HttpClientDep, pool: Databa
     """
     postcode = await get_postcode(site_id.site_id, pool=pool)
     inbound_postcode, _ = postcode.split(" ")
-    if inbound_postcode in POSTCODE_CACHE:
-        return POSTCODE_CACHE[inbound_postcode]
-    ci_result = await http_client.get(f"https://api.carbonintensity.org.uk/regional/postcode/{inbound_postcode}")
-    if not ci_result.status_code == 200 or "data" not in ci_result.json():
-        raise HTTPException(400, f"Got error from CarbonIntensity API: {ci_result.status_code}: {ci_result.json()}.")
-
-    region_id = ci_result.json()["data"][0]["regionid"]
-    dno_region_id = CARBON_INTENSITY_ID_TO_AREA_ID[region_id]
-    if dno_region_id is None:
-        raise HTTPException(400, f"A region ID without corresponding area id: {region_id}.")
-
-    POSTCODE_CACHE[inbound_postcode] = GSPCodeResponse(
-        ci_region_id=region_id,
-        dno_region_id=dno_region_id,
-        region_code=AREA_ID_TO_GSP[dno_region_id],
-        dno_region=ci_result.json()["data"][0]["dnoregion"],
-    )
-    return POSTCODE_CACHE[inbound_postcode]
+    return await get_gsp_code_from_postcode(inbound_postcode, http_client)
 
 
 @router.post("/list-import-tariffs", tags=["list", "tariff"])

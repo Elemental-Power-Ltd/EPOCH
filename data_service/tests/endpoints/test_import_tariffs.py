@@ -9,8 +9,10 @@ import pytest
 
 from app.internal.import_tariffs.re24 import get_re24_approximate_ppa
 from app.models.core import SiteIDWithTime
+from app.models.import_tariffs import GSPEnum
+from app.routers.import_tariffs import get_gsp_code_from_postcode
 
-from .conftest import get_internal_client_hack, get_pool_hack
+from .conftest import MockedHttpClient, get_internal_client_hack, get_pool_hack
 
 
 @pytest.fixture
@@ -629,3 +631,35 @@ class TestImportTariffSpecifiedCosts:
         tariff_result = tariff_response.json()
         assert all(item in {0.5, 1.0, 1.50} for item in tariff_result["data"][0])
         assert len(set(tariff_result["data"][0])) == 3
+
+
+class TestGSPLookup:
+    """Test looking up the grid supply point code."""
+
+    @pytest.mark.asyncio
+    async def test_matt(self) -> None:
+        """Test that we get the right results for Matt's house."""
+        async with MockedHttpClient() as client:
+            resp = await get_gsp_code_from_postcode("SW1A 0AA", client)
+            assert resp.region_code == GSPEnum.A
+
+    @pytest.mark.asyncio
+    async def test_provided_inbound(self) -> None:
+        """Test that we're fine if you provide only an inbound postcode."""
+        async with MockedHttpClient() as client:
+            resp = await get_gsp_code_from_postcode("SW1A", client)
+            assert resp.region_code == GSPEnum.A
+
+    @pytest.mark.asyncio
+    async def test_provided_isle_of_man(self) -> None:
+        """Test that we're fine if you provided a non-mainland postcode."""
+        async with MockedHttpClient() as client:
+            resp = await get_gsp_code_from_postcode("IM1 3LY", client)
+            assert resp.region_code == GSPEnum.G
+
+    @pytest.mark.asyncio
+    async def test_provided_bad_postcode(self) -> None:
+        """Test that we fail if you provided a bad postcode."""
+        with pytest.raises(ValueError):
+            async with MockedHttpClient() as client:
+                await get_gsp_code_from_postcode("BAD POSTCODE", client)
