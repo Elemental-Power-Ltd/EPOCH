@@ -7,8 +7,9 @@ from httpx import AsyncClient
 from app.internal.database.site_data import get_latest_bundle_metadata
 from app.models.core import Site
 from app.models.epoch_types.site_range_type import Config
+from app.models.merge import PortfolioMergeRequest, SiteInfo
 from app.models.result import SiteSolution
-from app.routers.merge import PortfolioMergeRequest, SiteInfo, merge_site_scenarios_into_portfolios
+from app.routers.merge import merge_site_scenarios_into_portfolios
 
 from .conftest import get_internal_client_hack
 

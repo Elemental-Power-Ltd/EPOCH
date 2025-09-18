@@ -17,7 +17,7 @@ from app.models.epoch_types import SiteRange
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric
 from app.models.optimisers import OptimiserTypes
-from app.models.site_data import EpochSiteData, SiteMetaData
+from app.models.site_data import EpochSiteData, site_metadata_t
 
 logger = logging.getLogger("default")
 
@@ -25,9 +25,9 @@ logger = logging.getLogger("default")
 class Site(BaseModel):
     name: str = Field(description="Human readable name for a building. Must be unique to portfolio.")
     site_range: SiteRange = Field(description="Site range to optimise over.")
-    site_data: SiteMetaData = Field(
-        examples=[{"loc": "local", "site_id": "amcott_house", "path": "./data/InputData"}],
-        description="Location to fetch input data from for EPOCH to ingest.",
+    site_data: site_metadata_t = Field(
+        examples=[{"site_id": "amcott_house", "start_ts": "2022-01-01T00:00:00+00:00", "end_ts": "2022-01-01T00:00:00+00:00"}],
+        description="Data to fetch for EPOCH to ingest.",
     )
     constraints: Constraints = Field(
         description="Minimum or maximum bounds to apply on site metrics.", examples=[{Metric.capex: {"max": 50000}}], default={}

@@ -28,7 +28,7 @@ from app.models.epoch_types.site_range_type import (
 from app.models.ga_utils import AnnotatedTaskData, asset_t, value_t
 from app.models.metrics import Metric
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
-from app.models.site_data import EpochSiteData, SiteMetaData
+from app.models.site_data import EpochSiteData, LegacySiteMetaData
 
 _DATA_PATH = Path("tests", "data")
 
@@ -134,7 +134,7 @@ def default_siterange() -> SiteRange:
 def site_generator(site_name: str, site_range: SiteRange) -> Site:
     start_ts = datetime(year=2022, month=1, day=1, hour=0).astimezone(UTC)
     end_ts = datetime(year=2023, month=1, day=1, hour=0).astimezone(UTC)
-    site_data = SiteMetaData(site_id=site_name, start_ts=start_ts, end_ts=end_ts)
+    site_data = LegacySiteMetaData(site_id=site_name, start_ts=start_ts, end_ts=end_ts)
     site = Site(
         name=site_data.site_id,
         site_range=site_range,
