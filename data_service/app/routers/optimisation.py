@@ -825,7 +825,7 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
             optimisation.site_task_config AS stc
             ON pr.task_id = stc.task_id
         WHERE
-            sr.portfolio_id = $1
+            sr.portfolio_id = $1 AND stc.site_id = sr.site_id
         """,
         result_id.result_id,
     )
