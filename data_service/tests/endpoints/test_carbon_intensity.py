@@ -10,9 +10,46 @@ import pytest_asyncio
 from httpx import AsyncClient
 
 from app.internal.utils.uuid import uuid7
-from app.routers.carbon_intensity import fetch_carbon_intensity
+from app.routers.carbon_intensity import fetch_carbon_intensity, postcode_to_db_gsp
 
-from .conftest import get_internal_client_hack, get_pool_hack
+from .conftest import MockedHttpClient, get_internal_client_hack, get_pool_hack
+
+
+class TestGSPFromPostcode:
+    @pytest.mark.asyncio
+    async def test_national(self) -> None:
+        """Test that we get the right DB GSP for a None postcode."""
+        async with MockedHttpClient() as client:
+            resp = await postcode_to_db_gsp(None, client)
+            assert resp == "uk"
+
+    @pytest.mark.asyncio
+    async def test_matt(self) -> None:
+        """Test that we get the right code region for Matt's house."""
+        async with MockedHttpClient() as client:
+            resp = await postcode_to_db_gsp("SW1A 0AA", client)
+            assert resp == "A"
+
+    @pytest.mark.asyncio
+    async def test_provided_inbound(self) -> None:
+        """Test that we're fine if you provide only an inbound postcode."""
+        async with MockedHttpClient() as client:
+            resp = await postcode_to_db_gsp("SW1A", client)
+            assert resp == "A"
+
+    @pytest.mark.asyncio
+    async def test_provided_isle_of_man(self) -> None:
+        """Test that we're fine if you provided a non-mainland postcode."""
+        async with MockedHttpClient() as client:
+            resp = await postcode_to_db_gsp("IM1 3LY", client)
+            assert resp == "G"
+
+    @pytest.mark.asyncio
+    async def test_provided_bad_postcode(self) -> None:
+        """Test that we fail if you provided a bad postcode."""
+        with pytest.raises(ValueError):
+            async with MockedHttpClient() as client:
+                await postcode_to_db_gsp("BAD POSTCODE", client)
 
 
 @pytest.fixture

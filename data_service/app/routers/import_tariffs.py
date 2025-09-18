@@ -103,18 +103,26 @@ async def get_gsp_code_from_postcode(inbound_postcode: str, http_client: HttpCli
 
     Parameters
     ----------
-    site_id
-        Database ID of the site you're interested in; must have a UK postcode in the database.
+    inbound_postcode
+        Postcode of the site you want to look up. Ideally provide the inbound section e.g. "W1A" or an inbound outbound
+        pair separated by a space
+    http_client
+        HTTP client used to look this up in the carbon intensity geocoding API
 
     Returns
     -------
     GSPCodeResponse
         Details about the grid supply and DNO for this site.
     """
+    # We've received a combined postcode, so split it.
+    if " " in inbound_postcode:
+        inbound_postcode, _ = inbound_postcode.split(" ")
     if inbound_postcode in POSTCODE_CACHE:
         return POSTCODE_CACHE[inbound_postcode]
     ci_result = await http_client.get(f"https://api.carbonintensity.org.uk/regional/postcode/{inbound_postcode}")
-    if not ci_result.status_code == 200 or "data" not in ci_result.json():
+    if not ci_result.is_success or "data" not in ci_result.json():
+        if ci_result.status_code == 400 and ci_result.json()["error"]["message"] == "No postcode match can be found.":
+            raise ValueError(f"Got a bad postcode: {inbound_postcode}")
         raise HTTPException(400, f"Got error from CarbonIntensity API: {ci_result.status_code}: {ci_result.json()}.")
 
     region_id = ci_result.json()["data"][0]["regionid"]
