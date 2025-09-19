@@ -60,6 +60,11 @@ class SimulationMetrics(BaseModel):
         description="Years for this scenario to pay back (if very large, represents no payback ever.)",
         default=None,
     )
+    return_on_investment: float | None = Field(
+        description="Yearly return on investment (operating balance / capex) as a decimal percentage. "
+                    + "None when no money was spent.",
+        default=None,
+    )
     carbon_balance_scope_1: float | None = Field(
         description="Direct carbon emissions saved by this scenario.", default=None, examples=[None, math.pi]
     )
@@ -221,6 +226,7 @@ class HighlightReason(StrEnum):
     BestCostBalance = "best_cost_balance"
     BestCarbonBalance = "best_carbon_balance"
     BestPaybackHorizon = "best_payback_horizon"
+    BestReturnOnInvestment = "best_return_on_investment"
 
 
 class HighlightedResult(pydantic.BaseModel):

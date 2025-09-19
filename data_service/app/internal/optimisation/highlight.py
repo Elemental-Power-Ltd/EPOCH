@@ -31,7 +31,7 @@ def find_best_payback_horizon(portfolio_results: list[PortfolioOptimisationResul
         return HighlightedResult(
             portfolio_id=best_payback.portfolio_id,
             reason=HighlightReason.BestPaybackHorizon,
-            display_name="Best Payback Horizon",
+            display_name="Payback Horizon",
             suggested_metric="payback_horizon",
         )
     return None
@@ -57,7 +57,7 @@ def find_best_carbon_savings(portfolio_results: list[PortfolioOptimisationResult
         return HighlightedResult(
             portfolio_id=best_carbon_balance.portfolio_id,
             reason=HighlightReason.BestCarbonBalance,
-            display_name="Best Carbon Savings",
+            display_name="Carbon Savings",
             suggested_metric="carbon_balance_total",
         )
     return None
@@ -79,12 +79,38 @@ def find_best_cost_savings(portfolio_results: list[PortfolioOptimisationResult])
     """
     valid_cost = [result for result in portfolio_results if result.metrics.operating_balance is not None]
     if valid_cost:
-        best_cost_balance = max(valid_cost, key=lambda r: r.metrics.cost_balance)  # type: ignore
+        best_operating_balance = max(valid_cost, key=lambda r: r.metrics.operating_balance)  # type: ignore
         return HighlightedResult(
-            portfolio_id=best_cost_balance.portfolio_id,
+            portfolio_id=best_operating_balance.portfolio_id,
             reason=HighlightReason.BestCostBalance,
-            display_name="Best Cost Savings",
-            suggested_metric="cost_balance",
+            display_name="Cost Savings",
+            suggested_metric="operating_balance",
+        )
+    return None
+
+
+def find_best_return_on_investment(portfolio_results: list[PortfolioOptimisationResult]) -> HighlightedResult | None:
+    """
+    Find the result with the best return_on_investment from the portfolio results.
+
+    Returns None if there are no results with a valid ROI.
+
+    Parameters
+    ----------
+    portfolio_results
+
+    Returns
+    -------
+        A HighlightedResult or None
+    """
+    valid_roi = [result for result in portfolio_results if result.metrics.return_on_investment is not None]
+    if valid_roi:
+        best_roi = max(valid_roi, key=lambda r: r.metrics.return_on_investment)  # type: ignore
+        return HighlightedResult(
+            portfolio_id=best_roi.portfolio_id,
+            reason=HighlightReason.BestReturnOnInvestment,
+            display_name="Return on Investment",
+            suggested_metric="return_on_investment",
         )
     return None
 
@@ -111,13 +137,13 @@ def pick_highlighted_results(portfolio_results: list[PortfolioOptimisationResult
 
     results: list[HighlightedResult] = []
 
-    if best_payback := find_best_payback_horizon(portfolio_results):
-        results.append(best_payback)
-
     if best_carbon_balance := find_best_carbon_savings(portfolio_results):
         results.append(best_carbon_balance)
 
     if best_cost_balance := find_best_cost_savings(portfolio_results):
         results.append(best_cost_balance)
+
+    if best_roi := find_best_return_on_investment(portfolio_results):
+        results.append(best_roi)
 
     return results
