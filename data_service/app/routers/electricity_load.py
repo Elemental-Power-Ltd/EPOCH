@@ -27,13 +27,14 @@ router = APIRouter()
 
 WEEKEND_INDS = frozenset({5, 6})
 
+
 def resample_daily_df(daily_df: DailyDataFrame, start_ts: datetime.datetime, end_ts: datetime.datetime) -> DailyDataFrame:
     """
     Resample and rearrange the daily dataframe to match the time period provided.
 
     We often end up with data in daily_df that runs across periods that aren't exactly a year.
     We need to resample and rearrange the daily data we have to match the period of interest.
-    We do that by calculating the average usage on this type of day in this week of the year across the provided 
+    We do that by calculating the average usage on this type of day in this week of the year across the provided
     period, e.g. looking at the average usage on all Mondays/Fridays in Week 0. Then, if we're missing a Monday in Week 0
     in the period of interest, take the average usage of Mondays/Fridays in Week 0 across the provided period.
 
@@ -45,10 +46,10 @@ def resample_daily_df(daily_df: DailyDataFrame, start_ts: datetime.datetime, end
     daily_df
         Daily dataframe with `consumption_kwh` column covering as much time as possible (but not necessarily
         the `start_ts`, `end_ts` you've specified).
-    
+
     start_ts
         Start time of the period you want
-    
+
     end_ts
         End time of the period you want.
 
@@ -81,7 +82,7 @@ def resample_daily_df(daily_df: DailyDataFrame, start_ts: datetime.datetime, end
             # Heads up that this might cause some trouble if your indexes don't perfectly align
             # (e.g. one is dates and another is midnight datetimes, or there is a timezone difference).
             all_consumptions.append(daily_df[day])
-        
+
         day_class = day_type(day, public_holidays=public_holidays).value
         week_of_year = day.weekofyear
         if (day_class, week_of_year) in weekly_type_df.index:
@@ -101,6 +102,7 @@ def resample_daily_df(daily_df: DailyDataFrame, start_ts: datetime.datetime, end
     synthetic_daily_df["start_ts"] = synthetic_daily_df.index
     synthetic_daily_df["end_ts"] = synthetic_daily_df.index + pd.Timedelta(days=1)
     return synthetic_daily_df
+
 
 @router.post("/generate-electricity-load", tags=["electricity", "generate"])
 async def generate_electricity_load(
@@ -297,7 +299,7 @@ async def get_electricity_load(params: DatasetIDWithTime, pool: DatabasePoolDep)
 
     Parameters
     ----------
-    *params*
+    params
         An electricity meter dataset, and start / end timestamps corresponding to the time period of interest.
 
     Returns
