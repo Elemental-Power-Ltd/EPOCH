@@ -1,9 +1,10 @@
 """Endpoints to handle running individual simulations of EPOCH."""
 
 import logging
+from typing import Annotated
 
 from epoch_simulator import Simulator, TaskData
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 
 from app.dependencies import HttpClientDep
 from app.internal.database.site_data import get_latest_site_data_bundle, get_saved_epoch_input
@@ -74,7 +75,7 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, http_client:
 
 
 @router.post("/get-latest-site-data")
-async def get_latest_site_data(site_data: site_metadata_t, http_client: HttpClientDep) -> EpochSiteData:
+async def get_latest_site_data(http_client: HttpClientDep, site_data: Annotated[site_metadata_t, Body()]) -> EpochSiteData:
     """
     Serve an EPOCH compatible SiteData using the most recent bundle for this site.
 
