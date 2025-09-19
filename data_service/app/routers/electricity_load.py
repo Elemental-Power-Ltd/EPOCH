@@ -27,6 +27,80 @@ router = APIRouter()
 
 WEEKEND_INDS = frozenset({5, 6})
 
+def resample_daily_df(daily_df: DailyDataFrame, start_ts: datetime.datetime, end_ts: datetime.datetime) -> DailyDataFrame:
+    """
+    Resample and rearrange the daily dataframe to match the time period provided.
+
+    We often end up with data in daily_df that runs across periods that aren't exactly a year.
+    We need to resample and rearrange the daily data we have to match the period of interest.
+    We do that by calculating the average usage on this type of day in this week of the year across the provided 
+    period, e.g. looking at the average usage on all Mondays/Fridays in Week 0. Then, if we're missing a Monday in Week 0
+    in the period of interest, take the average usage of Mondays/Fridays in Week 0 across the provided period.
+
+    If there isn't such a day or week in the dataset, interpolate between the usage of that day type in weeks either side.
+    For example, if we can't find data for a Wednesday in Week 26, interpolate between Wednesday W25 and Wednesday W27.
+
+    Parameters
+    ----------
+    daily_df
+        Daily dataframe with `consumption_kwh` column covering as much time as possible (but not necessarily
+        the `start_ts`, `end_ts` you've specified).
+    
+    start_ts
+        Start time of the period you want
+    
+    end_ts
+        End time of the period you want.
+
+    Returns
+    -------
+    DailyDataFrame
+        Dataframe with every day between `start_ts` and `end_ts` with a reasonable `consumption_kwh` reading.
+    """
+    public_holidays = get_bank_holidays()
+    weekly_type_df = (
+        daily_df[["consumption_kwh"]]
+        .groupby([lambda dt, ph=public_holidays: day_type(dt, public_holidays=ph), lambda dt: dt.weekofyear])
+        .mean()
+    )
+    synthetic_daily_df = DailyDataFrame(
+        pd.DataFrame(
+            index=pd.date_range(
+                start_ts.astimezone(datetime.UTC),
+                end_ts.astimezone(datetime.UTC),
+                freq=pd.Timedelta(days=1),
+                inclusive="both",
+                tz=datetime.UTC,
+            )
+        )
+    )
+    all_consumptions: list[float] = []
+    for day in synthetic_daily_df.index:
+        if day in daily_df.index:
+            # This day actually exists, so don't resample it.
+            # Heads up that this might cause some trouble if your indexes don't perfectly align
+            # (e.g. one is dates and another is midnight datetimes, or there is a timezone difference).
+            all_consumptions.append(daily_df[day])
+        
+        day_class = day_type(day, public_holidays=public_holidays).value
+        week_of_year = day.weekofyear
+        if (day_class, week_of_year) in weekly_type_df.index:
+            all_consumptions.append(float(weekly_type_df.loc[day_class, week_of_year].iloc[0]))
+        else:
+            # We interpolate between weeks with days of this type either side of this reading
+            # (e.g. so the nearest weeks to week 3 might be weeks 50 and 10)
+            weeks_with_type = (
+                weekly_type_df[weekly_type_df.index.get_level_values(0) == day_class].index.get_level_values(1).to_numpy()
+            )
+            type_consumptions = weekly_type_df.loc[
+                weekly_type_df.index.get_level_values(0) == day_class, "consumption_kwh"
+            ].to_numpy()
+
+            all_consumptions.append(float(np.interp(week_of_year, weeks_with_type, type_consumptions, period=52)))
+    synthetic_daily_df["consumption_kwh"] = all_consumptions
+    synthetic_daily_df["start_ts"] = synthetic_daily_df.index
+    synthetic_daily_df["end_ts"] = synthetic_daily_df.index + pd.Timedelta(days=1)
+    return synthetic_daily_df
 
 @router.post("/generate-electricity-load", tags=["electricity", "generate"])
 async def generate_electricity_load(
@@ -82,43 +156,7 @@ async def generate_electricity_load(
         daily_df["start_ts"] = daily_df.index
         daily_df["end_ts"] = daily_df.index + pd.Timedelta(days=1)
 
-    public_holidays = get_bank_holidays()
-    weekly_type_df = (
-        daily_df[["consumption_kwh"]]
-        .groupby([lambda dt, ph=public_holidays: day_type(dt, public_holidays=ph), lambda dt: dt.weekofyear])
-        .mean()
-    )
-    synthetic_daily_df = DailyDataFrame(
-        pd.DataFrame(
-            index=pd.date_range(
-                params.start_ts.astimezone(datetime.UTC),
-                params.end_ts.astimezone(datetime.UTC),
-                freq=pd.Timedelta(days=1),
-                inclusive="both",
-                tz=datetime.UTC,
-            )
-        )
-    )
-    all_consumptions: list[float] = []
-    for day in synthetic_daily_df.index:
-        day_class = day_type(day, public_holidays=public_holidays).value
-        week_of_year = day.weekofyear
-        if (day_class, week_of_year) in weekly_type_df.index:
-            all_consumptions.append(float(weekly_type_df.loc[day_class, week_of_year].iloc[0]))
-        else:
-            # We interpolate between weeks with days of this type either side of this reading
-            # (e.g. so the nearest weeks to week 3 might be weeks 50 and 10)
-            weeks_with_type = (
-                weekly_type_df[weekly_type_df.index.get_level_values(0) == day_class].index.get_level_values(1).to_numpy()
-            )
-            type_consumptions = weekly_type_df.loc[
-                weekly_type_df.index.get_level_values(0) == day_class, "consumption_kwh"
-            ].to_numpy()
-
-            all_consumptions.append(float(np.interp(week_of_year, weeks_with_type, type_consumptions, period=52)))
-    synthetic_daily_df["consumption_kwh"] = all_consumptions
-    synthetic_daily_df["start_ts"] = synthetic_daily_df.index
-    synthetic_daily_df["end_ts"] = synthetic_daily_df.index + pd.Timedelta(days=1)
+    synthetic_daily_df = resample_daily_df(daily_df, params.start_ts, params.end_ts)
 
     if reading_type == "halfhourly":
         logger.info("Generating electricity load with observed HH")
@@ -377,9 +415,6 @@ async def get_blended_electricity_load(
         logger.info(f"Got no synthetic data, returning only {real_params}")
         return real_data
 
-    # The EPOCH format makes it a bit hard to just zip these together, so
-    # assume each entry is uniquely identified by a (Date, StartTime) pair
-    # and go from there.
     for idx, timestamp in enumerate(synth_data.timestamps):
         if timestamp in real_data.timestamps:
             synth_data.data[idx] = real_data.data[real_data.timestamps.index(timestamp)]
