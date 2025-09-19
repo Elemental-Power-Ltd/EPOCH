@@ -62,7 +62,7 @@ class SimulationMetrics(BaseModel):
     )
     return_on_investment: float | None = Field(
         description="Yearly return on investment (operating balance / capex) as a decimal percentage. "
-                    + "None when no money was spent.",
+        + "None when no money was spent.",
         default=None,
     )
     carbon_balance_scope_1: float | None = Field(
