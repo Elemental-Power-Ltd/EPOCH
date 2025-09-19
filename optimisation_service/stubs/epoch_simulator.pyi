@@ -60,6 +60,7 @@ class ScenarioComparison:
     cost_balance: float
     npv_balance: float
     payback_horizon_years: float
+    return_on_investment: float | None
     carbon_balance_scope_1: float
     carbon_balance_scope_2: float
     combined_carbon_balance: float

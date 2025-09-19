@@ -140,6 +140,7 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
         cost_balance=comp.cost_balance,
         npv_balance=comp.npv_balance,
         payback_horizon=comp.payback_horizon_years,
+        return_on_investment=comp.return_on_investment,
         carbon_balance_scope_1=comp.carbon_balance_scope_1,
         carbon_balance_scope_2=comp.carbon_balance_scope_2,
         carbon_balance_total=comp.combined_carbon_balance,
