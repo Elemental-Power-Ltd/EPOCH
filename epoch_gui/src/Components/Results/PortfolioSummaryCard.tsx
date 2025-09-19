@@ -1,5 +1,5 @@
 import React from "react";
-import {HighlightReason, PortfolioOptimisationResult} from "../../State/types.ts";
+import {HighlightedResult, HighlightReason, PortfolioOptimisationResult} from "../../State/types.ts";
 import {Box, Card, CardContent, Table, TableBody, TableCell, TableRow, Typography} from "@mui/material";
 import {formatCarbon, formatPounds, formatYears} from "../../util/displayFunctions.ts";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -17,33 +17,22 @@ const getIcon = (reason: HighlightReason): React.ReactNode => {
             return <SavingsIcon fontSize="inherit" />
         case HighlightReason.BestPaybackHorizon:
             return <AccessTimeIcon fontSize="inherit" />
+        case HighlightReason.BestReturnOnInvestment:
+            return <AccessTimeIcon fontSize="inherit" />
         default:
             return <StarsIcon fontSize="inherit" />
     }
 }
 
-const getDisplayName = (reason: HighlightReason): string => {
-    switch (reason) {
-        case HighlightReason.BestCarbonBalance:
-            return "Best Carbon Balance"
-        case HighlightReason.BestCostBalance:
-            return "Best Cost Balance"
-        case HighlightReason.BestPaybackHorizon:
-            return "Best Payback horizon"
-        default:
-            return reason
-    }
-}
 
 export const PortfolioSummaryCard: React.FC<{
-    reason: HighlightReason;
+    highlight: HighlightedResult;
     result: PortfolioOptimisationResult;
     onClick?: () => void;
     selected?: boolean;
-}> = ({ reason, result, onClick, selected }) => {
+}> = ({ highlight, result, onClick, selected }) => {
 
-    const icon = getIcon(reason);
-    const displayName = getDisplayName(reason);
+    const icon = getIcon(highlight.reason);
     const metrics = result.metrics;
 
     return (
@@ -59,7 +48,8 @@ export const PortfolioSummaryCard: React.FC<{
             <CardContent>
                 <Box display="flex" flexDirection="column" alignItems="center" mb={2}>
                     <Box fontSize={48}>{icon}</Box>
-                    <Typography variant="h6">{displayName}</Typography>
+                    <Typography variant="body2">Best</Typography>
+                    <Typography variant="h6">{highlight.display_name}</Typography>
                 </Box>
 
                 <Table size="small">

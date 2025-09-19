@@ -56,6 +56,7 @@ export interface SiteMetrics {
     npv_balance?: number;
 
     payback_horizon?: number;
+    return_on_investment?: number;
 
     carbon_balance_scope_1?: number;
     carbon_balance_scope_2?: number;
@@ -214,12 +215,15 @@ export interface PortfolioOptimisationResult {
 export enum HighlightReason {
   BestCostBalance = "best_cost_balance",
   BestCarbonBalance = "best_carbon_balance",
-  BestPaybackHorizon = "best_payback_horizon"
+  BestPaybackHorizon = "best_payback_horizon",
+  BestReturnOnInvestment = "best_return_on_investment",
 }
 
 export interface HighlightedResult {
   portfolio_id: string;
   reason: HighlightReason;
+  display_name: string;
+  suggested_metric: string;
 }
 
 export interface OptimisationResultEntry {

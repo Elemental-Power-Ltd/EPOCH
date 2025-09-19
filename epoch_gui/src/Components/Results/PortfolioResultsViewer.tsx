@@ -81,13 +81,13 @@ const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
         deselectPortfolio();
     };
 
-    const renderSummaryCard = (reason: HighlightReason) => {
+    const renderSummaryCard = (highlight: HighlightedResult) => {
 
-        const result = highlightedPortfolios[reason]!;
+        const result = highlightedPortfolios[highlight.reason]!;
 
         return (
             <PortfolioSummaryCard
-                reason={reason}
+                highlight={highlight}
                 result={result}
                 onClick={() => selectPortfolio(result.portfolio_id)}
                 selected={result.portfolio_id === selectedPortfolioId}
@@ -110,9 +110,9 @@ const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
                     />
                 ) : (
                     <Grid container spacing={3}>
-                        {Object.keys(highlightedPortfolios).map((reason) => (
-                            <Grid item xs={12} md={4} key={reason}>
-                                {renderSummaryCard(reason as HighlightReason)}
+                        {highlighted.map((highlight) => (
+                            <Grid item xs={12} md={4} key={highlight.reason}>
+                                {renderSummaryCard(highlight)}
                             </Grid>
                         ))}
                     </Grid>

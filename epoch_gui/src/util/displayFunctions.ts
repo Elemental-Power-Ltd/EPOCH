@@ -142,6 +142,14 @@ export const formatTemperature = (value: number | undefined): string => {
     return `${value.toLocaleString()} °C`;
 }
 
+// assumes a decimal percentage
+export const formatPercentage = (value: number | undefined): string => {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
+        return "-"
+    }
+    return `${(100 * value).toLocaleString(undefined, {maximumFractionDigits: 2})} %`;
+}
+
 
 export const parseISODuration = (duration: string | null): string => {
     if (duration === null) return "-";

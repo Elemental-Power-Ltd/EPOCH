@@ -1,5 +1,5 @@
 import type {SiteMetrics} from "../State/types.ts"
-import {formatCarbon, formatCarbonCost, formatPounds, formatYears, formatEnergy} from "./displayFunctions";
+import {formatCarbon, formatCarbonCost, formatPounds, formatYears, formatEnergy, formatPercentage} from "./displayFunctions";
 
 /** All keys that really exist on SiteMetrics */
 export type MetricKey = keyof SiteMetrics;
@@ -88,6 +88,12 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
         label: "Payback Horizon",
         icon: 'Year',
         format: formatYears,
+    },
+    return_on_investment: {
+        key: "return_on_investment",
+        label: "ROI",
+        icon: 'Year',
+        format: formatPercentage,
     },
     annualised_cost: {
         key: "annualised_cost",

@@ -58,6 +58,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           "npv_balance",
           "capex",
           "payback_horizon",
+          "return_on_investment"
       ]
 
       const overviewShortfall: MetricKey[] = [
@@ -132,8 +133,12 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           "total_net_present_value",
           "baseline_net_present_value",
           "capex",
-          "payback_horizon",
       ]
+
+        const financial3: MetricKey[] = [
+            "payback_horizon",
+            "return_on_investment",
+        ]
 
       const scenarioCarbon: MetricKey[] = [
           "total_scope_1_emissions",
@@ -193,7 +198,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           {tabValue === 1 && (renderTab([scenarioElectricity, baselineElectricity, elecShortfall]))}
           {tabValue === 2 && (renderTab([scenarioHeat, baselineHeat, heatShortfall]))}
           {tabValue === 3 && (renderTab([scenarioMeter, baselineMeter]))}
-          {tabValue === 4 && (renderTab([financial1, financial2]))}
+          {tabValue === 4 && (renderTab([financial1, financial2, financial3]))}
           {tabValue === 5 && (renderTab([scenarioCarbon, baselineCarbon]))}
           {tabValue === 6 && (renderCapexBreakdown())}
 
