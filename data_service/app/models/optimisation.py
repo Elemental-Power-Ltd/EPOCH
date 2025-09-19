@@ -301,6 +301,7 @@ class OptimiserEnum(StrEnum):
     Bayesian = "Bayesian"
     SeparatedNSGA2 = "SeparatedNSGA2"
     SeparatedNSGA2xNSGA2 = "SeparatedNSGA2xNSGA2"
+    MergeOperator = "MergeOperator"
 
 
 type hyperparams_t = dict[str, float | int | str | hyperparams_t]
