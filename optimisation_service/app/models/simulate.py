@@ -4,7 +4,7 @@ from app.models.core import SimulationMetrics
 from app.models.database import dataset_id_t, site_id_t
 from app.models.epoch_types import ReportData
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
-from app.models.site_data import EpochSiteData, SiteMetaData
+from app.models.site_data import EpochSiteData, LegacySiteMetaData, site_metadata_t
 
 
 class ReproduceSimulationRequest(BaseModel):
@@ -14,7 +14,7 @@ class ReproduceSimulationRequest(BaseModel):
 
 class RunSimulationRequest(BaseModel):
     task_data: TaskDataPydantic
-    site_data: SiteMetaData
+    site_data: site_metadata_t
 
 
 class ResultReproConfig(BaseModel):
@@ -27,7 +27,7 @@ class NewResultReproConfig(ResultReproConfig):
 
 
 class LegacyResultReproConfig(ResultReproConfig):
-    site_data: dict[site_id_t, SiteMetaData]
+    site_data: dict[site_id_t, LegacySiteMetaData]
 
 
 type result_repro_config_t = NewResultReproConfig | LegacyResultReproConfig

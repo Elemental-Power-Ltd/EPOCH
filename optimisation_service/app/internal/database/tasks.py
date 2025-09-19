@@ -1,6 +1,7 @@
 import logging
 
 import httpx
+from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from app.models.core import Task
@@ -41,4 +42,7 @@ async def transmit_task(task: Task, http_client: httpx.AsyncClient) -> None:
         "site_constraints": site_constraints,
         "epoch_version": task.epoch_version,
     }
-    await http_client.post(url=_DB_URL + "/add-optimisation-task", json=jsonable_encoder(data))
+    response = await http_client.post(url=_DB_URL + "/add-optimisation-task", json=jsonable_encoder(data))
+
+    if not response.is_success:
+        raise HTTPException(status_code=400, detail=f"Failed to add task to database: {response.text}")

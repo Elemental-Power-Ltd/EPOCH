@@ -121,5 +121,5 @@ def test_process_results(default_task: Task, dummy_optimisation_result: Optimisa
     Test result processing.
     """
     completed_at = datetime.datetime.now(datetime.UTC)
-    result_entry = process_results(default_task, dummy_optimisation_result, completed_at)
+    result_entry = process_results(default_task.task_id, dummy_optimisation_result, completed_at)
     assert len(result_entry.portfolio) >= 1

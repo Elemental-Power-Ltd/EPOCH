@@ -16,7 +16,7 @@ from app.models.simulate import (
     ReproduceSimulationRequest,
     RunSimulationRequest,
 )
-from app.models.site_data import EpochSiteData, SiteMetaData
+from app.models.site_data import EpochSiteData, site_metadata_t
 
 router = APIRouter()
 logger = logging.getLogger("default")
@@ -74,7 +74,7 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, http_client:
 
 
 @router.post("/get-latest-site-data")
-async def get_latest_site_data(site_data: SiteMetaData, http_client: HttpClientDep) -> EpochSiteData:
+async def get_latest_site_data(site_data: site_metadata_t, http_client: HttpClientDep) -> EpochSiteData:
     """
     Serve an EPOCH compatible SiteData using the most recent bundle for this site.
 

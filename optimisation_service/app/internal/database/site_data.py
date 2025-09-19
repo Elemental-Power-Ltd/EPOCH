@@ -12,7 +12,14 @@ from app.dependencies import HTTPClient
 from app.models.core import Site, Task
 from app.models.database import BundleMetadata, bundle_id_t, dataset_id_t
 from app.models.simulate import EpochInputData, LegacyResultReproConfig
-from app.models.site_data import DatasetTypeEnum, EpochSiteData, SiteDataEntries, SiteMetaData
+from app.models.site_data import (
+    DatasetTypeEnum,
+    EpochSiteData,
+    LegacySiteMetaData,
+    SiteDataEntries,
+    SiteMetaData,
+    site_metadata_t,
+)
 
 from .results import get_result_configuration
 from .utils import _DB_URL
@@ -53,7 +60,7 @@ async def fetch_portfolio_data(task: Task, http_client: HTTPClient) -> None:
         site = Site.model_validate(site)
 
 
-async def get_latest_site_data_bundle(site_data: SiteMetaData, http_client: HTTPClient) -> EpochSiteData:
+async def get_latest_site_data_bundle(site_data: site_metadata_t, http_client: HTTPClient) -> EpochSiteData:
     """
     Get an EPOCH-compatible SiteData using the most recently generated datasets of each type.
 
@@ -69,23 +76,22 @@ async def get_latest_site_data_bundle(site_data: SiteMetaData, http_client: HTTP
     EpochSiteData
         Data about timeseries inputs for EPOCH to use
     """
-    if site_data.bundle_id is None:
+    if isinstance(site_data, LegacySiteMetaData):
         bundle_metadata = await get_latest_bundle_metadata(
             site_id=site_data.site_id, start_ts=site_data.start_ts, end_ts=site_data.end_ts, http_client=http_client
         )
-        site_data.bundle_id, site_data.start_ts, site_data.end_ts = (
+        bundle_id, start_ts, end_ts = (
             bundle_metadata.bundle_id,
             bundle_metadata.start_ts,
             bundle_metadata.end_ts,
         )
-    else:
-        site_data.start_ts, site_data.end_ts = await get_bundle_timestamps(
-            bundle_id=site_data.bundle_id, http_client=http_client
-        )
+        site_data.bundle_id = bundle_id
+    elif isinstance(site_data, SiteMetaData):
+        start_ts, end_ts = await get_bundle_timestamps(bundle_id=site_data.bundle_id, http_client=http_client)
 
-    site_data_entries = await get_bundled_data(bundle_id=site_data.bundle_id, http_client=http_client)
+    site_data_entries = await get_bundled_data(bundle_id=bundle_id, http_client=http_client)
 
-    epoch_data = site_data_entries_to_epoch_site_data(site_data_entries, site_data.start_ts, site_data.end_ts)
+    epoch_data = site_data_entries_to_epoch_site_data(site_data_entries, start_ts, end_ts)
 
     return epoch_data
 
@@ -274,7 +280,7 @@ async def get_saved_epoch_input(portfolio_id: dataset_id_t, site_id: str, http_c
     return EpochInputData(task_data=task_data, site_data=epoch_data)
 
 
-async def fetch_specific_datasets(site_data: SiteMetaData, http_client: HTTPClient) -> SiteDataEntries:
+async def fetch_specific_datasets(site_data: LegacySiteMetaData, http_client: HTTPClient) -> SiteDataEntries:
     """
     Fetch some specificially chosen datasets from the database.
 
@@ -299,7 +305,7 @@ async def fetch_specific_datasets(site_data: SiteMetaData, http_client: HTTPClie
     return SiteDataEntries.model_validate(site_data_entries)
 
 
-def validate_for_necessary_datasets(site_data: SiteMetaData) -> None:
+def validate_for_necessary_datasets(site_data: LegacySiteMetaData) -> None:
     """
     Check that the site_data contains all of the necessary datasets.
 

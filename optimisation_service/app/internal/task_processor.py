@@ -52,7 +52,7 @@ async def process_tasks(queue: IQueue, http_client: HTTPClient) -> None:
                 )
             logger.info(f"Finished optimising {task.task_id}.")
             completed_at = datetime.datetime.now(datetime.UTC)
-            payload = process_results(task, results, completed_at)
+            payload = process_results(task.task_id, results, completed_at)
             await transmit_results(results=payload, http_client=http_client)
         except Exception:
             logger.error(f"Exception occured, skipping {task.task_id}.", exc_info=True)

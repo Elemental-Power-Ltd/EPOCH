@@ -21,6 +21,14 @@ class SiteMetaData(BaseModel):
         examples=["demo_london"],
         description="The database ID for a site, all lower case, joined by underscores.",
     )
+    bundle_id: bundle_id_t = Field(description="UUID for a data bundle.")
+
+
+class LegacySiteMetaData(BaseModel):
+    site_id: str = Field(
+        examples=["demo_london"],
+        description="The database ID for a site, all lower case, joined by underscores.",
+    )
     start_ts: AwareDatetime = Field(
         examples=["2022-01-01T00:00:00Z"],
         description="The earliest time (inclusive) to retrieve data for.",
@@ -29,7 +37,7 @@ class SiteMetaData(BaseModel):
         examples=["2023-01-01T00:00:00Z"],
         description="The latest time (exclusive) to retrieve data for.",
     )
-    bundle_id: bundle_id_t | None = Field(default=None)
+    bundle_id: bundle_id_t | None = Field(description="UUID for a data bundle.", default=None)
     SiteBaseline: dataset_id_t | None = Field(default=None)
     HeatingLoad: dataset_id_t | list[dataset_id_t] | None = Field(default=None)
     ASHPData: dataset_id_t | None = Field(default=None)
@@ -44,6 +52,9 @@ class SiteMetaData(BaseModel):
     # we mutate SiteMetaData requests (in hydrate_site_data_with_latest_dataset_ids)
     # so we validate assignment to prevent pydantic warnings about UUIDs vs Strings
     model_config = ConfigDict(validate_assignment=True)
+
+
+type site_metadata_t = SiteMetaData | LegacySiteMetaData
 
 
 class EpochEntry(BaseModel):
