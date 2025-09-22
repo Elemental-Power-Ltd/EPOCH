@@ -227,6 +227,7 @@ def simulation_result_to_metric_dict(sim_result: SimulationResult) -> MetricValu
     metric_values[Metric.npv_balance] = comp.npv_balance
 
     metric_values[Metric.payback_horizon] = comp.payback_horizon_years
+    metric_values[Metric.return_on_investment] = comp.return_on_investment
 
     metric_values[Metric.carbon_balance_scope_1] = comp.carbon_balance_scope_1
     metric_values[Metric.carbon_balance_scope_2] = comp.carbon_balance_scope_2

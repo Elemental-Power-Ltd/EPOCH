@@ -15,6 +15,7 @@ class Metric(StrEnum):
     npv_balance = "npv_balance"
 
     payback_horizon = "payback_horizon"
+    return_on_investment = "return_on_investment"
 
     carbon_balance_scope_1 = "carbon_balance_scope_1"
     carbon_balance_scope_2 = "carbon_balance_scope_2"
@@ -57,6 +58,7 @@ class MetricDirection(IntEnum):
     npv_balance = -1
 
     payback_horizon = 1
+    return_on_investment = -1
 
     carbon_balance_scope_1 = -1
     carbon_balance_scope_2 = -1
