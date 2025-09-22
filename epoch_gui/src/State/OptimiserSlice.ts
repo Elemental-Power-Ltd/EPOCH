@@ -19,10 +19,12 @@ const defaultTaskConfig: TaskConfig = {
     capex: false,
     carbon_balance_scope_1: false,
     carbon_balance_scope_2: false,
+    carbon_balance_total: false,
     carbon_cost: false,
     npv_balance: false,
     cost_balance: false,
     payback_horizon: false,
+    return_on_investment: false,
     annualised_cost: false
   },
   client_id: "",

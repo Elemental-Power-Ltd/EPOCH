@@ -4,10 +4,12 @@ export interface TaskObjectives {
     capex: boolean;
     carbon_balance_scope_1: boolean;
     carbon_balance_scope_2: boolean;
+    carbon_balance_total: boolean;
     carbon_cost: boolean;
     cost_balance: boolean;
     npv_balance: boolean;
     payback_horizon: boolean;
+    return_on_investment: boolean;
     annualised_cost: boolean;
 }
 
