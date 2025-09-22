@@ -54,4 +54,8 @@ class BaselineMetadata(pydantic.BaseModel):
         description="Un-parsed JSON of what the baseline for this site will be."
         " This means you can list old baselines that might be potentially unparseable now."
     )
-    tariff_id: dataset_id_t = pydantic.Field(description="Dataset ID for the baseline tariff associated with this baseline.")
+    tariff_id: dataset_id_t | None = pydantic.Field(
+        default=None,
+        description="Dataset ID for the baseline tariff associated with this baseline."
+        " If None, we'll get a sensible fixed tariff 0 from Octopus.",
+    )
