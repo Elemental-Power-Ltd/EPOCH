@@ -31,8 +31,10 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, siteResult
     const SimResult: SimulationResult = {
         metrics: siteResult.metrics,
         task_data: scenario,
+        // set these to null; we don't care about them in here
         report_data: null,
-        site_data: null
+        site_data: null,
+        days_of_interest: null,
     };
 
     const handleAnalyse = async () => {
