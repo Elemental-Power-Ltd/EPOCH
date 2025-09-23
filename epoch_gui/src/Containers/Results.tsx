@@ -1,6 +1,6 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 
-import {Container} from "@mui/material";
+import {Alert, CircularProgress, Container} from "@mui/material";
 import {useNavigate, useParams} from "react-router-dom";
 
 
@@ -29,14 +29,25 @@ function ResultsContainer() {
         setTasks: state.setTasks,
     }));
 
+    // pagination state for the tasks list
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(20);
+    const [total, setTotal] = useState(0);
+
+    // loading and error states for tasks
+    const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+    const [tasksError, setTasksError] = useState<string | null>(null);
+
+    // counter to avoid race conditions
+    const tasksReqId = useRef(0);
 
     const {task_id, portfolio_id} = useParams();
     const navigate = useNavigate();
 
     // state / loading / error for the PortfolioResults within a task
     const [resultsForTask, setResultsForTask] = useState<OptimisationResultsResponse | null>(null);
-    const [isLoadingResults, setIsLoadingResults] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
+    const [portfolioError, setPortfolioError] = useState<string | null>(null);
 
 
     // Fetch the Optimiser Service Status periodically
@@ -58,14 +69,34 @@ function ResultsContainer() {
             return;
         }
 
+        const reqId = ++tasksReqId.current;
+        setIsLoadingTasks(true);
+        setTasksError(null);
+
         const fetchTasks = async () => {
-            const tasks = await listOptimisationTasks(client_id);
-            setTasks(tasks);
+            const taskResponse = await listOptimisationTasks({
+                client_id: client_id,
+                limit: rowsPerPage,
+                offset: page * rowsPerPage
+            });
+
+            if (reqId !== tasksReqId.current) {
+                // this result is stale
+                return;
+            }
+
+            if(taskResponse.success) {
+                setTasks(taskResponse.data!.tasks);
+                setTotal(taskResponse.data!.total_results);
+            } else {
+                setTasksError(taskResponse.error!);
+            }
+            setIsLoadingTasks(false);
         }
 
         fetchTasks();
 
-    }, [client_id])
+    }, [client_id, page, rowsPerPage, setTasks]);
 
 
     // Fetch the PortfolioResults for a given task_id
@@ -75,17 +106,17 @@ function ResultsContainer() {
         }
 
         const fetchPortfolioResults = async () => {
-            setIsLoadingResults(true);
-            setError(null);
+            setIsLoadingPortfolio(true);
+            setPortfolioError(null);
             const result = await getOptimisationResults(task_id);
 
             if (result.success && result.data) {
                 setResultsForTask(result.data);
-                setError(null);
+                setPortfolioError(null);
             } else {
-                setError(result.error!)
+                setPortfolioError(result.error!)
             }
-            setIsLoadingResults(false);
+            setIsLoadingPortfolio(false);
         }
 
         fetchPortfolioResults();
@@ -96,21 +127,34 @@ function ResultsContainer() {
         result.portfolio_id === portfolio_id
     )
 
+    const handleRowsPerPage = (r: number) => {
+        setRowsPerPage(r);
+        setPage(0);
+    };
+
     return (
         <Container maxWidth={"lg"}>
             <OptimiserStatusDisplay status={state.optimiserServiceStatus}/>
 
-            <TaskTable
+            {isLoadingTasks && <CircularProgress sx={{ mb: 2 }} />}
+            {tasksError && <Alert severity="error" sx={{ mb: 2 }}>{tasksError}</Alert>}
+            {!isLoadingTasks && !tasksError &&
+                <TaskTable
                 tasks={state.tasks}
+                total={total}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                onPageChange={setPage}
+                onRowsPerPageChange={handleRowsPerPage}
                 selectTask={(task_id: string) => navigate(`/results/${task_id}`)}
                 deselectTask={()=> navigate(`/results/`)}
                 selectedTaskId={task_id}
-            />
+            />}
 
             {task_id &&
                 <PortfolioResultsViewer
-                    isLoading={isLoadingResults}
-                    error={error}
+                    isLoading={isLoadingPortfolio}
+                    error={portfolioError}
                     results={resultsForTask?.portfolio_results || []}
                     highlighted={resultsForTask?.highlighted_results || []}
                     selectPortfolio={(portfolio_id: string) => navigate(`/results/${task_id}/${portfolio_id}`)}

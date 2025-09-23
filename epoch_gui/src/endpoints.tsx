@@ -1,4 +1,4 @@
-import {Site, OptimisationTaskListEntry, Client} from "./State/types";
+import {Site, OptimisationTaskListRequest, Client, OptimisationTaskListResponse} from "./State/types";
 import {
     EpochSiteData,
     OptimisationResultsResponse,
@@ -157,26 +157,27 @@ export const listSites = async (client_id: string): Promise<ApiResponse<Site[]>>
 };
 
 
-export const listOptimisationTasks = async(client_id: string): Promise<OptimisationTaskListEntry[]> => {
-    const payload = {client_id: client_id};
-
+export const listOptimisationTasks = async(
+    request: OptimisationTaskListRequest): Promise<ApiResponse<OptimisationTaskListResponse>> => {
     try {
         const response = await fetch("/api/data/list-optimisation-tasks", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(payload)
+            body: JSON.stringify(request)
         });
 
         if(!response.ok) {
-            console.error(`HTTP error! Status: ${response.status}`);
-            return [];
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error: error};
         }
 
-        return await response.json();
+        const data = await response.json();
+        return {success: true, data};
 
     } catch (error) {
-        console.error("Failed to list sites", error);
-        return [];
+        console.error("Failed to list tasks", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 }
 

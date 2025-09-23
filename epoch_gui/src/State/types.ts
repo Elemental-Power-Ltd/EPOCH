@@ -28,12 +28,26 @@ export interface TaskConfig {
 export type SiteRange = any;
 
 
+export interface OptimisationTaskListRequest {
+    client_id: string;
+    limit?: number;
+    offset?: number;
+}
+
 export interface OptimisationTaskListEntry {
     task_id: string;
     task_name?: string;
     n_evals: number | null;
     n_saved: number | null;
     exec_time: string | null;
+    created_at: string;
+    epoch_version: string | null;
+    objectives: string[];
+}
+
+export interface OptimisationTaskListResponse {
+    tasks: OptimisationTaskListEntry[];
+    total_results: number;
 }
 
 export type Grade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
