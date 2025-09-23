@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime
+import itertools
 import json
 import logging
 import uuid
@@ -13,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.import_tariffs import TariffMetadata, TariffProviderEnum
 from app.routers.client_data import get_baseline
+from app.routers.heating_load import list_phpp
 
 from ..dependencies import DatabasePoolDep
 from ..internal.epl_typing import Jsonable
@@ -35,12 +37,7 @@ from ..models.core import (
     dataset_id_t,
 )
 from ..models.electricity_load import ElectricalLoadRequest
-from ..models.heating_load import (
-    HeatingLoadMetadata,
-    HeatingLoadModelEnum,
-    HeatingLoadRequest,
-    InterventionEnum,
-)
+from ..models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
 from ..models.import_tariffs import SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import BundleHints, DatasetBundleMetadata, DatasetList, SiteDataEntry
@@ -759,16 +756,32 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
                 ),
             )
         )
-    # Most of these are single datasets, but prime the list of desired UUIDs with empty lists
-    # for the cases where we'll need them.
-    POTENTIAL_INTERVENTIONS = [[], [InterventionEnum.Loft], [InterventionEnum.DoubleGlazing], [InterventionEnum.Cladding]]
+
+    # If we've got a PHPP, we can apply more detailed interventions.
+    # If not, we have to fall back to generic interventions.
+    # Note that we don't craft different requests and just trust that the auto mode will sort us out.
+    available_phpps = await list_phpp(pool=pool, site_id=SiteID(site_id=params.site_id))
+    if available_phpps:
+        INDIVIDUAL_INTERVENTIONS = [
+            "Insulation to ceiling void",
+            "Replacement External Windows",
+            "External Insulation to external cavity wall",
+            "Air tightness to external doors and windows",
+        ]
+    else:
+        INDIVIDUAL_INTERVENTIONS = [InterventionEnum.Loft, InterventionEnum.Cladding, InterventionEnum.DoubleGlazing]
     hload_reqs = []
+
+    POTENTIAL_INTERVENTIONS = [
+        list(c) for i in range(len(INDIVIDUAL_INTERVENTIONS) + 1) for c in itertools.combinations(INDIVIDUAL_INTERVENTIONS, i)
+    ]
     for idx, interventions in enumerate(POTENTIAL_INTERVENTIONS):
         req = HeatingLoadRequest(
             dataset_id=gas_meter_dataset_id,
             start_ts=params.start_ts,
             end_ts=params.end_ts,
             interventions=interventions,
+            model_type=HeatingLoadModelEnum.Auto,
             bundle_metadata=BundleEntryMetadata(
                 bundle_id=bundle_metadata.bundle_id,
                 dataset_id=uuid7(),

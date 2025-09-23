@@ -652,14 +652,18 @@ async def generate_heating_load_phpp(
     )
 
     new_structure_df = structure_df.copy()
+    air_changes = metadata.air_changes
     for intervention in params.interventions:
         # Repeatedly apply interventions to the same dataframe. This does some unnecessary copying but is cleanest
         new_structure_df = apply_phpp_intervention(new_structure_df, intervention_name=intervention)
+        if "Air tightness" in intervention:
+            # This is a bodge! Watch out!
+            air_changes *= 0.7
 
     final_peak_hload = phpp_total_heat_loss(
         structure_df=new_structure_df,
         metadata={
-            "air_changes": metadata.air_changes,
+            "air_changes": air_changes,
             "floor_area": metadata.floor_area,
             "internal_volume": metadata.internal_volume,
         },
