@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Alert, Button, Collapse} from '@mui/material';
+import {Alert, Button, Collapse, Grid} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import dayjs, {Dayjs} from 'dayjs';
@@ -11,6 +11,7 @@ import {StackedBarChart} from "./StackedBarChart";
 import {LineChartPanels} from "./LineChartPanels";
 import {removeEmptyVectors} from "./GraphUtils";
 import {DataAnnotationMap, getAnnotatedSeries} from "./TimeSeriesAnnotations";
+import {DayOfInterestSelector} from "./DayOfInterestSelector.tsx";
 
 interface DataVizProps {
     result: SimulationResult;
@@ -102,6 +103,16 @@ const DataVizContainer: React.FC<DataVizProps> = ({ result, isInformedEmbed = fa
             />
 
             <StackedBarChart rangedData={rangedData} xValues={x_hh} windowWidth={windowWidth}/>
+
+            {result.days_of_interest && (
+                <Grid item>
+                    <DayOfInterestSelector
+                        daysOfInterest={result.days_of_interest}
+                        setSelectedStartDatetime={setSelectedStartDatetime}
+                        setDaysToKeep={setDaysToKeep}
+                    />
+                </Grid>
+            )}
 
             {isInformedEmbed && (
                 <Button

@@ -48,6 +48,25 @@ export interface EpochSiteData {
     ashp_output_table: number[][];
 }
 
+export type DayOfInterestType =
+    "maxgeneration" |
+    "maxbatterythroughput" |
+    "maxselfconsumption" |
+    "maxheating" |
+    "maxdemand" |
+    "maxcost" |
+    "maxheatshortfall" |
+    "maximportshortfall" |
+    "maxdhwdemand"
+
+
+export interface DayOfInterest {
+    day_type: DayOfInterestType;
+    name: string;
+    start_ts: string;
+    end_ts: string;
+}
+
 export interface SimulationResult {
     metrics: SiteMetrics;
 
@@ -56,6 +75,7 @@ export interface SimulationResult {
     // the TaskData,SiteData pair used to produce this result
     task_data: any;
     site_data: EpochSiteData | null
+    days_of_interest: DayOfInterest[] | null;
 }
 
 export type Objective =
