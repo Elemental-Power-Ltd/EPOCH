@@ -18,7 +18,7 @@ from fastapi.encoders import jsonable_encoder
 from ..dependencies import DatabasePoolDep
 from ..internal.optimisation import pick_highlighted_results
 from ..internal.optimisation.util import capex_breakdown_from_json, capex_breakdown_to_json
-from ..models.core import ClientID, ResultID, TaskID
+from ..models.core import ResultID, TaskID
 from ..models.optimisation import (
     Grade,
     LegacyResultReproConfig,
@@ -26,6 +26,8 @@ from ..models.optimisation import (
     OptimisationResultEntry,
     OptimisationResultsResponse,
     OptimisationTaskListEntry,
+    OptimisationTaskListRequest,
+    OptimisationTaskListResponse,
     PortfolioOptimisationResult,
     SimulationMetrics,
     SiteOptimisationResult,
@@ -331,7 +333,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
 
 
 @router.post("/list-optimisation-tasks")
-async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) -> list[OptimisationTaskListEntry]:
+async def list_optimisation_tasks(pool: DatabasePoolDep, request: OptimisationTaskListRequest) -> OptimisationTaskListResponse:
     """
     Get all the optimisation tasks for a given client.
 
@@ -348,52 +350,65 @@ async def list_optimisation_tasks(pool: DatabasePoolDep, client_id: ClientID) ->
     """
     res = await pool.fetch(
         """
+        WITH base AS (
+            SELECT
+                tc.task_id,
+                tc.client_id,
+                tc.task_name,
+                tc.created_at AS created_at,
+                ARRAY (
+                    SELECT jsonb_array_elements_text(
+                        COALESCE(tc.objectives, '[]'::jsonb)
+                    )
+                ) AS objectives,
+                tc.epoch_version as epoch_version,
+                ANY_VALUE(tr.n_evals)   AS n_evals,
+                COUNT(pr.task_id)       AS n_saved,
+                ANY_VALUE(tr.exec_time) AS exec_time
+            FROM optimisation.task_config AS tc
+            LEFT JOIN optimisation.task_results AS tr
+                ON tr.task_id = tc.task_id
+            LEFT JOIN optimisation.portfolio_results AS pr
+                ON tc.task_id = pr.task_id
+            WHERE tc.client_id = $1
+            GROUP BY
+                tc.task_id,
+                tc.client_id,
+                tc.task_name,
+                tc.created_at,
+                tc.objectives,
+                tc.epoch_version
+        )
         SELECT
-            tc.task_id,
-            tc.client_id,
-            tc.task_name,
-            tc.created_at AS created_at,
-            ARRAY (
-                SELECT jsonb_array_elements_text(
-                    COALESCE(tc.objectives, '[]'::jsonb)
-                )
-            ) AS objectives,
-            tc.epoch_version as epoch_version,
-            ANY_VALUE(tr.n_evals)   AS n_evals,
-            COUNT(pr.task_id)       AS n_saved,
-            ANY_VALUE(tr.exec_time) AS exec_time
-        FROM optimisation.task_config AS tc
-        LEFT JOIN optimisation.task_results AS tr
-            ON tr.task_id = tc.task_id
-        LEFT JOIN optimisation.portfolio_results AS pr
-            ON tc.task_id = pr.task_id
-        WHERE tc.client_id = $1
-        GROUP BY
-            tc.task_id,
-            tc.client_id,
-            tc.task_name,
-            tc.created_at,
-            tc.objectives,
-            tc.epoch_version
-        ORDER BY
-            created_at DESC;
+            base.*,
+            COUNT(*) OVER () AS total_results
+        FROM base
+        ORDER BY base.created_at DESC
+        LIMIT $2
+        OFFSET $3
         """,
-        client_id.client_id,
+        request.client_id,
+        request.limit,
+        request.offset,
     )
 
-    return [
-        OptimisationTaskListEntry(
-            task_id=item["task_id"],
-            task_name=item["task_name"],
-            n_evals=item["n_evals"],
-            n_saved=item["n_saved"],
-            exec_time=item["exec_time"],
-            created_at=item["created_at"],
-            epoch_version=item["epoch_version"],
-            objectives=item["objectives"],
-        )
-        for item in res
-    ]
+    result_count = res[0]["total_results"] if res else 0
+
+    return OptimisationTaskListResponse(
+        tasks=[
+            OptimisationTaskListEntry(
+                task_id=item["task_id"],
+                task_name=item["task_name"],
+                n_evals=item["n_evals"],
+                n_saved=item["n_saved"],
+                exec_time=item["exec_time"],
+                created_at=item["created_at"],
+                epoch_version=item["epoch_version"],
+                objectives=item["objectives"],
+            )
+            for item in res],
+        total_results=result_count
+    )
 
 
 @router.post("/add-optimisation-results")

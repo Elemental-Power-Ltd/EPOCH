@@ -392,6 +392,12 @@ class LegacyResultReproConfig(ResultReproConfig):
 type result_repro_config_t = NewResultReproConfig | LegacyResultReproConfig
 
 
+class OptimisationTaskListRequest(pydantic.BaseModel):
+    client_id: client_id_t
+    limit: int | None = pydantic.Field(description="The maximum number of items to return.", gt=0, default=None)
+    offset: int | None = pydantic.Field(description="The starting index to return.", ge=0, default=None)
+
+
 class OptimisationTaskListEntry(pydantic.BaseModel):
     task_id: dataset_id_t
     task_name: str | None
@@ -411,3 +417,8 @@ class OptimisationTaskListEntry(pydantic.BaseModel):
     )
     epoch_version: str | None = pydantic.Field(description="The version of EPOCH used to generate these results.")
     objectives: list[str] = pydantic.Field(description="The objectives this task was optimised for.")
+
+
+class OptimisationTaskListResponse(pydantic.BaseModel):
+    tasks: list[OptimisationTaskListEntry] = pydantic.Field(description="The requested subset of the tasks.")
+    total_results: int = pydantic.Field(description="The total number of results we have.")

@@ -30,114 +30,119 @@ from app.models.site_manager import SiteDataEntry
 from .conftest import get_pool_hack
 
 
+@pytest_asyncio.fixture
+async def sample_task_config(client: httpx.AsyncClient) -> TaskConfig:
+    """Create a sample task to put in our database."""
+    bundle_id = uuid7()
+    start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+    end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+    bundle_resp = await client.post(
+        "/create-bundle",
+        json={
+            "bundle_id": str(bundle_id),
+            "name": "Task Config Tests",
+            "site_id": "demo_london",
+            "start_ts": start_ts.isoformat(),
+            "end_ts": end_ts.isoformat(),
+        },
+    )
+    assert bundle_resp.is_success
+    return TaskConfig(
+        task_id=uuid7(),
+        task_name="test_task_config",
+        client_id="demo",
+        portfolio_constraints={"capex": {"max": 1e5}},
+        site_constraints={"demo_london": {"capex": {"min": 1000, "max": 9999}}},
+        portfolio_range={
+            "demo_london": {
+                "grid": {
+                    "COMPONENT_IS_MANDATORY": True,
+                    "export_headroom": [0],
+                    "grid_export": [0],
+                    "grid_import": [0],
+                    "import_headroom": [0],
+                    "min_power_factor": [0],
+                    "tariff_index": [0],
+                }
+            }
+        },
+        objectives=["capex", "carbon_balance"],
+        optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
+        created_at=datetime.datetime.now(datetime.UTC),
+        epoch_version="1.2.3",
+        bundle_ids={"demo_london": bundle_id},
+    )
+
+
+@pytest.fixture
+def sample_task_result(sample_task_config: TaskConfig) -> TaskResult:
+    """Create a sample task to put in our database."""
+    return TaskResult(
+        task_id=sample_task_config.task_id,
+        n_evals=123,
+        exec_time=datetime.timedelta(hours=1, minutes=2, seconds=3),
+        # completed_at=None, # deliberately left out
+    )
+
+
+@pytest.fixture
+def sample_portfolio_optimisation_result(sample_task_config: TaskConfig) -> PortfolioOptimisationResult:
+    """Create a sample result for the whole small portfolio."""
+    return PortfolioOptimisationResult(
+        portfolio_id=uuid7(),
+        task_id=sample_task_config.task_id,
+        metrics=SimulationMetrics(
+            carbon_balance_scope_1=1.0,
+            carbon_balance_scope_2=2.0,
+            cost_balance=3.0,
+            capex=4.0,
+            payback_horizon=None,  # we didn't calculate this one
+            annualised_cost=-1.0,  # this one is negative!
+            carbon_cost=5.0,
+            total_gas_used=3.0,
+            total_electricity_imported=3.0,
+            total_electricity_generated=3.0,
+            total_electricity_exported=3.0,
+        ),
+    )
+
+
+@pytest.fixture
+def sample_scenario() -> TaskDataPydantic:
+    """Create a sample scenario to put in our database."""
+    task_data = TaskDataPydantic()
+    task_data.building = Building(scalar_heat_load=1.0, scalar_electrical_load=1.0, fabric_intervention_index=0)
+    task_data.grid = Grid(grid_export=23.0, grid_import=23.0, import_headroom=0.4, tariff_index=0)
+    return task_data
+
+
+@pytest.fixture
+def sample_site_optimisation_result(
+    sample_portfolio_optimisation_result: PortfolioOptimisationResult, sample_scenario: TaskDataPydantic
+) -> SiteOptimisationResult:
+    """Create a sample result for the one site in our portfolio."""
+    return SiteOptimisationResult(
+        portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
+        site_id="demo_london",
+        scenario=sample_scenario,
+        metrics=SimulationMetrics(
+            carbon_balance_scope_1=1.0,
+            carbon_balance_scope_2=2.0,
+            cost_balance=3.0,
+            capex=4.0,
+            payback_horizon=None,  # we didn't calculate this one
+            annualised_cost=-1.0,  # this one is negative!
+            carbon_cost=5.0,
+            total_gas_used=3.0,
+            total_electricity_imported=3.0,
+            total_electricity_generated=3.0,
+            total_electricity_exported=3.0,
+        ),
+    )
+
+
 class TestOptimisationTaskDatabase:
     """Integration tests for adding and querying optimisation tasks."""
-
-    @pytest_asyncio.fixture
-    async def sample_task_config(self, client: httpx.AsyncClient) -> TaskConfig:
-        """Create a sample task to put in our database."""
-        bundle_id = uuid7()
-        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
-        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
-        bundle_resp = await client.post(
-            "/create-bundle",
-            json={
-                "bundle_id": str(bundle_id),
-                "name": "Task Config Tests",
-                "site_id": "demo_london",
-                "start_ts": start_ts.isoformat(),
-                "end_ts": end_ts.isoformat(),
-            },
-        )
-        assert bundle_resp.is_success
-        return TaskConfig(
-            task_id=uuid7(),
-            task_name="test_task_config",
-            client_id="demo",
-            portfolio_constraints={"capex": {"max": 1e5}},
-            site_constraints={"demo_london": {"capex": {"min": 1000, "max": 9999}}},
-            portfolio_range={
-                "demo_london": {
-                    "grid": {
-                        "COMPONENT_IS_MANDATORY": True,
-                        "export_headroom": [0],
-                        "grid_export": [0],
-                        "grid_import": [0],
-                        "import_headroom": [0],
-                        "min_power_factor": [0],
-                        "tariff_index": [0],
-                    }
-                }
-            },
-            objectives=["capex", "carbon_balance"],
-            optimiser=Optimiser(name=OptimiserEnum.NSGA2, hyperparameters={}),
-            created_at=datetime.datetime.now(datetime.UTC),
-            epoch_version="1.2.3",
-            bundle_ids={"demo_london": bundle_id},
-        )
-
-    @pytest.fixture
-    def sample_task_result(self, sample_task_config: TaskConfig) -> TaskResult:
-        """Create a sample task to put in our database."""
-        return TaskResult(
-            task_id=sample_task_config.task_id,
-            n_evals=123,
-            exec_time=datetime.timedelta(hours=1, minutes=2, seconds=3),
-            # completed_at=None, # deliberately left out
-        )
-
-    @pytest.fixture
-    def sample_portfolio_optimisation_result(self, sample_task_config: TaskConfig) -> PortfolioOptimisationResult:
-        """Create a sample result for the whole small portfolio."""
-        return PortfolioOptimisationResult(
-            portfolio_id=uuid7(),
-            task_id=sample_task_config.task_id,
-            metrics=SimulationMetrics(
-                carbon_balance_scope_1=1.0,
-                carbon_balance_scope_2=2.0,
-                cost_balance=3.0,
-                capex=4.0,
-                payback_horizon=None,  # we didn't calculate this one
-                annualised_cost=-1.0,  # this one is negative!
-                carbon_cost=5.0,
-                total_gas_used=3.0,
-                total_electricity_imported=3.0,
-                total_electricity_generated=3.0,
-                total_electricity_exported=3.0,
-            ),
-        )
-
-    @pytest.fixture
-    def sample_scenario(self) -> TaskDataPydantic:
-        """Create a sample scenario to put in our database."""
-        task_data = TaskDataPydantic()
-        task_data.building = Building(scalar_heat_load=1.0, scalar_electrical_load=1.0, fabric_intervention_index=0)
-        task_data.grid = Grid(grid_export=23.0, grid_import=23.0, import_headroom=0.4, tariff_index=0)
-        return task_data
-
-    @pytest.fixture
-    def sample_site_optimisation_result(
-        self, sample_portfolio_optimisation_result: PortfolioOptimisationResult, sample_scenario: TaskDataPydantic
-    ) -> SiteOptimisationResult:
-        """Create a sample result for the one site in our portfolio."""
-        return SiteOptimisationResult(
-            portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
-            site_id="demo_london",
-            scenario=sample_scenario,
-            metrics=SimulationMetrics(
-                carbon_balance_scope_1=1.0,
-                carbon_balance_scope_2=2.0,
-                cost_balance=3.0,
-                capex=4.0,
-                payback_horizon=None,  # we didn't calculate this one
-                annualised_cost=-1.0,  # this one is negative!
-                carbon_cost=5.0,
-                total_gas_used=3.0,
-                total_electricity_imported=3.0,
-                total_electricity_generated=3.0,
-                total_electricity_exported=3.0,
-            ),
-        )
 
     @pytest.mark.asyncio
     async def test_can_add_task_config(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
@@ -162,7 +167,8 @@ class TestOptimisationTaskDatabase:
         result_2 = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
         assert result_2.status_code == 200, result_2.text
 
-        listed_tasks = result_2.json()
+        response = result_2.json()
+        listed_tasks = response["tasks"]
         assert len(listed_tasks) == 1
         assert listed_tasks[0]["task_name"] == "test_task_config"
         assert listed_tasks[0]["task_id"] == str(sample_task_config.task_id)
@@ -399,7 +405,7 @@ class TestOptimisationTaskDatabase:
     async def test_can_retrieve_task_result(
         self, sample_task_config: TaskConfig, sample_task_result: TaskResult, client: httpx.AsyncClient
     ) -> None:
-        """Test that we can add a task config and retrieve it with no results associated."""
+        """Test that we can add a task config and associate a result to it."""
         result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert result.status_code == 200, result.text
 
@@ -408,11 +414,12 @@ class TestOptimisationTaskDatabase:
         )
         assert res_result.status_code == 200, res_result.text
 
-        list_result = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
-        assert list_result.status_code == 200, list_result.text
-        assert list_result.json()[0]["task_id"] == str(sample_task_config.task_id)
-        assert list_result.json()[0]["n_evals"] == 123
-        assert list_result.json()[0]["exec_time"] == pydantic.TypeAdapter(datetime.timedelta).dump_python(
+        response = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
+        assert response.status_code == 200, response.text
+        tasks = response.json()["tasks"]
+        assert tasks[0]["task_id"] == str(sample_task_config.task_id)
+        assert tasks[0]["n_evals"] == 123
+        assert tasks[0]["exec_time"] == pydantic.TypeAdapter(datetime.timedelta).dump_python(
             sample_task_result.exec_time, mode="json"
         )
 
@@ -437,10 +444,14 @@ class TestOptimisationTaskDatabase:
         list_tasks_response = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
         assert list_tasks_response.status_code == 200, list_tasks_response.text
 
-        tasks = list_tasks_response.json()
+        tasks = list_tasks_response.json()["tasks"]
         # There should be exactly one task with n_saved = 2
         assert len(tasks) == 1, "There should be exactly one listed task."
         assert tasks[0]["n_saved"] == 2, f"Expected n_saved to be 2 - got {tasks[0]['n_saved']} instead."
+
+
+class TestLegacyTaskConfig:
+    """Test that old-style task configs are loaded correctly."""
 
     @pytest.mark.asyncio
     async def test_can_insert_legacy_task_config(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
@@ -597,6 +608,78 @@ class TestOptimisationTaskDatabase:
         }
 
 
+class TestPagination:
+    """Tests for pagination of the task list."""
+
+    @pytest.mark.asyncio
+    async def test_pagination_defaults(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
+        """Test that the default behaviour applies no limit of offset."""
+        t1 = sample_task_config
+        t2 = t1.model_copy(deep=True)
+        t2.task_id = uuid7()
+
+        add_1 = await client.post("/add-optimisation-task", content=t1.model_dump_json())
+        assert add_1.status_code == 200, add_1.text
+
+        add_2 = await client.post("/add-optimisation-task", content=t2.model_dump_json())
+        assert add_2.status_code == 200, add_2.text
+
+        # check we can retrie
+        result = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
+        assert result.status_code == 200, result.text
+
+        response = result.json()
+        tasks = response["tasks"]
+        assert response["total_results"] == 2
+        assert len(tasks) == 2
+
+    @pytest.mark.asyncio
+    async def test_pagination_limit(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
+        """Test that we can apply a limit when retrieving tasks."""
+        t1 = sample_task_config
+        t2 = t1.model_copy(deep=True)
+        t2.task_id = uuid7()
+
+        add_1 = await client.post("/add-optimisation-task", content=t1.model_dump_json())
+        assert add_1.status_code == 200, add_1.text
+
+        add_2 = await client.post("/add-optimisation-task", content=t2.model_dump_json())
+        assert add_2.status_code == 200, add_2.text
+
+        # check we can retrie
+        result = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo", "limit": 1}))
+        assert result.status_code == 200, result.text
+
+        response = result.json()
+        tasks = response["tasks"]
+        assert response["total_results"] == 2
+        assert len(tasks) == 1
+        assert tasks[0]["task_id"] == str(t1.task_id)
+
+    @pytest.mark.asyncio
+    async def test_pagination_offset(self, sample_task_config: TaskConfig, client: httpx.AsyncClient) -> None:
+        """Test that we can apply an offset when retrieving tasks."""
+        t1 = sample_task_config
+        t2 = t1.model_copy(deep=True)
+        t2.task_id = uuid7()
+
+        add_1 = await client.post("/add-optimisation-task", content=t1.model_dump_json())
+        assert add_1.status_code == 200, add_1.text
+
+        add_2 = await client.post("/add-optimisation-task", content=t2.model_dump_json())
+        assert add_2.status_code == 200, add_2.text
+
+        # check we can retrie
+        result = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo", "offset": 1}))
+        assert result.status_code == 200, result.text
+
+        response = result.json()
+        tasks = response["tasks"]
+        assert response["total_results"] == 2
+        assert len(tasks) == 1
+        assert tasks[0]["task_id"] == str(t2.task_id)
+
+
 class TestOptimisationTaskDatabaseUUID4:
     """Integration tests for adding and querying optimisation tasks with old-style UUID4s."""
 
@@ -729,7 +812,7 @@ class TestOptimisationTaskDatabaseUUID4:
         result_2 = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
         assert result_2.status_code == 200, result_2.text
 
-        listed_tasks = result_2.json()
+        listed_tasks = result_2.json()["tasks"]
         assert len(listed_tasks) == 1
         assert listed_tasks[0]["task_name"] == "test_task_config"
         assert listed_tasks[0]["task_id"] == str(sample_task_config.task_id)
@@ -977,9 +1060,11 @@ class TestOptimisationTaskDatabaseUUID4:
 
         list_result = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
         assert list_result.status_code == 200, list_result.text
-        assert list_result.json()[0]["task_id"] == str(sample_task_config.task_id)
-        assert list_result.json()[0]["n_evals"] == 123
-        assert list_result.json()[0]["exec_time"] == pydantic.TypeAdapter(datetime.timedelta).dump_python(
+
+        tasks = list_result.json()["tasks"]
+        assert tasks[0]["task_id"] == str(sample_task_config.task_id)
+        assert tasks[0]["n_evals"] == 123
+        assert tasks[0]["exec_time"] == pydantic.TypeAdapter(datetime.timedelta).dump_python(
             sample_task_result.exec_time, mode="json"
         )
 
@@ -1004,7 +1089,7 @@ class TestOptimisationTaskDatabaseUUID4:
         list_tasks_response = await client.post("/list-optimisation-tasks", content=json.dumps({"client_id": "demo"}))
         assert list_tasks_response.status_code == 200, list_tasks_response.text
 
-        tasks = list_tasks_response.json()
+        tasks = list_tasks_response.json()["tasks"]
         # There should be exactly one task with n_saved = 2
         assert len(tasks) == 1, "There should be exactly one listed task."
         assert tasks[0]["n_saved"] == 2, f"Expected n_saved to be 2 - got {tasks[0]['n_saved']} instead."
