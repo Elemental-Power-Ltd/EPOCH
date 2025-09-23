@@ -9,35 +9,347 @@ Each result is uniquely identified, and belongs to a set of results.
 import asyncio
 import functools
 import json
+import logging
+from collections import defaultdict
+from typing import cast
 
 import asyncpg
 import numpy as np
 from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 
-from ..dependencies import DatabasePoolDep
-from ..internal.optimisation import pick_highlighted_results
-from ..internal.optimisation.util import capex_breakdown_from_json, capex_breakdown_to_json
-from ..models.core import ResultID, TaskID
-from ..models.optimisation import (
+from app.dependencies import DatabasePoolDep
+from app.internal.epl_typing import Jsonable
+from app.internal.optimisation import pick_highlighted_results
+from app.internal.optimisation.util import capex_breakdown_from_json, capex_breakdown_to_json
+from app.internal.utils.utils import ArgDefaultDict, snake_to_title_case
+from app.models.core import ResultID, TaskID, site_id_t
+from app.models.optimisation import (
+    FixedParam,
     Grade,
     LegacyResultReproConfig,
+    MinMaxParam,
     NewResultReproConfig,
     OptimisationResultEntry,
     OptimisationResultsResponse,
     OptimisationTaskListEntry,
     OptimisationTaskListRequest,
     OptimisationTaskListResponse,
+    Param,
     PortfolioOptimisationResult,
     SimulationMetrics,
     SiteOptimisationResult,
     TaskConfig,
+    ValuesParam,
+    component_t,
+    gui_param_dict,
     result_repro_config_t,
 )
-from ..models.site_manager import SiteDataEntry
-from .site_manager import get_bundle_hints
+from app.models.site_manager import BundleHints, SiteDataEntry
+from app.models.site_range import SiteRange
+from app.routers.site_manager import get_bundle_hints
 
 router = APIRouter()
+
+type site_search_space_dict = dict[component_t, gui_param_dict | list[gui_param_dict]]
+
+
+def values_to_param(
+    values: list[float] | list[int] | list[str], can_minmax: bool = True
+) -> ValuesParam | MinMaxParam[float] | MinMaxParam[int] | FixedParam:
+    """
+    Convert a list of values into the most GUI friendly form.
+
+    If we've only got one value, or the min and max are the same, then return just that fixed value.
+    If we've got a few values, or they're strings, then return a list of those values.
+    If we've got a lot of values, condense them into a `min`, `max` pair.
+    Some parameters, like tariff indices, mustn't be condensed itno a `MinMaxParam` and will always be
+    either a `FixedParam` or `ValuesParam`.
+
+    Parameters
+    ----------
+    values
+        List of searched values
+    can_minmax
+        Whether it's valid to turn this parameter into a minmax parameter or if it must be kept as a list.
+
+    Returns
+    -------
+    ValuesParam
+        A list of values if they're strings or if this is a short collection
+    FixedParam
+        A single value
+    MinMaxParam
+        If the range is large or we searched many.
+    """
+    if min(values) == max(values) or len(values) == 1:
+        return snake_to_title_case(values[0]) if isinstance(values[0], str) else values[0]
+
+    # Leave this one be! It's probably a tariff index or fabric intervention index..
+    if not can_minmax:
+        return values
+
+    # In the case of short lists, just return them all
+    if len(values) <= 4:
+        return values
+
+    # if we've got a string enum, then don't turn it into a MinMaxParam.
+    if any(isinstance(v, str) for v in values):
+        return cast(ValuesParam, [snake_to_title_case(x) if isinstance(x, str) else x for x in values])
+
+    return MinMaxParam(min=cast(float | int, min(values)), max=cast(float | int, max(values)), count=len(values))
+
+
+def db_to_gui_site_range(db_site_range: SiteRange) -> dict[component_t, gui_param_dict | list[gui_param_dict]]:
+    """
+    Convert a single site range from the database into a GUI friendly version.
+
+    This will split the dictionary into one keyed by components with the values being either
+    a single gui-friendly dict, or a list of gui-friendly dicts (in the case of solar panels).
+    It works as defensively as possible, and should cope with all types of site range.
+    This skips incumbent assets as we assume that they're already there (and are therefore not interventions).
+
+    Parameters
+    ----------
+    db_site_range
+        A site range from the database which might be old.
+
+    Returns
+    -------
+    dict[component_t, gui_param_t | list[gui_param_t]]
+        Component types are like `heat_pump` or `solar_panels`
+        A gui_param_t is then like `{"heat_power": Param(...)}` for each parameter
+
+    """
+    logger = logging.getLogger(__name__)
+
+    # These are manually maintained, but should be broadly sensible.
+    # If we have a parameter name clash between components then they should have the same units.
+    param_names = ArgDefaultDict[str, str](default_factory=lambda x: snake_to_title_case(x))
+    param_names |= {
+        "send_temp": "Send Temperature",
+        "fabric_intervention_index": "Fabric Intervention",
+        "tariff_index": "Import Tariff",
+    }
+
+    discrete_params = frozenset(["tariff_index", "fabric_intervention_index", "yield_index"])
+
+    param_units = defaultdict(lambda: None) | {
+        # Building
+        "floor_area": "m²",
+        # Battery
+        "capacity": "kWh",
+        "charge_power": "kW",
+        "discharge_power": "kW",
+        "initial_charge": "%",
+        # DHW cylinder
+        "cylinder_volume": "L",
+        # Electric Vehicles
+        "flexible_load_ratio": "%",
+        # Gas heater
+        "maximum_output": "kW",
+        "boiler_efficiency": "%",
+        "fixed_gas_price": "£/kWh",
+        # Data Centre
+        "maximum_load": "kW",
+        "hotroom_temperature": "°C",
+        # Grid Connection
+        "grid_export": "kW",
+        "grid_import": "kW",
+        "import_headroom": "%",
+        "export_headroom": "%",
+        "export_tariff": "£/kWh",
+        # Heat Pump
+        "heat_power": "kWth",
+        "send_temp": "°C",
+        # Solar
+        "yield_scalar": "kWp",
+    }
+    params_to_skip = frozenset({
+        "age",
+        "lifetime",
+        "COMPONENT_IS_MANDATORY",
+        "scalar_heat_load",
+        "scalar_electrical_load",
+        "min_power_factor",
+        "incumbent",
+        "floor_area",
+    })
+
+    def value_to_param_dict(value: dict[str, Jsonable]) -> gui_param_dict | None:
+        """
+        Split a single value into a parameter dictionary.
+
+        The value is what we store for this component in the search space, and will be a dictionary
+        of parameters and a list of searched values.
+        Turn this into a pydantic param dict with some prettifying and sort out the values list as well.
+
+        Parameters
+        ----------
+        value
+            A database-style search space for a single component e.g. {"heat_power": [100, 200, 300]}
+
+        Returns
+        -------
+        gui_param_dict
+            A parsed GUI friendly parameter dict if we can
+        None
+            if this component is incumbent or something went wrong.
+        """
+        # Note that we return the search space for incumbent components as well,
+        # as they might not be fully incumbent! (e.g. changing tariffs)
+        new_dict: gui_param_dict = {}
+        for param, param_values in value.items():
+            if param in params_to_skip or not isinstance(param_values, list):
+                continue
+            new_dict[param] = Param(
+                name=param_names[param],
+                units=param_units[param],
+                considered=values_to_param(cast(list, param_values), can_minmax=param not in discrete_params),
+            )
+        return new_dict
+
+    gui_site_range: dict[component_t, gui_param_dict | list[gui_param_dict]] = {}
+    for component, value in db_site_range.items():
+        if value is None:
+            continue
+        if component == "config":
+            # Don't parse the config for now as it contains ugly NSGA2 hyperparameters etc.
+            # We might want to do this in future?
+            continue
+        # We do these two-step assignments to filter out the cases where we didn't get valid
+        # dicts
+        if isinstance(value, list):
+            # We know these are dict[str, Jsonable] so we're fine
+            parsed_list = [value_to_param_dict(cast(dict, subvalue)) for subvalue in value]
+            gui_site_range[component] = [item for item in parsed_list if item]
+        elif isinstance(value, dict):
+            if parsed := value_to_param_dict(value):
+                gui_site_range[component] = parsed
+        else:
+            logger.warning(f"Got unprocessable site range component: {component}: {value}")
+    return gui_site_range
+
+
+async def get_gui_site_range(task_id: TaskID, pool: DatabasePoolDep) -> dict[site_id_t, site_search_space_dict]:
+    """
+    Get a site range suitable for the GUI associated with this task ID.
+
+    This will be sorted by site and have a friendly way of displaying the parameters.
+    Not all parameters will be included, and some will be single values.
+
+    Parameters
+    ----------
+    task_id
+        ID of the task to get the GUI site range for
+
+    pool
+        Database connection pool to look up with.
+
+    Returns
+    -------
+    dict[site_id_t, gui_param_t]
+        Dictionary keyed by site names, with each sub-dictionary being a param name followed by a dictionary of parameters
+        you might want to display
+        e.g. {"demo_london":
+                {"heat_pump":
+                    {"heat_power": Param(name="Heat Power", units="kWth", considered=MinMaxParam[float](min=4.0, max=12.0))}
+                }
+            }
+    """
+    rows = await pool.fetch(
+        """
+        SELECT
+            site_id,
+            site_range
+        FROM
+            optimisation.site_task_config
+        WHERE task_id = $1
+        """,
+        task_id.task_id,
+    )
+    ranges = {}
+    for site_id, site_range in rows:
+        ranges[site_id] = db_to_gui_site_range(json.loads(site_range))
+    return ranges
+
+
+def patch_hints_into_site_range(site_range: site_search_space_dict, hints: BundleHints) -> site_search_space_dict:
+    """
+    Replace the indices that we sometimes get with human-readable hinted names.
+
+    This is reasonably general, but if we don't find a hint then we'll leave you with the indices.
+
+    Parameters
+    ----------
+    site_range
+        A GUI friendly site range, potentially with indices for tariffs, fabric intervention etc
+
+    hints
+        A GUI friendly set of bundle hints including names
+
+    Returns
+    -------
+    site_search_space_dict
+        A search space dictionary like `site_range` but with human readable names instead of indices.
+    """
+    logger = logging.getLogger(__name__)
+    if "grid" in site_range and "tariff_index" in site_range["grid"] and hints.tariffs:
+        try:
+            range_to_hint = cast(dict, site_range["grid"])["tariff_index"].considered
+            tariff_hints = hints.tariffs
+            # We know that tariff indexes are either a list[int] or int, and never a minmaxparam.
+            if isinstance(range_to_hint, int):
+                range_to_hint = snake_to_title_case(tariff_hints[range_to_hint].product_name)
+            elif isinstance(range_to_hint, list):
+                for i, idx in enumerate(range_to_hint):
+                    range_to_hint[i] = snake_to_title_case(tariff_hints[idx].product_name)
+            else:
+                logger.warning(f"Got a bad type for {site_range['grid']['tariff_index']}, can't patch hints")  # type: ignore
+        except Exception as ex:
+            logger.exception(f"Got a {type(ex).__name__} while patching grid hints")
+            pass
+
+    if "building" in site_range and "fabric_intervention_index" in site_range["building"] and hints.heating:
+        try:
+            heating_hints = hints.heating
+            # We know that fabric intervention indexes are either a list[int] or int, and never a minmaxparam.
+            range_to_hint = site_range["building"]["fabric_intervention_index"].considered  # type: ignore
+            if isinstance(range_to_hint, int):
+                range_to_hint = ", ".join(snake_to_title_case(item) for item in heating_hints[range_to_hint].interventions)
+            elif isinstance(range_to_hint, list):
+                for i, idx in enumerate(range_to_hint):
+                    range_to_hint[i] = ", ".join(snake_to_title_case(item) for item in heating_hints[idx].interventions)
+                    # If we got an empty list, then specifically replace that with None
+                    if not range_to_hint[i]:
+                        range_to_hint[i] = None
+            else:
+                logger.warning(
+                    f"Got a bad type for {site_range['building']['fabric_intervention_index'].considered}, can't patch hints"  # type: ignore
+                )
+        except Exception as ex:
+            logger.exception(f"Got a {type(ex).__name__} while patching grid hints")
+            pass
+
+    if "solar_panels" in site_range and hints.renewables:
+        # Rename the "name" parameter of this variable to the solar location, or combination of solar locations.
+        renewables_hints = hints.renewables
+        try:
+            for i, param in enumerate(site_range["solar_panels"]):
+                yield_indices = param["yield_index"].considered  # type: ignore
+                if isinstance(yield_indices, int):
+                    yield_indices = [yield_indices]
+                # It's possible to choose between locations when searching.
+                # In that case, join them all together with commas in between.
+                yield_index_name = ", ".join(renewables_hints[j].name for j in yield_indices)
+                cast(list, site_range["solar_panels"])[i]["yield_scalar"].name = yield_index_name
+
+                # Remove this entry as it's confusing once hinted
+                del site_range["solar_panels"][i]["yield_index"]  # type: ignore
+        except Exception as ex:
+            logger.exception(f"Got a {type(ex).__name__} while patching grid hints")
+            pass
+    return site_range
 
 
 @router.post("/get-optimisation-results")
@@ -326,9 +638,19 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
     ]
 
     highlighted_results = pick_highlighted_results(portfolio_results)
+    search_spaces = await get_gui_site_range(task_id=task_id, pool=pool)
+
+    for site_id, search_space in search_spaces.items():
+        if site_id not in bundle_hints:
+            # If we didn't get any hints, then skip this site and just return the indices
+            continue
+        search_spaces[site_id] = patch_hints_into_site_range(search_space, bundle_hints[site_id])
 
     return OptimisationResultsResponse(
-        portfolio_results=portfolio_results, highlighted_results=highlighted_results, hints=bundle_hints
+        portfolio_results=portfolio_results,
+        highlighted_results=highlighted_results,
+        hints=bundle_hints,
+        search_spaces=search_spaces,
     )
 
 
@@ -406,8 +728,9 @@ async def list_optimisation_tasks(pool: DatabasePoolDep, request: OptimisationTa
                 epoch_version=item["epoch_version"],
                 objectives=item["objectives"],
             )
-            for item in res],
-        total_results=result_count
+            for item in res
+        ],
+        total_results=result_count,
     )
 
 
@@ -743,8 +1066,6 @@ async def add_optimisation_task(task_config: TaskConfig, pool: DatabasePoolDep) 
 
     Parameters
     ----------
-    *request*
-        Internal FastAPI request object, not needed for external callers
     *task_config*
         Task configuration, featuring a unique ID, search space information (in `parameters`),
         and constraints (ideally split into `constraints_min` and `constraints_max`)

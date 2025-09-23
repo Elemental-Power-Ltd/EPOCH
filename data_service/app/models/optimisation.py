@@ -16,6 +16,27 @@ from .site_manager import BundleHints, SiteDataEntry
 from .site_range import SiteRange
 
 
+class MinMaxParam[T: float | int](pydantic.BaseModel):
+    min: T
+    max: T
+    count: int
+
+
+type ValuesParam = list[int] | list[float] | list[str]
+
+type FixedParam = int | float | str
+
+
+class Param(pydantic.BaseModel):
+    name: str
+    units: str | None
+    considered: ValuesParam | MinMaxParam[float] | MinMaxParam[int] | FixedParam
+
+
+type component_t = str
+type gui_param_dict = dict[str, Param]
+
+
 class Grade(StrEnum):
     A = "A"
     B = "B"
@@ -255,6 +276,11 @@ class OptimisationResultsResponse(pydantic.BaseModel):
         default={},
         description="Descriptive information about the data we've used to generate this result."
         " This contains names and metadata about tariffs and renewables installations.",
+    )
+    search_spaces: dict[site_id_t, dict[component_t, gui_param_dict | list[gui_param_dict]]] = pydantic.Field(
+        default={},
+        description="Information about the components we've searched over to give you this result."
+        " For each site, shows you the components and the parameters for each component we checked.",
     )
 
 

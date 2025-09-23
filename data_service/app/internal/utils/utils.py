@@ -9,7 +9,8 @@ import datetime
 import itertools
 import logging
 import urllib
-from collections.abc import Sequence
+from collections import UserDict
+from collections.abc import Callable, Sequence
 from hashlib import sha256
 from typing import Any
 
@@ -20,6 +21,39 @@ import pandas as pd
 from ..epl_typing import Jsonable
 
 logger = logging.getLogger("default")
+
+
+class ArgDefaultDict[K, V](UserDict):
+    """A defaultdict that can take a single argument for the default factory."""
+
+    default_factory: Callable[[K], V]
+
+    def __init__(self, default_factory: Callable[[K], V]):
+        super().__init__()
+        self.default_factory = default_factory
+
+    def __missing__(self, key: K) -> V:
+        """If we had no value here, return the default."""
+        return self.default_factory(key)
+
+
+def snake_to_title_case(s: str) -> str:
+    """
+    Convert a snake case variable name into a title case human readable string.
+
+    e.g. turn `heat_power` into `Heat Power`
+
+    Parameters
+    ----------
+    s
+        Snake case string to convert
+
+    Returns
+    -------
+    str
+        Human readable string with no underscores
+    """
+    return s.replace("_", " ").title()
 
 
 def hour_of_year(ts: pd.Timestamp) -> float:
