@@ -84,6 +84,7 @@ def default_siterange() -> SiteRange:
         maximum_output=[40],
         boiler_efficiency=[0.9],
         gas_type=[GasTypeEnum.NATURAL_GAS, GasTypeEnum.LIQUID_PETROLEUM_GAS],
+        fixed_gas_price=0.068,
         incumbent=True,
         age=0,
         lifetime=10,

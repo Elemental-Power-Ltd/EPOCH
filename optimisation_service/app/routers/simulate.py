@@ -3,11 +3,13 @@
 import logging
 from typing import Annotated
 
+import pandas as pd
 from epoch_simulator import Simulator, TaskData
 from fastapi import APIRouter, Body
 
 from app.dependencies import HttpClientDep
 from app.internal.database.site_data import get_latest_site_data_bundle, get_saved_epoch_input
+from app.internal.days_of_interest import detect_days_of_interest
 from app.internal.epoch.converters import simulation_result_to_pydantic
 from app.models.epoch_types import ReportData
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
@@ -144,8 +146,24 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> Ful
         report_data_pydantic = None
 
     metrics = simulation_result_to_pydantic(res)
-
-    return FullResult(report_data=report_data_pydantic, metrics=metrics, task_data=task_data, site_data=epoch_data)
+    if report_data_pydantic is not None:
+        days_of_interest = detect_days_of_interest(
+            report_data=report_data_pydantic,
+            site_data=epoch_data,
+            task_data=task_data,
+            timestamps=pd.date_range(
+                epoch_data.start_ts, epoch_data.end_ts - pd.Timedelta(minutes=30), freq=pd.Timedelta(minutes=30)
+            ),
+        )
+    else:
+        days_of_interest = []
+    return FullResult(
+        report_data=report_data_pydantic,
+        metrics=metrics,
+        task_data=task_data,
+        site_data=epoch_data,
+        days_of_interest=days_of_interest,
+    )
 
 
 def report_data_to_dict(report_data: ReportData) -> dict[str, list[float]]:

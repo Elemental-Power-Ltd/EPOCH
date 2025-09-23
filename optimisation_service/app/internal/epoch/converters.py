@@ -154,7 +154,6 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
         total_electricity_curtailed=scenario.total_electricity_curtailed,
         total_electricity_used=scenario.total_electricity_used,
         total_electrical_shortfall=scenario.total_electrical_shortfall,
-
         total_heat_load=scenario.total_heat_load,
         total_dhw_load=scenario.total_dhw_load,
         total_ch_load=scenario.total_ch_load,
@@ -183,7 +182,6 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
         baseline_electricity_curtailed=baseline.total_electricity_curtailed,
         baseline_electricity_used=baseline.total_electricity_used,
         baseline_electrical_shortfall=baseline.total_electrical_shortfall,
-
         baseline_heat_load=baseline.total_heat_load,
         baseline_dhw_load=baseline.total_dhw_load,
         baseline_ch_load=baseline.total_ch_load,

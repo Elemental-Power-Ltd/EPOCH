@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from enum import StrEnum, auto
+
+from pydantic import AwareDatetime, BaseModel, Field
 
 from app.models.core import SimulationMetrics
 from app.models.database import dataset_id_t, site_id_t
@@ -43,6 +45,25 @@ class EpochInputData(BaseModel):
     site_data: EpochSiteData
 
 
+class DayOfInterestType(StrEnum):
+    MaxGeneration = auto()
+    MaxBatteryThroughput = auto()
+    MaxSelfConsumption = auto()
+    MaxHeating = auto()
+    MaxDemand = auto()
+    MaxCost = auto()
+    MaxHeatShortfall = auto()
+    MaxImportShortfall = auto()
+    MaxDHWDemand = auto()
+
+
+class DayOfInterest(BaseModel):
+    day_type: DayOfInterestType = Field(description="Enum with finite list of reasons about why this day is interesting.")
+    name: str | None = Field(description="Human readable name for this day, or why it's interesting.")
+    start_ts: AwareDatetime = Field(description="Start time for this interesting period (usually the first midnight).")
+    end_ts: AwareDatetime = Field(description="End time for this interesting period (usually the next midnight).")
+
+
 class FullResult(BaseModel):
     metrics: SimulationMetrics
     report_data: ReportData | None
@@ -51,3 +72,4 @@ class FullResult(BaseModel):
     # (in some contexts, the gui may not be aware of what those are)
     task_data: TaskDataPydantic
     site_data: EpochSiteData
+    days_of_interest: list[DayOfInterest] = Field(default=[])

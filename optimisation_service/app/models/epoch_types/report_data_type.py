@@ -1,6 +1,7 @@
 
 from pydantic import BaseModel, Field
 
+
 class ReportData(BaseModel):
     """The output timeseries computed by an EPOCH simulation."""
 
