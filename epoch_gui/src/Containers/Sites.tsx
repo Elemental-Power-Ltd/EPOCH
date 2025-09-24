@@ -3,7 +3,7 @@ import dayjs, {Dayjs} from "dayjs";
 import {Button, CircularProgress, Container, Grid, MenuItem, TextField} from '@mui/material';
 
 import {useEpochStore} from "../State/Store";
-import {EpochSiteData} from "../Models/Endpoints";
+import {SiteDataWithHints} from "../Models/Endpoints";
 import {LocalizationProvider} from "@mui/x-date-pickers/LocalizationProvider";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import {DateTimePicker} from "@mui/x-date-pickers/DateTimePicker";
@@ -28,13 +28,13 @@ const SitesContainer = () => {
     const [endDate, setEndDate] = useState<Dayjs | null>(dayjs("2023-01-01T00:00:00Z"));
 
     const [isLoading, setIsLoading] = useState(false);
-    const [siteData, setSiteData] = useState<EpochSiteData | null>(null);
+    const [siteWithHints, setSiteWithHints] = useState<SiteDataWithHints | null>(null);
     const [error, setError] = useState<String | null>(null);
 
     const fetchSiteData = async () => {
         setIsLoading(true);
         setError(null);
-        setSiteData(null);
+        setSiteWithHints(null);
 
         if (!selectedSite || !startDate || !endDate) {
             return
@@ -43,7 +43,7 @@ const SitesContainer = () => {
         const siteDataResponse = await getLatestSiteData(selectedSite, startDate, endDate);
 
         if (siteDataResponse.success) {
-           setSiteData(siteDataResponse.data);
+           setSiteWithHints(siteDataResponse.data);
         } else {
             setError(siteDataResponse.error || null);
         }
@@ -106,7 +106,7 @@ const SitesContainer = () => {
             </Container>
 
             {error && <ErrorLoadingSiteData/>}
-            {siteData && <SiteDataViewer siteData={siteData}/>}
+            {siteWithHints && <SiteDataViewer siteData={siteWithHints.siteData} hints={siteWithHints.hints}/>}
         </Container>
     )
 }

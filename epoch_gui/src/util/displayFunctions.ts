@@ -181,3 +181,12 @@ export const parseISODuration = (duration: string | null): string => {
 
     return humanReadableDuration;
 };
+
+
+export const snakeToDisplayName = (snakeStr: string): string => {
+  return snakeStr
+    .split('_')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};

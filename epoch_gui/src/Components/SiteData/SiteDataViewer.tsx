@@ -2,19 +2,22 @@ import React, {useState} from "react";
 import {Alert, Box, Button, Container, Grid, Typography} from "@mui/material";
 import dayjs, {Dayjs} from "dayjs";
 
-import {EpochSiteData} from "../../Models/Endpoints";
+import {BundleHint, FabricIntervention, EpochSiteData} from "../../Models/Endpoints";
 import {SiteDataLinePlot} from "./SiteDataLinePlot";
 import {DateRangeControls} from "../DataViz/DateRangeControls";
 import DownloadIcon from "@mui/icons-material/Download";
 import {downloadCSV, downloadJSON} from "./donwloadSiteData";
 import {aggregateSiteData} from "./aggregateSiteData";
 import {TaskDataViewer} from "../TaskDataViewer/TaskDataViewer.tsx";
+import {snakeToDisplayName} from "../../util/displayFunctions.ts";
+import {HintViewer} from "../Bundles/HintViewer.tsx";
 
 interface SiteDataViewerProps {
     siteData: EpochSiteData
+    hints: BundleHint | null
 }
 
-export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
+export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData, hints}) => {
 
     const initialDatetime = dayjs(siteData.start_ts);
     const finalDatetime = dayjs(siteData.end_ts);
@@ -69,6 +72,53 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
     const handleDownloadCSV = () => {downloadCSV(siteData)};
     const handleDownloadJSON = () => {downloadJSON(siteData)};
 
+    const tryPatchFabricHint = (intervention: FabricIntervention, index: number) => {
+        const defaultLabel = {name: `Reduced Heat Load (${index + 1}`, data: intervention.reduced_hload};
+        if (hints === null) {
+            return defaultLabel;
+        }
+        if (hints.heating === null || hints.heating.length < index + 1) {
+            console.error("Bundle Heating does not match Fabric Interventions!");
+            return defaultLabel;
+        }
+        const hintedName = hints.heating[index + 1].interventions
+            .map((intervention) => snakeToDisplayName(intervention))
+            .join(' • ');
+        return {name: hintedName, data: intervention.reduced_hload};
+    };
+
+    const tryPatchTariffHint = (tariff: number[], index: number) => {
+        const defaultLabel = {name: `Import Tariff #${index}`, data: tariff};
+        if (hints === null) {
+            return defaultLabel;
+        }
+        if (hints.tariffs === null || hints.tariffs.length < index) {
+            console.error("Bundle Tariffs don't match SiteData tariffs!")
+            return defaultLabel;
+        }
+        const productName = hints.tariffs[index].product_name;
+        if (productName === "") {
+            return defaultLabel;
+        }
+        const hintedName = snakeToDisplayName(productName);
+        return {name: hintedName, data: tariff};
+    }
+
+    const tryPatchSolarHint = (solar: number[], index: number) => {
+        const defaultLabel = {name: `Solar Yield #${index}`, data: solar};
+        if (hints === null) {
+            return defaultLabel;
+        }
+        if (hints.renewables === null || hints.renewables.length < index) {
+            console.error("Bundle Renewables don't match SiteData solar!");
+            return defaultLabel;
+        }
+        const solarName = hints.renewables[index].name;
+        if (solarName === null || solarName === "") {
+            return defaultLabel;
+        }
+        return {name: solarName, data: solar};
+    }
 
     return (
         <Box sx={{marginTop: "2rem"}}>
@@ -102,8 +152,8 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
                     yData={[
                         {name: "Baseline Heat Load", data: rangedSiteData.building_hload},
                         {name: "DHW Demand", data: rangedSiteData.dhw_demand},
-                        ...rangedSiteData.fabric_interventions.map((intervention, index) => (
-                            {name: `Reduced Heat Load (${index + 1}`, data: intervention.reduced_hload}
+                        ...rangedSiteData.fabric_interventions
+                            .map((intervention, index) => (tryPatchFabricHint(intervention, index)
                         ))
                     ]}
                     yLabel={"Energy (kWh)"}
@@ -112,17 +162,17 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
                 <SiteDataLinePlot
                     title={"Solar Yields"}
                     xData={x_hh}
-                    yData={rangedSiteData.solar_yields.map((solar, index) => (
-                        {name: `Solar Yield #${index}`, data: solar}
-                    ))}
+                    yData={rangedSiteData.solar_yields
+                        .map((solar, index) => (tryPatchSolarHint(solar, index)))
+                    }
                     yLabel={"Energy (kWh)"}
                 />
 
                 <SiteDataLinePlot
                     title={"Import Tariffs"}
                     xData={x_hh}
-                    yData={rangedSiteData.import_tariffs.map((tariff, index) => (
-                        {name: `Import Tariff #${index}`, data: tariff}
+                    yData={rangedSiteData.import_tariffs
+                        .map((tariff, index) => (tryPatchTariffHint(tariff, index)
                     ))}
                     yLabel={"£/kWh"}
                 />
@@ -149,6 +199,8 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData}) => {
             <TaskDataViewer
                 data={siteData.baseline}
             />
+
+            {hints && <HintViewer hints={hints}/>}
 
             <Container maxWidth={"sm"}>
                 <Button variant="outlined" onClick={handleDownloadJSON} startIcon={<DownloadIcon/>}>

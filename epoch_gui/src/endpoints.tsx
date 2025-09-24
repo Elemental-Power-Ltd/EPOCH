@@ -1,14 +1,14 @@
 import {Site, OptimisationTaskListRequest, Client, OptimisationTaskListResponse} from "./State/types";
 import {
-    EpochSiteData,
+    EpochSiteData, BundleHint, ListBundlesResponse,
     OptimisationResultsResponse,
     ReproduceSimulationRequest,
     SimulationResult,
     SubmitOptimisationRequest,
     SubmitOptimisationResponse,
-    SubmitSimulationRequest
+    SubmitSimulationRequest, SiteDataWithHints
 } from "./Models/Endpoints";
-import {Dayjs} from "dayjs";
+import dayjs, {Dayjs} from "dayjs";
 import {TaskData} from "./Components/TaskDataViewer/TaskData.ts";
 
 
@@ -227,28 +227,74 @@ export const generateAllData = async (site_id: string, start_ts: string, end_ts:
     }
 }
 
-export const getLatestSiteData = async (site_id: string, start_ts: Dayjs, end_ts: Dayjs): Promise<ApiResponse<EpochSiteData>> => {
-    const payload = {
-        site_id,
-        start_ts: start_ts.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
-        end_ts: end_ts.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
-    };
-
+export const getLatestSiteData = async (site_id: string, start_ts: Dayjs, end_ts: Dayjs): Promise<ApiResponse<SiteDataWithHints>> => {
     try {
-        const response = await fetch("/api/optimisation/get-latest-site-data", {
+        // 1. Find the appropriate bundle
+        const listBundlesResponse = await fetch("/api/data/list-dataset-bundles", {
             method: "POST",
-            headers: {"Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({site_id: site_id})
+        })
 
-        if(!response.ok) {
-            const error = `HTTP error! Status: ${response.status}`;
+        if(!listBundlesResponse.ok) {
+            const error = `HTTP error! Status: ${listBundlesResponse.status}`;
             console.error(error);
             return {success: false, data: null, error};
         }
 
-        const data: EpochSiteData = await response.json();
-        return {success: true, data};
+        // 2. Filter to the appropriate bundle
+        const allBundles: ListBundlesResponse[] = await listBundlesResponse.json();
+
+        const validBundles = allBundles.filter(
+            (bundle) => bundle.is_complete && !bundle.is_error
+        );
+
+        const matchingBundles = validBundles.filter(
+            (bundle) => dayjs(bundle.start_ts).isSame(start_ts) && dayjs(bundle.end_ts).isSame(end_ts)
+        );
+
+        if (matchingBundles.length === 0) {
+            return {success: false, data: null, error: "No valid bundles for this site"};
+        }
+
+        const latestBundle = matchingBundles.sort(
+            (a, b) => dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf())[0]
+
+
+        // 3. Fetch the bundle hints and SiteData for that bundle
+
+        const bundleHintsResponse = await fetch(`/api/data/get-bundle-hints?bundle_id=${latestBundle.bundle_id}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+        })
+
+        const siteDataResponse = await fetch("/api/optimisation/get-latest-site-data", {
+            method: "POST",
+            headers: {"Content-Type": "application/json" },
+            body: JSON.stringify({site_id: site_id, bundle_id: latestBundle.bundle_id})
+        });
+
+        if (!bundleHintsResponse.ok) {
+            const error = `HTTP error! Status: ${bundleHintsResponse.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        if (!siteDataResponse.ok) {
+            const error = `HTTP error! Status: ${siteDataResponse.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const bundleHints: BundleHint = await bundleHintsResponse.json();
+        const siteData: EpochSiteData = await siteDataResponse.json();
+
+        const siteWithHints: SiteDataWithHints = {
+            siteData: siteData,
+            hints: bundleHints,
+        }
+
+        return {success: true, data: siteWithHints};
 
     } catch (error) {
         console.error("Failed to fetch site data", error);

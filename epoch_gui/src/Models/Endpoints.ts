@@ -1,3 +1,4 @@
+import { TaskData } from "../Components/TaskDataViewer/TaskData.ts";
 import {HighlightedResult, PortfolioOptimisationResult, SiteMetrics} from "../State/types.ts";
 
 interface SiteMetaData {
@@ -23,7 +24,7 @@ export type ReportDataType = { [key: string]: number[] | null };
 export type NonNullReportDataType = { [key: string]: number[]};
 
 
-interface FabricIntervention {
+export interface FabricIntervention {
     cost: number;
     reduced_hload: number[];
 }
@@ -122,3 +123,63 @@ export interface OptimisationResultsResponse {
     highlighted_results: HighlightedResult[];
 }
 
+
+export interface ListBundlesResponse {
+    bundle_id: string;
+    name: string;
+    is_complete: boolean;
+    is_error: boolean;
+    site_id: string;
+    start_ts: string | null;
+    end_ts: string | null;
+    created_at: string;
+    available_datasets: string[];
+}
+
+
+export interface SolarLocation {
+    site_id: string;
+    renewables_location_id: string | null;
+    name: string | null;
+    azimuth: number | null;
+    tilt: number | null;
+    maxpower: number | null;
+    mounting_type: "building_integrated" | "free";
+}
+
+export interface TariffMetadata {
+    dataset_id: string;
+    site_id: string;
+    created_at: string;
+    provider: string;  // enum
+    product_name: string;
+    tariff_name: string;
+    valid_from: string;
+    valid_to: string;
+    day_cost: number | null;
+    night_cost: number | null;
+    peak_cost: number | null;
+}
+
+export interface HeatingLoadMetadata {
+    site_id: string;
+    dataset_id: string;
+    created_at: string;
+    params: any;
+    interventions: string[];  // enum
+    generation_method: string;  // enum
+    peak_hload: number | null;
+}
+
+export interface BundleHint {
+    site_id: string;
+    renewables: SolarLocation[] | null;
+    tariffs: TariffMetadata[] | null;
+    baseline: TaskData | null;
+    heating: HeatingLoadMetadata[] | null;
+}
+
+export interface SiteDataWithHints {
+    siteData: EpochSiteData;
+    hints: BundleHint | null;
+}
