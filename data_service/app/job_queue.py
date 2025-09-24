@@ -15,6 +15,7 @@ from httpx import AsyncClient
 from app.epl_secrets import SecretDict
 from app.internal.elec_meters import VAE
 from app.internal.epl_typing import db_pool_t
+from app.internal.utils.utils import stringify_exception
 from app.models.carbon_intensity import GridCO2Request
 from app.models.core import dataset_id_t
 from app.models.electricity_load import ElectricalLoadRequest
@@ -278,9 +279,7 @@ class TrackingQueue(asyncio.Queue[tuple[int, GenericJobRequest]]):
                 job_id,
             )
         else:
-            ex_str = type(ex).__name__
-            if ex.args:
-                ex_str += ": " + ",".join(ex.args)
+            ex_str = stringify_exception(ex)
             await self.pool.execute(
                 """
             UPDATE job_queue.job_status SET

@@ -9,6 +9,8 @@ from typing import Annotated, Never
 
 from fastapi import Depends, FastAPI
 
+from app.internal.utils.utils import stringify_exception
+
 from .dependencies import db, get_db_pool, get_http_client, get_secrets_dep, get_thread_pool, get_vae_model
 from .job_queue import TerminateTaskGroup, TrackingQueue, mark_remaining_jobs_as_error, process_jobs
 
@@ -80,7 +82,5 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:  # noqa: ARG001
             db.pool, f"Terminated on cleanup due to {FINAL_JOIN_TIMEOUT.total_seconds()}s timeout."
         )
     except* Exception as ex:
-        ex_str = type(ex).__name__
-        if ex.args:
-            ex_str += ": " + ",".join(ex.args)
+        ex_str = stringify_exception(ex)
         await mark_remaining_jobs_as_error(db.pool, "Terminated on cleanup due to" + ex_str)
