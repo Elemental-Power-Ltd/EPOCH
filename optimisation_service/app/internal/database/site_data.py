@@ -88,6 +88,7 @@ async def get_latest_site_data_bundle(site_data: site_metadata_t, http_client: H
         site_data.bundle_id = bundle_id
     elif isinstance(site_data, SiteMetaData):
         start_ts, end_ts = await get_bundle_timestamps(bundle_id=site_data.bundle_id, http_client=http_client)
+        bundle_id = site_data.bundle_id
 
     site_data_entries = await get_bundled_data(bundle_id=bundle_id, http_client=http_client)
 
