@@ -8,6 +8,7 @@ for the functions that go in here.
 import datetime
 import itertools
 import logging
+import traceback
 import urllib
 from collections import UserDict
 from collections.abc import Callable, Sequence
@@ -35,6 +36,36 @@ class ArgDefaultDict[K, V](UserDict):
     def __missing__(self, key: K) -> V:
         """If we had no value here, return the default."""
         return self.default_factory(key)
+
+
+def stringify_exception(ex: BaseException | BaseExceptionGroup) -> str:
+    """
+    Stringify an exception in a way that is suitable for writing to the database.
+
+    This will get a single string with the type, and any sub exceptions there usefully as well.
+
+    Parameters
+    ----------
+    ex
+        Exception (or group thereof) to recommend
+
+    Returns
+    -------
+    str
+        Exception in a single line string format
+    """
+    # If we've got an ExceptionGroup of some kind, then we should only stringify the first exception
+    # as that's much more useful.
+    if isinstance(ex, BaseExceptionGroup) and len(ex.args) == 1:
+        return stringify_exception(ex.args[0])
+
+    # format_exception_only returns a list of strings terminated by newlines, so join them into one
+    ex_str_list = [item.replace("\n", "") for item in traceback.format_exception_only(ex, show_group=True)]
+    if ex_str_list:
+        return ex_str_list[0]
+    if len(ex_str_list) > 1:
+        ex_str_list += ", ".join(ex_str_list[1:])
+    return f"Unknown Exception: {ex!r}"
 
 
 def snake_to_title_case(s: str) -> str:

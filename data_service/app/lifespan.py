@@ -3,12 +3,13 @@
 import asyncio
 import contextvars
 import datetime
-import traceback
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Never
 
 from fastapi import Depends, FastAPI
+
+from app.internal.utils.utils import stringify_exception
 
 from .dependencies import db, get_db_pool, get_http_client, get_secrets_dep, get_thread_pool, get_vae_model
 from .job_queue import TerminateTaskGroup, TrackingQueue, mark_remaining_jobs_as_error, process_jobs
@@ -81,9 +82,5 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:  # noqa: ARG001
             db.pool, f"Terminated on cleanup due to {FINAL_JOIN_TIMEOUT.total_seconds()}s timeout."
         )
     except* Exception as ex:
-        ex_str_list = [item.replace("\n", "") for item in traceback.format_exception_only(ex, show_group=True)]
-        if ex_str_list:
-            ex_str = ex_str_list[0] + ", ".join(ex_str_list[1:]) if len(ex_str_list) > 1 else ""
-        else:
-            ex_str = "No exception details provided"
+        ex_str = stringify_exception(ex)
         await mark_remaining_jobs_as_error(db.pool, "Terminated on cleanup due to" + ex_str)
