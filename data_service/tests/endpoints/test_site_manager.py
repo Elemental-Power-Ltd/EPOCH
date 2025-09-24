@@ -281,8 +281,8 @@ class TestGenerateAll:
 
         # Check that we got multiple heat loads here, this should be an array of {"cost": ..., "reduced_hload": ...} dicts
         heatload_data = data_json["heat"]["data"]
-        assert len(heatload_data) == 4
-        assert len({item["cost"] for item in heatload_data}) == 4
+        assert len(heatload_data) == 8
+        assert len({item["cost"] for item in heatload_data}) == 8
 
         for idx in range(1, 4):
             assert heatload_data[0]["reduced_hload"] != heatload_data[idx]["reduced_hload"], "heatload_data must be different"
