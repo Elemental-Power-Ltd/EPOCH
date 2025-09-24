@@ -77,7 +77,6 @@ def resample_daily_df(daily_df: DailyDataFrame, start_ts: datetime.datetime, end
     )
     all_consumptions: list[float] = []
     for day in synthetic_daily_df.index:
-        
         if day in daily_df.index:
             # This day actually exists, so don't resample it.
             # Heads up that this might cause some trouble if your indexes don't perfectly align
