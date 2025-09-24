@@ -33,7 +33,9 @@ export const formatField = (value: unknown, unit?: string): string => {
     'kW': formatPower,
     '°C': formatTemperature,
     'litres': (val) => `${val.toLocaleString()} L`,
-    'decimal %': (val) => `${(val * 100).toFixed(2)}%`
+    'decimal %': (val) => `${(val * 100).toFixed(2)}%`,
+    '£/kWh': formatPoundsPerkWh,
+    'm^2': formatArea,
   };
 
   // If the value is an array (e.g. yield_scalars), keep the original array logic
@@ -72,16 +74,30 @@ export const formatField = (value: unknown, unit?: string): string => {
 
 
 
-// Display prices to the nearest £100
+// Display prices to the nearest £100 if they are above £100 or below £-100
+// For smaller amounts than that, display pounds and pence
+// £0 is also a special case
 export const formatPounds = (value: number | undefined): string => {
     if (!Number.isFinite(value) || value === undefined || value > one_trillion || value < neg_one_trillion) {
         return "-"
     }
 
-    const roundedValue = Math.round(value / 100) * 100;
-    return `£${roundedValue.toLocaleString()}`;
+    if (value >= 100 || value <= -100 || value === 0) {
+        const roundedValue = Math.round(value / 100) * 100;
+        return `£${roundedValue.toLocaleString()}`;
+    }
+
+    return `£${value.toFixed(2)}`
 };
 
+export const formatPoundsPerkWh = (value: number | undefined): string => {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion || value < neg_one_trillion) {
+        return "-"
+    }
+
+    return `${formatPounds(value)}/kWh`
+
+}
 
 // Display carbon emissions to the nearest 10kg CO2e
 export const formatCarbon = (value: number | undefined): string => {
@@ -150,6 +166,12 @@ export const formatPercentage = (value: number | undefined): string => {
     return `${(100 * value).toLocaleString(undefined, {maximumFractionDigits: 2})} %`;
 }
 
+export const formatArea = (value: number | undefined): string => {
+    if (!Number.isFinite(value) || value === undefined || value > one_trillion ) {
+        return "-"
+    }
+    return `${value}m²`
+}
 
 export const parseISODuration = (duration: string | null): string => {
     if (duration === null) return "-";
