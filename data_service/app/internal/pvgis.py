@@ -1,8 +1,10 @@
 """Functions for getting photovolatic data."""
 
+import asyncio
 import datetime
 import json
 import logging
+import random
 
 import fastapi
 import httpx
@@ -232,14 +234,24 @@ async def get_renewables_ninja_data(
     if getattr(client, "DO_RATE_LIMIT", True):
         await RN_SLOW_LIMITER.acquire()
         await RN_BURST_LIMITER.acquire()
+    # If we're working in a threaded environment, then we can sometimes thrash renewables.ninja if we've picked up
+    # multiple RenewablesRequest jobs at once.
+    # To avoid that, we jitter these requests slightly.
+    await asyncio.sleep(random.uniform(1.0, 10.0))
     req = await client.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
+
+    if req.status_code == 400 and "short-term burst limit" in req.text:
+        # The headline jitter didn't work, so let's take another crack at it later.
+        await asyncio.sleep(random.uniform(1.0, 10.0))
+        req = await client.get(BASE_URL, params=params, headers={"Authorization": f"Token {api_key}"})
+
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
             columns={"electricity": "pv"}
         )
     except json.JSONDecodeError as ex:
         raise fastapi.HTTPException(
-            400, f"Decoding renewables.ninja data failed. Got {req.text} instead of valid JSON."
+            400, f"Decoding renewables.ninja data failed. Got `{req.text}` instead of valid JSON."
         ) from ex
     renewables_df.index = pd.to_datetime(renewables_df.index.astype(float) * 1e6)
     assert isinstance(renewables_df.index, pd.DatetimeIndex), "Renewables dataframe must have a datetime index"
@@ -349,9 +361,21 @@ async def get_renewables_ninja_wind_data(
     if getattr(client, "DO_RATE_LIMIT", True):
         await RN_SLOW_LIMITER.acquire()
         await RN_BURST_LIMITER.acquire()
+
+    # If we're working in a threaded environment, then we can sometimes thrash renewables.ninja if we've picked up
+    # multiple RenewablesRequest jobs at once.
+    # To avoid that, we jitter these requests slightly.
+    await asyncio.sleep(random.uniform(1.0, 10.0))
     req = await client.get(
         "https://www.renewables.ninja/api/data/wind", params=params, headers={"Authorization": f"Token {api_key}"}
     )
+
+    if req.status_code == 400 and "short-term burst limit" in req.text:
+        # The headline jitter didn't work, so let's take another crack at it later.
+        await asyncio.sleep(random.uniform(1.0, 10.0))
+        req = await client.get(
+            "https://www.renewables.ninja/api/data/wind", params=params, headers={"Authorization": f"Token {api_key}"}
+        )
 
     try:
         renewables_df = pd.DataFrame.from_dict(req.json(), columns=["electricity"], orient="index").rename(
