@@ -82,5 +82,5 @@ async def lifespan(app: FastAPI) -> AsyncIterator[Never]:  # noqa: ARG001
     except* Exception as ex:
         ex_str = type(ex).__name__
         if ex.args:
-            ex_str += ": " + ",".join(ex.args)
+            ex_str += " " + str(ex.args)
         await mark_remaining_jobs_as_error(db.pool, "Terminated on cleanup due to" + ex_str)

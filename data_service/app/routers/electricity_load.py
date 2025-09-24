@@ -77,11 +77,13 @@ def resample_daily_df(daily_df: DailyDataFrame, start_ts: datetime.datetime, end
     )
     all_consumptions: list[float] = []
     for day in synthetic_daily_df.index:
+        
         if day in daily_df.index:
             # This day actually exists, so don't resample it.
             # Heads up that this might cause some trouble if your indexes don't perfectly align
             # (e.g. one is dates and another is midnight datetimes, or there is a timezone difference).
-            all_consumptions.append(daily_df[day])
+            all_consumptions.append(float(daily_df.loc[day, "consumption_kwh"]))
+            continue
 
         day_class = day_type(day, public_holidays=public_holidays).value
         week_of_year = day.weekofyear
