@@ -4,6 +4,7 @@ import asyncio
 import contextvars
 import datetime
 import json
+import traceback
 from collections.abc import Awaitable, Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum, auto
@@ -278,9 +279,11 @@ class TrackingQueue(asyncio.Queue[tuple[int, GenericJobRequest]]):
                 job_id,
             )
         else:
-            ex_str = type(ex).__name__
-            if ex.args:
-                ex_str += ": " + ",".join(ex.args)
+            ex_str_list = [item.replace("\n", "") for item in traceback.format_exception_only(ex, show_group=True)]
+            if ex_str_list:
+                ex_str = ex_str_list[0] + ", ".join(ex_str_list[1:]) if len(ex_str_list) > 1 else ""
+            else:
+                ex_str = "No exception details provided"
             await self.pool.execute(
                 """
             UPDATE job_queue.job_status SET
@@ -434,7 +437,7 @@ async def process_jobs(
                 case _:
                     raise ValueError(f"Unhandled {type(job)}")
             logger.info(future)
-        except Exception as ex:
+        except* Exception as ex:
             # Tidy up the context variables as we're now done
             current_job_id_ctx.set(None)
             current_job_type_ctx.set(None)
