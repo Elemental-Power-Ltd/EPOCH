@@ -61,11 +61,14 @@ def stringify_exception(ex: BaseException | BaseExceptionGroup) -> str:
 
     # format_exception_only returns a list of strings terminated by newlines, so join them into one
     ex_str_list = [item.replace("\n", "") for item in traceback.format_exception_only(ex, show_group=True)]
+
+    ex_str = ""
     if ex_str_list:
-        return ex_str_list[0]
+        ex_str = ex_str_list[0]
     if len(ex_str_list) > 1:
-        ex_str_list += ", ".join(ex_str_list[1:])
-    return f"Unknown Exception: {ex!r}"
+        ex_str += ", ".join(ex_str_list[1:])
+
+    return ex_str
 
 
 def snake_to_title_case(s: str) -> str:
