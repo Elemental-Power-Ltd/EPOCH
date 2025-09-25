@@ -214,7 +214,7 @@ def daily_to_hh_eload(
     division
         Which the division of the UK to use to determine the public holidays.
     offset_method
-        A StrEnum to indicate the method used to allocate offsets. 
+        A StrEnum to indicate the method used to allocate offsets.
         When dealing with monthly readings, this should correspond to 'compare-active-neighbours'
         When dealing with daily or half-hourly readings, this should correspond to 'detect-chgpt' [default]
     rng
@@ -296,7 +296,7 @@ def daily_to_hh_eload_observed(
     division
         Which the division of the UK to use to determine the public holidays.
     offset_method
-        A StrEnum to indicate the method used to allocate offsets. 
+        A StrEnum to indicate the method used to allocate offsets.
         When dealing with monthly readings, this should correspond to 'compare-active-neighbours'
         When dealing with daily or half-hourly readings, this should correspond to 'detect-chgpt' [default]
     rng
@@ -557,7 +557,7 @@ def daily_to_hh_eload_pretrained(
     division
         Which the division of the UK to use to determine the public holidays.
     offset_method
-        A StrEnum to indicate the method used to allocate offsets. 
+        A StrEnum to indicate the method used to allocate offsets.
         When dealing with monthly readings, this should correspond to 'compare-active-neighbours'
         When dealing with daily or half-hourly readings, this should correspond to 'detect-chgpt' [default]
     rng

@@ -391,7 +391,7 @@ def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: 
 
     Notes
     -----
-    This might not be appropriate -- consider difference between baseline increasing and baseline decreasing 
+    This might not be appropriate -- consider difference between baseline increasing and baseline decreasing
     """
     # as active_daily_offset, use either most recent or next inactive day, whichever is closer in aggregate value
     # logic here is that the offset represents the energy usage without daily profile
@@ -514,7 +514,10 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
             active_daily_offset[idx[cp:]] = b
     return active_daily_offset
 
-def handle_offsets_compare_active_neighbours(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> npt.NDArray[np.floating]:
+
+def handle_offsets_compare_active_neighbours(
+    active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
+) -> npt.NDArray[np.floating]:
     """
     Establish active day offsets: use either the most recent or the next inactive day, based on the mean daily consumption in this and neighbouring blocks of active days.
     Compare the current contiguous block of active days with the most recent and the next contiguous blocks of active days
@@ -556,13 +559,12 @@ def handle_offsets_compare_active_neighbours(active_daily: DailyDataFrame, inact
         current_block = active_daily_vals[curr_idx]
         current_mean_active_consumption = np.mean(current_block)
 
-
-        if not first_block_done_flag: # only executed on i=0
-            first_block_done_flag=True
-            # if active values appear before first inactive value, 
-            #   a) set offset for these active values to be the first inactive value; and 
+        if not first_block_done_flag:  # only executed on i=0
+            first_block_done_flag = True
+            # if active values appear before first inactive value,
+            #   a) set offset for these active values to be the first inactive value; and
             #   b) find the mean consumption for this previous block of active days
-            # else 
+            # else
             #   on the principle that it is better for the residual to be too large than too low, lest the active day be incorrectly identified as inactive,
             #   choose a or b that maximises the mean residual (mean of difference between current block and {a,b})
             if active_daily_index[0] < inactive_daily_index[0]:
@@ -571,33 +573,32 @@ def handle_offsets_compare_active_neighbours(active_daily: DailyDataFrame, inact
                 active_daily_offset[prev_idx] = inactive_daily_vals[0]
                 prev_block = active_daily_vals[prev_idx]
                 prev_mean_active_consumption = np.mean(prev_block)
+            # prev_mean_active_consumption = None
+            elif np.mean(current_block - a) >= np.mean(current_block - b):
+                active_daily_offset[curr_idx] = a
             else:
-                # prev_mean_active_consumption = None
-                if np.mean(current_block-a) >= np.mean(current_block-b):
-                    active_daily_offset[curr_idx] = a
-                else:
-                    active_daily_offset[curr_idx] = b
+                active_daily_offset[curr_idx] = b
             # store mean of current block for next iteration
             prev_mean_active_consumption = current_mean_active_consumption
             continue
 
         # below only executed on i>=1
         # prev_mean_active_consumption and current_mean_active_consumption already calculated
-            
+
         # find next block between inactive values
         next_idx = []
-        j=0
-        while len(next_idx)==0:
-            j+=1
-            if i+j+1>=len(inactive_daily_index):
+        j = 0
+        while len(next_idx) == 0:
+            j += 1
+            if i + j + 1 >= len(inactive_daily_index):
                 # if we're trying to reference beyond the last inactive index, then current_block is the last active block
                 # allocate default offsets for current (final) block and exit
-                if np.mean(current_block-a) >= np.mean(current_block-b):
+                if np.mean(current_block - a) >= np.mean(current_block - b):
                     active_daily_offset[curr_idx] = a
                 else:
                     active_daily_offset[curr_idx] = b
-                return active_daily_offset                
-            t2 = inactive_daily_index[i+1+j]
+                return active_daily_offset
+            t2 = inactive_daily_index[i + 1 + j]
             # isolate segment of active days between t1 and t2
             mask = np.logical_and(active_daily_index >= t1, active_daily_index <= t2)
             next_idx = np.where(mask)[0]
@@ -605,12 +606,15 @@ def handle_offsets_compare_active_neighbours(active_daily: DailyDataFrame, inact
         next_mean_active_consumption = np.mean(next_block)
 
         # compare mean daily consumption in current, previous and next blocks
-        if np.abs(current_mean_active_consumption-prev_mean_active_consumption) <= np.abs(current_mean_active_consumption-next_mean_active_consumption):
+        if np.abs(current_mean_active_consumption - prev_mean_active_consumption) <= np.abs(
+            current_mean_active_consumption - next_mean_active_consumption
+        ):
             active_daily_offset[curr_idx] = a
         else:
             active_daily_offset[curr_idx] = b
 
     return active_daily_offset
+
 
 def split_and_baseline_active_days(
     df_daily_all: DailyDataFrame,
@@ -638,10 +642,10 @@ def split_and_baseline_active_days(
     division
         which division of the UK to use to determine the public holidays; defaults to England
     offset_method
-        A StrEnum to indicate the method used to allocate offsets. 
+        A StrEnum to indicate the method used to allocate offsets.
         When dealing with monthly readings, this will usually correspond to 'compare-active-neighbours'
         When dealing with daily or half-hourly readings, this will usually correspond to 'detect-chgpt' [default]
-    
+
     Returns
     -------
     df_daily_active
