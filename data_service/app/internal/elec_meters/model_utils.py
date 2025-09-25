@@ -59,6 +59,7 @@ class OffsetMethodEnum(StrEnum):
     Recent = "recent"
     RecentOrNext = "recent-or-next"
     DetectChgpt = "detect-chgpt"
+    CompareActiveNeighbours = "compare-active-neighbours"
 
 
 class CustomMinMaxScaler(MinMaxScaler):
@@ -300,6 +301,8 @@ def allocate_active_offsets(
             return handle_offsets_recent_or_next(active_daily, inactive_daily)
         case OffsetMethodEnum.DetectChgpt:
             return handle_offsets_chgpt(active_daily, inactive_daily)
+        case OffsetMethodEnum.CompareActiveNeighbours:
+            return handle_offsets_compare_active_neighbours(active_daily, inactive_daily)
 
     raise ValueError(f"Bad value for offset method: {method}")
 
@@ -385,6 +388,10 @@ def handle_offsets_recent_or_next(active_daily: DailyDataFrame, inactive_daily: 
     -------
     npt.NDArray[np.floating]
         The offsets to use for each active day as the corresponding 'inactive day component'
+
+    Notes
+    -----
+    This might not be appropriate -- consider difference between baseline increasing and baseline decreasing 
     """
     # as active_daily_offset, use either most recent or next inactive day, whichever is closer in aggregate value
     # logic here is that the offset represents the energy usage without daily profile
@@ -507,11 +514,109 @@ def handle_offsets_chgpt(active_daily: DailyDataFrame, inactive_daily: DailyData
             active_daily_offset[idx[cp:]] = b
     return active_daily_offset
 
+def handle_offsets_compare_active_neighbours(active_daily: DailyDataFrame, inactive_daily: DailyDataFrame) -> npt.NDArray[np.floating]:
+    """
+    Establish active day offsets: use either the most recent or the next inactive day, based on the mean daily consumption in this and neighbouring blocks of active days.
+    Compare the current contiguous block of active days with the most recent and the next contiguous blocks of active days
+    If the mean daily consumption in this block of active days is closer to the mean daily consumption in the next
+    block of active days, use the first inactive day between these blocks, i.e. the next inactive day.
+    Otherwise, use the last inactive day before the current active block.
+
+    Parameters
+    ----------
+    active_daily
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is active, i.e. operating as usual.
+    inactive_daily
+        A dataframe containing daily aggregate values in a column "consumption_kwh", and with a pd.DatetimeIndex.
+        These correspond to days for which the site is inactive (e.g. weekends, bank holidays)
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        The offsets to use for each active day as the corresponding 'inactive day component'
+    """
+    inactive_daily_index = inactive_daily.index.to_numpy()
+    inactive_daily_vals = inactive_daily.to_numpy()
+    active_daily_index = active_daily.index.to_numpy()
+    active_daily_vals = active_daily.to_numpy()
+
+    active_daily_offset = np.empty_like(active_daily_index, dtype=float)
+
+    first_block_done_flag = False
+    for i in range(len(inactive_daily_index) - 1):
+        t0, t1 = inactive_daily_index[i], inactive_daily_index[i + 1]
+        a, b = inactive_daily_vals[i], inactive_daily_vals[i + 1]
+
+        # isolate segment of active days between inactive days
+        mask = np.logical_and(active_daily_index >= t0, active_daily_index <= t1)
+        curr_idx = np.where(mask)[0]
+        if len(curr_idx) == 0:
+            continue
+        current_block = active_daily_vals[curr_idx]
+        current_mean_active_consumption = np.mean(current_block)
+
+
+        if not first_block_done_flag: # only executed on i=0
+            first_block_done_flag=True
+            # if active values appear before first inactive value, 
+            #   a) set offset for these active values to be the first inactive value; and 
+            #   b) find the mean consumption for this previous block of active days
+            # else 
+            #   on the principle that it is better for the residual to be too large than too low, lest the active day be incorrectly identified as inactive,
+            #   choose a or b that maximises the mean residual (mean of difference between current block and {a,b})
+            if active_daily_index[0] < inactive_daily_index[0]:
+                mask = active_daily_index < inactive_daily_index[0]
+                prev_idx = np.where(mask)[0]
+                active_daily_offset[prev_idx] = inactive_daily_vals[0]
+                prev_block = active_daily_vals[prev_idx]
+                prev_mean_active_consumption = np.mean(prev_block)
+            else:
+                # prev_mean_active_consumption = None
+                if np.mean(current_block-a) >= np.mean(current_block-b):
+                    active_daily_offset[curr_idx] = a
+                else:
+                    active_daily_offset[curr_idx] = b
+            # store mean of current block for next iteration
+            prev_mean_active_consumption = current_mean_active_consumption
+            continue
+
+        # below only executed on i>=1
+        # prev_mean_active_consumption and current_mean_active_consumption already calculated
+            
+        # find next block between inactive values
+        next_idx = []
+        j=0
+        while len(next_idx)==0:
+            j+=1
+            if i+j+1>=len(inactive_daily_index):
+                # if we're trying to reference beyond the last inactive index, then current_block is the last active block
+                # allocate default offsets for current (final) block and exit
+                if np.mean(current_block-a) >= np.mean(current_block-b):
+                    active_daily_offset[curr_idx] = a
+                else:
+                    active_daily_offset[curr_idx] = b
+                return active_daily_offset                
+            t2 = inactive_daily_index[i+1+j]
+            # isolate segment of active days between t1 and t2
+            mask = np.logical_and(active_daily_index >= t1, active_daily_index <= t2)
+            next_idx = np.where(mask)[0]
+        next_block = active_daily_vals[next_idx]
+        next_mean_active_consumption = np.mean(next_block)
+
+        # compare mean daily consumption in current, previous and next blocks
+        if np.abs(current_mean_active_consumption-prev_mean_active_consumption) <= np.abs(current_mean_active_consumption-next_mean_active_consumption):
+            active_daily_offset[curr_idx] = a
+        else:
+            active_daily_offset[curr_idx] = b
+
+    return active_daily_offset
 
 def split_and_baseline_active_days(
     df_daily_all: DailyDataFrame,
     weekend_inds: frozenset[int] = frozenset({5, 6}),
     division: UKCountryEnum = UKCountryEnum.England,
+    offset_method: OffsetMethodEnum = OffsetMethodEnum.DetectChgpt,
 ) -> tuple[DailyDataFrame, DailyDataFrame]:
     """
     Extract "inactive days" (i.e. weekend/holidays) from daily aggregates; use these to baseline the remaining days.
@@ -532,7 +637,11 @@ def split_and_baseline_active_days(
         defaults to (5,6) for Saturday and Sunday
     division
         which division of the UK to use to determine the public holidays; defaults to England
-
+    offset_method
+        A StrEnum to indicate the method used to allocate offsets. 
+        When dealing with monthly readings, this will usually correspond to 'compare-active-neighbours'
+        When dealing with daily or half-hourly readings, this will usually correspond to 'detect-chgpt' [default]
+    
     Returns
     -------
     df_daily_active
@@ -562,10 +671,8 @@ def split_and_baseline_active_days(
     df_daily_active["offsets"] = allocate_active_offsets(
         cast(DailyDataFrame, pd.DataFrame(df_daily_active["consumption_kwh"])),
         df_daily_inactive,
-        method=OffsetMethodEnum.DetectChgpt,
+        method=offset_method,
     )
-    # assume active date baseline to be piecewise constant between inactive dates;
-    # find optimal changepoint.
 
     # remove offsets for all active dates
     df_daily_active["consumption_baselined"] = df_daily_active["consumption_kwh"] - df_daily_active["offsets"]

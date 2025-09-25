@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 from app.dependencies import DatabasePoolDep, ThreadPoolDep, VaeDep
 from app.internal.elec_meters import daily_to_hh_eload, day_type, monthly_to_daily_eload
 from app.internal.elec_meters.preprocessing import hh_to_square
+from app.internal.elec_meters.model_utils import OffsetMethodEnum
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, RecordMapping
 from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.utils import get_bank_holidays
@@ -165,10 +166,12 @@ async def generate_electricity_load(
         logger.info("Generating electricity load with observed HH")
         resid_model_path = None
         target_hh_observed_df = hh_to_square(cast(HHDataFrame, raw_df))
+        offset_method = OffsetMethodEnum.DetectChgpt
     else:
         logger.info("Generating electricity load with pretrained ARIMA")
         resid_model_path = Path("models", "final", "arima")
         target_hh_observed_df = None
+        offset_method = OffsetMethodEnum.CompareActiveNeighbours
 
     loop = asyncio.get_running_loop()
     synthetic_hh_df = await loop.run_in_executor(
@@ -180,6 +183,7 @@ async def generate_electricity_load(
             resid_model_path=resid_model_path,
             target_hh_observed_df=target_hh_observed_df,
             weekend_inds=WEEKEND_INDS,
+            offset_method=offset_method,
         ),
     )
 
@@ -200,6 +204,7 @@ async def generate_electricity_load(
                 resid_model_path=Path("models", "final", "arima"),
                 target_hh_observed_df=None,
                 weekend_inds=WEEKEND_INDS,
+                offset_method=offset_method,
             ),
         )
         assert isinstance(synthetic_hh_df.index, pd.DatetimeIndex)
