@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 // @ts-ignore
 import Plot from "react-plotly.js"
 import {FormControl, InputLabel, Select, MenuItem, useTheme} from "@mui/material"
@@ -33,6 +33,8 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
 }) => {
 
     const [selectedStackbarGroups, setSelectedStackbarGroups] = useState<StackbarOption>('elec');
+
+    const [uiRev, setUiRev] = useState(0);
 
     // Remove any entries that aren't in default lists; change sign of negative data
     const filteredAndRangedData = Object.fromEntries(
@@ -227,6 +229,12 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
             break;
     }
 
+    // when the StackbarGroups update, we update the UIRevision
+    // plotly uses changes to this to signal that the selected timeseries should be reset
+    useEffect(() => {
+        setUiRev(r => r + 1);
+    }, [selectedStackbarGroups]);
+
 
     const theme = useTheme();
     const isDarkMode = theme.palette.mode === 'dark';
@@ -271,6 +279,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
         paper_bgcolor: paper_bgcolor,
         plot_bgcolor: plot_bgcolor,
         font: {color: theme.palette.text.primary},
+        uirevision: uiRev,
     }
 
 

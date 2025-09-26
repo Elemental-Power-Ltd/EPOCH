@@ -6,6 +6,7 @@ import {Box, Grid, useTheme} from "@mui/material";
 interface yEntry {
     name: string,
     data: number[];
+    fullName?: string;
 }
 
 interface SiteDataLinePlotProps {
@@ -29,9 +30,12 @@ export const SiteDataLinePlot: React.FC<SiteDataLinePlotProps> = (
         ? theme.palette.background.paper
         : theme.palette.background.default;
 
+    // add some extra spacing in a few places when we have a lot of entries to plot
+    const manyLines = yData.length > 8
+
     return (
         <Grid item xs={12} md={6}>
-            <Box sx={{width: "100%", height: "50vh"}}>
+            <Box sx={{width: "100%", height: manyLines ? "60vh" : "50vh"}}>
                 <Plot
                     data={yData.map((y) => (
                         {
@@ -39,7 +43,9 @@ export const SiteDataLinePlot: React.FC<SiteDataLinePlotProps> = (
                             y: y.data,
                             type: 'scatter',
                             mode: 'lines',
-                            name: y.name
+                            name: y.name,
+                            meta: y.fullName ?? y.name,
+                            hovertemplate: `%{meta}<br>${yLabel}: %{y:.2f}<extra></extra>`
                         }
                     ))}
                     layout={{
@@ -54,18 +60,21 @@ export const SiteDataLinePlot: React.FC<SiteDataLinePlotProps> = (
                         autosize: true,
                         legend: {
                             orientation: 'h',
-                            yanchor: 'bottom',
-                            y: 1.0,
-                            xanchor: 'center',
-                            x: 0.5
+                            yanchor: 'top',
+                            y: -0.2,
+                            xanchor: 'left',
+                            x: 0,
+                            font: {size: manyLines ? 10 : 12},
                         },
                         margin: {
-                            t: 100,  // We need a high top-margin to prevent the Title and Legend overlapping
-                            l: 40,  // Left margin prevents the Y-axis labels overlapping with the chart
-                            r: 20,
-                            b: 60  // bottom margin prevent the x-axis overlapping with the chart
+                            t: 60,  // padding for the title
+                            l: 40,  // padding for the y axis
+                            r: 0,
+                            b: manyLines ? 140 : 110  // padding for the legend
                         },
                         font: {color: theme.palette.text.primary},
+                        hovermode: 'x unified',
+                        uirevision: true,
                     }}
                     useResizeHandler={true}
                     style={{width: "100%", height: "100%"}}

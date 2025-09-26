@@ -23,8 +23,6 @@ export const DayOfInterestSelector: React.FC<DayOfInterestSelectorProps> = ({
 
   if (!daysOfInterest?.length) return null;
 
-  console.log(daysOfInterest);
-
   return (
     <Grid container direction="column" spacing={1}>
       <Grid item>

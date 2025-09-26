@@ -72,6 +72,15 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData, hints})
     const handleDownloadCSV = () => {downloadCSV(siteData)};
     const handleDownloadJSON = () => {downloadJSON(siteData)};
 
+    // Some of the fabric interventions can be incredibly long.
+    // This is a non-exhaustive list to reduce some of the common ones to shorter descriptions
+    const shortFabricNames: Readonly<Record<string, string>> = {
+        "Insulation to ceiling void": "Ceiling",
+        "Replacement External Windows": "Windows",
+        "Air tightness to external doors and windows": "Air Tightness",
+        "External Insulation to external cavity wall": "External Insulation"
+    }
+
     const tryPatchFabricHint = (intervention: FabricIntervention, index: number) => {
         const defaultLabel = {name: `Reduced Heat Load (${index + 1}`, data: intervention.reduced_hload};
         if (hints === null) {
@@ -82,9 +91,12 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData, hints})
             return defaultLabel;
         }
         const hintedName = hints.heating[index + 1].interventions
+            .map((intervention) => shortFabricNames[intervention] ?? intervention)
             .map((intervention) => snakeToDisplayName(intervention))
             .join(' • ');
-        return {name: hintedName, data: intervention.reduced_hload};
+        const maxLength = 50
+        const truncate = hintedName.length > maxLength ? hintedName.slice(0,maxLength - 1) + "…" : hintedName;
+        return {name: truncate, data: intervention.reduced_hload, fullName: hintedName};
     };
 
     const tryPatchTariffHint = (tariff: number[], index: number) => {
