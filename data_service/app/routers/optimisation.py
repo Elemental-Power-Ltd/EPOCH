@@ -300,7 +300,8 @@ def patch_hints_into_site_range(site_range: site_search_space_dict, hints: Bundl
             tariff_hints = hints.tariffs
             # We know that tariff indexes are either a list[int] or int, and never a minmaxparam.
             if isinstance(range_to_hint, int):
-                range_to_hint = snake_to_title_case(tariff_hints[range_to_hint].product_name)
+                cast(dict, site_range["grid"])["tariff_index"].considered = snake_to_title_case(
+                    tariff_hints[range_to_hint].product_name)
             elif isinstance(range_to_hint, list):
                 for i, idx in enumerate(range_to_hint):
                     range_to_hint[i] = snake_to_title_case(tariff_hints[idx].product_name)
@@ -316,13 +317,13 @@ def patch_hints_into_site_range(site_range: site_search_space_dict, hints: Bundl
             # We know that fabric intervention indexes are either a list[int] or int, and never a minmaxparam.
             range_to_hint = site_range["building"]["fabric_intervention_index"].considered  # type: ignore
             if isinstance(range_to_hint, int):
-                range_to_hint = ", ".join(snake_to_title_case(item) for item in heating_hints[range_to_hint].interventions)
+                cast(dict, site_range["building"])["fabric_intervention_index"].considered = ", ".join(
+                    snake_to_title_case(item) for item in heating_hints[range_to_hint].interventions)
             elif isinstance(range_to_hint, list):
                 for i, idx in enumerate(range_to_hint):
-                    range_to_hint[i] = ", ".join(snake_to_title_case(item) for item in heating_hints[idx].interventions)
-                    # If we got an empty list, then specifically replace that with None
-                    if not range_to_hint[i]:
-                        range_to_hint[i] = None
+                    # note: we allow for the empty list to represent no interventions
+                    range_to_hint[i] = ", ".join(
+                        snake_to_title_case(item) for item in heating_hints[idx].interventions)
             else:
                 logger.warning(
                     f"Got a bad type for {site_range['building']['fabric_intervention_index'].considered}, can't patch hints"  # type: ignore
@@ -341,7 +342,8 @@ def patch_hints_into_site_range(site_range: site_search_space_dict, hints: Bundl
                     yield_indices = [yield_indices]
                 # It's possible to choose between locations when searching.
                 # In that case, join them all together with commas in between.
-                yield_index_name = ", ".join(renewables_hints[j].name for j in yield_indices)
+                # We use 'Default' in instances where the name is None
+                yield_index_name = ", ".join((renewables_hints[j].name or "Default") for j in yield_indices)
                 cast(list, site_range["solar_panels"])[i]["yield_scalar"].name = yield_index_name
 
                 # Remove this entry as it's confusing once hinted
