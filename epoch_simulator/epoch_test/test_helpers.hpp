@@ -31,6 +31,7 @@ inline SiteData makeNHourSiteData(int n, TaskData baseline) {
         baseline,
         Eigen::VectorXf::Ones(n), // building_eload
         Eigen::VectorXf::Ones(n), // building_hload
+        0.0f,  // baseline peak_holad
         Eigen::VectorXf::Ones(n), // ev_eload
         Eigen::VectorXf::Ones(n), // dhw_demand
         Eigen::VectorXf::Ones(n), // air_temperature

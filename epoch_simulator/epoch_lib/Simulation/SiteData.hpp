@@ -12,6 +12,8 @@
 struct FabricIntervention {
 	// the cost in pounds of this fabric intervention
 	float cost;
+	// the peak heating demand in kW (as calculated by an external source such as PHPP)
+	float peak_hload;
 
 	// The (reduced) heating demand in kWh/timestep
 	year_TS reduced_hload;
@@ -25,6 +27,7 @@ struct SiteData {
 		TaskData baseline,
 		year_TS building_eload,
 		year_TS building_hload,
+		float peak_hload,
 		year_TS ev_eload,
 		year_TS dhw_demand,
 		year_TS air_temperature,
@@ -40,6 +43,7 @@ struct SiteData {
 		baseline(baseline),
 		building_eload(std::move(building_eload)),
 		building_hload(std::move(building_hload)),
+		peak_hload(peak_hload),
 		ev_eload(std::move(ev_eload)),
 		dhw_demand(std::move(dhw_demand)),
 		air_temperature(std::move(air_temperature)),
@@ -64,6 +68,8 @@ struct SiteData {
 	year_TS building_eload;
 	// The base heating demand in kWh/timestep
 	year_TS building_hload;
+	// The peak heating load in kW for the baseline (as calculated by an external source such as PHPP)
+	float peak_hload;
 	// The electric vehicle demand in kWh/timestep
 	year_TS ev_eload;
 	// The hot water demand in kWh/timestep

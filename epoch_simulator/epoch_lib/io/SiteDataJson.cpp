@@ -13,12 +13,14 @@ using json = nlohmann::json;
 void from_json(const json& j, FabricIntervention& intervention) {
     intervention.cost = j.at("cost").get<float>();
     intervention.reduced_hload = toEigen(j.at("reduced_hload").get<std::vector<float>>());
+    intervention.peak_hload = j.value("peak_hload", 0.0f);  // default to 0.0f
 }
 
 void to_json(json& j, const FabricIntervention& intervention) {
     j = json{
         {"cost", intervention.cost},
-        {"reduced_hload", toStdVec(intervention.reduced_hload)}
+        {"reduced_hload", toStdVec(intervention.reduced_hload)},
+        {"peak_hload", intervention.peak_hload}
     };
 }
 
@@ -59,6 +61,7 @@ namespace nlohmann {
         // top-level vector fields
         year_TS building_eload = toEigen(j.at("building_eload").get<std::vector<float>>());
         year_TS building_hload = toEigen(j.at("building_hload").get<std::vector<float>>());
+        float peak_hload = j.value("peak_hload", 0.0f);  // default to 0.0f
         year_TS ev_eload = toEigen(j.at("ev_eload").get<std::vector<float>>());
         year_TS dhw_demand = toEigen(j.at("dhw_demand").get<std::vector<float>>());
         year_TS air_temperature = toEigen(j.at("air_temperature").get<std::vector<float>>());
@@ -84,6 +87,7 @@ namespace nlohmann {
             std::move(baseline),
             std::move(building_eload),
             std::move(building_hload),
+            peak_hload,
             std::move(ev_eload),
             std::move(dhw_demand),
             std::move(air_temperature),
@@ -106,6 +110,7 @@ namespace nlohmann {
             // Year_TS fields
             {"building_eload", toStdVec(sd.building_eload)},
             {"building_hload", toStdVec(sd.building_hload)},
+            {"peak_hload", sd.peak_hload},
             {"ev_eload", toStdVec(sd.ev_eload)},
             {"dhw_demand", toStdVec(sd.dhw_demand)},
             {"air_temperature", toStdVec(sd.air_temperature)},

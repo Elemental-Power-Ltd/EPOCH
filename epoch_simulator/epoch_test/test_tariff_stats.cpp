@@ -86,6 +86,7 @@ TEST(TariffStats, TimestepsNonHourly) {
 		TaskData{},
 		sdBase.building_eload,
 		sdBase.building_hload,
+		sdBase.peak_hload,
 		sdBase.ev_eload,
 		sdBase.dhw_demand,
 		sdBase.air_temperature,
