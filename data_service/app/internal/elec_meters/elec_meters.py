@@ -20,7 +20,7 @@ from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
 from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, SquareHHDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
-from .model_utils import fit_residual_model, split_and_baseline_active_days
+from .model_utils import OffsetMethodEnum, fit_residual_model, split_and_baseline_active_days
 from .vae import VAE
 
 
@@ -181,6 +181,7 @@ def daily_to_hh_eload(
     target_hh_observed_df: SquareHHDataFrame | None = None,
     weekend_inds: frozenset[int] = frozenset({5, 6}),
     division: UKCountryEnum = UKCountryEnum.England,
+    offset_method: OffsetMethodEnum = OffsetMethodEnum.DetectChgpt,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
     """
@@ -212,6 +213,10 @@ def daily_to_hh_eload(
         This should match the indices provided by .dayofweek
     division
         Which the division of the UK to use to determine the public holidays.
+    offset_method
+        A StrEnum to indicate the method used to allocate offsets.
+        When dealing with monthly readings, this should correspond to 'compare-active-neighbours'
+        When dealing with daily or half-hourly readings, this should correspond to 'detect-chgpt' [default]
     rng
         Numpy random generator for reproducible results
 
@@ -232,6 +237,7 @@ def daily_to_hh_eload(
             resid_model_path=resid_model_path,
             weekend_inds=weekend_inds,
             division=division,
+            offset_method=offset_method,
             rng=rng,
         )
     elif target_hh_observed_df is not None:
@@ -241,6 +247,7 @@ def daily_to_hh_eload(
             target_hh_observed_df=target_hh_observed_df,
             weekend_inds=weekend_inds,
             division=division,
+            offset_method=offset_method,
             rng=rng,
         )
     else:
@@ -256,6 +263,7 @@ def daily_to_hh_eload_observed(
     target_hh_observed_df: SquareHHDataFrame,
     weekend_inds: frozenset[int] = frozenset({5, 6}),
     division: UKCountryEnum = UKCountryEnum.England,
+    offset_method: OffsetMethodEnum = OffsetMethodEnum.DetectChgpt,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
     """
@@ -287,6 +295,10 @@ def daily_to_hh_eload_observed(
         This should match the indices provided by .dayofweek
     division
         Which the division of the UK to use to determine the public holidays.
+    offset_method
+        A StrEnum to indicate the method used to allocate offsets.
+        When dealing with monthly readings, this should correspond to 'compare-active-neighbours'
+        When dealing with daily or half-hourly readings, this should correspond to 'detect-chgpt' [default]
     rng
         Numpy random generator for reproducible results
 
@@ -304,7 +316,7 @@ def daily_to_hh_eload_observed(
 
     # split daily data into active and inactive days; remove baseline from active days
     target_daily_active_df, target_daily_inactive_df = split_and_baseline_active_days(
-        daily_df, weekend_inds=weekend_inds, division=division
+        daily_df, weekend_inds=weekend_inds, division=division, offset_method=offset_method
     )
     # scale the baselined daily consumption data for active days, using a *new* StandardScaler
     aggregate_scaler_new = sklearn.preprocessing.StandardScaler()
@@ -344,7 +356,7 @@ def daily_to_hh_eload_observed(
     assert is_valid_square_hh_dataframe(target_hh_observed_df), "Got a target_hh_observed_df that isn't a valid square HH"
     target_hh_obs_daily = cast(DailyDataFrame, pd.DataFrame(target_hh_observed_df.sum(axis=1), columns=["consumption_kwh"]))
     target_hh_obs_daily_active, _ = split_and_baseline_active_days(
-        target_hh_obs_daily, weekend_inds=weekend_inds, division=division
+        target_hh_obs_daily, weekend_inds=weekend_inds, division=division, offset_method=OffsetMethodEnum.DetectChgpt
     )
 
     is_active_mask = target_hh_observed_df.index.isin(target_hh_obs_daily_active.index)
@@ -512,6 +524,7 @@ def daily_to_hh_eload_pretrained(
     resid_model_path: pathlib.Path,
     weekend_inds: frozenset[int] = frozenset({5, 6}),
     division: UKCountryEnum = UKCountryEnum.England,
+    offset_method: OffsetMethodEnum = OffsetMethodEnum.DetectChgpt,
     rng: np.random.Generator | None = None,
 ) -> HHDataFrame:
     """
@@ -543,6 +556,10 @@ def daily_to_hh_eload_pretrained(
         This should match the indices provided by .dayofweek
     division
         Which the division of the UK to use to determine the public holidays.
+    offset_method
+        A StrEnum to indicate the method used to allocate offsets.
+        When dealing with monthly readings, this should correspond to 'compare-active-neighbours'
+        When dealing with daily or half-hourly readings, this should correspond to 'detect-chgpt' [default]
     rng
         Numpy random generator for reproducible results
 
@@ -560,7 +577,7 @@ def daily_to_hh_eload_pretrained(
 
     # split daily data into active and inactive days; remove baseline from active days
     target_daily_active_df, target_daily_inactive_df = split_and_baseline_active_days(
-        daily_df, weekend_inds=weekend_inds, division=division
+        daily_df, weekend_inds=weekend_inds, division=division, offset_method=offset_method
     )
     # scale the baselined daily consumption data for active days, using a *new* StandardScaler
     aggregate_scaler_new = sklearn.preprocessing.StandardScaler()
