@@ -519,6 +519,8 @@ def handle_offsets_compare_active_neighbours(
     active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
 ) -> npt.NDArray[np.floating]:
     """
+    Establish active day offsets based on neighbouring blocks of active days.
+
     Establish active day offsets: use either the most recent or the next inactive day, based on the mean daily consumption in
     this and neighbouring blocks of active days. Compare the current contiguous block of active days with the most recent and
     the next contiguous blocks of active days. If the mean daily consumption in this block of active days is closer to the mean
