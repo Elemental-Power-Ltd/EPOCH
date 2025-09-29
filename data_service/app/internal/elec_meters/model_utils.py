@@ -4,7 +4,7 @@ import itertools
 import logging
 import pathlib
 from enum import StrEnum
-from typing import Literal, Self, TypedDict, cast
+from typing import Any, Literal, Self, TypedDict, cast
 
 import joblib
 import numpy as np
@@ -519,11 +519,11 @@ def handle_offsets_compare_active_neighbours(
     active_daily: DailyDataFrame, inactive_daily: DailyDataFrame
 ) -> npt.NDArray[np.floating]:
     """
-    Establish active day offsets: use either the most recent or the next inactive day, based on the mean daily consumption in this and neighbouring blocks of active days.
-    Compare the current contiguous block of active days with the most recent and the next contiguous blocks of active days
-    If the mean daily consumption in this block of active days is closer to the mean daily consumption in the next
-    block of active days, use the first inactive day between these blocks, i.e. the next inactive day.
-    Otherwise, use the last inactive day before the current active block.
+    Establish active day offsets: use either the most recent or the next inactive day, based on the mean daily consumption in 
+    this and neighbouring blocks of active days. Compare the current contiguous block of active days with the most recent and 
+    the next contiguous blocks of active days. If the mean daily consumption in this block of active days is closer to the mean
+    daily consumption in the next block of active days, use the first inactive day between these blocks, i.e. the next inactive
+    day. Otherwise, use the last inactive day before the current active block.
 
     Parameters
     ----------
@@ -539,6 +539,7 @@ def handle_offsets_compare_active_neighbours(
     npt.NDArray[np.floating]
         The offsets to use for each active day as the corresponding 'inactive day component'
     """
+
     inactive_daily_index = inactive_daily.index.to_numpy()
     inactive_daily_vals = inactive_daily.to_numpy()
     active_daily_index = active_daily.index.to_numpy()
@@ -565,8 +566,9 @@ def handle_offsets_compare_active_neighbours(
             #   a) set offset for these active values to be the first inactive value; and
             #   b) find the mean consumption for this previous block of active days
             # else
-            #   on the principle that it is better for the residual to be too large than too low, lest the active day be incorrectly identified as inactive,
-            #   choose a or b that maximises the mean residual (mean of difference between current block and {a,b})
+            #   on the principle that it is better for the residual to be too large than too low, lest the active day be
+            #   incorrectly identified as inactive, choose a or b that maximises the mean residual (mean of difference
+            #   between current block and {a,b})
             if active_daily_index[0] < inactive_daily_index[0]:
                 mask = active_daily_index < inactive_daily_index[0]
                 prev_idx = np.where(mask)[0]
@@ -586,7 +588,7 @@ def handle_offsets_compare_active_neighbours(
         # prev_mean_active_consumption and current_mean_active_consumption already calculated
 
         # find next block between inactive values
-        next_idx = []
+        next_idx: np.ndarray = np.array([], dtype=np.int_)
         j = 0
         while len(next_idx) == 0:
             j += 1
