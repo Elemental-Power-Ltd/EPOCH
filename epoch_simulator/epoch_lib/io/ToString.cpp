@@ -72,6 +72,7 @@ std::string metricsToString(const SimulationMetrics& metrics) {
 		"    total_heat_shortfall: {},\n"
 		"    total_ch_shortfall: {},\n"
 		"    total_dhw_shortfall: {},\n"
+		"    peak_hload_shortfall: {},\n"
 
 		"    total_capex: {},\n"
 		"    total_gas_import_cost: {},\n"
@@ -101,6 +102,7 @@ std::string metricsToString(const SimulationMetrics& metrics) {
 		metrics.total_heat_shortfall,
 		metrics.total_ch_shortfall,
 		metrics.total_dhw_shortfall,
+		metrics.peak_hload_shortfall,
 
 		metrics.total_capex,
 		metrics.total_gas_import_cost,

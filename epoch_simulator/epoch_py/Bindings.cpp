@@ -223,6 +223,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("total_heat_shortfall", &SimulationMetrics::total_heat_shortfall)
 		.def_readwrite("total_ch_shortfall", &SimulationMetrics::total_ch_shortfall)
 		.def_readwrite("total_dhw_shortfall", &SimulationMetrics::total_dhw_shortfall)
+		.def_readwrite("peak_hload_shortfall", &SimulationMetrics::peak_hload_shortfall)
 
 		.def_readwrite("total_capex", &SimulationMetrics::total_capex)
 		.def_readwrite("total_gas_import_cost", &SimulationMetrics::total_gas_import_cost)

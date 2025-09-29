@@ -354,6 +354,27 @@ SimulationMetrics Simulator::calculateMetrics(const TaskData& taskData, const Re
 	metrics.total_ch_shortfall = reportData.CH_shortfall.sum();
 	metrics.total_dhw_shortfall = reportData.DHW_Shortfall.sum();
 
+	// calculate the maximum heat our components can produce
+	float component_heat = 0.0f;
+	if (taskData.gas_heater) {
+		component_heat += taskData.gas_heater->maximum_output;
+	}
+	if (taskData.heat_pump) {
+		component_heat += taskData.heat_pump->heat_power;
+	}
+	// determine the peak_hload given the fabric intervention used
+	float required_peak_hload = 0.0f;
+	if (taskData.building && taskData.building->fabric_intervention_index != 0) {
+		// fabric_intervention_index is a 1-based index, 0 corresponds to building_hload instead
+		required_peak_hload = mSiteData.fabric_interventions[taskData.building->fabric_intervention_index - 1].peak_hload;
+	}
+	else {
+		// we default to the baseline peak_hload in instances where there is no Building component
+		// and also when no fabric interventions have been applied
+		required_peak_hload = mSiteData.peak_hload;
+	}
+	metrics.peak_hload_shortfall = std::max(required_peak_hload - component_heat, 0.0f);
+
 	metrics.total_ch_load = reportData.CH_demand.sum() - metrics.total_ch_shortfall;
 	metrics.total_dhw_load = reportData.DHW_demand.sum() - metrics.total_dhw_shortfall;
 	metrics.total_heat_load = metrics.total_dhw_load + metrics.total_ch_load;

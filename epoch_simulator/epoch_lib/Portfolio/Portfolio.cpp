@@ -18,6 +18,7 @@ void addMetrics(const SimulationMetrics& from, SimulationMetrics& to) {
 	to.total_heat_shortfall += from.total_heat_shortfall;
 	to.total_ch_shortfall += from.total_ch_shortfall;
 	to.total_dhw_shortfall += from.total_dhw_shortfall;
+	to.peak_hload_shortfall += from.peak_hload_shortfall;
 
 	to.total_capex += from.total_capex;
 	to.total_gas_import_cost += from.total_gas_import_cost;

@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "3.5.0";
+const std::string EPOCH_VERSION = "3.6.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -114,6 +114,7 @@ struct SimulationMetrics {
 	float total_heat_shortfall;
 	float total_ch_shortfall;
 	float total_dhw_shortfall;
+	float peak_hload_shortfall;
 
 	// financial totals in £
 	float total_capex;
