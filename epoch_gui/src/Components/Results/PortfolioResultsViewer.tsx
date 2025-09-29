@@ -8,14 +8,16 @@ import {
 } from '@mui/material';
 
 import PortfolioResultsTable from './PortfolioResultsTable';
-import {HighlightedResult, HighlightReason, PortfolioOptimisationResult} from '../../State/types';
+import {HighlightedResult, HighlightReason, PortfolioOptimisationResult, Site} from '../../State/types';
 import {PortfolioSummaryCard} from "./PortfolioSummaryCard.tsx";
+import {OptimisationResultsResponse} from "../../Models/Endpoints.ts";
+import {useEpochStore} from "../../State/Store.ts";
+import {ExtraTaskInfo} from "./ExtraTaskInfo/ExtraTaskInfo.tsx";
 
 interface PortfolioResultsViewerProps {
     isLoading: boolean;
     error: string | null;
-    results: PortfolioOptimisationResult[];
-    highlighted: HighlightedResult[];
+    optimisationResult: OptimisationResultsResponse | null;
     selectPortfolio: (portfolio_id: string) => void;
     deselectPortfolio: () => void;
     selectedPortfolioId?: string;
@@ -25,12 +27,18 @@ interface PortfolioResultsViewerProps {
 const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
     isLoading,
     error,
-    results,
-    highlighted,
+    optimisationResult,
     selectPortfolio,
     deselectPortfolio,
     selectedPortfolioId,
 }) => {
+
+    const results = optimisationResult?.portfolio_results || [];
+    const highlighted = optimisationResult?.highlighted_results || [];
+    const hints = optimisationResult?.hints || {};
+    const searchSpace = optimisationResult?.search_spaces
+
+    const sites: Site[] = useEpochStore((state) => state.global.client_sites);
 
     const canShowHighlights: boolean = highlighted.length > 0;
 
@@ -101,7 +109,7 @@ const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
                 {actuallyShowTable ? 'Full Portfolio Results' : 'Highlighted Portfolio Results'}
             </Typography>
 
-            <>
+            <Box mb={4}>
                 {actuallyShowTable ? (
                     <PortfolioResultsTable
                         results={results}
@@ -125,7 +133,14 @@ const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
                         </Button>
                     </Box>
                 }
-            </>
+            </Box>
+
+            <ExtraTaskInfo
+                searchSpace={searchSpace}
+                hints={hints}
+                sites={sites}
+            />
+
         </Box>
     );
 };

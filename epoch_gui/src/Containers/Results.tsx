@@ -155,8 +155,7 @@ function ResultsContainer() {
                 <PortfolioResultsViewer
                     isLoading={isLoadingPortfolio}
                     error={portfolioError}
-                    results={resultsForTask?.portfolio_results || []}
-                    highlighted={resultsForTask?.highlighted_results || []}
+                    optimisationResult={resultsForTask}
                     selectPortfolio={(portfolio_id: string) => navigate(`/results/${task_id}/${portfolio_id}`)}
                     deselectPortfolio={()=> navigate(`/results/${task_id}`)}
                     selectedPortfolioId={portfolio_id}

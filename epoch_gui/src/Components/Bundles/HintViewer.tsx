@@ -159,12 +159,12 @@ const HeatingTable: React.FC<{ rows: HeatingLoadMetadata[] }> = ({ rows }) => {
   );
 };
 
-export const HintViewer: React.FC<{ hints: BundleHint }> = ({ hints }) => {
+export const HintViewer: React.FC<{ hints: BundleHint, siteName?: string }> = ({ hints, siteName }) => {
   return (
     <Stack spacing={2} sx={{mb: "1em"}}>
       <Paper variant="outlined">
         <Box p={2}>
-          <Typography variant="h5" gutterBottom>Bundle Hints</Typography>
+          <Typography variant="h5" gutterBottom>{siteName ?? "Bundle Hints"}</Typography>
         </Box>
         <Divider />
 

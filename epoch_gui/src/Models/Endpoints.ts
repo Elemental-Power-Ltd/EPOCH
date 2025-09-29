@@ -118,9 +118,34 @@ export interface SubmitOptimisationResponse {
     task_id: string;
 }
 
+
+export type SiteId = string;
+export type Component = string;
+
+export type ValuesParam = number[] | string[];
+export type FixedParam = number | string;
+
+export interface MinMaxParam<T extends number = number> {
+  min: T;
+  max: T;
+  count: number;
+}
+
+export interface Param {
+  name: string;
+  units: string | null;
+  considered: ValuesParam | MinMaxParam | FixedParam;
+}
+
+export type GuiParamDict = Record<string, Param>;
+
+export type SearchSpaces = Record<SiteId, Record<Component, GuiParamDict | GuiParamDict[]>>;
+
 export interface OptimisationResultsResponse {
     portfolio_results: PortfolioOptimisationResult[];
     highlighted_results: HighlightedResult[];
+    hints: Record<string, BundleHint>;
+    search_spaces: SearchSpaces;
 }
 
 
