@@ -104,6 +104,7 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           "total_heat_shortfall",
           "total_dhw_shortfall",
           "total_ch_shortfall",
+          "peak_hload_shortfall"
       ]
 
       const scenarioMeter: MetricKey[] = [

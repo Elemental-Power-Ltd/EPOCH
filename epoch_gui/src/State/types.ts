@@ -93,6 +93,7 @@ export interface SiteMetrics {
     total_heat_shortfall?: number;
     total_ch_shortfall?: number;
     total_dhw_shortfall?: number;
+    peak_hload_shortfall?: number;
 
     capex?: number;
     total_gas_import_cost?: number;
@@ -127,6 +128,7 @@ export interface SiteMetrics {
     baseline_heat_shortfall?: number;
     baseline_ch_shortfall?: number;
     baseline_dhw_shortfall?: number;
+    baseline_peak_hload_shortfall?: number;
 
     baseline_gas_import_cost?: number;
     baseline_electricity_import_cost?: number;
@@ -176,6 +178,7 @@ export interface PortfolioMetrics {
     total_heat_shortfall?: number;
     total_ch_shortfall?: number;
     total_dhw_shortfall?: number;
+    peak_hload_shortfall?: number;
 
     capex?: number;
     total_gas_import_cost?: number;
@@ -202,6 +205,7 @@ export interface PortfolioMetrics {
     baseline_heat_shortfall?: number;
     baseline_ch_shortfall?: number;
     baseline_dhw_shortfall?: number;
+    baseline_peak_hload_shortfall?: number;
 
     baseline_gas_import_cost?: number;
     baseline_electricity_import_cost?: number;

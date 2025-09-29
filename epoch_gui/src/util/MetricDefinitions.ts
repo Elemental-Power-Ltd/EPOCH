@@ -1,5 +1,13 @@
 import type {SiteMetrics} from "../State/types.ts"
-import {formatCarbon, formatCarbonCost, formatPounds, formatYears, formatEnergy, formatPercentage} from "./displayFunctions";
+import {
+    formatCarbon,
+    formatCarbonCost,
+    formatPounds,
+    formatYears,
+    formatEnergy,
+    formatPercentage,
+    formatPower
+} from "./displayFunctions";
 
 /** All keys that really exist on SiteMetrics */
 export type MetricKey = keyof SiteMetrics;
@@ -172,6 +180,13 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
         format: fmtEnergy,
         color: shortfallColour,
     },
+    peak_hload_shortfall: {
+        key: "peak_hload_shortfall",
+        label: "Peak Shortfall",
+        icon: "Gas",
+        format: formatPower,
+        color: shortfallColour,
+    },
     total_gas_import_cost: {
         key: "total_gas_import_cost",
         label: "Gas Import Cost",
@@ -274,6 +289,13 @@ export const metricDefs: Record<MetricKey, MetricDefinition> = {
         label: "Baseline DHW Shortfall",
         icon: "Gas",
         format: fmtEnergy,
+    },
+    baseline_peak_hload_shortfall: {
+        key: "baseline_peak_hload_shortfall",
+        label: "Baseline Peak Shortfall",
+        icon: "Gas",
+        format: formatPower,
+        color: shortfallColour,
     },
     baseline_gas_import_cost: {
         key: "baseline_gas_import_cost",
