@@ -9,7 +9,6 @@ from app.internal.ga_utils import (
     RoundingAndDegenerateRepair,
     SimpleIntMutation,
     evaluate_constraints,
-    evaluate_peak_hload,
 )
 from app.internal.site_range import REPEAT_COMPONENTS, count_parameters_to_optimise
 from app.models.constraints import Constraints
@@ -38,11 +37,9 @@ from app.models.epoch_types.site_range_type import (
 from app.models.epoch_types.site_range_type import (
     SolarPanel as SolarPanelRange,
 )
-from app.models.epoch_types.task_data_type import Building, GasHeater, HeatPump
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _METRICS, _OBJECTIVES, Metric, MetricValues
-from app.models.result import PortfolioSolution, SiteSolution
-from app.models.site_data import EpochSiteData
+from app.models.result import PortfolioSolution
 
 from .conftest import site_generator
 
@@ -158,85 +155,6 @@ class TestEvaluateExcess:
                 excess.append(1.0)
 
         assert evaluate_constraints(metric_values=metric_values, constraints=default_constraints) == excess
-
-
-class TestEvaluatePeakHload:
-    def test_it_works(self, default_epoch_data: EpochSiteData, dummy_site_solution: SiteSolution) -> None:
-        evaluate_peak_hload(site_scenario=dummy_site_solution.scenario, site_data=default_epoch_data)
-
-    def test_undersized_heat_pump(self, default_epoch_data: EpochSiteData) -> None:
-        scenario = AnnotatedTaskData()
-        scenario.building = Building()
-
-        peak_hload = default_epoch_data.peak_hload
-
-        scenario.heat_pump = HeatPump(heat_power=peak_hload - 1)
-
-        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 1
-
-    def test_undersized_gas_heater(self, default_epoch_data: EpochSiteData) -> None:
-        scenario = AnnotatedTaskData()
-        scenario.building = Building()
-
-        peak_hload = default_epoch_data.peak_hload
-
-        scenario.gas_heater = GasHeater(maximum_output=peak_hload - 1)
-
-        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 1
-
-    def test_undersized_gas_heater_and_heat_pump(self, default_epoch_data: EpochSiteData) -> None:
-        scenario = AnnotatedTaskData()
-        scenario.building = Building()
-
-        peak_hload = default_epoch_data.peak_hload
-
-        scenario.gas_heater = GasHeater(maximum_output=peak_hload / 2 - 1)
-        scenario.heat_pump = HeatPump(heat_power=peak_hload / 2 - 1)
-
-        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == 2
-
-    def test_oversized_heat_pump(self, default_epoch_data: EpochSiteData) -> None:
-        scenario = AnnotatedTaskData()
-        scenario.building = Building()
-
-        peak_hload = default_epoch_data.peak_hload
-
-        scenario.heat_pump = HeatPump(heat_power=peak_hload + 1)
-
-        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -1
-
-    def test_oversized_gas_heater(self, default_epoch_data: EpochSiteData) -> None:
-        scenario = AnnotatedTaskData()
-        scenario.building = Building()
-
-        peak_hload = default_epoch_data.peak_hload
-
-        scenario.gas_heater = GasHeater(maximum_output=peak_hload + 1)
-
-        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -1
-
-    def test_oversized_gas_heater_and_heat_pump(self, default_epoch_data: EpochSiteData) -> None:
-        scenario = AnnotatedTaskData()
-        scenario.building = Building()
-
-        peak_hload = default_epoch_data.peak_hload
-
-        scenario.gas_heater = GasHeater(maximum_output=peak_hload / 2 + 1)
-        scenario.heat_pump = HeatPump(heat_power=peak_hload / 2 + 1)
-
-        assert evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data) == -2
-
-    def test_fabric_intervention_peak_hload(self, default_epoch_data: EpochSiteData) -> None:
-        scenario = AnnotatedTaskData()
-        scenario.building = Building()
-        scenario.heat_pump = HeatPump(heat_power=50)
-
-        scenario.building.fabric_intervention_index = 1
-        res_w_fabric = evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data)
-
-        scenario.building.fabric_intervention_index = 0
-        res_wo_fabric = evaluate_peak_hload(site_scenario=scenario, site_data=default_epoch_data)
-        assert res_w_fabric <= res_wo_fabric
 
 
 class TestSimpleIntMutation:

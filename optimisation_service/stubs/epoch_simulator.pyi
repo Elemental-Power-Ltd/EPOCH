@@ -36,6 +36,7 @@ class SimulationMetrics:
     total_heat_shortfall: float
     total_ch_shortfall: float
     total_dhw_shortfall: float
+    peak_hload_shortfall: float
 
     total_capex: float
     total_gas_import_cost: float

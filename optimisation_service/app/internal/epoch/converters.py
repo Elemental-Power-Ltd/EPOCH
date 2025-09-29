@@ -160,6 +160,7 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
         total_heat_shortfall=scenario.total_heat_shortfall,
         total_ch_shortfall=scenario.total_ch_shortfall,
         total_dhw_shortfall=scenario.total_dhw_shortfall,
+        peak_hload_shortfall=scenario.peak_hload_shortfall,
         capex=scenario.total_capex,
         total_gas_import_cost=scenario.total_gas_import_cost,
         total_electricity_import_cost=scenario.total_electricity_import_cost,
@@ -188,6 +189,7 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
         baseline_heat_shortfall=baseline.total_heat_shortfall,
         baseline_ch_shortfall=baseline.total_ch_shortfall,
         baseline_dhw_shortfall=baseline.total_dhw_shortfall,
+        baseline_peak_hload_shortfall=baseline.peak_hload_shortfall,
         baseline_gas_import_cost=baseline.total_gas_import_cost,
         baseline_electricity_import_cost=baseline.total_electricity_import_cost,
         baseline_electricity_export_gain=baseline.total_electricity_export_gain,
@@ -248,6 +250,7 @@ def simulation_result_to_metric_dict(sim_result: SimulationResult) -> MetricValu
     metric_values[Metric.total_heat_shortfall] = metrics.total_heat_shortfall
     metric_values[Metric.total_ch_shortfall] = metrics.total_ch_shortfall
     metric_values[Metric.total_dhw_shortfall] = metrics.total_dhw_shortfall
+    metric_values[Metric.peak_hload_shortfall] = metrics.peak_hload_shortfall
 
     metric_values[Metric.capex] = sim_result.metrics.total_capex
     metric_values[Metric.total_gas_import_cost] = sim_result.metrics.total_gas_import_cost

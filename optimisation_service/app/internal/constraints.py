@@ -137,6 +137,7 @@ def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01, dhw_tole
         Metric.total_dhw_shortfall: Bounds(max=dhw_max),
         # We keep the total heat shortfall just in case it's useful elsewhere!
         Metric.total_heat_shortfall: Bounds(max=ch_max + dhw_max),
+        Metric.peak_hload_shortfall: Bounds(max=0)
     }
     return constraints
 

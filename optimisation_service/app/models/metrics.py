@@ -34,6 +34,7 @@ class Metric(StrEnum):
     total_heat_shortfall = "total_heat_shortfall"
     total_ch_shortfall = "total_ch_shortfall"
     total_dhw_shortfall = "total_dhw_shortfall"
+    peak_hload_shortfall = "peak_hload_shortfall"
 
     capex = "capex"
     total_gas_import_cost = "total_gas_import_cost"
@@ -77,6 +78,7 @@ class MetricDirection(IntEnum):
     total_heat_shortfall = 1
     total_ch_shortfall = 1
     total_dhw_shortfall = 1
+    peak_hload_shortfall = 1
 
     capex = 1
     total_gas_import_cost = 1

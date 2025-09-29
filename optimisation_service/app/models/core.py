@@ -205,6 +205,10 @@ class SimulationMetrics(BaseModel):
     total_dhw_shortfall: float | None = Field(
         description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand.", default=None
     )
+    peak_hload_shortfall: float | None = Field(
+        description="Shortfall in meeting the peak heating demand calculated by an external source (such as PHPP)",
+        default=None
+    )
     capex: float | None = Field(description="Cost to install this scenario.", default=None)
     total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas.", default=None)
     total_electricity_import_cost: float | None = Field(
@@ -265,6 +269,10 @@ class SimulationMetrics(BaseModel):
     )
     baseline_dhw_shortfall: float | None = Field(
         description="Baseline domestic hot water (DHW) shortfall (kWh) when compared to the demand.", default=None
+    )
+    baseline_peak_hload_shortfall: float | None = Field(
+        description="Baseline shortfall in meeting the peak heating demand calculated by an external source (such as PHPP)",
+        default=None
     )
     baseline_gas_import_cost: float | None = Field(description="Total spend (£) importing gas.", default=None)
     baseline_electricity_import_cost: float | None = Field(

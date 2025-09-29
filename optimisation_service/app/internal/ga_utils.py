@@ -21,7 +21,6 @@ from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.ga_utils import AnnotatedTaskData, AssetParameter, ParsedAsset, asset_t, value_t
 from app.models.metrics import Metric, MetricDirection, MetricValues
 from app.models.result import PortfolioSolution
-from app.models.site_data import EpochSiteData
 
 logger = logging.getLogger("default")
 
@@ -49,7 +48,6 @@ class ProblemInstance(ElementwiseProblem):
         n_ieq_constr = sum(len(bounds) for bounds in self.constraints.values())
         for site in portfolio:
             n_ieq_constr += sum(len(bounds) for bounds in site.constraints.values())
-            n_ieq_constr += 1  # peak_hload constraints
 
         epoch_data_dict = {}
         epoch_config_dict = {}
@@ -365,23 +363,13 @@ class ProblemInstance(ElementwiseProblem):
         """
         portfolio_scenarios = self.convert_portfolio_chromosome_to_portfolio_scenario(x=x)
 
-        constraint_violations = []
-        for site in self.portfolio:
-            site_scenario = portfolio_scenarios[site.site_data.site_id]
-            constraint_violations.append(evaluate_peak_hload(site_scenario=site_scenario, site_data=site._epoch_data))
+        portfolio_solution = self.sim.simulate_portfolio(portfolio_scenarios=portfolio_scenarios)
+        constraint_violations = self.evaluate_constraint_violations(portfolio_solution)
 
-        if max(constraint_violations) > 0:
-            out["G"] = constraint_violations + [0] * (self.n_ieq_constr - len(constraint_violations))
-            out["F"] = [0] * self.n_obj
-
-        else:
-            portfolio_solution = self.sim.simulate_portfolio(portfolio_scenarios=portfolio_scenarios)
-            constraint_violations += self.evaluate_constraint_violations(portfolio_solution)
-
-            out["G"] = constraint_violations
-            selected_results = {metric: portfolio_solution.metric_values[metric] for metric in self.objectives}
-            directed_results = self.apply_directions(selected_results)
-            out["F"] = list(directed_results.values())
+        out["G"] = constraint_violations
+        selected_results = {metric: portfolio_solution.metric_values[metric] for metric in self.objectives}
+        directed_results = self.apply_directions(selected_results)
+        out["F"] = list(directed_results.values())
 
 
 def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) -> list[float]:
@@ -412,41 +400,6 @@ def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) 
             excess.append(metric_values[metric] - bounds["max"])
 
     return excess
-
-
-def evaluate_peak_hload(site_scenario: AnnotatedTaskData, site_data: EpochSiteData) -> float:
-    """
-    Evaluate a site scenario's maximum heat generation against its peak heat load requirement.
-
-    Parameters
-    ----------
-    site_scenario
-        The site scenario to evaluate.
-    site_data
-        The input data for the site.
-
-    Returns
-    -------
-        Difference between the peak heat load requirement and the site scenario's maximum heat generation.
-        A negative value indicates that the maximum heat generation is greater than the peak heat load requirement.
-        A positive value indicates that the maximum heat generation is smaller than the peak heat load requirement.
-    """
-    if site_scenario.building is None:
-        return 0
-
-    site_heat_generation = 0.0
-    if site_scenario.gas_heater is not None:
-        site_heat_generation += site_scenario.gas_heater.maximum_output
-    if site_scenario.heat_pump is not None:
-        site_heat_generation += site_scenario.heat_pump.heat_power
-
-    fabric_intervention_index = site_scenario.building.fabric_intervention_index
-    if fabric_intervention_index == 0:
-        peak_hload_req = site_data.peak_hload
-    else:
-        peak_hload_req = site_data.fabric_interventions[fabric_intervention_index - 1].peak_hload
-
-    return peak_hload_req - site_heat_generation
 
 
 class EstimateBasedSampling(Sampling):
