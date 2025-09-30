@@ -22,7 +22,7 @@ const SitesContainer = () => {
     const selectedClient = useEpochStore((state) => state.global.selectedClient);
     const sites = useEpochStore((state) => state.global.client_sites);
 
-    const [selectedSite, setSelectedSite] = useState<string>("");
+    const [selectedSite, setSelectedSite] = useState<string>(sites.length === 1 ? sites[0].site_id : "");
 
     const [startDate, setStartDate] = useState<Dayjs | null>(dayjs("2022-01-01T00:00:00Z"));
     const [endDate, setEndDate] = useState<Dayjs | null>(dayjs("2023-01-01T00:00:00Z"));

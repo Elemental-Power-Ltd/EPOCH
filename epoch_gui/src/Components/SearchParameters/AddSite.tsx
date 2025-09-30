@@ -29,7 +29,7 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
   availableSites,
   onAddSite
 }) => {
-  const [selectedSite, setSelectedSite] = useState<string>('');
+  const [selectedSite, setSelectedSite] = useState<string>(availableSites.length === 1 ? availableSites[0].site_id : '');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 

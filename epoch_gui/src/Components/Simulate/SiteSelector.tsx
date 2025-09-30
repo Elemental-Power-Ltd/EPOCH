@@ -17,7 +17,8 @@ interface Props {
 }
 
 const SiteSelector: FC<Props> = ({clientSites, onBaselineReady}) => {
-  const [siteID, setSiteID] = useState("");
+  // when there's only 1 site, pre-populate this form
+  const [siteID, setSiteID] = useState(clientSites.length === 1 ? clientSites[0].site_id : "");
   const [startDate, setStartDate] = useState<Dayjs | null>(
     dayjs("2022-01-01T00:00:00Z")
   );
