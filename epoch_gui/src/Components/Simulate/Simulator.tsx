@@ -96,6 +96,7 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
           updateComponent={componentBuilderState.updateComponent}
           setComponents={componentBuilderState.setComponents}
           getComponents={getTaskData}
+          site_id={siteID}
         />
       )}
 

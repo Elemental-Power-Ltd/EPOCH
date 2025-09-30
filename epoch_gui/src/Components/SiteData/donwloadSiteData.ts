@@ -3,13 +3,13 @@ import dayjs from "dayjs";
 import {EpochSiteData} from "../../Models/Endpoints";
 
 
-export const downloadJSON = (siteData: EpochSiteData) => {
+export const downloadJSON = (siteData: EpochSiteData, nameHint?: string) => {
     const jsonData = JSON.stringify(siteData, null, 2);
     const blob = new Blob([jsonData], {type: 'application/json'});
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'siteData.json';
+    link.download = nameHint ? `${nameHint}_siteData.json` : 'siteData.json';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -17,7 +17,7 @@ export const downloadJSON = (siteData: EpochSiteData) => {
 }
 
 
-export const downloadCSV = (siteData: EpochSiteData) => {
+export const downloadCSV = (siteData: EpochSiteData, nameHint?: string) => {
     // Parse start and end times
     const startTime = dayjs(siteData.start_ts);
     const endTime = dayjs(siteData.end_ts);
@@ -99,7 +99,8 @@ export const downloadCSV = (siteData: EpochSiteData) => {
 
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "siteData.csv");
+    const fileName = nameHint ? `${nameHint}_siteData.csv` : 'siteData.csv';
+    link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

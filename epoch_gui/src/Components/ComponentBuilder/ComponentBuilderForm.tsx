@@ -23,6 +23,7 @@ interface ComponentBuilderFormProps {
     updateComponent: (component: ComponentType, data: any) => void;
     setComponents: (data: any) => void;
     getComponents: () => any;
+    site_id: string;
 }
 
 
@@ -36,6 +37,7 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
         updateComponent,
         setComponents,
         getComponents,
+        site_id
     } = props;
 
     const {onUpload, onDownload, onCopy} = useComponentBuilderFileHandlers({
@@ -139,7 +141,7 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
                 <Button
                     variant="outlined"
                     startIcon={<FileDownloadIcon/>}
-                    onClick={() => onDownload(getComponents())}
+                    onClick={() => onDownload(getComponents(), site_id)}
                 >
                     Download
                 </Button>

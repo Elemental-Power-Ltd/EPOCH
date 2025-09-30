@@ -160,6 +160,7 @@ function OptimisationContainer() {
                             updateComponent={(componentKey: string, newData: any) => updateComponent(site_id, componentKey, newData)}
                             setComponents={(siteRange: any) => setSiteRange(site_id, siteRange)}
                             getComponents={() => getSiteRange(site_id)}
+                            site_id={site_id}
                         />
                     </AccordionSection>
                 </Box>

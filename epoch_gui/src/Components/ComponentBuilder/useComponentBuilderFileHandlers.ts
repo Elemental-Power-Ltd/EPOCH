@@ -57,9 +57,9 @@ export const useComponentBuilderFileHandlers = ({mode, setData}: UseFileHandlerP
     reader.readAsText(file);
   };
 
-  const onDownload = (data: any) => {
+  const onDownload = (data: any, nameHint?: string) => {
 
-    let filename = `${CamelCaseName}.json`;
+    let filename = nameHint ? `${nameHint}_${CamelCaseName}.json` : `${CamelCaseName}.json`;
 
     const validation = validate(data);
 

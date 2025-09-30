@@ -41,13 +41,13 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, siteResult
         navigate(`/analyse/${siteResult.portfolio_id}/${siteResult.site_id}`);
     }
 
-    const handleDownload = () => {
+    const handleDownload = (nameHint?: string) => {
         const jsonData = JSON.stringify(scenario, null, 4);
         const blob = new Blob([jsonData], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = "TaskData.json";
+        link.download = nameHint ? `${nameHint}_TaskData.json` : "TaskData.json";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -71,7 +71,7 @@ const SolutionModal: React.FC<SolutionModalProps> = ({ open, onClose, siteResult
                 <Button
                     variant="outlined"
                     startIcon={<DownloadIcon/>}
-                    onClick={handleDownload}
+                    onClick={() => handleDownload(siteResult.site_id)}
                 >
                     Download TaskData
                 </Button>

@@ -69,8 +69,8 @@ export const SiteDataViewer: React.FC<SiteDataViewerProps> = ({siteData, hints})
         dayjs(selectedStartDatetime).add(i * dataPeriodInSeconds + offsetToCentreSeconds, 'second').toDate()
     );
 
-    const handleDownloadCSV = () => {downloadCSV(siteData)};
-    const handleDownloadJSON = () => {downloadJSON(siteData)};
+    const handleDownloadCSV = () => {downloadCSV(siteData, hints?.site_id)};
+    const handleDownloadJSON = () => {downloadJSON(siteData, hints?.site_id)};
 
     // Some of the fabric interventions can be incredibly long.
     // This is a non-exhaustive list to reduce some of the common ones to shorter descriptions
