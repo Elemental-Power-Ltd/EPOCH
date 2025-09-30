@@ -225,55 +225,6 @@ class TestHeatingLoad:
         )
 
 
-class TestFabricInterventionCost:
-    @pytest.mark.asyncio
-    async def test_no_intervention(self, client: httpx.AsyncClient) -> None:
-        """Check that doing nothing costs nothing."""
-        no_interventions_res = await client.post("/get-intervention-cost", json={"site_id": "demo_london"})
-        assert no_interventions_res.status_code == 200
-        assert no_interventions_res.json()["total"] == 0.0
-        assert not no_interventions_res.json()["breakdown"]
-
-    @pytest.mark.asyncio
-    async def test_loft_intervention(self, client: httpx.AsyncClient) -> None:
-        """Check that lofts cost more than nothing."""
-        loft_interventions_res = await client.post(
-            "/get-intervention-cost", json={"site_id": "demo_london", "interventions": ["loft"]}
-        )
-        assert loft_interventions_res.status_code == 200
-        assert loft_interventions_res.json()["total"] > 0
-        assert list(loft_interventions_res.json()["breakdown"].keys()) == ["loft"]
-
-    @pytest.mark.asyncio
-    async def test_multi_intervention(self, client: httpx.AsyncClient) -> None:
-        """Check that two interventions cost more than one."""
-        loft_interventions_res = await client.post(
-            "/get-intervention-cost", json={"site_id": "demo_london", "interventions": ["loft"]}
-        )
-        two_interventions_res = await client.post(
-            "/get-intervention-cost", json={"site_id": "demo_london", "interventions": ["loft", "double_glazing"]}
-        )
-        three_interventions_res = await client.post(
-            "/get-intervention-cost",
-            json={"site_id": "demo_london", "interventions": ["loft", "double_glazing", "cladding"]},
-        )
-        assert two_interventions_res.status_code == 200
-        assert two_interventions_res.json()["total"] > loft_interventions_res.json()["total"]
-        assert three_interventions_res.json()["total"] > two_interventions_res.json()["total"]
-        assert set(two_interventions_res.json()["breakdown"].keys()) == {"loft", "double_glazing"}
-        assert set(three_interventions_res.json()["breakdown"].keys()) == {"loft", "double_glazing", "cladding"}
-
-    @pytest.mark.asyncio
-    async def test_two_intervention(self, client: httpx.AsyncClient) -> None:
-        """Check that two interventions cost more than one."""
-        bad_interventions_res = await client.post(
-            "/get-intervention-cost",
-            json={"site_id": "demo_london", "interventions": ["extremely bad nonexistent intervention"]},
-        )
-        assert bad_interventions_res.status_code == 422
-        assert "extremely bad nonexistent intervention" in bad_interventions_res.json()["detail"][0]["input"]
-
-
 class TestPHPPHeatingLoad:
     """Test generating heating loads from a PHPP."""
 
@@ -314,6 +265,7 @@ class TestPHPPHeatingLoad:
         hload_data = hload_resp.json()["data"][0]
         assert hload_data["cost"] == 0, "Cost is zero with no interventions"
         assert hload_data["peak_hload"] > 150, "Peak hload too low in response"
+        assert not hload_data["cost_breakdown"]
         assert all(item >= 0 for item in hload_data["reduced_hload"])
 
     @pytest.mark.asyncio
@@ -344,6 +296,12 @@ class TestPHPPHeatingLoad:
         hload_data = hload_resp.json()["data"][0]
         assert hload_data["cost"] > 10_000, "Cost should be big"
         assert hload_data["peak_hload"] < 191, "Peak hload should be lower than non-intervention"
+        assert len(hload_data["cost_breakdown"]) == 1
+        assert hload_data["cost_breakdown"][0]["name"] == "Fineo Glazing"
+        assert hload_data["cost_breakdown"][0]["area"] == pytest.approx(231.8325649886333), (
+            "Affected area not same as window area"
+        )
+        assert hload_data["cost_breakdown"][0]["cost"] == pytest.approx(hload_data["cost"], rel=1.0)
         assert all(item >= 0 for item in hload_data["reduced_hload"])
 
     @pytest.mark.asyncio

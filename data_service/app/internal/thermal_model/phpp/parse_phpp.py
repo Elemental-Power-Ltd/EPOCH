@@ -13,8 +13,9 @@ from openpyxl.cell import Cell, MergedCell
 from openpyxl.reader.excel import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from ..heat_capacities import AIR_HEAT_CAPACITY
-from .interventions import THIRD_PARTY_INTERVENTIONS, StructuralArea
+from app.internal.thermal_model.heat_capacities import AIR_HEAT_CAPACITY
+from app.internal.thermal_model.phpp.interventions import THIRD_PARTY_INTERVENTIONS, StructuralArea
+from app.models.heating_load import FabricCostBreakdown
 
 type ExcelRow = Sequence[Cell | MergedCell]
 
@@ -337,7 +338,9 @@ def apply_phpp_intervention(structure_df: pd.DataFrame, intervention_name: str) 
     return new_df
 
 
-def phpp_fabric_intervention_cost(structure_df: pd.DataFrame, interventions: list[str]) -> float:
+def phpp_fabric_intervention_cost(
+    structure_df: pd.DataFrame, interventions: list[str]
+) -> tuple[float, list[FabricCostBreakdown]]:
     """
     Calculate the cost of a combined set of interventions.
 
@@ -361,6 +364,7 @@ def phpp_fabric_intervention_cost(structure_df: pd.DataFrame, interventions: lis
     # Don't clobber the old structure, but create a new one tracking costs which are zeroed out for unaffected elements.
     new_df = structure_df.copy()
     new_df["cost"] = 0.0
+    new_df["intervention"] = None
     for intervention_name in interventions:
         if intervention_name not in THIRD_PARTY_INTERVENTIONS:
             raise ValueError(f"Bad intervention `{intervention_name}`; check THIRD_PARTY_INTERVENTIONS for a list of good ones.")
@@ -371,8 +375,19 @@ def phpp_fabric_intervention_cost(structure_df: pd.DataFrame, interventions: lis
 
         both_mask = np.logical_and(is_right_area, is_worse_u_value)
         new_df.loc[both_mask, "cost"] = intervention_cost
+        new_df.loc[both_mask, "intervention"] = intervention_name
 
-    return float((new_df["area"] * new_df["cost"]).sum())
+    # We calculate the breakdown after we've applied all the interventions as they might overwrite each other.
+    fabric_cost_breakdown: list[FabricCostBreakdown] = []
+    for intervention_name in interventions:
+        is_affected_mask = new_df["intervention"] == intervention_name
+        affected_df = new_df[is_affected_mask]
+        fabric_cost_breakdown.append(
+            FabricCostBreakdown(
+                name=intervention_name, cost=(affected_df["cost"] * affected_df["area"]).sum(), area=affected_df["area"].sum()
+            )
+        )
+    return float((new_df["area"] * new_df["cost"]).sum()), fabric_cost_breakdown
 
 
 def phpp_to_dataframe(fpath: Path | BinaryIO) -> tuple[pd.DataFrame, StructuralInfo]:

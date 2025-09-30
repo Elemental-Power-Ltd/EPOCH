@@ -1,11 +1,14 @@
 """Calculate costs from the size of the components and THIRD_PARTY's cost table."""
 
-from ...models.heating_load import InterventionEnum, ThermalModelResult
-from ...models.thermal_model import SurveyedSizes
-from .building_elements import BuildingElement
-from .links import ConductiveLink
-from .network import HeatNetwork, create_structure_from_params, create_structure_from_survey
-from .phpp.interventions import THIRD_PARTY_INTERVENTIONS, StructuralArea
+from collections import defaultdict
+from collections.abc import Callable
+
+from app.internal.thermal_model.building_elements import BuildingElement
+from app.internal.thermal_model.links import ConductiveLink
+from app.internal.thermal_model.network import HeatNetwork, create_structure_from_params, create_structure_from_survey
+from app.internal.thermal_model.phpp.interventions import THIRD_PARTY_INTERVENTIONS, StructuralArea
+from app.models.heating_load import FabricCostBreakdown, InterventionEnum, ThermalModelResult
+from app.models.thermal_model import SurveyedSizes
 
 
 def get_wall_areas(structure: HeatNetwork) -> float:
@@ -179,7 +182,9 @@ def calculate_loft_cost(structure: HeatNetwork) -> float:
     return get_ceiling_areas(structure) * THIRD_PARTY_INTERVENTIONS["Insulation to ceiling void"]["cost"]
 
 
-def calculate_intervention_costs_structure(structure: HeatNetwork, interventions: list[InterventionEnum]) -> float:
+def calculate_intervention_costs_structure(
+    structure: HeatNetwork, interventions: list[InterventionEnum] | list[str]
+) -> tuple[float, list[FabricCostBreakdown]]:
     """
     Calculate the costs for a list of interventions on a pre-made Heat Network structure.
 
@@ -201,16 +206,30 @@ def calculate_intervention_costs_structure(structure: HeatNetwork, interventions
     if not interventions:
         # If we're doing no interventions,
         # it costs nothing
-        return 0.0
-    INTERVENTION_MAP = {
+        return 0.0, []
+    INTERVENTION_MAP: dict[InterventionEnum | str, Callable[[HeatNetwork], float]] = defaultdict(lambda: lambda _: 0.0) | {
         InterventionEnum.Cladding: calculate_cladding_cost,
         InterventionEnum.DoubleGlazing: calculate_doubleglazing_cost,
         InterventionEnum.Loft: calculate_loft_cost,
     }
-    return sum(INTERVENTION_MAP[intervention](structure) for intervention in interventions)
+    AREA_MAP: dict[InterventionEnum | str, Callable[[HeatNetwork], float]] = defaultdict(lambda: lambda _: 0.0) | {
+        InterventionEnum.Cladding: get_wall_areas,
+        InterventionEnum.DoubleGlazing: get_window_areas,
+        InterventionEnum.Loft: get_ceiling_areas,
+    }
+    return sum(INTERVENTION_MAP[intervention](structure) for intervention in interventions), [
+        FabricCostBreakdown(
+            name=intervention.value if isinstance(intervention, InterventionEnum) else intervention,
+            area=AREA_MAP[intervention](structure),
+            cost=INTERVENTION_MAP[intervention](structure),
+        )
+        for intervention in interventions
+    ]
 
 
-def calculate_intervention_costs_params(params: ThermalModelResult, interventions: list[InterventionEnum]) -> float:
+def calculate_intervention_costs_params(
+    params: ThermalModelResult, interventions: list[InterventionEnum] | list[str]
+) -> tuple[float, list[FabricCostBreakdown]]:
     """
     Calculate the costs for a list of interventions on a building described by fitted parameters.
 
@@ -241,7 +260,7 @@ def calculate_intervention_costs_params(params: ThermalModelResult, intervention
 
 def calculate_THIRD_PARTY_intervention_costs(
     surveyed_sizes: SurveyedSizes, interventions: list[str] | list[InterventionEnum]
-) -> float:
+) -> tuple[float, list[FabricCostBreakdown]]:
     """
     Calculate the costs for a list of interventions on a building surveyed by THIRD_PARTY.
 
@@ -262,15 +281,20 @@ def calculate_THIRD_PARTY_intervention_costs(
     floor_area = get_floor_areas(structure)
     ceiling_area = get_ceiling_areas(structure)
 
-    total_cost = 0.0
+    cost_breakdown: list[FabricCostBreakdown] = []
     for intervention_name in interventions:
         # We've got a generic intervention
+
+        total_area, total_cost = 0.0, 0.0
         if intervention_name == InterventionEnum.Cladding:
             total_cost += calculate_cladding_cost(structure)
+            total_area += exterior_wall_area
         elif intervention_name == InterventionEnum.DoubleGlazing:
             total_cost += calculate_doubleglazing_cost(structure)
+            total_area += window_area
         elif intervention_name == InterventionEnum.Loft:
             total_cost += calculate_loft_cost(structure)
+            total_area += ceiling_area
         else:
             # We've got a specific intervention from the table
             acts_on = THIRD_PARTY_INTERVENTIONS[intervention_name.lower()]["acts_on"]
@@ -278,10 +302,16 @@ def calculate_THIRD_PARTY_intervention_costs(
             match acts_on:
                 case StructuralArea.WindowArea:
                     total_cost += window_area * cost
+                    total_area += window_area
                 case StructuralArea.FloorArea:
                     total_cost += floor_area * cost
+                    total_area += floor_area
                 case StructuralArea.RoofArea:
                     total_cost += ceiling_area * cost
+                    total_area += ceiling_area
                 case StructuralArea.ExteriorWallArea:
                     total_cost += exterior_wall_area * cost
-    return total_cost
+                    total_area += exterior_wall_area
+        cost_breakdown.append(FabricCostBreakdown(name=intervention_name, area=total_area, cost=total_cost))
+
+    return sum(item.cost for item in cost_breakdown), cost_breakdown

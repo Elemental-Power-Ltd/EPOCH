@@ -102,13 +102,13 @@ class TestCosts:
     @pytest.mark.parametrize("intervention", [InterventionEnum.Cladding, InterventionEnum.DoubleGlazing, InterventionEnum.Loft])
     def test_each_intervention_costs(self, initial_parameters: ThermalModelResult, intervention: InterventionEnum) -> None:
         """Test that the interventions all help one at a time."""
-        costs = calculate_intervention_costs_params(initial_parameters, [intervention])
-        assert costs > 0
+        costs, _ = calculate_intervention_costs_params(initial_parameters, [intervention])
+        assert costs > 0.0
 
     def test_no_intervention_zero(self, initial_parameters: ThermalModelResult) -> None:
         """Test that zero interventions costs zero."""
-        costs = calculate_intervention_costs_params(initial_parameters, [])
-        assert costs == 0
+        costs, _ = calculate_intervention_costs_params(initial_parameters, [])
+        assert costs == 0.0
 
     @pytest.mark.parametrize("intervention", [InterventionEnum.Cladding, InterventionEnum.DoubleGlazing, InterventionEnum.Loft])
     def test_each_intervention_costs_scale(
