@@ -4,6 +4,7 @@ import {
     Button,
     CircularProgress,
     Grid,
+    Stack,
     Typography,
 } from '@mui/material';
 
@@ -105,6 +106,22 @@ const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
 
     return (
         <Box mt={4}>
+            <Box mt={4} textAlign="center" mb={"1em"}>
+                <Stack direction={"row"} justifyContent={"center"} spacing={2}>
+                    { /* Only show the toggle if we have some highlighted results*/
+                        canShowHighlights &&
+                        <Button variant="outlined" onClick={handleToggleView}>
+                            {actuallyShowTable ? "View Highlighted Results" : "View All Results"}
+                        </Button>
+                    }
+                    <ExtraTaskInfo
+                        searchSpace={searchSpace}
+                        hints={hints}
+                        sites={sites}
+                    />
+                </Stack>
+            </Box>
+
             <Typography variant="h5" gutterBottom>
                 {actuallyShowTable ? 'Full Portfolio Results' : 'Highlighted Portfolio Results'}
             </Typography>
@@ -125,22 +142,7 @@ const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
                         ))}
                     </Grid>
                 )}
-                { /* Only show the toggle if we have some highlighted results*/
-                    canShowHighlights &&
-                    <Box mt={4} textAlign="center">
-                        <Button variant="outlined" onClick={handleToggleView}>
-                            {actuallyShowTable ? "View Highlighted Results" : "View All Results"}
-                        </Button>
-                    </Box>
-                }
             </Box>
-
-            <ExtraTaskInfo
-                searchSpace={searchSpace}
-                hints={hints}
-                sites={sites}
-            />
-
         </Box>
     );
 };

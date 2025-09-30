@@ -8,7 +8,7 @@ import {
     TableRow,
     Paper,
     TableSortLabel,
-    IconButton, Typography,
+    IconButton,
 } from '@mui/material';
 
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -60,7 +60,6 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ results, 
 
     return (
         <>
-        <Typography variant="h5" sx={{mt: 4}}>Portfolio Results</Typography>
         <TableContainer component={Paper}>
             <Table>
                 <TableHead>
