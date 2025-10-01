@@ -22,7 +22,7 @@ from pymoo.termination.max_gen import MaximumGenerationTermination  # type: igno
 from pymoo.termination.robust import RobustTermination  # type: ignore
 from pymoo.util.misc import at_least_2d_array  # type: ignore
 
-from app.internal.constraints import is_in_constraints, update_feasibility
+from app.internal.constraints import update_feasibility
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
@@ -537,11 +537,13 @@ class SeparatedNSGA2(Algorithm):
                 combined_solutions, sub_solution, objectives, capex_limit
             )
 
-        mask = is_in_constraints(constraints, combined_solutions)
-        if any(mask) > 0:
-            combined_solutions = cast(list[PortfolioSolution], np.array(combined_solutions)[mask].tolist())
-        elif not self.return_least_infeasible and not any(mask):
-            combined_solutions = [get_baseline_portfolio_solution(portfolio)]
+        feasible_combined_solutions = [
+            portfolio_solution for portfolio_solution in combined_solutions if portfolio_solution.is_feasible
+        ]
+        if len(feasible_combined_solutions) > 0:
+            combined_solutions = feasible_combined_solutions
+        elif not self.return_least_infeasible and len(feasible_combined_solutions) == 0:
+            combined_solutions = []
 
         total_exec_time = datetime.now(UTC) - start_time
 
