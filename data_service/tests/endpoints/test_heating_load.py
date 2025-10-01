@@ -306,6 +306,42 @@ class TestPHPPHeatingLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.external
+    async def test_phpp_air_tightness_costed(
+        self, client: httpx.AsyncClient, uploaded_meter_data: dict[str, Jsonable], uploaded_phpp: dict[str, Jsonable]
+    ) -> None:
+        """Test that we cost air tightness correctly."""
+        meter_data, _ = uploaded_meter_data, uploaded_phpp
+
+        start_ts = datetime.datetime(year=2023, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2023, month=2, day=1, tzinfo=datetime.UTC)
+
+        generated_resp = await client.post(
+            "/generate-heating-load",
+            json={
+                "dataset_id": meter_data["dataset_id"],
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "interventions": ["Air tightness to external doors and windows"],
+            },
+        )
+        assert generated_resp.status_code == 200, generated_resp.text
+        generated_metadata = generated_resp.json()
+        assert generated_metadata["generation_method"] == "phpp"
+
+        hload_resp = await client.post("/get-heating-load", json={"dataset_id": generated_metadata["dataset_id"]})
+        hload_data = hload_resp.json()["data"][0]
+        assert hload_data["cost"] > 10_000, "Cost should be big"
+        assert hload_data["peak_hload"] < 202, "Peak hload should be lower than non-intervention"
+        assert len(hload_data["cost_breakdown"]) == 1
+        assert hload_data["cost_breakdown"][0]["name"] == "Air tightness to external doors and windows"
+        assert hload_data["cost_breakdown"][0]["area"] == pytest.approx(231.8325649886333), (
+            "Affected area not same as window area"
+        )
+        assert hload_data["cost_breakdown"][0]["cost"] == pytest.approx(hload_data["cost"], rel=1.0)
+        assert all(item >= 0 for item in hload_data["reduced_hload"])
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
     @pytest.mark.slow
     async def test_phpp_costs_correct_order(
         self, client: httpx.AsyncClient, uploaded_meter_data: dict[str, Jsonable], uploaded_phpp: dict[str, Jsonable]
