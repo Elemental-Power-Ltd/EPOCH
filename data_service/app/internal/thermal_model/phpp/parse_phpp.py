@@ -365,29 +365,40 @@ def phpp_fabric_intervention_cost(
     new_df = structure_df.copy()
     new_df["cost"] = 0.0
     new_df["intervention"] = None
+
+    # First, assign all the "structural" interventions that replace fabric interventions.
     for intervention_name in interventions:
         if intervention_name not in THIRD_PARTY_INTERVENTIONS:
             raise ValueError(f"Bad intervention `{intervention_name}`; check THIRD_PARTY_INTERVENTIONS for a list of good ones.")
         intervention_u_value = THIRD_PARTY_INTERVENTIONS[intervention_name]["u_value"]
+        if intervention_u_value is None:
+            continue
         intervention_cost = THIRD_PARTY_INTERVENTIONS[intervention_name]["cost"]
         is_right_area = new_df["area_type"] == THIRD_PARTY_INTERVENTIONS[intervention_name]["acts_on"]
         is_worse_u_value = new_df["u_value"] >= intervention_u_value
-
         both_mask = np.logical_and(is_right_area, is_worse_u_value)
         new_df.loc[both_mask, "cost"] = intervention_cost
         new_df.loc[both_mask, "intervention"] = intervention_name
 
     # We calculate the breakdown after we've applied all the interventions as they might overwrite each other.
+    # However, we also apply the "non-structural" interventions here.
     fabric_cost_breakdown: list[FabricCostBreakdown] = []
     for intervention_name in interventions:
-        is_affected_mask = new_df["intervention"] == intervention_name
-        affected_df = new_df[is_affected_mask]
+        # Where we had a None U-value, e.g. for air tightness, there's still an affected area. This can't be overwritten
+        # by structural interventions, so take the total area of that type to base our costing off.
+        if THIRD_PARTY_INTERVENTIONS[intervention_name]["u_value"] is None:
+            affected_df = new_df[new_df["area_type"] == THIRD_PARTY_INTERVENTIONS[intervention_name]["acts_on"]]
+        else:
+            affected_df = new_df[new_df["intervention"] == intervention_name]
         fabric_cost_breakdown.append(
             FabricCostBreakdown(
-                name=intervention_name, cost=(affected_df["cost"] * affected_df["area"]).sum(), area=affected_df["area"].sum()
+                name=intervention_name,
+                cost=(THIRD_PARTY_INTERVENTIONS[intervention_name]["cost"] * affected_df["area"]).sum(),
+                area=affected_df["area"].sum(),
             )
         )
-    return float((new_df["area"] * new_df["cost"]).sum()), fabric_cost_breakdown
+
+    return sum(item.cost for item in fabric_cost_breakdown), fabric_cost_breakdown
 
 
 def phpp_to_dataframe(fpath: Path | BinaryIO) -> tuple[pd.DataFrame, StructuralInfo]:
