@@ -1,5 +1,6 @@
 from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
+from app.models.database import site_id_t
 from app.models.metrics import Metric, MetricValues
 from app.models.result import PortfolioSolution
 
@@ -98,8 +99,8 @@ def are_metrics_in_constraints(constraints: Constraints, metric_values: MetricVa
 
 
 def update_feasibility(
-    portfolio: list[Site], constraints: Constraints, portfolio_solution: PortfolioSolution
-) -> list[PortfolioSolution]:
+    site_constraints_dict: dict[site_id_t, Constraints], constraints: Constraints, portfolio_solution: PortfolioSolution
+) -> PortfolioSolution:
     """
     Update the feasibility measures of a portfolio solution and it's site solutions.
 
@@ -118,11 +119,10 @@ def update_feasibility(
         Portfolio solution with updated feasibility measure.
     """
     all_sites_feasible = True
-    for site in portfolio:
-        site_constraints = site.constraints
-        site_metrics = portfolio_solution.scenario[site.site_data.site_id].metric_values
+    for site_id, site_constraints in site_constraints_dict.items():
+        site_metrics = portfolio_solution.scenario[site_id].metric_values
         site_is_feasible = are_metrics_in_constraints(constraints=site_constraints, metric_values=site_metrics)
-        portfolio_solution.scenario[site.site_data.site_id].is_feasible = site_is_feasible
+        portfolio_solution.scenario[site_id].is_feasible = site_is_feasible
         if not site_is_feasible:
             all_sites_feasible = False
 

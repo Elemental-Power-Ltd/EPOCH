@@ -182,6 +182,18 @@ def default_config() -> Config:
     return Config()
 
 
+def gen_dummy_sim_result() -> SimulationResult:
+    """Construct a pybind SimulationResult and populate a few of the fields."""
+    sim_result = SimulationResult()
+    for metric in _METRICS:
+        setattr(sim_result.metrics, metric, random.random() * 100)
+
+    for metric in _COMPARISON:
+        setattr(sim_result.comparison, metric, random.random() * 100)
+
+    return sim_result
+
+
 def gen_dummy_site_solution(site: Site) -> SiteSolution:
     site_scenario = {}
     site_range = site.site_range
@@ -198,13 +210,7 @@ def gen_dummy_site_solution(site: Site) -> SiteSolution:
             site_scenario[asset_name] = choose_random_values_for_asset(asset)
     scenario = AnnotatedTaskData.model_validate(site_scenario)
 
-    # construct a pybind SimulationResult and populate a few of the fields
-    sim_result = SimulationResult()
-    for metric in _METRICS:
-        setattr(sim_result.metrics, metric, random.random() * 100)
-
-    for metric in _COMPARISON:
-        setattr(sim_result.comparison, metric, random.random() * 100)
+    sim_result = gen_dummy_sim_result()
 
     metric_values = simulation_result_to_metric_dict(sim_result)
 

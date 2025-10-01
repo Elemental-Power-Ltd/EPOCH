@@ -340,8 +340,11 @@ class NSGA2(Algorithm):
                 pi.convert_portfolio_chromosome_to_portfolio_scenario(chromosome) for chromosome in non_dom_sol
             ]
             portfolio_solutions = [pi.sim.simulate_portfolio(portfolio_scenario) for portfolio_scenario in portfolio_scenarios]
+            site_constraints_dict = {site.site_data.site_id: site.constraints for site in portfolio}
             portfolio_solutions = [
-                update_feasibility(portfolio=portfolio, constraints=constraints, portfolio_solution=portfolio_solution)
+                update_feasibility(
+                    site_constraints_dict=site_constraints_dict, constraints=constraints, portfolio_solution=portfolio_solution
+                )
                 for portfolio_solution in portfolio_solutions
             ]
             portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
