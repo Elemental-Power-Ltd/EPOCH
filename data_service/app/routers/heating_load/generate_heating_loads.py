@@ -32,6 +32,7 @@ from app.internal.thermal_model import apply_fabric_interventions, building_adju
 from app.internal.thermal_model.bait import weather_dataset_to_dataframe
 from app.internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs, calculate_intervention_costs_params
 from app.internal.thermal_model.fitting import simulate_parameters
+from app.internal.thermal_model.phpp.interventions import THIRD_PARTY_INTERVENTIONS
 from app.internal.thermal_model.phpp.parse_phpp import (
     apply_phpp_intervention,
     phpp_fabric_intervention_cost,
@@ -192,7 +193,7 @@ async def select_regression_thermal_phpp(params: HeatingLoadRequest, pool: Datab
         all_thermal_models,
         (item.created_at for item in available_thermal_model_ids),
         (item.dataset_id for item in available_thermal_model_ids),
-        strict=False,
+        strict=True,
     )
     # This is the quality bar for models in the database; we'll pick the most recent model above this quality threshold
     # if there is one
@@ -221,6 +222,76 @@ async def select_regression_thermal_phpp(params: HeatingLoadRequest, pool: Datab
         surveyed_sizes=params.surveyed_sizes,
         bundle_metadata=params.bundle_metadata,
     )
+
+
+@api_router.post("/add-feasible-interventions", tags=["phpp", "heating"])
+async def add_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID, interventions: list[str]) -> list[list[str]]:
+    """
+    Add a set of feasible interventions for a given site to the database.
+
+    This overwrites any previous feasible set of interventions.
+    It will be used by `generate-all` to generate heating loads.
+    Note that there are 2**N interventions generated, so a large list will be slow.
+
+    Parameters
+    ----------
+    site_id
+        ID of the site to add interventions for
+
+    interventions
+        Stringified fabric interventions to add to the database,
+
+    Returns
+    -------
+    list[list[str]]
+        List of combinations of all possible fabric interventions that we'll simulate
+
+    Raises
+    ------
+    HTTPException
+        If the interventions aren't valid.
+    """
+    for item in interventions:
+        if item not in THIRD_PARTY_INTERVENTIONS:
+            raise HTTPException(422, detail=f"Bad fabric intervention: {item}")
+
+    # Delete the previous feasible interventions to allow us to overwrite these
+    await pool.execute("DELETE FROM heating.feasible_interventions WHERE site_id = $1", site_id.site_id)
+    await pool.copy_records_to_table(
+        table_name="feasible_interventions",
+        schema_name="heating",
+        columns=["site_id", "intervention_name"],
+        records=[(site_id.site_id, intervention) for intervention in interventions],
+    )
+
+    return [list(c) for i in range(len(interventions) + 1) for c in itertools.combinations(interventions, i)]
+
+
+@api_router.post("/list-feasible-interventions", tags=["phpp", "heating", "list"])
+async def list_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID) -> list[str]:
+    """
+    List all the feasible interventions for a given site to the database.
+
+    This lists individual interventions, not all combinations.
+    It will be used by `generate-all` to generate heating loads.
+    Note that there are 2**N interventions generated, so a large list will be slow.
+
+    Parameters
+    ----------
+    site_id
+        ID of the site to list interventions for
+
+    Returns
+    -------
+    list[str]
+        List of all possible fabric interventions that we'll simulate
+    """
+    res = await pool.fetchval(
+        "SELECT ARRAY_AGG(intervention_name) FROM heating.feasible_interventions WHERE site_id = $1", site_id.site_id
+    )
+    if res is None:
+        return []
+    return cast(list[str], res)
 
 
 @api_router.post("/generate-heating-load", tags=["generate", "heating"])

@@ -147,6 +147,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             return calculate_intervention_costs_params(thermal_model, interventions=metadata["interventions"])
         # However, if we don't have a thermal model then we have no idea of the size,
         # so look the generic cost up in the DB.
+        # Note that this drops unknown interventions!
         res = await db_pool.fetch(
             """
                 SELECT

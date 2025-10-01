@@ -761,7 +761,18 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
     # If not, we have to fall back to generic interventions.
     # Note that we don't craft different requests and just trust that the auto mode will sort us out.
     available_phpps = await list_phpp(pool=pool, site_id=SiteID(site_id=params.site_id))
-    if available_phpps:
+
+    available_interventions = await pool.fetch(
+        """SELECT
+            intervention_name
+        FROM heating.feasible_interventions WHERE site_id = $1
+        ORDER BY intervention_name""",
+        params.site_id,
+    )
+
+    if available_interventions:
+        INDIVIDUAL_INTERVENTIONS = [item["intervention_name"] for item in available_interventions]
+    elif available_phpps:
         INDIVIDUAL_INTERVENTIONS = [
             "Insulation to ceiling void",
             "Replacement External Windows",
