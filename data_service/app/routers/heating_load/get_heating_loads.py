@@ -11,18 +11,18 @@ heating-related data in formats compatible with the EPOCH energy modeling system
 import asyncio
 import datetime
 import json
+import logging
 from typing import cast
 
 import pandas as pd
 
+from app.dependencies import DatabasePoolDep
 from app.internal.epl_typing import RecordMapping
-
-from ...dependencies import DatabasePoolDep
-from ...models.core import DatasetID, DatasetIDWithTime, MultipleDatasetIDWithTime, dataset_id_t
-from ...models.heating_load import EpochAirTempEntry, EpochDHWEntry, EpochHeatingEntry, FabricIntervention
-from .costs import get_heating_cost_thermal_model
-from .router import api_router
-from .thermal_model import get_thermal_model
+from app.internal.thermal_model.costs import calculate_intervention_costs_params
+from app.models.core import DatasetID, DatasetIDWithTime, MultipleDatasetIDWithTime, dataset_id_t
+from app.models.heating_load import EpochAirTempEntry, EpochDHWEntry, EpochHeatingEntry, FabricCostBreakdown, FabricIntervention
+from app.routers.heating_load.router import api_router
+from app.routers.heating_load.thermal_model import get_thermal_model
 
 
 @api_router.post("/get-heating-load", tags=["get", "heating"])
@@ -89,7 +89,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         heating_df.index = pd.to_datetime(heating_df.index)
         return heating_df
 
-    async def get_heating_cost(db_pool: DatabasePoolDep, dataset_id: dataset_id_t) -> float:
+    async def get_heating_cost(db_pool: DatabasePoolDep, dataset_id: dataset_id_t) -> tuple[float, list[FabricCostBreakdown]]:
         """
         Get the cost associated with a given heating load.
 
@@ -109,32 +109,63 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         float
             cost in GBP of associated interventions
         """
+        logger = logging.getLogger(__name__)
         metadata = await db_pool.fetchrow(
-            """SELECT params, interventions FROM heating.metadata WHERE dataset_id = $1""", dataset_id
+            """SELECT
+                params,
+                interventions,
+                fabric_cost_total,
+                fabric_cost_breakdown
+            FROM heating.metadata WHERE dataset_id = $1
+            LIMIT 1""",
+            dataset_id,
         )
-        if metadata is not None and "cost" in metadata["params"]:
-            # If we've pre-calculated the cost, simply return that
-            # However, it might have come out of the database as a string.
-            if isinstance(metadata["params"], str):
-                return float(json.loads(metadata["params"])["cost"])
-            return float(metadata["params"]["cost"])
+
+        if (
+            metadata is not None
+            and metadata.get("fabric_cost_total") is not None
+            and metadata.get("fabric_cost_breakdown") is not None
+        ):
+            # This is the happy path, we got the cost and the breakdown we wanted
+            return metadata["fabric_cost_total"], [
+                FabricCostBreakdown.model_validate(item) for item in json.loads(metadata["fabric_cost_breakdown"])
+            ]
+
+        if (
+            metadata is not None
+            and metadata.get("fabric_cost_total") is not None
+            and metadata.get("fabric_cost_breakdown") is None
+        ):
+            logger.warning(
+                f"Did get a total cost but not a fabric cost breakdown for {dataset_id}."
+                " Returning just the total and no breakdown."
+            )
+            # We've store the total cost correctly, but not the breakdown, so just give the total back.
+            return metadata["fabric_cost_total"], []
 
         if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
+            logger.warning(
+                f"Got a thermal model dataset_id for {dataset_id} but no pre-calculated breakdown."
+                " Returning a newly calculated breakdown."
+            )
             # If we have a thermal model, get the heating cost based off the calculated areas.
-            if isinstance(metadata["params"], str):
-                # This is horrible, but the params section could legitimately have been passed as a string
-                # so try to read it as JSON
-                thermal_model_dataset_id = json.loads(metadata["params"])["thermal_model_dataset_id"]
-            else:
-                thermal_model_dataset_id = metadata["params"]["thermal_model_dataset_id"]
-            model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_dataset_id), pool=pool)
-            return await get_heating_cost_thermal_model(model, interventions=metadata["interventions"])
+            # We should store the cost in the metadata anyway, but this is the case where we didn't get it.
+            thermal_model_dataset_id = (
+                json.loads(metadata["params"])["thermal_model_dataset_id"]
+                if isinstance(metadata["params"], str)
+                else metadata["params"]["thermal_model_dataset_id"]
+            )
+            thermal_model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_dataset_id), pool=pool)
+            return calculate_intervention_costs_params(thermal_model, interventions=metadata["interventions"])
         # However, if we don't have a thermal model then we have no idea of the size,
         # so look the generic cost up in the DB.
-        res = await db_pool.fetchval(
+        # Note that this drops unknown interventions!
+        logger.warning(f"Didn't get a stored cost for {dataset_id} or thermal model; returning a database estimate.")
+        res = await db_pool.fetch(
             """
                 SELECT
-                    SUM(cost)
+                    intervention,
+                    cost
                 FROM heating.metadata AS m
                 JOIN heating.interventions AS i
                 ON
@@ -142,9 +173,12 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
                 WHERE dataset_id = $1""",
             dataset_id,
         )
-        if res is None:
-            return 0.0
-        return float(res)
+        if not res:
+            return 0.0, []
+
+        return sum(float(item["cost"]) for item in res), [
+            FabricCostBreakdown(name=item["intervention"], area=None, cost=float(item["cost"])) for item in res
+        ]
 
     async with asyncio.TaskGroup() as tg:
         # TODO (2025-08-04 MHJB): this is a classic N+1 query pattern; we should look all of these up
@@ -176,9 +210,10 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         timestamps=all_dfs[params.dataset_id[0]].result().index.to_list(),
         data=[
             FabricIntervention(
-                cost=all_costs[dataset_id].result(),
+                cost=all_costs[dataset_id].result()[0],
                 reduced_hload=all_dfs[dataset_id].result()["heating"].to_list(),
                 peak_hload=all_peak_hloads.get(dataset_id, 0.0) if all_peak_hloads.get(dataset_id) is not None else 0.0,
+                cost_breakdown=all_costs[dataset_id].result()[1],
             )
             for dataset_id in params.dataset_id
         ],

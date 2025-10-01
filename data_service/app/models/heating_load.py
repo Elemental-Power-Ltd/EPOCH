@@ -49,8 +49,19 @@ class HeatingLoadEntry(pydantic.BaseModel):
     hdd: float | None = Field(examples=[0.01], description="Heating degree days due to external weather in this period.")
 
 
+class FabricCostBreakdown(pydantic.BaseModel):
+    name: str
+    area: float | None
+    cost: float
+
+
 class FabricIntervention(pydantic.BaseModel):
     cost: float = pydantic.Field(description="Cost associated with this fabric intervention in £")
+    cost_breakdown: list[FabricCostBreakdown] = pydantic.Field(
+        default=[],
+        description="Breakdown of costs in £ including the areas affected by each intervention."
+        " If unknown, this is an empty list.",
+    )
     reduced_hload: list[float] = pydantic.Field(
         examples=[[0.123, 4.56]], description="Heating demand in kWh th for this time period."
     )
@@ -198,19 +209,6 @@ class HeatingLoadMetadata(pydantic.BaseModel):
         description="Peak heating load in kW associated with this set of interventions."
         " May be higher than that actually experienced during the dataset.",
     )
-
-
-class InterventionCostRequest(pydantic.BaseModel):
-    interventions: list[InterventionEnum] = pydantic.Field(default=[])
-    site_id: site_id_t = site_id_field
-    thermal_model_dataset_id: dataset_id_t | None = pydantic.Field(
-        description="ID of the thermal model you want to use for cost calculation, defaults to None", default=None
-    )
-
-
-class InterventionCostResult(pydantic.BaseModel):
-    breakdown: dict[InterventionEnum, float]
-    total: float
 
 
 class PhppMetadata(pydantic.BaseModel):

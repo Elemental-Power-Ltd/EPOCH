@@ -17,34 +17,60 @@ import itertools
 import json
 import logging
 import operator
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
 from fastapi import HTTPException
 
-from ...dependencies import DatabasePoolDep, HttpClientDep
-from ...internal.epl_typing import HHDataFrame, MonthlyDataFrame, RecordMapping, WeatherDataFrame, db_pool_t
-from ...internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
-from ...internal.site_manager.bundles import file_self_with_bundle
-from ...internal.site_manager.dataset_lists import list_thermal_models
-from ...internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
-from ...internal.thermal_model.bait import weather_dataset_to_dataframe
-from ...internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs
-from ...internal.thermal_model.fitting import simulate_parameters
-from ...internal.thermal_model.phpp.parse_phpp import (
+from app.dependencies import DatabasePoolDep, HttpClientDep
+from app.internal.epl_typing import HHDataFrame, MonthlyDataFrame, RecordMapping, WeatherDataFrame, db_pool_t
+from app.internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
+from app.internal.site_manager.bundles import file_self_with_bundle
+from app.internal.site_manager.dataset_lists import list_thermal_models
+from app.internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
+from app.internal.thermal_model.bait import weather_dataset_to_dataframe
+from app.internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs, calculate_intervention_costs_params
+from app.internal.thermal_model.fitting import simulate_parameters
+from app.internal.thermal_model.phpp.interventions import THIRD_PARTY_INTERVENTIONS
+from app.internal.thermal_model.phpp.parse_phpp import (
     apply_phpp_intervention,
     phpp_fabric_intervention_cost,
     phpp_total_heat_loss,
 )
-from ...internal.utils.uuid import uuid7
-from ...models.core import DatasetID, DatasetTypeEnum, SiteID, dataset_id_t, site_id_t
-from ...models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
-from ...models.weather import BaitAndModelCoefs, WeatherRequest
-from ..weather import get_weather
-from .phpp import get_phpp_dataframe_from_database, list_phpp
-from .router import api_router
-from .thermal_model import get_thermal_model
+from app.internal.utils.uuid import uuid7
+from app.models.core import DatasetID, DatasetTypeEnum, SiteID, dataset_id_t, site_id_t
+from app.models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
+from app.models.weather import BaitAndModelCoefs, WeatherRequest
+from app.routers.heating_load.phpp import get_phpp_dataframe_from_database, list_phpp
+from app.routers.heating_load.router import api_router
+from app.routers.heating_load.thermal_model import get_thermal_model
+from app.routers.weather import get_weather
+
+
+def apply_intervention_count_cost_offset(total_cost: float, interventions: list[Any]) -> float:
+    """
+    Apply a small offset to the total cost of fabric interventions based on the number of interventions.
+
+    This breaks the symmetry between do-nothing interventions.
+    If a site already has triple glazing, the "double glazing" intervention might do nothing and cost nothing.
+    In that case, the optimiser will pick it and it'll confuse end user.
+    Instead, add a 1p cost per intervention.
+
+    Parameters
+    ----------
+    total_cost
+        Total cost of interventions in £
+    interventions
+        Interventions you want to try to apply
+
+    Returns
+    -------
+    float
+        A new, slightly higher, total cost
+    """
+    COST_PER_INTERVENTION = 0.01
+    return total_cost + COST_PER_INTERVENTION * len(interventions)
 
 
 async def get_site_id_for_heating_load(dataset_id: dataset_id_t, pool: db_pool_t) -> site_id_t:
@@ -161,7 +187,7 @@ async def select_regression_thermal_phpp(params: HeatingLoadRequest, pool: Datab
         all_thermal_models,
         (item.created_at for item in available_thermal_model_ids),
         (item.dataset_id for item in available_thermal_model_ids),
-        strict=False,
+        strict=True,
     )
     # This is the quality bar for models in the database; we'll pick the most recent model above this quality threshold
     # if there is one
@@ -190,6 +216,76 @@ async def select_regression_thermal_phpp(params: HeatingLoadRequest, pool: Datab
         surveyed_sizes=params.surveyed_sizes,
         bundle_metadata=params.bundle_metadata,
     )
+
+
+@api_router.post("/add-feasible-interventions", tags=["phpp", "heating"])
+async def add_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID, interventions: list[str]) -> list[list[str]]:
+    """
+    Add a set of feasible interventions for a given site to the database.
+
+    This overwrites any previous feasible set of interventions.
+    It will be used by `generate-all` to generate heating loads.
+    Note that there are 2**N interventions generated, so a large list will be slow.
+
+    Parameters
+    ----------
+    site_id
+        ID of the site to add interventions for
+
+    interventions
+        Stringified fabric interventions to add to the database,
+
+    Returns
+    -------
+    list[list[str]]
+        List of combinations of all possible fabric interventions that we'll simulate
+
+    Raises
+    ------
+    HTTPException
+        If the interventions aren't valid.
+    """
+    for item in interventions:
+        if item not in THIRD_PARTY_INTERVENTIONS:
+            raise HTTPException(422, detail=f"Bad fabric intervention: {item}")
+
+    # Delete the previous feasible interventions to allow us to overwrite these
+    await pool.execute("DELETE FROM heating.feasible_interventions WHERE site_id = $1", site_id.site_id)
+    await pool.copy_records_to_table(
+        table_name="feasible_interventions",
+        schema_name="heating",
+        columns=["site_id", "intervention_name"],
+        records=[(site_id.site_id, intervention) for intervention in interventions],
+    )
+
+    return [list(c) for i in range(len(interventions) + 1) for c in itertools.combinations(interventions, i)]
+
+
+@api_router.post("/list-feasible-interventions", tags=["phpp", "heating", "list"])
+async def list_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID) -> list[str]:
+    """
+    List all the feasible interventions for a given site to the database.
+
+    This lists individual interventions, not all combinations.
+    It will be used by `generate-all` to generate heating loads.
+    Note that there are 2**N interventions generated, so a large list will be slow.
+
+    Parameters
+    ----------
+    site_id
+        ID of the site to list interventions for
+
+    Returns
+    -------
+    list[str]
+        List of all possible fabric interventions that we'll simulate
+    """
+    res = await pool.fetchval(
+        "SELECT ARRAY_AGG(intervention_name) FROM heating.feasible_interventions WHERE site_id = $1", site_id.site_id
+    )
+    if res is None:
+        return []
+    return cast(list[str], res)
 
 
 @api_router.post("/generate-heating-load", tags=["generate", "heating"])
@@ -416,9 +512,13 @@ async def generate_heating_load_regression(
         **changed_coefs.model_dump(),
         "generation_method": HeatingLoadModelEnum.Regression,
     }
+
     if params.surveyed_sizes is not None:
-        cost = calculate_THIRD_PARTY_intervention_costs(params.surveyed_sizes, interventions=params.interventions)
-        metadata_params["cost"] = cost
+        fabric_cost_total, fabric_cost_breakdown = calculate_THIRD_PARTY_intervention_costs(
+            params.surveyed_sizes, interventions=params.interventions
+        )
+    else:
+        fabric_cost_total, fabric_cost_breakdown = None, None
 
     metadata = HeatingLoadMetadata(
         dataset_id=params.bundle_metadata.dataset_id if params.bundle_metadata is not None else uuid7(),
@@ -432,20 +532,25 @@ async def generate_heating_load_regression(
     async with pool.acquire() as conn, conn.transaction():
         await conn.execute(
             """
-                INSERT INTO
-                    heating.metadata (
-                        dataset_id,
-                        site_id,
-                        created_at,
-                        params,
-                        interventions
-                        )
-                VALUES ($1, $2, $3, $4, $5)""",
+            INSERT INTO
+                heating.metadata (
+                    dataset_id,
+                    site_id,
+                    created_at,
+                    params,
+                    interventions,
+                    fabric_cost_total,
+                    fabric_cost_breakdown
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)""",
             metadata.dataset_id,
             metadata.site_id,
             metadata.created_at,
             json.dumps(metadata.params),
             metadata.interventions,
+            apply_intervention_count_cost_offset(fabric_cost_total, metadata.interventions)
+            if fabric_cost_total is not None
+            else None,
+            json.dumps([item.model_dump(mode="json") for item in fabric_cost_breakdown]) if fabric_cost_breakdown else None,
         )
 
         await conn.copy_records_to_table(
@@ -554,17 +659,28 @@ async def generate_thermal_model_heating_load(
         generation_method=HeatingLoadModelEnum.ThermalModel,
     )
 
+    fabric_cost_total, fabric_cost_breakdown = calculate_intervention_costs_params(
+        thermal_model, interventions=params.interventions
+    )
     async with pool.acquire() as conn, conn.transaction():
         await conn.execute(
             """
-                INSERT INTO heating.metadata
-                (dataset_id, site_id, created_at, params, interventions)
-                VALUES ($1, $2, $3, $4, $5)""",
+                INSERT INTO heating.metadata (
+                    dataset_id,
+                    site_id,
+                    created_at,
+                    params,
+                    interventions,
+                    fabric_cost_total,
+                    fabric_cost_breakdown
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)""",
             metadata.dataset_id,
             metadata.site_id,
             metadata.created_at,
             json.dumps(metadata.params),
             metadata.interventions,
+            apply_intervention_count_cost_offset(fabric_cost_total, metadata.interventions),
+            json.dumps([item.model_dump(mode="json") for item in fabric_cost_breakdown]) if fabric_cost_breakdown else None,
         )
 
         await conn.copy_records_to_table(
@@ -656,9 +772,21 @@ async def generate_heating_load_phpp(
     for intervention in params.interventions:
         # Repeatedly apply interventions to the same dataframe. This does some unnecessary copying but is cleanest
         new_structure_df = apply_phpp_intervention(new_structure_df, intervention_name=intervention)
-        if "Air tightness" in intervention:
+        if isinstance(intervention, InterventionEnum):
+            intervention = intervention.value
+
+        if "air tightness" in intervention.lower():
             # This is a bodge! Watch out!
-            air_changes *= 0.7
+            air_changes = max(air_changes * 0.7, min(air_changes, 2.0))
+
+        if "single room heat recovery ventilators" in intervention.lower():
+            air_changes = max(air_changes * 0.9, min(air_changes, 2.0))
+
+        if "mechanical ventilation and heat recovery" in intervention.lower():
+            air_changes = min(air_changes, 2.0)
+
+        if "tcosy" in intervention.lower():
+            air_changes = min(air_changes, 2.0)
 
     final_peak_hload = phpp_total_heat_loss(
         structure_df=new_structure_df,
@@ -680,10 +808,6 @@ async def generate_heating_load_phpp(
         "structure_id": str(params.structure_id),
         "generation_method": HeatingLoadModelEnum.PHPP,
         "percentage_saving": percentage_saving,
-        # Do this type wrangling in case we got genericised interventions (some of which, like double glazing, might pass)
-        "cost": phpp_fabric_intervention_cost(
-            structure_df, [item.value if isinstance(item, InterventionEnum) else str(item) for item in params.interventions]
-        ),
         **changed_coefs.model_dump(),
     }
 
@@ -697,18 +821,23 @@ async def generate_heating_load_phpp(
         peak_hload=final_peak_hload / 1000,
     )
 
+    fabric_cost_total, fabric_cost_breakdown = phpp_fabric_intervention_cost(
+        structure_df, [item.value if isinstance(item, InterventionEnum) else str(item) for item in params.interventions]
+    )
     async with pool.acquire() as conn, conn.transaction():
         await conn.execute(
             """
-                INSERT INTO
-                    heating.metadata (
-                        dataset_id,
-                        site_id,
-                        created_at,
-                        params,
-                        interventions,
-                        peak_hload
-                ) VALUES ($1, $2, $3, $4, $5, $6)""",
+            INSERT INTO
+                heating.metadata (
+                    dataset_id,
+                    site_id,
+                    created_at,
+                    params,
+                    interventions,
+                    peak_hload,
+                    fabric_cost_total,
+                    fabric_cost_breakdown
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
             hload_metadata.dataset_id,
             hload_metadata.site_id,
             hload_metadata.created_at,
@@ -716,6 +845,8 @@ async def generate_heating_load_phpp(
             hload_metadata.interventions,
             # Note that peak heating loads are stored in kW
             final_peak_hload / 1000,
+            apply_intervention_count_cost_offset(fabric_cost_total, hload_metadata.interventions),
+            json.dumps([item.model_dump(mode="json") for item in fabric_cost_breakdown]) if fabric_cost_breakdown else None,
         )
 
         await conn.copy_records_to_table(
