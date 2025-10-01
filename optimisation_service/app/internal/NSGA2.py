@@ -22,7 +22,7 @@ from pymoo.termination.max_gen import MaximumGenerationTermination  # type: igno
 from pymoo.termination.robust import RobustTermination  # type: ignore
 from pymoo.util.misc import at_least_2d_array  # type: ignore
 
-from app.internal.constraints import is_in_constraints
+from app.internal.constraints import is_in_constraints, update_feasibility
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
@@ -329,8 +329,10 @@ class NSGA2(Algorithm):
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
         non_dom_sol = res.X
+
         if non_dom_sol is None or len(non_dom_sol) == 0:
             portfolio_solutions_pf = [get_baseline_portfolio_solution(portfolio)]
+
         else:
             if non_dom_sol.ndim == 1:
                 non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
@@ -338,6 +340,10 @@ class NSGA2(Algorithm):
                 pi.convert_portfolio_chromosome_to_portfolio_scenario(chromosome) for chromosome in non_dom_sol
             ]
             portfolio_solutions = [pi.sim.simulate_portfolio(portfolio_scenario) for portfolio_scenario in portfolio_scenarios]
+            portfolio_solutions = [
+                update_feasibility(portfolio=portfolio, constraints=constraints, portfolio_solution=portfolio_solution)
+                for portfolio_solution in portfolio_solutions
+            ]
             portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
         return OptimisationResult(
