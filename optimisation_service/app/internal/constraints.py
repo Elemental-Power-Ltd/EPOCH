@@ -117,15 +117,21 @@ def update_feasibility(
     portfolio_solution
         Portfolio solution with updated feasibility measure.
     """
+    all_sites_feasible = True
     for site in portfolio:
         site_constraints = site.constraints
         site_metrics = portfolio_solution.scenario[site.site_data.site_id].metric_values
-        portfolio_solution.scenario[site.site_data.site_id].is_feasible = are_metrics_in_constraints(
-            constraints=site_constraints, metric_values=site_metrics
+        site_is_feasible = are_metrics_in_constraints(constraints=site_constraints, metric_values=site_metrics)
+        portfolio_solution.scenario[site.site_data.site_id].is_feasible = site_is_feasible
+        if not site_is_feasible:
+            all_sites_feasible = False
+
+    if not all_sites_feasible:
+        portfolio_solution.is_feasible = False
+    else:
+        portfolio_solution.is_feasible = are_metrics_in_constraints(
+            constraints=constraints, metric_values=portfolio_solution.metric_values
         )
-    portfolio_solution.is_feasible = are_metrics_in_constraints(
-        constraints=constraints, metric_values=portfolio_solution.metric_values
-    )
 
     return portfolio_solution
 
