@@ -48,7 +48,7 @@ from app.routers.heating_load.thermal_model import get_thermal_model
 from app.routers.weather import get_weather
 
 
-def apply_intervention_count_cost_offset(total_cost: float | None, interventions: list[Any]) -> float | None:
+def apply_intervention_count_cost_offset(total_cost: float, interventions: list[Any]) -> float:
     """
     Apply a small offset to the total cost of fabric interventions based on the number of interventions.
 
@@ -69,12 +69,6 @@ def apply_intervention_count_cost_offset(total_cost: float | None, interventions
     float
         A new, slightly higher, total cost
     """
-    # in case None snuck in?
-    if total_cost is None:
-        return None
-
-    if not interventions:
-        return total_cost
     COST_PER_INTERVENTION = 0.01
     return total_cost + COST_PER_INTERVENTION * len(interventions)
 
@@ -553,7 +547,9 @@ async def generate_heating_load_regression(
             metadata.created_at,
             json.dumps(metadata.params),
             metadata.interventions,
-            apply_intervention_count_cost_offset(fabric_cost_total, metadata.interventions),
+            apply_intervention_count_cost_offset(fabric_cost_total, metadata.interventions)
+            if fabric_cost_total is not None
+            else None,
             json.dumps([item.model_dump(mode="json") for item in fabric_cost_breakdown]) if fabric_cost_breakdown else None,
         )
 

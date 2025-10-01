@@ -12,6 +12,7 @@ import asyncio
 import datetime
 import json
 from typing import cast
+import logging
 
 import pandas as pd
 
@@ -108,6 +109,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         float
             cost in GBP of associated interventions
         """
+        logger = logging.getLogger(__name__)
         metadata = await db_pool.fetchrow(
             """SELECT
                 params,
@@ -124,17 +126,22 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             and metadata.get("fabric_cost_total") is not None
             and metadata.get("fabric_cost_breakdown") is not None
         ):
+            # This is the happy path, we got the cost and the breakdown we wanted
             return metadata["fabric_cost_total"], [
                 FabricCostBreakdown.model_validate(item) for item in json.loads(metadata["fabric_cost_breakdown"])
             ]
+        
         if (
             metadata is not None
             and metadata.get("fabric_cost_total") is not None
             and metadata.get("fabric_cost_breakdown") is None
         ):
+            logger.warning(f"Did get a total cost but not a fabric cost breakdown for {dataset_id}." " Returning just the total and no breakdown.")
             # We've store the total cost correctly, but not the breakdown, so just give the total back.
             return metadata["fabric_cost_total"], []
+        
         if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
+            logger.warning(f"Got a thermal model dataset_id for {dataset_id} but no pre-calculated breakdown." " Returning a newly calculated breakdown.")
             # If we have a thermal model, get the heating cost based off the calculated areas.
             # We should store the cost in the metadata anyway, but this is the case where we didn't get it.
             if isinstance(metadata["params"], str):
@@ -148,6 +155,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         # However, if we don't have a thermal model then we have no idea of the size,
         # so look the generic cost up in the DB.
         # Note that this drops unknown interventions!
+        logger.warning(f"Didn't get a stored cost for {dataset_id} or thermal model; returning a database estimate.")
         res = await db_pool.fetch(
             """
                 SELECT
