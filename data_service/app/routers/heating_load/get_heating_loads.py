@@ -11,8 +11,8 @@ heating-related data in formats compatible with the EPOCH energy modeling system
 import asyncio
 import datetime
 import json
-from typing import cast
 import logging
+from typing import cast
 
 import pandas as pd
 
@@ -130,26 +130,31 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             return metadata["fabric_cost_total"], [
                 FabricCostBreakdown.model_validate(item) for item in json.loads(metadata["fabric_cost_breakdown"])
             ]
-        
+
         if (
             metadata is not None
             and metadata.get("fabric_cost_total") is not None
             and metadata.get("fabric_cost_breakdown") is None
         ):
-            logger.warning(f"Did get a total cost but not a fabric cost breakdown for {dataset_id}." " Returning just the total and no breakdown.")
+            logger.warning(
+                f"Did get a total cost but not a fabric cost breakdown for {dataset_id}."
+                " Returning just the total and no breakdown."
+            )
             # We've store the total cost correctly, but not the breakdown, so just give the total back.
             return metadata["fabric_cost_total"], []
-        
+
         if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
-            logger.warning(f"Got a thermal model dataset_id for {dataset_id} but no pre-calculated breakdown." " Returning a newly calculated breakdown.")
+            logger.warning(
+                f"Got a thermal model dataset_id for {dataset_id} but no pre-calculated breakdown."
+                " Returning a newly calculated breakdown."
+            )
             # If we have a thermal model, get the heating cost based off the calculated areas.
             # We should store the cost in the metadata anyway, but this is the case where we didn't get it.
-            if isinstance(metadata["params"], str):
-                # This is horrible, but the params section could legitimately have been passed as a string
-                # so try to read it as JSON
-                thermal_model_dataset_id = json.loads(metadata["params"])["thermal_model_dataset_id"]
-            else:
-                thermal_model_dataset_id = metadata["params"]["thermal_model_dataset_id"]
+            thermal_model_dataset_id = (
+                json.loads(metadata["params"])["thermal_model_dataset_id"]
+                if isinstance(metadata["params"], str)
+                else metadata["params"]["thermal_model_dataset_id"]
+            )
             thermal_model = await get_thermal_model(dataset_id=DatasetID(dataset_id=thermal_model_dataset_id), pool=pool)
             return calculate_intervention_costs_params(thermal_model, interventions=metadata["interventions"])
         # However, if we don't have a thermal model then we have no idea of the size,
