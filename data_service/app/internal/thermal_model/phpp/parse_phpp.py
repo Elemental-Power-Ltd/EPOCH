@@ -329,7 +329,7 @@ def apply_phpp_intervention(structure_df: pd.DataFrame, intervention_name: str) 
     if intervention_name not in THIRD_PARTY_INTERVENTIONS:
         raise ValueError(f"Bad intervention `{intervention_name}`; check THIRD_PARTY_INTERVENTIONS for a list of good ones.")
     intervention_u_value = THIRD_PARTY_INTERVENTIONS[intervention_name]["u_value"]
-    is_right_area = new_df["area_type"] == THIRD_PARTY_INTERVENTIONS[intervention_name]["acts_on"]
+    is_right_area = new_df["area_type"].isin(THIRD_PARTY_INTERVENTIONS[intervention_name]["acts_on"])
     is_worse_u_value = new_df["u_value"] >= intervention_u_value
 
     both_mask = np.logical_and(is_right_area, is_worse_u_value)
@@ -374,7 +374,7 @@ def phpp_fabric_intervention_cost(
         if intervention_u_value is None:
             continue
         intervention_cost = THIRD_PARTY_INTERVENTIONS[intervention_name]["cost"]
-        is_right_area = new_df["area_type"] == THIRD_PARTY_INTERVENTIONS[intervention_name]["acts_on"]
+        is_right_area = new_df["area_type"].isin(THIRD_PARTY_INTERVENTIONS[intervention_name]["acts_on"])
         is_worse_u_value = new_df["u_value"] >= intervention_u_value
         both_mask = np.logical_and(is_right_area, is_worse_u_value)
         new_df.loc[both_mask, "cost"] = intervention_cost
@@ -387,9 +387,11 @@ def phpp_fabric_intervention_cost(
         # Where we had a None U-value, e.g. for air tightness, there's still an affected area. This can't be overwritten
         # by structural interventions, so take the total area of that type to base our costing off.
         if THIRD_PARTY_INTERVENTIONS[intervention_name]["u_value"] is None:
-            affected_df = new_df[new_df["area_type"] == THIRD_PARTY_INTERVENTIONS[intervention_name]["acts_on"]]
+            mask = new_df["area_type"].isin(THIRD_PARTY_INTERVENTIONS[intervention_name]["acts_on"])
         else:
-            affected_df = new_df[new_df["intervention"] == intervention_name]
+            mask = new_df["intervention"] == intervention_name
+
+        affected_df = new_df[mask]
         fabric_cost_breakdown.append(
             FabricCostBreakdown(
                 name=intervention_name,
