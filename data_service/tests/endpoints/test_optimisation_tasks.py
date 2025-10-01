@@ -91,6 +91,7 @@ def sample_portfolio_optimisation_result(sample_task_config: TaskConfig) -> Port
     return PortfolioOptimisationResult(
         portfolio_id=uuid7(),
         task_id=sample_task_config.task_id,
+        is_feasible=True,
         metrics=SimulationMetrics(
             carbon_balance_scope_1=1.0,
             carbon_balance_scope_2=2.0,
@@ -125,6 +126,7 @@ def sample_site_optimisation_result(
         portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
         site_id="demo_london",
         scenario=sample_scenario,
+        is_feasible=True,
         metrics=SimulationMetrics(
             carbon_balance_scope_1=1.0,
             carbon_balance_scope_2=2.0,
@@ -343,6 +345,7 @@ class TestOptimisationTaskDatabase:
             task_id=sample_task_config.task_id,
             metrics=SimulationMetrics(),  # no metrics recorded
             site_results=[],
+            is_feasible=True,
         )
 
         opt_result = await client.post(
@@ -742,6 +745,7 @@ class TestOptimisationTaskDatabaseUUID4:
         return PortfolioOptimisationResult(
             portfolio_id=uuid.uuid4(),
             task_id=sample_task_config.task_id,
+            is_feasible=True,
             metrics=SimulationMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
@@ -774,6 +778,7 @@ class TestOptimisationTaskDatabaseUUID4:
             portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
             site_id="demo_london",
             scenario=sample_scenario,
+            is_feasible=True,
             metrics=SimulationMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
@@ -987,6 +992,7 @@ class TestOptimisationTaskDatabaseUUID4:
             task_id=sample_task_config.task_id,
             metrics=SimulationMetrics(),  # no metrics recorded
             site_results=[],
+            is_feasible=True,
         )
 
         opt_result = await client.post(
