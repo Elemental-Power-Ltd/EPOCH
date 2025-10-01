@@ -232,6 +232,9 @@ class SiteOptimisationResult(pydantic.BaseModel):
         description="The mix of assets used in this scenario, e.g. solar PV and grid connects."
     )
     metrics: SimulationMetrics = pydantic.Field(description="The metrics calculated for this site.")
+    is_feasible: bool = pydantic.Field(
+        description="Indicates whether the result is feasible or not given the task's constraints."
+    )
 
 
 class PortfolioOptimisationResult(pydantic.BaseModel):
@@ -247,6 +250,9 @@ class PortfolioOptimisationResult(pydantic.BaseModel):
         default=None,
         description="Individual site results for this Portfolio."
         + " Not provided when requesting a specific portfolio from the DB.",
+    )
+    is_feasible: bool = pydantic.Field(
+        description="Indicates whether the result is feasible or not given the task's constraints."
     )
 
 
