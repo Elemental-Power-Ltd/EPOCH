@@ -54,6 +54,7 @@ def process_results(
                     portfolio_id=portfolio_id,
                     scenario=strip_annotations(site_solution.scenario),
                     metrics=simulation_result_to_pydantic(site_solution.simulation_result),
+                    is_feasible=site_solution.is_feasible,
                 )
             )
         portfolios.append(
@@ -62,6 +63,7 @@ def process_results(
                 portfolio_id=portfolio_id,
                 metrics=simulation_result_to_pydantic(portfolio_solution.simulation_result),
                 site_results=site_results,
+                is_feasible=portfolio_solution.is_feasible,
             )
         )
 

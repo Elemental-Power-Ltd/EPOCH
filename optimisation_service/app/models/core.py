@@ -166,7 +166,7 @@ class SimulationMetrics(BaseModel):
     )
     return_on_investment: float | None = Field(
         description="Yearly return on investment (operating balance / capex) as a decimal percentage. "
-                    + "None when no money was spent.",
+        + "None when no money was spent.",
         default=None,
     )
     carbon_balance_scope_1: float | None = Field(
@@ -309,6 +309,7 @@ class SiteOptimisationResult(BaseModel):
     )
     scenario: TaskDataPydantic = Field(description="The mix of assets used in this scenario, e.g. solar PV and grid connects.")
     metrics: SimulationMetrics = Field(description="The metrics calculated for this site.")
+    is_feasible: bool = Field(description="Indicates whether the result is feasible or not given the task's constraints.")
 
 
 class PortfolioOptimisationResult(BaseModel):
@@ -325,6 +326,7 @@ class PortfolioOptimisationResult(BaseModel):
         description="Individual site results for this Portfolio."
         + " Not provided when requesting a specific portfolio from the DB.",
     )
+    is_feasible: bool = Field(description="Indicates whether the result is feasible or not given the task's constraints.")
 
 
 class TaskResult(BaseModel):
