@@ -781,7 +781,16 @@ async def generate_heating_load_phpp(
 
         if "air tightness" in intervention.lower():
             # This is a bodge! Watch out!
-            air_changes *= 0.7
+            air_changes = max(air_changes * 0.7, min(air_changes, 2.0))
+
+        if "single room heat recovery ventilators" in intervention.lower():
+            air_changes = max(air_changes * 0.9, min(air_changes, 2.0))
+
+        if "mechanical ventilation and heat recovery" in intervention.lower():
+            air_changes = min(air_changes, 2.0)
+
+        if "tcosy" in intervention.lower():
+            air_changes = min(air_changes, 2.0)
 
     final_peak_hload = phpp_total_heat_loss(
         structure_df=new_structure_df,

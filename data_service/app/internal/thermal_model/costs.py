@@ -299,19 +299,20 @@ def calculate_THIRD_PARTY_intervention_costs(
             # We've got a specific intervention from the table
             acts_on = THIRD_PARTY_INTERVENTIONS[intervention_name.lower()]["acts_on"]
             cost = THIRD_PARTY_INTERVENTIONS[intervention_name.lower()]["cost"]
-            match acts_on:
-                case StructuralArea.WindowArea:
-                    total_cost += window_area * cost
-                    total_area += window_area
-                case StructuralArea.FloorArea:
-                    total_cost += floor_area * cost
-                    total_area += floor_area
-                case StructuralArea.RoofArea:
-                    total_cost += ceiling_area * cost
-                    total_area += ceiling_area
-                case StructuralArea.ExteriorWallArea:
-                    total_cost += exterior_wall_area * cost
-                    total_area += exterior_wall_area
+            for item in acts_on:
+                match item:
+                    case StructuralArea.WindowArea:
+                        total_cost += window_area * cost
+                        total_area += window_area
+                    case StructuralArea.FloorArea:
+                        total_cost += floor_area * cost
+                        total_area += floor_area
+                    case StructuralArea.RoofArea:
+                        total_cost += ceiling_area * cost
+                        total_area += ceiling_area
+                    case StructuralArea.ExteriorWallArea:
+                        total_cost += exterior_wall_area * cost
+                        total_area += exterior_wall_area
         cost_breakdown.append(FabricCostBreakdown(name=intervention_name, area=total_area, cost=total_cost))
 
     return sum(item.cost for item in cost_breakdown), cost_breakdown

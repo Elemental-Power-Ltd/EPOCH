@@ -710,21 +710,25 @@ class TestGenerateAllQueue:
         response = await client.post("generate-all", json=json.loads(params.model_dump_json()))
         assert response.is_success, response.text
         # Check that they're all generated
-        iters = 0
+        bundle_id = response.json()["bundle_id"]
+        start_time = datetime.datetime.now(datetime.UTC)
+        timeout = datetime.timedelta(minutes=5)
         while True:
-            q_resp = await client.post("list-queue-contents", params={"bundle_id": response.json()["bundle_id"]})
+            q_resp = await client.post("list-bundle-contents", params={"bundle_id": bundle_id})
             assert q_resp.is_success, q_resp.text
             data = q_resp.json()
-            if not data:
-                # This means the queue is empty!
-                break
 
+            if data["is_error"]:
+                pytest.fail("Bundle creation failed")
+
+            if data["is_complete"]:
+                # Job done, the bundle is ready
+                break
             # This is our backup bailout clause to prevent the tests
             # hanging
             await asyncio.sleep(1.0)
-            iters += 1
-            if iters > 120:
-                pytest.fail("Generate-all-queue didn't empty in 2 minutes")
+            if datetime.datetime.now(datetime.UTC) > start_time + timeout:
+                pytest.fail(f"Generate-all didn't empty in {timeout}")
 
         bundle_meta = response.json()
         bundled_data = await client.post("/get-dataset-bundle", params={"bundle_id": bundle_meta["bundle_id"]})
