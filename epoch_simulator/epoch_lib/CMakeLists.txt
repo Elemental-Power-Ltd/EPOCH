@@ -31,6 +31,8 @@ add_library(Epoch_lib STATIC
 	"Simulation/ASHPambient.hpp"
 	"Simulation/ASHPLookup.hpp"
 	"Simulation/ASHPLookup.cpp"
+	"Simulation/Components/DHW/HotWaterCylinder.hpp"
+	"Simulation/Components/DHW/InstantWaterHeater.hpp"
 	"Simulation/Components/ESS/Battery.hpp"
 	"Simulation/Components/ESS/ESS.cpp"
 	"Simulation/Components/ESS/ESS.hpp"
