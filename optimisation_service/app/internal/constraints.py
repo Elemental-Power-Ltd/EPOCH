@@ -55,10 +55,10 @@ def is_in_constraints(constraints: Constraints, solutions: list[PortfolioSolutio
                 min_value = bounds.get("min", None)
                 max_value = bounds.get("max", None)
 
-                if min_value is not None and min_value >= metric_values[metric]:
+                if min_value is not None and min_value > metric_values[metric]:
                     within_constraints = False
                     break
-                if max_value is not None and max_value <= metric_values[metric]:
+                if max_value is not None and max_value < metric_values[metric]:
                     within_constraints = False
                     break
             mask.append(within_constraints)
@@ -87,9 +87,9 @@ def are_metrics_in_constraints(constraints: Constraints, metric_values: MetricVa
         min_value = bounds.get("min", None)
         max_value = bounds.get("max", None)
 
-        if min_value is not None and min_value >= metric_values[metric]:
+        if min_value is not None and min_value > metric_values[metric]:
             return False
-        if max_value is not None and max_value <= metric_values[metric]:
+        if max_value is not None and max_value < metric_values[metric]:
             return False
 
     return True
@@ -199,7 +199,7 @@ def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01, dhw_tole
         Metric.total_dhw_shortfall: Bounds(max=dhw_max),
         # We keep the total heat shortfall just in case it's useful elsewhere!
         Metric.total_heat_shortfall: Bounds(max=ch_max + dhw_max),
-        Metric.peak_hload_shortfall: Bounds(max=0)
+        Metric.peak_hload_shortfall: Bounds(max=0),
     }
     return constraints
 
