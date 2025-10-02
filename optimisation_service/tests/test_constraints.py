@@ -56,6 +56,14 @@ class TestIsInConstraints:
         mask = is_in_constraints(constraints={Metric.capex: Bounds(min=0, max=20)}, solutions=dummy_portfolio_solutions)
         assert sum(mask) == 1
 
+    def test_equal_to_constraints(self, dummy_portfolio_solutions: list[PortfolioSolution]) -> None:
+        for solution in dummy_portfolio_solutions:
+            solution.metric_values[Metric.capex] = 5
+        dummy_portfolio_solutions[0].metric_values[Metric.capex] = 10
+        dummy_portfolio_solutions[1].metric_values[Metric.capex] = 0
+        mask = is_in_constraints(constraints={Metric.capex: Bounds(min=0, max=10)}, solutions=dummy_portfolio_solutions)
+        assert sum(mask) == len(dummy_portfolio_solutions)
+
     def test_multiple_constraints(self, dummy_portfolio_solutions: list[PortfolioSolution]) -> None:
         constraints = {Metric.capex: Bounds(min=0), Metric.cost_balance: Bounds(max=20)}
         for solution in dummy_portfolio_solutions:
@@ -114,6 +122,18 @@ class TestAreMetricsInConstraints:
 
         dummy_metric_values[Metric.capex] = 30
         assert not are_metrics_in_constraints(constraints=constraints, metric_values=dummy_metric_values)
+
+        dummy_metric_values[Metric.capex] = -10
+        assert not are_metrics_in_constraints(constraints=constraints, metric_values=dummy_metric_values)
+
+    def test_equal_to_constraints(self, dummy_metric_values: MetricValues) -> None:
+        constraints = {Metric.capex: Bounds(min=0, max=10)}
+
+        dummy_metric_values[Metric.capex] = 0
+        assert are_metrics_in_constraints(constraints=constraints, metric_values=dummy_metric_values)
+
+        dummy_metric_values[Metric.capex] = 10
+        assert are_metrics_in_constraints(constraints=constraints, metric_values=dummy_metric_values)
 
         dummy_metric_values[Metric.capex] = -10
         assert not are_metrics_in_constraints(constraints=constraints, metric_values=dummy_metric_values)
