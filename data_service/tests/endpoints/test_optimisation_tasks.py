@@ -91,6 +91,7 @@ def sample_portfolio_optimisation_result(sample_task_config: TaskConfig) -> Port
     return PortfolioOptimisationResult(
         portfolio_id=uuid7(),
         task_id=sample_task_config.task_id,
+        is_feasible=True,
         metrics=SimulationMetrics(
             carbon_balance_scope_1=1.0,
             carbon_balance_scope_2=2.0,
@@ -125,6 +126,7 @@ def sample_site_optimisation_result(
         portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
         site_id="demo_london",
         scenario=sample_scenario,
+        is_feasible=True,
         metrics=SimulationMetrics(
             carbon_balance_scope_1=1.0,
             carbon_balance_scope_2=2.0,
@@ -343,6 +345,7 @@ class TestOptimisationTaskDatabase:
             task_id=sample_task_config.task_id,
             metrics=SimulationMetrics(),  # no metrics recorded
             site_results=[],
+            is_feasible=None,
         )
 
         opt_result = await client.post(
@@ -364,6 +367,42 @@ class TestOptimisationTaskDatabase:
         assert portfolio_results[0]["metrics"]["total_heat_shortfall"] is None
         assert portfolio_results[0]["metrics"]["total_dhw_shortfall"] is None
         assert portfolio_results[0]["metrics"]["total_electricity_export_gain"] is None
+
+    @pytest.mark.asyncio
+    async def test_can_handle_result_with_no_feasibility(
+        self,
+        sample_portfolio_optimisation_result: PortfolioOptimisationResult,
+        sample_site_optimisation_result: SiteOptimisationResult,
+        sample_task_config: TaskConfig,
+        client: httpx.AsyncClient,
+    ) -> None:
+        """Test that we can add a result with no metrics and get it back."""
+        result = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
+        assert result.status_code == 200, result.text
+
+        unknown_feasibility_portfolio_result = sample_portfolio_optimisation_result
+        unknown_feasibility_portfolio_result.is_feasible = None
+
+        unknown_feasibility_site_result = sample_site_optimisation_result
+        unknown_feasibility_site_result.is_feasible = None
+
+        unknown_feasibility_portfolio_result.site_results = [unknown_feasibility_site_result]
+
+        opt_result = await client.post(
+            "/add-optimisation-results",
+            content=OptimisationResultEntry(portfolio=[unknown_feasibility_portfolio_result]).model_dump_json(),
+        )
+        assert opt_result.status_code == 200, opt_result.text
+
+        get_result = await client.post(
+            "/get-optimisation-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
+        )
+        assert get_result.status_code == 200, get_result.text
+        portfolio_results = get_result.json()["portfolio_results"]
+        assert portfolio_results[0]["task_id"] == str(sample_task_config.task_id)
+        assert portfolio_results[0]["portfolio_id"] == str(unknown_feasibility_portfolio_result.portfolio_id)
+        assert portfolio_results[0]["is_feasible"] is None
+        assert portfolio_results[0]["site_results"][0]["is_feasible"] is None
 
     @pytest.mark.asyncio
     async def test_can_get_repro_results(
@@ -742,6 +781,7 @@ class TestOptimisationTaskDatabaseUUID4:
         return PortfolioOptimisationResult(
             portfolio_id=uuid.uuid4(),
             task_id=sample_task_config.task_id,
+            is_feasible=True,
             metrics=SimulationMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
@@ -774,6 +814,7 @@ class TestOptimisationTaskDatabaseUUID4:
             portfolio_id=sample_portfolio_optimisation_result.portfolio_id,
             site_id="demo_london",
             scenario=sample_scenario,
+            is_feasible=True,
             metrics=SimulationMetrics(
                 carbon_balance_scope_1=1.0,
                 carbon_balance_scope_2=2.0,
@@ -987,6 +1028,7 @@ class TestOptimisationTaskDatabaseUUID4:
             task_id=sample_task_config.task_id,
             metrics=SimulationMetrics(),  # no metrics recorded
             site_results=[],
+            is_feasible=True,
         )
 
         opt_result = await client.post(

@@ -378,6 +378,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
         SELECT
             pr.task_id,
             pr.portfolio_id,
+            ANY_VALUE(pr.is_feasible) AS is_feasible,
             ANY_VALUE(pr.metric_meter_balance) AS metric_meter_balance,
             ANY_VALUE(pr.metric_operating_balance) AS metric_operating_balance,
             ANY_VALUE(pr.metric_cost_balance) AS metric_cost_balance,
@@ -489,6 +490,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
         PortfolioOptimisationResult(
             task_id=item["task_id"],
             portfolio_id=item["portfolio_id"],
+            is_feasible=item["is_feasible"],
             metrics=SimulationMetrics(
                 meter_balance=nan_to_num(item["metric_meter_balance"]),
                 operating_balance=nan_to_num(item["metric_operating_balance"]),
@@ -565,6 +567,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
                     site_id=sub_item["site_id"],
                     portfolio_id=sub_item["portfolio_id"],
                     scenario=json.loads(sub_item["scenario"]),
+                    is_feasible=sub_item["is_feasible"],
                     metrics=SimulationMetrics(
                         meter_balance=nan_to_num(sub_item["metric_meter_balance"]),
                         operating_balance=nan_to_num(sub_item["metric_operating_balance"]),
@@ -782,6 +785,7 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                     records=zip(
                         [item.task_id for item in opt_result.portfolio],
                         [item.portfolio_id for item in opt_result.portfolio],
+                        [item.is_feasible for item in opt_result.portfolio],
                         [item.metrics.meter_balance for item in opt_result.portfolio],
                         [item.metrics.operating_balance for item in opt_result.portfolio],
                         [item.metrics.cost_balance for item in opt_result.portfolio],
@@ -845,6 +849,7 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                     columns=[
                         "task_id",
                         "portfolio_id",
+                        "is_feasible",
                         "metric_meter_balance",
                         "metric_operating_balance",
                         "metric_cost_balance",
@@ -923,6 +928,7 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                         [item.site_id for item in pf.site_results],
                         [item.portfolio_id for item in pf.site_results],
                         [json.dumps(jsonable_encoder(item.scenario)) for item in pf.site_results],
+                        [item.is_feasible for item in pf.site_results],
                         [item.metrics.meter_balance for item in pf.site_results],
                         [item.metrics.operating_balance for item in pf.site_results],
                         [item.metrics.cost_balance for item in pf.site_results],
@@ -992,6 +998,7 @@ async def add_optimisation_results(pool: DatabasePoolDep, opt_result: Optimisati
                         "site_id",
                         "portfolio_id",
                         "scenario",
+                        "is_feasible",
                         "metric_meter_balance",
                         "metric_operating_balance",
                         "metric_cost_balance",
