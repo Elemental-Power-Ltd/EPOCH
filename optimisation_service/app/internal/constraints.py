@@ -122,9 +122,6 @@ def update_feasibility(
 
     all_sites_feasible = all(portfolio_solution.scenario[site_id].is_feasible for site_id in site_constraints_dict)
 
-    if not all_sites_feasible:
-        portfolio_solution.is_feasible = False
-
     portfolio_solution.is_feasible = all_sites_feasible and are_metrics_in_constraints(
         constraints=constraints, metric_values=portfolio_solution.metric_values
     )
