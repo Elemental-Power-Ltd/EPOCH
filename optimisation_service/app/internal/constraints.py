@@ -83,19 +83,16 @@ def are_metrics_in_constraints(constraints: Constraints, metric_values: MetricVa
     -------
         Boolean mindicating if the metrics values are within consrtaints or not.
     """
-    within_constraints = True
     for metric, bounds in constraints.items():
         min_value = bounds.get("min", None)
         max_value = bounds.get("max", None)
 
         if min_value is not None and min_value >= metric_values[metric]:
-            within_constraints = False
-            break
+            return False
         if max_value is not None and max_value <= metric_values[metric]:
-            within_constraints = False
-            break
+            return False
 
-    return within_constraints
+    return True
 
 
 def update_feasibility(
@@ -118,20 +115,19 @@ def update_feasibility(
     portfolio_solution
         Portfolio solution with updated feasibility measure.
     """
-    all_sites_feasible = True
     for site_id, site_constraints in site_constraints_dict.items():
         site_metrics = portfolio_solution.scenario[site_id].metric_values
         site_is_feasible = are_metrics_in_constraints(constraints=site_constraints, metric_values=site_metrics)
         portfolio_solution.scenario[site_id].is_feasible = site_is_feasible
-        if not site_is_feasible:
-            all_sites_feasible = False
+
+    all_sites_feasible = all(portfolio_solution.scenario[site_id].is_feasible for site_id in site_constraints_dict)
 
     if not all_sites_feasible:
         portfolio_solution.is_feasible = False
-    else:
-        portfolio_solution.is_feasible = are_metrics_in_constraints(
-            constraints=constraints, metric_values=portfolio_solution.metric_values
-        )
+
+    portfolio_solution.is_feasible = all_sites_feasible and are_metrics_in_constraints(
+        constraints=constraints, metric_values=portfolio_solution.metric_values
+    )
 
     return portfolio_solution
 
