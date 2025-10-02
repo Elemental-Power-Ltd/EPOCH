@@ -17,7 +17,8 @@
 #include "Costs/Compare.hpp"
 #include "Costs/NetPresentValue.hpp"
 #include "DayTariffStats.hpp"
-#include "HotWaterCylinder.hpp"
+#include "Components/DHW/HotWaterCylinder.hpp"
+#include "Components/DHW/InstantWaterHeater.hpp"
 
 #include "Flags.hpp"
 #include "TempSum.hpp"
@@ -33,7 +34,6 @@
 
 #include "Components/DataCentre.hpp"
 #include "Components/ESS/ESS.hpp"
-#include "Costs/Compare.hpp"
 #include "Costs/SAP.hpp"
 
 Simulator::Simulator(SiteData siteData, TaskConfig config):
@@ -171,10 +171,12 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, [[maybe_unused
 		EV1.Report(reportData);
 	}
 
+	bool heatPumpCanSupplyDHW = false;
 	if (taskData.domestic_hot_water && taskData.heat_pump) {
 		HotWaterCylinder hotWaterCylinder{ mSiteData, taskData.domestic_hot_water.value(), taskData.heat_pump.value(), tariff_index, tariffStats };
 		hotWaterCylinder.AllCalcs(tempSum);
 		hotWaterCylinder.Report(reportData);
+		heatPumpCanSupplyDHW = true;
 	}
 
 
@@ -205,10 +207,10 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, [[maybe_unused
 	else if (taskData.data_centre && taskData.heat_pump && taskData.heat_pump->heat_source == HeatSource::AMBIENT_AIR) {
 		// make a basic data centre (without a heatpump)
 		dataCentre = std::make_unique<BasicDataCentre>(mSiteData, taskData.data_centre.value());
-		ambientController = std::make_unique<AmbientHeatPumpController>(mSiteData, taskData.heat_pump.value());
+		ambientController = std::make_unique<AmbientHeatPumpController>(mSiteData, taskData.heat_pump.value(), heatPumpCanSupplyDHW);
 	}
 	else if (taskData.heat_pump && !taskData.data_centre) {
-		ambientController = std::make_unique<AmbientHeatPumpController>(mSiteData, taskData.heat_pump.value());
+		ambientController = std::make_unique<AmbientHeatPumpController>(mSiteData, taskData.heat_pump.value(), heatPumpCanSupplyDHW);
 	}
 	else if (taskData.data_centre && !taskData.heat_pump) {
 		dataCentre = std::make_unique<BasicDataCentre>(mSiteData, taskData.data_centre.value());
@@ -271,6 +273,13 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, [[maybe_unused
 		Mop mop(mSiteData, taskData.mop.value());
 		mop.AllCalcs(tempSum);
 		mop.Report(reportData);
+	}
+
+	if (!taskData.gas_heater) {
+		// If there's no gas heater, we assume a resistive heating component to meet DHW
+		InstantWaterHeater iwh(mSiteData);
+		iwh.AllCalcs(tempSum);
+		iwh.Report(reportData);
 	}
 
 	if (taskData.grid && taskData.building) {

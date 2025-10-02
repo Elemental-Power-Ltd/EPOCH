@@ -14,7 +14,7 @@
 class AmbientHeatPump {
 
 public:
-	AmbientHeatPump(const SiteData& siteData, const HeatPumpData& hp) :
+	AmbientHeatPump(const SiteData& siteData, const HeatPumpData& hp, bool suppliesDHW) :
 		// Initialise results data vectors with all values to zero
 		mDHWload_e(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP electrical load
 		mDHWout_h(Eigen::VectorXf::Zero(siteData.timesteps)),	// ASHP heat output
@@ -26,7 +26,7 @@ public:
 		mASHPperfDHW(siteData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for DHW performance
 		mASHPperfCH(siteData, hp, FIXED_SEND_TEMP_VAL),	// lookup object for CH performance
 		mTimesteps(siteData.timesteps),
-		mHeatpumpSuppliesDHW(true),	// FUTURE: read value from (new) taskData value or use ASHP_DHWtemp not zero
+		mHeatpumpSuppliesDHW(suppliesDHW),
 		mHeatpumpSuppliesCentralHeating(true),		// FUTURE: read value from (new) taskData value or use ASHP_RadTemp not zero
 		mHeatPumpMax_h(0),
 		mHeatPumpMax_e(0),
@@ -41,7 +41,7 @@ public:
 
 		for (size_t t = 0; t < mTimesteps; t++) {
 
-			if (mHeatpumpSuppliesDHW == 1) {
+			if (mHeatpumpSuppliesDHW) {
 				// Lookup performances for DHW (hot water) output temperature
 				HeatpumpValues ambientDHW = mASHPperfDHW.Lookup(mAmbientTemperature[t]);
 
@@ -64,7 +64,7 @@ public:
 			}
 			mFreeHeat_h[t] = mDHWout_h[t] - mDHWload_e[t];	// How much heat from ambient
 
-			if (mHeatpumpSuppliesCentralHeating == 1) {
+			if (mHeatpumpSuppliesCentralHeating) {
 				// Lookup performances for CH (central heating) output temperature
 				HeatpumpValues ambientCH = mASHPperfCH.Lookup(mAmbientTemperature[t]);
 
@@ -196,8 +196,8 @@ private:
 	ASHPLookup mASHPperfCH;
 
 	const size_t mTimesteps;
-	const int mHeatpumpSuppliesDHW;
-	const int mHeatpumpSuppliesCentralHeating;
+	bool mHeatpumpSuppliesDHW;
+	bool mHeatpumpSuppliesCentralHeating;
 	float mHeatPumpMax_h;
 	float mHeatPumpMax_e;
 	float mElecResidual_e;

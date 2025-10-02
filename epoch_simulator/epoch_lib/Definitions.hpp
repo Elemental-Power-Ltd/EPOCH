@@ -9,7 +9,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "3.6.0";
+const std::string EPOCH_VERSION = "3.7.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -67,6 +67,8 @@ struct ReportData {
 	year_TS DHW_Standby_loss;
 	year_TS DHW_ave_temperature;
 	year_TS DHW_immersion_top_up;
+
+	year_TS DHW_resistive_load;
 
 	// ASHP
 	year_TS ASHP_elec_load;

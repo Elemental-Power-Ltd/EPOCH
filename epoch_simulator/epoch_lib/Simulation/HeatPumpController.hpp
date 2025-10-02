@@ -13,9 +13,9 @@
 class AmbientHeatPumpController
 {
 public:
-    AmbientHeatPumpController(const SiteData& siteData, const HeatPumpData& hp) :
+    AmbientHeatPumpController(const SiteData& siteData, const HeatPumpData& hp, bool suppliesDHW) :
         // Initialise Persistent Values
-        mHeatPump(siteData, hp)
+        mHeatPump(siteData, hp, suppliesDHW)
     {}
 
     void AllCalcs(TempSum& tempSum) {
