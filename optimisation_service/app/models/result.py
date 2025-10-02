@@ -15,6 +15,7 @@ class SiteSolution:
     scenario: AnnotatedTaskData
     metric_values: MetricValues
     simulation_result: SimulationResult
+    is_feasible: bool = True
 
     def __hash__(self) -> int:
         json_str = json.dumps(self.scenario.model_dump(), sort_keys=True, default=str)
@@ -31,6 +32,7 @@ class PortfolioSolution:
     scenario: dict[str, SiteSolution]
     metric_values: MetricValues
     simulation_result: SimulationResult
+    is_feasible: bool = True
 
     def __hash__(self) -> int:
         return hash(tuple(self.scenario.values()))

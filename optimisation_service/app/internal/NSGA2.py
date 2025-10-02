@@ -22,7 +22,7 @@ from pymoo.termination.max_gen import MaximumGenerationTermination  # type: igno
 from pymoo.termination.robust import RobustTermination  # type: ignore
 from pymoo.util.misc import at_least_2d_array  # type: ignore
 
-from app.internal.constraints import is_in_constraints
+from app.internal.constraints import update_feasibility
 from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
@@ -329,8 +329,10 @@ class NSGA2(Algorithm):
         n_evals = res.algorithm.evaluator.n_eval
         exec_time = max(timedelta(seconds=res.exec_time), timedelta(seconds=1))
         non_dom_sol = res.X
+
         if non_dom_sol is None or len(non_dom_sol) == 0:
             portfolio_solutions_pf = [get_baseline_portfolio_solution(portfolio)]
+
         else:
             if non_dom_sol.ndim == 1:
                 non_dom_sol = np.expand_dims(non_dom_sol, axis=0)
@@ -338,6 +340,13 @@ class NSGA2(Algorithm):
                 pi.convert_portfolio_chromosome_to_portfolio_scenario(chromosome) for chromosome in non_dom_sol
             ]
             portfolio_solutions = [pi.sim.simulate_portfolio(portfolio_scenario) for portfolio_scenario in portfolio_scenarios]
+            site_constraints_dict = {site.site_data.site_id: site.constraints for site in portfolio}
+            portfolio_solutions = [
+                update_feasibility(
+                    site_constraints_dict=site_constraints_dict, constraints=constraints, portfolio_solution=portfolio_solution
+                )
+                for portfolio_solution in portfolio_solutions
+            ]
             portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
 
         return OptimisationResult(
@@ -531,11 +540,13 @@ class SeparatedNSGA2(Algorithm):
                 combined_solutions, sub_solution, objectives, capex_limit
             )
 
-        mask = is_in_constraints(constraints, combined_solutions)
-        if any(mask) > 0:
-            combined_solutions = cast(list[PortfolioSolution], np.array(combined_solutions)[mask].tolist())
-        elif not self.return_least_infeasible and not any(mask):
-            combined_solutions = [get_baseline_portfolio_solution(portfolio)]
+        feasible_combined_solutions = [
+            portfolio_solution for portfolio_solution in combined_solutions if portfolio_solution.is_feasible
+        ]
+        if len(feasible_combined_solutions) > 0:
+            combined_solutions = feasible_combined_solutions
+        elif not self.return_least_infeasible and len(feasible_combined_solutions) == 0:
+            combined_solutions = []
 
         total_exec_time = datetime.now(UTC) - start_time
 

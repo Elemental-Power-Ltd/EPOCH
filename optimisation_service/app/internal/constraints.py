@@ -1,6 +1,7 @@
 from app.models.constraints import Bounds, Constraints
 from app.models.core import Site
-from app.models.metrics import Metric
+from app.models.database import site_id_t
+from app.models.metrics import Metric, MetricValues
 from app.models.result import PortfolioSolution
 
 
@@ -65,6 +66,70 @@ def is_in_constraints(constraints: Constraints, solutions: list[PortfolioSolutio
         return mask
 
     return [True] * len(solutions)
+
+
+def are_metrics_in_constraints(constraints: Constraints, metric_values: MetricValues) -> bool:
+    """
+    Check whether a set of metrics values are within consrtaints or not.
+
+    Parameters
+    ----------
+    constraints
+        Dictionary of constraints to check against.
+    metric_values
+        Metric values to check.
+
+    Returns
+    -------
+        Boolean mindicating if the metrics values are within consrtaints or not.
+    """
+    for metric, bounds in constraints.items():
+        min_value = bounds.get("min", None)
+        max_value = bounds.get("max", None)
+
+        if min_value is not None and min_value >= metric_values[metric]:
+            return False
+        if max_value is not None and max_value <= metric_values[metric]:
+            return False
+
+    return True
+
+
+def update_feasibility(
+    site_constraints_dict: dict[site_id_t, Constraints], constraints: Constraints, portfolio_solution: PortfolioSolution
+) -> PortfolioSolution:
+    """
+    Update the feasibility measures of a portfolio solution and it's site solutions.
+
+    Parameters
+    ----------
+    portfolio
+        Portfolio of sites.
+    constraints
+        Dictionary of constraints to check against.
+    portfolio_solution
+        Portfolio solution to update.
+
+    Returns
+    -------
+    portfolio_solution
+        Portfolio solution with updated feasibility measure.
+    """
+    for site_id, site_constraints in site_constraints_dict.items():
+        site_metrics = portfolio_solution.scenario[site_id].metric_values
+        site_is_feasible = are_metrics_in_constraints(constraints=site_constraints, metric_values=site_metrics)
+        portfolio_solution.scenario[site_id].is_feasible = site_is_feasible
+
+    all_sites_feasible = all(portfolio_solution.scenario[site_id].is_feasible for site_id in site_constraints_dict)
+
+    if not all_sites_feasible:
+        portfolio_solution.is_feasible = False
+
+    portfolio_solution.is_feasible = all_sites_feasible and are_metrics_in_constraints(
+        constraints=constraints, metric_values=portfolio_solution.metric_values
+    )
+
+    return portfolio_solution
 
 
 def merge_constraints(constraints_list: list[Constraints]) -> Constraints:

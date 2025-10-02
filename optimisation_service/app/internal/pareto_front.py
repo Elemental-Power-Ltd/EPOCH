@@ -26,6 +26,11 @@ def portfolio_pareto_front(portfolio_solutions: list[PortfolioSolution], objecti
     portfolio_solutions
         List of Pareto-front portfolio solutions.
     """
+    feasible_portfolio_solutions = [
+        portfolio_solution for portfolio_solution in portfolio_solutions if portfolio_solution.is_feasible
+    ]
+    if len(feasible_portfolio_solutions) > 0:
+        portfolio_solutions = feasible_portfolio_solutions
     objective_values = np.array(
         [[solution.metric_values[objective] for objective in objectives] for solution in portfolio_solutions]
     )
@@ -57,10 +62,13 @@ def _merge_solutions(sol1: PortfolioSolution, sol2: PortfolioSolution) -> Portfo
 
     combined_result = aggregate_site_results(all_sites)
 
+    is_feasible = sol1.is_feasible and sol2.is_feasible
+
     return PortfolioSolution(
         scenario=sol1.scenario | sol2.scenario,
         simulation_result=combined_result,
         metric_values=simulation_result_to_metric_dict(combined_result),
+        is_feasible=is_feasible,
     )
 
 
