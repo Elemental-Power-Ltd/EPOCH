@@ -106,13 +106,19 @@ def parse_phpp_area_row(row: ExcelRow) -> StructuralRow | None:
     element_name = str(row[1].value)
     element_group = str(row[2].value)
 
-    total_size = row[15].value
-    u_value = row[18].value
-    if not isinstance(total_size, float) or not isinstance(u_value, float):
+    try:
+        total_size = float(row[15].value)  # type: ignore
+    except (ValueError, TypeError):
         return None
 
-    angle = row[-1].value
-    if not isinstance(angle, float):
+    try:
+        u_value = float(row[18].value)  # type: ignore
+    except (ValueError, TypeError):
+        return None
+
+    try:
+        angle = float(row[-1].value)  # type: ignore
+    except (ValueError, TypeError):
         angle = float("NaN")
 
     if element_name.startswith("Wall"):
@@ -208,13 +214,19 @@ def parse_phpp_window_row(row: ExcelRow) -> StructuralRow | None:
 
     element_group = str(row[7].value)
 
-    total_size = row[36].value
-    u_value = row[40].value
-    if not isinstance(total_size, float) or not isinstance(u_value, float):
+    try:
+        total_size = float(row[36].value)  # type: ignore
+    except (ValueError, TypeError):
         return None
 
-    angle = row[2].value
-    if not isinstance(angle, float):
+    try:
+        u_value = float(row[40].value)  # type: ignore
+    except (ValueError, TypeError):
+        return None
+
+    try:
+        angle = float(row[2].value)  # type: ignore
+    except (ValueError, TypeError):
         angle = float("NaN")
 
     return {
