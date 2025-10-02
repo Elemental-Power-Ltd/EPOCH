@@ -195,7 +195,9 @@ THIRD_PARTY_INTERVENTIONS = {
             "Shiplap boards, airspace, standard aerated block 100mm, mineral wool slab in cavity 50mm, standard aerated block 125mm, 13mm plaster"
         ],
     ),
-    "External Overbuild": CostedIntervention(acts_on={StructuralArea.ExteriorWallArea}, cost=884.66, u_value=0.11),
+    "External Overbuild": CostedIntervention(
+        acts_on={StructuralArea.ExteriorWallArea, StructuralArea.WindowArea, StructuralArea.RoofArea}, cost=884.66, u_value=0.11
+    ),
     "Cavity Wall insulation (Full fill)": CostedIntervention(
         acts_on={StructuralArea.ExteriorWallArea},
         cost=33.70,
