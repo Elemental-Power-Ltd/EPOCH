@@ -526,6 +526,8 @@ class SeparatedNSGA2(Algorithm):
             capex_limit = constraints[Metric.capex].get("max", None)
             if capex_limit is not None:
                 new_constraints[Metric.capex] = Bounds(max=capex_limit)
+        else:
+            capex_limit = None
         sub_solutions: list[list[PortfolioSolution]] = []
         n_evals = 0
         for site in portfolio:
