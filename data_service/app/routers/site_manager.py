@@ -826,7 +826,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         SyntheticTariffEnum.Peak,
         SyntheticTariffEnum.Overnight,
         # SyntheticTariffEnum.ShapeShifter,
-        # SyntheticTariffEnum.PowerPurchaseAgreement,
+        SyntheticTariffEnum.PowerPurchaseAgreement,
     ]
     tariff_reqs = []
     # Check if there are existing entries in this bundle, and start our counting off from there.
