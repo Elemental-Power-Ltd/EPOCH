@@ -12,7 +12,7 @@ from app.models.core import SiteIDWithTime
 from app.models.import_tariffs import GSPEnum
 from app.routers.import_tariffs import get_gsp_code_from_postcode
 
-from .conftest import MockedHttpClient, get_internal_client_hack, get_pool_hack
+from .conftest import MockedHttpClient
 
 
 @pytest.fixture
@@ -431,18 +431,14 @@ class TestImportTariffs:
 class TestRE24PPA:
     @pytest.mark.external
     @pytest.mark.asyncio
-    async def test_units_correct(self, client: httpx.AsyncClient) -> None:
+    async def test_units_correct(self) -> None:
         """Test that we get the units correct in p / kWh."""
-        pool = await get_pool_hack(client)
-        inner_client = get_internal_client_hack(client)
         result = await get_re24_approximate_ppa(
             params=SiteIDWithTime(
                 site_id="demo_london",
                 start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
                 end_ts=datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC),
             ),
-            pool=pool,
-            http_client=inner_client,
             grid_tariff=100,
         )
         assert all(result.cost <= 100.0)
@@ -450,35 +446,27 @@ class TestRE24PPA:
 
     @pytest.mark.external
     @pytest.mark.asyncio
-    async def test_get_three(self, client: httpx.AsyncClient) -> None:
+    async def test_get_three(self) -> None:
         """Test that we get three tiers of prices."""
-        pool = await get_pool_hack(client)
-        inner_client = get_internal_client_hack(client)
         result = await get_re24_approximate_ppa(
             params=SiteIDWithTime(
                 site_id="demo_london",
                 start_ts=datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC),
                 end_ts=datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC),
             ),
-            pool=pool,
-            http_client=inner_client,
             grid_tariff=100,
         )
         assert len(result.cost.unique()) == 3
 
     @pytest.mark.external
     @pytest.mark.asyncio
-    async def test_dataframe_grid(self, client: httpx.AsyncClient) -> None:
+    async def test_dataframe_grid(self) -> None:
         """Test that we can handle a grid dataframe tariff."""
-        pool = await get_pool_hack(client)
-        inner_client = get_internal_client_hack(client)
         start_ts = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC)
         grid_tariff = pd.DataFrame(index=pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30)), data={"cost": [100.0]})
         result = await get_re24_approximate_ppa(
             params=SiteIDWithTime(site_id="demo_london", start_ts=start_ts, end_ts=end_ts),
-            pool=pool,
-            http_client=inner_client,
             grid_tariff=grid_tariff,
         )
         assert len(result.cost.unique()) == 3
@@ -486,18 +474,14 @@ class TestRE24PPA:
 
     @pytest.mark.external
     @pytest.mark.asyncio
-    async def test_dataframe_varying_grid(self, client: httpx.AsyncClient) -> None:
+    async def test_dataframe_varying_grid(self) -> None:
         """Test that we can handle a varying grid dataframe tariff."""
-        pool = await get_pool_hack(client)
-        inner_client = get_internal_client_hack(client)
         start_ts = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2022, month=2, day=1, tzinfo=datetime.UTC)
         grid_tariff = pd.DataFrame(index=pd.date_range(start_ts, end_ts, freq=pd.Timedelta(minutes=30)), data={"cost": [100.0]})
         grid_tariff.loc[::2, "cost"] = 1.0
         result = await get_re24_approximate_ppa(
             params=SiteIDWithTime(site_id="demo_london", start_ts=start_ts, end_ts=end_ts),
-            pool=pool,
-            http_client=inner_client,
             grid_tariff=grid_tariff,
         )
         assert len(result.cost.unique()) == 4

@@ -434,8 +434,6 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
 
                 price_df = await get_re24_approximate_ppa(
                     params=SiteIDWithTime(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts),
-                    pool=pool,
-                    http_client=http_client,
                     grid_tariff=fixed_df,
                 )
     else:

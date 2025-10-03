@@ -5,20 +5,16 @@ RE24 offer wholesale or power purchase tariffs, and are developing an API to get
 """
 
 import datetime
+from pathlib import Path
 
 import httpx
-import numpy as np
 import pandas as pd
 from fastapi import HTTPException
 
 from app.epl_secrets import get_secrets_environment
-from app.internal.epl_typing import db_pool_t
 from app.internal.import_tariffs.octopus_agile import DISTRIBUTION_REGION_FACTORS, PEAK_REGION_FACTORS, wholesale_to_agile
 from app.models.core import SiteIDWithTime
 from app.models.import_tariffs import GSPEnum
-from app.models.weather import WeatherRequest
-from app.routers.client_data import get_location
-from app.routers.weather import get_weather
 
 
 async def get_re24_wholesale_tariff(
@@ -117,11 +113,10 @@ async def get_re24_wholesale_tariff(
 
 async def get_re24_approximate_ppa(
     params: SiteIDWithTime,
-    pool: db_pool_t,
-    http_client: httpx.AsyncClient,
     grid_tariff: pd.DataFrame | float,
-    wind_cost: float = 18.0,
-    solar_cost: float = 16.0,
+    wind_cost: float = 17.776,
+    solar_cost: float = 17.991,
+    profile_path: Path = Path("app", "internal", "import_tariffs", "re24_generation_profiles.csv"),
 ) -> pd.DataFrame:
     """
     Get an approximation of what a client would pay for a PPA via RE24.
@@ -141,10 +136,6 @@ async def get_re24_approximate_ppa(
     ----------
     params
         Site ID, start time and end time
-    pool
-        Database connection with data about site (we'll use this for weather)
-    http_client
-        HTTP connection to get weather data, if needed
     grid_tariff
         (float): A fixed cost to pay at all times for grid imports in p / kWh
         (pd.DataFrame): time series of costs at half hourly intervals in p / kWh
@@ -158,35 +149,40 @@ async def get_re24_approximate_ppa(
     pd.DataFrame
         Dataframe with columns start_ts, end_ts and cost in p / kWh
     """
-    locn = await get_location(params, pool=pool)
+    # Load the generation profiles and normalise them to being a fraction of total generation
+    # (do this before resampling or we'll get artefacts if we've resampled to the summer or winter)
+    raw_weather_df = pd.read_csv(profile_path)
+    raw_weather_df.index = pd.to_datetime(raw_weather_df["timestamp"], format="ISO8601")  # type: ignore
+    raw_weather_df["wind_generation"] /= raw_weather_df["wind_generation"].max()
+    raw_weather_df["solar_generation"] /= raw_weather_df["solar_generation"].max()
 
-    # Request an extra day's weather so our resampling works (it's wasteful, sorry!)
-    # otherwise we miss the 23:30 reading
-    weather_records = await get_weather(
-        weather_request=WeatherRequest(location=locn, start_ts=params.start_ts, end_ts=params.end_ts + pd.Timedelta(hours=1)),
-        pool=pool,
-        http_client=http_client,
+    # Resample picking the relevant day of the year. This isn't a perfect resampling algorithm (weather is different per year!)
+    # but it'll do for now. Interpolate in case we have an extra day this year.
+    grouped_weather = {
+        (idx.dayofyear, idx.time()): (wind_generation, solar_generation)
+        for idx, wind_generation, solar_generation in zip(
+            raw_weather_df.index, raw_weather_df["wind_generation"], raw_weather_df["solar_generation"], strict=False
+        )
+    }
+    new_timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
+    weather_df = pd.DataFrame.from_dict(
+        {ts: grouped_weather.get((ts.dayofyear, ts.time()), (float("NaN"), float("NaN"))) for ts in new_timestamps},
+        orient="index",
+        columns=["wind_generation", "solar_generation"],
     )
-    weather_df = (
-        pd.DataFrame.from_records([dict(item) for item in weather_records])
-        .set_index("timestamp")
-        .resample(pd.Timedelta(minutes=30))
-        .mean()
-        .interpolate(method="time")
-    )
-    weather_df = weather_df[np.logical_and(weather_df.index >= params.start_ts, weather_df.index <= params.end_ts)]
+    weather_df = weather_df.interpolate(method="time").ffill().bfill()
 
-    # These are the cutoffs in m/s and W/m^2 for the different generation assets
+    # These are the fractional cutoffs in generation power.
     # Presume that if there's less wind or solar than this, then we can't buy any
     # from the generator at this timestamp.
-    WIND_THRESH = 4.0
-    SOLAR_THRESH = 100.0
+    WIND_THRESH = 0.05
+    SOLAR_THRESH = 0.05
     is_generating = pd.DataFrame(
         index=weather_df.index,
         data={
-            "wind_generation": weather_df.windspeed > WIND_THRESH,
-            "solar_generation": weather_df.solarradiation > SOLAR_THRESH,
-            "grid": True,
+            "wind_generation": weather_df.wind_generation > WIND_THRESH,
+            "solar_generation": weather_df.solar_generation > SOLAR_THRESH,
+            "grid": True,  # there's always grid data available!
         },
     )
     if isinstance(grid_tariff, pd.DataFrame):
