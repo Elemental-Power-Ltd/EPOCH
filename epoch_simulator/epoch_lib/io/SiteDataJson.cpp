@@ -10,8 +10,38 @@
 using json = nlohmann::json;
 
 
+void from_json(const json& j, FabricCostBreakdown& fcb) {
+    fcb.name = j.at("name").get<std::string>();
+    if (j.contains("area") && !j.at("area").is_null()) {
+        fcb.area = j.at("area").get<float>();
+    }
+    else {
+        fcb.area = std::nullopt;
+    }
+    fcb.cost = j.at("cost").get<float>();
+}
+
+void to_json(json& j, const FabricCostBreakdown& breakdown) {
+    j = json{
+        {"name", breakdown.name},
+        {"cost", breakdown.cost}
+    };
+    if (breakdown.area.has_value()) {
+        j["area"] = breakdown.area.value();
+    }
+    else {
+        j["area"] = nullptr;
+    }
+}
+
 void from_json(const json& j, FabricIntervention& intervention) {
     intervention.cost = j.at("cost").get<float>();
+    if (j.contains("cost_breakdown") && !j.at("cost_breakdown").is_null()) {
+        intervention.cost_breakdown = j.at("cost_breakdown").get<std::vector<FabricCostBreakdown>>();
+    }
+    else {
+        intervention.cost_breakdown.clear();
+    }
     intervention.reduced_hload = toEigen(j.at("reduced_hload").get<std::vector<float>>());
     intervention.peak_hload = j.value("peak_hload", 0.0f);  // default to 0.0f
 }
@@ -19,6 +49,7 @@ void from_json(const json& j, FabricIntervention& intervention) {
 void to_json(json& j, const FabricIntervention& intervention) {
     j = json{
         {"cost", intervention.cost},
+        {"cost_breakdown", intervention.cost_breakdown},
         {"reduced_hload", toStdVec(intervention.reduced_hload)},
         {"peak_hload", intervention.peak_hload}
     };

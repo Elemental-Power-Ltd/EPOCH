@@ -7,17 +7,7 @@
 #include <Eigen/Core>
 
 #include "../Definitions.hpp"
-
-
-struct FabricIntervention {
-	// the cost in pounds of this fabric intervention
-	float cost;
-	// the peak heating demand in kW (as calculated by an external source such as PHPP)
-	float peak_hload;
-
-	// The (reduced) heating demand in kWh/timestep
-	year_TS reduced_hload;
-};
+#include "Fabric.hpp"
 
 
 struct SiteData {

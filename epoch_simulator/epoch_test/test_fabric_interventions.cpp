@@ -15,7 +15,7 @@ protected:
 		siteData(make24HourSiteData())
 	{
 		// Construct a fabric intervention that halves the energy for �100
-		FabricIntervention reducedEnergy = { 100.0f, 0.0f, Eigen::VectorXf::Constant(24, 0.5f) };
+		FabricIntervention reducedEnergy = { 100.0f, {}, 0.0f, Eigen::VectorXf::Constant(24, 0.5f) };
 		siteData.fabric_interventions[0] = reducedEnergy;
 
 	}

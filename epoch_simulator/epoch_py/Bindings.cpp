@@ -16,6 +16,7 @@
 #include "../epoch_lib/Portfolio/Portfolio.hpp"
 #include "../epoch_lib/Simulation/Costs/CostData.hpp"
 #include "../epoch_lib/Simulation/Costs/Capex.hpp"
+#include "../epoch_lib/Simulation/Fabric.hpp"
 
 
 PYBIND11_MODULE(epoch_simulator, m) {
@@ -288,8 +289,15 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("ASHP_free_heat", &ReportData::ASHP_free_heat)
 		.def_readonly("ASHP_used_hotroom_heat", &ReportData::ASHP_used_hotroom_heat);
 
+	pybind11::class_<FabricCostBreakdown>(m, "FabricCostBreakdown")
+		.def_readonly("name", &FabricCostBreakdown::name)
+		.def_readonly("area", &FabricCostBreakdown::area)
+		.def_readonly("cost", &FabricCostBreakdown::cost);
+
+
 	pybind11::class_<CapexBreakdown>(m, "CapexBreakdown")
 		.def_readonly("building_fabric_capex", &CapexBreakdown::building_fabric_capex)
+		.def_readonly("fabric_cost_breakdown", &CapexBreakdown::fabric_cost_breakdown)
 		.def_readonly("dhw_capex", &CapexBreakdown::dhw_capex)
 		.def_readonly("ev_charger_cost", &CapexBreakdown::ev_charger_cost)
 		.def_readonly("ev_charger_install", &CapexBreakdown::ev_charger_install)

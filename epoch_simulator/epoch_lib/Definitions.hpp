@@ -5,11 +5,12 @@
 #include <optional>
 #include <string>
 
+#include "Simulation/Fabric.hpp"
 #include "Simulation/TaskData.hpp"
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "3.7.0";
+const std::string EPOCH_VERSION = "3.8.0";
 
 using year_TS = Eigen::VectorXf;
 
@@ -142,6 +143,7 @@ struct SimulationMetrics {
 
 struct CapexBreakdown {
 	float building_fabric_capex;
+	std::vector<FabricCostBreakdown> fabric_cost_breakdown;
 
 	float dhw_capex;
 

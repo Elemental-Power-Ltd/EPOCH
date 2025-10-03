@@ -31,6 +31,15 @@ CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskDat
 
 	if (taskData.building && !taskData.building->incumbent) {
 		capex_breakdown.building_fabric_capex = calculate_fabric_cost(siteData, taskData.building.value());
+
+		size_t fabric_index = taskData.building->fabric_intervention_index;
+		if (fabric_index == 0) {
+			// this corresponds to no interventions
+			capex_breakdown.fabric_cost_breakdown = {};
+		}
+		else {
+			capex_breakdown.fabric_cost_breakdown = siteData.fabric_interventions[fabric_index - 1].cost_breakdown;
+		}
 	}
 
 	if (taskData.domestic_hot_water && !taskData.domestic_hot_water->incumbent) {
