@@ -1,9 +1,9 @@
 #include <cmath>
 
-#include "TaskComponents.hpp"
-#include "SiteData.hpp"
-#include "TempSum.hpp"
-#include "DayTariffStats.hpp"
+#include "../../TaskComponents.hpp"
+#include "../../SiteData.hpp"
+#include "../../TempSum.hpp"
+#include "../../DayTariffStats.hpp"
 
 class HotWaterCylinder {
 
