@@ -192,8 +192,14 @@ class TaskData:
     def from_json(json_str: str) -> TaskData: ...
     def to_json(self) -> str: ...
 
+class FabricCostBreakdown:
+    name: str
+    area: float | None
+    cost: float
+
 class CapexBreakdown:
     building_fabric_capex: float
+    fabric_cost_breakdown: list[FabricCostBreakdown]
     dhw_capex: float
     ev_charger_cost: float
     ev_charger_install: float

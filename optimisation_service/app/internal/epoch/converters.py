@@ -29,7 +29,14 @@ def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list
     costs = []
 
     if capex_breakdown.building_fabric_capex > 0:
-        costs.append(CostInfo(name="Building Fabric", component="building", cost=capex_breakdown.building_fabric_capex))
+        sub_comps = [CostInfo(name=f.name, cost=f.cost) for f in capex_breakdown.fabric_cost_breakdown]
+
+        costs.append(CostInfo(
+            name="Building Fabric",
+            component="building",
+            cost=capex_breakdown.building_fabric_capex,
+            sub_components=sub_comps,
+        ))
 
     if capex_breakdown.dhw_capex > 0:
         costs.append(CostInfo(name="Hot Water Cylinder", component="hot_water_cylinder", cost=capex_breakdown.dhw_capex))

@@ -61,8 +61,19 @@ class EpochEntry(BaseModel):
     timestamps: list[AwareDatetime]
 
 
+class FabricCostBreakdown(BaseModel):
+    name: str
+    area: float | None
+    cost: float
+
+
 class FabricIntervention(BaseModel):
     cost: float
+    cost_breakdown: list[FabricCostBreakdown] = Field(
+        default_factory=list,
+        description="Breakdown of costs in £ including the areas affected by each intervention."
+        " If unknown, this is an empty list.",
+    )
     reduced_hload: list[float]
     peak_hload: float = Field(description="Peak heating demand from a survey in kWth", default=0.0)
 
