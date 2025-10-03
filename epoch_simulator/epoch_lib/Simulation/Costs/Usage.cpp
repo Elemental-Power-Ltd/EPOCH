@@ -1,5 +1,44 @@
 #include "Usage.hpp"
 
+#include <set>
+
+/**
+* HACK - throwaway code to detect PPA tariffs
+* If there are exactly three prices, where two of them correspond to p1 and p2
+* then this is a PPA tariff where grid co2 should be 0 for those timesteps
+* 
+* When that is detected, this function returns a mask that can be applied to grid_co2 for import calculation
+* When it is not detected, we return std::nullopt
+*/
+std::optional<year_TS> try_get_ppa_masked_tariff(const year_TS& tariff) {
+
+	std::set<float> distinctPrices(tariff.begin(), tariff.end());
+
+	if (distinctPrices.size() != 3) {
+		return std::nullopt;
+	}
+
+	constexpr float p1 = 0.17776f;
+	constexpr float p2 = 0.17991f;
+	constexpr float epsilon = 1e-5f;
+
+	auto approx_eq = [&](float a, float b) {
+		return std::fabs(a - b) <= epsilon;
+	};
+
+	auto it = distinctPrices.begin();
+	const float v1 = *it++;
+	const float v2 = *it++;
+	const float v3 = *it;
+
+	if (!approx_eq(v1, p1)) return std::nullopt;
+	if (!approx_eq(v2, p2)) return std::nullopt;
+
+	// construct a mask for all values equal to v3
+	const Eigen::ArrayXf mask = (tariff.array() == v3).cast<float>();
+	return mask.matrix();
+}
+
 
 /**
 * internal method to sum up the usage data for both baseline and scenario data
@@ -31,8 +70,18 @@ UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const Cos
 		constexpr float g_to_kg = 0.001f;
 
 		auto& tariff = siteData.import_tariffs[taskData.grid->tariff_index];
+
+		auto mask = try_get_ppa_masked_tariff(tariff);
+		
 		usage.elec_cost = costVectors.grid_import_e.dot(tariff);
-		usage.elec_kg_CO2e = costVectors.grid_import_e.dot(siteData.grid_co2) * g_to_kg;
+		if (mask) {
+			// this is a PPA tariff, mask out the times when grid_co2 is 0
+			year_TS masked_co2 = (siteData.grid_co2.array() * mask->array()).matrix();
+			usage.elec_kg_CO2e = costVectors.grid_import_e.dot(masked_co2) * g_to_kg;
+		}
+		else {
+			usage.elec_kg_CO2e = costVectors.grid_import_e.dot(siteData.grid_co2) * g_to_kg;
+		}
 		usage.export_revenue = costVectors.grid_export_e.dot(costVectors.grid_export_prices);
 		usage.export_kg_CO2e = -(costVectors.grid_export_e.dot(siteData.grid_co2)) * g_to_kg;
 	}
