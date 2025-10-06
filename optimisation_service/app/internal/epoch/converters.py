@@ -75,7 +75,7 @@ def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list
                 name="Energy Storage System",
                 component="energy_storage_system",
                 cost=ess_capex,
-                sub_components=[pcs_cost, enclosure_cost, enclosure_disposal, enclosure_disposal],
+                sub_components=[pcs_cost, enclosure_cost, enclosure_disposal],
             )
         )
 
