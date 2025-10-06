@@ -34,7 +34,10 @@ export const color_map = {
     'DHW_Standby_loss':             ' #ffb347', // *Light orange (similar to DHW_load)
     'DHW_SoC':                      ' #fabc7e', // *Peach (similar to DHW charging/loss)
     'DHW_ave_temperature':          ' #b77b1a', // *Orange/brown (similar to DHW_Standby_loss)
+    // immersion_top_up and resistive_load both use the same colour as they are a related concept
+    // (immersion top-up occurs within the cylinder and resistive heating when there is no cylinder)
     'DHW_immersion_top_up':         ' #cb6363', // *Pastel pink (contrast with DHW_load)
+    'DHW_resistive_load':           ' #cb6363', // *Pastel pink (contrast with DHW_load)
     'ASHP_elec_load':               ' #405f3d', // *Olive green (similar to MOP_load, implying energy usage)
     'ASHP_DHW_output':              ' #ffA500', // *Orange (similar to DHW_load, implying hot water output)
     'ASHP_CH_output':               ' #6a3601', // *Brown (similar to Heatload)
@@ -46,7 +49,7 @@ export const color_map = {
 // elec | heat
 // draw | supply | surplus | shortfall
 export const elec_supply_stackbars = ['Grid_Export', 'Hotel_load', 'MOP_load', 'EV_actualload',
-    'ESS_charge', 'ESS_AuxLoad', 'Data_centre_actual_load', 'ASHP_elec_load']
+    'ESS_charge', 'ESS_AuxLoad', 'Data_centre_actual_load', 'ASHP_elec_load', 'DHW_immersion_top_up', 'DHW_resistive_load']
 
 export const heat_supply_stackbars = ['Heatload', 'DHW_charging', 'ASHP_used_hotroom_heat']
 

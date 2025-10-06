@@ -40,6 +40,7 @@ const staticAnnotationsMap: AnnotationMap = {
     "ASHP_used_hotroom_heat": {name: "ASHP Used Hotroom Heat", units: "kWh", type: "Output"},
     "Actual_import_shortfall": {name: "Import Shortfall", units: "kWh", type: "Output"},
     "DHW_immersion_top_up": {name: "DHW Immersion Top Up", units: "kWh", type: "Output"},
+    "DHW_resistive_load": {name: "DHW Resistive Load", units: "kWh", type: "Output"},
     "DHW_SoC": {name: "DHW State of Charge", units: "kWh", type: "Output"},
     "DHW_Standby_loss": {name: "DHW Standby Loss", units: "kWh", type: "Output"},
     "DHW_ave_temperature": {name: "DHW Average Temperature", units: "Deg (c)", type: "Output"},
