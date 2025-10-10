@@ -11,6 +11,7 @@ from app.internal.thermal_model.phpp.parse_phpp import (
     StructuralInfo,
     apply_phpp_intervention,
     phpp_fabric_heat_loss,
+    phpp_fabric_intervention_cost,
     phpp_to_dataframe,
     phpp_total_heat_loss,
 )
@@ -115,3 +116,39 @@ class TestHeatLossAndInterventions:
         parsed_df = parsed_phpp[0]
         new_df = apply_phpp_intervention(parsed_df, intervention)
         assert phpp_fabric_heat_loss(new_df) < phpp_fabric_heat_loss(parsed_df)
+
+
+class TestFabricCostBreakdown:
+    """Test that we compute the cost and breakdown sensibly."""
+
+    def test_order_independent(self, parsed_phpp: tuple[pd.DataFrame, StructuralInfo]) -> None:
+        """Test that we don't care about the order of fabric interventions."""
+        parsed_df = parsed_phpp[0]
+        interventions = ["Fineo Glazing", "Secondary Glazing"]
+        cost_1, breakdown_1 = phpp_fabric_intervention_cost(parsed_df, interventions)
+        cost_2, breakdown_2 = phpp_fabric_intervention_cost(parsed_df, interventions[::-1])
+
+        assert cost_1 == cost_2
+        assert breakdown_1[1] == breakdown_2[0]
+        assert breakdown_1[0] == breakdown_2[1]
+
+    def test_worse_not_cheaper(self, parsed_phpp: tuple[pd.DataFrame, StructuralInfo]) -> None:
+        """Test that overwriting with a worse intervention doesn't save money."""
+        parsed_df = parsed_phpp[0]
+        interventions = ["Fineo Glazing", "Secondary Glazing"]
+        cost_1, breakdown_1 = phpp_fabric_intervention_cost(parsed_df, [interventions[0]])
+        cost_2, breakdown_2 = phpp_fabric_intervention_cost(parsed_df, interventions)
+
+        assert cost_1 == cost_2
+        assert breakdown_1[0] == breakdown_2[0]
+        assert breakdown_2[1].area == 0.0
+
+    def test_non_u_value_costed(self, parsed_phpp: tuple[pd.DataFrame, StructuralInfo]) -> None:
+        """Test that overwriting with a worse intervention doesn't save money."""
+        parsed_df = parsed_phpp[0]
+        interventions = ["Air tightness to external voids and penetrations"]
+        cost, breakdown = phpp_fabric_intervention_cost(parsed_df, interventions)
+
+        assert cost > 0
+        assert breakdown[0].area != 0.0
+        assert breakdown[0].cost == cost
