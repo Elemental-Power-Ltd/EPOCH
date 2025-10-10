@@ -159,6 +159,7 @@ public:
 		reportData.DHW_Standby_loss = mDHW_standby_losses;
 		reportData.DHW_ave_temperature = mDHW_ave_temperature;
 		reportData.DHW_immersion_top_up = mDHW_local_shortfall;
+		reportData.DHW_diverter_load = mDHW_diverter_load_e;
 	}
 
 

@@ -282,6 +282,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("DHW_Standby_loss", &ReportData::DHW_Standby_loss)
 		.def_readonly("DHW_ave_temperature", &ReportData::DHW_ave_temperature)
 		.def_readonly("DHW_immersion_top_up", &ReportData::DHW_immersion_top_up)
+		.def_readonly("DHW_diverter_load", &ReportData::DHW_diverter_load)
 		.def_readonly("DHW_resistive_load", &ReportData::DHW_resistive_load)
 		.def_readonly("ASHP_elec_load", &ReportData::ASHP_elec_load)
 		.def_readonly("ASHP_DHW_output", &ReportData::ASHP_DHW_output)
