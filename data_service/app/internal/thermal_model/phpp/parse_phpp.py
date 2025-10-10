@@ -391,7 +391,7 @@ def phpp_fabric_intervention_cost(
         both_mask = np.logical_and(is_right_area, is_worse_u_value)
         new_df.loc[both_mask, "cost"] = intervention_cost
         new_df.loc[both_mask, "intervention"] = intervention_name
-        # Overwrite the existing u-value with the intervention, so that we make sure that we don't try to 
+        # Overwrite the existing u-value with the intervention, so that we make sure that we don't try to
         # repeatedly applyy interventions.
         new_df.loc[both_mask, "u_value"] = intervention_u_value
 
