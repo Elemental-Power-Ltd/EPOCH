@@ -13,7 +13,6 @@ export default defineConfig(({ command }) => ({
   // we treat this as a 'mpa' so we can open any html files
   // and then tell vite to open dataviz.html
   appType: 'mpa',
-  publicDir: 'public/dataviz',
   server: {
     port: 8759,
     open: '/dataviz.html',

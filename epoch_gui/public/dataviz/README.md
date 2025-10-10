@@ -17,7 +17,7 @@ This needs to be hosted by a http server (e.g. `python -m http.server`)
 - 2: Epoch GUI Theme, Dark Mode
 - 3: Epoch GUI Theme, Light Mode
 
-For example, `http://localhost:8000/dataviz.html?data=example.json&mode=0` should load the example result - assuming a server running on port 8000.
+For example, `http://localhost:8000/dataviz.html?data=dataviz/example.json&mode=0` should load the example result - assuming a server running on port 8000.
 
 ## Generating Data
 

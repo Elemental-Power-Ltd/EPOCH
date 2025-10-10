@@ -1,7 +1,8 @@
 import React, {useEffect, useState} from "react";
-import {Alert, Button, Collapse, Grid} from '@mui/material';
+import {Alert, Button, Collapse, Grid, IconButton} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import dayjs, {Dayjs} from 'dayjs';
 
 import {NonNullReportDataType, ReportDataType, SimulationResult} from "../../Models/Endpoints";
@@ -12,6 +13,8 @@ import {LineChartPanels} from "./LineChartPanels";
 import {removeEmptyVectors} from "./GraphUtils";
 import {DataAnnotationMap, getAnnotatedSeries} from "./TimeSeriesAnnotations";
 import {DayOfInterestSelector} from "./DayOfInterestSelector.tsx";
+import {ExplainerDialog} from "../Explainer/ExplainerDialog.tsx";
+import {DataVizTips} from "./ExplainerTips.ts";
 
 interface DataVizProps {
     result: SimulationResult;
@@ -46,6 +49,8 @@ const DataVizContainer: React.FC<DataVizProps> = ({ result, isInformedEmbed = fa
 
     // Initial states - variable for reacting to browser window size
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    const [showExplainer, setShowExplainer] = useState<boolean>(false);
 
     // Filter data by number of observations, whenever input from dropdowns changes
     useEffect(() => {
@@ -90,9 +95,19 @@ const DataVizContainer: React.FC<DataVizProps> = ({ result, isInformedEmbed = fa
         <div style={{
             display: 'flex', flexDirection: 'column',
             margin: '1em 0 0 0', width: '100%', alignItems: 'center', justifySelf: 'center',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            position: 'relative',
         }}
         >
+            <IconButton
+                aria-label="Open explainer"
+                onClick={() => setShowExplainer(true)}
+                style={{position: 'absolute', top: 4, right: 4}}
+            >
+                <HelpOutlineIcon/>
+            </IconButton>
+
+
             <DateRangeControls
                 selectedStartDatetime={selectedStartDatetime}
                 setSelectedStartDatetime={setSelectedStartDatetime}
@@ -113,6 +128,14 @@ const DataVizContainer: React.FC<DataVizProps> = ({ result, isInformedEmbed = fa
                     />
                 </Grid>
             )}
+
+            <ExplainerDialog
+                open={showExplainer}
+                tips={DataVizTips}
+                onClose={()=>setShowExplainer(false)}
+                dialogTitle={"Energy Flows"}
+                maxWidth="xl"
+            />
 
             {isInformedEmbed && (
                 <Button
