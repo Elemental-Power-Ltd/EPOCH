@@ -58,6 +58,7 @@ class ReportData(BaseModel):
     DHW_Standby_loss: list[float] | None = Field(default=None, description="Time series of the heat wasted to standby loss in the Hot Water Cylinder at each timestep in kWh.")
     DHW_ave_temperature: list[float] | None = Field(default=None, description="Time series of average temperature of the Hot Water Cylinder in degrees Celsius.")
     DHW_immersion_top_up: list[float] | None = Field(default=None, description="Time series of the DHW demand that the Hot Water Cylinder was unable to meet; requiring an immersion heater.")
+    DHW_diverter_load: list[float] | None = Field(default=None, description="Time series of any renewable surplus that is diverted to resistive DHW heating.")
     DHW_resistive_load: list[float] | None = Field(default=None, description="Time series of the portion of the DHW demand that has been converted to electrical load in kWh.")
 
     # ASHP
