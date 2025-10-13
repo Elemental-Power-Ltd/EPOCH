@@ -63,13 +63,15 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 	// Calculate CAPEX upfront to discard scenarios above CAPEX contraint early 
 	const CapexBreakdown capex = calculateCapexWithDiscounts(taskData);
 
-	if (mConfig.capex_limit < capex.total_capex) {
-		auto simulationResult = makeInvalidResult(taskData);
+	// Note: early return for capex limit disabled 13/10/2025
+	// this is being handled by the optimisation service instead
+	//if (mConfig.capex_limit < capex.total_capex) {
+	//	auto simulationResult = makeInvalidResult(taskData);
 
-		// but this invalid result can still have a valid CAPEX
-		simulationResult.metrics.total_capex = capex.total_capex;
-		return simulationResult;
-	}
+	//	// but this invalid result can still have a valid CAPEX
+	//	simulationResult.metrics.total_capex = capex.total_capex;
+	//	return simulationResult;
+	//}
 
 	SimulationResult result{};
 
