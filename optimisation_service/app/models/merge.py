@@ -2,9 +2,10 @@
 
 from pydantic import BaseModel
 
+from app.models.constraints import Constraints
 from app.models.core import Task
 from app.models.database import bundle_id_t, site_id_t
-from app.models.epoch_types.site_range_type import Config
+from app.models.epoch_types.site_range_type import Config, SiteRange
 from app.models.ga_utils import AnnotatedTaskData
 
 
@@ -14,6 +15,8 @@ class SiteInfo(BaseModel):
     site_id: site_id_t
     bundle_id: bundle_id_t
     config: Config
+    constraints: Constraints
+    site_range: SiteRange
     scenarios: list[AnnotatedTaskData]
 
 
