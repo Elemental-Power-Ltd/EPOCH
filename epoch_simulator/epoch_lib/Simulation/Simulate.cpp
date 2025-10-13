@@ -314,12 +314,24 @@ SimulationResult Simulator::makeInvalidResult([[maybe_unused]] const TaskData& t
 	// TODO - apply proper fix for 'nullable' results
 	SimulationResult result{};
 
-	result.metrics.total_capex = std::numeric_limits<float>::max();
-	result.metrics.total_annualised_cost = std::numeric_limits<float>::max();
+	// comparison metrics
+	result.comparison.meter_balance = std::numeric_limits<float>::lowest();
+	result.comparison.operating_balance = std::numeric_limits<float>::lowest();
 	result.comparison.cost_balance = std::numeric_limits<float>::lowest();
+	result.comparison.npv_balance = std::numeric_limits<float>::lowest();
 	result.comparison.payback_horizon_years = std::numeric_limits<float>::max();
+
 	result.comparison.carbon_balance_scope_1 = std::numeric_limits<float>::lowest();
 	result.comparison.carbon_balance_scope_2 = std::numeric_limits<float>::lowest();
+	result.comparison.combined_carbon_balance = std::numeric_limits<float>::lowest();
+	result.comparison.carbon_cost = std::numeric_limits<float>::max();
+
+	// select scenario metrics
+	result.metrics.total_capex = std::numeric_limits<float>::max();
+	result.metrics.total_scope_1_emissions = std::numeric_limits<float>::max();
+	result.metrics.total_scope_2_emissions = std::numeric_limits<float>::max();
+	result.metrics.total_combined_carbon_emissions = std::numeric_limits<float>::max();
+	result.metrics.total_net_present_value = std::numeric_limits<float>::lowest();
 
 	return result;
 }
