@@ -4,12 +4,12 @@ from app.models.metrics import Metric
 
 
 def extend_config_capex_limits_to_constraints(portfolio: list[Site]) -> None:
-    """Convert each sites exisintg config capex limits into optimisation site constraints.
+    """Extend each sites existing config capex limits into optimisation site constraints.
 
     Parameters
     ----------
-    site
-        Site to apply convertion to.
+    portfolio
+        List of sites to extend their config's capex limits to constraints.
 
     Returns
     -------
