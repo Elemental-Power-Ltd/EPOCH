@@ -6,8 +6,9 @@ from httpx import AsyncClient
 
 from app.internal.database.site_data import get_latest_bundle_metadata
 from app.models.core import Site
-from app.models.epoch_types.site_range_type import Config
+from app.models.epoch_types.site_range_type import Config, SiteRange
 from app.models.merge import PortfolioMergeRequest, SiteInfo
+from app.models.metrics import Metric
 from app.models.result import SiteSolution
 from app.routers.merge import merge_site_scenarios_into_portfolios
 
@@ -35,10 +36,18 @@ class TestMergeSiteScenariosIntoPortfoliosAndTransmit:
                 site_id=site_id, start_ts=start_ts, end_ts=end_ts, http_client=http_client
             )
 
-            site = SiteInfo(site_id=site_id, bundle_id=bundle_metadata.bundle_id, config=Config(), scenarios=site_scenario_list)
+            site = SiteInfo(
+                site_id=site_id,
+                bundle_id=bundle_metadata.bundle_id,
+                scenarios=site_scenario_list,
+                constraints={},
+                site_range=SiteRange(config=Config()),
+            )
             sites.append(site)
 
-        data = PortfolioMergeRequest(sites=sites, client_id="demo", task_name="test_merging")
+        data = PortfolioMergeRequest(
+            sites=sites, client_id="demo", task_name="test_merging", objectives=[Metric.npv_balance]
+        )
         response = await client.post("/merge-site-scenarios", json=jsonable_encoder(data))
         assert response.is_success, response.text
 

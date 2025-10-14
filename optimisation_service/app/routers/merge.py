@@ -12,7 +12,7 @@ from app.internal.database.tasks import transmit_task
 from app.internal.portfolio_simulator import PortfolioSimulator
 from app.models.core import Site
 from app.models.database import bundle_id_t, dataset_id_t, site_id_t
-from app.models.epoch_types.site_range_type import Config, SiteRange
+from app.models.epoch_types.site_range_type import Config
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.merge import MergeTask, PortfolioMergeRequest
 from app.models.result import OptimisationResult, PortfolioSolution
@@ -53,15 +53,15 @@ async def merge_site_scenarios_into_portfolios_and_transmit(
     portfolio_solutions = await merge_site_scenarios_into_portfolios(
         site_scenario_lists={site.site_id: site.scenarios for site in merge_request.sites},
         bundle_ids=bundle_ids,
-        configs={site.site_id: site.config for site in merge_request.sites},
+        configs={site.site_id: site.site_range.config for site in merge_request.sites},
         http_client=http_client,
     )
 
     portfolio = [
         Site(
             name=site.site_id,
-            site_range=SiteRange(config=site.config),
-            constraints={},
+            site_range=site.site_range,
+            constraints=site.constraints,
             site_data=SiteMetaData(site_id=site.site_id, bundle_id=bundle_ids[site.site_id]),
         )
         for site in merge_request.sites
@@ -72,7 +72,7 @@ async def merge_site_scenarios_into_portfolios_and_transmit(
         name=merge_request.task_name,
         portfolio_constraints={},
         portfolio=portfolio,
-        objectives=[],
+        objectives=merge_request.objectives,
     )
     await transmit_task(task=task, http_client=http_client)
 
