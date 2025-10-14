@@ -38,7 +38,6 @@ class TestMergeSiteScenariosIntoPortfoliosAndTransmit:
             site = SiteInfo(
                 site_id=site_id,
                 bundle_id=bundle_metadata.bundle_id,
-                config=Config(),
                 scenarios=site_scenario_list,
                 constraints={},
                 site_range=SiteRange(config=Config()),

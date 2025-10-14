@@ -53,7 +53,7 @@ async def merge_site_scenarios_into_portfolios_and_transmit(
     portfolio_solutions = await merge_site_scenarios_into_portfolios(
         site_scenario_lists={site.site_id: site.scenarios for site in merge_request.sites},
         bundle_ids=bundle_ids,
-        configs={site.site_id: site.config for site in merge_request.sites},
+        configs={site.site_id: site.site_range.config for site in merge_request.sites},
         http_client=http_client,
     )
 
@@ -72,7 +72,7 @@ async def merge_site_scenarios_into_portfolios_and_transmit(
         name=merge_request.task_name,
         portfolio_constraints={},
         portfolio=portfolio,
-        objectives=[],
+        objectives=merge_request.objectives,
     )
     await transmit_task(task=task, http_client=http_client)
 

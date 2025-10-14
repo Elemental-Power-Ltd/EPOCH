@@ -5,8 +5,9 @@ from pydantic import BaseModel
 from app.models.constraints import Constraints
 from app.models.core import Task
 from app.models.database import bundle_id_t, site_id_t
-from app.models.epoch_types.site_range_type import Config, SiteRange
+from app.models.epoch_types.site_range_type import SiteRange
 from app.models.ga_utils import AnnotatedTaskData
+from app.models.metrics import Metric
 
 
 class SiteInfo(BaseModel):
@@ -14,7 +15,6 @@ class SiteInfo(BaseModel):
 
     site_id: site_id_t
     bundle_id: bundle_id_t
-    config: Config
     constraints: Constraints
     site_range: SiteRange
     scenarios: list[AnnotatedTaskData]
@@ -26,6 +26,7 @@ class PortfolioMergeRequest(BaseModel):
     sites: list[SiteInfo]
     client_id: str
     task_name: str
+    objectives: list[Metric]
 
 
 class MergeOperator(BaseModel):
