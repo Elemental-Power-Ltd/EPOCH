@@ -330,6 +330,7 @@ SimulationResult Simulator::makeInvalidResult([[maybe_unused]] const TaskData& t
 
 	// select scenario metrics
 	result.metrics.total_capex = std::numeric_limits<float>::max();
+	result.metrics.total_annualised_cost = std::numeric_limits<float>::max();
 	result.metrics.total_scope_1_emissions = std::numeric_limits<float>::max();
 	result.metrics.total_scope_2_emissions = std::numeric_limits<float>::max();
 	result.metrics.total_combined_carbon_emissions = std::numeric_limits<float>::max();
