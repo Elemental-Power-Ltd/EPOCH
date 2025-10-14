@@ -19,6 +19,7 @@ class BundleHints(pydantic.BaseModel):
     """GUI suitable hints and metadata for bundled datasets."""
 
     site_id: site_id_t = site_id_field
+    bundle_id: dataset_id_t = pydantic.Field(description="The ID of this bundle of datasets")
     renewables: list[SolarLocation] | None = pydantic.Field(
         default=None, description="Solar locations associated with each renewables generation."
     )
