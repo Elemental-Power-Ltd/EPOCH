@@ -3,7 +3,7 @@ import {useState} from "react";
 import AccordionSection from "../util/Widgets/AccordionSection";
 import AddSiteModal from "../Components/SearchParameters/AddSite";
 
-import {Button, Box, IconButton, Container} from '@mui/material';
+import {Button, Box, IconButton, Container, TextField} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import {submitOptimisationJob} from "../endpoints";
@@ -35,6 +35,13 @@ function OptimisationContainer() {
 
     const [siteModalOpen, setSiteModalOpen] = useState<boolean>(false);
     const [portfolioRangeErrors, setPortfolioRangeErrors] = useState<Record<string, string[]>>({});
+
+    const [portfolioCapexBudget, setPortfolioCapexBudget] = useState<number | undefined>(undefined);
+
+    const handlePortfolioCapexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setPortfolioCapexBudget(val === '' ? undefined : Number(val));
+    };
 
     /**
      * perform simple checks about the validity of the task configuration
@@ -113,6 +120,9 @@ function OptimisationContainer() {
         }
         const portfolioSiteRanges = result.data!;
 
+        const portfolio_constraints =
+            portfolioCapexBudget ? {"capex": {"max": portfolioCapexBudget}} : {};
+
 
         const payload: SubmitOptimisationRequest = {
             name: state.taskConfig.task_name,
@@ -131,7 +141,7 @@ function OptimisationContainer() {
                     end_ts: state.taskConfig.start_date!.add(8760, "hour").toISOString()
                 }
             })),
-            portfolio_constraints: {},
+            portfolio_constraints: portfolio_constraints,
             client_id: client_id!
         }
 
@@ -179,11 +189,37 @@ function OptimisationContainer() {
         <Container maxWidth={"xl"}>
             <TaskConfigForm/>
 
+            <Container maxWidth="sm">
+                <Box
+                    component="form"
+                    noValidate
+                    autoComplete="off"
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mb: '1em'
+                    }}
+                >
+                    <TextField
+                        label="Portfolio Capex Limit"
+                        type="number"
+                        value={portfolioCapexBudget ?? ''}
+                        onChange={handlePortfolioCapexChange}
+                        fullWidth
+                        variant="outlined"
+                        inputProps={{inputMode: 'numeric', step: 10000}}
+                    />
+                </Box>
+            </Container>
+
             {Object.keys(state.portfolioMap).map((site_id) => renderSiteBuilder(site_id))}
 
             <Button variant="outlined" size="large" onClick={()=>setSiteModalOpen(true)}>
                 Add Site
             </Button>
+
+
             <Button onClick={onRun} disabled={!canRun()} variant="contained" size="large">
                 Run Optimisation
             </Button>
