@@ -63,7 +63,7 @@ const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
                             Carbon Cost
                         </TableCell>
                         <TableCell>
-                            Cost Balance
+                            Operating Balance
                         </TableCell>
                         <TableCell>
                             NPV Balance
@@ -87,7 +87,7 @@ const SiteResultsTable: React.FC<SiteResultsTableProps> = ({ results }) => {
                             <TableCell>{formatCarbon(site_result.metrics.carbon_balance_scope_1)}</TableCell>
                             <TableCell>{formatCarbon(site_result.metrics.carbon_balance_scope_2)}</TableCell>
                             <TableCell>{formatCarbonCost(site_result.metrics.carbon_cost)}</TableCell>
-                            <TableCell>{formatPounds(site_result.metrics.cost_balance)}</TableCell>
+                            <TableCell>{formatPounds(site_result.metrics.operating_balance)}</TableCell>
                             <TableCell>{formatPounds(site_result.metrics.npv_balance)}</TableCell>
                             <TableCell>{formatPounds(site_result.metrics.capex)}</TableCell>
                             <TableCell>{formatYears(site_result.metrics.payback_horizon)}</TableCell>

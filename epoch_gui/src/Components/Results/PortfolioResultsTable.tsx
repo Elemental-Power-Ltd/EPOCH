@@ -93,11 +93,11 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ results, 
                         </TableCell>
                         <TableCell>
                             <TableSortLabel
-                                active={orderBy === 'cost_balance'}
-                                direction={orderBy === 'cost_balance' ? order : 'asc'}
-                                onClick={() => handleRequestSort('cost_balance')}
+                                active={orderBy === 'operating_balance'}
+                                direction={orderBy === 'operating_balance' ? order : 'asc'}
+                                onClick={() => handleRequestSort('operating_balance')}
                             >
-                                Cost Balance
+                                Operating Balance
                             </TableSortLabel>
                         </TableCell>
                         <TableCell>
@@ -148,7 +148,7 @@ const PortfolioResultsTable: React.FC<PortfolioResultsTableProps> = ({ results, 
                             <TableCell>{formatCarbon(portfolio_result.metrics.carbon_balance_scope_1)}</TableCell>
                             <TableCell>{formatCarbon(portfolio_result.metrics.carbon_balance_scope_2)}</TableCell>
                             <TableCell>{formatCarbonCost(portfolio_result.metrics.carbon_cost)}</TableCell>
-                            <TableCell>{formatPounds(portfolio_result.metrics.cost_balance)}</TableCell>
+                            <TableCell>{formatPounds(portfolio_result.metrics.operating_balance)}</TableCell>
                             <TableCell>{formatPounds(portfolio_result.metrics.npv_balance)}</TableCell>
                             <TableCell>{formatPounds(portfolio_result.metrics.capex)}</TableCell>
                             <TableCell>{formatYears(portfolio_result.metrics.payback_horizon)}</TableCell>
