@@ -121,6 +121,18 @@ const TariffsTable: React.FC<{ rows: TariffMetadata[] }> = ({ rows }) => {
 
 const HeatingTable: React.FC<{ rows: HeatingLoadMetadata[] }> = ({ rows }) => {
   if (!rows.length) return <Typography color="text.secondary">No heating load metadata.</Typography>;
+
+  // calculate percentage savings agains the base peak load (row[0])
+  const basePeakLoad = rows[0].peak_hload;
+  const calcSavings = (peak: number | null) => {
+    if (basePeakLoad === null || peak === null || peak === basePeakLoad) {
+      return "-"
+    }
+    const savings = (basePeakLoad - peak) / basePeakLoad * 100
+    return `${savings.toFixed(2)}%`
+  }
+
+
   return (
     <TableContainer component={Paper} variant="outlined">
       <Table size="small">
@@ -130,6 +142,7 @@ const HeatingTable: React.FC<{ rows: HeatingLoadMetadata[] }> = ({ rows }) => {
             <TableCell>Generation Method</TableCell>
             <TableCell>Interventions</TableCell>
             <TableCell align="right">Peak HLoad (kW)</TableCell>
+            <TableCell align="right">Savings</TableCell>
             <TableCell>Created</TableCell>
           </TableRow>
         </TableHead>
@@ -150,6 +163,7 @@ const HeatingTable: React.FC<{ rows: HeatingLoadMetadata[] }> = ({ rows }) => {
                 </Stack>
               </TableCell>
               <TableCell align="right">{fmtNum(h.peak_hload)}</TableCell>
+              <TableCell align="right">{calcSavings(h.peak_hload)}</TableCell>
               <TableCell>{fmtDate(h.created_at)}</TableCell>
             </TableRow>
           ))}
