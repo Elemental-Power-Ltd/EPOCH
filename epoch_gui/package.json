@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:dataviz": "vite --config vite.dataviz.config.ts",
+    "dev:informed": "vite --config vite.informed.config.ts",
     "build": "tsc --noEmitOnError false && vite build",
-    "build:dataviz": "vite build --config vite.dataviz.config.ts --emptyOutDir --manifest",
+    "build:informed": "vite build --config vite.informed.config.ts --emptyOutDir --manifest",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

@@ -198,6 +198,7 @@ export interface HeatingLoadMetadata {
 
 export interface BundleHint {
     site_id: string;
+    bundle_id: string;
     renewables: SolarLocation[] | null;
     tariffs: TariffMetadata[] | null;
     baseline: TaskData | null;
