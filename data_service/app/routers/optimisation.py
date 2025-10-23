@@ -21,13 +21,18 @@ from fastapi.encoders import jsonable_encoder
 from app.dependencies import DatabasePoolDep
 from app.internal.epl_typing import Jsonable
 from app.internal.optimisation import pick_highlighted_results
+from app.internal.optimisation.highlight import get_curated_results
 from app.internal.optimisation.util import capex_breakdown_from_json, capex_breakdown_to_json
 from app.internal.utils.utils import ArgDefaultDict, snake_to_title_case
-from app.models.core import ResultID, TaskID, site_id_t
+from app.internal.utils.uuid import uuid7
+from app.models.core import ResultID, TaskID, dataset_id_t, site_id_t
 from app.models.optimisation import (
+    AddCuratedResultRequest,
+    CuratedResult,
     FixedParam,
     Grade,
     LegacyResultReproConfig,
+    ListCuratedResultsResponse,
     MinMaxParam,
     NewResultReproConfig,
     OptimisationResultEntry,
@@ -649,7 +654,8 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
         for item in res
     ]
 
-    highlighted_results = pick_highlighted_results(portfolio_results)
+    curated_results = await get_curated_results(task_id.task_id, pool)
+    highlighted_results = pick_highlighted_results(portfolio_results, curated_results)
     search_spaces = await get_gui_site_range(task_id=task_id, pool=pool)
 
     for site_id, search_space in search_spaces.items():
@@ -1216,3 +1222,104 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
         return LegacyResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, site_data=site_datas)
 
     return NewResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, bundle_ids=bundle_ids)
+
+
+@router.post("/add-curated-result", tags=["highlight"])
+async def add_curated_result(addRequest: AddCuratedResultRequest, pool: DatabasePoolDep) -> CuratedResult:
+    """
+    Add a portfolio result to the curated results table so that it can be returned by the results highlighting logic.
+
+    Parameters
+    ----------
+    addRequest
+        The task_id, portfolio_id pair and a display name
+    pool
+        The database pool
+
+    Returns
+    -------
+    The curated result that has been added.
+    """
+    result = CuratedResult(
+        highlight_id=uuid7(),
+        task_id=addRequest.task_id,
+        portfolio_id=addRequest.portfolio_id,
+        display_name=addRequest.display_name
+    )
+
+    async with pool.acquire() as conn, conn.transaction():
+        try:
+            await conn.execute(
+                """
+                INSERT INTO optimisation.curated_results (
+                    highlight_id,
+                    task_id,
+                    portfolio_id,
+                    submitted_at,
+                    display_name)
+                    VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5)""",
+                result.highlight_id,
+                result.task_id,
+                result.portfolio_id,
+                result.submitted_at,
+                result.display_name
+            )
+        except asyncpg.exceptions.ForeignKeyViolationError as ex:
+            raise HTTPException(400, "No such task_id / portfolio_id.") from ex
+
+    return result
+
+
+@router.post("/list-curated-results", tags=["highlight"])
+async def list_curated_results(pool: DatabasePoolDep, task_id: dataset_id_t | None = None) -> ListCuratedResultsResponse:
+    """
+    List all curated results, optionally filtered by a task_id.
+
+    Results are sorted by submission time. Most recent first.
+
+    Parameters
+    ----------
+    task_id
+        A task_id to filter the curated results on. Use None to see all curated results.
+    pool
+
+    Returns
+    -------
+    A list of curated results.
+    """
+    results = await get_curated_results(task_id, pool)
+    return ListCuratedResultsResponse(curated_results=results)
+
+
+@router.post("/remove-curated-result", tags=["highlight"])
+async def remove_curated_result(highlight_id: dataset_id_t, pool: DatabasePoolDep) -> None:
+    """
+    Remove a curated result from the curated results table.
+
+    Parameters
+    ----------
+    highlight_id
+        A unique ID to identify this curated result. Retrieve this with /list-curated-results
+    pool
+
+    Returns
+    -------
+    None
+
+    """
+    async with pool.acquire() as conn, conn.transaction():
+        res = await conn.execute(
+            """
+            DELETE FROM optimisation.curated_results
+            WHERE highlight_id = $1
+            """,
+            highlight_id
+        )
+
+        if res == "DELETE 0":
+            raise HTTPException(404, f"No curated result with highlight_id={highlight_id}")

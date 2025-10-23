@@ -1,7 +1,66 @@
 """Logic for highlighting specific results from within the pareto front."""
 
+from app.dependencies import DatabasePoolDep
 from app.models import PortfolioOptimisationResult
-from app.models.optimisation import HighlightedResult, HighlightReason
+from app.models.core import dataset_id_t
+from app.models.optimisation import CuratedResult, HighlightedResult, HighlightReason
+
+
+async def get_curated_results(task_id: dataset_id_t | None, pool: DatabasePoolDep) -> list[CuratedResult]:
+    """
+    Retrieve all curated results, optionally filtered by a task_id.
+
+    Results are sorted by submission time. Most recent first.
+
+    Parameters
+    ----------
+    task_id
+        a task_id to filter by. Use None to retrieve all curated results.
+    pool
+
+    Returns
+    -------
+    A list of curated results.
+    """
+    if task_id is not None:
+        res = await pool.fetch(
+            """
+            SELECT
+                cr.highlight_id,
+                cr.task_id,
+                cr.portfolio_id,
+                cr.submitted_at,
+                cr.display_name
+            FROM optimisation.curated_results AS cr
+            WHERE cr.task_id = $1
+            ORDER BY cr.submitted_at DESC
+            """,
+            task_id
+        )
+    else:
+        res = await pool.fetch(
+            """
+            SELECT
+                cr.highlight_id,
+                cr.task_id,
+                cr.portfolio_id,
+                cr.submitted_at,
+                cr.display_name
+            FROM optimisation.curated_results AS cr
+            ORDER BY cr.submitted_at DESC
+            """
+        )
+
+    return [
+        CuratedResult(
+            highlight_id=cr["highlight_id"],
+            task_id=cr["task_id"],
+            portfolio_id=cr["portfolio_id"],
+            submitted_at=cr["submitted_at"],
+            display_name=cr["display_name"],
+        )
+        for cr in res
+    ]
 
 
 def find_best_payback_horizon(portfolio_results: list[PortfolioOptimisationResult]) -> HighlightedResult | None:
@@ -115,17 +174,22 @@ def find_best_return_on_investment(portfolio_results: list[PortfolioOptimisation
     return None
 
 
-def pick_highlighted_results(portfolio_results: list[PortfolioOptimisationResult]) -> list[HighlightedResult]:
+def pick_highlighted_results(portfolio_results: list[PortfolioOptimisationResult],
+                             curated_results: list[CuratedResult]) -> list[HighlightedResult]:
     """
     Pick highlighted results out of the portfolio results.
 
     This returns a list of portfolio_id, HighlightReason pairs.
     - the same result may be highlighted for multiple different reasons
     - it is possible for no results to be highlighted
+    - if any results have been 'curated' the most recent of those will be returned
 
     Parameters
     ----------
     portfolio_results
+        the full set of portfolio results for this task
+    curated_results
+        any results that have been 'curated' by the user
 
     Returns
     -------
@@ -140,10 +204,23 @@ def pick_highlighted_results(portfolio_results: list[PortfolioOptimisationResult
     if best_carbon_balance := find_best_carbon_savings(portfolio_results):
         results.append(best_carbon_balance)
 
-    if best_cost_balance := find_best_cost_savings(portfolio_results):
-        results.append(best_cost_balance)
-
     if best_roi := find_best_return_on_investment(portfolio_results):
         results.append(best_roi)
+
+    # if there are curated results, return the most recent one
+    # otherwise, highlight the result with the best operating balance
+    if len(curated_results) > 0:
+        # these are sorted by submission time, take the first result
+        curated = curated_results[0]
+
+        results.append(HighlightedResult(
+            portfolio_id=curated.portfolio_id,
+            reason=HighlightReason.UserCurated,
+            display_name=curated.display_name,
+            suggested_metric=None
+        ))
+
+    elif best_cost_balance := find_best_cost_savings(portfolio_results):
+        results.append(best_cost_balance)
 
     return results

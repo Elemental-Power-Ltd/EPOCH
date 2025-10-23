@@ -261,6 +261,7 @@ class HighlightReason(StrEnum):
     BestCarbonBalance = "best_carbon_balance"
     BestPaybackHorizon = "best_payback_horizon"
     BestReturnOnInvestment = "best_return_on_investment"
+    UserCurated = "user_curated"
 
 
 class HighlightedResult(pydantic.BaseModel):
@@ -461,3 +462,25 @@ class OptimisationTaskListEntry(pydantic.BaseModel):
 class OptimisationTaskListResponse(pydantic.BaseModel):
     tasks: list[OptimisationTaskListEntry] = pydantic.Field(description="The requested subset of the tasks.")
     total_results: int = pydantic.Field(description="The total number of results we have.")
+
+
+class AddCuratedResultRequest(pydantic.BaseModel):
+    task_id: dataset_id_t = pydantic.Field(description="The Task ID this result belongs to.")
+    portfolio_id: dataset_id_t = pydantic.Field(description="The portfolio id of the result we want to highlight.")
+    display_name: str = pydantic.Field(description="The display name for the reason this result has been highlighted. "
+                                       + "This should not start with the word 'Best'.", default="Curated")
+
+
+class CuratedResult(pydantic.BaseModel):
+    highlight_id: dataset_id_t = pydantic.Field(description="The unique ID for this highlight.")
+    task_id: dataset_id_t = pydantic.Field(description="The Task ID this result belongs to.")
+    portfolio_id: dataset_id_t = pydantic.Field(description="The portfolio id of the result we want to highlight.")
+    submitted_at: pydantic.AwareDatetime = pydantic.Field(
+        description="The time when this result was marked as a curated result.",
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
+    )
+    display_name: str = pydantic.Field(description="The display name for the reason this result has been highlighted.")
+
+
+class ListCuratedResultsResponse(pydantic.BaseModel):
+    curated_results: list[CuratedResult] = pydantic.Field(description="The curated results.")
