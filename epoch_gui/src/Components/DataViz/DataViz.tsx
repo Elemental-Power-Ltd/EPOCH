@@ -102,7 +102,7 @@ const DataVizContainer: React.FC<DataVizProps> = ({ result, isInformedEmbed = fa
             <IconButton
                 aria-label="Open explainer"
                 onClick={() => setShowExplainer(true)}
-                style={{position: 'absolute', top: 4, right: 4}}
+                style={{position: 'absolute', top: 4, left: 4}}
             >
                 <HelpOutlineIcon/>
             </IconButton>
