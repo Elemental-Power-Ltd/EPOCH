@@ -38,6 +38,7 @@ const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
     const highlighted = optimisationResult?.highlighted_results || [];
     const hints = optimisationResult?.hints || {};
     const searchSpace = optimisationResult?.search_spaces
+    const searchInfo = optimisationResult?.search_info
 
     const sites: Site[] = useEpochStore((state) => state.global.client_sites);
 
@@ -116,6 +117,7 @@ const PortfolioResultsViewer: React.FC<PortfolioResultsViewerProps> = ({
                     }
                     <ExtraTaskInfo
                         searchSpace={searchSpace}
+                        searchInfo={searchInfo}
                         hints={hints}
                         sites={sites}
                     />

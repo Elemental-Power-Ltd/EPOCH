@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import {SearchSpacesViewer} from "../SearchSpaceViewer.tsx";
 import {HintViewer} from "../../Bundles/HintViewer.tsx";
-import {BundleHint, SearchSpaces} from "../../../Models/Endpoints.ts";
+import {BundleHint, SearchInfo, SearchSpaces} from "../../../Models/Endpoints.ts";
 import {Site} from "../../../State/types";
 
 
@@ -31,8 +31,9 @@ function TabPanel({ children, value, index }: TabPanelProps) {
     );
 }
 
-export const ExtraTaskInfo = ({searchSpace, hints, sites}: {
+export const ExtraTaskInfo = ({searchSpace, searchInfo, hints, sites}: {
     searchSpace?: SearchSpaces,
+    searchInfo?: SearchInfo,
     hints: Record<string, BundleHint>,
     sites: Site[]
 }) => {
@@ -63,8 +64,8 @@ export const ExtraTaskInfo = ({searchSpace, hints, sites}: {
 
                     <TabPanel value={tab} index={0}>
                         <Container maxWidth="xl">
-                            {searchSpace && (
-                                <SearchSpacesViewer data={searchSpace} sites={sites}/>
+                            {searchSpace && searchInfo && (
+                                <SearchSpacesViewer data={searchSpace} info={searchInfo} sites={sites}/>
                             )}
                         </Container>
                     </TabPanel>

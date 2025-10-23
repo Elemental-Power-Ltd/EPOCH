@@ -25,7 +25,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 
-import {MinMaxParam, ValuesParam, FixedParam, Param, GuiParamDict, SearchSpaces} from "../../Models/Endpoints.ts";
+import {MinMaxParam, ValuesParam, FixedParam, Param, GuiParamDict, SearchInfo, SearchSpaces} from "../../Models/Endpoints.ts";
 import {Site} from "../../State/types.ts";
 import {getComponentInfo} from "../ComponentBuilder/ComponentDisplayInfo.tsx";
 import {ComponentType} from "../../Models/Core/ComponentBuilder.ts";
@@ -185,11 +185,13 @@ function ComponentBlock({
 // ---- Main viewer ----
 export function SearchSpacesViewer({
   data,
+  info,
   sites,
   initiallyExpandAll = false,
   showJSONLink = true,
 }: {
   data: SearchSpaces;
+  info: SearchInfo;
   sites: Site[];
   initiallyExpandAll?: boolean;
   showJSONLink?: boolean;
@@ -216,7 +218,7 @@ export function SearchSpacesViewer({
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-        <Typography variant="h6">SearchSpaces</Typography>
+        <Typography variant="h6">Search Spaces</Typography>
         {showJSONLink && (
           <Stack direction="row" spacing={1} alignItems="center">
             <FormGroup>
@@ -241,6 +243,8 @@ export function SearchSpacesViewer({
           </Stack>
         )}
       </Stack>
+      <Typography variant="subtitle1">{info.total_options_considered.toLocaleString()} combinations</Typography>
+
 
       {siteEntries.length === 0 && (
         <Paper variant="outlined" sx={{ p: 2 }}>
@@ -256,6 +260,7 @@ export function SearchSpacesViewer({
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   Site: <Box component="span" sx={mono}>{getSiteName(siteId)}</Box>
                 </Typography>
+                <Typography variant="subtitle1">{info.site_options_considered[siteId].toLocaleString()} combinations</Typography>
               </Stack>
             </AccordionSummary>
             <AccordionDetails>

@@ -141,11 +141,17 @@ export type GuiParamDict = Record<string, Param>;
 
 export type SearchSpaces = Record<SiteId, Record<Component, GuiParamDict | GuiParamDict[]>>;
 
+export interface SearchInfo {
+    total_options_considered: number;
+    site_options_considered: Record<SiteId, number>;
+}
+
 export interface OptimisationResultsResponse {
     portfolio_results: PortfolioOptimisationResult[];
     highlighted_results: HighlightedResult[];
     hints: Record<string, BundleHint>;
     search_spaces: SearchSpaces;
+    search_info: SearchInfo;
 }
 
 
