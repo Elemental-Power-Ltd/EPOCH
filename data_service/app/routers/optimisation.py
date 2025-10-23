@@ -42,6 +42,7 @@ from app.models.optimisation import (
     OptimisationTaskListResponse,
     Param,
     PortfolioOptimisationResult,
+    SearchInfo,
     SimulationMetrics,
     SiteOptimisationResult,
     TaskConfig,
@@ -215,6 +216,7 @@ def db_to_gui_site_range(db_site_range: SiteRange) -> dict[component_t, gui_para
         return new_dict
 
     gui_site_range: dict[component_t, gui_param_dict | list[gui_param_dict]] = {}
+
     for component, value in db_site_range.items():
         if value is None:
             continue
@@ -233,6 +235,7 @@ def db_to_gui_site_range(db_site_range: SiteRange) -> dict[component_t, gui_para
                 gui_site_range[component] = parsed
         else:
             logger.warning(f"Got unprocessable site range component: {component}: {value}")
+
     return gui_site_range
 
 
@@ -275,7 +278,7 @@ async def get_gui_site_range(task_id: TaskID, pool: DatabasePoolDep) -> dict[sit
     )
     ranges = {}
     for site_id, site_range in rows:
-        ranges[site_id] = db_to_gui_site_range(json.loads(site_range))
+        ranges[str(site_id)] = db_to_gui_site_range(json.loads(site_range))
     return ranges
 
 
@@ -358,6 +361,63 @@ def patch_hints_into_site_range(site_range: site_search_space_dict, hints: Bundl
             logger.exception(f"Got a {type(ex).__name__} while patching grid hints")
             pass
     return site_range
+
+
+def get_search_info(gui_search_range: dict[site_id_t, site_search_space_dict]) -> SearchInfo:
+    """
+    Get supporting information about the optimisation job we have run.
+
+    Parameters
+    ----------
+    gui_search_range
+        the version of the SiteRange designed for GUI consumption.
+
+    Returns
+    -------
+    A SearchInfo model containing total search space counts.
+    """
+    def count_total_params(site_range: dict[component_t, gui_param_dict | list[gui_param_dict]]) -> int:
+        """
+        Count the total size of the search space that we've considered.
+
+        This recurses into each component and splits out the lists, minmax params to get the total count.
+        This may be extremely large!
+
+        Parameters
+        ----------
+        site_range
+            Populated site range in the GUI form (do this at the end of the function)
+
+        Returns
+        -------
+        int
+            Number of entries in the search space.
+        """
+        total_params = 1
+        for param in site_range.values():
+            if isinstance(param, list):
+                for subparam in param:
+                    for subparam_val in subparam.values():
+                        if isinstance(subparam_val.considered, list):
+                            total_params *= len(subparam_val.considered)
+                        elif isinstance(subparam_val.considered, MinMaxParam):
+                            total_params *= subparam_val.considered.count
+            else:
+                for subparam_val in param.values():
+                    if isinstance(subparam_val.considered, list):
+                        total_params *= len(subparam_val.considered)
+                    elif isinstance(subparam_val.considered, MinMaxParam):
+                        total_params *= subparam_val.considered.count
+        return total_params
+
+    portfolio_total = 1
+    search_sizes: dict[site_id_t, int] = {}
+    for site in gui_search_range:
+        site_total = count_total_params(gui_search_range[site])
+        search_sizes[site] = site_total
+        portfolio_total *= site_total
+
+    return SearchInfo(total_options_considered=portfolio_total, site_options_considered=search_sizes)
 
 
 @router.post("/get-optimisation-results")
@@ -657,6 +717,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
     curated_results = await get_curated_results(task_id.task_id, pool)
     highlighted_results = pick_highlighted_results(portfolio_results, curated_results)
     search_spaces = await get_gui_site_range(task_id=task_id, pool=pool)
+    search_info = get_search_info(search_spaces)
 
     for site_id, search_space in search_spaces.items():
         if site_id not in bundle_hints:
@@ -669,6 +730,7 @@ async def get_optimisation_results(task_id: TaskID, pool: DatabasePoolDep) -> Op
         highlighted_results=highlighted_results,
         hints=bundle_hints,
         search_spaces=search_spaces,
+        search_info=search_info,
     )
 
 

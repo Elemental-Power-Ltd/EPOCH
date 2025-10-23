@@ -277,6 +277,11 @@ class HighlightedResult(pydantic.BaseModel):
     )
 
 
+class SearchInfo(pydantic.BaseModel):
+    total_options_considered: int = pydantic.Field(description="The total number of permutations for this portfolio.")
+    site_options_considered: dict[site_id_t, int] = pydantic.Field(description="The number of permutations for each site.")
+
+
 class OptimisationResultsResponse(pydantic.BaseModel):
     """Response containing all saved results for a given task_id and some highlighted results."""
 
@@ -296,6 +301,7 @@ class OptimisationResultsResponse(pydantic.BaseModel):
         description="Information about the components we've searched over to give you this result."
         " For each site, shows you the components and the parameters for each component we checked.",
     )
+    search_info: SearchInfo = pydantic.Field(description="Supporting information about the optimisation.")
 
 
 class TaskResult(pydantic.BaseModel):
