@@ -53,6 +53,7 @@ const RenewablesTable: React.FC<{ rows: SolarLocation[] }> = ({ rows }) => {
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>#</TableCell>
             <TableCell>Renewables ID</TableCell>
             <TableCell>Name</TableCell>
             <TableCell align="right">Azimuth (°)</TableCell>
@@ -62,8 +63,9 @@ const RenewablesTable: React.FC<{ rows: SolarLocation[] }> = ({ rows }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((r) => (
+          {rows.map((r, i) => (
             <TableRow key={r.renewables_location_id ?? `${r.site_id}-${r.name ?? "unnamed"}`}>
+              <TableCell>{i}</TableCell>
               <TableCell><CellMono>{r.renewables_location_id ?? "—"}</CellMono></TableCell>
               <TableCell>{r.name ?? "—"}</TableCell>
               <TableCell align="right">{fmtNum(r.azimuth)}</TableCell>
@@ -87,6 +89,7 @@ const TariffsTable: React.FC<{ rows: TariffMetadata[] }> = ({ rows }) => {
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>#</TableCell>
             <TableCell>Dataset ID</TableCell>
             <TableCell>Provider</TableCell>
             <TableCell>Product</TableCell>
@@ -100,8 +103,9 @@ const TariffsTable: React.FC<{ rows: TariffMetadata[] }> = ({ rows }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((t) => (
+          {rows.map((t, i) => (
             <TableRow key={`${t.dataset_id}-${t.tariff_name}`}>
+              <TableCell>{i}</TableCell>
               <TableCell><CellMono>{t.dataset_id}</CellMono></TableCell>
               <TableCell><Chip size="small" label={t.provider} /></TableCell>
               <TableCell>{t.product_name}</TableCell>
@@ -139,6 +143,7 @@ const HeatingTable: React.FC<{ rows: HeatingLoadMetadata[] }> = ({ rows }) => {
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>#</TableCell>
             <TableCell>Dataset ID</TableCell>
             <TableCell>Generation Method</TableCell>
             <TableCell>Interventions</TableCell>
@@ -148,8 +153,9 @@ const HeatingTable: React.FC<{ rows: HeatingLoadMetadata[] }> = ({ rows }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((h) => (
+          {rows.map((h, i) => (
             <TableRow key={`${h.dataset_id}-${h.created_at}`}>
+              <TableCell>{i}</TableCell>
               <TableCell><CellMono>{h.dataset_id}</CellMono></TableCell>
               <TableCell>
                 <Chip size="small" label={h.generation_method} variant="outlined" />
