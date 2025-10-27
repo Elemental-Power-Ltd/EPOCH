@@ -22,6 +22,7 @@ import {
 } from './TaskData';
 
 import {formatField} from "../../util/displayFunctions.ts";
+import JsonViewer from "../../util/Widgets/JsonViewer.tsx";
 
 // Human-readable names for each "top-level" component
 const componentNames: Record<keyof TaskData, string> = {
@@ -227,9 +228,12 @@ export const TaskDataViewer: React.FC<{ data: TaskData }> = ({ data }) => {
   return (
     <Card elevation={3} sx={{ margin: 2 }}>
       <CardContent>
-        <Typography variant="h5" gutterBottom>
-          Components
-        </Typography>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: '0.5em'}}>
+          <Typography variant="h5" gutterBottom sx={{flex: 1}}>
+            Components
+          </Typography>
+          <JsonViewer data={data} name={"Components"}/>
+        </Box>
 
         {/*
           Horizontal layout for subcomponent cards,

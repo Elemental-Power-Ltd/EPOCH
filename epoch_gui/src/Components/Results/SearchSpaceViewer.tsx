@@ -5,10 +5,6 @@ import {
   AccordionDetails,
   Box,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  IconButton,
   Stack,
   Table,
   TableBody,
@@ -22,13 +18,12 @@ import {
   FormGroup, FormControlLabel,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 
 import {MinMaxParam, ValuesParam, FixedParam, Param, GuiParamDict, SearchInfo, SearchSpaces} from "../../Models/Endpoints.ts";
 import {Site} from "../../State/types.ts";
 import {getComponentInfo} from "../ComponentBuilder/ComponentDisplayInfo.tsx";
 import {ComponentType} from "../../Models/Core/ComponentBuilder.ts";
+import JsonViewer from "../../util/Widgets/JsonViewer.tsx";
 
 // ---- Type guards ----
 function isMinMaxParam(v: unknown): v is MinMaxParam<number> {
@@ -196,16 +191,6 @@ export function SearchSpacesViewer({
   initiallyExpandAll?: boolean;
   showJSONLink?: boolean;
 }) {
-  const [jsonOpen, setJsonOpen] = React.useState(false);
-
-  const handleCopy = React.useCallback(() => {
-    try {
-      navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    } catch {
-      // no-op
-    }
-  }, [data]);
-
   const siteEntries = React.useMemo(() => Object.entries(data), [data]);
 
   const [showFixed, setShowFixed] = React.useState(true);
@@ -232,14 +217,7 @@ export function SearchSpacesViewer({
                   label="Show Fixed Values"
               />
             </FormGroup>
-            <IconButton size="small" onClick={() => setJsonOpen(true)} aria-label="View raw JSON">
-              <VisibilityIcon fontSize="small" />
-            </IconButton>
-            <Tooltip title="Copy JSON">
-              <IconButton size="small" onClick={handleCopy} aria-label="Copy JSON">
-                <ContentCopyIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <JsonViewer data={data} name={"Search Space"}/>
           </Stack>
         )}
       </Stack>
@@ -282,20 +260,6 @@ export function SearchSpacesViewer({
           </Accordion>
         ))}
       </Stack>
-
-      <Dialog open={jsonOpen} onClose={() => setJsonOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>
-          Raw JSON
-          <Typography variant="caption" component="div" color="text.secondary">
-            This reflects the `SearchSpaces` object passed to the viewer.
-          </Typography>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Box component="pre" sx={{ ...mono, m: 0, fontSize: 13 }}>
-            {JSON.stringify(data, null, 2)}
-          </Box>
-        </DialogContent>
-      </Dialog>
     </Box>
   );
 }

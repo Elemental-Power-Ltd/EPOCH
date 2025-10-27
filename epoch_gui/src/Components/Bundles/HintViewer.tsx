@@ -19,6 +19,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import {BundleHint, HeatingLoadMetadata, SolarLocation, TariffMetadata} from "../../Models/Endpoints.ts";
+import JsonViewer from "../../util/Widgets/JsonViewer.tsx";
 
 const fmtDate = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString() : "—";
@@ -177,8 +178,12 @@ export const HintViewer: React.FC<{ hints: BundleHint, siteName?: string }> = ({
   return (
     <Stack spacing={2} sx={{mb: "1em"}}>
       <Paper variant="outlined">
-        <Box p={2}>
-          <Typography variant="h5" gutterBottom>{siteName ?? "Bundle Hints"}</Typography>
+        <Box p={2} sx={{display: 'flex', alignItems: 'center', gap: 1}}>
+          <Typography variant="h5" sx={{'flex': 1}} gutterBottom>
+            {siteName ?? "Bundle Hints"}
+          </Typography>
+          <JsonViewer data={hints} name={"Site Hints"}/>
+
         </Box>
         <Divider />
 

@@ -6,6 +6,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ForestIcon from "@mui/icons-material/Forest";
 import SavingsIcon from "@mui/icons-material/Savings";
 import StarsIcon from '@mui/icons-material/Stars';
+import JsonViewer from "../../util/Widgets/JsonViewer.tsx";
 
 
 
@@ -45,7 +46,11 @@ export const PortfolioSummaryCard: React.FC<{
                 boxShadow: selected ? 4 : 1,
             }}
         >
-            <CardContent>
+            <CardContent sx={{position: 'relative'}}>
+                <Box sx={{position: 'absolute', top: '0.5em', right: '0.5em'}}>
+                    <JsonViewer data={result.metrics} name={"Portfolio Result"}/>
+                </Box>
+
                 <Box display="flex" flexDirection="column" alignItems="center" mb={2}>
                     <Box fontSize={48}>{icon}</Box>
                     <Typography variant="body2">Best</Typography>

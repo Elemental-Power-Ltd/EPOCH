@@ -18,6 +18,7 @@ import { TaskDataViewer } from '../TaskDataViewer/TaskDataViewer.tsx';
 import { MetricKey } from '../../util/MetricDefinitions.ts';
 import {Metric} from "./Metric.tsx";
 import {CostInfoTree} from "./CostInfoTree";
+import JsonViewer from "../../util/Widgets/JsonViewer.tsx";
 
 interface SimulationSummaryProps {
   result: SimulationResult | null;
@@ -213,9 +214,12 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
   return (
     <Card elevation={3} sx={{ margin: 2 }}>
       <CardContent>
-        <Typography variant="h5" gutterBottom>
-          {'Result Summary'}
-        </Typography>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: '0.5em'}}>
+          <Typography variant="h5" gutterBottom sx={{flex: 1}}>
+            {'Result Summary'}
+          </Typography>
+          <JsonViewer data={result?.metrics} name={"Site Result"}/>
+        </Box>
 
         <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
           <Tab label={"Overview"}/>
