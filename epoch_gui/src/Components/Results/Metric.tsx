@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { Box, Typography } from "@mui/material";
+import { Box, Tooltip, Typography } from "@mui/material";
 
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import BoltIcon from '@mui/icons-material/Bolt';
@@ -57,22 +57,25 @@ const getIcon = (def: MetricDefinition, rawValue?: any): ReactElement => {
     }
 }
 
-export const Metric: React.FC<MetricProps> = ({ name, metrics }) => {
-  const def = metricDefs[name];
-  const raw  = metrics[name];
-  const value = def.format(raw);
+export const Metric: React.FC<MetricProps> = ({name, metrics}) => {
+    const def = metricDefs[name];
+    const raw = metrics[name];
+    const value = def.format(raw);
 
-  return (
-      <Box display="flex" alignItems="center" justifyContent="center">
-        <Box>{getIcon(def, raw)}</Box>
-        <Box>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            {def.label}
-          </Typography>
-          <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
-            {value}
-          </Typography>
+    return (
+        <Box display="flex" alignItems="center" justifyContent="center">
+            <Box>{getIcon(def, raw)}</Box>
+            <Box>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                    {def.label}
+                </Typography>
+                <Tooltip title={`${raw}`}>
+                    <Typography variant="h6" color="primary" sx={{fontWeight: 'bold'}}>
+                        {value}
+                    </Typography>
+                </Tooltip>
+
+            </Box>
         </Box>
-      </Box>
-  );
+    );
 };
