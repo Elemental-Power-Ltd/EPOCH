@@ -15,7 +15,8 @@ protected:
 TEST_F(TaskDataTest, CalculateEmptyCapex) {
     // an empty TaskData should have 0 CAPEX
     TaskData emptyTask = {};
-    auto breakdown = calculate_capex(siteData, emptyTask);
+    CapexModel model = make_default_capex_prices();
+    auto breakdown = calculate_capex(siteData, emptyTask, model);
     EXPECT_EQ(breakdown.total_capex, 0.0f);
 }
 

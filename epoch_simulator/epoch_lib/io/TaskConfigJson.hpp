@@ -2,7 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../Simulation/TaskComponents.hpp"
+#include "../Simulation/TaskConfig.hpp"
 
 using json = nlohmann::json;
 

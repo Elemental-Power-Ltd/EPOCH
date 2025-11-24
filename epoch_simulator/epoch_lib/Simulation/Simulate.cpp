@@ -43,7 +43,7 @@ Simulator::Simulator(SiteData siteData, TaskConfig config):
 
 	auto baselineReportData = simulateTimesteps(mSiteData.baseline);
 	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, mSiteData.baseline);
-	mBaselineUsage = calculateBaselineUsage(mSiteData, baselineCostVectors);
+	mBaselineUsage = calculateBaselineUsage(mSiteData, mConfig, baselineCostVectors);
 
 	mBaselineMetrics = calculateMetrics(mSiteData.baseline, baselineReportData, mBaselineUsage);
 }

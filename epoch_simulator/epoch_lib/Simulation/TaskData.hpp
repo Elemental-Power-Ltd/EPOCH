@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include "TaskComponents.hpp"
+#include "TaskConfig.hpp"
 
 struct TaskData {
 	std::optional<Building> building;

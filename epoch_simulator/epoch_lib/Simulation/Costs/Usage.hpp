@@ -32,6 +32,6 @@ struct UsageData {
 
 };
 
-UsageData calculateBaselineUsage(const SiteData& siteData, const CostVectors& costVectors);
+UsageData calculateBaselineUsage(const SiteData& siteData, const TaskConfig& config, const CostVectors& costVectors);
 UsageData calculateScenarioUsage(const SiteData& siteData, const TaskConfig& config, const TaskData& scenario, const CostVectors& costVectors);
 

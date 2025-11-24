@@ -60,7 +60,7 @@ add_library(Epoch_lib STATIC
 	"Simulation/Costs/NetPresentValue.cpp"
 	"Simulation/Costs/Usage.cpp"
 	"Simulation/Costs/Usage.hpp"
- "Portfolio/Portfolio.cpp")
+ "Portfolio/Portfolio.cpp" "io/CostModelJson.cpp")
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)

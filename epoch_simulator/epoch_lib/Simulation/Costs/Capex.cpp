@@ -1,17 +1,17 @@
 #include "Capex.hpp"
 
 
-static CapexPrices capex_prices{};
-
 CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const TaskConfig& config, const TaskData& scenario) {
 
+	const auto& capex_model = config.capex_model;
+
 	// first calculate the unadjusted capex of the scenario
-	auto capex_breakdown = calculate_capex(siteData, scenario);
+	auto capex_breakdown = calculate_capex(siteData, scenario, capex_model);
 
 	if (config.use_boiler_upgrade_scheme) {
 		if (is_elegible_for_boiler_upgrade_scheme(siteData.baseline, scenario)) {
 			// discount the lower amount of the total heatpump cost and the maximum funding
-			capex_breakdown.boiler_upgrade_scheme_funding = std::min(capex_prices.max_boiler_upgrade_scheme_funding, capex_breakdown.heatpump_capex);
+			capex_breakdown.boiler_upgrade_scheme_funding = std::min(capex_model.max_boiler_upgrade_scheme_funding, capex_breakdown.heatpump_capex);
 			capex_breakdown.total_capex -= capex_breakdown.boiler_upgrade_scheme_funding;
 		}
 	}
@@ -26,7 +26,7 @@ CapexBreakdown calculate_capex_with_discounts(const SiteData& siteData, const Ta
 }
 
 
-CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskData) {
+CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskData, const CapexModel& capexModel) {
 	CapexBreakdown capex_breakdown{};
 
 	if (taskData.building && !taskData.building->incumbent) {
@@ -43,37 +43,37 @@ CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskDat
 	}
 
 	if (taskData.domestic_hot_water && !taskData.domestic_hot_water->incumbent) {
-		capex_breakdown.dhw_capex = calculate_dhw_cost(taskData.domestic_hot_water.value());
+		capex_breakdown.dhw_capex = calculate_dhw_cost(taskData.domestic_hot_water.value(), capexModel);
 	}
 
 	if (taskData.electric_vehicles && !taskData.electric_vehicles->incumbent) {
-		EVCapex ev_capex = calculate_ev_cost(taskData.electric_vehicles.value());
+		EVCapex ev_capex = calculate_ev_cost(taskData.electric_vehicles.value(), capexModel);
 		capex_breakdown.ev_charger_cost = ev_capex.charger_cost;
 		capex_breakdown.ev_charger_install = ev_capex.charger_install;
 	}
 
 	if (taskData.energy_storage_system && !taskData.energy_storage_system->incumbent) {
-		ESSCapex ess_capex = calculate_ess_cost(taskData.energy_storage_system.value());
+		ESSCapex ess_capex = calculate_ess_cost(taskData.energy_storage_system.value(), capexModel);
 		capex_breakdown.ess_enclosure_capex = ess_capex.enclosure_capex;
 		capex_breakdown.ess_enclosure_disposal = ess_capex.enclosure_disposal;
 		capex_breakdown.ess_pcs_capex = ess_capex.pcs_capex;
 	}
 
 	if (taskData.gas_heater && !taskData.gas_heater->incumbent) {
-		capex_breakdown.gas_heater_capex = calculate_gas_heater_cost(taskData.gas_heater.value());
+		capex_breakdown.gas_heater_capex = calculate_gas_heater_cost(taskData.gas_heater.value(), capexModel);
 	}
 
 	if (taskData.grid && !taskData.grid->incumbent) {
-		capex_breakdown.grid_capex = calculate_grid_cost(taskData.grid.value());
+		capex_breakdown.grid_capex = calculate_grid_cost(taskData.grid.value(), capexModel);
 	}
 
 	if (taskData.heat_pump && !taskData.heat_pump->incumbent) {
-		capex_breakdown.heatpump_capex = calculate_heatpump_cost(taskData.heat_pump.value());
+		capex_breakdown.heatpump_capex = calculate_heatpump_cost(taskData.heat_pump.value(), capexModel);
 	}
 
 	for (const auto& panel : taskData.solar_panels) {
 		if (!panel.incumbent) {
-			SolarCapex solar_capex = calculate_solar_cost(panel);
+			SolarCapex solar_capex = calculate_solar_cost(panel, capexModel);
 			capex_breakdown.pv_panel_capex += solar_capex.panel_capex;
 			capex_breakdown.pv_ground_capex += solar_capex.ground_capex;
 			capex_breakdown.pv_roof_capex += solar_capex.roof_capex;
@@ -81,8 +81,6 @@ CapexBreakdown calculate_capex(const SiteData& siteData, const TaskData& taskDat
 		}
 	}
 
-	// TODO JW
-	//  refactor has currently removed the project_plan_develop_EPC and project_plan_develop_Grid scalars
 	capex_breakdown.total_capex = (
 		capex_breakdown.building_fabric_capex 
 
@@ -120,70 +118,70 @@ float calculate_fabric_cost(const SiteData& siteData, const Building& building) 
 	}
 }
 
-float calculate_dhw_cost(const DomesticHotWater& dhw) {
-	return calculate_three_tier_costs(capex_prices.dhw_prices, dhw.cylinder_volume);
+float calculate_dhw_cost(const DomesticHotWater& dhw, const CapexModel& model) {
+	return calculate_piecewise_costs(model.dhw_prices, dhw.cylinder_volume);
 }
 
-EVCapex calculate_ev_cost(const ElectricVehicles& ev) {
+EVCapex calculate_ev_cost(const ElectricVehicles& ev, const CapexModel& model) {
 	EVCapex ev_capex{};
 
 	ev_capex.charger_cost = (
-		ev.small_chargers * capex_prices.ev_prices.small_cost
-		+ ev.fast_chargers * capex_prices.ev_prices.fast_cost
-		+ ev.rapid_chargers * capex_prices.ev_prices.rapid_cost
-		+ ev.ultra_chargers * capex_prices.ev_prices.ultra_cost
+		ev.small_chargers * model.ev_prices.small_cost
+		+ ev.fast_chargers * model.ev_prices.fast_cost
+		+ ev.rapid_chargers * model.ev_prices.rapid_cost
+		+ ev.ultra_chargers * model.ev_prices.ultra_cost
 	);
 
 	ev_capex.charger_install = (
-		ev.small_chargers * capex_prices.ev_prices.small_install
-		+ ev.fast_chargers * capex_prices.ev_prices.fast_install
-		+ ev.rapid_chargers * capex_prices.ev_prices.rapid_install
-		+ ev.ultra_chargers * capex_prices.ev_prices.ultra_install
+		ev.small_chargers * model.ev_prices.small_install
+		+ ev.fast_chargers * model.ev_prices.fast_install
+		+ ev.rapid_chargers * model.ev_prices.rapid_install
+		+ ev.ultra_chargers * model.ev_prices.ultra_install
 	);
 
 	return ev_capex;
 }
 
-ESSCapex calculate_ess_cost(const EnergyStorageSystem& ess) {
+ESSCapex calculate_ess_cost(const EnergyStorageSystem& ess, const CapexModel& model) {
 	ESSCapex ess_capex{};
 	float ess_power = std::max(ess.charge_power, ess.discharge_power);
 
-	ess_capex.pcs_capex = calculate_three_tier_costs(capex_prices.ess_pcs_prices, ess_power);
-	ess_capex.enclosure_capex = calculate_three_tier_costs(capex_prices.ess_enclosure_prices, ess.capacity);
-	ess_capex.enclosure_disposal = calculate_three_tier_costs(capex_prices.ess_enclosure_disposal_prices, ess.capacity);
+	ess_capex.pcs_capex = calculate_piecewise_costs(model.ess_pcs_prices, ess_power);
+	ess_capex.enclosure_capex = calculate_piecewise_costs(model.ess_enclosure_prices, ess.capacity);
+	ess_capex.enclosure_disposal = calculate_piecewise_costs(model.ess_enclosure_disposal_prices, ess.capacity);
 	return ess_capex;
 }
 
-float calculate_gas_heater_cost(const GasCHData& gas) {
-	return calculate_three_tier_costs(capex_prices.gas_heater_prices, gas.maximum_output);
+float calculate_gas_heater_cost(const GasCHData& gas, const CapexModel& model) {
+	return calculate_piecewise_costs(model.gas_heater_prices, gas.maximum_output);
 }
 
-float calculate_grid_cost([[maybe_unused]] const GridData& grid) {
+float calculate_grid_cost([[maybe_unused]] const GridData& grid, const CapexModel& model) {
 
 	// set Grid upgrade to zero for the moment
 	const float grid_upgrade_kw = 0.0f;
-	return calculate_three_tier_costs(capex_prices.grid_prices, grid_upgrade_kw);
+	return calculate_piecewise_costs(model.grid_prices, grid_upgrade_kw);
 }
 
-float calculate_heatpump_cost(const HeatPumpData& hp) {
-	return calculate_three_tier_costs(capex_prices.heatpump_prices, hp.heat_power);
+float calculate_heatpump_cost(const HeatPumpData& hp, const CapexModel& model) {
+	return calculate_piecewise_costs(model.heatpump_prices, hp.heat_power);
 }
 
-SolarCapex calculate_solar_cost(const SolarData& panel) {
+SolarCapex calculate_solar_cost(const SolarData& panel, const CapexModel& model) {
 	SolarCapex solar_capex{};
 
 	// For now, it is assumed that all ALCHEMAI solar is roof mounted
 	bool is_roof_mounted = true;
 
 	if (is_roof_mounted) {
-		solar_capex.roof_capex = calculate_three_tier_costs(capex_prices.pv_roof_prices, panel.yield_scalar);
+		solar_capex.roof_capex = calculate_piecewise_costs(model.pv_roof_prices, panel.yield_scalar);
 	}
 	else {
-		solar_capex.ground_capex = calculate_three_tier_costs(capex_prices.pv_ground_prices, panel.yield_scalar);
+		solar_capex.ground_capex = calculate_piecewise_costs(model.pv_ground_prices, panel.yield_scalar);
 	}
 
-	solar_capex.panel_capex = calculate_three_tier_costs(capex_prices.pv_panel_prices, panel.yield_scalar);
-	solar_capex.BoP_capex = calculate_three_tier_costs(capex_prices.pv_BoP_prices, panel.yield_scalar);
+	solar_capex.panel_capex = calculate_piecewise_costs(model.pv_panel_prices, panel.yield_scalar);
+	solar_capex.BoP_capex = calculate_piecewise_costs(model.pv_BoP_prices, panel.yield_scalar);
 
 	return solar_capex;
 }

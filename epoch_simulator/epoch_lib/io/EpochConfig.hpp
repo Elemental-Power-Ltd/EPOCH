@@ -5,7 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "../Exceptions.hpp"
-#include "../Simulation/TaskComponents.hpp"
+#include "../Simulation/TaskConfig.hpp"
 
 struct OptimiserConfig {
 	int leagueTableCapacity;

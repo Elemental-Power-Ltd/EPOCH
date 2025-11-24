@@ -142,16 +142,6 @@ struct Renewables {
     bool operator==(const Renewables&) const = default;
 };
 
-struct TaskConfig {
-    float capex_limit = 2500000.0f;
-    bool use_boiler_upgrade_scheme = false;
-    float general_grant_funding = 0.0f;
-    int npv_time_horizon = 10;
-    float npv_discount_factor = 0.0f;
-
-    bool operator==(const TaskConfig&) const = default;
-};
-
 
 template<>
 struct std::hash<Building>

@@ -1,14 +1,6 @@
 #pragma once
 
-struct ThreeTierCostData {
-	float fixed;
-	float small_threshold;
-	float mid_threshold;
-
-	float small_cost;
-	float mid_cost;
-	float large_cost;
-};
+#include <vector>
 
 struct EVChargerCosts {
 	float small_cost = 1200.0f;
@@ -23,49 +15,65 @@ struct EVChargerCosts {
 };
 
 
-// The Capex price data is defined as a hardcoded struct for now
-// TODO - this should ultimately be read from JSON
+struct Segment {
+	float upper;
+	float rate;
+};
 
-struct CapexPrices {
+struct PiecewiseCostModel {
+	float fixed_cost;
+	std::vector<Segment> segments;
+	float final_rate;
+
+	bool operator==(const PiecewiseCostModel&) const = default;
+};
+
+
+struct CapexModel {
 	// dhw costs are in £ / litre
-	ThreeTierCostData dhw_prices = ThreeTierCostData(1000.0f, 300.0f, 800.0f, 6.5f, 5.0f, 3.0f);
-
+	PiecewiseCostModel dhw_prices;
 	//EV Charger costs are in £ / charger (of each of the four types)
 	EVChargerCosts ev_prices = EVChargerCosts();
 
 	// Gas Boiler costs are in £ / kW
-	ThreeTierCostData gas_heater_prices = ThreeTierCostData(1000.0f, 100.0f, 200.0f, 250.0f, 225.0f, 200.0f);
-
+	PiecewiseCostModel gas_heater_prices;
 	// grid costs are in £ / kW DC
-	ThreeTierCostData grid_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 240.0f, 160.0f, 120.0f);
-
+	PiecewiseCostModel grid_prices;
 	// Heatpump costs are in £ / KW DC
-	// 2500 mid_cost not a mistake - mid range HP have reverse economies of scale,
-	// fixed costs deals with most of CAPEX for small <15 kW systems
-	ThreeTierCostData heatpump_prices = ThreeTierCostData(4000.0f, 15.0f, 100.0f, 800.0f, 2500.0f, 1500.0f);
+	PiecewiseCostModel heatpump_prices;
 
-	// For the Energy Storage System we have 3 sets of costs
-	ThreeTierCostData ess_pcs_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 250.0f, 125.0f, 75.0f);
-	ThreeTierCostData ess_enclosure_prices = ThreeTierCostData(0.0f, 100.0f, 2000.0f, 480.0f, 360.0f, 300.0f);
-	ThreeTierCostData ess_enclosure_disposal_prices = ThreeTierCostData(0.0f, 100.0f, 2000.0f, 30.0f, 20.0f, 15.0f);
+	// ESS
+	// - PCS cost varies on the charge power
+	// - enclosure costs vary on the capacity
+	PiecewiseCostModel ess_pcs_prices;
+	PiecewiseCostModel ess_enclosure_prices;
+	PiecewiseCostModel ess_enclosure_disposal_prices;
 
-	// Renewables
-	ThreeTierCostData pv_panel_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 150.0f, 110.0f, 95.0f);
-	ThreeTierCostData pv_roof_prices = ThreeTierCostData(4250.0f, 50.0f, 1000.0f, 850.0f, 750.0f, 600.0f);
-	ThreeTierCostData pv_ground_prices = ThreeTierCostData(4250.0f, 50.0f, 1000.0f, 800.0f, 600.0f, 500.0f);
-	ThreeTierCostData pv_BoP_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 120.0f, 88.0f, 76.0f);
+	// Solar panels vary on kWp and location
+	PiecewiseCostModel pv_panel_prices;
+	PiecewiseCostModel pv_roof_prices;
+	PiecewiseCostModel pv_ground_prices;
+	PiecewiseCostModel pv_BoP_prices;
 
-	// Grant Schemes
-	const float max_boiler_upgrade_scheme_funding = 7500.0f;
+	static constexpr float max_boiler_upgrade_scheme_funding = 7500.0f;
+
+	bool operator==(const CapexModel&) const = default;
 };
 
-struct OpexPrices {
-	ThreeTierCostData ess_pcs_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 8.0f, 4.0f, 1.0f);
-	ThreeTierCostData ess_enclosure_prices = ThreeTierCostData(0.0f, 100.0f, 2000.0f, 10.0f, 4.0f, 2.0f);
-	ThreeTierCostData pv_prices = ThreeTierCostData(0.0f, 50.0f, 1000.0f, 2.0f, 1.0f, 0.5f);
+
+struct OpexModel {
+	PiecewiseCostModel ess_pcs_prices;
+	PiecewiseCostModel ess_enclosure_prices;
+	PiecewiseCostModel gas_heater_prices;
+	PiecewiseCostModel heatpump_prices;
+	PiecewiseCostModel pv_prices;
 };
 
-// We store the component costs as they are necessary to calculate annualised costs
+
+CapexModel make_default_capex_prices();
+OpexModel make_default_opex_prices();
+
+
 
 struct EVCapex {
 	float charger_cost;
@@ -89,8 +97,12 @@ struct SolarCapex {
 struct OpexBreakdown {
 	float ess_pcs_opex;
 	float ess_enclosure_opex;
+	float gas_heater_opex;
+	float heatpump_opex;
 	float pv_opex;
+
+	float sum() const;
 };
 
 
-float calculate_three_tier_costs(const ThreeTierCostData& tierData, float numUnits);
+float calculate_piecewise_costs(const PiecewiseCostModel& costModel, float numUnits);

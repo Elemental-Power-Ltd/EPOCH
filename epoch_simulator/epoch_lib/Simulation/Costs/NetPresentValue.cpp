@@ -7,6 +7,8 @@ ValueMetrics calculate_npv(const SiteData& siteData, const TaskConfig& config, c
 
 	int horizon = config.npv_time_horizon;
 	float discount_factor = config.npv_discount_factor;
+	const auto& capex_model = config.capex_model;
+	//const auto& opex_model = config.opex_model;
 
 	std::vector<ComponentView> components{};
 
@@ -20,35 +22,35 @@ ValueMetrics calculate_npv(const SiteData& siteData, const TaskConfig& config, c
 	}
 
 	if (scenario.domestic_hot_water) {
-		float dhw_cost = calculate_dhw_cost(scenario.domestic_hot_water.value());
+		float dhw_cost = calculate_dhw_cost(scenario.domestic_hot_water.value(), capex_model);
 		components.emplace_back(make_component(scenario.domestic_hot_water.value(), dhw_cost));
 	}
 
 	if (scenario.electric_vehicles) {
-		EVCapex ev_capex = calculate_ev_cost(scenario.electric_vehicles.value());
+		EVCapex ev_capex = calculate_ev_cost(scenario.electric_vehicles.value(), capex_model);
 		components.emplace_back(make_component(scenario.electric_vehicles.value(), 
 			ev_capex.charger_cost + ev_capex.charger_install));
 	}
 
 	if (scenario.energy_storage_system) {
-		ESSCapex ess_capex = calculate_ess_cost(scenario.energy_storage_system.value());
+		ESSCapex ess_capex = calculate_ess_cost(scenario.energy_storage_system.value(), capex_model);
 
 		components.emplace_back(make_component(scenario.energy_storage_system.value(),
 			ess_capex.enclosure_capex + ess_capex.enclosure_disposal + ess_capex.pcs_capex));
 	}
 
 	if (scenario.gas_heater) {
-		float heater_cost = calculate_gas_heater_cost(scenario.gas_heater.value());
+		float heater_cost = calculate_gas_heater_cost(scenario.gas_heater.value(), capex_model);
 		components.emplace_back(make_component(scenario.gas_heater.value(), heater_cost));
 	}
 
 	if (scenario.grid) {
-		float grid_cost = calculate_grid_cost(scenario.grid.value());
+		float grid_cost = calculate_grid_cost(scenario.grid.value(), capex_model);
 		components.emplace_back(make_component(scenario.grid.value(), grid_cost));
 	}
 
 	if (scenario.heat_pump) {
-		float hp_cost = calculate_heatpump_cost(scenario.heat_pump.value());
+		float hp_cost = calculate_heatpump_cost(scenario.heat_pump.value(), capex_model);
 		components.emplace_back(make_component(scenario.heat_pump.value(), hp_cost));
 	}
 
@@ -61,7 +63,7 @@ ValueMetrics calculate_npv(const SiteData& siteData, const TaskConfig& config, c
 		cv.age = panel.age;
 		cv.lifetime = panel.lifetime;
 		cv.incumbent = panel.incumbent;
-		auto solar_capex = calculate_solar_cost(panel);
+		auto solar_capex = calculate_solar_cost(panel, capex_model);
 		cv.capex = solar_capex.panel_capex + solar_capex.roof_capex + solar_capex.ground_capex + solar_capex.BoP_capex;
 		components.emplace_back(cv);
 	}
