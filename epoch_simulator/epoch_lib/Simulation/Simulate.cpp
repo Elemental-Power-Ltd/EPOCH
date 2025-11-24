@@ -227,6 +227,7 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, [[maybe_unused
 		dataCentre->AllCalcs(tempSum);
 	}
 
+	tempSum.ReportBeforeBalancingLoop(reportData);
 	// BALANCING LOOP
 
 	float futureEnergy = 0.0f;

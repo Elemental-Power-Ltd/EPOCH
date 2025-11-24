@@ -25,6 +25,14 @@ public:
 	year_TS Pool_h;
 	year_TS Waste_h;
 
+	// Report the energy balances before we run the balancing loop
+	// this allows us to see the state before components like batteries have been run
+	void ReportBeforeBalancingLoop(ReportData& reportData) const {
+		reportData._TempSum_elec_e = Elec_e;
+		reportData._TempSum_heat_h = Heat_h;
+		reportData._TempSum_DHW_load_h = DHW_load_h;
+	};
+
 	void Report(ReportData& reportData) const {
 		//Grid import breach (capacity shortfall): clamp Elec balance above zero
 		reportData.Actual_import_shortfall = Elec_e.cwiseMax(0.0f);

@@ -288,7 +288,10 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readonly("ASHP_DHW_output", &ReportData::ASHP_DHW_output)
 		.def_readonly("ASHP_CH_output", &ReportData::ASHP_CH_output)
 		.def_readonly("ASHP_free_heat", &ReportData::ASHP_free_heat)
-		.def_readonly("ASHP_used_hotroom_heat", &ReportData::ASHP_used_hotroom_heat);
+		.def_readonly("ASHP_used_hotroom_heat", &ReportData::ASHP_used_hotroom_heat)
+		.def_readonly("_TempSum_elec_e", &ReportData::_TempSum_elec_e)
+		.def_readonly("_TempSum_heat_h", &ReportData::_TempSum_heat_h)
+		.def_readonly("_TempSum_DHW_load_h", &ReportData::_TempSum_DHW_load_h);
 
 	pybind11::class_<FabricCostBreakdown>(m, "FabricCostBreakdown")
 		.def_readonly("name", &FabricCostBreakdown::name)
