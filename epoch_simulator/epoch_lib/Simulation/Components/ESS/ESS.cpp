@@ -41,7 +41,7 @@ void BasicESS::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size
             // calculate how much energy we want to put into the battery
             mEnergyCalc = std::min((mBattery.GetCapacity_e()*0.75f), mBattery.getAvailableCharge());
             // cap by the amount of energy available to us
-            mEnergyCalc = std::min(mEnergyCalc, futureEnergy_e);
+            mEnergyCalc = std::min(mEnergyCalc, futureEnergy_e - tempSum.Elec_e[t]);
             mBattery.doCharge(mEnergyCalc, t);
             tempSum.Elec_e[t] = tempSum.Elec_e[t] + mEnergyCalc;
         }
