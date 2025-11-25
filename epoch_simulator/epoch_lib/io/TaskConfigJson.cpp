@@ -11,14 +11,14 @@ void from_json(const json& j, TaskConfig& config) {
 	j.at("npv_time_horizon").get_to(config.npv_time_horizon);
 	j.at("npv_discount_factor").get_to(config.npv_discount_factor);
 
-	if (j.contains("capex_model")) {
+	if (j.contains("capex_model") && !j["capex_model"].is_null()) {
 		j.at("capex_model").get_to(config.capex_model);
 	}
 	else {
 		config.capex_model = make_default_capex_prices();
 	}
 
-	if (j.contains("opex_model")) {
+	if (j.contains("opex_model") && !j["opex_model"].is_null()) {
 		j.at("opex_model").get_to(config.opex_model);
 	}
 	else {
