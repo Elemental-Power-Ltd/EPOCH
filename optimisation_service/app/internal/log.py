@@ -65,19 +65,22 @@ class EndpointFilter(logging.Filter):
         return not (request_method_matches and path_matches)
 
 
-LOG_DIR.mkdir(exist_ok=True, parents=True)
-formatter_file = logging.Formatter("[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-formatter_stream = logging.Formatter("[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-handler_file = logging.FileHandler(LOG_DIR / f"{datetime.datetime.now(datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.log")
-handler_stream = logging.StreamHandler(sys.stdout)
-handler_file.setFormatter(formatter_file)
-handler_stream.setFormatter(formatter_stream)
+def configure_logging() -> None:
+    """Set up logging."""
+    LOG_DIR.mkdir(exist_ok=True, parents=True)
+    formatter_file = logging.Formatter("[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    formatter_stream = logging.Formatter("[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    handler_file = logging.FileHandler(LOG_DIR / f"{datetime.datetime.now(datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.log")
+    handler_stream = logging.StreamHandler(sys.stdout)
+    handler_file.setFormatter(formatter_file)
+    handler_stream.setFormatter(formatter_stream)
 
-logger = logging.getLogger("default")
-logger.setLevel(logging.DEBUG)
-logger.addHandler(handler_file)
-logger.addHandler(handler_stream)
+    logger = logging.getLogger("default")
+    logger.setLevel(logging.DEBUG)
 
-# Use this to squish the uvicorn "queue-status" logs
-uvicorn_logger = logging.getLogger("uvicorn.access")
-uvicorn_logger.addFilter(EndpointFilter(endpoint_path="/queue-status", request_method="POST"))
+    logger.addHandler(handler_file)
+    logger.addHandler(handler_stream)
+
+    # Use this to squish the uvicorn "queue-status" logs
+    uvicorn_logger = logging.getLogger("uvicorn.access")
+    uvicorn_logger.addFilter(EndpointFilter(endpoint_path="/queue-status", request_method="POST"))

@@ -10,11 +10,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.internal.epoch.version import get_epoch_version
+from app.internal.log import configure_logging
 from app.internal.task_processor import process_tasks
 
 from .dependencies import get_http_client, get_queue
 from .routers import data, epl_queue, merge, metrics, optimise, simulate
 
+configure_logging()
 logger = logging.getLogger("default")
 
 
