@@ -3,7 +3,6 @@
 import json
 from typing import cast
 
-import numpy as np
 from epoch_simulator import CapexBreakdown, SimulationResult, TaskData
 
 from app.models.core import CostInfo, Grade, SimulationMetrics
@@ -31,12 +30,14 @@ def convert_capex_breakdown_to_pydantic(capex_breakdown: CapexBreakdown) -> list
     if capex_breakdown.building_fabric_capex > 0:
         sub_comps = [CostInfo(name=f.name, cost=f.cost) for f in capex_breakdown.fabric_cost_breakdown]
 
-        costs.append(CostInfo(
-            name="Building Fabric",
-            component="building",
-            cost=capex_breakdown.building_fabric_capex,
-            sub_components=sub_comps,
-        ))
+        costs.append(
+            CostInfo(
+                name="Building Fabric",
+                component="building",
+                cost=capex_breakdown.building_fabric_capex,
+                sub_components=sub_comps,
+            )
+        )
 
     if capex_breakdown.dhw_capex > 0:
         costs.append(CostInfo(name="Hot Water Cylinder", component="hot_water_cylinder", cost=capex_breakdown.dhw_capex))
@@ -235,8 +236,9 @@ def simulation_result_to_metric_dict(sim_result: SimulationResult) -> MetricValu
     metric_values[Metric.npv_balance] = comp.npv_balance
 
     metric_values[Metric.payback_horizon] = comp.payback_horizon_years
-    metric_values[Metric.return_on_investment] = comp.return_on_investment if comp.return_on_investment is not None \
-        else float(np.finfo(np.float32).min)
+    metric_values[Metric.return_on_investment] = (
+        comp.return_on_investment if comp.return_on_investment is not None else comp.operating_balance
+    )
 
     metric_values[Metric.carbon_balance_scope_1] = comp.carbon_balance_scope_1
     metric_values[Metric.carbon_balance_scope_2] = comp.carbon_balance_scope_2
