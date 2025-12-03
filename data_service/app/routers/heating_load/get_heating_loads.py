@@ -135,6 +135,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             metadata is not None
             and metadata.get("fabric_cost_total") is not None
             and metadata.get("fabric_cost_breakdown") is None
+            and metadata["fabric_cost_total"] > 0.01
         ):
             logger.warning(
                 f"Did get a total cost but not a fabric cost breakdown for {dataset_id}."
