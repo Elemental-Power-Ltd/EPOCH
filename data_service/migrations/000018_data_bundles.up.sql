@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS data_bundles;
 
 CREATE TABLE data_bundles.metadata (
     bundle_id UUID NOT NULL,
-    name TEXT,
+    name TEXT, -- noqa: RF04
     site_id TEXT REFERENCES client_info.site_info (site_id),
     start_ts TIMESTAMPTZ,
     end_ts TIMESTAMPTZ,

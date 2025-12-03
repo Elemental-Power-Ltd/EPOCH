@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE client_info.solar_locations (
     renewables_location_id TEXT PRIMARY KEY,
-    name TEXT,
+    name TEXT, -- noqa: RF04
     site_id TEXT NOT NULL REFERENCES client_info.site_info (site_id),
     mounting_type TEXT DEFAULT 'building-integrated',
     tilt DOUBLE PRECISION,
