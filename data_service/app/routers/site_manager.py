@@ -1065,7 +1065,8 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
                     tm.product_name,
                     tm.tariff_name,
                     tm.valid_from,
-                    tm.valid_to
+                    tm.valid_to,
+                    tm.created_at
                 FROM data_bundles.dataset_links AS dl
                 LEFT JOIN data_bundles.metadata AS dm
                     on dl.bundle_id = dm.bundle_id
@@ -1139,6 +1140,7 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
         [
             TariffMetadata(
                 dataset_id=item["dataset_id"],
+                created_at=item["created_at"],
                 site_id=bundle_meta.site_id,
                 provider=TariffProviderEnum(item["provider"]),
                 product_name=str(item["product_name"]),
@@ -1186,6 +1188,10 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
     )
 
     return BundleHints(
-        site_id=bundle_meta.site_id, bundle_id=bundle_id, baseline=baseline, tariffs=tariff_hints,
-        renewables=renewables_hints, heating=heating_hints
+        site_id=bundle_meta.site_id,
+        bundle_id=bundle_id,
+        baseline=baseline,
+        tariffs=tariff_hints,
+        renewables=renewables_hints,
+        heating=heating_hints,
     )
