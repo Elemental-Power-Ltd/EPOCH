@@ -50,9 +50,7 @@ class SiteDataEntries(pydantic.BaseModel):
 
     @pydantic.model_validator(mode='after')
     def check_all_same_length(self) -> Self:
-        """
-        Check all timeseries inputs are of same length.
-        """
+        """Check all timeseries inputs are of same length."""
         lengths = {}
         if self.dhw:
             lengths["dhw"] = len(self.dhw.data)
