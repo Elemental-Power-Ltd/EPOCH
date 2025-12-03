@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.internal.epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
+from app.internal.epl_typing import HHDataFrame, NonHHDataFrame, WeatherDataFrame
 from app.internal.gas_meters import assign_hh_dhw_even, hh_gas_to_monthly, monthly_to_hh_hload
 
 TEST_RNG = np.random.default_rng(np.random.SeedSequence(3141592653))
@@ -26,7 +26,7 @@ def gas_df() -> HHDataFrame:
 
 
 @pytest.fixture
-def monthly_gas_df(gas_df: HHDataFrame) -> MonthlyDataFrame:
+def monthly_gas_df(gas_df: HHDataFrame) -> NonHHDataFrame:
     """Get an example resampled monthly dataframe."""
     return hh_gas_to_monthly(gas_df)
 

@@ -376,6 +376,7 @@ def get_search_info(gui_search_range: dict[site_id_t, site_search_space_dict]) -
     -------
     A SearchInfo model containing total search space counts.
     """
+
     def count_total_params(site_range: dict[component_t, gui_param_dict | list[gui_param_dict]]) -> int:
         """
         Count the total size of the search space that we've considered.
@@ -1306,7 +1307,7 @@ async def add_curated_result(addRequest: AddCuratedResultRequest, pool: Database
         highlight_id=uuid7(),
         task_id=addRequest.task_id,
         portfolio_id=addRequest.portfolio_id,
-        display_name=addRequest.display_name
+        display_name=addRequest.display_name,
     )
 
     async with pool.acquire() as conn, conn.transaction():
@@ -1329,7 +1330,7 @@ async def add_curated_result(addRequest: AddCuratedResultRequest, pool: Database
                 result.task_id,
                 result.portfolio_id,
                 result.submitted_at,
-                result.display_name
+                result.display_name,
             )
         except asyncpg.exceptions.ForeignKeyViolationError as ex:
             raise HTTPException(400, "No such task_id / portfolio_id.") from ex
@@ -1380,7 +1381,7 @@ async def remove_curated_result(highlight_id: dataset_id_t, pool: DatabasePoolDe
             DELETE FROM optimisation.curated_results
             WHERE highlight_id = $1
             """,
-            highlight_id
+            highlight_id,
         )
 
         if res == "DELETE 0":

@@ -491,10 +491,11 @@ class TestOptimisationTaskDatabase:
 
     @pytest.mark.asyncio
     async def test_can_curate_result(
-            self,
-            sample_task_config: TaskConfig,
-            sample_portfolio_optimisation_result: PortfolioOptimisationResult,
-            client: httpx.AsyncClient) -> None:
+        self,
+        sample_task_config: TaskConfig,
+        sample_portfolio_optimisation_result: PortfolioOptimisationResult,
+        client: httpx.AsyncClient,
+    ) -> None:
         """Test that we can mark a portfolio result as curated and then see it in the highlighted results."""
         task_response = await client.post("/add-optimisation-task", content=sample_task_config.model_dump_json())
         assert task_response.status_code == 200, task_response.text
@@ -510,9 +511,8 @@ class TestOptimisationTaskDatabase:
         curated_id = str(portfolio_result_2.portfolio_id)
 
         curate_request = AddCuratedResultRequest(
-            task_id=sample_task_config.task_id,
-            portfolio_id=portfolio_result_2.portfolio_id,
-            display_name="Curate Test")
+            task_id=sample_task_config.task_id, portfolio_id=portfolio_result_2.portfolio_id, display_name="Curate Test"
+        )
         curate_response = await client.post("/add-curated-result", content=curate_request.model_dump_json())
         assert curate_response.status_code == 200, curate_response.text
         highlight_id = curate_response.json()["highlight_id"]
@@ -525,8 +525,9 @@ class TestOptimisationTaskDatabase:
         assert cur_results_no_task[0]["portfolio_id"] == curated_id
 
         # get all curated results by task_id
-        get_curation_by_task_id = await client.post("/list-curated-results",
-                                                    content=json.dumps({"task_id": str(sample_task_config.task_id)}))
+        get_curation_by_task_id = await client.post(
+            "/list-curated-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
+        )
         assert get_curation_by_task_id.status_code == 200, get_curation_no_task_id.text
         cur_results_by_task = get_curation_by_task_id.json()["curated_results"]
         assert len(cur_results_by_task) == 1
@@ -549,8 +550,9 @@ class TestOptimisationTaskDatabase:
         assert remove_curation.status_code == 200, remove_curation.text
 
         # check that the curated result no longer exists
-        curation_list_after = await client.post("/list-curated-results",
-                                                content=json.dumps({"task_id": str(sample_task_config.task_id)}))
+        curation_list_after = await client.post(
+            "/list-curated-results", content=json.dumps({"task_id": str(sample_task_config.task_id)})
+        )
         assert curation_list_after.status_code == 200, get_curation_no_task_id.text
         assert len(curation_list_after.json()["curated_results"]) == 0
 

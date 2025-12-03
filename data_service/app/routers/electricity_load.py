@@ -16,7 +16,7 @@ from app.dependencies import DatabasePoolDep, ThreadPoolDep, VaeDep
 from app.internal.elec_meters import daily_to_hh_eload, day_type, monthly_to_daily_eload
 from app.internal.elec_meters.model_utils import OffsetMethodEnum
 from app.internal.elec_meters.preprocessing import hh_to_square
-from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, RecordMapping
+from app.internal.epl_typing import DailyDataFrame, HHDataFrame, NonHHDataFrame, RecordMapping
 from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.utils import get_bank_holidays
 from app.internal.utils.uuid import uuid7
@@ -153,7 +153,7 @@ async def generate_electricity_load(
     raw_df.index = pd.DatetimeIndex(pd.to_datetime(raw_df["start_ts"]))
 
     if reading_type != "halfhourly":
-        daily_df = monthly_to_daily_eload(MonthlyDataFrame(raw_df))
+        daily_df = monthly_to_daily_eload(NonHHDataFrame(raw_df))
     else:
         # We've got half hourly data, so we can skip the horrible daily profiles bit
         daily_df = DailyDataFrame(raw_df[["consumption_kwh"]].resample(pd.Timedelta(days=1)).sum())

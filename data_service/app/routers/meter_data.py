@@ -11,7 +11,7 @@ import numpy as np
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
 from ..dependencies import DatabasePoolDep, HttpClientDep
-from ..internal.epl_typing import HHDataFrame, MonthlyDataFrame
+from ..internal.epl_typing import HHDataFrame, NonHHDataFrame
 from ..internal.gas_meters import try_meter_parsing
 from ..internal.solar_pv.disaggregate import disaggregate_electricity_dataframe
 from ..internal.utils.uuid import uuid7
@@ -146,7 +146,7 @@ async def upload_meter_file(
     except NotImplementedError as ex:
         raise HTTPException(400, f"Could not parse {file.filename} due to an unknown format.") from ex
 
-    def is_half_hourly(hh_or_monthly_df: HHDataFrame | MonthlyDataFrame) -> bool:
+    def is_half_hourly(hh_or_monthly_df: HHDataFrame | NonHHDataFrame) -> bool:
         """Check if this dataframe is half hourly by seeing how far apart the index is."""
         timedeltas = np.ediff1d(hh_or_monthly_df.index).astype(np.timedelta64)
         timedeltas_mask = np.logical_and(
@@ -164,7 +164,7 @@ async def upload_meter_file(
         else:
             raise ValueError(f"Couldn't get coordinates for {site_id}")
         df = cast(
-            HHDataFrame | MonthlyDataFrame,
+            HHDataFrame | NonHHDataFrame,
             await disaggregate_electricity_dataframe(
                 elec_df=df,
                 http_client=http_client,

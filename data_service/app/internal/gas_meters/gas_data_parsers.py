@@ -16,7 +16,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from ..epl_typing import HHDataFrame, MonthlyDataFrame
+from ..epl_typing import HHDataFrame, NonHHDataFrame
 from ..utils import last_day_of_month, m3_to_kwh
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ def parse_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame:
     return HHDataFrame(consumption_df[["end_ts", "consumption"]])
 
 
-def parse_daily_readings(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame:
+def parse_daily_readings(fname: os.PathLike | str | BinaryIO) -> NonHHDataFrame:
     """
     Read and calculate daily readings, not consumptions (raw meter figures).
 
@@ -203,10 +203,10 @@ def parse_daily_readings(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFram
     else:
         gas_df["consumption"] = readings_df["consumption"]
     gas_df = gas_df.set_index("start_ts")
-    return MonthlyDataFrame(gas_df[["end_ts", "consumption"]])
+    return NonHHDataFrame(gas_df[["end_ts", "consumption"]])
 
 
-def parse_be_st_format(fname: os.PathLike | BinaryIO | str) -> MonthlyDataFrame:
+def parse_be_st_format(fname: os.PathLike | BinaryIO | str) -> NonHHDataFrame:
     """
     Parse the BE-ST gas consumption data format.
 
@@ -293,10 +293,10 @@ def parse_be_st_format(fname: os.PathLike | BinaryIO | str) -> MonthlyDataFrame:
     df["start_ts"] = df.index
 
     df["days"] = (df["end_ts"] - df["start_ts"] + pd.Timedelta(seconds=1)) / np.timedelta64(1, "D")  # type: ignore
-    return MonthlyDataFrame(df)
+    return NonHHDataFrame(df)
 
 
-def parse_horizontal_monthly_both_years(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame:
+def parse_horizontal_monthly_both_years(fname: os.PathLike | str | BinaryIO) -> NonHHDataFrame:
     """
     Read a horizontal monthly format.
 
@@ -334,10 +334,10 @@ def parse_horizontal_monthly_both_years(fname: os.PathLike | str | BinaryIO) -> 
         readings.append({"start_ts": start_ts, "end_ts": end_ts, "consumption": consumption})
 
     gas_df = pd.DataFrame.from_records(readings).set_index("start_ts")
-    return MonthlyDataFrame(gas_df[["end_ts", "consumption"]])
+    return NonHHDataFrame(gas_df[["end_ts", "consumption"]])
 
 
-def parse_ideal(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame | HHDataFrame:
+def parse_ideal(fname: os.PathLike | str | BinaryIO) -> NonHHDataFrame | HHDataFrame:
     """
     Try to parse the ideal dataframe format, which has start_ts, end_ts and consumption_kwh columns.
 
@@ -348,7 +348,7 @@ def parse_ideal(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame | HHDat
 
     Returns
     -------
-    MonthlyDataFrame | HHDataFrame
+    NonHHDataFrame | HHDataFrame
         Checks the frequency of readings and assigns the correct type
     """
     df = pd.read_csv(fname, skipinitialspace=True)
@@ -369,10 +369,10 @@ def parse_ideal(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame | HHDat
     df = df.rename(columns={"consumption_kwh": "consumption"})
     if average_spacing == pd.Timedelta(minutes=30):
         return HHDataFrame(df[["end_ts", "consumption"]])
-    return MonthlyDataFrame(df[["end_ts", "consumption"]])
+    return NonHHDataFrame(df[["end_ts", "consumption"]])
 
 
-def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame:
+def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) -> NonHHDataFrame:
     """
     Parse a reading file with columns being a single month.
 
@@ -385,7 +385,7 @@ def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) -> 
 
     Returns
     -------
-    MonthlyDataFrame
+    NonHHDataFrameFrame
         Usual elec/gas consumption dataframe
     """
     df = pd.read_csv(fname, skipinitialspace=True).rename(columns=lambda x: x.strip())
@@ -406,10 +406,10 @@ def parse_horizontal_monthly_only_month(fname: os.PathLike | str | BinaryIO) -> 
 
         parsed_rows.append({"start_ts": start_ts, "end_ts": end_ts, "consumption": consumption})
 
-    return MonthlyDataFrame(pd.DataFrame.from_records(parsed_rows).set_index("start_ts"))
+    return NonHHDataFrame(pd.DataFrame.from_records(parsed_rows).set_index("start_ts"))
 
 
-def parse_horizontal_monthly_only_end_year(fname: os.PathLike | str | BinaryIO) -> MonthlyDataFrame:
+def parse_horizontal_monthly_only_end_year(fname: os.PathLike | str | BinaryIO) -> NonHHDataFrame:
     """
     Parse a reading file with columns being specified periods e.g. 01 Jan - 31 Jan 2024.
 
@@ -450,7 +450,7 @@ def parse_horizontal_monthly_only_end_year(fname: os.PathLike | str | BinaryIO) 
         end_ts = datetime.datetime(year=end_y, month=end_m, day=end_d, tzinfo=datetime.UTC)
         parsed_rows.append({"start_ts": start_ts, "end_ts": end_ts, "consumption": consumption})
 
-    return MonthlyDataFrame(pd.DataFrame.from_records(parsed_rows).set_index("start_ts"))
+    return NonHHDataFrame(pd.DataFrame.from_records(parsed_rows).set_index("start_ts"))
 
 
 def parse_square_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame:
@@ -510,7 +510,7 @@ def parse_square_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame
     return HHDataFrame(gas_df[["end_ts", "consumption"]])
 
 
-def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataFrame, str] | tuple[HHDataFrame, str]:
+def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[NonHHDataFrame, str] | tuple[HHDataFrame, str]:
     """
     Try different parsing functions to get one that works for this file.
 
@@ -531,9 +531,9 @@ def try_meter_parsing(fname: os.PathLike | str | BinaryIO) -> tuple[MonthlyDataF
     """
     type csv_file_t = os.PathLike | str | BinaryIO
     possible_parsers: list[
-        Callable[[csv_file_t], MonthlyDataFrame]
+        Callable[[csv_file_t], NonHHDataFrame]
         | Callable[[csv_file_t], HHDataFrame]
-        | Callable[[csv_file_t], HHDataFrame | MonthlyDataFrame]
+        | Callable[[csv_file_t], HHDataFrame | NonHHDataFrame]
     ] = [
         parse_ideal,
         parse_be_st_format,

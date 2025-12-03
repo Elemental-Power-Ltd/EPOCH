@@ -24,7 +24,7 @@ import pandas as pd
 from fastapi import HTTPException
 
 from app.dependencies import DatabasePoolDep, HttpClientDep
-from app.internal.epl_typing import HHDataFrame, MonthlyDataFrame, RecordMapping, WeatherDataFrame, db_pool_t
+from app.internal.epl_typing import HHDataFrame, NonHHDataFrame, RecordMapping, WeatherDataFrame, db_pool_t
 from app.internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
 from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.site_manager.dataset_lists import list_thermal_models
@@ -391,7 +391,7 @@ async def generate_heating_load_regression_impl(
 
     is_monthly = (gas_df["end_ts"] - gas_df["start_ts"]).mean() > pd.Timedelta(days=7)  # type: ignore
     if is_monthly:
-        gas_df = MonthlyDataFrame(gas_df)
+        gas_df = NonHHDataFrame(gas_df)
         gas_df["days"] = (gas_df["end_ts"] - gas_df["start_ts"]).dt.total_seconds() / pd.Timedelta(days=1).total_seconds()
     else:
         gas_df = hh_gas_to_monthly(HHDataFrame(gas_df))

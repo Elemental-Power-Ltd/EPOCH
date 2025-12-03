@@ -36,7 +36,7 @@ type ParameterDict = dict[str, list[float] | list[int] | float | int]
 type ConstraintDict = Mapping[str, tuple[None, None] | tuple[float, float] | list[float] | list[int] | list[None]]
 HHDataFrame = NewType("HHDataFrame", pd.DataFrame)
 DailyDataFrame = NewType("DailyDataFrame", pd.DataFrame)
-MonthlyDataFrame = NewType("MonthlyDataFrame", pd.DataFrame)
+NonHHDataFrame = NewType("NonHHDataFrame", pd.DataFrame)
 WeatherDataFrame = NewType("WeatherDataFrame", pd.DataFrame)
 SquareHHDataFrame = NewType("SquareHHDataFrame", pd.DataFrame)
 

@@ -17,7 +17,7 @@ import torch
 from scipy.interpolate import Akima1DInterpolator
 from statsmodels.tsa.arima_process import ArmaProcess  # type: ignore
 
-from app.internal.epl_typing import DailyDataFrame, HHDataFrame, MonthlyDataFrame, SquareHHDataFrame
+from app.internal.epl_typing import DailyDataFrame, HHDataFrame, NonHHDataFrame, SquareHHDataFrame
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 
 from .model_utils import OffsetMethodEnum, fit_residual_model, split_and_baseline_active_days
@@ -99,7 +99,7 @@ def day_type(date: datetime.date | pd.Timestamp, public_holidays: Container[date
     return DayTypeEnum.MondayOrFriday
 
 
-def monthly_to_daily_eload(monthly_df: MonthlyDataFrame) -> DailyDataFrame:
+def monthly_to_daily_eload(monthly_df: NonHHDataFrame) -> DailyDataFrame:
     """
     Turn a set of monthly readings into approximate daily electricity usages.
 
@@ -740,7 +740,7 @@ def daily_to_hh_eload_pretrained(
 
 
 def monthly_to_hh_eload(
-    elec_df: MonthlyDataFrame,
+    elec_df: NonHHDataFrame,
     model: VAE,
 ) -> HHDataFrame:
     """
@@ -769,7 +769,7 @@ def monthly_to_hh_eload(
     # If we've already got half hourly data, don't resample for those days
     # (this can sometimes happen as an oddity of resampling)
     is_hh_mask = (elec_df["end_ts"] - elec_df["start_ts"]) < pd.Timedelta(hours=24)
-    daily_df = monthly_to_daily_eload(MonthlyDataFrame(elec_df[~is_hh_mask]))
+    daily_df = monthly_to_daily_eload(NonHHDataFrame(elec_df[~is_hh_mask]))
     halfhourly_df = daily_to_hh_eload(daily_df, model=model)
     if not elec_df[is_hh_mask].empty:
         # TODO (2024-09-06 MHJB): make this also not resample for daily data
