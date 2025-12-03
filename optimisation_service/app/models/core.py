@@ -307,7 +307,9 @@ class SimulationMetrics(BaseModel):
     )
 
     @field_validator("*", mode="before")
-    def clip_all_float_fields(cls, v: Grade | float | int | list[CostInfo]) -> Grade | float | int | list[CostInfo]:
+    def clip_all_float_fields(
+        cls, v: Grade | float | int | list[CostInfo] | None
+    ) -> Grade | float | int | list[CostInfo] | None:
         """
         Clip infinite float values to FLT_MAX to avoid json encoding issues.
 
