@@ -1186,6 +1186,10 @@ async def get_bundle_hints(bundle_id: dataset_id_t, pool: DatabasePoolDep) -> Bu
     )
 
     return BundleHints(
-        site_id=bundle_meta.site_id, bundle_id=bundle_id, baseline=baseline, tariffs=tariff_hints,
-        renewables=renewables_hints, heating=heating_hints
+        site_id=bundle_meta.site_id,
+        bundle_id=bundle_id,
+        baseline=baseline,
+        tariffs=tariff_hints,
+        renewables=renewables_hints,
+        heating=heating_hints,
     )

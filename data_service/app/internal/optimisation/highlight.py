@@ -35,7 +35,7 @@ async def get_curated_results(task_id: dataset_id_t | None, pool: DatabasePoolDe
             WHERE cr.task_id = $1
             ORDER BY cr.submitted_at DESC
             """,
-            task_id
+            task_id,
         )
     else:
         res = await pool.fetch(
@@ -174,8 +174,9 @@ def find_best_return_on_investment(portfolio_results: list[PortfolioOptimisation
     return None
 
 
-def pick_highlighted_results(portfolio_results: list[PortfolioOptimisationResult],
-                             curated_results: list[CuratedResult]) -> list[HighlightedResult]:
+def pick_highlighted_results(
+    portfolio_results: list[PortfolioOptimisationResult], curated_results: list[CuratedResult]
+) -> list[HighlightedResult]:
     """
     Pick highlighted results out of the portfolio results.
 
@@ -213,12 +214,14 @@ def pick_highlighted_results(portfolio_results: list[PortfolioOptimisationResult
         # these are sorted by submission time, take the first result
         curated = curated_results[0]
 
-        results.append(HighlightedResult(
-            portfolio_id=curated.portfolio_id,
-            reason=HighlightReason.UserCurated,
-            display_name=curated.display_name,
-            suggested_metric=None
-        ))
+        results.append(
+            HighlightedResult(
+                portfolio_id=curated.portfolio_id,
+                reason=HighlightReason.UserCurated,
+                display_name=curated.display_name,
+                suggested_metric=None,
+            )
+        )
 
     elif best_cost_balance := find_best_cost_savings(portfolio_results):
         results.append(best_cost_balance)

@@ -9,13 +9,13 @@ import scipy.optimize
 from sklearn.linear_model import LinearRegression  # type: ignore
 
 from ...models.weather import BaitAndModelCoefs
-from ..epl_typing import HHDataFrame, MonthlyDataFrame, WeatherDataFrame
+from ..epl_typing import HHDataFrame, NonHHDataFrame, WeatherDataFrame
 from ..thermal_model import building_adjusted_internal_temperature
 from .domestic_hot_water import assign_hh_dhw_even
 
 
 def compute_monthly_hdd(
-    gas_df: MonthlyDataFrame,
+    gas_df: NonHHDataFrame,
     weather_df: WeatherDataFrame,
     solar_gain: float,
     wind_chill: float,
@@ -82,7 +82,7 @@ def compute_monthly_hdd(
     return np.asarray(hdds, dtype=np.float32)
 
 
-def predict_heating_load(gas_df: MonthlyDataFrame) -> npt.NDArray[np.float32]:
+def predict_heating_load(gas_df: NonHHDataFrame) -> npt.NDArray[np.float32]:
     """
     Predict heating load for a monthly (or similar) gas usage dataframe.
 
@@ -107,7 +107,7 @@ def predict_heating_load(gas_df: MonthlyDataFrame) -> npt.NDArray[np.float32]:
     return predicted
 
 
-def score_bait_coefficients(x: list[float], gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -> float:
+def score_bait_coefficients(x: list[float], gas_df: NonHHDataFrame, weather_df: WeatherDataFrame) -> float:
     """
     Score a set of BAIT coefficients depending on how well they can predict heating load.
 
@@ -133,7 +133,7 @@ def score_bait_coefficients(x: list[float], gas_df: MonthlyDataFrame, weather_df
     return float(np.sum((predicted - ys) ** 2))
 
 
-def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) -> HHDataFrame:
+def monthly_to_hh_hload(gas_df: NonHHDataFrame, weather_df: WeatherDataFrame) -> HHDataFrame:
     """
     Take monthly gas readings and use them to synthesise half hourly heating load data.
 
@@ -200,7 +200,7 @@ def monthly_to_hh_hload(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame) 
     # TODO (2024-06-28 MHJB): add a "normalise to monthly readings" feature
 
 
-def fit_bait_and_model(gas_df: MonthlyDataFrame, weather_df: WeatherDataFrame, apply_bait: bool = True) -> BaitAndModelCoefs:
+def fit_bait_and_model(gas_df: NonHHDataFrame, weather_df: WeatherDataFrame, apply_bait: bool = True) -> BaitAndModelCoefs:
     """
     Fit BAIT coefficients and a heating load models for these dataframes.
 

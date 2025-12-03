@@ -48,7 +48,7 @@ class SiteDataEntries(pydantic.BaseModel):
     ashp_input: ASHPCOPResponse | None
     ashp_output: ASHPCOPResponse | None
 
-    @pydantic.model_validator(mode='after')
+    @pydantic.model_validator(mode="after")
     def check_all_same_length(self) -> Self:
         """Check all timeseries inputs are of same length."""
         lengths = {}

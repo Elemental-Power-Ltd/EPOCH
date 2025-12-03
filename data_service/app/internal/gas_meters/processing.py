@@ -8,7 +8,7 @@ fill in missing periods.
 import numpy as np
 import pandas as pd
 
-from ..epl_typing import HHDataFrame, MonthlyDataFrame
+from ..epl_typing import HHDataFrame, NonHHDataFrame
 
 
 def fill_in_half_hourly(gas_df: HHDataFrame) -> HHDataFrame:
@@ -38,7 +38,7 @@ def fill_in_half_hourly(gas_df: HHDataFrame) -> HHDataFrame:
     return HHDataFrame(gas_df.drop(columns="timedelta"))
 
 
-def hh_gas_to_monthly(hh_gas_df: HHDataFrame) -> MonthlyDataFrame:
+def hh_gas_to_monthly(hh_gas_df: HHDataFrame) -> NonHHDataFrame:
     """
     Resample a half hourly gas dataframe to weekly for further analysis.
 
@@ -62,7 +62,7 @@ def hh_gas_to_monthly(hh_gas_df: HHDataFrame) -> MonthlyDataFrame:
         hh_gas_df["start_ts"] = hh_gas_df.index
 
     freq = pd.Timedelta(days=7)
-    monthly_gas_df = MonthlyDataFrame(hh_gas_df.resample(freq).sum(numeric_only=True))
+    monthly_gas_df = NonHHDataFrame(hh_gas_df.resample(freq).sum(numeric_only=True))
 
     # Select the end dates as either the end of the week, or the last reading we took
     # Similarly for start dates.

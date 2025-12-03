@@ -473,8 +473,11 @@ class OptimisationTaskListResponse(pydantic.BaseModel):
 class AddCuratedResultRequest(pydantic.BaseModel):
     task_id: dataset_id_t = pydantic.Field(description="The Task ID this result belongs to.")
     portfolio_id: dataset_id_t = pydantic.Field(description="The portfolio id of the result we want to highlight.")
-    display_name: str = pydantic.Field(description="The display name for the reason this result has been highlighted. "
-                                       + "This should not start with the word 'Best'.", default="Curated")
+    display_name: str = pydantic.Field(
+        description="The display name for the reason this result has been highlighted. "
+        + "This should not start with the word 'Best'.",
+        default="Curated",
+    )
 
 
 class CuratedResult(pydantic.BaseModel):
