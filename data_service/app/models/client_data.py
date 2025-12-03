@@ -1,6 +1,8 @@
 """Models for client and site metadata."""
 # ruff: noqa: D101
 
+from typing import Self
+
 import pydantic
 
 from app.internal.epl_typing import Jsonable
@@ -45,6 +47,34 @@ class SiteDataEntries(pydantic.BaseModel):
 
     ashp_input: ASHPCOPResponse | None
     ashp_output: ASHPCOPResponse | None
+
+    @pydantic.model_validator(mode='after')
+    def check_all_same_length(self) -> Self:
+        """
+        Check all timeseries inputs are of same length.
+        """
+        lengths = {}
+        if self.dhw:
+            lengths["dhw"] = len(self.dhw.data)
+        if self.air_temp:
+            lengths["air_temp"] = len(self.air_temp.data)
+        if self.eload:
+            lengths["eload"] = len(self.eload.data)
+        if self.rgen:
+            lengths["rgen"] = len(self.rgen.data)
+        if self.grid_co2:
+            lengths["grid_co2"] = len(self.grid_co2.data)
+        if self.import_tariffs:
+            for i, import_tariff in enumerate(self.import_tariffs.data):
+                lengths[f"import_tariff_{i}"] = len(import_tariff)
+        if self.heat:
+            for i, fabric_int in enumerate(self.heat.data):
+                lengths[f"fabric_intervention_{i}"] = len(fabric_int.reduced_hload)
+
+        if len(set(lengths.values())) > 1:
+            raise ValueError(f"Expected all timeseries inputs to have the same length, got: {lengths}")
+
+        return self
 
 
 class BaselineMetadata(pydantic.BaseModel):
