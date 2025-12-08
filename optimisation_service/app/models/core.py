@@ -3,11 +3,12 @@ from __future__ import annotations
 import datetime
 import logging
 import math
+import sys
 from enum import StrEnum
 from pathlib import Path
 from typing import Self
 
-from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr, model_validator
+from pydantic import AwareDatetime, BaseModel, Field, PositiveInt, PrivateAttr, field_validator, model_validator
 
 from app.internal.epoch import get_epoch_version
 from app.internal.uuid7 import uuid7
@@ -143,6 +144,9 @@ class CostInfo(BaseModel):
     )
 
 
+FLOAT_MAX = sys.float_info.max
+
+
 class SimulationMetrics(BaseModel):
     """Metrics for a site or portfolio of sites."""
 
@@ -206,8 +210,7 @@ class SimulationMetrics(BaseModel):
         description="Total domestic hot water (DHW) shortfall (kWh) when compared to the demand.", default=None
     )
     peak_hload_shortfall: float | None = Field(
-        description="Shortfall in meeting the peak heating demand calculated by an external source (such as PHPP)",
-        default=None
+        description="Shortfall in meeting the peak heating demand calculated by an external source (such as PHPP)", default=None
     )
     capex: float | None = Field(description="Cost to install this scenario.", default=None)
     total_gas_import_cost: float | None = Field(description="Total spend (£) importing gas.", default=None)
@@ -272,7 +275,7 @@ class SimulationMetrics(BaseModel):
     )
     baseline_peak_hload_shortfall: float | None = Field(
         description="Baseline shortfall in meeting the peak heating demand calculated by an external source (such as PHPP)",
-        default=None
+        default=None,
     )
     baseline_gas_import_cost: float | None = Field(description="Total spend (£) importing gas.", default=None)
     baseline_electricity_import_cost: float | None = Field(
@@ -302,6 +305,30 @@ class SimulationMetrics(BaseModel):
     baseline_environmental_impact_grade: Grade | None = Field(
         description="baseline environmental impact grade (A-G)", default=None
     )
+
+    @field_validator("*", mode="before")
+    def clip_all_float_fields(
+        cls, v: Grade | float | int | list[CostInfo] | None
+    ) -> Grade | float | int | list[CostInfo] | None:
+        """
+        Clip infinite float values to FLT_MAX to avoid json encoding issues.
+
+        Parameters
+        ----------
+        v
+            metric
+
+        Returns
+        -------
+        v
+            clipped metric
+        """
+        if isinstance(v, float):
+            if math.isinf(v):
+                return FLOAT_MAX if v > 0 else -FLOAT_MAX
+            if math.isnan(v):
+                return None
+        return v
 
 
 class SiteOptimisationResult(BaseModel):
