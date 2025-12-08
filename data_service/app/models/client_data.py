@@ -58,10 +58,11 @@ class SiteDataEntries(pydantic.BaseModel):
             lengths["air_temp"] = len(self.air_temp.data)
         if self.eload:
             lengths["eload"] = len(self.eload.data)
-        if self.rgen:
-            lengths["rgen"] = len(self.rgen.data)
         if self.grid_co2:
             lengths["grid_co2"] = len(self.grid_co2.data)
+        if self.rgen:
+            for i, solar in enumerate(self.rgen.data):
+                lengths[f"rgen_{i}"] = len(solar)
         if self.import_tariffs:
             for i, import_tariff in enumerate(self.import_tariffs.data):
                 lengths[f"import_tariff_{i}"] = len(import_tariff)
