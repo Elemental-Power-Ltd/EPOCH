@@ -157,8 +157,12 @@ class MockedHttpClient(httpx.AsyncClient):
             directory = base_dir / "renewables_ninja"
         elif url.startswith("https://api.re24.energy/v1/data/prices/nordpool"):
             directory = base_dir / "re24"
+        elif url.startswith("https://archive-api.open-meteo.com/v1/archive") or url.startswith(
+            "https://geocoding-api.open-meteo.com/v1/search"
+        ):
+            directory = base_dir / "open_meteo"
         else:
-            raise ValueError(f"Unhandled GET {url}")
+            raise ValueError(f"Unhandled GET in testing cacher: {url}")
 
         # no data or JSON or a GET request
         url_params = url_to_hash(url, kwargs.get("params"))
