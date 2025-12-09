@@ -157,6 +157,8 @@ class MockedHttpClient(httpx.AsyncClient):
             directory = base_dir / "renewables_ninja"
         elif url.startswith("https://api.re24.energy/v1/data/prices/nordpool"):
             directory = base_dir / "re24"
+        elif url.startswith("https://data.elexon.co.uk/bmrs/api/v1/balancing/pricing/market-index"):
+            directory = base_dir / "elexon"
         elif url.startswith("https://archive-api.open-meteo.com/v1/archive") or url.startswith(
             "https://geocoding-api.open-meteo.com/v1/search"
         ):

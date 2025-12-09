@@ -16,7 +16,7 @@ from app.models.import_tariffs import TariffMetadata, TariffProviderEnum
 from app.routers.client_data import get_baseline
 from app.routers.heating_load import list_phpp
 
-from ..dependencies import DatabasePoolDep
+from ..dependencies import DatabasePoolDep, SecretsDep
 from ..internal.epl_typing import Jsonable
 from ..internal.site_manager.bundles import file_self_with_bundle, insert_dataset_bundle
 from ..internal.site_manager.fetch_data import fetch_all_input_data
@@ -594,7 +594,9 @@ async def list_queue_contents(queue: JobQueueDep, bundle_id: dataset_id_t | None
 
 
 @router.post("/generate-all")
-async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: JobQueueDep) -> DatasetList:
+async def generate_all(
+    params: SiteIDWithTime, pool: DatabasePoolDep, queue: JobQueueDep, secrets_env: SecretsDep
+) -> DatasetList:
     """
     Run all dataset generation tasks for this site.
 
@@ -820,6 +822,7 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
     # We generate five different types of tariff, here done manually to keep track of the
     # tasks and not lose the handle to the task (which causes mysterious bugs)
     # Note that the order here doesn't matter, we just explicitly list them so it's clear what is going on.
+
     CHOSEN_TARIFFS = [
         SyntheticTariffEnum.Fixed,
         SyntheticTariffEnum.Agile,
@@ -828,6 +831,13 @@ async def generate_all(params: SiteIDWithTime, pool: DatabasePoolDep, queue: Job
         # SyntheticTariffEnum.ShapeShifter,
         SyntheticTariffEnum.PowerPurchaseAgreement,
     ]
+
+    # If we don't have an API key for RE24, fall back to using Elexon directly
+    # with the subtly different "Wholesale" tariff
+    if "EP_RE24_API_KEY_FILE" in secrets_env:
+        CHOSEN_TARIFFS[1] = SyntheticTariffEnum.Agile
+    else:
+        CHOSEN_TARIFFS[1] = SyntheticTariffEnum.Wholesale
     tariff_reqs = []
     # Check if there are existing entries in this bundle, and start our counting off from there.
     # Note that this doesn't happen as a task as it might be affected by the previous jobs.

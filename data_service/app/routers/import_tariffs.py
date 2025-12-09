@@ -23,6 +23,7 @@ from ..internal.import_tariffs import (
     create_peak_tariff,
     create_shapeshifter_tariff,
     get_day_and_night_rates,
+    get_elexon_wholesale_tariff,
     get_fixed_rates,
     get_octopus_tariff,
     get_re24_wholesale_tariff,
@@ -435,6 +436,16 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
                 price_df = await get_re24_approximate_ppa(
                     params=SiteIDWithTime(site_id=params.site_id, start_ts=params.start_ts, end_ts=params.end_ts),
                     grid_tariff=fixed_df,
+                )
+            case SyntheticTariffEnum.Wholesale:
+                logger.info("Generating a Wholesale tariff")
+
+                # First we need a grid tariff to act as a backup for any excess energy
+                # that we can't purchase via a PPA
+                underlying_tariff = "APXMIDP"
+
+                price_df = await get_elexon_wholesale_tariff(
+                    start_ts=params.start_ts, end_ts=params.end_ts, http_client=http_client
                 )
     else:
         logger.info(
