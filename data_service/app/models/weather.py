@@ -2,6 +2,7 @@
 
 # ruff: noqa: D101
 import datetime
+from enum import StrEnum, auto
 from typing import Self
 
 import pydantic
@@ -20,6 +21,18 @@ class BaitAndModelCoefs(pydantic.BaseModel):
     r2_score: float
 
 
+class WeatherDataProvider(StrEnum):
+    """
+    Which third party we want to get weather data from.
+
+    If Auto, we'll prefer VisualCrossing if there's an API key and OpenMeteo if not.
+    """
+
+    Auto = auto()
+    VisualCrossing = auto()
+    OpenMeteo = auto()
+
+
 class WeatherDatasetEntry(pydantic.BaseModel):
     timestamp: pydantic.AwareDatetime
     temp: float = pydantic.Field(examples=[16.7], description="Air temperature at this time in °C.")
@@ -35,9 +48,15 @@ class WeatherDatasetEntry(pydantic.BaseModel):
 
 
 class WeatherRequest(pydantic.BaseModel):
+    provider: WeatherDataProvider = pydantic.Field(
+        default=WeatherDataProvider.Auto,
+        description="3rd party API to query for weather data. If auto, prefer VisualCrossing, but need an API keyy.",
+    )
     location: location_t = pydantic.Field(
         examples=["London", "Cardiff"], description="The name of the nearest town or city that we'll use for weather data."
     )
+    latitude: float | None = pydantic.Field(default=None, description="Used for OpenMeteo.")
+    longitude: float | None = pydantic.Field(default=None, description="Used for OpenMeteo.")
     start_ts: pydantic.AwareDatetime = pydantic.Field(
         examples=["2024-01-01T23:59:59Z"], description="The earliest time (inclusive) to retrieve weather data for."
     )
