@@ -673,6 +673,7 @@ class TestGenerateAllQueue:
             ),
             pool=pool,
             queue=queue_fixture,
+            secrets_env=get_secrets_dep(),
         )
         try:
             async with asyncio.TaskGroup() as tg:

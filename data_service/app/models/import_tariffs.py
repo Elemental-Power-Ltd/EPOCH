@@ -57,6 +57,7 @@ class SyntheticTariffEnum(StrEnum):
     Peak = "peak"
     ShapeShifter = "shapeshifter"
     PowerPurchaseAgreement = "power_purchase_agreement"
+    Wholesale = "wholesale"
 
 
 class TariffRequest(RequestBase):

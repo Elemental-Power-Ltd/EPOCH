@@ -194,6 +194,16 @@ class TestSyntheticTariffs:
         assert all(x == y for x, y in zip(dates, df.index, strict=True))
         assert np.all(np.logical_or.reduce([df["cost"] == fixed_cost, df["cost"] == night_cost, df["cost"] == peak_premium]))
 
+    @pytest.mark.asyncio
+    async def test_create_elexon(self) -> None:
+        """Test that we can create a tariff using Elexon wholesale data."""
+        start_ts = datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2025, month=2, day=1, tzinfo=datetime.UTC)
+        async with httpx.AsyncClient() as client:
+            df = await it.get_elexon_wholesale_tariff(start_ts, end_ts, http_client=client)
+        assert len(set(df["cost"])) > 100
+        assert len(df) == (31 * 24 * 2) + 1
+
 
 class TestTariffUtils:
     def test_region_code_is_in(self) -> None:
