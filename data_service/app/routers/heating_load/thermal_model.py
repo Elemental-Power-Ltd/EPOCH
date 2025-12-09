@@ -208,25 +208,28 @@ async def fit_thermal_model_endpoint(
         await get_thermal_model(pool=pool, dataset_id=DatasetID(dataset_id=item.dataset_id)) for item in all_thermal_metadata
     ]
 
-    async def get_location(site_id: str) -> str:
-        location = await pool.fetchval(
-            """SELECT location FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
+    async def get_location(site_id: str) -> tuple[str, float, float]:
+        location_response = await pool.fetchval(
+            """SELECT location , coords FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
             site_id,
         )
-        if location is None:
+        if location_response is None:
             raise HTTPException(400, f"Couldn't find a location for {site_id}")
-        assert isinstance(location, str)
-        return location
+        location, latitude, longitude = location_response
+        return location, latitude, longitude
 
     async with asyncio.TaskGroup() as tg:
         location_task = tg.create_task(get_location(params.site_id))
         gas_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_gas_dataset_id), pool=pool))
         elec_meter_task = tg.create_task(get_meter_data(DatasetID(dataset_id=latest_elec_dataset_id), pool=pool))
 
-    location, gas_meter_records, elec_meter_records = location_task.result(), gas_meter_task.result(), elec_meter_task.result()
+    location, latitude, longitude = location_task.result()
+    gas_meter_records, elec_meter_records = gas_meter_task.result(), elec_meter_task.result()
     weather_records = await get_weather(
         weather_request=WeatherRequest(
             location=location,
+            latitude=latitude,
+            longitude=longitude,
             start_ts=min(item.start_ts for item in gas_meter_records),
             end_ts=max(item.end_ts for item in gas_meter_records),
         ),

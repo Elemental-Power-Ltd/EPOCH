@@ -40,6 +40,32 @@ class TestGetVisualCrossing:
         assert min(datetime.datetime.fromisoformat(item["timestamp"]) for item in result.json()) == demo_start_ts
 
 
+class TestGetOpenMeteo:
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    async def test_cardiff(
+        self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
+    ) -> None:
+        result = await client.post(
+            "/get-open-meteo",
+            json={
+                "location": "Cardiff",
+                "latitude": 51.48383312462927,
+                "longitude": -3.1679865885784104,
+                "start_ts": demo_start_ts.isoformat(),
+                "end_ts": demo_end_ts.isoformat(),
+            },
+        )
+        assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(hours=1).total_seconds()
+        for key in ["temp", "timestamp", "humidity", "windspeed"]:
+            assert key in result.json()[0]
+
+        assert max(
+            datetime.datetime.fromisoformat(item["timestamp"]) for item in result.json()
+        ) == demo_end_ts - datetime.timedelta(hours=1)
+        assert min(datetime.datetime.fromisoformat(item["timestamp"]) for item in result.json()) == demo_start_ts
+
+
 class TestGetWeather:
     @pytest.mark.asyncio
     @pytest.mark.external
@@ -51,7 +77,45 @@ class TestGetWeather:
             "/get-weather",
             json={"location": "Cardiff", "start_ts": demo_start_ts.isoformat(), "end_ts": demo_end_ts.isoformat()},
         )
+        assert result.is_success, result.text
 
+        vc_result = await client.post(
+            "/get-visual-crossing",
+            json={"location": "Cardiff", "start_ts": demo_start_ts.isoformat(), "end_ts": demo_end_ts.isoformat()},
+        )
+
+        db_timestamps = {item["timestamp"] for item in result.json()}
+        vc_timestamps = {item["timestamp"] for item in vc_result.json()}
+        assert max(
+            datetime.datetime.fromisoformat(item["timestamp"]) for item in result.json()
+        ) == demo_end_ts - datetime.timedelta(hours=1)
+        assert min(datetime.datetime.fromisoformat(item["timestamp"]) for item in result.json()) == demo_start_ts
+
+        assert db_timestamps == vc_timestamps
+
+        assert len(result.json()) == (demo_end_ts - demo_start_ts).total_seconds() / datetime.timedelta(hours=1).total_seconds()
+        for key in ["temp", "humidity", "windspeed"]:
+            assert key in result.json()[0]
+            assert np.isfinite(result.json()[0][key])
+
+    @pytest.mark.asyncio
+    @pytest.mark.external
+    async def test_all_from_om(
+        self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
+    ) -> None:
+        """Test that we've got all the weather we expect from OpenMeteo, and it lines up with VisualCrossing."""
+        result = await client.post(
+            "/get-weather",
+            json={
+                "provider": "openmeteo",
+                "location": "Cardiff",
+                "latitude": 51.48383312462927,
+                "longitude": -3.1679865885784104,
+                "start_ts": demo_start_ts.isoformat(),
+                "end_ts": demo_end_ts.isoformat(),
+            },
+        )
+        assert result.is_success, result.text
         vc_result = await client.post(
             "/get-visual-crossing",
             json={"location": "Cardiff", "start_ts": demo_start_ts.isoformat(), "end_ts": demo_end_ts.isoformat()},

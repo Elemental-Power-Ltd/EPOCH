@@ -3,7 +3,11 @@ Endpoints for weather data.
 
 Weather data is slightly different to the other datasets, as it will more often be re-used between sites.
 As such, weather is stored by a `location`, which is often the nearest town.
-We use VisualCrossing as the source of all weather data currently.
+We use VisualCrossing or OpenMeteo as the source of all weather data currently.
+If you don't have a VisualCrossing API key, then we've added OpenMeteo for the open source release.
+
+Weather data by Open-Meteo.com
+
 """
 
 import datetime
@@ -18,10 +22,10 @@ import pandas as pd
 import pydantic
 from fastapi import APIRouter
 
-from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep, SecretsDep
-from ..epl_secrets import get_secrets_environment
-from ..internal.utils import RateLimiter, split_into_sessions
-from ..models.weather import WeatherDatasetEntry, WeatherRequest
+from app.dependencies import DatabasePoolDep, HTTPClient, HttpClientDep, SecretsDep
+from app.epl_secrets import get_secrets_environment
+from app.internal.utils import RateLimiter, split_into_sessions
+from app.models.weather import WeatherDataProvider, WeatherDatasetEntry, WeatherRequest
 
 router = APIRouter()
 
@@ -67,8 +71,11 @@ async def visual_crossing_request(
         end_ts = datetime.datetime.combine(end_ts, datetime.time.min, datetime.UTC)
 
     if api_key is None:
-        api_key = get_secrets_environment()["VISUAL_CROSSING_API_KEY"]
+        # This can still fail if no key was provided
+        api_key = get_secrets_environment().get("VISUAL_CROSSING_API_KEY")
 
+    if api_key is None:
+        raise ValueError("Tried to get VisualCrossing data but had no API key.")
     desired_columns = [
         "datetimeEpoch",
         "temp",
@@ -160,6 +167,143 @@ async def visual_crossing_request(
     return [record_dict[ts] for ts in sorted(record_dict.keys())]
 
 
+async def open_meteo_request(
+    latitude: float,
+    longitude: float,
+    start_ts: datetime.datetime | datetime.date,
+    end_ts: datetime.datetime | datetime.date,
+    http_client: HTTPClient,
+    api_key: str | None = None,
+) -> list[dict[str, pydantic.AwareDatetime | float]]:
+    """
+    Get a weather history as a raw response from VisualCrossing.
+
+    This sets some sensible defaults for the VisualCrossing API call.
+    Be careful as it may be slow if you request lots of data.
+
+    Parameters
+    ----------
+    latitude
+        GPS coordinates for the location
+    longitude
+        GPS coordinates for the location
+    start_ts
+        Earliest timestamp (preferably UTC) to get weather for. Rounds to previous hour.
+        Clips to UTC midnight if a date if provided.
+    end_ts
+        Latest timestamp (preferably UTC) to get weather for. Rounds to next hour.
+        Clips to UTC midnight if a date if provided.
+
+    Returns
+    -------
+        raw response from VisualCrossing, with no sanity checking.
+    """
+    if isinstance(start_ts, datetime.date):
+        start_ts = datetime.datetime.combine(start_ts, datetime.time.min, datetime.UTC)
+    if isinstance(end_ts, datetime.date):
+        end_ts = datetime.datetime.combine(end_ts, datetime.time.min, datetime.UTC)
+
+    if api_key is None:
+        # This can still fail if no key was provided
+        api_key = get_secrets_environment().get("OPEN_METEO_API_KEY")
+
+    desired_columns = [
+        "temperature_2m",
+        "relative_humidity_2m",
+        "wind_speed_10m",
+        "surface_pressure",
+        "cloud_cover",
+        "direct_normal_irradiance",
+        "diffuse_radiation",
+        "terrestrial_radiation",
+    ]
+
+    NAME_MAPPING = {
+        "temperature_2m": "temp",
+        "relative_humidity_2m": "humidity",
+        "wind_speed_10m": "windspeed",
+        "surface_pressure": "pressure",
+        "cloud_cover": "cloudcover",
+        "direct_normal_irradiance": "dniradiation",
+        "diffuse_radiation": "difradiation",
+        "terrestrial_radiation": "solarradiation",
+    }
+
+    async def get_single_result(
+        in_lat: float,
+        in_lon: float,
+        in_client: httpx.AsyncClient,
+        api_key: str | None,
+        ts_pair: tuple[pd.Timestamp, pd.Timestamp] | tuple[datetime.datetime, datetime.datetime],
+    ) -> httpx.Response:
+        """
+        Get a single batch of data from OpenMeteo.
+
+        Your ts_pair should be chosen so as not to request more than about 10000 records (approx 1 year)
+        It is your responsibility to parse the response and make sure that it's legit.
+
+        Returns
+        -------
+        raw httpx response
+        """
+        params: dict[str, str | float] = {
+            "latitude": in_lat,
+            "longitude": in_lon,
+            "start_date": ts_pair[0].date().isoformat(),
+            "end_date": ts_pair[1].date().isoformat(),
+            "hourly": ",".join(desired_columns),
+            "timeformat": "iso8601",
+            "temperature_unit": "celsius",
+            "wind_speed_unit": "ms",  # holdover from visualcrossing, sorry!
+        }
+        if api_key is not None:
+            params["apikey"] = api_key
+        return await in_client.get(
+            ("https://archive-api.open-meteo.com/v1/archive"),
+            params=params,
+        )
+
+    records = []
+    # Segment the query to not overload VisualCrossing.
+    # They recommend requesting no more than 10,000 rows at a time, and splitting the query up.
+    # so iterate over (ts, ts + 9999h) pairs until we reach the end (thankfully Pandas makes that easy)
+
+    # There is however a risk that we'll have to re-sort the list at the end and remove duplicates.
+    segment_timestamps = [
+        item.to_pydatetime()
+        for item in pd.date_range(start_ts, end_ts, freq=pd.Timedelta(hours=4999), inclusive="left").tolist()
+    ]
+    if segment_timestamps[-1] != end_ts:
+        segment_timestamps += [end_ts]
+
+    ts_pairs = list(itertools.pairwise(segment_timestamps))
+    logger = logging.getLogger("default")
+    logger.info(f"Requesting {len(ts_pairs)} batches between {start_ts} and {end_ts} for {latitude} and {longitude}.")
+    async with aiometer.amap(
+        functools.partial(get_single_result, latitude, longitude, http_client, api_key),
+        ts_pairs,
+        max_at_once=2 if getattr(http_client, "DO_RATE_LIMIT", True) else None,
+        max_per_second=10 if getattr(http_client, "DO_RATE_LIMIT", True) else None,
+    ) as results:
+        async for req in results:
+            try:
+                raw_json = req.json()
+            except json.decoder.JSONDecodeError as ex:
+                raise ValueError(f"Could not decode JSON from OpenMeteo: `{req.text}`") from ex
+            hours = raw_json["hourly"]
+            for idx, timestamp in enumerate(hours["time"]):
+                rec = {NAME_MAPPING.get(col, col): hours[col][idx] for col in desired_columns}
+                rec["timestamp"] = datetime.datetime.fromisoformat(timestamp)
+                rec["timestamp"] = rec["timestamp"].replace(tzinfo=datetime.UTC)
+                records.append(rec)
+
+    # This is our cheeky trick to only select unique timestamps (we can't use the usual sorted(set(...)) idiom as
+    # the dict results are unhashable), and avoids having to construct a Pandas dataframe to do all this work.
+    # We also filter out any that don't meet our requirements.
+    record_dict = {x["timestamp"]: x for x in records if start_ts <= x["timestamp"] < end_ts}
+    return [record_dict[ts] for ts in sorted(record_dict.keys())]
+
+
 @router.post("/get-visual-crossing")
 async def get_visual_crossing(
     weather_request: WeatherRequest, http_client: HttpClientDep, secrets_env: SecretsDep
@@ -185,7 +329,68 @@ async def get_visual_crossing(
         start_ts=weather_request.start_ts,
         end_ts=weather_request.end_ts,
         http_client=http_client,
-        api_key=secrets_env["VISUAL_CROSSING_API_KEY"],
+        api_key=secrets_env.get("VISUAL_CROSSING_API_KEY"),
+    )
+
+
+async def open_meteo_geocode(location: str, http_client: HttpClientDep) -> tuple[float, float]:
+    """
+    Turn a location string (usually a town name) into a lat, lon pair using OpenMeteo's geocoding API.
+
+    Note that this might get the wrong location: be careful if you're looking up a "Newport", for example.
+    Careful that you comply with the terms of the OpenMeteo API.
+
+    Parameters
+    ----------
+    location
+        Name of nearest town
+    http_client
+        Async connection pool to send requests to OpenMeteo with
+
+    Returns
+    -------
+    latitude, longitude
+        WS84 coordinates of this site, generally to not many sig figs (but that's OK for weather!)
+    """
+    response = await http_client.get(
+        "https://geocoding-api.open-meteo.com/v1/search",
+        params={"name": location, "count": 1, "language": "en", "format": "json", "countryCode": "GB"},
+    )
+    if not response.is_success:
+        raise ValueError(f"Bad geocoding response: {response.text}")
+    data = response.json()["results"][0]
+    return float(data["latitude"]), float(data["longitude"])
+
+
+@router.post("/get-open-meteo")
+async def get_open_meteo(
+    weather_request: WeatherRequest, http_client: HttpClientDep, secrets_env: SecretsDep
+) -> list[dict[str, pydantic.AwareDatetime | float]]:
+    """
+    Get the raw data from VisualCrossing for a specific location between two timestamps.
+
+    This will not do any database caching; use `/get-weather` for that.
+    This will segment your query into multiple requests to avoid overloading VC.
+
+    Parameters
+    ----------
+    WeatherRequest
+        location, start_ts and end_ts pairs.
+
+    Returns
+    -------
+    weather_dataset_entries
+        List of weather dataset entries, sorted and with duplicates removed
+    """
+    if weather_request.latitude is None or weather_request.longitude is None:
+        weather_request.latitude, weather_request.longitude = await open_meteo_geocode(weather_request.location, http_client)
+    return await open_meteo_request(
+        latitude=weather_request.latitude,
+        longitude=weather_request.longitude,
+        start_ts=weather_request.start_ts,
+        end_ts=weather_request.end_ts,
+        http_client=http_client,
+        api_key=secrets_env.get("OPEN_METEO_API_KEY"),
     )
 
 
@@ -202,10 +407,17 @@ async def get_weather(
 
     Parameters
     ----------
-    request
-
     weather_request
+        Details about the weather you want to fetch, including where and when (and the provider, if applicable)
+    pool
+        Database connection pool to write into
+    http_client
+        HTTP Connection pool to get data with
 
+    Returns
+    -------
+    list[WeatherDatasetEntry]
+        Weather data in hourly increments at this site (maybe from the DB?)
     """
     # request only the days first so we can check if any data are missing
     res = await pool.fetch(
@@ -248,12 +460,48 @@ async def get_weather(
         # There's another rate limiter within the `visual_crossing_request` function, this just slows down parallel requests
         # to prevent trouble.
         await WEATHER_RATE_LIMIT.acquire()
-        vc_recs = await visual_crossing_request(
-            weather_request.location,
-            session_min_ts,
-            session_max_ts,
-            http_client=http_client,
-        )
+        HAS_VC_API_KEY = get_secrets_environment().get("VISUAL_CROSSING_API_KEY") is not None
+        if weather_request.provider == WeatherDataProvider.Auto:
+            if HAS_VC_API_KEY:
+                vc_recs = await visual_crossing_request(
+                    weather_request.location,
+                    session_min_ts,
+                    session_max_ts,
+                    http_client=http_client,
+                )
+            else:
+                if weather_request.latitude is None or weather_request.longitude is None:
+                    weather_request.latitude, weather_request.longitude = await open_meteo_geocode(
+                        weather_request.location, http_client
+                    )
+                vc_recs = await open_meteo_request(
+                    latitude=weather_request.latitude,
+                    longitude=weather_request.longitude,
+                    start_ts=session_min_ts,
+                    end_ts=session_max_ts,
+                    http_client=http_client,
+                )
+        elif weather_request.provider == WeatherDataProvider.VisualCrossing:
+            if not HAS_VC_API_KEY:
+                raise ValueError("Specified VisualCrossing as weather data provider but no API key, try OpenMeteo.")
+            vc_recs = await visual_crossing_request(
+                weather_request.location,
+                session_min_ts,
+                session_max_ts,
+                http_client=http_client,
+            )
+        elif weather_request.provider == WeatherDataProvider.OpenMeteo:
+            if weather_request.latitude is None or weather_request.longitude is None:
+                raise ValueError(f"Using OpenMeteo but wasn't given lat/lon for {weather_request.location}")
+            vc_recs = await open_meteo_request(
+                latitude=weather_request.latitude,
+                longitude=weather_request.longitude,
+                start_ts=session_min_ts,
+                end_ts=session_max_ts,
+                http_client=http_client,
+            )
+        else:
+            raise ValueError(f"Unknown Weather Data provider: {weather_request.provider}")
         async with pool.acquire() as conn, conn.transaction():
             # We do this odd two-step copy because we might be writing to the cache repeatedly from two different tasks.
             # Those will show a UniqueViolationError, so we create a temporary table, copy the records over, and
@@ -292,23 +540,24 @@ async def get_weather(
                     "dniradiation",
                     "difradiation",
                 ],
+                # Some of these columns are optional.
                 records=[
                     (
                         item["timestamp"],
                         weather_request.location,
                         item["temp"],
                         item["humidity"],
-                        item["precip"],
-                        item["precipprob"],
-                        item["snow"],
-                        item["snowdepth"],
-                        item["windgust"],
+                        item.get("precip"),
+                        item.get("precipprob"),
+                        item.get("snow"),
+                        item.get("snowdepth"),
+                        item.get("windgust"),
                         item["windspeed"],
-                        item["winddir"],
+                        item.get("winddir"),
                         item["pressure"],
                         item["cloudcover"],
                         item["solarradiation"],
-                        item["solarenergy"],
+                        item.get("solarenergy"),
                         item["dniradiation"],
                         item["difradiation"],
                     )

@@ -351,6 +351,7 @@ async def generate_heating_load_regression_impl(
         """
         SELECT
             location,
+            coordinates,
             m.fuel_type
         FROM client_meters.metadata AS m
         LEFT JOIN client_info.site_info AS s
@@ -362,7 +363,7 @@ async def generate_heating_load_regression_impl(
     if fuel_res is None:
         raise HTTPException(400, f"{params.dataset_id} is not a valid gas meter dataset.")
 
-    location, fuel_type = fuel_res
+    location, (latitude, longitude), fuel_type = fuel_res
     if location is None:
         raise HTTPException(400, f"Did not find a location for dataset {params.dataset_id}.")
 
@@ -401,7 +402,13 @@ async def generate_heating_load_regression_impl(
 
     fit_weather_df = weather_dataset_to_dataframe(
         await get_weather(
-            WeatherRequest(location=location, start_ts=gas_df["start_ts"].min(), end_ts=gas_df["end_ts"].max()),
+            WeatherRequest(
+                location=location,
+                latitude=latitude,
+                longitude=longitude,
+                start_ts=gas_df["start_ts"].min(),
+                end_ts=gas_df["end_ts"].max(),
+            ),
             pool=pool,
             http_client=http_client,
         )
@@ -411,7 +418,9 @@ async def generate_heating_load_regression_impl(
     changed_coefs = apply_fabric_interventions(fitted_coefs, params.interventions, params.savings_fraction)
     forecast_weather_df = weather_dataset_to_dataframe(
         await get_weather(
-            WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+            WeatherRequest(
+                location=location, latitude=latitude, longitude=longitude, start_ts=params.start_ts, end_ts=params.end_ts
+            ),
             pool=pool,
             http_client=http_client,
         )
@@ -606,14 +615,17 @@ async def generate_thermal_model_heating_load(
 
     if params.site_id is None:
         raise HTTPException(400, "Must have provided a site ID for thermal model dataset fitting")
-    location = await pool.fetchval(
-        """SELECT location FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
+    location_response = await pool.fetchval(
+        """SELECT location, coordinates FROM client_info.site_info WHERE site_id = $1 LIMIT 1""",
         params.site_id,
     )
-    if location is None:
+    if location_response is None:
         raise HTTPException(400, f"Could not find a location for {params.site_id}")
+    location, (latitude, longitude) = location_response
     weather_records = await get_weather(
-        weather_request=WeatherRequest(location=location, start_ts=params.start_ts, end_ts=params.end_ts),
+        weather_request=WeatherRequest(
+            location=location, latitude=latitude, longitude=longitude, start_ts=params.start_ts, end_ts=params.end_ts
+        ),
         pool=pool,
         http_client=http_client,
     )

@@ -165,4 +165,14 @@ def get_secrets_environment(
     if overrides is not None:
         total_environ |= overrides
 
+    openmeteo_fpath = Path(total_environ.get("OPEN_METEO_API_KEY_FILE", default_directory / "open_meteo_api_key"))
+    try:
+        total_environ["OPEN_METEO_API_KEY"] = load_secret_from_file(openmeteo_fpath)
+    except FileNotFoundError:
+        if "OPEN_METEO_API_KEY" not in total_environ:
+            logger.info(f"Could not find OpenMeteo key in environ, dotenv or {openmeteo_fpath} but it's optional")
+
+    if overrides is not None:
+        total_environ |= overrides
+
     return SecretDict(total_environ)
