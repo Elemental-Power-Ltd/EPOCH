@@ -154,7 +154,8 @@ class Bayesian(Algorithm):
             total_n_evals = dpo.n_evals
             return OptimisationResult(solutions, total_n_evals, total_exec_time)
 
-        max_capexs = [1.25 * val for val in dpo.max_capexs]  # Add 25% extra CAPEX in case initialisation didn't converge
+        # Add 25% extra CAPEX in case initialisation didn't converge
+        max_capexs = [1.25 * val if val > 0 else capex_limit for val in dpo.max_capexs]
 
         sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in sub_portfolios]
 
