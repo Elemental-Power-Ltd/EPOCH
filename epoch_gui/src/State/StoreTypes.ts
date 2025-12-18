@@ -14,6 +14,7 @@ export type GlobalSlice = {
     setSelectedClient: (client: Client) => void;
     setAvailableClients: (clients: Client[]) => void;
     setClientSites: (sites: Site[]) => void;
+    addClientSite: (site: Site) => void;
 }
 
 export interface OptimiseState {

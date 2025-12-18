@@ -38,4 +38,9 @@ export const createGlobalSlice: StateCreator<AppState, [], [], GlobalSlice> = (s
     set((state) => ({
       global: { ...state.global, client_sites: sites }
     })),
+
+  addClientSite: (site: Site) =>
+    set((state) => ({
+      global: {...state.global, client_sites: [...state.global.client_sites, site]},
+    })),
 })

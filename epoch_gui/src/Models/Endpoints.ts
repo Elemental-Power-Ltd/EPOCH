@@ -167,6 +167,7 @@ export interface ListBundlesResponse {
     available_datasets: string[];
 }
 
+export type MountType = "building-integrated" | "free"
 
 export interface SolarLocation {
     site_id: string;
@@ -175,7 +176,7 @@ export interface SolarLocation {
     azimuth: number | null;
     tilt: number | null;
     maxpower: number | null;
-    mounting_type: "building_integrated" | "free";
+    mounting_type: MountType;
 }
 
 export interface TariffMetadata {
@@ -214,4 +215,46 @@ export interface BundleHint {
 export interface SiteDataWithHints {
     siteData: EpochSiteData;
     hints: BundleHint | null;
+}
+
+export type FuelType = "gas" | "elec"
+
+export interface UploadMeterFileRequest {
+    file: File;
+    site_id: string;
+    fuel_type: FuelType;
+    disaggregation_info: null;
+}
+
+export interface UploadMeterFileResponse {
+    dataset_id: string;
+    created_at: string;
+    site_id: string;
+    fuel_type: FuelType;
+    reading_type: "manual" | "automatic" | "halfhourly";
+    filename: string | null;
+    is_synthesised: boolean;
+    start_ts: string;
+    end_ts: string;
+}
+
+export interface PhppMetadata {
+    filename: string | null;
+    site_id: string;
+    internal_volume: number;
+    air_changes: number;
+    floor_area: number;
+    structure_id: string;
+    created_at: string;
+}
+
+export interface addSiteRequest {
+    client_id: string;
+    site_id: string;
+    name: string;
+    location: string;
+    coordinates: [number, number];
+    address: string;
+    epc_lmk: string | null;
+    dec_lmk: string | null;
 }

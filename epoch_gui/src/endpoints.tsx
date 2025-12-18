@@ -1,12 +1,20 @@
 import {Site, OptimisationTaskListRequest, Client, OptimisationTaskListResponse} from "./State/types";
 import {
-    EpochSiteData, BundleHint, ListBundlesResponse,
+    EpochSiteData,
+    BundleHint,
+    ListBundlesResponse,
     OptimisationResultsResponse,
     ReproduceSimulationRequest,
     SimulationResult,
     SubmitOptimisationRequest,
     SubmitOptimisationResponse,
-    SubmitSimulationRequest, SiteDataWithHints
+    SubmitSimulationRequest,
+    SiteDataWithHints,
+    FuelType,
+    SolarLocation,
+    UploadMeterFileResponse,
+    PhppMetadata,
+    addSiteRequest
 } from "./Models/Endpoints";
 import dayjs, {Dayjs} from "dayjs";
 import {TaskData} from "./Components/TaskDataViewer/TaskData.ts";
@@ -310,7 +318,7 @@ export const getSiteBaseline = async (site_id: string): Promise<ApiResponse<Task
     try {
         const response = await fetch("/api/data/get-site-baseline", {
             method: "POST",
-            "headers": {"Content-Type": "application/json"},
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload)
         });
 
@@ -327,3 +335,131 @@ export const getSiteBaseline = async (site_id: string): Promise<ApiResponse<Task
         return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 }
+
+export const uploadMeterFile = async (file: File, site_id: string, fuelType: FuelType): Promise<ApiResponse<UploadMeterFileResponse>> => {
+
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("site_id", site_id);
+        formData.append("fuel_type", fuelType);
+        // formData.append("disaggregation_info", JSON.stringify(null));
+
+        const response = await fetch("/api/data/upload-meter-file", {
+            method: "POST",
+            body: formData
+        })
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const json: UploadMeterFileResponse = await response.json();
+        return {success: true, data: json};
+    } catch (error) {
+        console.error("Failed to upload meter file", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+
+export const uploadPhpp = async (file: File, site_id: string): Promise<ApiResponse<PhppMetadata>> => {
+
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("site_id", site_id);
+
+        const response = await fetch("/api/data/upload-phpp", {
+            method: "POST",
+            body: formData
+        })
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const json: PhppMetadata = await response.json();
+        return {success: true, data: json};
+    } catch (error) {
+        console.error("Failed to upload PHPP file", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+
+export const addSolarLocation = async (solarInfo: SolarLocation): Promise<ApiResponse<SolarLocation>> => {
+    try {
+        const response = await fetch("/api/data/add-solar-location", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(solarInfo)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const location: SolarLocation = await response.json()
+        return {success: true, data: location};
+    } catch (error) {
+        console.error("Failed to add location", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const addSiteBaseline = async(site: string, baseline: TaskData): Promise<ApiResponse<string>> => {
+    const payload = {
+        site_id: {site_id: site},
+        baseline: baseline
+    }
+
+    try {
+        const response = await fetch("/api/data/add-site-baseline", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        })
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const baseline_id = await response.json();
+        return {success: true, data: baseline_id}
+    } catch (error) {
+        console.error("Failed to add baseline", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+
+export const addSite = async (siteInfo: addSiteRequest): Promise<ApiResponse<addSiteRequest>> => {
+    try {
+        const response = await fetch("/api/data/add-site", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(siteInfo)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const json: [addSiteRequest, string] = await response.json();
+        return {success: true, data: json[0]};
+    } catch (error) {
+        console.error("Failed to add site", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+};
