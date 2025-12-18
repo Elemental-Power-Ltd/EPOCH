@@ -433,7 +433,7 @@ class ResultReproConfig(pydantic.BaseModel):
 
 class NewResultReproConfig(ResultReproConfig):
     bundle_ids: dict[site_id_t, dataset_id_t]
-    site_configs: dict[site_id_t, Config] | None = pydantic.Field(
+    site_configs: dict[site_id_t, Config | None] | None = pydantic.Field(
         description="Extra config data per site, including grant applicability and cost models."
         "If None, check in the TaskData and SiteRange directly.",
         default=None,

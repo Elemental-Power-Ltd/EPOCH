@@ -1275,12 +1275,14 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
 
     bundle_ids: dict[site_id_t, dataset_id_t] = {}
     scenarios: dict[site_id_t, TaskDataPydantic] = {}
-    site_configs: dict[site_id_t, Config] = {}
+    site_configs: dict[site_id_t, Config | None] = {}
     for row in rows:
         site_id = row["site_id"]
         bundle_ids[site_id] = row["bundle_id"]
         scenarios[site_id] = TaskDataPydantic.model_validate_json(row["scenario"])
-        site_configs[site_id] = Config.model_validate_json(row["site_config"] or row["scenario"]["config"])
+        site_configs[site_id] = (
+            Config.model_validate_json(row["site_config"]) if row["site_config"] else scenarios[site_id].config
+        )
 
     if any(value is None for value in bundle_ids.values()):
         site_datas: dict[str, SiteDataEntry] = {}
