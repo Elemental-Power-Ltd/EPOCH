@@ -8,6 +8,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from ..epl_typing import Jsonable
 
 class BatteryModeEnum(str, Enum):
     CONSUME = 'CONSUME'
@@ -53,6 +54,8 @@ class Config(BaseModel):
         description='The decimal discount factor to apply to future years in the net-present-value calculations.',
         title='NPV discount factor',
     )
+    capex_model: Jsonable | None = Field(default=None, description="A weakly typed cost model that is passed directly through to EPOCH.")
+    opex_model: Jsonable | None = Field(default=None, description="A weakly typed cost model that is passed directly through to EPOCH.")
 
 
 class Building(BaseModel):
