@@ -9,6 +9,10 @@ import ComponentBuilderForm from "../ComponentBuilder/ComponentBuilderForm";
 import SimulationResultViewer from "../Results/SimulationResultViewer";
 import {TaskData} from "../TaskDataViewer/TaskData.ts";
 
+import {CapexModel, FullCostModel, OpexModel} from "../CostModel/Types.ts";
+import CostModelEditor from "../CostModel/CostModelEditor.tsx";
+import defaulCostModel from "../CostModel/AlchemaiModel.json";
+
 interface Props {
   baseline: TaskData;
   siteID: string;
@@ -28,6 +32,11 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const defaultModel = defaulCostModel as FullCostModel;
+
+  const [capexModel, setcapexModel] = useState<CapexModel>(defaultModel.capex_model);
+  const [opexModel, setOpexModel] = useState<OpexModel>(defaultModel.opex_model);
+
   const runSimulation = async () => {
     setIsLoading(true);
     setError(null);
@@ -43,7 +52,14 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
     }
 
     const request: SubmitSimulationRequest = {
-      task_data: taskData,
+      task_data: {
+        ...taskData,
+        config: {
+          ...taskData.config,
+          capex_model: capexModel,
+          opex_model: opexModel
+        }
+      },
       site_data: {
         site_id: siteID,
         start_ts: startDate.toISOString(),
@@ -88,16 +104,24 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
   return (
     <>
       {step === 1 && (
-        <ComponentBuilderForm
-          mode="TaskDataMode"
-          componentsMap={componentBuilderState.componentsState}
-          addComponent={componentBuilderState.addComponent}
-          removeComponent={componentBuilderState.removeComponent}
-          updateComponent={componentBuilderState.updateComponent}
-          setComponents={componentBuilderState.setComponents}
-          getComponents={getTaskData}
-          site_id={siteID}
-        />
+          <>
+          <ComponentBuilderForm
+            mode="TaskDataMode"
+            componentsMap={componentBuilderState.componentsState}
+            addComponent={componentBuilderState.addComponent}
+            removeComponent={componentBuilderState.removeComponent}
+            updateComponent={componentBuilderState.updateComponent}
+            setComponents={componentBuilderState.setComponents}
+            getComponents={getTaskData}
+            site_id={siteID}
+          />
+          <CostModelEditor
+              capexModel={capexModel}
+              onChangeCapex={setcapexModel}
+              opexModel={opexModel}
+              onChangeOpex={setOpexModel}
+          />
+        </>
       )}
 
       {step === 2 && (

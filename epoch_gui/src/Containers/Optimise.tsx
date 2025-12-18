@@ -14,6 +14,9 @@ import {SubmitOptimisationRequest, Objective} from "../Models/Endpoints";
 import expandSiteRange, {PortfolioValidationResult} from "../Components/ComponentBuilder/ConvertSiteRange";
 import ComponentBuilderForm from "../Components/ComponentBuilder/ComponentBuilderForm";
 import ErrorList from "../Components/ComponentBuilder/ErrorList";
+import {CapexModel, FullCostModel, OpexModel} from "../Components/CostModel/Types.ts";
+import CostModelEditor from "../Components/CostModel/CostModelEditor.tsx";
+import defaulCostModel from "../Components/CostModel/AlchemaiModel.json";
 
 
 function OptimisationContainer() {
@@ -37,6 +40,10 @@ function OptimisationContainer() {
     const [portfolioRangeErrors, setPortfolioRangeErrors] = useState<Record<string, string[]>>({});
 
     const [portfolioCapexBudget, setPortfolioCapexBudget] = useState<number | undefined>(undefined);
+
+    const defaultModel = defaulCostModel as FullCostModel;
+    const [capexModel, setcapexModel] = useState<CapexModel>(defaultModel.capex_model);
+    const [opexModel, setOpexModel] = useState<OpexModel>(defaultModel.opex_model);
 
     const handlePortfolioCapexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -133,7 +140,14 @@ function OptimisationContainer() {
             objectives: selected_objectives,
             portfolio: Object.keys(state.portfolioMap).map((site_id: string) => ({
                 name: "-",
-                site_range: portfolioSiteRanges[site_id],
+                site_range: {
+                    ...portfolioSiteRanges[site_id],
+                    config: {
+                        ...portfolioSiteRanges[site_id].config,
+                        capex_model: capexModel,
+                        opex_model: opexModel,
+                    }
+                },
                 site_data: {
                     site_id: site_id,
                     start_ts: state.taskConfig.start_date!.toISOString(),
@@ -219,6 +233,12 @@ function OptimisationContainer() {
                 Add Site
             </Button>
 
+            <CostModelEditor
+                capexModel={capexModel}
+                onChangeCapex={setcapexModel}
+                opexModel={opexModel}
+                onChangeOpex={setOpexModel}
+            />
 
             <Button onClick={onRun} disabled={!canRun()} variant="contained" size="large">
                 Run Optimisation
