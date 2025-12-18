@@ -8,6 +8,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from ...internal.epl_typing import Jsonable
+
 
 class Building(BaseModel):
     scalar_heat_load: float = Field(
@@ -415,6 +417,8 @@ class Config(BaseModel):
         description='The decimal discount factor to apply to future years in the net-present-value calculations.',
         title='NPV discount factor',
     )
+    capex_model: Jsonable | None = Field(default=None, description="A weakly typed cost model that is passed directly through to EPOCH.")
+    opex_model: Jsonable | None = Field(default=None, description="A weakly typed cost model that is passed directly through to EPOCH.")
 
 
 class TaskData(BaseModel):
