@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from .core import client_id_t, dataset_id_t, site_id_field, site_id_t
 from .epoch_types import TaskDataPydantic
+from .epoch_types.task_data_type import Config
 from .site_manager import BundleHints, SiteDataEntry
 from .site_range import SiteRange
 
@@ -420,6 +421,9 @@ class TaskConfig(pydantic.BaseModel):
         default=None, description="The EPOCH version this task was created with; None if unknown"
     )
     bundle_ids: dict[site_id_t, dataset_id_t] = pydantic.Field(description="The data bundle id for each site.")
+    site_configs: dict[site_id_t, Config] | None = pydantic.Field(
+        default=None, description="Extra config data, like cost models and grant applicability per site"
+    )
 
 
 class ResultReproConfig(pydantic.BaseModel):
@@ -429,6 +433,11 @@ class ResultReproConfig(pydantic.BaseModel):
 
 class NewResultReproConfig(ResultReproConfig):
     bundle_ids: dict[site_id_t, dataset_id_t]
+    site_configs: dict[site_id_t, Config] | None = pydantic.Field(
+        description="Extra config data per site, including grant applicability and cost models."
+        "If None, check in the TaskData and SiteRange directly.",
+        default=None,
+    )
 
 
 class LegacyResultReproConfig(ResultReproConfig):
