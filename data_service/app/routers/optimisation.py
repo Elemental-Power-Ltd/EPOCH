@@ -26,6 +26,8 @@ from app.internal.optimisation.util import capex_breakdown_from_json, capex_brea
 from app.internal.utils.utils import ArgDefaultDict, snake_to_title_case
 from app.internal.utils.uuid import uuid7
 from app.models.core import ResultID, TaskID, dataset_id_t, site_id_t
+from app.models.epoch_types.task_data_type import Config
+from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.optimisation import (
     AddCuratedResultRequest,
     CuratedResult,
@@ -1222,10 +1224,11 @@ async def add_optimisation_task(task_config: TaskConfig, pool: DatabasePoolDep) 
                     bundle_id,
                     json.dumps(jsonable_encoder(task_config.site_constraints[site_id])),  # type: ignore
                     json.dumps(jsonable_encoder(task_config.portfolio_range[site_id])),
+                    json.dumps(jsonable_encoder(task_config.site_configs[site_id])) if task_config.site_configs else None,
                 )
                 for site_id, bundle_id in task_config.bundle_ids.items()
             ],
-            columns=["task_id", "site_id", "bundle_id", "site_constraints", "site_range"],
+            columns=["task_id", "site_id", "bundle_id", "site_constraints", "site_range", "site_config"],
         )
 
     return task_config
@@ -1251,7 +1254,8 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
             stc.site_data,
             stc.site_id,
             stc.bundle_id,
-            sr.scenario
+            sr.scenario,
+            stc.site_config
         FROM
             optimisation.site_results AS sr
         LEFT JOIN
@@ -1269,13 +1273,16 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
     if rows is None:
         raise HTTPException(400, f"No task configuration exists for result with id {result_id.result_id}")
 
-    bundle_ids = {}
-    scenarios = {}
-
+    bundle_ids: dict[site_id_t, dataset_id_t] = {}
+    scenarios: dict[site_id_t, TaskDataPydantic] = {}
+    site_configs: dict[site_id_t, Config | None] = {}
     for row in rows:
         site_id = row["site_id"]
         bundle_ids[site_id] = row["bundle_id"]
-        scenarios[site_id] = json.loads(row["scenario"])
+        scenarios[site_id] = TaskDataPydantic.model_validate_json(row["scenario"])
+        site_configs[site_id] = (
+            Config.model_validate_json(row["site_config"]) if row["site_config"] else scenarios[site_id].config
+        )
 
     if any(value is None for value in bundle_ids.values()):
         site_datas: dict[str, SiteDataEntry] = {}
@@ -1284,7 +1291,9 @@ async def get_result_configuration(result_id: ResultID, pool: DatabasePoolDep) -
 
         return LegacyResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, site_data=site_datas)
 
-    return NewResultReproConfig(portfolio_id=result_id.result_id, task_data=scenarios, bundle_ids=bundle_ids)
+    return NewResultReproConfig(
+        portfolio_id=result_id.result_id, task_data=scenarios, bundle_ids=bundle_ids, site_configs=site_configs
+    )
 
 
 @router.post("/add-curated-result", tags=["highlight"])

@@ -21,6 +21,7 @@ from .routers import (
     air_source_heat_pump,
     carbon_intensity,
     client_data,
+    cost_model,
     electricity_load,
     heating_load,
     import_tariffs,
@@ -43,7 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(cost_model.router)
 app.include_router(client_data.router)
 app.include_router(meter_data.router)
 app.include_router(weather.router)
