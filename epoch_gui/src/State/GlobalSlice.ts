@@ -8,8 +8,8 @@ import {AppState, GlobalSlice} from "./StoreTypes.ts";
 
 export const createGlobalSlice: StateCreator<AppState, [], [], GlobalSlice> = (set, _get, _api) => ({
   global: {
-    selectedClient: null,
-    availableClients: [],
+    selectedClient: {client_id: "demo", name: "Demonstration"},
+    availableClients: [{client_id: "demo", name: "Demonstration"}],
     client_sites: []
   },
 
