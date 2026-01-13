@@ -14,7 +14,7 @@ import {
     SolarLocation,
     UploadMeterFileResponse,
     PhppMetadata,
-    addSiteRequest
+    addSiteRequest, CostModelResponse, CostModelRequest
 } from "./Models/Endpoints";
 import dayjs, {Dayjs} from "dayjs";
 import {TaskData} from "./Components/TaskDataViewer/TaskData.ts";
@@ -460,6 +460,78 @@ export const addSite = async (siteInfo: addSiteRequest): Promise<ApiResponse<add
         return {success: true, data: json[0]};
     } catch (error) {
         console.error("Failed to add site", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+};
+
+
+export const listCostModels = async (): Promise<ApiResponse<CostModelResponse[]>> => {
+
+  try {
+    const response = await fetch("/api/data/list-cost-models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const error = `HTTP error! Status: ${response.status}`;
+      console.error(error);
+      return { success: false, data: null, error };
+    }
+
+    const models: CostModelResponse[] = await response.json();
+    return { success: true, data: models };
+  } catch (error) {
+    console.error("Failed to list cost models", error);
+    return { success: false, data: null, error: error instanceof Error ? error.message : String(error) };
+  }
+};
+
+
+export const addCostModel = async (model: CostModelRequest): Promise<ApiResponse<CostModelResponse>> => {
+
+    try {
+        const response = await fetch("/api/data/add-cost-model", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(model),
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const created: CostModelResponse = await response.json();
+        return {success: true, data: created};
+    } catch (error) {
+        console.error("Failed to add cost model", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+};
+
+export const getCostModel = async (cost_model_id: string): Promise<ApiResponse<CostModelResponse>> => {
+
+    try {
+        const response = await fetch(
+            `/api/data/get-cost-model?cost_model_id=${encodeURIComponent(cost_model_id)}`,
+            {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+            });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const model: CostModelResponse = await response.json();
+        return {success: true, data: model};
+    } catch (error) {
+        console.error("Failed to get cost model", error);
         return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 };

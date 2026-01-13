@@ -1,5 +1,6 @@
 import { TaskData } from "../Components/TaskDataViewer/TaskData.ts";
 import {HighlightedResult, PortfolioOptimisationResult, SiteMetrics} from "../State/types.ts";
+import {CapexModel, OpexModel} from "../Components/CostModel/Types.ts";
 
 interface SiteMetaData {
     site_id: string;
@@ -258,4 +259,19 @@ export interface addSiteRequest {
     address: string;
     epc_lmk: string | null;
     dec_lmk: string | null;
+}
+
+export interface CostModelRequest {
+    model_name?: string | null;
+    capex_model: any;
+    opex_model: any;
+}
+
+
+export interface CostModelResponse {
+    cost_model_id: string;
+    model_name?: string | null;
+    capex_model: CapexModel;
+    opex_model: OpexModel;
+    created_at: string;
 }

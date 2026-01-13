@@ -1,6 +1,6 @@
 import {FC, useState} from "react";
-import {Button} from "@mui/material";
-import {SubmitSimulationRequest, SimulationResult} from "../../Models/Endpoints";
+import {Box, Button, Paper} from "@mui/material";
+import {SubmitSimulationRequest, SimulationResult, CostModelResponse} from "../../Models/Endpoints";
 import {submitSimulation} from "../../endpoints";
 import {Dayjs} from "dayjs";
 import {useComponentBuilderState} from "../ComponentBuilder/useComponentBuilderState";
@@ -9,9 +9,7 @@ import ComponentBuilderForm from "../ComponentBuilder/ComponentBuilderForm";
 import SimulationResultViewer from "../Results/SimulationResultViewer";
 import {TaskData} from "../TaskDataViewer/TaskData.ts";
 
-import {CapexModel, FullCostModel, OpexModel} from "../CostModel/Types.ts";
-import CostModelEditor from "../CostModel/CostModelEditor.tsx";
-import defaulCostModel from "../CostModel/AlchemaiModel.json";
+import {CostModelPicker} from "../CostModel/CostModelPicker.tsx";
 
 interface Props {
   baseline: TaskData;
@@ -32,10 +30,7 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const defaultModel = defaulCostModel as FullCostModel;
-
-  const [capexModel, setcapexModel] = useState<CapexModel>(defaultModel.capex_model);
-  const [opexModel, setOpexModel] = useState<OpexModel>(defaultModel.opex_model);
+    const [costModel, setCostModel] = useState<CostModelResponse | null>(null);
 
   const runSimulation = async () => {
     setIsLoading(true);
@@ -60,8 +55,8 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
       },
       config: {
         ...componentBuilderState.siteInfo.config,
-        capex_model: capexModel,
-        opex_model: opexModel
+        capex_model: costModel!.capex_model,
+        opex_model: costModel!.opex_model
       }
     };
 
@@ -79,6 +74,13 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
       setIsLoading(false);
     }
   };
+
+  const canSimulate = () => {
+    if (!costModel) {
+      return false;
+    }
+    return true;
+  }
 
   const handleNext = async () => {
     if (step === 1) {
@@ -114,12 +116,13 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
             setConfig={componentBuilderState.setConfig}
             site_id={siteID}
           />
-          <CostModelEditor
-              capexModel={capexModel}
-              onChangeCapex={setcapexModel}
-              opexModel={opexModel}
-              onChangeOpex={setOpexModel}
-          />
+
+          <Box my={2}>
+              <Paper variant="outlined" sx={{ p: 1 }}>
+                  <CostModelPicker costModel={costModel} setCostModel={setCostModel}/>
+              </Paper>
+          </Box>
+
         </>
       )}
 
@@ -134,7 +137,7 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
       <div style={{marginTop: "2rem", display: "flex", justifyContent: "space-between"}}>
         <Button onClick={handleBack}>Back</Button>
         {step === 1 && (
-          <Button variant="contained" color="primary" onClick={handleNext}>
+          <Button variant="contained" color="primary" onClick={handleNext} disabled={!canSimulate()}>
             Simulate
           </Button>
         )}

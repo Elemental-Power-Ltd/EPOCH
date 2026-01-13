@@ -14,6 +14,7 @@ import {BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate} from "
 
 import AppTheme from "./AppTheme";
 import DeveloperSettings from "./Components/Settings/DeveloperSettings.tsx";
+import CostContainer from "./Containers/CostContainer.tsx";
 
 function App() {
     const selectedClient = useEpochStore((state) => state.global.selectedClient);
@@ -108,6 +109,7 @@ function App() {
                             <Route path="/results/:task_id?/:portfolio_id?" element={<ResultsContainer/>}/>
                             <Route path="/analyse/:portfolio_id?/:site_id?" element={<AnalysisContainer/>}/>
                             <Route path="/sites" element={<SitesContainer/>}/>
+                            <Route path="/costs" element={<CostContainer/>}/>
                             <Route path="/generate-data" element={<DatasetGenerationContainer/>}/>
 
                             {/*404*/}
@@ -141,6 +143,7 @@ const NavTabs = () => {
         {label: 'Results', path: '/results'},
         {label: 'Analyse', path: '/analyse'},
         {label: 'Sites', path: '/sites'},
+        {label: 'Costs', path: '/costs'},
         {label: 'Generate Dataset', path: '/generate-data'},
     ];
 

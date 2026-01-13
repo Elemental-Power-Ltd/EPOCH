@@ -3,20 +3,18 @@ import {useState} from "react";
 import AccordionSection from "../util/Widgets/AccordionSection";
 import AddSiteModal from "../Components/SearchParameters/AddSite";
 
-import {Button, Box, IconButton, Container, TextField} from '@mui/material';
+import {Button, Box, IconButton, Container, TextField, Paper} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import {submitOptimisationJob} from "../endpoints";
 
 import {useEpochStore} from "../State/Store";
 import OptimiserConfigForm from "../Components/TaskConfig/OptimiserConfigForm.tsx";
-import {SubmitOptimisationRequest, Objective} from "../Models/Endpoints";
+import {SubmitOptimisationRequest, Objective, CostModelResponse} from "../Models/Endpoints";
 import expandSiteRange, {PortfolioValidationResult} from "../Components/ComponentBuilder/ConvertSiteRange";
 import ComponentBuilderForm from "../Components/ComponentBuilder/ComponentBuilderForm";
 import ErrorList from "../Components/ComponentBuilder/ErrorList";
-import {CapexModel, FullCostModel, OpexModel} from "../Components/CostModel/Types.ts";
-import CostModelEditor from "../Components/CostModel/CostModelEditor.tsx";
-import defaulCostModel from "../Components/CostModel/AlchemaiModel.json";
+import {CostModelPicker} from "../Components/CostModel/CostModelPicker.tsx";
 
 
 function OptimisationContainer() {
@@ -41,9 +39,7 @@ function OptimisationContainer() {
 
     const [portfolioCapexBudget, setPortfolioCapexBudget] = useState<number | undefined>(undefined);
 
-    const defaultModel = defaulCostModel as FullCostModel;
-    const [capexModel, setcapexModel] = useState<CapexModel>(defaultModel.capex_model);
-    const [opexModel, setOpexModel] = useState<OpexModel>(defaultModel.opex_model);
+    const [costModel, setCostModel] = useState<CostModelResponse | null>(null);
 
     const setConfig = useEpochStore((state) => state.setConfig);
 
@@ -72,6 +68,11 @@ function OptimisationContainer() {
 
         // Task must contain at least one site
         if (Object.keys(state.portfolioMap).length === 0) {
+            return false;
+        }
+
+        // A cost model must be loaded
+        if (!costModel?.capex_model || !costModel?.opex_model) {
             return false;
         }
 
@@ -151,8 +152,8 @@ function OptimisationContainer() {
                 },
                 config: {
                     ...state.portfolioMap[site_id].config,
-                    capex_model: capexModel,
-                    opex_model: opexModel
+                    capex_model: costModel!.capex_model,
+                    opex_model: costModel!.opex_model
                 }
             })),
             portfolio_constraints: portfolio_constraints,
@@ -234,12 +235,12 @@ function OptimisationContainer() {
                 Add Site
             </Button>
 
-            <CostModelEditor
-                capexModel={capexModel}
-                onChangeCapex={setcapexModel}
-                opexModel={opexModel}
-                onChangeOpex={setOpexModel}
-            />
+            <Box my={2}>
+                <Paper variant="outlined" sx={{ p: 1 }}>
+                    <CostModelPicker costModel={costModel} setCostModel={setCostModel}/>
+                </Paper>
+            </Box>
+
 
             <Button onClick={onRun} disabled={!canRun()} variant="contained" size="large">
                 Run Optimisation
