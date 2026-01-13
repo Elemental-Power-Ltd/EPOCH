@@ -82,7 +82,7 @@ export const useComponentBuilderState = (mode: BuilderMode, baseline: any): Comp
     setSiteInfo(prev => {
       const newComponentsMap = { ...prev.components };
 
-      for (const stringKey in prev) {
+      for (const stringKey in prev.components) {
         const componentKey = stringKey as ComponentType;
 
         if (componentKey in components) {
