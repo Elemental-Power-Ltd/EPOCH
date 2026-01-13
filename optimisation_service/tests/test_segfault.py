@@ -2,7 +2,7 @@ from pathlib import Path
 
 from epoch_simulator import Simulator, TaskData
 
-from app.models.epoch_types.site_range_type import Config
+from app.models.epoch_types.config import Config
 
 from .conftest import _DATA_PATH, load_epoch_data_from_file
 

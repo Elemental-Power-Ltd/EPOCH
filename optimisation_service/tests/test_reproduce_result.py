@@ -2,7 +2,7 @@ import datetime
 from uuid import UUID, uuid4
 
 from app.internal.uuid7 import uuid7
-from app.models.epoch_types.task_data_type import Building, Config, GasHeater, GasType, Grid, SolarPanel, TaskData
+from app.models.epoch_types.task_data_type import Building, GasHeater, GasType, Grid, SolarPanel, TaskData
 from app.models.simulate import LegacyResultReproConfig
 from app.models.site_data import LegacySiteMetaData
 
@@ -86,13 +86,6 @@ class TestLegacyResultReproConfig:
                     heat_pump=None,
                     mop=None,
                     solar_panels=[SolarPanel(yield_scalar=5.0, yield_index=0, incumbent=False, age=0.0, lifetime=25.0)],
-                    config=Config(
-                        capex_limit=100000000.0,
-                        use_boiler_upgrade_scheme=False,
-                        general_grant_funding=0.0,
-                        npv_time_horizon=10,
-                        npv_discount_factor=0.0,
-                    ),
                 )
             },
             site_data={

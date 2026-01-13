@@ -22,9 +22,6 @@ def count_parameters_to_optimise(site_range: SiteRange) -> int:
 
     site_range_dict = site_range.model_dump(exclude_none=True)
 
-    # there are no varying parameters in the config
-    site_range_dict.pop("config")
-
     for asset_name, asset in site_range_dict.items():
         if asset_name in REPEAT_COMPONENTS:
             for sub_asset in asset:

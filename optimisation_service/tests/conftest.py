@@ -11,10 +11,10 @@ from app.internal.ga_utils import ProblemInstance
 from app.internal.site_range import REPEAT_COMPONENTS
 from app.models.constraints import Constraints
 from app.models.core import Site
+from app.models.epoch_types.config import Config
 from app.models.epoch_types.site_range_type import (
     BatteryModeEnum,
     Building,
-    Config,
     DomesticHotWater,
     EnergyStorageSystem,
     GasHeater,
@@ -112,13 +112,6 @@ def default_siterange() -> SiteRange:
     panel = SolarPanel(
         COMPONENT_IS_MANDATORY=False, yield_scalar=[100, 200], yield_index=[0], incumbent=False, age=0, lifetime=25
     )
-    config = Config(
-        capex_limit=99999999999,
-        use_boiler_upgrade_scheme=False,
-        general_grant_funding=0,
-        npv_time_horizon=10,
-        npv_discount_factor=0.0,
-    )
 
     return SiteRange(
         building=building,
@@ -128,19 +121,25 @@ def default_siterange() -> SiteRange:
         grid=grid,
         heat_pump=heat_pump,
         solar_panels=[panel],
-        config=config,
     )
 
 
-def site_generator(site_name: str, site_range: SiteRange) -> Site:
+@pytest.fixture
+def default_config() -> Config:
+    return Config(
+        capex_limit=99999999999,
+        use_boiler_upgrade_scheme=False,
+        general_grant_funding=0,
+        npv_time_horizon=10,
+        npv_discount_factor=0.0,
+    )
+
+
+def site_generator(site_name: str, site_range: SiteRange, config: Config) -> Site:
     start_ts = datetime(year=2022, month=1, day=1, hour=0).astimezone(UTC)
     end_ts = datetime(year=2023, month=1, day=1, hour=0).astimezone(UTC)
     site_data = LegacySiteMetaData(site_id=site_name, start_ts=start_ts, end_ts=end_ts)
-    site = Site(
-        name=site_data.site_id,
-        site_range=site_range,
-        site_data=site_data,
-    )
+    site = Site(name=site_data.site_id, site_range=site_range, site_data=site_data, config=config)
     site._epoch_data = load_epoch_data_from_file(Path(_DATA_PATH, site_name, "epoch_data.json"))
     return site
 
@@ -151,13 +150,16 @@ def default_epoch_data() -> EpochSiteData:
 
 
 @pytest.fixture
-def default_site(default_siterange: SiteRange) -> Site:
-    return site_generator("amcott_house", default_siterange)
+def default_site(default_siterange: SiteRange, default_config: Config) -> Site:
+    return site_generator("amcott_house", default_siterange, default_config)
 
 
 @pytest.fixture
-def default_portfolio(default_siterange: SiteRange) -> list[Site]:
-    return [site_generator("amcott_house", default_siterange), site_generator("bircotes_leisure_centre", default_siterange)]
+def default_portfolio(default_siterange: SiteRange, default_config: Config) -> list[Site]:
+    return [
+        site_generator("amcott_house", default_siterange, default_config),
+        site_generator("bircotes_leisure_centre", default_siterange, default_config),
+    ]
 
 
 @pytest.fixture
@@ -175,11 +177,6 @@ def default_problem_instance(
     default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]
 ) -> ProblemInstance:
     return ProblemInstance(default_objectives, default_constraints, default_portfolio)
-
-
-@pytest.fixture
-def default_config() -> Config:
-    return Config()
 
 
 def gen_dummy_sim_result() -> SimulationResult:

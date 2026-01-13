@@ -1,12 +1,12 @@
 import random  # Use random instead of numpy.random to avoid numpy types that aren't json serialisable
-from typing import Any
+from typing import cast
 
 import numpy as np
 
 from app.internal.heuristics.asset_heuristics import get_all_estimates
 from app.internal.site_range import FIXED_PARAMETERS, REPEAT_COMPONENTS
 from app.models.epoch_types import SiteRange
-from app.models.ga_utils import AnnotatedTaskData
+from app.models.ga_utils import AnnotatedTaskData, asset_t
 from app.models.site_data import EpochSiteData
 
 
@@ -38,12 +38,13 @@ def generate_site_scenarios_from_heuristics(
     estimates = get_all_estimates(epoch_data)
 
     site_range_dict = site_range.model_dump(exclude_none=True)
-    config = site_range_dict["config"]
-    site_range_dict.pop("config")
 
     td_pop = []
     for _ in range(pop_size):
-        individual = {"config": config}
+        # Each individual can be an arbitrary type of asset;
+        # if it's a repeated asset then we can have many.
+
+        individual: dict[str, asset_t | list[asset_t]] = {}
         for asset_name, asset_range in site_range_dict.items():
             if asset_name in REPEAT_COMPONENTS:
                 individual[asset_name] = []
@@ -52,7 +53,7 @@ def generate_site_scenarios_from_heuristics(
                         repeat_asset = generate_asset_from_heuristics(asset_name, sub_asset, estimates)
                         # associate this asset with the index in the SiteRange
                         repeat_asset["index_tracker"] = i
-                        individual[asset_name].append(repeat_asset)
+                        cast(list[asset_t], individual[asset_name]).append(repeat_asset)
             elif is_mandatory_or_random(asset_range):
                 individual[asset_name] = generate_asset_from_heuristics(asset_name, asset_range, estimates)
 
@@ -79,9 +80,7 @@ def is_mandatory_or_random(asset: dict[str, bool]) -> bool:
     return asset["COMPONENT_IS_MANDATORY"] or random.choice([True, False])
 
 
-def generate_asset_from_heuristics(
-    asset_name: str, asset: dict[str, Any], estimates: dict[str, dict[str, Any]]
-) -> dict[str, Any]:
+def generate_asset_from_heuristics(asset_name: str, asset: asset_t, estimates: dict[str, asset_t]) -> asset_t:
     """
     Create an instance of this asset type using the heuristically derived values for this site.
 
@@ -105,11 +104,16 @@ def generate_asset_from_heuristics(
         elif attribute_name in FIXED_PARAMETERS:
             # fixed_parameters are forwarded as is, there's no choice to make
             task_data_asset[attribute_name] = attribute_values
-        elif asset_name in estimates.keys() and attribute_name in estimates[asset_name].keys() and len(attribute_values) > 1:
-            estimate = estimates[asset_name][attribute_name]
-            task_data_asset[attribute_name] = normal_choice(estimate, attribute_values)
+        elif (
+            asset_name in estimates.keys()
+            and attribute_name in estimates[asset_name].keys()
+            and isinstance(attribute_values, list)
+            and len(attribute_values) > 1
+        ):
+            estimate = cast(float | int, estimates[asset_name][attribute_name])
+            task_data_asset[attribute_name] = normal_choice(estimate, cast(list[float] | list[int], attribute_values))
         else:
-            task_data_asset[attribute_name] = random.choice(attribute_values)
+            task_data_asset[attribute_name] = random.choice(cast(list[float] | list[int], attribute_values))
 
     return task_data_asset
 

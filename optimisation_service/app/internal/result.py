@@ -42,7 +42,7 @@ def get_baseline_portfolio_solution(portfolio: list[Site]) -> PortfolioSolution:
         Simulated baseline solution.
     """
     epoch_data_dict = {site.site_data.site_id: site._epoch_data for site in portfolio}
-    epoch_config_dict = {site.site_data.site_id: site.site_range.config for site in portfolio}
+    epoch_config_dict = {site.site_data.site_id: site.config for site in portfolio}
     ps = PortfolioSimulator(epoch_data_dict=epoch_data_dict, epoch_config_dict=epoch_config_dict)
 
     portfolio_scenarios = get_baseline_portfolio_scenario(portfolio=portfolio)

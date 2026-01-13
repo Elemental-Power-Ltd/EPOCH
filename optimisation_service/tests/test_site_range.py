@@ -3,7 +3,7 @@ from pydantic import ValidationError
 
 from app.internal.site_range import count_parameters_in_asset, count_parameters_to_optimise
 from app.models.core import Site
-from app.models.epoch_types.site_range_type import Building, Config, HeatPump, HeatSourceEnum, SiteRange, SolarPanel
+from app.models.epoch_types.site_range_type import Building, HeatPump, HeatSourceEnum, SiteRange, SolarPanel
 
 
 class TestCountParametersToOptimise:
@@ -32,15 +32,8 @@ class TestCountParametersToOptimise:
             age=0,
             lifetime=10,
         )
-        config = Config(
-            capex_limit=99999999999,
-            use_boiler_upgrade_scheme=False,
-            general_grant_funding=0,
-            npv_time_horizon=10,
-            npv_discount_factor=0.0,
-        )
 
-        site_range = SiteRange(building=building, solar_panels=[panel_1, panel_2], heat_pump=heat_pump, config=config)
+        site_range = SiteRange(building=building, solar_panels=[panel_1, panel_2], heat_pump=heat_pump)
 
         assert count_parameters_to_optimise(site_range) == 2
 
@@ -69,15 +62,8 @@ class TestCountParametersToOptimise:
             age=0,
             lifetime=10,
         )
-        config = Config(
-            capex_limit=99999999999,
-            use_boiler_upgrade_scheme=False,
-            general_grant_funding=0,
-            npv_time_horizon=10,
-            npv_discount_factor=0,
-        )
 
-        site_range = SiteRange(building=building, solar_panels=[panel_1, panel_2], heat_pump=heat_pump, config=config)
+        site_range = SiteRange(building=building, solar_panels=[panel_1, panel_2], heat_pump=heat_pump)
 
         assert count_parameters_to_optimise(site_range) == 6
 

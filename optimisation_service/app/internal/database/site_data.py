@@ -11,6 +11,7 @@ from pydantic import UUID7, AwareDatetime
 from app.dependencies import HTTPClient
 from app.models.core import Site, Task
 from app.models.database import BundleMetadata, bundle_id_t, dataset_id_t
+from app.models.epoch_types.config import Config
 from app.models.simulate import EpochInputData, LegacyResultReproConfig
 from app.models.site_data import (
     DatasetTypeEnum,
@@ -270,15 +271,17 @@ async def get_saved_epoch_input(portfolio_id: dataset_id_t, site_id: str, http_c
         validate_for_necessary_datasets(site_data)
         site_data_entries = await fetch_specific_datasets(site_data=site_data, http_client=http_client)
         start_ts, end_ts = site_data.start_ts, site_data.end_ts
+        config = Config()
 
     else:
         bundle_id = repro_config.bundle_ids[site_id]
         site_data_entries = await get_bundled_data(bundle_id=bundle_id, http_client=http_client)
         start_ts, end_ts = await get_bundle_timestamps(bundle_id=bundle_id, http_client=http_client)
+        config = repro_config.site_configs[site_id]
 
     epoch_data = site_data_entries_to_epoch_site_data(site_data_entries, start_ts, end_ts)
 
-    return EpochInputData(task_data=task_data, site_data=epoch_data)
+    return EpochInputData(task_data=task_data, site_data=epoch_data, site_config=config)
 
 
 async def fetch_specific_datasets(site_data: LegacySiteMetaData, http_client: HTTPClient) -> SiteDataEntries:

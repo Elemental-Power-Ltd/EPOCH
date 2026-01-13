@@ -12,6 +12,7 @@ from app.internal.database.site_data import get_latest_site_data_bundle, get_sav
 from app.internal.days_of_interest import detect_days_of_interest
 from app.internal.epoch.converters import simulation_result_to_pydantic
 from app.models.epoch_types import ReportData
+from app.models.epoch_types.config import Config
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.simulate import (
     FullResult,
@@ -45,7 +46,7 @@ async def run_simulation(request: RunSimulationRequest, http_client: HttpClientD
 
     epoch_data = await get_latest_site_data_bundle(site_data=request.site_data, http_client=http_client)
 
-    return do_simulation(epoch_data, request.task_data)
+    return do_simulation(epoch_data, request.task_data, request.config)
 
 
 @router.post("/reproduce-simulation")
@@ -73,7 +74,7 @@ async def reproduce_simulation(request: ReproduceSimulationRequest, http_client:
         portfolio_id=request.portfolio_id, site_id=request.site_id, http_client=http_client
     )
 
-    return do_simulation(saved_input.site_data, saved_input.task_data)
+    return do_simulation(saved_input.site_data, saved_input.task_data, saved_input.site_config)
 
 
 @router.post("/get-latest-site-data")
@@ -117,7 +118,7 @@ async def get_saved_site_data(request: GetSavedSiteDataRequest, http_client: Htt
     return saved_input.site_data
 
 
-def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> FullResult:
+def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic, config: Config) -> FullResult:
     """
     Run a simulation for a given set of site data and taskData.
 
@@ -134,8 +135,7 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic) -> Ful
     -------
         Full result from the simulated scenario
     """
-    assert task_data.config is not None
-    sim = Simulator.from_json(epoch_data.model_dump_json(), task_data.config.model_dump_json())
+    sim = Simulator.from_json(epoch_data.model_dump_json(), config.model_dump_json())
     pytd = TaskData.from_json(task_data.model_dump_json())
 
     res = sim.simulate_scenario(pytd, fullReporting=True)

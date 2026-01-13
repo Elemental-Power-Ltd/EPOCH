@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 from app.models.core import SimulationMetrics
 from app.models.database import dataset_id_t, site_id_t
 from app.models.epoch_types import ReportData
+from app.models.epoch_types.config import Config
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.site_data import EpochSiteData, LegacySiteMetaData, site_metadata_t
 
@@ -17,6 +18,7 @@ class ReproduceSimulationRequest(BaseModel):
 class RunSimulationRequest(BaseModel):
     task_data: TaskDataPydantic
     site_data: site_metadata_t
+    config: Config
 
 
 class ResultReproConfig(BaseModel):
@@ -26,6 +28,7 @@ class ResultReproConfig(BaseModel):
 
 class NewResultReproConfig(ResultReproConfig):
     bundle_ids: dict[site_id_t, dataset_id_t]
+    site_configs: dict[site_id_t, Config]
 
 
 class LegacyResultReproConfig(ResultReproConfig):
@@ -43,6 +46,7 @@ class GetSavedSiteDataRequest(BaseModel):
 class EpochInputData(BaseModel):
     task_data: TaskDataPydantic
     site_data: EpochSiteData
+    site_config: Config
 
 
 class DayOfInterestType(StrEnum):

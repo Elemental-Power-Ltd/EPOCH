@@ -10,7 +10,7 @@ class TestExtendConfigCapexLimitsToConstraints:
         """Check that constraints are correctly generated from config capex limits."""
         for site in default_task.portfolio:
             site.constraints = {}
-            site.site_range.config.capex_limit = 12345
+            site.config.capex_limit = 12345
         extend_config_capex_limits_to_constraints(default_task.portfolio)
 
         assert all(site.constraints[Metric.capex]["max"] == 12345 for site in default_task.portfolio)

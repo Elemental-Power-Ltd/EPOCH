@@ -302,4 +302,3 @@ class SiteRange(BaseModel):
     heat_pump: HeatPump | None = Field(default=None, title='Heat Pump')
     mop: Mop | None = Field(default=None, title='Mop')
     solar_panels: list[SolarPanel] | None = None
-    config: Config = Field(..., title='Config')

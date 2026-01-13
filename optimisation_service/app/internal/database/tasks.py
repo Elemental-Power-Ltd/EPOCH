@@ -23,12 +23,13 @@ async def transmit_task(task: Task, http_client: httpx.AsyncClient) -> None:
         Asynchronous HTTP client to use for requests.
     """
     logger.info(f"Adding {task.task_id} to database.")
-    portfolio_range, bundle_ids, site_constraints = {}, {}, {}
+    portfolio_range, bundle_ids, site_constraints, site_configs = {}, {}, {}, {}
     for site in task.portfolio:
         site_id = site.site_data.site_id
         portfolio_range[site_id] = site.site_range
         site_constraints[site_id] = site.constraints
         bundle_ids[site_id] = site.site_data.bundle_id
+        site_configs[site_id] = site.config
     data = {
         "client_id": task.client_id,
         "task_id": task.task_id,
@@ -41,6 +42,7 @@ async def transmit_task(task: Task, http_client: httpx.AsyncClient) -> None:
         "portfolio_constraints": task.portfolio_constraints,
         "site_constraints": site_constraints,
         "epoch_version": task.epoch_version,
+        "site_configs": site_configs,
     }
     response = await http_client.post(url=_DB_URL + "/add-optimisation-task", json=jsonable_encoder(data))
 

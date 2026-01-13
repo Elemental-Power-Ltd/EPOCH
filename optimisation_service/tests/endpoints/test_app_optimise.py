@@ -12,7 +12,6 @@ from app.models.core import Task
 from app.models.epoch_types.site_range_type import (
     BatteryModeEnum,
     Building,
-    Config,
     DomesticHotWater,
     EnergyStorageSystem,
     Grid,
@@ -91,13 +90,6 @@ class TestSubmitPortfolioTask:
         panel = SolarPanel(
             COMPONENT_IS_MANDATORY=True, yield_scalar=[100], yield_index=[0], incumbent=False, age=0, lifetime=25
         )
-        config = Config(
-            capex_limit=99999999999,
-            use_boiler_upgrade_scheme=False,
-            general_grant_funding=0,
-            npv_time_horizon=10,
-            npv_discount_factor=0.0,
-        )
 
         empty_site_range = SiteRange(
             building=building,
@@ -106,7 +98,6 @@ class TestSubmitPortfolioTask:
             grid=grid,
             heat_pump=heat_pump,
             solar_panels=[panel],
-            config=config,
         )
 
         for site in default_task.portfolio:

@@ -18,7 +18,7 @@ from app.internal.site_range import FIXED_PARAMETERS, REPEAT_COMPONENTS, count_p
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
-from app.models.ga_utils import AnnotatedTaskData, AssetParameter, ParsedAsset, asset_t, value_t
+from app.models.ga_utils import AnnotatedTaskData, AssetParameter, ParsedAsset, asset_t, site_range_t, value_t
 from app.models.metrics import Metric, MetricDirection, MetricValues
 from app.models.result import PortfolioSolution
 
@@ -61,13 +61,9 @@ class ProblemInstance(ElementwiseProblem):
         n_var = 0
         for site in portfolio:
             site_range_dict = site.site_range.model_dump(exclude_none=True)
-            site_defaults = {}
-            site_defaults["config"] = site_range_dict["config"]
-            site_range_dict.pop("config")
 
-            # we use a generic typed dict here as mypy can't tell whether a component type is asset_t or list[asset_t]
-            # without heavy use of typing.cast
-            site_range: dict[str, Any] = {}
+            site_defaults: dict[str, asset_t | list[asset_t]] = {}
+            site_range: site_range_t = {}
 
             asset_parameters: list[AssetParameter] = []
 
@@ -79,8 +75,11 @@ class ProblemInstance(ElementwiseProblem):
                     for i, sub_asset in enumerate(asset):
                         parsed_asset = self.split_asset_into_default_and_range(sub_asset)
 
-                        site_defaults[asset_name].append(parsed_asset.fixed)
-                        site_range[asset_name].append(parsed_asset.ranged)
+                        # These casts are a bit nasty because an asset contains a fixed value_t or list[value_t]
+                        # but these are nested deep down in a way that the type system is unhappy about, so
+                        # cast up to the more generic asset_t type.
+                        cast(list[asset_t], site_defaults[asset_name]).append(cast(asset_t, parsed_asset.fixed))
+                        cast(list[asset_t], site_range[asset_name]).append(cast(asset_t, parsed_asset.ranged))
                         num_attr_values.extend(parsed_asset.num_values)
 
                         for attr_name in parsed_asset.ranged.keys():
@@ -91,8 +90,8 @@ class ProblemInstance(ElementwiseProblem):
                     # singleton component
                     parsed_asset = self.split_asset_into_default_and_range(asset)
 
-                    site_defaults[asset_name] = parsed_asset.fixed
-                    site_range[asset_name] = parsed_asset.ranged
+                    site_defaults[asset_name] = cast(asset_t, parsed_asset.fixed)
+                    site_range[asset_name] = cast(asset_t, parsed_asset.ranged)
                     num_attr_values.extend(parsed_asset.num_values)
 
                     # add the asset,attribute pairings to asset_parameters
@@ -109,7 +108,7 @@ class ProblemInstance(ElementwiseProblem):
             n_var += n_parameters_to_optimise
 
             epoch_data_dict[site_name] = site._epoch_data
-            epoch_config_dict[site_name] = site.site_range.config
+            epoch_config_dict[site_name] = site.config
 
         self.sim = PortfolioSimulator(epoch_data_dict, epoch_config_dict)
 

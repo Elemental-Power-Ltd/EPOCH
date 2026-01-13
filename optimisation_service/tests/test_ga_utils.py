@@ -13,11 +13,9 @@ from app.internal.ga_utils import (
 from app.internal.site_range import REPEAT_COMPONENTS, count_parameters_to_optimise
 from app.models.constraints import Constraints
 from app.models.core import Site
+from app.models.epoch_types.config import Config
 from app.models.epoch_types.site_range_type import (
     Building as BuildingRange,
-)
-from app.models.epoch_types.site_range_type import (
-    Config as ConfigRange,
 )
 from app.models.epoch_types.site_range_type import (
     DomesticHotWater as DomesticHotWaterRange,
@@ -206,17 +204,15 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=10,
         )
-        config = ConfigRange(
+        site_range = SiteRange(building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump)
+        config = Config(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
             npv_time_horizon=10,
             npv_discount_factor=0.0,
         )
-        site_range = SiteRange(
-            building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
-        )
-        portfolio = [site_generator("amcott_house", site_range)]
+        portfolio = [site_generator("amcott_house", site_range, config)]
         pi = ProblemInstance(default_objectives, default_constraints, portfolio)
 
         rdr = RoundingAndDegenerateRepair()
@@ -260,17 +256,15 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=10,
         )
-        config = ConfigRange(
+        site_range = SiteRange(building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump)
+        config = Config(
             capex_limit=99999999999,
             use_boiler_upgrade_scheme=False,
             general_grant_funding=0,
             npv_time_horizon=10,
             npv_discount_factor=0.0,
         )
-        site_range = SiteRange(
-            building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump, config=config
-        )
-        portfolio = [site_generator("amcott_house", site_range)]
+        portfolio = [site_generator("amcott_house", site_range, config)]
         pi = ProblemInstance(default_objectives, default_constraints, portfolio)
 
         rdr = RoundingAndDegenerateRepair()
@@ -305,7 +299,6 @@ class TestRoundingAndDegenerateRepair:
             age=0,
             lifetime=25,
         )
-        config = ConfigRange(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
         panel = SolarPanelRange(
             COMPONENT_IS_MANDATORY=False, yield_scalar=[100, 200], yield_index=[0], incumbent=False, age=0, lifetime=25
         )
@@ -314,10 +307,10 @@ class TestRoundingAndDegenerateRepair:
             building=building,
             domestic_hot_water=domestic_hot_water,
             grid=grid,
-            config=config,
             solar_panels=[panel],
         )
-        portfolio = [site_generator("amcott_house", site_range)]
+        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
+        portfolio = [site_generator("amcott_house", site_range, config)]
         pi = ProblemInstance(default_objectives, default_constraints, portfolio)
 
         rdr = RoundingAndDegenerateRepair()

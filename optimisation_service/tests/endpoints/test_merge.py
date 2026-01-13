@@ -6,7 +6,8 @@ from httpx import AsyncClient
 
 from app.internal.database.site_data import get_latest_bundle_metadata
 from app.models.core import Site
-from app.models.epoch_types.site_range_type import Config, SiteRange
+from app.models.epoch_types.config import Config
+from app.models.epoch_types.site_range_type import SiteRange
 from app.models.merge import PortfolioMergeRequest, SiteInfo
 from app.models.metrics import Metric
 from app.models.result import SiteSolution
@@ -41,7 +42,8 @@ class TestMergeSiteScenariosIntoPortfoliosAndTransmit:
                 bundle_id=bundle_metadata.bundle_id,
                 scenarios=site_scenario_list,
                 constraints={},
-                site_range=SiteRange(config=Config()),
+                site_range=SiteRange(),
+                config=Config(),
             )
             sites.append(site)
 

@@ -18,7 +18,6 @@ class TestGenerateSiteScenariosFromHeuristics:
         assert len(res) == pop_size
         for individual in res:
             assert hasattr(individual, "building")
-            assert hasattr(individual, "config")
             assert hasattr(individual, "grid")
 
     def test_generate_asset(self, default_site: Site) -> None:

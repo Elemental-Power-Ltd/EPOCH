@@ -15,6 +15,7 @@ from app.internal.uuid7 import uuid7
 from app.models.constraints import Constraints
 from app.models.database import dataset_id_t
 from app.models.epoch_types import SiteRange
+from app.models.epoch_types.config import Config
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric
 from app.models.optimisers import OptimiserTypes
@@ -33,6 +34,7 @@ class Site(BaseModel):
     constraints: Constraints = Field(
         description="Minimum or maximum bounds to apply on site metrics.", examples=[{Metric.capex: {"max": 50000}}], default={}
     )
+    config: Config = Field(description="Configuration of the site.")
     _epoch_data: EpochSiteData = PrivateAttr()
     _epoch_data_dir: Path = PrivateAttr()
 

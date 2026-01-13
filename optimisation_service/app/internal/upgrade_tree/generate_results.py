@@ -11,9 +11,9 @@ import epoch_simulator as eps
 from epoch_simulator import SimulationResult
 from epoch_simulator import TaskData as EpochTaskData
 
+from app.models.epoch_types.config import Config
 from app.models.epoch_types.task_data_type import (
     Building,
-    Config,
     DataCentre,
     DomesticHotWater,
     ElectricVehicles,

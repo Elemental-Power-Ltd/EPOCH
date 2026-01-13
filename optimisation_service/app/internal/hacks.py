@@ -16,4 +16,4 @@ def extend_config_capex_limits_to_constraints(portfolio: list[Site]) -> None:
     None
     """
     for site in portfolio:
-        site.constraints[Metric.capex] = Bounds(max=site.site_range.config.capex_limit)
+        site.constraints[Metric.capex] = Bounds(max=site.config.capex_limit)
