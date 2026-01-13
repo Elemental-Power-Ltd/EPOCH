@@ -2,6 +2,7 @@
 
 A cost model is a set of piecewise linear functions used by EPOCH to estimate costs as a function of size by component.
 """
+import json
 
 from fastapi import APIRouter, HTTPException
 
@@ -69,11 +70,11 @@ async def add_cost_model(model: CostModelResponse, pool: DatabasePoolDep) -> Cos
         the inserted model
     """
     await pool.execute(
-        """INSERT INTO optimisation.cost_models VALUES (cost_model_id, model_name, capex_model, opex_model) ($1, $2, $3, $4)""",
+        """INSERT INTO optimisation.cost_models (cost_model_id, model_name, capex_model, opex_model) VALUES ($1, $2, $3, $4)""",
         model.cost_model_id,
         model.model_name,
-        model.capex_model,
-        model.opex_model,
+        json.dumps(model.capex_model),
+        json.dumps(model.opex_model),
     )
     return model
 
@@ -100,7 +101,7 @@ async def get_cost_model(cost_model_id: dataset_id_t, pool: DatabasePoolDep) -> 
     CostModelResponse
         CAPEX, OPEX and gubbins
     """
-    resp = await pool.fetchval(
+    resp = await pool.fetchrow(
         """
         SELECT
             cost_model_id,
@@ -119,7 +120,7 @@ async def get_cost_model(cost_model_id: dataset_id_t, pool: DatabasePoolDep) -> 
     return CostModelResponse(
         cost_model_id=cost_model_id,
         model_name=resp["model_name"],
-        capex_model=resp["capex_model"],
-        opex_model=resp["opex_model"],
+        capex_model=json.loads(resp["capex_model"]),
+        opex_model=json.loads(resp["opex_model"]),
         created_at=resp["created_at"],
     )
