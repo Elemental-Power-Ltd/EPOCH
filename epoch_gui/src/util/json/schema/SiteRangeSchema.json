@@ -460,57 +460,8 @@
           "lifetime"
         ]
       }
-    },
-    "config": {
-      "type": "object",
-      "title": "Config",
-      "properties": {
-        "capex_limit": {
-          "type": "number",
-          "title": "CAPEX Limit",
-          "description": "The maximum capital expenditure (CAPEX) allowed at this site in pounds.",
-          "minimum": 0,
-          "default": 2500000
-        },
-        "use_boiler_upgrade_scheme": {
-          "type": "boolean",
-          "title": "Use Boiler Upgrade Scheme",
-          "description": "Apply funding from the boiler upgrade scheme (if eligible).",
-          "default": false
-        },
-        "general_grant_funding": {
-          "type": "number",
-          "title": "General Grant Funding",
-          "description": "Apply unconditional funding up to this value in £.",
-          "minimum": 0,
-          "default": 0
-        },
-        "npv_time_horizon": {
-          "type": "integer",
-          "title": "NPV time horizon",
-          "description": "The number of years to forecast over for the net-present-value calculations.",
-          "minimum": 1,
-          "default": 10
-        },
-        "npv_discount_factor": {
-          "type": "number",
-          "title": "NPV discount factor",
-          "description": "The decimal discount factor to apply to future years in the net-present-value calculations.",
-          "default": 0.0
-        }
-      },
-      "required": [
-        "capex_limit",
-        "use_boiler_upgrade_scheme",
-        "general_grant_funding",
-        "npv_time_horizon",
-        "npv_discount_factor"
-      ]
     }
   },
-  "required": [
-    "config"
-  ],
   "definitions": {
     "paramRangeInt": {
       "type": "array",

@@ -17,8 +17,6 @@ const ComponentSelector: FC<ComponentSelectorProps> = (
     const allComponentTypes = Object.keys(componentsState) as ComponentType[];
 
     const componentTypes = allComponentTypes
-        // filter out the config as we display this in a different way
-        .filter((component) => component !== "config")
         // filter out the excluded components
         .filter((component) => !defaultExcludedComponents.includes(component));
 

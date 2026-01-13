@@ -1,6 +1,6 @@
 import {Client, OptimisationApproach, OptimisationTaskListEntry, Site, TaskConfig} from "./types.ts";
 import {SimulationResult} from "../Models/Endpoints.ts";
-import {ComponentsMap} from "../Models/Core/ComponentBuilder.ts";
+import {SiteInfo} from "../Models/Core/ComponentBuilder.ts";
 
 export interface GlobalState {
     selectedClient: Client | null;
@@ -20,7 +20,7 @@ export type GlobalSlice = {
 export interface OptimiseState {
     taskConfig: TaskConfig;
     hyperparameters: { [key in OptimisationApproach]: any };
-    portfolioMap: { [key: string]: ComponentsMap }
+    portfolioMap: { [key: string]: SiteInfo }
 }
 
 export type OptimiserSlice = {
@@ -34,7 +34,8 @@ export type OptimiserSlice = {
     updateComponent: (site_id: string, componentKey: string, newData: any) => void;
     setComponents: (site_id: string, componentsData: Record<string, any>) => void;
     getComponents: (site_id: string) => any;
-    setTaskConfig: (config: Partial<TaskConfig>) => void;
+    setConfig: (site_id: string, config: any) => void;
+    setOptimiserConfig: (config: Partial<TaskConfig>) => void;
 }
 
 export interface ResultsState {

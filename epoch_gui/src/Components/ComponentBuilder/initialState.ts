@@ -59,11 +59,6 @@ export const getInitialComponentsMap = (mode: BuilderMode, baseline: any): Compo
             displayName: "Solar Panels",
             selected: false,
             data: defaultData["solar_panels"]
-        },
-        config: {
-            displayName: "Config",
-            selected: true,
-            data: defaultData["config"]
         }
     };
 

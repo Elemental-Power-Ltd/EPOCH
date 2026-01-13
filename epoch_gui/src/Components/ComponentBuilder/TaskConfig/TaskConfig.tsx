@@ -7,7 +7,7 @@ import Form from '@rjsf/mui';
 import {RJSFSchema} from "@rjsf/utils";
 import validator from '@rjsf/validator-ajv8';
 
-import TaskDataSchema from "../../../util/json/schema/TaskDataSchema.json"
+import TaskConfigSchema from "../../../util/json/schema/TaskConfigSchema.json"
 
 
 interface TaskDataConfigFormProps {
@@ -32,7 +32,7 @@ const TaskDataConfigForm: FC<TaskDataConfigFormProps> = ({config, changeConfig})
                 <DialogTitle>Settings</DialogTitle>
                 <DialogContent>
                     <Form
-                        schema={TaskDataSchema["properties"]["config"] as RJSFSchema}
+                        schema={TaskConfigSchema as RJSFSchema}
                         uiSchema={{ "ui:submitButtonOptions": { "norender": true } }}
                         validator={validator}
                         formData={config}

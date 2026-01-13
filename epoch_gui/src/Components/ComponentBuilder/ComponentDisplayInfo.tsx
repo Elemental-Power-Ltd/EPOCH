@@ -5,7 +5,7 @@ import {
   mdiEvStation, mdiGreenhouse, mdiHeatPump,
   mdiHome, mdiHomeBattery, mdiServer, mdiSolarPowerVariant,
   mdiTransmissionTower,
-  mdiWaterBoiler, mdiGasBurner, mdiCog
+  mdiWaterBoiler, mdiGasBurner
 } from "@mdi/js";
 
 
@@ -59,11 +59,6 @@ export const componentInfoLookup: Record<
   solar_panels: {
     icon: <Icon path={mdiSolarPowerVariant} size={2}/>,
     displayName: "Solar Panels",
-  },
-  // note: we don't use this - we display the config in a different place
-  config: {
-    icon: <Icon path={mdiCog} size={2}/>,
-    displayName: "Config"
   }
 };
 

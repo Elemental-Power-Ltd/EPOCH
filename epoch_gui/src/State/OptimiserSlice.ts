@@ -9,6 +9,7 @@ import DefaultNSGA2 from "../util/json/default/DefaultNSGA2Config.json"
 import DefaultSeparatedNSGA2 from "../util/json/default/DefaultSeparatedNSGA2Config.json"
 import DefaultBayesian from "../util/json/default/DefaultBayesianConfig.json"
 import DefaultSeparatedNSGA2xNSGA2 from "../util/json/default/DefaultSeparatedNSGA2xNSGA2Config.json"
+import DefaultConfig from "../util/json/default/DefaultTaskConfig.json"
 import {getInitialComponentsMap} from "../Components/ComponentBuilder/initialState"
 import {ComponentType} from "../Models/Core/ComponentBuilder.ts";
 
@@ -78,7 +79,10 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
         ...state.optimise,
         portfolioMap: {
           ...state.optimise.portfolioMap,
-          [site_id]: getInitialComponentsMap("SiteRangeMode", baseline)
+          [site_id]: {
+            config: DefaultConfig,
+            components: getInitialComponentsMap("SiteRangeMode", baseline)
+          }
         }
       }
     })),
@@ -96,8 +100,8 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
 
   addComponent: (site_id: string, componentKey: string) =>
     set((state) => {
-      const siteMap = state.optimise.portfolioMap[site_id]
-      if (!siteMap) return {}
+      const siteInfo = state.optimise.portfolioMap[site_id]
+      if (!siteInfo) return {}
 
       return {
         optimise: {
@@ -105,10 +109,13 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
           portfolioMap: {
             ...state.optimise.portfolioMap,
             [site_id]: {
-              ...siteMap,
-              [componentKey]: {
-                ...siteMap[componentKey as ComponentType],
-                selected: true
+              ...siteInfo,
+              components: {
+                ...siteInfo.components,
+                [componentKey]: {
+                  ...siteInfo.components[componentKey as ComponentType],
+                  selected: true
+                }
               }
             }
           }
@@ -118,8 +125,8 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
 
   removeComponent: (site_id: string, componentKey: string) =>
     set((state) => {
-      const siteMap = state.optimise.portfolioMap[site_id]
-      if (!siteMap) return {}
+      const siteInfo = state.optimise.portfolioMap[site_id]
+      if (!siteInfo) return {}
 
       return {
         optimise: {
@@ -127,10 +134,13 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
           portfolioMap: {
             ...state.optimise.portfolioMap,
             [site_id]: {
-              ...siteMap,
-              [componentKey]: {
-                ...siteMap[componentKey as ComponentType],
-                selected: false
+              ...siteInfo,
+              components: {
+                ...siteInfo.components,
+                [componentKey]: {
+                  ...siteInfo.components[componentKey as ComponentType],
+                  selected: false
+                }
               }
             }
           }
@@ -140,8 +150,8 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
 
   updateComponent: (site_id: string, componentKey: string, newData: any) =>
     set((state) => {
-      const siteMap = state.optimise.portfolioMap[site_id]
-      if (!siteMap) return {}
+      const siteInfo = state.optimise.portfolioMap[site_id]
+      if (!siteInfo) return {}
 
       return {
         optimise: {
@@ -149,10 +159,13 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
           portfolioMap: {
             ...state.optimise.portfolioMap,
             [site_id]: {
-              ...siteMap,
-              [componentKey]: {
-                ...siteMap[componentKey as ComponentType],
-                data: newData
+              ...siteInfo,
+              components: {
+                ...siteInfo.components,
+                [componentKey]: {
+                  ...siteInfo.components[componentKey as ComponentType],
+                  data: newData
+                }
               }
             }
           }
@@ -162,26 +175,26 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
 
   setComponents: (site_id: string, componentsData: Record<string, any>) =>
     set((state) => {
-      const siteMap = state.optimise.portfolioMap[site_id]
-      if (!siteMap) return {}
+      const siteInfo = state.optimise.portfolioMap[site_id]
+      if (!siteInfo) return {}
 
-      const newSiteMap = { ...siteMap }
+      const newSiteInfo = { ...siteInfo }
 
-      Object.keys(newSiteMap).forEach((componentKey) => {
+      Object.keys(newSiteInfo.components).forEach((componentKey) => {
         if (componentKey in componentsData) {
           // if the component is present:
           //   - update the data field
           //   - set selected to true
-          newSiteMap[componentKey as ComponentType] = {
-            ...newSiteMap[componentKey as ComponentType],
+          newSiteInfo.components[componentKey as ComponentType] = {
+            ...newSiteInfo.components[componentKey as ComponentType],
             selected: true,
             data: componentsData[componentKey]
           }
         } else {
           // The component is not present
           //  mark as not 'selected' and leave the data field as is
-          newSiteMap[componentKey as ComponentType] = {
-            ...newSiteMap[componentKey as ComponentType],
+          newSiteInfo.components[componentKey as ComponentType] = {
+            ...newSiteInfo.components[componentKey as ComponentType],
             selected: false
           }
         }
@@ -192,15 +205,16 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
           ...state.optimise,
           portfolioMap: {
             ...state.optimise.portfolioMap,
-            [site_id]: newSiteMap
+            [site_id]: newSiteInfo
           }
         }
       }
     }),
 
   getComponents: (site_id: string): any => {
-    const siteMap = get().optimise.portfolioMap[site_id]
-    if (!siteMap) return {}
+    const siteInfo = get().optimise.portfolioMap[site_id];
+    if (!siteInfo) return {}
+    const siteMap = siteInfo.components;
 
     const data: Record<string, any> = {}
 
@@ -213,8 +227,22 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
 
     return data
   },
+  setConfig: (site_id: string, config: any) => set((state) => (
+      {
+        optimise: {
+          ...state.optimise,
+          portfolioMap: {
+            ...state.optimise.portfolioMap,
+            [site_id]: {
+              ...state.optimise.portfolioMap[site_id],
+              config: config
+            }
+          }
+        }
+      }
+  )),
 
-  setTaskConfig: (config: Partial<TaskConfig>) =>
+  setOptimiserConfig: (config: Partial<TaskConfig>) =>
     set((state) => ({
       optimise: {
         ...state.optimise,

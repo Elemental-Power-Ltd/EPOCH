@@ -22,7 +22,7 @@ const BaselineForm = ({
                           setBaselineError
                       }: BaselineFormProps) => {
 
-    // note the baseline's config is ignored, but we must provide one
+
     const defaultBaseline: TaskData = {
         building: {
             scalar_heat_load: 1,
@@ -51,13 +51,6 @@ const BaselineForm = ({
             incumbent: false,
             age: 0,
             lifetime: 25
-        },
-        config: {
-            capex_limit: 1000000000,
-            npv_time_horizon: 10,
-            npv_discount_factor: 0,
-            use_boiler_upgrade_scheme: false,
-            general_grant_funding: 0
         }
     }
 
@@ -93,12 +86,13 @@ const BaselineForm = ({
 
             <ComponentBuilderForm
                 mode="TaskDataMode"
-                componentsMap={componentBuilderState.componentsState}
+                siteInfo={componentBuilderState.siteInfo}
                 addComponent={componentBuilderState.addComponent}
                 removeComponent={componentBuilderState.removeComponent}
                 updateComponent={componentBuilderState.updateComponent}
                 setComponents={componentBuilderState.setComponents}
                 getComponents={getTaskData}
+                setConfig={null}
                 site_id={"site"}
             />
             <Button

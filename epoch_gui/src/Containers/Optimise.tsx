@@ -9,7 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import {submitOptimisationJob} from "../endpoints";
 
 import {useEpochStore} from "../State/Store";
-import TaskConfigForm from "../Components/TaskConfig/TaskConfigForm";
+import OptimiserConfigForm from "../Components/TaskConfig/OptimiserConfigForm.tsx";
 import {SubmitOptimisationRequest, Objective} from "../Models/Endpoints";
 import expandSiteRange, {PortfolioValidationResult} from "../Components/ComponentBuilder/ConvertSiteRange";
 import ComponentBuilderForm from "../Components/ComponentBuilder/ComponentBuilderForm";
@@ -44,6 +44,8 @@ function OptimisationContainer() {
     const defaultModel = defaulCostModel as FullCostModel;
     const [capexModel, setcapexModel] = useState<CapexModel>(defaultModel.capex_model);
     const [opexModel, setOpexModel] = useState<OpexModel>(defaultModel.opex_model);
+
+    const setConfig = useEpochStore((state) => state.setConfig);
 
     const handlePortfolioCapexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -140,19 +142,17 @@ function OptimisationContainer() {
             objectives: selected_objectives,
             portfolio: Object.keys(state.portfolioMap).map((site_id: string) => ({
                 name: "-",
-                site_range: {
-                    ...portfolioSiteRanges[site_id],
-                    config: {
-                        ...portfolioSiteRanges[site_id].config,
-                        capex_model: capexModel,
-                        opex_model: opexModel,
-                    }
-                },
+                site_range: portfolioSiteRanges[site_id],
                 site_data: {
                     site_id: site_id,
                     start_ts: state.taskConfig.start_date!.toISOString(),
                     // an EPOCH year is exactly 8760 hours (irrespective of leap years)
                     end_ts: state.taskConfig.start_date!.add(8760, "hour").toISOString()
+                },
+                config: {
+                    ...state.portfolioMap[site_id].config,
+                    capex_model: capexModel,
+                    opex_model: opexModel
                 }
             })),
             portfolio_constraints: portfolio_constraints,
@@ -177,13 +177,14 @@ function OptimisationContainer() {
                         {hasErrors && <ErrorList errors={portfolioRangeErrors[site_id]}/>}
                         <ComponentBuilderForm
                             mode={"SiteRangeMode"}
-                            componentsMap={state.portfolioMap[site_id]}
+                            siteInfo={state.portfolioMap[site_id]}
                             // supply versions of each zustand function that operate on the individual site
                             addComponent={(componentKey: string) => addComponent(site_id, componentKey)}
                             removeComponent={(componentKey: string) => removeComponent(site_id, componentKey)}
                             updateComponent={(componentKey: string, newData: any) => updateComponent(site_id, componentKey, newData)}
                             setComponents={(siteRange: any) => setSiteRange(site_id, siteRange)}
                             getComponents={() => getSiteRange(site_id)}
+                            setConfig={(config: any) => setConfig(site_id, config)}
                             site_id={site_id}
                         />
                     </AccordionSection>
@@ -201,7 +202,7 @@ function OptimisationContainer() {
 
     return (
         <Container maxWidth={"xl"}>
-            <TaskConfigForm/>
+            <OptimiserConfigForm/>
 
             <Container maxWidth="sm">
                 <Box

@@ -52,19 +52,17 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
     }
 
     const request: SubmitSimulationRequest = {
-      task_data: {
-        ...taskData,
-        config: {
-          ...taskData.config,
-          capex_model: capexModel,
-          opex_model: opexModel
-        }
-      },
+      task_data: taskData,
       site_data: {
         site_id: siteID,
         start_ts: startDate.toISOString(),
         end_ts: startDate.add(8760, "hour").toISOString(),
       },
+      config: {
+        ...componentBuilderState.siteInfo.config,
+        capex_model: capexModel,
+        opex_model: opexModel
+      }
     };
 
     try {
@@ -107,12 +105,13 @@ const Simulator: FC<Props> = ({baseline, siteID, startDate, onBackToSiteSelector
           <>
           <ComponentBuilderForm
             mode="TaskDataMode"
-            componentsMap={componentBuilderState.componentsState}
+            siteInfo={componentBuilderState.siteInfo}
             addComponent={componentBuilderState.addComponent}
             removeComponent={componentBuilderState.removeComponent}
             updateComponent={componentBuilderState.updateComponent}
             setComponents={componentBuilderState.setComponents}
             getComponents={getTaskData}
+            setConfig={componentBuilderState.setConfig}
             site_id={siteID}
           />
           <CostModelEditor

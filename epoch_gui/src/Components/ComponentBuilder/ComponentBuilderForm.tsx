@@ -8,7 +8,7 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import Masonry from "react-masonry-css";
 
-import {BuilderMode, ComponentsMap, ComponentType} from "../../Models/Core/ComponentBuilder";
+import {BuilderMode, SiteInfo, ComponentType} from "../../Models/Core/ComponentBuilder";
 import {useComponentBuilderFileHandlers} from "./useComponentBuilderFileHandlers";
 
 import TaskDataSchema from "../../util/json/schema/TaskDataSchema.json";
@@ -17,12 +17,15 @@ import TaskDataConfigForm from "./TaskConfig/TaskConfig.tsx";
 
 interface ComponentBuilderFormProps {
     mode: BuilderMode;
-    componentsMap: ComponentsMap;
+    siteInfo: SiteInfo;
     addComponent: (component: ComponentType) => void;
     removeComponent: (component: ComponentType) => void;
     updateComponent: (component: ComponentType, data: any) => void;
     setComponents: (data: any) => void;
     getComponents: () => any;
+    // null indicates that this context does not have a config
+    // this is for the baseline configuration
+    setConfig: ((config: any) => void) | null;
     site_id: string;
 }
 
@@ -31,12 +34,13 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
 
     const {
         mode,
-        componentsMap,
+        siteInfo,
         addComponent,
         removeComponent,
         updateComponent,
         setComponents,
         getComponents,
+        setConfig,
         site_id
     } = props;
 
@@ -49,9 +53,8 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
     const formSpecificId = useId();
     const formSpecificLabel = `upload-${formSpecificId}`
 
-    const selectedComponents = Object.entries(componentsMap)
+    const selectedComponents = Object.entries(siteInfo.components)
         // we filter out the config as we display this in a different way
-        .filter(([key, _])=> key !== "config")
         .filter(([_, {selected}]) => selected)
         .map(([key]) => key as ComponentType);
 
@@ -59,6 +62,12 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
     const handleTaskComponentChange = (component: ComponentType, evt: any) => {
         updateComponent(component, evt.formData);
     };
+
+    const handleConfigChange = (evt: any) => {
+        if (setConfig !== null) {
+            setConfig(evt.formData);
+        }
+    }
 
     const schema = (mode === "TaskDataMode") ? TaskDataSchema : SiteRangeSchema;
 
@@ -74,7 +83,6 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
         heat_pump: true,
         mop: true,
         solar_panels: true,
-        config: true
     });
 
     const handleAccordionToggle = (componentKey: ComponentType) => {
@@ -84,17 +92,15 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
         }));
     };
 
-    const config = componentsMap["config"].data;
-    const changeConfig = (evt: any) => handleTaskComponentChange("config", evt);
-
     return (
         <>
             <ComponentSelector
-                componentsState={componentsMap}
+                componentsState={siteInfo.components}
                 onAddComponent={addComponent}
                 onRemoveComponent={removeComponent}
             />
-            <TaskDataConfigForm config={config} changeConfig={changeConfig}/>
+
+            {setConfig && <TaskDataConfigForm config={siteInfo.config} changeConfig={handleConfigChange}/>}
 
             <Masonry
                 breakpointCols={{
@@ -109,8 +115,8 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
                         <ComponentWidget
                             key={component}
                             componentKey={component}
-                            displayName={componentsMap[component].displayName}
-                            data={componentsMap[component].data}
+                            displayName={siteInfo.components[component].displayName}
+                            data={siteInfo.components[component].data}
                             schema={schema}
                             onRemove={removeComponent}
                             onFormChange={handleTaskComponentChange}

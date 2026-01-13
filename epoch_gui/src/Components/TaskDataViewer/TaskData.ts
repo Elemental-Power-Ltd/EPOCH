@@ -13,14 +13,6 @@ export enum HeatSource {
   HOTROOM = "HOTROOM",
 }
 
-export interface Config {
-  capex_limit: number;
-  use_boiler_upgrade_scheme: boolean;
-  general_grant_funding: number;
-  npv_time_horizon: number;
-  npv_discount_factor: number;
-}
-
 export interface Building {
   scalar_heat_load: number;
   scalar_electrical_load: number;
@@ -115,7 +107,6 @@ export interface SolarPanel {
 }
 
 export interface TaskData {
-  config: Config;
   building?: Building;
   data_centre?: DataCentre;
   domestic_hot_water?: DomesticHotWater;

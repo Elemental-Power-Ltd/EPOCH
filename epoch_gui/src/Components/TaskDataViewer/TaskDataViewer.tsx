@@ -8,7 +8,6 @@ import {
 
 import {
   TaskData,
-  Config,
   Building,
   DataCentre,
   DomesticHotWater,
@@ -26,7 +25,6 @@ import JsonViewer from "../../util/Widgets/JsonViewer.tsx";
 
 // Human-readable names for each "top-level" component
 const componentNames: Record<keyof TaskData, string> = {
-  config:                'Config',
   building:              'Building',
   data_centre:           'Data Centre',
   domestic_hot_water:    'Domestic Hot Water',
@@ -49,7 +47,6 @@ interface FieldInfo {
  * Map from each component key to its fields.
  */
 const fieldMappings: {
-  config: Record<keyof Config, FieldInfo>;
   building: Record<keyof Building, FieldInfo>;
   data_centre: Record<keyof DataCentre, FieldInfo>;
   domestic_hot_water: Record<keyof DomesticHotWater, FieldInfo>;
@@ -61,13 +58,6 @@ const fieldMappings: {
   mop: Record<keyof Mop, FieldInfo>;
   solar_panels: Record<keyof SolarPanel, FieldInfo>; // solar_panels is an array of SolarPanel
 } = {
-  config: {
-    capex_limit: { label: 'CAPEX Limit', unit: '£' },
-    use_boiler_upgrade_scheme: {label: 'Boiler Scheme'},
-    general_grant_funding: {label: 'General Funding', unit: '£'},
-    npv_time_horizon: {label: 'NPV Time Horizon'},
-    npv_discount_factor: {label: 'NPV Discount Factor'}
-  },
   building: {
     scalar_heat_load:          { label: 'Heat Load'},
     scalar_electrical_load:    { label: 'Electrical Load'},

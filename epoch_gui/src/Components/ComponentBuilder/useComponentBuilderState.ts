@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { BuilderMode, ComponentType, ComponentsMap } from "../../Models/Core/ComponentBuilder";
+import {BuilderMode, ComponentType, ComponentsMap, SiteInfo} from "../../Models/Core/ComponentBuilder";
 import { getInitialComponentsMap } from "./initialState";
 import TaskDataSchema from "../../util/json/schema/TaskDataSchema.json";
 import SiteRangeSchema from "../../util/json/schema/HumanFriendlySiteRangeSchema.json";
-
+import DefaultConfig from "../../util/json/default/DefaultTaskConfig.json"
 
 export interface ComponentBuilderState {
-  componentsState: any;
+  siteInfo: SiteInfo;
   addComponent: (component: ComponentType) => void;
   removeComponent: (component: ComponentType) => void;
   updateComponent: (component: ComponentType, data: any) => void;
   setComponents: (data: any) => void;
   getComponents: () => any;
+  setConfig: (config: any) => void;
   schema: any;
 }
 
@@ -22,19 +23,25 @@ export interface ComponentBuilderState {
  * Add/Removing components simply specifies whether that component should be included or not.
  */
 export const useComponentBuilderState = (mode: BuilderMode, baseline: any): ComponentBuilderState => {
-  const initialState = getInitialComponentsMap(mode, baseline);
+  const initialSiteInfo: SiteInfo = {
+    components: getInitialComponentsMap(mode, baseline),
+    config: DefaultConfig,
+  }
   const schema = (mode === "TaskDataMode") ? TaskDataSchema : SiteRangeSchema;
 
-  const [componentsState, setComponentsState] = useState<ComponentsMap>(initialState);
+  const [siteInfo, setSiteInfo] = useState<SiteInfo>(initialSiteInfo);
 
   /**
    * Mark the named component as present.
    * @param component the name/key of the component
    */
   const addComponent = (component: ComponentType) => {
-    setComponentsState((prev) => ({
+    setSiteInfo((prev) => ({
       ...prev,
-      [component]: {...prev[component], selected: true},
+      components: {
+        ...prev.components,
+        [component]: {...prev.components[component], selected: true},
+      }
     }));
   };
 
@@ -43,9 +50,12 @@ export const useComponentBuilderState = (mode: BuilderMode, baseline: any): Comp
    * @param component the name/key of the component
    */
   const removeComponent = (component: ComponentType) => {
-    setComponentsState(prev => ({
+    setSiteInfo(prev => ({
       ...prev,
-      [component]: {...prev[component], selected: false},
+      components: {
+        ...prev.components,
+        [component]: {...prev.components[component], selected: false},
+      }
     }));
   };
 
@@ -55,9 +65,12 @@ export const useComponentBuilderState = (mode: BuilderMode, baseline: any): Comp
    * @param newData the new data values
    */
   const updateComponent = (component: ComponentType, newData: any) => {
-    setComponentsState(prev => ({
+    setSiteInfo(prev => ({
       ...prev,
-      [component]: { ...prev[component], data: newData },
+      components: {
+        ...prev.components,
+        [component]: {...prev.components[component], data: newData},
+      }
     }));
   };
 
@@ -66,8 +79,8 @@ export const useComponentBuilderState = (mode: BuilderMode, baseline: any): Comp
    * @param components
    */
   const setComponents = (components: any) => {
-    setComponentsState(prev => {
-      const newComponentsMap = { ...prev };
+    setSiteInfo(prev => {
+      const newComponentsMap = { ...prev.components };
 
       for (const stringKey in prev) {
         const componentKey = stringKey as ComponentType;
@@ -88,36 +101,46 @@ export const useComponentBuilderState = (mode: BuilderMode, baseline: any): Comp
           };
         }
       }
-      return newComponentsMap;
+      return {components: newComponentsMap, config: prev.config};
     });
   };
 
   /**
    * Extract the TaskData out of the components state
    */
-  const getComponents = () => {
+  const getComponents = (): ComponentsMap => {
     const data: Record<string, any> = {};
 
     // Add the data for each 'selected' component
-    for (const stringKey in componentsState) {
+    for (const stringKey in siteInfo.components) {
       const componentKey = stringKey as ComponentType;
 
-      if (componentsState[componentKey].selected) {
-        data[componentKey] = componentsState[componentKey].data;
+      if (siteInfo.components[componentKey].selected) {
+        data[componentKey] = siteInfo.components[componentKey].data;
       }
     }
 
-    return data;
+    return data as ComponentsMap;
 
   };
 
+  const setConfig = (config: any) => {
+    setSiteInfo((prev) => (
+        {
+          ...prev,
+          config: config
+        }
+    ))
+  }
+
   return {
-    componentsState,
+    siteInfo,
     addComponent,
     removeComponent,
     updateComponent,
     setComponents,
     getComponents,
+    setConfig,
     schema
   };
 };

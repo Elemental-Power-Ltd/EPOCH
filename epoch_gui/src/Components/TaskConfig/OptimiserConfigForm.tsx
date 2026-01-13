@@ -16,13 +16,13 @@ import {metricDefs} from "../../util/MetricDefinitions.ts";
 import TimeRangeForm from "./TimeRangeForm";
 import HyperParamForm from "../HyperParams/OptimiserConfig.tsx";
 
-const TaskConfigForm = () => {
+const OptimiserConfigForm = () => {
   const taskConfig = useEpochStore((state) => state.optimise.taskConfig);
-  const setTaskConfig = useEpochStore((state) => state.setTaskConfig);
+  const setOptimiserConfig = useEpochStore((state) => state.setOptimiserConfig);
 
 
   const handleChange = (field: keyof TaskConfig, value: any) => {
-    setTaskConfig({ [field]: value });
+    setOptimiserConfig({ [field]: value });
   };
 
   const handleObjectiveChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,4 +99,4 @@ const TaskConfigForm = () => {
   );
 };
 
-export default TaskConfigForm;
+export default OptimiserConfigForm;

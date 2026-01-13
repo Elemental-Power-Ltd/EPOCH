@@ -10,8 +10,7 @@ export type ComponentType =
     | "grid"
     | "heat_pump"
     | "mop"
-    | "solar_panels"
-    | "config";
+    | "solar_panels";
 
 // a list of components to exclude from selection by default
 // in future we may define a list of visible/excluded components on a per-client basis
@@ -35,3 +34,8 @@ export interface ComponentDetails {
 export type ComponentsMap = {
     [key in ComponentType]: ComponentDetails;
 };
+
+export interface SiteInfo {
+    components: ComponentsMap;
+    config: any;
+}

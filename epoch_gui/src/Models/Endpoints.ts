@@ -10,8 +10,8 @@ interface SiteMetaData {
 
 export interface SubmitSimulationRequest {
     task_data: any;
-
     site_data: SiteMetaData;
+    config: any;
 }
 
 export interface ReproduceSimulationRequest {
@@ -97,6 +97,7 @@ export interface Site {
     name: string;
     site_range: any;
     site_data: SiteMetaData;
+    config: any;
 }
 
 export interface OptimiserData {
