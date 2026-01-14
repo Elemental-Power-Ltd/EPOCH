@@ -37,7 +37,7 @@ from ..models.core import (
     dataset_id_t,
 )
 from ..models.electricity_load import ElectricalLoadRequest
-from ..models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
+from ..models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest
 from ..models.import_tariffs import SyntheticTariffEnum, TariffRequest
 from ..models.renewables import RenewablesRequest
 from ..models.site_manager import BundleHints, DatasetBundleMetadata, DatasetList, SiteDataEntry
@@ -782,12 +782,21 @@ async def generate_all(
             "Air tightness to external doors and windows",
         ]
     else:
-        INDIVIDUAL_INTERVENTIONS = [InterventionEnum.Loft, InterventionEnum.Cladding, InterventionEnum.DoubleGlazing]
+        # If we've got no PHPP, then there are no suitable interventions.
+        INDIVIDUAL_INTERVENTIONS = []
     hload_reqs = []
 
-    POTENTIAL_INTERVENTIONS = [
-        list(c) for i in range(len(INDIVIDUAL_INTERVENTIONS) + 1) for c in itertools.combinations(INDIVIDUAL_INTERVENTIONS, i)
-    ]
+    if INDIVIDUAL_INTERVENTIONS:
+        POTENTIAL_INTERVENTIONS = [
+            list(c)
+            for i in range(len(INDIVIDUAL_INTERVENTIONS) + 1)
+            for c in itertools.combinations(INDIVIDUAL_INTERVENTIONS, i)
+        ]
+    else:
+        # If we got no suitable interventions, we create this blank list
+        # of a blank list (so it gets handled correctly elsewhere)
+        POTENTIAL_INTERVENTIONS = [[]]
+
     for idx, interventions in enumerate(POTENTIAL_INTERVENTIONS):
         req = HeatingLoadRequest(
             dataset_id=gas_meter_dataset_id,
