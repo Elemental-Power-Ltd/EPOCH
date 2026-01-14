@@ -133,14 +133,14 @@ async def get_latest_bundle_metadata(
 
     # If the bundle has no `is_complete` flag, it predates tracking that.
     # Assume that it is complete in that case.
-    matching_bundles = [bundle for bundle in bundles if bundle.get("is_complete", True)]
+    matching_bundles = [bundle for bundle in matching_bundles if bundle.get("is_complete", True)]
 
     if not matching_bundles:
         raise ValueError("Unable to find a complete bundle; try waiting.")
 
     # If the bundle has no `is_error` flag, it predates tracking that.
     # Assume that it isn't errored in that case.
-    matching_bundles = [bundle for bundle in bundles if not bundle.get("is_error", False)]
+    matching_bundles = [bundle for bundle in matching_bundles if not bundle.get("is_error", False)]
     if not matching_bundles:
         raise ValueError("All completed bundles in this period have errors; try generating a new one.")
 
