@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE TYPE public.stdortou AS ENUM (
+CREATE TYPE public.stdortou AS ENUM ( -- noqa: CP05
     'Std',
     'ToU'
 );

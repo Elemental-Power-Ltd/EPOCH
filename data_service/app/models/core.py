@@ -226,7 +226,7 @@ class SiteData(pydantic.BaseModel):
     @pydantic.field_validator("address", mode="after")
     @classmethod
     def check_ends_with_postcode(cls, addr: str) -> str:
-        """Check if we've got a list of datasets, and if we got just one, make it a list."""
+        """Check if we got an address that ends with a postcode."""
         if not POSTCODE_REGEX.match(addr):
             raise ValueError("Didn't find a postcode after a comma at the end of your address, does it end ',AB1, 2CD'?")
         return addr
