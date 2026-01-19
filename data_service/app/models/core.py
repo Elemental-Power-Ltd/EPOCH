@@ -7,6 +7,7 @@ centralise it in here.
 
 # ruff: noqa: D101
 import datetime
+import re
 from enum import StrEnum
 from typing import Annotated, Any, Self
 
@@ -22,6 +23,7 @@ type client_id_t = str
 type site_id_t = str
 type location_t = Annotated[str, "Name of the nearest city, e.g. Glasgow"]
 
+POSTCODE_REGEX = re.compile(r".*, [A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$")
 
 example_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
 example_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
@@ -211,7 +213,8 @@ class SiteData(pydantic.BaseModel):
         examples=[(51.499669471331015, -0.1248477037277857884), (51.46347923229967686, -3.162713781953953301)]
     )
     address: str = pydantic.Field(
-        examples=["27 Mill Close, London, SW1A 0AA", "Queens Buildings, Potter Street, Worksop, S80 2AH"]
+        description="Street address, must end with a comma followed by the postcode.",
+        examples=["27 Mill Close, London, SW1A 0AA", "Queens Buildings, Potter Street, Worksop, S80 2AH"],
     )
     epc_lmk: str | None = pydantic.Field(
         description="LMK for the latest Commercial Energy Performance Certificate for this building", default=None
@@ -219,6 +222,14 @@ class SiteData(pydantic.BaseModel):
     dec_lmk: str | None = pydantic.Field(
         description="LMK for the latest Commercial Display Energy Certificate for this building", default=None
     )
+
+    @pydantic.field_validator("address", mode="after")
+    @classmethod
+    def check_ends_with_postcode(cls, addr: str) -> str:
+        """Check if we've got a list of datasets, and if we got just one, make it a list."""
+        if not POSTCODE_REGEX.match(addr):
+            raise ValueError("Didn't find a postcode after a comma at the end of your address, does it end ',AB1, 2CD'?")
+        return addr
 
 
 class BundleEntryMetadata(pydantic.BaseModel):
