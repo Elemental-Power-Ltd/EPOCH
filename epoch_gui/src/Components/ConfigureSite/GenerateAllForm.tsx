@@ -45,7 +45,8 @@ const GenerateAllForm = ({
             );
             setGenerationResult(result);
         } catch (error) {
-            setGenerationResult({error: 'Failed to generate dataset'});
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            setGenerationResult({error: `Failed to generate dataset due to ${errorMessage}`});
         } finally {
             setIsGenerating(false);
         }
