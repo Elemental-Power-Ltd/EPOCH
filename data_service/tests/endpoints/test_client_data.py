@@ -74,6 +74,36 @@ class TestClientData:
         assert response.json()["detail"] == "Site ID `demo_duplicate_site` already exists in the database."
 
     @pytest.mark.asyncio
+    async def test_cant_add_bad_postcode(self, client: AsyncClient) -> None:
+        """Test that we can't add a site with a bad postcode."""
+        site_data = {
+            "client_id": "demo",
+            "site_id": "demo_bad_postcode",
+            "name": "Demo Bad Postcode",
+            "location": "Worksop",
+            "coordinates": (51.4789, -1.2345),
+            "address": "123 Demo Street, Worksop, BAD POSTCODE",
+        }
+        response = await client.post("/add-site", json=site_data)
+        assert response.status_code == 422
+        assert "postcode" in response.text
+
+    @pytest.mark.asyncio
+    async def test_cant_add_no_postcode(self, client: AsyncClient) -> None:
+        """Test that we can't add a site without postcode."""
+        site_data = {
+            "client_id": "demo",
+            "site_id": "demo_bad_postcode",
+            "name": "Demo Bad Postcode",
+            "location": "Worksop",
+            "coordinates": (51.4789, -1.2345),
+            "address": "123 Demo Street",
+        }
+        response = await client.post("/add-site", json=site_data)
+        assert response.status_code == 422
+        assert "postcode" in response.text
+
+    @pytest.mark.asyncio
     async def test_add_site_client_not_found(self, client: AsyncClient) -> None:
         site_data = SiteData(
             client_id="unknown_client",
