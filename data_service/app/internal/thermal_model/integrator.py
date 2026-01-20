@@ -437,8 +437,6 @@ def simulate_heat_balance(
         update_temperatures_from_vec(graph, new_temp_vec)
 
     return pd.DataFrame(
-        index=times,
-        # TODO (2024-12-11 MHJB): can we get the energy changes from the matrix? should be just the LHS times temperatures
         data={
             "energy_changes": [np.nan for _ in temperatures[BuildingElement.InternalAir]],
             "temperatures": temperatures[BuildingElement.InternalAir],

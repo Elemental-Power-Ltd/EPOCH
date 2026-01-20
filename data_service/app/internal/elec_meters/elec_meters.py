@@ -91,7 +91,7 @@ def day_type(date: datetime.date | pd.Timestamp, public_holidays: Container[date
     # Do this cast to make sure that we pick up the right type for the public holidays
     if datetime.date(year=date.year, month=date.month, day=date.day) in public_holidays:
         return DayTypeEnum.WeekendOrHoliday
-    # TODO: this would make an elegant switch-case
+
     if date.weekday() == 5 or date.weekday() == 6:
         return DayTypeEnum.WeekendOrHoliday
     if 1 <= date.weekday() <= 3:
@@ -616,7 +616,7 @@ def daily_to_hh_eload_pretrained(
 
     # load defaults for the residual trends, ARMA noise models, and the std devation of the daily data for active days
     # that was used to train these defaults
-    # TODO (JSM 2025-08-06) Should we move all logic for loading residual models to .model_utils?
+
     assert resid_model_path is not None
     assert resid_model_path.is_dir(), f"Resid model path {resid_model_path} is not a directory"
     default_hh_active_residtrend_df = pd.read_csv(Path(resid_model_path, "default_residtrend_active.csv"))
@@ -772,7 +772,6 @@ def monthly_to_hh_eload(
     daily_df = monthly_to_daily_eload(NonHHDataFrame(elec_df[~is_hh_mask]))
     halfhourly_df = daily_to_hh_eload(daily_df, model=model)
     if not elec_df[is_hh_mask].empty:
-        # TODO (2024-09-06 MHJB): make this also not resample for daily data
         halfhourly_df = HHDataFrame(pd.concat([halfhourly_df, elec_df[is_hh_mask]]))
     return HHDataFrame(halfhourly_df.sort_index())
 
@@ -786,14 +785,12 @@ def generate_approx_daily_profiles(
     The decoder of the VAE_2_0 class takes random draws from the latent distribution as well as daily aggregate values, and
     returns a half-hourly profile for each independent input. The decoder also ostensibly conditions on the start and end
     timestamps for each day, however these are not currently used in practice; we input zero-tensors instead.
-    TODO (2025-08-13 JSM): remove timestamp conditioning in VAE_2_0; this is asking too much of the VAE
 
     The daily aggregate values are provided in consumption_scaled; these should have already been scaled using a
     StandardScaler().
 
     In the current version of the trained VAE, negative scaled values of consumption_scaled result in poor approximate profiles,
-    so we use the absolute value of the scaled consumption in the logic below.
-    TODO (2025-08-13 JSM): More intensive training (using more data) might help this.
+    so we use the absolute value of the scaled consumption in the logic below..
 
     Parameters
     ----------

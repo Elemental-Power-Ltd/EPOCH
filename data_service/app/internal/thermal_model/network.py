@@ -191,9 +191,6 @@ def add_structure_to_graph(
         radiative=None,
     )
 
-    # TODO (2024-11-27 MHJB): do we need to treat the loft as a separate air volume?
-    # ideally it doesn't heat the home downwards, and exchanges lots of air with
-    # the outside, so it'd be easier to just have a whole loft volume with a heat capacity
     roof_code = (
         "Pitched roof - Slates or tiles, sarking felt, ventilated air space,"
         + " 50mm insulation between rafters, 9.5 mm plasterboard"

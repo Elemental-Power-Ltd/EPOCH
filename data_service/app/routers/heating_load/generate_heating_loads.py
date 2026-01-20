@@ -769,7 +769,6 @@ async def generate_heating_load_phpp(
         )
 
     structure_df, metadata = await get_phpp_dataframe_from_database(pool, params.structure_id)
-    # TODO (2025-07-17 MHJB): this mismatch between typed dict and pydantic is very annoying
     peak_hload = phpp_total_heat_loss(
         structure_df=structure_df,
         metadata={

@@ -230,7 +230,6 @@ def network_to_gains_vector(hm: HeatNetwork) -> GraphVector1D:
                 vec[idx] += edge["radiative"].power
                 vec[v_idx] -= edge["radiative"].power
             if isinstance(edge.get("radiative"), BoilerRadiativeLink):
-                # TODO (2024-12-05 MHJB): heating power should come in here?
                 pass
 
     for u, v, e_attrs in hm.edges(data=True):
@@ -247,8 +246,6 @@ def network_to_gains_vector(hm: HeatNetwork) -> GraphVector1D:
 
             if isinstance(e_attrs.get("conductive"), ConductiveLink):
                 vec[idx] += e_attrs["conductive"].step(u_attrs, v_attrs, dt=1.0)
-
-            # TODO (2024-12-06 MHJB): other links implemented here?
 
     return cast(GraphVector1D, vec)
 
@@ -318,15 +315,13 @@ def solve_heat_balance_equation(
     """
     dt_seconds = dt.total_seconds()
 
-    # TODO (2024-12-06 MHJB: the heat capacity and energy matrix vectors shouldn't change over time,
-    # so can we keep them between invocations?
     rhs_vec = (network_to_heat_capacity_vec(hm) * network_to_temperature_vec(hm)) + (network_to_gains_vector(hm) * dt_seconds)
 
     if heating_power != 0.0:
         heating_vec = np.zeros_like(rhs_vec)
         node_to_idx = create_node_to_index_map(hm)
         # Heating contributions go straight to the internal air, bypassing the heating system
-        # TODO (2024-12-09 MHJB): I don't like this, but solving the system of equations doesn't seem to
+        # I don't like this, but solving the system of equations doesn't seem to
         # correctly distribute the heat
         heating_vec[node_to_idx[BuildingElement.InternalAir]] += heating_power * dt_seconds
         rhs_vec += heating_vec

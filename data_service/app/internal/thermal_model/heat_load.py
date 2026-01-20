@@ -6,7 +6,6 @@ from ...models.heating_load import InterventionEnum, ThermalModelResult
 from .integrator import simulate
 from .network import HeatNetwork
 
-# TODO (2025-02-21 MHJB): typeddict
 type FabricParameters = dict[str, float]
 
 
@@ -26,8 +25,6 @@ def generate_heat_load(structure: HeatNetwork, weather_df: pd.DataFrame, elec_df
     -------
     just the heat load
     """
-    # TODO (2025-02-24 MHJB): does this belong here, or should we leave it in the endpoint?
-    # Infer the start and end dates from the provided weather periods
     start_ts = weather_df.timestamp.min()
     end_ts = weather_df.timestamp.max() + pd.Timedelta(hours=1)
     sim_df = simulate(
@@ -51,7 +48,7 @@ def apply_fabric_intervention_to_parameters(params: ThermalModelResult, interven
     -------
     ThermalModelResult
     """
-    # TODO (2025-02-24 MHJB): these numbers are nonsense
+    # these numbers are nonsense
     match intervention:
         case InterventionEnum.Loft:
             params.u_value *= 0.8

@@ -194,10 +194,7 @@ def monthly_to_hh_hload(gas_df: NonHHDataFrame, weather_df: WeatherDataFrame) ->
     hh_bait_hdd = np.maximum(bait_fitted.threshold - bait, 0) / 48
     hload_df["hdd"] = hh_bait_hdd
 
-    # TODO (2024-06-28 MHJB): Add different options for how to assign DHW and heating (even, greedy, poisson)
     return assign_hh_dhw_even(hload_df, dhw_kwh=mdl.coef_[0, 0], hdd_kwh=mdl.coef_[0, 1])
-
-    # TODO (2024-06-28 MHJB): add a "normalise to monthly readings" feature
 
 
 def fit_bait_and_model(gas_df: NonHHDataFrame, weather_df: WeatherDataFrame, apply_bait: bool = True) -> BaitAndModelCoefs:

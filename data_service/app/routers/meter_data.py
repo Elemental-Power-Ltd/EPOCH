@@ -215,7 +215,6 @@ async def get_meter_data(dataset_id: DatasetID, pool: DatabasePoolDep) -> list[G
     -------
     list of records in the form `[{"start_ts": ..., "end_ts": ..., "consumption": ...}, ...]`
     """
-    # TODO (2024-08-05 MHJB): make this return an EPOCH oriented object
     fuel_type = await pool.fetchval(
         """SELECT fuel_type FROM client_meters.metadata WHERE dataset_id = $1""", dataset_id.dataset_id
     )

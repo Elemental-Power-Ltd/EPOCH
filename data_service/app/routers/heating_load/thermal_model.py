@@ -270,5 +270,4 @@ async def fit_thermal_model_endpoint(
         seed=params.seed,
     )
     # We just return the boring task ID here for people to get from the database later.
-    # TODO (2025-04-30 MHJB): make this into a proper queue.
     return {"task_id": task_id}
