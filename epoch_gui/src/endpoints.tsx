@@ -94,29 +94,46 @@ export const reproduceSimulation = async(request: ReproduceSimulationRequest): P
 }
 
 
-export const getStatus = async() => {
-    try {
-        const response = await fetch("/api/optimisation/queue-status", {
-            method: "POST"
-        });
-
-        if(!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        data["status"] = "ONLINE"
-        return data
-    } catch (error) {
-        console.error("Failed to get status:", error);
-        return {"status": "OFFLINE"}
-    }
-}
-
 export type ApiResponse<T> = {
     success: boolean;
     data: T | null;
     error?: string;
+};
+
+export type TaskState = "queued" | "running" | "cancelled";
+
+export interface QueueElem {
+  state: TaskState;
+  added_at: string;
+}
+
+export type DatasetId = string;
+
+export interface QueueStatus {
+  queue: Record<DatasetId, QueueElem>;
+  service_uptime: string; // iso timedelta
+}
+
+export type OptimiserStatus = 'OFFLINE' | QueueStatus;
+
+export const getStatus = async (): Promise<OptimiserStatus> => {
+  try {
+    const response = await fetch("/api/optimisation/queue-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = `HTTP error! Status: ${response.status}`;
+      console.error(error);
+      return 'OFFLINE';
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get status", error);
+    return 'OFFLINE';
+  }
 };
 
 export const listClients = async (): Promise<ApiResponse<Client[]>> => {

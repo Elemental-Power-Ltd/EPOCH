@@ -1,23 +1,8 @@
 import React from 'react';
 import {Card, CardContent, Typography, Grid, Container} from '@mui/material';
 
-import {parseISODuration} from "../../util/displayFunctions";
-
-type TaskState = 'queued' | 'running' | 'cancelled';
-
-interface QueueElem {
-    state: TaskState;
-    added_at: string;
-}
-
-interface OptimiserStatus {
-    status: 'OFFLINE' | 'ONLINE';
-    queue: { [key: string]: QueueElem };
-    service_uptime: string;
-}
-
-
-
+import {OptimiserStatus, QueueElem} from "../../endpoints.tsx";
+import {parseISODuration} from "../../util/displayFunctions.ts";
 
 const QueueElemDisplay: React.FC<{ elem: QueueElem }> = ({elem}) => {
     return (
@@ -52,23 +37,27 @@ const QueueList: React.FC<{ queue: { [key: string]: QueueElem } }> = ({queue}) =
     );
 };
 
+
 export const OptimiserStatusDisplay: React.FC<{ status: OptimiserStatus }> = ({status}) => {
-
-
+    if (status === 'OFFLINE') {
+        return (
+            <Container>
+                <Typography variant="h4" gutterBottom>
+                    Queue Status: OFFLINE
+                </Typography>
+            </Container>
+        )
+    }
 
     return (
         <Container>
             <Typography variant="h4" gutterBottom>
-                Queue Status: {status.status}
+                Queue Status: ONLINE
             </Typography>
-            {status.status === 'ONLINE' &&
-                <>
-                    <QueueList queue={status.queue}/>
-                    <Typography variant="body1" mt={4}>
-                        Service Uptime: {parseISODuration(status.service_uptime)}
-                    </Typography>
-                </>
-            }
+            <QueueList queue={status.queue}/>
+            <Typography variant="body1" mt={4}>
+                Service Uptime: {parseISODuration(status.service_uptime)}
+            </Typography>
         </Container>
     );
 };

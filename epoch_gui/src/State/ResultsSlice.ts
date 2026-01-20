@@ -1,14 +1,11 @@
 import {StateCreator} from "zustand"
 import {OptimisationTaskListEntry} from "./types"
 import {AppState, ResultsState, ResultsSlice} from "./StoreTypes.ts";
+import {OptimiserStatus} from "../endpoints.tsx";
 
 
 export const defaultResultsContainer: ResultsState = {
-  optimiserServiceStatus: {
-    status: 'OFFLINE',
-    queue: {},
-    service_uptime: 0
-  },
+  optimiserServiceStatus: 'OFFLINE',
   tasks: [],
 }
 
@@ -17,7 +14,7 @@ export const createResultsSlice: StateCreator<AppState, [], [], ResultsSlice> =
 
     results: defaultResultsContainer,
 
-  setOptimiserServiceStatus: (status: any) =>
+  setOptimiserServiceStatus: (status: OptimiserStatus) =>
     set((state) => ({
       results: {
         ...state.results,

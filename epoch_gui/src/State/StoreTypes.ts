@@ -1,6 +1,7 @@
 import {Client, OptimisationApproach, OptimisationTaskListEntry, Site, TaskConfig} from "./types.ts";
 import {SimulationResult} from "../Models/Endpoints.ts";
 import {SiteInfo} from "../Models/Core/ComponentBuilder.ts";
+import {OptimiserStatus} from "../endpoints.tsx";
 
 export interface GlobalState {
     selectedClient: Client | null;
@@ -39,13 +40,13 @@ export type OptimiserSlice = {
 }
 
 export interface ResultsState {
-    optimiserServiceStatus: any;
+    optimiserServiceStatus: OptimiserStatus;
     tasks: OptimisationTaskListEntry[];
 }
 
 export type ResultsSlice = {
     results: ResultsState;
-    setOptimiserServiceStatus: (status: any) => void;
+    setOptimiserServiceStatus: (status: OptimiserStatus) => void;
     setTasks: (tasks: OptimisationTaskListEntry[]) => void;
 }
 
