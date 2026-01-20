@@ -92,7 +92,6 @@ async def get_octopus_tariff(
         raise ValueError(str(tariff_metadata_resp.status_code) + tariff_metadata_resp.text)
 
     tariff_meta = tariff_metadata_resp.json()
-    # TODO (2024-10-25 MHJB): What if we don't have a tariff in this region?
     region_meta = tariff_meta["single_register_electricity_tariffs"][region_code.value]
 
     def extract_rates_url(region_meta: dict[str, Any]) -> str:

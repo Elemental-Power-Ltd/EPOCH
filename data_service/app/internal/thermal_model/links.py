@@ -271,7 +271,6 @@ class BoilerRadiativeLink:
         return energy_change_j
 
 
-# TODO (2024-11-22 MHJB): this is a pretty crude convective link
 class ConvectiveLink:
     """ConvectiveLinks represent air flow between two volumes of air."""
 

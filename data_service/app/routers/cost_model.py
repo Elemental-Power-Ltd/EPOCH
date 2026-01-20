@@ -2,6 +2,7 @@
 
 A cost model is a set of piecewise linear functions used by EPOCH to estimate costs as a function of size by component.
 """
+
 import json
 
 from fastapi import APIRouter, HTTPException

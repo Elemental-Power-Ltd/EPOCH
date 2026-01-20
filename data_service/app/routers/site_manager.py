@@ -420,11 +420,7 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
     if not bundle_entries:
         # We got no available bundles for this site, so return an empty list
         return []
-    # TODO (2025-05-09): Do we instead want to return something that looks a bit more like a DatasetEntry,
-    # in the form {DatasetTypeEnum: dataset_id | list[dataset_id]} ?
-    # For now, we just return a list of all the dataset types with some duplicates.
-    # We also do this repeated checking for None for the available datasets because we can get Nones
-    # from the database in a few cases
+
     return [
         DatasetBundleMetadata(
             bundle_id=item["bundle_id"],
@@ -574,8 +570,6 @@ async def list_queue_contents(queue: JobQueueDep, bundle_id: dataset_id_t | None
     list[dict[str, Jsonable]]
         list of JSON-ified requests that we're going to inspect.
     """
-    # TODO (2025-08-28 MHJB): do we want to return a tuple including the type?
-
     # We sneakily access the private attribute, don't tell anyone
     assert hasattr(queue, "_queue"), "Queue internal queue not yet initialised"
 

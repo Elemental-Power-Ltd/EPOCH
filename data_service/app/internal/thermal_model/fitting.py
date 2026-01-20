@@ -374,8 +374,7 @@ def fit_to_gas_usage(
 
     for hint in hints:
         # Probe some reasonable points to get us started
-        # TODO (2025-05-01 MHJB): This is a single hint for each one, so we could try
-        # multiple slightly perturbed hints.
+        # This is a single hint for each one, so we could try multiple slightly perturbed hints.
         dumped_hint = hint.model_dump()
         for key, val in dumped_hint.items():
             if key not in pbounds:

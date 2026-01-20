@@ -182,8 +182,6 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
         ]
 
     async with asyncio.TaskGroup() as tg:
-        # TODO (2025-08-04 MHJB): this is a classic N+1 query pattern; we should look all of these up
-        # in a single query and separate them out on our site.
         all_dfs = {
             dataset_id: tg.create_task(
                 get_single_dataset(db_pool=pool, start_ts=params.start_ts, end_ts=params.end_ts, dataset_id=dataset_id)

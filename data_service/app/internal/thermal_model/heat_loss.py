@@ -70,8 +70,6 @@ def calculate_maximum_dynamic_heat_loss(
     ]:
         if u in graph.nodes:
             graph.nodes[u]["temperature"] = internal_temperature
-    # TODO (2024-11-25 MHJB): make this iterate until convergence instead of just doing
-    # a number of steps.
     energy_changes: list[float] = []
     for _ in range(1000):
         # Reset the internal air temperature every timestep to assume that we got the right amount of heat

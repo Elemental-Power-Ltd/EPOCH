@@ -163,7 +163,6 @@ class TrackingQueue(asyncio.Queue[tuple[int, GenericJobRequest]]):
         self.pool = pool
         # This is how we track which job is currently being worked on
         # it's set in ".get" and cleared in ".mark_done"
-        # TODO (2025-08-29 MHJB): what if there are two consumers?
         self._last_job_id: int | None = None
         super().__init__(maxsize=maxsize)
 

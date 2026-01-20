@@ -70,7 +70,6 @@ def assign_hh_dhw_even(hh_gas_df: HHDataFrame, dhw_kwh: float, hdd_kwh: float) -
     hh_gas_df
         Gas dataframe with DHW and heating components.
     """
-    # TODO (2024-06-25 MHJB): allow for weighting, and predicted components
     assert isinstance(hh_gas_df.index, pd.DatetimeIndex), "Half-hourly Gas DataFrame must have a DatetimeIndex"
 
     if hh_gas_df.empty:
@@ -113,7 +112,6 @@ def assign_hh_dhw_greedy(
     hh_gas_df
         Gas dataframe with DHW and heating components.
     """
-    # TODO (2024-06-25 MHJB): allow for weighting, and predicted components
     assert isinstance(hh_gas_df.index, pd.DatetimeIndex), "Half-hourly Gas DataFrame must have a DatetimeIndex"
     for day in np.unique(hh_gas_df.index.date):
         day_mask: npt.NDArray[np.bool_] = hh_gas_df.index.date == day

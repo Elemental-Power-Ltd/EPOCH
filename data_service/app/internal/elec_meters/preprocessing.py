@@ -192,9 +192,8 @@ def clean_time_series(
         outliers = z_scores > z_score_threshold
 
         if outliers.any():
-            # Replace outliers with rolling median
-            # TODO (JSM: 2025-05-05) There is probably a more appropriate way to deal with outliers
-            window_size = 7  # One week
+            # Replace outliers with rolling median over one week
+            window_size = 7
             df_clean.loc[outliers, value_column] = (
                 df_clean[value_column].rolling(window=window_size, center=True, min_periods=1).median()
             )

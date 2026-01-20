@@ -200,8 +200,6 @@ class TestSiteBaseline:
     async def test_cant_retrieve_bad_baseline_subkey(self, client: AsyncClient) -> None:
         """Test that we fail if a subkey is wrong."""
         baseline = {"grid": {"bad_subkey": "bad_value"}}
-        # TODO (2025-03-03): This is an absolutely filthy way to get the testing database
-        # pool connection! Do it properly with a DB fixture or a called endpoint.
         pool = await get_pool_hack(client)
         await pool.execute(
             """INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline) VALUES ($1, $2, $3)""",
