@@ -94,7 +94,7 @@ const GenerateAllForm = ({
                         <Typography variant="body1">
                             {generationResult.error
                                 ? `Error: ${generationResult.error}`
-                                : `Dataset generated successfully: ${JSON.stringify(generationResult)}`}
+                                : `Dataset generation initiated: ${JSON.stringify(generationResult)}`}
                         </Typography>
                     </Grid>
                 )}
