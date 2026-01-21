@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {
     Button,
     Grid,
@@ -8,8 +8,8 @@ import {
 import dayjs, {Dayjs} from 'dayjs';
 import 'dayjs/locale/en-gb';
 import utc from 'dayjs/plugin/utc';
-
 import {useEpochStore} from '../State/Store';
+
 import {FuelType, PhppMetadata} from "../Models/Endpoints.ts";
 import UploadMeterFileForm from '../Components/ConfigureSite/UploadMeterForm.tsx';
 import AddSolarLocationForm from "../Components/ConfigureSite/AddSolarForm.tsx";
@@ -17,6 +17,8 @@ import UploadPhppForm from "../Components/ConfigureSite/UploadPhppForm.tsx";
 import BaselineForm from "../Components/ConfigureSite/AddBaselineForm.tsx";
 import AddOrEditSite from "../Components/ConfigureSite/AddOrEditSite.tsx";
 import GenerateAllForm from "../Components/ConfigureSite/GenerateAllForm.tsx";
+import {getPrepochStatus} from "../endpoints.tsx";
+import {PrepochStatusDisplay} from "../Components/PrepochQueue/PrepochQueue.tsx";
 
 dayjs.extend(utc);
 
@@ -34,7 +36,6 @@ const DatasetGenerationContainer = () => {
         "Upload PHPP",
         "Generate Dataset",
     ];
-
 
     // state for generate-all
     const [selectedSite, setSelectedSite] = useState(sites.length === 1 ? sites[0].site_id : '');
@@ -68,9 +69,22 @@ const DatasetGenerationContainer = () => {
     const [baselineLoading, setBaselineLoading] = useState<boolean>(false);
     const [baselineError, setBaselineError] = useState<string | null>(null);
 
-    return (
-        <Container maxWidth="sm">
+    const [prepochQueueStatus, setPrepochQueueStatus] = useState<any>('OFFLINE');
 
+    useEffect(() => {
+          const interval = setInterval(async () => {
+              const response = await getPrepochStatus();
+              setPrepochQueueStatus(response);
+          }, 2000);
+
+          return () => {
+              clearInterval(interval);
+          };
+      }, []);
+
+
+    return (
+        <Container maxWidth="md">
             <Stepper activeStep={step} alternativeLabel>
                 {stepLabels.map((label, index) => (
                     <Step key={label}>
@@ -153,17 +167,21 @@ const DatasetGenerationContainer = () => {
             )}
 
             {step === 5 && (
-                <GenerateAllForm
-                    selectedSite={selectedSite}
-                    startDate={startDate}
-                    setStartDate={setStartDate}
-                    endDate={endDate}
-                    setEndDate={setEndDate}
-                    isGenerating={isGenerating}
-                    setIsGenerating={setIsGenerating}
-                    generationResult={generationResult}
-                    setGenerationResult={setGenerationResult}
-                />
+                <>
+                    <GenerateAllForm
+                        selectedSite={selectedSite}
+                        startDate={startDate}
+                        setStartDate={setStartDate}
+                        endDate={endDate}
+                        setEndDate={setEndDate}
+                        isGenerating={isGenerating}
+                        setIsGenerating={setIsGenerating}
+                        generationResult={generationResult}
+                        setGenerationResult={setGenerationResult}
+                    />
+                    <PrepochStatusDisplay status={prepochQueueStatus}/>
+                </>
+
             )}
 
             <Grid container spacing={2} sx={{mt: 3}}>

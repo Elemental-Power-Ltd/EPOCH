@@ -6,6 +6,7 @@ import {DateTimePicker} from "@mui/x-date-pickers/DateTimePicker";
 import {Dayjs} from 'dayjs';
 
 import {generateAllData} from "../../endpoints.tsx";
+import JsonViewer from "../../util/Widgets/JsonViewer.tsx";
 
 
 interface GenerateAllFormProps {
@@ -32,7 +33,6 @@ const GenerateAllForm = ({
     generationResult,
     setGenerationResult
 }: GenerateAllFormProps) => {
-
 
     const handleGenerateDataset = async () => {
         setIsGenerating(true);
@@ -94,7 +94,8 @@ const GenerateAllForm = ({
                         <Typography variant="body1">
                             {generationResult.error
                                 ? `Error: ${generationResult.error}`
-                                : `Dataset generation initiated: ${JSON.stringify(generationResult)}`}
+                                : `Dataset generation initiated`}
+                            <JsonViewer data={generationResult} name={"Bundle Information"}/>
                         </Typography>
                     </Grid>
                 )}

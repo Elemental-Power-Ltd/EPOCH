@@ -94,6 +94,67 @@ export const reproduceSimulation = async(request: ReproduceSimulationRequest): P
 }
 
 
+export type PrepochWorkerStatus = {
+    name: string,
+    exception: string | null,
+    is_running: boolean,
+    current_job: string,
+    current_job_id: number,
+    started_at: string,
+    coro: null,
+    ctx: null
+};
+
+
+export type PrepochQueueItem = {
+    site_id?: string;
+    bundle_metadata?: {
+        bundle_id: string;
+        dataset_type: string;
+        dataset_subtype: string | string[] | null;
+    }
+}
+
+// export type PrepochQueueContents = [Record<string, PrepochQueueItem>]
+
+export type PrepochQueueStatusData = {
+    workers: PrepochWorkerStatus[];
+    queue: PrepochQueueItem[];
+};
+
+export type PrepochStatus = 'OFFLINE' | PrepochQueueStatusData;
+
+// This function calls two endpoints
+//      - /list-queue-workers for information on what the data services workers are _currently_ working on
+//      - /list-queue-contents for information on queued work
+// we only return data when both succeed, otherwise we deem the data service to be Offline
+// because these are separate endpoints, there is minor race-condition that could display inconsistent data between them
+// (but this doesn't matter as it will likely be resolved next time we fetch them)
+export const getPrepochStatus = async(): Promise<PrepochStatus> => {
+    try {
+        const workersResponse = await fetch("/api/data/list-queue-workers", {method: "GET"});
+
+        const queueResponse = await fetch("/api/data/list-queue-contents", {method: "POST"});
+
+        if(!workersResponse.ok) {
+            throw new Error(`HTTP error in list-queue-workers! Status: ${workersResponse.status}`);
+        }
+
+        if (!queueResponse.ok) {
+            throw new Error(`HTTP error in list-queue-contents! Status: ${queueResponse.status}`);
+        }
+
+        const worker_data: [PrepochWorkerStatus] = await workersResponse.json();
+        const queue_contents: [PrepochQueueItem] = await queueResponse.json();
+
+        return {workers: worker_data, queue: queue_contents};
+    } catch (error) {
+        console.error("Failed to get status:", error);
+        return "OFFLINE"
+    }
+}
+
+
 export type ApiResponse<T> = {
     success: boolean;
     data: T | null;
