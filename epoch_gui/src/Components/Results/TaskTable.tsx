@@ -23,6 +23,33 @@ import { OptimisationTaskListEntry } from "../../State/types";
 import { parseISODuration } from "../../util/displayFunctions";
 import {metricDefs} from "../../util/MetricDefinitions.ts";
 
+
+export type ColumnKey =
+  | 'task_name'
+  | 'n_evals'
+  | 'exec_time'
+  | 'created_at'
+  | 'epoch_version'
+  | 'objectives'
+  | 'n_saved'
+  | 'actions';
+
+export const ALL_COLUMNS: { key: ColumnKey; label: string; required?: boolean }[] = [
+  { key: 'task_name', label: 'Task Name', required: true },
+  { key: 'n_evals', label: 'Number of Evaluations' },
+  { key: 'exec_time', label: 'Exec Time' },
+  { key: 'created_at', label: 'Created' },
+  { key: 'epoch_version', label: 'Epoch Version' },
+  { key: 'objectives', label: 'Objectives' },
+  { key: 'n_saved', label: 'Number of Results' },
+  { key: 'actions', label: '', required: true } // selectTask column (mandatory)
+];
+
+export const OPTIONAL_COLUMN_KEYS = ALL_COLUMNS.filter(c => !c.required).map(c => c.key) as ColumnKey[];
+export const HIDE_BY_DEFAULT: ColumnKey[] = ['n_evals', 'exec_time', 'epoch_version'];
+
+
+
 interface TaskTableProps {
   tasks: OptimisationTaskListEntry[];
   total: number;
@@ -34,32 +61,15 @@ interface TaskTableProps {
   selectTask: (task_id: string) => void;
   deselectTask: () => void;
   selectedTaskId?: string;
+
+  visibleCols: Set<ColumnKey>;
+  setVisibleCols: React.Dispatch<React.SetStateAction<Set<ColumnKey>>>;
 }
-type ColumnKey =
-  | 'task_name'
-  | 'n_evals'
-  | 'exec_time'
-  | 'created_at'
-  | 'epoch_version'
-  | 'objectives'
-  | 'n_saved'
-  | 'actions';
 
-const ALL_COLUMNS: { key: ColumnKey; label: string; required?: boolean }[] = [
-  { key: 'task_name', label: 'Task Name', required: true },
-  { key: 'n_evals', label: 'Number of Evaluations' },
-  { key: 'exec_time', label: 'Exec Time' },
-  { key: 'created_at', label: 'Created' },
-  { key: 'epoch_version', label: 'Epoch Version' },
-  { key: 'objectives', label: 'Objectives' },
-  { key: 'n_saved', label: 'Number of Results' },
-  { key: 'actions', label: '', required: true } // selectTask column (mandatory)
-];
 
-const OPTIONAL_COLUMN_KEYS = ALL_COLUMNS.filter(c => !c.required).map(c => c.key) as ColumnKey[];
-const HIDE_BY_DEFAULT: ColumnKey[] = ['n_evals', 'exec_time', 'epoch_version'];
 
-const TaskTable: React.FC<TaskTableProps> = ({ tasks, total, page, rowsPerPage, onPageChange, onRowsPerPageChange, selectTask, deselectTask, selectedTaskId }) => {
+
+const TaskTable: React.FC<TaskTableProps> = ({ tasks, total, page, rowsPerPage, onPageChange, onRowsPerPageChange, selectTask, deselectTask, selectedTaskId, visibleCols, setVisibleCols }) => {
 
   // if a task has been selected, we only show the user that task
   // (as they will be more interested in viewing the portfolio results table)
@@ -86,10 +96,6 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, total, page, rowsPerPage, 
     return objectives.map(obj => metricDefs[obj as keyof typeof metricDefs].label).join(' • ');
   }
 
-  // ---- Column visibility control ----
-  const [visibleOptional, setVisibleOptional] = useState<Set<ColumnKey>>(
-    () => new Set<ColumnKey>(OPTIONAL_COLUMN_KEYS.filter(k => !HIDE_BY_DEFAULT.includes(k)))
-  );
   const [columnsAnchorEl, setColumnsAnchorEl] = useState<null | HTMLElement>(null);
   const columnsMenuOpen = Boolean(columnsAnchorEl);
   const handleOpenColumns = (e: React.MouseEvent<HTMLButtonElement>) => setColumnsAnchorEl(e.currentTarget);
@@ -97,7 +103,7 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, total, page, rowsPerPage, 
 
   const toggleColumn = (key: ColumnKey) => {
     if (!OPTIONAL_COLUMN_KEYS.includes(key)) return; // ignore mandatory
-    setVisibleOptional(prev => {
+    setVisibleCols(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -106,8 +112,8 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, total, page, rowsPerPage, 
   };
 
   const visibleColumns = useMemo(
-    () => ALL_COLUMNS.filter(c => c.required || visibleOptional.has(c.key)),
-    [visibleOptional]
+    () => ALL_COLUMNS.filter(c => c.required || visibleCols.has(c.key)),
+    [visibleCols]
   );
 
   return (
@@ -140,7 +146,7 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, total, page, rowsPerPage, 
           >
             {OPTIONAL_COLUMN_KEYS.map(key => {
               const col = ALL_COLUMNS.find(c => c.key === key)!;
-              const checked = visibleOptional.has(key);
+              const checked = visibleCols.has(key);
               return (
                 <MenuItem
                   key={key}

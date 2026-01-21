@@ -5,7 +5,7 @@ import {useNavigate, useParams} from "react-router-dom";
 
 
 import {OptimiserStatusDisplay} from "../Components/OptimiserQueue/OptimiserQueue"
-import TaskTable from "../Components/Results/TaskTable"
+import TaskTable, {ColumnKey, OPTIONAL_COLUMN_KEYS, HIDE_BY_DEFAULT} from "../Components/Results/TaskTable"
 
 import {useEpochStore} from "../State/Store";
 
@@ -13,6 +13,8 @@ import {getOptimisationResults, getStatus, listOptimisationTasks} from "../endpo
 import PortfolioResultsViewer from "../Components/Results/PortfolioResultsViewer.tsx";
 import SiteResultsTable from "../Components/Results/SiteResultsTable";
 import {OptimisationResultsResponse} from "../Models/Endpoints.ts";
+
+
 
 
 function ResultsContainer() {
@@ -132,6 +134,11 @@ function ResultsContainer() {
         setPage(0);
     };
 
+
+    const [visibleCols, setvisibleCols] = useState<Set<ColumnKey>>(
+        () => new Set<ColumnKey>(OPTIONAL_COLUMN_KEYS.filter(k => !HIDE_BY_DEFAULT.includes(k)))
+    );
+
     return (
         <Container maxWidth={"lg"}>
             <OptimiserStatusDisplay status={state.optimiserServiceStatus}/>
@@ -149,6 +156,8 @@ function ResultsContainer() {
                 selectTask={(task_id: string) => navigate(`/results/${task_id}`)}
                 deselectTask={()=> navigate(`/results/`)}
                 selectedTaskId={task_id}
+                visibleCols={visibleCols}
+                setVisibleCols={setvisibleCols}
             />}
 
             {task_id &&
