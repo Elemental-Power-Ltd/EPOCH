@@ -1,4 +1,4 @@
-import {Button, CircularProgress, Grid, Typography} from "@mui/material";
+import {Button, CircularProgress, Grid, Tooltip, Typography} from "@mui/material";
 import {LocalizationProvider} from "@mui/x-date-pickers/LocalizationProvider";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import {DateTimePicker} from "@mui/x-date-pickers/DateTimePicker";
@@ -52,6 +52,10 @@ const GenerateAllForm = ({
         }
     };
 
+    const canGenerate = () => {
+        return selectedSite && startDate != null && endDate != null && startDate < endDate;
+    }
+
 
     return (
         <>
@@ -79,15 +83,21 @@ const GenerateAllForm = ({
                     </LocalizationProvider>
                 </Grid>
                 <Grid item xs={12}>
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        color="primary"
-                        onClick={handleGenerateDataset}
-                        disabled={!selectedSite || isGenerating}
-                    >
-                        {isGenerating ? <CircularProgress size={24}/> : 'Generate Dataset'}
-                    </Button>
+                    <Tooltip title={!canGenerate() ? "Start Date must precede End Date" : ""}>
+                        <span>
+                            <Button
+                                fullWidth
+                                variant="contained"
+                                color="primary"
+                                onClick={handleGenerateDataset}
+                                disabled={!canGenerate() || isGenerating}
+                            >
+                                {isGenerating ? <CircularProgress size={24}/> : 'Generate Dataset'}
+                            </Button>
+                        </span>
+
+                    </Tooltip>
+
                 </Grid>
                 {generationResult && (
                     <Grid item xs={12}>
