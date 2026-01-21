@@ -27,6 +27,9 @@ interface AddSiteFormProps {
     address: string;
     setAddress: (value: string) => void;
 
+    postcode: string;
+    setPostcode: (value: string) => void;
+
     epcLmk: string | null;
     setEpcLmk: (value: string | null) => void;
 
@@ -82,6 +85,8 @@ const AddSiteForm = ({
                          setCoordinates,
                          address,
                          setAddress,
+                         postcode,
+                         setPostcode,
                          epcLmk,
                          setEpcLmk,
                          decLmk,
@@ -166,6 +171,7 @@ const AddSiteForm = ({
             !!siteName &&
             !!siteLocation &&
             !!address &&
+            !!postcode &&
             coordinates !== null &&
             derivedSiteId.length > 0 &&
             !siteLoading &&
@@ -187,7 +193,7 @@ const AddSiteForm = ({
             name: siteName,
             location: siteLocation,
             coordinates: coordinates!,
-            address: address,
+            address: `${address}, ${postcode}`,
             epc_lmk: epcLmk,
             dec_lmk: decLmk,
         };
@@ -233,7 +239,7 @@ const AddSiteForm = ({
                 <Grid item xs={12}>
                     <TextField
                         fullWidth
-                        label="Location"
+                        label="Weather Station Location (Nearest Town)"
                         value={siteLocation}
                         onChange={(e) => setSiteLocation(e.target.value)}
                     />
@@ -244,7 +250,7 @@ const AddSiteForm = ({
                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
-                                label="Coordinate 1"
+                                label="Latitude"
                                 type="number"
                                 value={coordinates ? coordinates[0] : ""}
                                 onChange={handleCoordinateChange(0)}
@@ -254,7 +260,7 @@ const AddSiteForm = ({
                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
-                                label="Coordinate 2"
+                                label="Longitude"
                                 type="number"
                                 value={coordinates ? coordinates[1] : ""}
                                 onChange={handleCoordinateChange(1)}
@@ -275,8 +281,17 @@ const AddSiteForm = ({
                 <Grid item xs={12}>
                     <TextField
                         fullWidth
+                        label="Postcode"
+                        value={postcode}
+                        onChange={(e) => setPostcode(e.target.value)}
+                    />
+                </Grid>
+
+                <Grid item xs={12}>
+                    <TextField
+                        fullWidth
                         select
-                        label="EPC Rating"
+                        label="EPC Rating [optional]"
                         value={epcLmk ?? ""}
                         onChange={handleEpcChange}
                         error={!epcValid || !bandMatch}
@@ -295,7 +310,7 @@ const AddSiteForm = ({
                 <Grid item xs={12}>
                     <TextField
                         fullWidth
-                        label="DEC Score (1–100)"
+                        label="DEC Score (1–100) [optional]"
                         type="number"
                         value={decLmk ?? ""}
                         onChange={handleDecChange}

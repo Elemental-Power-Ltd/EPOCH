@@ -43,6 +43,7 @@ const AddOrEditSite = ({selectedSite, setSelectedSite}: AddOrEditSiteProps) => {
     const [siteLocation, setSiteLocation] = useState<string>("");
     const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
     const [address, setAddress] = useState<string>("");
+    const [postcode, setPostcode] = useState<string>("");
     const [epcLmk, setEpcLmk] = useState<string | null>(null);
     const [decLmk, setDecLmk] = useState<string | null>(null);
 
@@ -75,6 +76,7 @@ const AddOrEditSite = ({selectedSite, setSelectedSite}: AddOrEditSiteProps) => {
         setSiteLocation("");
         setCoordinates(null);
         setAddress("");
+        setPostcode("");
         setEpcLmk(null);
         setDecLmk(null);
         setSiteError(null);
@@ -146,6 +148,8 @@ const AddOrEditSite = ({selectedSite, setSelectedSite}: AddOrEditSiteProps) => {
                     setCoordinates={setCoordinates}
                     address={address}
                     setAddress={setAddress}
+                    postcode={postcode}
+                    setPostcode={setPostcode}
                     epcLmk={epcLmk}
                     setEpcLmk={setEpcLmk}
                     decLmk={decLmk}

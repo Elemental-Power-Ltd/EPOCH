@@ -469,9 +469,26 @@ export const addSite = async (siteInfo: addSiteRequest): Promise<ApiResponse<add
         });
 
         if (!response.ok) {
-            const error = `HTTP error! Status: ${response.status}`;
+            let error = `HTTP error! Status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                if (errorData.detail) {
+                    if (typeof errorData.detail === 'string') {
+                        error = errorData.detail;
+                    // If we've got a load of pydantic messages, return them all helpfully here.
+                    } else if (Array.isArray(errorData.detail)) {
+                        
+                        const messages = errorData.detail.map((err: any) => err.msg).filter(Boolean);
+                        error = messages.join(', ');
+                    } else {
+                        error = JSON.stringify(errorData.detail);
+                    }
+                }
+            } catch {
+                // If JSON parsing fails, keep the default error message
+            }
             console.error(error);
-            return {success: false, data: null, error};
+            return {success: false, data: null, error: error};
         }
 
         const json: [addSiteRequest, string] = await response.json();
