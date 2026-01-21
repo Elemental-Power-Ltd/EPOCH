@@ -38,9 +38,11 @@ const JsonViewer: React.FC<JsonViewerProps> = ({data, name}) => {
                         {name ?? 'Raw JSON'}
                     </Box>
                     <Tooltip title="Copy JSON">
+                        <span>
                         <IconButton size="small" onClick={handleCopy} aria-label="Copy JSON">
                             <ContentCopyIcon fontSize="small"/>
                         </IconButton>
+                        </span>
                     </Tooltip>
                 </DialogTitle>
 

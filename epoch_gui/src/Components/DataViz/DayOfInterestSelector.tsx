@@ -37,6 +37,7 @@ export const DayOfInterestSelector: React.FC<DayOfInterestSelectorProps> = ({
                 <Tooltip
                   title={`${d.name}: ${dayjs(d.start_ts).format("DD-MM-YYYY")} → ${dayjs(d.end_ts).format("DD-MM-YYYY")}`}
                 >
+                  <span>
                   <Button
                     size="small"
                     variant="outlined"
@@ -45,6 +46,7 @@ export const DayOfInterestSelector: React.FC<DayOfInterestSelectorProps> = ({
                   >
                     {d.name}
                   </Button>
+                  </span>
                 </Tooltip>
               </Grid>
             );

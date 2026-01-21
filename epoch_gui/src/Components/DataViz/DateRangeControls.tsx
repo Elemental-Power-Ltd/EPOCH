@@ -91,6 +91,7 @@ export const DateRangeControls: React.FC<DateRangeControlProps> = (
             {/* Buttons to add/subtract 1 day/month */}
             <Grid item xs={12} container justifyContent="center">
                 <Tooltip title="Back 1 Month">
+                    <span>
                     <IconButton
                         aria-label="subtract-month"
                         onClick={() => setSelectedStartDatetime(nextSubtractMonth)}
@@ -98,8 +99,10 @@ export const DateRangeControls: React.FC<DateRangeControlProps> = (
                     >
                         <KeyboardDoubleArrowLeftIcon/>
                     </IconButton>
+                    </span>
                 </Tooltip>
                 <Tooltip title="Back 1 Day">
+                    <span>
                     <IconButton
                         aria-label="subtract-day"
                         onClick={() => setSelectedStartDatetime(nextSubtractDay)}
@@ -107,8 +110,10 @@ export const DateRangeControls: React.FC<DateRangeControlProps> = (
                     >
                         <ArrowLeftIcon/>
                     </IconButton>
+                    </span>
                 </Tooltip>
                 <Tooltip title="Forward 1 Day">
+                    <span>
                     <IconButton
                         aria-label="add-day"
                         onClick={() => setSelectedStartDatetime(nextAddDay)}
@@ -116,8 +121,10 @@ export const DateRangeControls: React.FC<DateRangeControlProps> = (
                     >
                         <ArrowRightIcon/>
                     </IconButton>
+                    </span>
                 </Tooltip>
                 <Tooltip title="Forward 1 Month">
+                    <span>
                     <IconButton
                         aria-label="add-month"
                         onClick={() => setSelectedStartDatetime(nextAddMonth)}
@@ -125,6 +132,7 @@ export const DateRangeControls: React.FC<DateRangeControlProps> = (
                     >
                         <KeyboardDoubleArrowRightIcon/>
                     </IconButton>
+                    </span>
                 </Tooltip>
             </Grid>
         </Grid>

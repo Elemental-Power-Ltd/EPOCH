@@ -167,8 +167,8 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
 
       const renderTab = (rows: MetricKey[][]) => (
           <Grid container spacing={3}>
-            {rows.map(row => (
-              <Grid container item xs={12} justifyContent="space-evenly" spacing={2}>
+            {rows.map((row, idx) => (
+              <Grid container item xs={12} justifyContent="space-evenly" spacing={2} key={idx}>
                 {renderMetricRow(row)}
               </Grid>
             ))}

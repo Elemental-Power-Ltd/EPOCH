@@ -152,12 +152,15 @@ const NavTabs = () => {
         location.pathname.startsWith(tab.path)
     );
 
+    // if we are on '/' then findIndex returns -1, we want 0
+    const nonZeroTab = Math.max(currentTabIndex, 0);
+
     const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
         navigate(tabsConfig[newValue].path);
     };
 
     return (
-        <Tabs value={currentTabIndex} onChange={handleTabChange} sx={{flexGrow: 1}}>
+        <Tabs value={nonZeroTab} onChange={handleTabChange} sx={{flexGrow: 1}}>
             {tabsConfig.map((tab) => (
                 <Tab key={tab.path} label={tab.label}/>
             ))}
