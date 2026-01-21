@@ -14,8 +14,8 @@ from typing import Annotated, Any, Self
 import pydantic
 from pydantic import BaseModel, Field
 
-from app.internal.utils.uuid import uuid7
 from app.internal.utils import check_latitude_longitude
+from app.internal.utils.uuid import uuid7
 
 # We have to support either UUID4 for historic datasets or UUID7 for more recent dataset
 type uuid_t = pydantic.UUID4 | pydantic.UUID7

@@ -104,6 +104,21 @@ class TestClientData:
         assert "postcode" in response.text
 
     @pytest.mark.asyncio
+    async def test_cant_add_bad_latlon(self, client: AsyncClient) -> None:
+        """Test that we can't add a site with the latitude and longitude wrong way round."""
+        site_data = {
+            "client_id": "demo",
+            "site_id": "demo_bad_latlon",
+            "name": "Demo Bad Latlon",
+            "location": "Worksop",
+            "coordinates": (-1.2345, 51.4789),
+            "address": "123 Demo Street, SW1 1AA",
+        }
+        response = await client.post("/add-site", json=site_data)
+        assert response.status_code == 422
+        assert "Latitude" in response.text
+
+    @pytest.mark.asyncio
     async def test_add_site_client_not_found(self, client: AsyncClient) -> None:
         site_data = SiteData(
             client_id="unknown_client",
