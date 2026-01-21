@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.log import configure_logging
 from app.models.site_manager import WorkerStatus
 
 from .job_queue import current_job_id_ctx, current_job_type_ctx, started_at_ctx
@@ -35,6 +36,7 @@ from .routers import (
 assert sys.version_info >= (3, 13, 0), f"Must be using Python 3.13.0 or above, but you're on {sys.version}"
 
 start_time = datetime.datetime.now(tz=datetime.UTC)
+configure_logging()
 app = FastAPI(lifespan=lifespan, title="Data Service", root_path="/api/data")
 origins = ["*"]
 app.add_middleware(
