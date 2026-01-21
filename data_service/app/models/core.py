@@ -15,6 +15,7 @@ import pydantic
 from pydantic import BaseModel, Field
 
 from app.internal.utils.uuid import uuid7
+from app.internal.utils import check_latitude_longitude
 
 # We have to support either UUID4 for historic datasets or UUID7 for more recent dataset
 type uuid_t = pydantic.UUID4 | pydantic.UUID7
@@ -230,6 +231,14 @@ class SiteData(pydantic.BaseModel):
         if not POSTCODE_REGEX.match(addr):
             raise ValueError("Didn't find a postcode after a comma at the end of your address, does it end ',AB1, 2CD'?")
         return addr
+
+    @pydantic.model_validator(mode="after")
+    def check_latlon_valid(self) -> Self:
+        """Check that the latitude and longitude are within mainland UK."""
+        assert check_latitude_longitude(self.coordinates[0], self.coordinates[1]), (
+            f"Latitude {self.coordinates[0]} and Longitude {self.coordinates[1]} not in the UK. Are they the right way round?"
+        )
+        return self
 
 
 class BundleEntryMetadata(pydantic.BaseModel):
