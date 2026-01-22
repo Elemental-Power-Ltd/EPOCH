@@ -149,11 +149,6 @@ class Bayesian(Algorithm):
         )
         solutions = dpo.init_solutions
 
-        if len(solutions) == 0:  # If initialisation found no solutions then no point in continuing.
-            total_exec_time = datetime.datetime.now(datetime.UTC) - start_time
-            total_n_evals = dpo.n_evals
-            return OptimisationResult(solutions, total_n_evals, total_exec_time)
-
         # Add 25% extra CAPEX in case initialisation didn't converge
         max_capexs = [1.25 * val if val > 0 else capex_limit for val in dpo.max_capexs]
 
