@@ -173,9 +173,6 @@ class Bayesian(Algorithm):
             if len(new_solutions) > 0:
                 solutions = portfolio_pareto_front(solutions + new_solutions, objectives)
 
-                # TODO: Improve the sampling of the new solutions, ex: Sobol sampling.
-                # Converting all new solutions into training points would be best, but increasing the number of points makes
-                # the fitting process slower.
                 new_train_x, new_train_y = convert_solution_list_to_tensor(
                     solutions=list(rng.choice(a=new_solutions, size=max(1, int(0.25 * len(new_solutions))), replace=False)),  # type: ignore
                     sub_portfolio_site_ids=sub_portfolio_site_ids,
