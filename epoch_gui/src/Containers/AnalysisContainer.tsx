@@ -47,7 +47,7 @@ const AnalysisContainer = () => {
 
     return (
         <>
-            {noResultRequested
+            {noResultRequested && error === null
                 ? <NoResultToAnalyse/>
                 :<SimulationResultViewer isLoading={isLoading} error={error} result={state.siteResult}/>
             }
