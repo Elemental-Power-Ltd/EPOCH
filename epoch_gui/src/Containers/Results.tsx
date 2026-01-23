@@ -54,13 +54,23 @@ function ResultsContainer() {
 
     // Fetch the Optimiser Service Status periodically
     useEffect(() => {
-        const interval = setInterval(async () => {
+        let cancelled = false;
+
+        const poll = async () => {
+            if (cancelled) return;
+
             const response = await getStatus();
-            setOptimiserServiceStatus(response);
-        }, 2000);
+            if (!cancelled) {
+                setOptimiserServiceStatus(response);
+            }
+
+            setTimeout(poll, 2000);
+        };
+
+        poll();
 
         return () => {
-            clearInterval(interval);
+            cancelled = true;
         };
     }, []);
 

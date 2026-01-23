@@ -3,7 +3,17 @@ import {useState} from "react";
 import AccordionSection from "../util/Widgets/AccordionSection";
 import AddSiteModal from "../Components/SearchParameters/AddSite";
 
-import {Button, Box, IconButton, Container, TextField, Paper} from '@mui/material';
+import {
+    Button,
+    Box,
+    IconButton,
+    Container,
+    TextField,
+    Paper,
+    CircularProgress,
+    Typography,
+    Stack
+} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import {submitOptimisationJob} from "../endpoints";
@@ -15,6 +25,7 @@ import expandSiteRange, {PortfolioValidationResult} from "../Components/Componen
 import ComponentBuilderForm from "../Components/ComponentBuilder/ComponentBuilderForm";
 import ErrorList from "../Components/ComponentBuilder/ErrorList";
 import {CostModelPicker} from "../Components/CostModel/CostModelPicker.tsx";
+import {useNavigate} from "react-router-dom";
 
 
 function OptimisationContainer() {
@@ -47,6 +58,10 @@ function OptimisationContainer() {
         const val = e.target.value;
         setPortfolioCapexBudget(val === '' ? undefined : Number(val));
     };
+
+    const [submitLoading, setSubmitLoading] = useState<boolean>(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     /**
      * perform simple checks about the validity of the task configuration
@@ -113,7 +128,7 @@ function OptimisationContainer() {
         return {success: true, data: portfolioSiteRanges};
     }
 
-    const onRun = () => {
+    const onRun = async () => {
 
         if (!canRun()) {
             return;
@@ -160,7 +175,18 @@ function OptimisationContainer() {
             client_id: client_id!
         }
 
-        submitOptimisationJob(payload);
+        setSubmitLoading(true);
+        setSubmitError(null);
+
+        const submitResult = await submitOptimisationJob(payload);
+        if (submitResult.success) {
+            setSubmitError(null);
+            navigate("/results")
+        } else {
+            setSubmitError(submitResult.error || "Unknown error");
+        }
+        setSubmitLoading(false);
+
     }
 
     const renderSiteBuilder = (site_id: string) => {
@@ -201,6 +227,7 @@ function OptimisationContainer() {
         )
     }
 
+    // @ts-ignore
     return (
         <Container maxWidth={"xl"}>
             <OptimiserConfigForm/>
@@ -242,8 +269,28 @@ function OptimisationContainer() {
             </Box>
 
 
-            <Button onClick={onRun} disabled={!canRun()} variant="contained" size="large">
-                Run Optimisation
+            {submitError &&
+                <Typography variant="body2" color="error">
+                    {submitError}
+                </Typography>
+            }
+
+            <Button
+                onClick={onRun}
+                disabled={!canRun() || submitLoading}
+                variant="contained"
+                size="large"
+            >
+                {submitLoading ? (
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                        <CircularProgress size={18} color="inherit"/>
+                        <Typography variant="button">
+                            Submitting task…
+                        </Typography>
+                    </Stack>
+                ) : (
+                    "Run Optimisation"
+                )}
             </Button>
 
             <AddSiteModal

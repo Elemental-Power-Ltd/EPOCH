@@ -72,15 +72,25 @@ const DatasetGenerationContainer = () => {
     const [prepochQueueStatus, setPrepochQueueStatus] = useState<any>('OFFLINE');
 
     useEffect(() => {
-          const interval = setInterval(async () => {
-              const response = await getPrepochStatus();
-              setPrepochQueueStatus(response);
-          }, 2000);
+        let cancelled = false;
 
-          return () => {
-              clearInterval(interval);
-          };
-      }, []);
+        const pollPrepochStatus = async () => {
+            if (cancelled) return;
+
+            const response = await getPrepochStatus();
+            if (!cancelled) {
+                setPrepochQueueStatus(response);
+            }
+
+            setTimeout(pollPrepochStatus, 2000);
+        };
+
+        pollPrepochStatus();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
 
     return (
