@@ -63,9 +63,9 @@ const ComponentBuilderForm: FC<ComponentBuilderFormProps> = (props) => {
         updateComponent(component, evt.formData);
     };
 
-    const handleConfigChange = (evt: any) => {
+    const handleConfigChange = (config: any) => {
         if (setConfig !== null) {
-            setConfig(evt.formData);
+            setConfig(config);
         }
     }
 

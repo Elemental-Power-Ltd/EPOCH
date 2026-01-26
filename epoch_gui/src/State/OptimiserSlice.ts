@@ -80,7 +80,11 @@ export const createOptimiserSlice: StateCreator<AppState, [], [], OptimiserSlice
         portfolioMap: {
           ...state.optimise.portfolioMap,
           [site_id]: {
-            config: DefaultConfig,
+            config: {
+              ...DefaultConfig,
+              inherit_cost_model: true,
+              site_cost_model: null
+            },
             components: getInitialComponentsMap("SiteRangeMode", baseline)
           }
         }

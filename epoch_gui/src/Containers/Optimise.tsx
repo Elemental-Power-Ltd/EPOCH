@@ -91,6 +91,17 @@ function OptimisationContainer() {
             return false;
         }
 
+        // each site must either inherit the parent cost model or set their own
+
+        const sitesHaveCostModels = Object.keys(state.portfolioMap).every((site_id) => {
+            const siteConfig = state.portfolioMap[site_id].config;
+            return siteConfig.inherit_cost_model === true || siteConfig.site_cost_model !== null;
+        });
+
+        if (!sitesHaveCostModels) {
+            return false;
+        }
+
         return true;
     }
 
@@ -126,6 +137,26 @@ function OptimisationContainer() {
         // clear any errors that were displayed before submitting this task
         setPortfolioRangeErrors({});
         return {success: true, data: portfolioSiteRanges};
+    }
+
+    // either return the portfolio cost model or use the site-specific one
+    // depending on the value of config.inherit_cost_model
+    const manipulateConfig = (site_id: string) => {
+        const {inherit_cost_model, site_cost_model, ...remainingConfig} = state.portfolioMap[site_id].config;
+
+        if (inherit_cost_model) {
+            return {
+                ...remainingConfig,
+                capex_model: costModel!.capex_model,
+                opex_model: costModel!.opex_model,
+            }
+        } else {
+            return {
+                ...remainingConfig,
+                capex_model: site_cost_model.capex_model,
+                opex_model: site_cost_model.opex_model,
+            }
+        }
     }
 
     const onRun = async () => {
@@ -165,11 +196,7 @@ function OptimisationContainer() {
                     // an EPOCH year is exactly 8760 hours (irrespective of leap years)
                     end_ts: state.taskConfig.start_date!.add(8760, "hour").toISOString()
                 },
-                config: {
-                    ...state.portfolioMap[site_id].config,
-                    capex_model: costModel!.capex_model,
-                    opex_model: costModel!.opex_model
-                }
+                config: manipulateConfig(site_id)
             })),
             portfolio_constraints: portfolio_constraints,
             client_id: client_id!
@@ -227,34 +254,36 @@ function OptimisationContainer() {
         )
     }
 
+    const renderPortfolioCapexLimit = () => (
+        <Container maxWidth="sm">
+            <Box
+                component="form"
+                noValidate
+                autoComplete="off"
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: '1em'
+                }}
+            >
+                <TextField
+                    label="Portfolio Capex Limit"
+                    type="number"
+                    value={portfolioCapexBudget ?? ''}
+                    onChange={handlePortfolioCapexChange}
+                    fullWidth
+                    variant="outlined"
+                    inputProps={{inputMode: 'numeric', step: 10000}}
+                />
+            </Box>
+        </Container>
+    )
+
     // @ts-ignore
     return (
         <Container maxWidth={"xl"}>
             <OptimiserConfigForm/>
-
-            <Container maxWidth="sm">
-                <Box
-                    component="form"
-                    noValidate
-                    autoComplete="off"
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mb: '1em'
-                    }}
-                >
-                    <TextField
-                        label="Portfolio Capex Limit"
-                        type="number"
-                        value={portfolioCapexBudget ?? ''}
-                        onChange={handlePortfolioCapexChange}
-                        fullWidth
-                        variant="outlined"
-                        inputProps={{inputMode: 'numeric', step: 10000}}
-                    />
-                </Box>
-            </Container>
 
             {Object.keys(state.portfolioMap).map((site_id) => renderSiteBuilder(site_id))}
 
@@ -268,6 +297,7 @@ function OptimisationContainer() {
                 </Paper>
             </Box>
 
+            {renderPortfolioCapexLimit()}
 
             {submitError &&
                 <Typography variant="body2" color="error">
