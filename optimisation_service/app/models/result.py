@@ -9,7 +9,6 @@ from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import MetricValues
 
 
-# TODO (2025-08-08 MHJB): should these be pydantic instead of dataclasses?
 @dataclass
 class SiteSolution:
     scenario: AnnotatedTaskData
