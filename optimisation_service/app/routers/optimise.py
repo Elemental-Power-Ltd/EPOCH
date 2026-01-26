@@ -47,9 +47,6 @@ async def submit_portfolio(task: Task, http_client: HttpClientDep, queue: QueueD
             status_code=400, detail="Task search space is empty. Found no asset values to optimise in site range."
         )
     try:
-        # HACK : GUI doesn't yet support site constraints but we require site CAPEX limits.
-        # So we extend each site's config.capex_limit into site constraints.
-        # TODO - 14/10/25 WGTD : Once site constraints are supported in the GUI, remove this logic.
         extend_config_capex_limits_to_constraints(portfolio=task.portfolio)
         await fetch_portfolio_data(task=task, http_client=http_client)
         task.portfolio, task.portfolio_constraints = apply_default_constraints(
