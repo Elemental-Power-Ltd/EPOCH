@@ -9,7 +9,7 @@ import TaskTable, {ColumnKey, OPTIONAL_COLUMN_KEYS, HIDE_BY_DEFAULT} from "../Co
 
 import {useEpochStore} from "../State/Store";
 
-import {getOptimisationResults, getStatus, listOptimisationTasks} from "../endpoints";
+import {getOptimisationResults, getStatus, listOptimisationTasks, OptimiserStatus} from "../endpoints";
 import PortfolioResultsViewer from "../Components/Results/PortfolioResultsViewer.tsx";
 import SiteResultsTable from "../Components/Results/SiteResultsTable";
 import {OptimisationResultsResponse} from "../Models/Endpoints.ts";
@@ -51,6 +51,10 @@ function ResultsContainer() {
     const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
     const [portfolioError, setPortfolioError] = useState<string | null>(null);
 
+    // we track when the job queue has changed so that we can refresh the results
+    const [resultRefreshKey, setResultRefreshKey] = useState<number>(0);
+    const prevFirstDatasetId = useRef<string | null>(null);
+
 
     // Fetch the Optimiser Service Status periodically
     useEffect(() => {
@@ -62,6 +66,14 @@ function ResultsContainer() {
             const response = await getStatus();
             if (!cancelled) {
                 setOptimiserServiceStatus(response);
+
+                const front = getFirstDatasetId(response);
+                const prevFront = prevFirstDatasetId.current;
+
+                if (prevFront !== null && front !== prevFront) {
+                    setResultRefreshKey((k) => k + 1);
+                }
+                prevFirstDatasetId.current = front;
             }
 
             setTimeout(poll, 2000);
@@ -73,6 +85,15 @@ function ResultsContainer() {
             cancelled = true;
         };
     }, []);
+
+    const getFirstDatasetId = (status: OptimiserStatus): string | null => {
+        if (status === 'OFFLINE' || Object.keys(status.queue).length === 0) {
+            return null;
+        }
+
+        // we have entries in the queue, the first entry is at the front
+        return Object.keys(status.queue)[0];
+    }
 
 
     // Fetch all optimisation tasks
@@ -108,7 +129,7 @@ function ResultsContainer() {
 
         fetchTasks();
 
-    }, [client_id, page, rowsPerPage, setTasks]);
+    }, [client_id, page, rowsPerPage, setTasks, resultRefreshKey]);
 
 
     // Fetch the PortfolioResults for a given task_id
