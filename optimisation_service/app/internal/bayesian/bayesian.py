@@ -154,8 +154,6 @@ class Bayesian(Algorithm):
 
         sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in sub_portfolios]
 
-        # We select a random subset of the solutions since they usually are all quite similar which leads to bad model fitting.
-        # TODO: Make the sampler less random, ex: Sobol sampling
         train_x, train_y = convert_solution_list_to_tensor(
             solutions=list(rng.choice(a=solutions, size=max(1, int(0.25 * len(solutions))), replace=False)),  # type: ignore
             sub_portfolio_site_ids=sub_portfolio_site_ids,
@@ -330,7 +328,6 @@ def initialise_model(
     return mll, model
 
 
-# TODO: improve reference point creation
 def create_reference_point(train_y: torch.Tensor) -> torch.Tensor:
     """
     Create a reference point for the hypervolume by taking the worst value for each objective.
