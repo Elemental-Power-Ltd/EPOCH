@@ -58,7 +58,7 @@ def generate_site_scenarios_from_heuristics(
                 individual[asset_name] = generate_asset_from_heuristics(asset_name, asset_range, estimates)
 
         td_pop.append(AnnotatedTaskData.model_validate(individual))
-    # TODO: check CAPEX of values
+
     return td_pop
 
 
