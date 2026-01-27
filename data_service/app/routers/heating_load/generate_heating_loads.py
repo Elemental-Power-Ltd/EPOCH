@@ -291,7 +291,9 @@ async def list_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID) ->
     )
     feasible_interventions = set(res or [])
 
-    THIRD_PARTY_interventions = set(THIRD_PARTY_INTERVENTIONS.keys())
+    # We don't want some of these in our modelling: leave them in there
+    # in case someone definitely wants them, but hide them from the list here.
+    THIRD_PARTY_interventions = {key for key, value in THIRD_PARTY_INTERVENTIONS.items() if value["u_value"] is not None}
     unfeasible_interventions = THIRD_PARTY_interventions - feasible_interventions
 
     all_interventions = [IsInterventionFeasible(name=item, is_feasible=True) for item in feasible_interventions] + [
