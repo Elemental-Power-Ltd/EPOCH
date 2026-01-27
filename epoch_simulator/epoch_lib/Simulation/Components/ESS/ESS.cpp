@@ -121,7 +121,6 @@ void BasicESS::Report(ReportData& reportData) const
     reportData.ESS_discharge = mBattery.mHistDisch_e;
     reportData.ESS_resulting_SoC = mBattery.mHistSoC_e;
 
-    // TODO - make a report method in the battery and call that instead
     reportData.ESS_AuxLoad = mBattery.mHistAux_e;
     reportData.ESS_RTL = mBattery.mHistRTL_e;
 }

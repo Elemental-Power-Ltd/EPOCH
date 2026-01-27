@@ -151,8 +151,6 @@ public:
 	}
 
 	void Report(ReportData& reportData) {
-		// TODO - we may need to report the actual discharging from the tank separately from the instantaneous demand
-		//  (mDHW_discharging is just historicalData.DHWdemand_data)
 		reportData.DHW_load = mDHW_discharging;
 		reportData.DHW_charging = mDHW_charging;
 		reportData.DHW_SoC = mDHW_SoC_history;

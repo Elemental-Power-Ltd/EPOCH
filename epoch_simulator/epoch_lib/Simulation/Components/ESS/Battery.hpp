@@ -23,7 +23,6 @@ public:
 		// timestep_hours can be considered a power scalar per timestep
 		mChargMax_e(essData.charge_power * siteData.timestep_hours), // kWh per timestep
 		mDischMax_e(essData.discharge_power * siteData.timestep_hours), // UkWh per timestep
-		// TODO - reintroduce RTE to TaskData
 		mRTLrate(1.0f - 0.86f), // loss rate easier in calcs
 		mAuxLoad_e(essData.capacity / 1200 * siteData.timestep_hours), // kWh per timestep
 		mPreSoC_e(essData.initial_charge) // Init State of Charge in kWhs

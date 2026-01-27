@@ -46,7 +46,6 @@ std::optional<year_TS> try_get_ppa_masked_tariff(const year_TS& tariff) {
 UsageData sumUsage(const SiteData& siteData, const TaskData& taskData, const CostVectors& costVectors) {
 	UsageData usage{};
 
-	// TODO - extract these somewhere else (make this a class or put make these globals?)
 	const float LPG_cost_price = 0.122f; // £/kWh
 	const float mains_gas_kg_C02e = 0.201f; // kg/kWh(w2h) 
 	const float LPG_kg_C02e = 0.239f; // kg/kWh (well2heat)

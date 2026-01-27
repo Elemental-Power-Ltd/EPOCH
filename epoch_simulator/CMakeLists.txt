@@ -11,14 +11,10 @@ if(MSVC)
 
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-Wall -Wextra -Wpedantic -Werror )
-  # FIXME
-  # These constraints need tightening
   add_compile_options(-Wno-error=unused-parameter -Wno-error=reorder)
 
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic -Werror )
-  # FIXME
-  # These constraints need tightening
   add_compile_options(-Wno-error=unused-parameter -Wno-error=reorder -Wno-error=unused-private-field)
 endif()
 

@@ -45,7 +45,5 @@ public:
 		reportData.CH_shortfall = Heat_h;
 		// Any surplus heat generated is wasted (conservation of energy checksum)
 		reportData.Heat_surplus = Waste_h;
-
-		// TODO - add additional reporting
 	}
 };

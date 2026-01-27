@@ -37,7 +37,6 @@ void DataCentreWithASHP::AllCalcs(TempSum& tempSum) {
 	mActualLoad_e = mTargetLoad_e;
 	mAvailableHotHeat_h = mActualLoad_e * mHeatScalar;
 	// FUTURE can switch TargetHeat to Pool, DHW or combo
-	// mTargetHeat_h = tempSum.Heat_h; REMOVED to support DHW & CH
 	mHeatPump.AllCalcs(tempSum, mAvailableHotHeat_h);
 
 	// update Temp Energy Balances
@@ -46,8 +45,6 @@ void DataCentreWithASHP::AllCalcs(TempSum& tempSum) {
 
 void DataCentreWithASHP::StepCalc(TempSum& tempSum, const float futureEnergy_e, const size_t t) {
 	// Switch to Pool, DHW, CH done in HeatPump
-	// mTargetHeat_h[t] = tempSum.Heat_h[t];REMOVED to support DHW & CH
-
 	float heatpumpMaxElectricalLoad = mHeatPump.MaxElec(t);
 
 	// Set Electricty Budget for ASHP
@@ -83,7 +80,6 @@ float DataCentreWithASHP::getTargetLoad(size_t timestep) {
 void DataCentreWithASHP::Report(ReportData& reportData) const {
 	reportData.Data_centre_target_load = mTargetLoad_e;
 	reportData.Data_centre_actual_load = mActualLoad_e;
-	// TODO - investigate mTargetHeat_h (is it always 0?)
 	reportData.Data_centre_target_heat = mTargetHeat_h;
 	reportData.Data_centre_available_hot_heat = mAvailableHotHeat_h;
 
