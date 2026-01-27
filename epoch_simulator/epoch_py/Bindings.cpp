@@ -171,7 +171,6 @@ PYBIND11_MODULE(epoch_simulator, m) {
 
 	pybind11::class_<TaskConfig>(m, "Config")
 		.def(pybind11::init<>())
-		.def_readwrite("capex_limit", &TaskConfig::capex_limit)
 		.def_readwrite("use_boiler_upgrade_scheme", &TaskConfig::use_boiler_upgrade_scheme)
 		.def_readwrite("general_grant_funding", &TaskConfig::general_grant_funding)
 		.def_readwrite("npv_time_horizon", &TaskConfig::npv_time_horizon)

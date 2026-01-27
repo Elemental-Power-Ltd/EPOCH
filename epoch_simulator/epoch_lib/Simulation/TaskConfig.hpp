@@ -3,7 +3,6 @@
 #include "Costs/CostData.hpp"
 
 struct TaskConfig {
-    float capex_limit = 2500000.0f;
     bool use_boiler_upgrade_scheme = false;
     float general_grant_funding = 0.0f;
     int npv_time_horizon = 10;
