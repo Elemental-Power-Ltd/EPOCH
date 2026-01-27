@@ -139,3 +139,41 @@ def create_shapeshifter_tariff(
     is_peak_mask = np.logical_and(peak_start <= utc_times.time, utc_times.time < peak_end)
     df.loc[is_peak_mask, "cost"] = peak_cost
     return df
+
+
+def create_custom_tariff(timestamps: pd.DatetimeIndex, end_times: list[datetime.time], costs: list[float]) -> pd.DataFrame:
+    """
+    Create a custom tariff with specified costs in pence.
+
+    The time bands are in the form [end_time, cost], and we iterate over them in reverse
+    order, filling the costs up to each end time.
+
+    Parameters
+    ----------
+    timestamps
+        Timestamps at which to sample the tariff costs
+    end_times
+        Within-day times at which each tariff band ends
+    costs
+        Costs for each band in p / kWh
+
+    Returns
+    -------
+    df
+        Dataframe with cost column and timestamp index.
+    """
+    df = pd.DataFrame(index=timestamps, data={"cost": [float("NaN") for _ in timestamps]})
+
+    # Midnight is handled unusually as it doesn't work nicely with < which is the natural way
+    # to enter it as an argument.
+    # All times are before midnight, so overwrite them now.
+    # We check only the hour and minute to avoid timezone and second issues.
+
+    for end_time, cost in zip(end_times, costs, strict=False):
+        if end_time.hour == 0 and end_time.minute == 0:
+            df["cost"] = cost
+
+    assert isinstance(df.index, pd.DatetimeIndex)
+    for end_time, cost in sorted(zip(end_times, costs, strict=False), reverse=True):
+        df[df.index.time <= end_time] = cost
+    return df

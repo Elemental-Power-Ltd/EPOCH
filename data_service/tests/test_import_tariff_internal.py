@@ -277,3 +277,31 @@ class TestRE24Tariffs:
                 http_client=client,
             )
         assert np.all(np.logical_and(df["cost"] >= -100.0, df["cost"] <= 100.0))
+
+
+class TestCustomTariff:
+    def test_midnight_band(self) -> None:
+        """Test that if a band ends at midnight we get the prices right."""
+        timestamps = pd.date_range(
+            start=datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC),
+            end=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+            freq=pd.Timedelta(minutes=30),
+        )
+        tariff_df = it.create_custom_tariff(
+            timestamps, end_times=[datetime.time(hour=12), datetime.time(hour=0)], costs=[10.0, 20.0]
+        )
+        assert np.all(np.logical_or(tariff_df.cost == 10.0, tariff_df.cost == 20.0))
+        assert np.sum(tariff_df.cost == 10.0) + 1 == np.sum(tariff_df.cost == 20.0)
+
+    def test_wrong_order(self) -> None:
+        """Test that we get prices right if the bands are in the wrong roder."""
+        timestamps = pd.date_range(
+            start=datetime.datetime(year=2024, month=1, day=1, tzinfo=datetime.UTC),
+            end=datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC),
+            freq=pd.Timedelta(minutes=30),
+        )
+        tariff_df = it.create_custom_tariff(
+            timestamps, end_times=[datetime.time(hour=0), datetime.time(hour=12)], costs=[10.0, 20.0]
+        )
+        assert np.all(np.logical_or(tariff_df.cost == 10.0, tariff_df.cost == 20.0))
+        assert np.sum(tariff_df.cost == 10.0) == np.sum(tariff_df.cost == 20.0) + 1

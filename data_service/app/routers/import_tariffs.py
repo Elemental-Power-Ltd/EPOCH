@@ -18,6 +18,7 @@ from app.internal.epl_typing import RecordMapping
 from ..dependencies import DatabasePoolDep, HttpClientDep
 from ..internal.client_data import get_postcode
 from ..internal.import_tariffs import (
+    create_custom_tariff,
     create_day_and_night_tariff,
     create_fixed_tariff,
     create_peak_tariff,
@@ -447,6 +448,19 @@ async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, 
                 price_df = await get_elexon_wholesale_tariff(
                     start_ts=params.start_ts, end_ts=params.end_ts, http_client=http_client
                 )
+            case SyntheticTariffEnum.Custom:
+                assert params.cost_bands, "Cost bands not provided"
+                logger.info("Generating a custom tariff")
+                underlying_tariff = "Custom"
+                timestamps = pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="both")
+
+                price_df = create_custom_tariff(
+                    timestamps,
+                    end_times=[item.end_time for item in params.cost_bands],
+                    costs=[item.cost for item in params.cost_bands],
+                )
+                if price_df.cost.isna().any():
+                    raise HTTPException(400, "Bad time bands provided, didn't cover all 24 hours. Should end at midnight!")
     else:
         logger.info(
             f"Generating a tariff with real Octopus data for {params.tariff_name} in {region_code}"

@@ -58,6 +58,12 @@ class SyntheticTariffEnum(StrEnum):
     ShapeShifter = "shapeshifter"
     PowerPurchaseAgreement = "power_purchase_agreement"
     Wholesale = "wholesale"
+    Custom = "custom"
+
+
+class TariffCostBand(pydantic.BaseModel):
+    end_time: datetime.time
+    cost: float = pydantic.Field(description="Cost in pence for this time band")
 
 
 class TariffRequest(RequestBase):
@@ -86,6 +92,10 @@ class TariffRequest(RequestBase):
         description="For a synthetic tariff, the fixed cost for 'peak' periods in p/kWh."
         " Will most commonly be higher than 'day'."
         " If None, will look up an Octopus tariff.",
+    )
+    cost_bands: list[TariffCostBand] | None = pydantic.Field(
+        default=None,
+        description="Cost bands in form {'end_time':..., 'cost':...} for a custom tariff. Ignore if not using a custom tariff.",
     )
 
     @pydantic.field_validator("tariff_name", mode="before")
