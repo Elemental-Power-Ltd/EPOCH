@@ -221,3 +221,8 @@ class PhppMetadata(pydantic.BaseModel):
     floor_area: float
     structure_id: dataset_id_t
     created_at: pydantic.AwareDatetime
+
+
+class IsInterventionFeasible(pydantic.BaseModel):
+    name: str = pydantic.Field(description="Name of this intervention.")
+    is_feasible: bool = pydantic.Field(description="Whether this intervention is feasible on this site.")

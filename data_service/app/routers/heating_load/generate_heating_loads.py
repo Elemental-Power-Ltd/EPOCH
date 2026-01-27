@@ -40,7 +40,13 @@ from app.internal.thermal_model.phpp.parse_phpp import (
 )
 from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetID, DatasetTypeEnum, SiteID, dataset_id_t, site_id_t
-from app.models.heating_load import HeatingLoadMetadata, HeatingLoadModelEnum, HeatingLoadRequest, InterventionEnum
+from app.models.heating_load import (
+    HeatingLoadMetadata,
+    HeatingLoadModelEnum,
+    HeatingLoadRequest,
+    InterventionEnum,
+    IsInterventionFeasible,
+)
 from app.models.weather import BaitAndModelCoefs, WeatherRequest
 from app.routers.heating_load.phpp import get_phpp_dataframe_from_database, list_phpp
 from app.routers.heating_load.router import api_router
@@ -262,7 +268,7 @@ async def add_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID, int
 
 
 @api_router.post("/list-feasible-interventions", tags=["phpp", "heating", "list"])
-async def list_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID) -> list[str]:
+async def list_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID) -> list[IsInterventionFeasible]:
     """
     List all the feasible interventions for a given site to the database.
 
@@ -277,15 +283,21 @@ async def list_feasible_interventions(pool: DatabasePoolDep, site_id: SiteID) ->
 
     Returns
     -------
-    list[str]
-        List of all possible fabric interventions that we'll simulate
+    list[IsInterventionFeasible]
+        List of all possible fabric interventions: ones marked True we'll simulate, ones marked False we'll ignore.
     """
     res = await pool.fetchval(
         "SELECT ARRAY_AGG(intervention_name) FROM heating.feasible_interventions WHERE site_id = $1", site_id.site_id
     )
-    if res is None:
-        return []
-    return cast(list[str], res)
+    feasible_interventions = set(res or [])
+
+    THIRD_PARTY_interventions = set(THIRD_PARTY_INTERVENTIONS.keys())
+    unfeasible_interventions = THIRD_PARTY_interventions - feasible_interventions
+
+    all_interventions = [IsInterventionFeasible(name=item, is_feasible=True) for item in feasible_interventions] + [
+        IsInterventionFeasible(name=item, is_feasible=False) for item in unfeasible_interventions
+    ]
+    return sorted(all_interventions, key=lambda x: x.name)
 
 
 @api_router.post("/generate-heating-load", tags=["generate", "heating"])
