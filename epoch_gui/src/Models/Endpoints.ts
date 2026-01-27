@@ -90,14 +90,16 @@ export type Objective =
   | "carbon_cost";
 
 
+
+export type Constraints = Record<string, any>;
+
 /**
  * The Optimisation definition for an individual site
  */
 export interface Site {
-    // FIXME - remove once optimisation service no longer expects a name
-    name: string;
     site_range: any;
     site_data: SiteMetaData;
+    constraints: Constraints;
     config: any;
 }
 

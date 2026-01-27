@@ -20,7 +20,7 @@ import {submitOptimisationJob} from "../endpoints";
 
 import {useEpochStore} from "../State/Store";
 import OptimiserConfigForm from "../Components/TaskConfig/OptimiserConfigForm.tsx";
-import {SubmitOptimisationRequest, Objective, CostModelResponse} from "../Models/Endpoints";
+import {SubmitOptimisationRequest, Objective, CostModelResponse, Constraints} from "../Models/Endpoints";
 import expandSiteRange, {PortfolioValidationResult} from "../Components/ComponentBuilder/ConvertSiteRange";
 import ComponentBuilderForm from "../Components/ComponentBuilder/ComponentBuilderForm";
 import ErrorList from "../Components/ComponentBuilder/ErrorList";
@@ -159,6 +159,20 @@ function OptimisationContainer() {
         }
     }
 
+    // form site-level constraints
+    // for now we simply read the capex_limit and transform it into the Optimisation Service format for constraints
+    const makeSiteConstraints = (site_id: string) => {
+        let constraints: Constraints = {};
+
+        const capex_limit: number | undefined = state.portfolioMap[site_id].config.capex_limit;
+
+        if (capex_limit) {
+            constraints["capex"] = {"max": capex_limit};
+        }
+
+        return constraints;
+    }
+
     const onRun = async () => {
 
         if (!canRun()) {
@@ -196,6 +210,7 @@ function OptimisationContainer() {
                     // an EPOCH year is exactly 8760 hours (irrespective of leap years)
                     end_ts: state.taskConfig.start_date!.add(8760, "hour").toISOString()
                 },
+                constraints: makeSiteConstraints(site_id),
                 config: manipulateConfig(site_id)
             })),
             portfolio_constraints: portfolio_constraints,
