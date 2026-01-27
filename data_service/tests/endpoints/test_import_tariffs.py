@@ -365,6 +365,43 @@ class TestImportTariffs:
         assert all(len(set(data)) == 3 for data in tariff_result["data"])
 
     @pytest.mark.asyncio
+    async def test_generate_and_get_custom(
+        self,
+        client: httpx.AsyncClient,
+    ) -> None:
+        start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
+        end_ts = datetime.datetime(year=2020, month=2, day=1, tzinfo=datetime.UTC)
+        response = await client.post(
+            "/generate-import-tariffs",
+            json={
+                "site_id": "demo_london",
+                "tariff_name": "custom",
+                "start_ts": start_ts.isoformat(),
+                "end_ts": end_ts.isoformat(),
+                "cost_bands": [{"end_time": "00:00", "cost": 10.0}, {"end_time": "12:00", "cost": 20.0}],
+            },
+        )
+        assert response.status_code == 200, response.text
+        metadata = response.json()
+        tariff_result = (
+            await client.post(
+                "/get-import-tariffs",
+                json={
+                    "dataset_id": metadata["dataset_id"],
+                    "start_ts": start_ts.isoformat(),
+                    "end_ts": end_ts.isoformat(),
+                },
+            )
+        ).json()
+
+        expected_len = (end_ts - start_ts).total_seconds() / datetime.timedelta(minutes=30).total_seconds()
+        assert len(tariff_result["timestamps"]) == expected_len
+        assert all(len(tariff_result["timestamps"]) == len(data) for data in tariff_result["data"])
+        assert all(not pd.isna(data).any() for data in tariff_result["data"])
+        assert all(len(set(data)) == 2 for data in tariff_result["data"])
+        assert sum(item == 0.1 for item in tariff_result["data"][0]) == sum(item == 0.2 for item in tariff_result["data"][0])
+
+    @pytest.mark.asyncio
     async def test_list_import_tariffs(self, client: httpx.AsyncClient) -> None:
         start_ts = datetime.datetime(year=2019, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
