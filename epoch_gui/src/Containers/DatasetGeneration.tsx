@@ -19,6 +19,7 @@ import AddOrEditSite from "../Components/ConfigureSite/AddOrEditSite.tsx";
 import GenerateAllForm from "../Components/ConfigureSite/GenerateAllForm.tsx";
 import {getPrepochStatus} from "../endpoints.tsx";
 import {PrepochStatusDisplay} from "../Components/PrepochQueue/PrepochQueue.tsx";
+import FeasibleInterventions from "../Components/ConfigureSite/FeasibleInterventions.tsx";
 
 dayjs.extend(utc);
 
@@ -34,6 +35,7 @@ const DatasetGenerationContainer = () => {
         "Add Solar Locations",
         "Configure Baseline",
         "Upload PHPP",
+        "Set Fabric Interventions",
         "Generate Dataset",
     ];
 
@@ -177,6 +179,10 @@ const DatasetGenerationContainer = () => {
             )}
 
             {step === 5 && (
+                <FeasibleInterventions selectedSite={selectedSite}/>
+            )}
+
+            {step === 6 && (
                 <>
                     <GenerateAllForm
                         selectedSite={selectedSite}

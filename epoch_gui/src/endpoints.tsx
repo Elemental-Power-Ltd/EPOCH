@@ -14,7 +14,7 @@ import {
     SolarLocation,
     UploadMeterFileResponse,
     PhppMetadata,
-    addSiteRequest, CostModelResponse, CostModelRequest
+    addSiteRequest, CostModelResponse, CostModelRequest, IsInterventionFeasible
 } from "./Models/Endpoints";
 import dayjs, {Dayjs} from "dayjs";
 import {TaskData} from "./Components/TaskDataViewer/TaskData.ts";
@@ -631,3 +631,49 @@ export const getCostModel = async (cost_model_id: string): Promise<ApiResponse<C
         return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 };
+
+
+export const listFeasibleInterventions = async (site_id: string): Promise<ApiResponse<IsInterventionFeasible[]>> => {
+    try {
+        const response = await fetch("/api/data/list-feasible-interventions", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({site_id: site_id}),
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const interventions = await response.json();
+        return { success: true, data: interventions };
+    } catch (error) {
+        console.error("Failed to list feasible interventions", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+// set the feasible interventions for a given site, returns all permutations of those interventions
+export const addFeasibleInterventions = async (site_id: string, interventions: string[]): Promise<ApiResponse<string[][]>> => {
+    try {
+        const response = await fetch("/api/data/add-feasible-interventions", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({site_id: {site_id: site_id}, interventions: interventions}),
+        })
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const permutations = await response.json();
+        return {success: true, data: permutations };
+    } catch (error) {
+        console.error("Failed to add feasible interventions", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}

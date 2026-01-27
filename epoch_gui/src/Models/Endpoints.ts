@@ -275,3 +275,9 @@ export interface CostModelResponse {
     opex_model: OpexModel;
     created_at: string;
 }
+
+
+export interface IsInterventionFeasible {
+    name: string;
+    is_feasible: boolean;
+}
