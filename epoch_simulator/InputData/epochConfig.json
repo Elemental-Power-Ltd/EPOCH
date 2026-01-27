@@ -1,8 +1,4 @@
 {
-  "optimiser": {
-    "leagueTableCapacity": 400,
-    "produceExhaustiveOutput": false
-  },
   "simulator": {
     "use_boiler_upgrade_scheme": false,
     "general_grant_funding": 0,

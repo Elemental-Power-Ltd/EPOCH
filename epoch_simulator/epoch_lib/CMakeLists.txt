@@ -10,19 +10,11 @@ add_library(Epoch_lib STATIC
 	"io/ToString.hpp"
 	"io/ToString.cpp"
 
-	"Optimisation/LeagueTable.cpp"
-	"Optimisation/LeagueTable.hpp"
-	"Optimisation/Optimiser.cpp"
-	"Optimisation/Optimiser.hpp"
-	"Optimisation/TaskGenerator.cpp"
-	"Optimisation/TaskGenerator.hpp"
-	
 	"Simulation/Simulate.hpp"
 	"Simulation/Simulate.cpp"
 	"io/EpochConfig.cpp"
 	"io/EpochConfig.hpp"
-	"io/BufferedCSVWriter.cpp"
-	"io/BufferedCSVWriter.hpp"
+	
 	"io/TaskDataJson.hpp"
 	"io/SiteDataJson.hpp"
 	"io/SiteDataJson.cpp"

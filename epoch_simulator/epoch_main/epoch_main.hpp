@@ -9,6 +9,4 @@
 // a single call to any mimalloc function is sufficient to replace the default allocator
 int apply_mimalloc = mi_version();
 
-CommandlineMode getInteractiveChoice();
-static void optimise(const FileConfig& fileConfig, const EpochConfig& config);
 static void simulate(const FileConfig& fileConfig, const EpochConfig& config);

@@ -20,20 +20,8 @@ EpochConfig ConfigHandler::parseConfig()
 
 
 	EpochConfig epochConfig{};
-	epochConfig.optimiserConfig = parseOptimiserSection(jsonConfig["optimiser"]);
 
 	epochConfig.taskConfig = jsonConfig["simulator"].get<TaskConfig>();
 
 	return epochConfig;
-}
-
-OptimiserConfig ConfigHandler::parseOptimiserSection(nlohmann::json optimiserJson)
-{
-	OptimiserConfig optConfig{};
-
-	optConfig.leagueTableCapacity = getField<int>(optimiserJson, "leagueTableCapacity");
-	optConfig.produceExhaustiveOutput = getField<bool>(optimiserJson, "produceExhaustiveOutput");
-
-
-	return optConfig;
 }

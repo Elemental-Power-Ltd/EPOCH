@@ -7,13 +7,8 @@
 #include "../Exceptions.hpp"
 #include "../Simulation/TaskConfig.hpp"
 
-struct OptimiserConfig {
-	int leagueTableCapacity;
-	bool produceExhaustiveOutput;
-};
 
 struct EpochConfig {
-	OptimiserConfig optimiserConfig;
 	TaskConfig taskConfig;
 };
 
@@ -24,8 +19,6 @@ public:
 
 private:
 	EpochConfig parseConfig();
-	OptimiserConfig parseOptimiserSection(nlohmann::json optimiserJson);
-
 
 	std::filesystem::path mConfigPath;
 	EpochConfig mConfig;
