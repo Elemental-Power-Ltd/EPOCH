@@ -150,30 +150,52 @@ async def add_baseline_tariff(
 
     The baseline tariff is the one that we compare costs to, and is always at index 0 when provided to EPOCH.
     This can be any sort of tariff, but is mostly commonly fixed.
+    Use the `tariff_req` parameter to set the details of the tariff following the instructions in `generate-import-tariffs`,
+    which this internally delegates to.
 
-    Use the `tariff_req` parameter to set the tariff.
+    Run this before `generate-all` for your site as the baseline tariff will be carried forward from there and
+    the correct metadata set.
+
     Do not specify any `bundle_metadata` (it is specifically nulled out here!)
     as that will be handled in `generate-all` and when fetching tariffs.
+
 
     Parameters
     ----------
     baseline_id
         ID of the baseline that you have created through `add-site-baseline`.
 
-    tariff_req
-        Request for the new tariff that you want to generate.
+    site_id: site_id_t
+        The ID of the site you want to generate the tariff for (we'll look up grid supply location with this).
 
-    pool
-        Database pool with the baselines in
+    tariff_name: SyntheticTariffEnum | str
+        If a string like `E-1R-AGILE-24-04-03-A` then we'll look up the specific Octopus tariff.
+        Or could be a synthetic tariff type like `custom`, `fixed`, `overnight`, `peak`.
 
-    http_client
-        HTTP client used to contact third party tariff providers, if needed
+    day_cost: float | None
+        For a synthetic tariff, the fixed cost for 'day' periods in p/kWh. If None, will look up an Octopus tariff.
+        Not needed for a `custom` tariff or an Octopus tariff, so leave as None in that case.
+
+    night_cost: float | None
+        For a synthetic tariff, the fixed cost for 'night' periods in p/kWh. Will most commonly be lower than 'day'.
+        Not needed for a `custom` tariff or an Octopus tariff, so leave as None in that case.
+
+    peak_cost: float | None
+        For a synthetic tariff, the fixed cost for 'peak' periods in p/kWh. Will most commonly be higher than 'day'.
+        Not needed for a `custom` or `overnight` tariff or an Octopus tariff, so leave as None in that case.
+
+    cost_bands: list[TariffCostBand] | None
+        Cost bands in form [{'end_time':..., 'cost':...}] for a custom tariff. Ignore if not using a custom tariff.
+        These override the day, night and peak costs so leave them as None.
+        These apply every 24 hours and should cover the whole time period, so make sure you have an entry that ends at 00:00.
+
+    bundle_metadata
+        Set automatically! Leave this empty.
 
     Returns
     -------
     TariffMetadata
-        Information about the tariff you just generated.
-
+        Some useful metadata about the tariff entry in the database, including what we used to generate it.
     """
     new_tariff = await generate_import_tariffs(params=tariff_req, pool=pool, http_client=http_client)
     new_tariff_id = new_tariff.dataset_id
@@ -305,23 +327,46 @@ async def select_arbitrary_tariff(params: SiteIDWithTime, http_client: HttpClien
 @router.post("/generate-import-tariffs", tags=["generate", "tariff"])
 async def generate_import_tariffs(params: TariffRequest, pool: DatabasePoolDep, http_client: HttpClientDep) -> TariffMetadata:
     """
-    Generate a set of import tariffs, initially from Octopus.
+    Generate a specific import tariff, either according to a specific synthetic pattern or from Octopus.
 
-    This gets hourly import costs for a specific Octopus tariff.
-    For consistent tariffs, this will be the same price at every timestamp.
-    For agile or time-of-use tariffs this will vary.
+    This should most commonly be called as part of a `generate-all` run as that will fill in the bundle metadata.
+    If you want to use this to create a custom tariff, then first call `generate-all`, record the bundle ID
+    and get ready to fill in the associated metadata here with your specified tariff parameters.
 
     Parameters
     ----------
-    *request*
-        FastAPI request object, not necessary for external callers.
-    *params*
-        with attributes `tariff_name`, `start_ts`, and `end_ts`
+    site_id: site_id_t
+        The ID of the site you want to generate the tariff for (we'll look up grid supply location with this).
+
+    tariff_name: SyntheticTariffEnum | str
+        If a string like `E-1R-AGILE-24-04-03-A` then we'll look up the specific Octopus tariff.
+        Or could be a synthetic tariff type like `custom`, `fixed`, `overnight`, `peak`.
+
+    day_cost: float | None
+        For a synthetic tariff, the fixed cost for 'day' periods in p/kWh. If None, will look up an Octopus tariff.
+        Not needed for a `custom` tariff or an Octopus tariff, so leave as None in that case.
+
+    night_cost: float | None
+        For a synthetic tariff, the fixed cost for 'night' periods in p/kWh. Will most commonly be lower than 'day'.
+        Not needed for a `custom` tariff or an Octopus tariff, so leave as None in that case.
+
+    peak_cost: float | None
+        For a synthetic tariff, the fixed cost for 'peak' periods in p/kWh. Will most commonly be higher than 'day'.
+        Not needed for a `custom` or `overnight` tariff or an Octopus tariff, so leave as None in that case.
+
+    cost_bands: list[TariffCostBand] | None
+        Cost bands in form [{'end_time':..., 'cost':...}] for a custom tariff. Ignore if not using a custom tariff.
+        These override the day, night and peak costs so leave them as None.
+        These apply every 24 hours and should cover the whole time period, so make sure you have an entry that ends at 00:00.
+
+    bundle_metadata
+        Information about the existing data bundle you want to associate this new tariff with, including the "tariff index"
+        which should be an integer greater than any of the tariffs you have generated as part of this bundle so far.
 
     Returns
     -------
-    *tariff_metadata*
-        Some useful metadata about the tariff entry in the database
+    tariff_metadata
+        Some useful metadata about the tariff entry in the database, including what we used to generate it.
     """
     region_code = (await get_gsp_code(SiteID(site_id=params.site_id), http_client=http_client, pool=pool)).region_code
 
