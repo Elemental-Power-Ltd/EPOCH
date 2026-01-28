@@ -187,6 +187,7 @@ struct SimulationResult {
 	CapexBreakdown scenario_capex_breakdown;
 
 	std::optional<ReportData> report_data;
+	std::optional<ReportData> baseline_report_data;
 };
 
 // A struct containing all of the necessary vectors for cost calculations

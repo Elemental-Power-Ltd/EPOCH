@@ -51,5 +51,5 @@ private:
 	const TaskConfig mConfig;
 	UsageData mBaselineUsage;
 	SimulationMetrics mBaselineMetrics;
-
+	ReportData mBaselineReportData;
 };

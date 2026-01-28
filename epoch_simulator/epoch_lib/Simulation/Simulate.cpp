@@ -41,11 +41,11 @@ Simulator::Simulator(SiteData siteData, TaskConfig config):
 	mConfig(config)
 {
 
-	auto baselineReportData = simulateTimesteps(mSiteData.baseline);
-	CostVectors baselineCostVectors = extractCostVectors(baselineReportData, mSiteData.baseline);
+	mBaselineReportData = simulateTimesteps(mSiteData.baseline);
+	CostVectors baselineCostVectors = extractCostVectors(mBaselineReportData, mSiteData.baseline);
 	mBaselineUsage = calculateBaselineUsage(mSiteData, mConfig, baselineCostVectors);
 
-	mBaselineMetrics = calculateMetrics(mSiteData.baseline, baselineReportData, mBaselineUsage);
+	mBaselineMetrics = calculateMetrics(mSiteData.baseline, mBaselineReportData, mBaselineUsage);
 }
 
 SimulationResult Simulator::simulateScenario(const TaskData& taskData, SimulationType simulationType) const {
@@ -77,6 +77,11 @@ SimulationResult Simulator::simulateScenario(const TaskData& taskData, Simulatio
 	if (simulationType != SimulationType::FullReporting) {
 		// We only return the full timeseries vectors in FullReporting mode
 		result.report_data = std::nullopt;
+		result.baseline_report_data = std::nullopt;
+	}
+	else {
+		// if FullReporting, also set the baseline report data
+		result.baseline_report_data = mBaselineReportData;
 	}
 	
 	// calculate elaspsed run time

@@ -186,6 +186,7 @@ PYBIND11_MODULE(epoch_simulator, m) {
 		.def_readwrite("baseline_metrics", &SimulationResult::baseline_metrics)
 		.def_readwrite("scenario_capex_breakdown", &SimulationResult::scenario_capex_breakdown)
 		.def_readwrite("report_data", &SimulationResult::report_data)
+		.def_readwrite("baseline_report_data", &SimulationResult::baseline_report_data)
 		.def("__repr__", &resultToString);
 
 	pybind11::class_<ScenarioComparison>(m, "ScenarioComparison")
