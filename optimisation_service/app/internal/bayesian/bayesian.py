@@ -149,18 +149,11 @@ class Bayesian(Algorithm):
         )
         solutions = dpo.init_solutions
 
-        if len(solutions) == 0:  # If initialisation found no solutions then no point in continuing.
-            total_exec_time = datetime.datetime.now(datetime.UTC) - start_time
-            total_n_evals = dpo.n_evals
-            return OptimisationResult(solutions, total_n_evals, total_exec_time)
-
         # Add 25% extra CAPEX in case initialisation didn't converge
         max_capexs = [1.25 * val if val > 0 else capex_limit for val in dpo.max_capexs]
 
         sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in sub_portfolios]
 
-        # We select a random subset of the solutions since they usually are all quite similar which leads to bad model fitting.
-        # TODO: Make the sampler less random, ex: Sobol sampling
         train_x, train_y = convert_solution_list_to_tensor(
             solutions=list(rng.choice(a=solutions, size=max(1, int(0.25 * len(solutions))), replace=False)),  # type: ignore
             sub_portfolio_site_ids=sub_portfolio_site_ids,
@@ -178,9 +171,6 @@ class Bayesian(Algorithm):
             if len(new_solutions) > 0:
                 solutions = portfolio_pareto_front(solutions + new_solutions, objectives)
 
-                # TODO: Improve the sampling of the new solutions, ex: Sobol sampling.
-                # Converting all new solutions into training points would be best, but increasing the number of points makes
-                # the fitting process slower.
                 new_train_x, new_train_y = convert_solution_list_to_tensor(
                     solutions=list(rng.choice(a=new_solutions, size=max(1, int(0.25 * len(new_solutions))), replace=False)),  # type: ignore
                     sub_portfolio_site_ids=sub_portfolio_site_ids,
@@ -221,9 +211,6 @@ class Bayesian(Algorithm):
                 if len(new_solutions) > 0:
                     solutions = portfolio_pareto_front(solutions + new_solutions, objectives)
 
-                    # TODO: Improve the sampling of the new solutions, ex: Sobol sampling.
-                    # Converting all new solutions into training points would be best, but increasing the number of points makes
-                    # the fitting process slower and if too many points are near identical, can lead to failed fits.
                     new_train_x, new_train_y = convert_solution_list_to_tensor(
                         solutions=list(rng.choice(a=new_solutions, size=max(1, int(0.25 * len(new_solutions))), replace=False)),  # type: ignore
                         sub_portfolio_site_ids=sub_portfolio_site_ids,
@@ -341,7 +328,6 @@ def initialise_model(
     return mll, model
 
 
-# TODO: improve reference point creation
 def create_reference_point(train_y: torch.Tensor) -> torch.Tensor:
     """
     Create a reference point for the hypervolume by taking the worst value for each objective.
