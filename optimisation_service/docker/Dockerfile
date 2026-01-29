@@ -42,12 +42,6 @@ RUN rm -rf ./build \
     && cmake --build --preset=python-rel-linux -j \
     && cp /code/Epoch/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/
 
-# Build headless release, and strip debug symbols from Epoch before we copy it out of the build image
-RUN rm -rf ./build \
-    && cmake . --preset=headless-linux -DCMAKE_CXX_COMPILER=g++ -DCMAKE_MAKE_PROGRAM=make -Wno-dev \
-    && cmake --build --preset=headless-rel-linux -j \
-    && strip /code/Epoch/build/epoch_main/Epoch
-
 # Put the FastAPI and python sections in their own container
 FROM ubuntu:25.04
 
@@ -65,7 +59,7 @@ RUN python3.13 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrad
 
 # Copy the python bindings and executable
 COPY app app
-COPY --from=epoch-build /code/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/Epoch/build/epoch_main/Epoch /code/install/
+COPY --from=epoch-build /code/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/install/
 
 EXPOSE 8761
 CMD ["./venv/bin/python", "-m", "fastapi", "run", "./app/main.py", "--port", "8761"]
