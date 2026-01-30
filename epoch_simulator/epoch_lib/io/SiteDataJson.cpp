@@ -91,12 +91,22 @@ namespace nlohmann {
 
         // top-level vector fields
         year_TS building_eload = toEigen(j.at("building_eload").get<std::vector<float>>());
+
         year_TS building_hload = toEigen(j.at("building_hload").get<std::vector<float>>());
         float peak_hload = j.value("peak_hload", 0.0f);  // default to 0.0f
-        year_TS ev_eload = toEigen(j.at("ev_eload").get<std::vector<float>>());
         year_TS dhw_demand = toEigen(j.at("dhw_demand").get<std::vector<float>>());
         year_TS air_temperature = toEigen(j.at("air_temperature").get<std::vector<float>>());
         year_TS grid_co2 = toEigen(j.at("grid_co2").get<std::vector<float>>());
+
+        // optional entries
+        auto reference_size = building_eload.size();
+        year_TS ev_eload;
+        if (j.contains("ev_eload")) {
+            ev_eload = toEigen(j.at("ev_eload").get<std::vector<float>>());
+        }
+        else {
+            ev_eload = year_TS::Zero(reference_size);
+        }
 
         // Vectors of year_TS
         auto solar_yields = parseVectorOfVectors(j.at("solar_yields"));
