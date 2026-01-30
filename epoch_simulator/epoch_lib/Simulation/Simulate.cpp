@@ -173,6 +173,13 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, [[maybe_unused
 		heatPumpCanSupplyDHW = true;
 	}
 
+	if (!taskData.gas_heater && !heatPumpCanSupplyDHW) {
+		// If there's no gas heater, we assume a resistive heating component to meet DHW
+		// We can only run this here if there's no heatpump in balancing loop, otherwise it is deferred
+		InstantWaterHeater iwh(mSiteData);
+		iwh.AllCalcs(tempSum);
+		iwh.Report(reportData);
+	}
 
 	// Construct components that may be in the balancing loop
 
@@ -270,8 +277,9 @@ ReportData Simulator::simulateTimesteps(const TaskData& taskData, [[maybe_unused
 		mop.Report(reportData);
 	}
 
-	if (!taskData.gas_heater) {
+	if (!taskData.gas_heater && heatPumpCanSupplyDHW) {
 		// If there's no gas heater, we assume a resistive heating component to meet DHW
+		// In this context, the water heater has been deferred until after the balancing loop
 		InstantWaterHeater iwh(mSiteData);
 		iwh.AllCalcs(tempSum);
 		iwh.Report(reportData);
