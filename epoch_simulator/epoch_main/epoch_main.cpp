@@ -8,23 +8,37 @@
 #include "../epoch_lib/io/TaskDataJson.hpp"
 #include "../epoch_lib/io/ToString.hpp"
 #include "../epoch_lib/io/SiteDataJson.hpp"
+#include "../epoch_lib/io/ResultJson.hpp"
+
+
+static void configureLogging(const CommandlineArgs& args) {
+	if (args.format == OutputFormat::Json) {
+		// JSON sets quiet mode for piping
+		spdlog::set_level(spdlog::level::off);
+		return;
+	}
+
+	if (args.verbose) {
+		spdlog::set_level(spdlog::level::debug);
+	}
+	else {
+		spdlog::set_level(spdlog::level::info);
+	}
+}
 
 int main(int argc, char* argv[]) {
-	spdlog::info("Running Epoch version {}", EPOCH_VERSION);
 
 	try {
 		CommandlineArgs args = handleArgs(argc, argv);
+		configureLogging(args);
 
-		if (args.verbose) {
-			spdlog::set_level(spdlog::level::debug);
-			spdlog::debug("Verbose logging enabled");
-		}
+		spdlog::info("Running Epoch version {}", EPOCH_VERSION);
 
 		FileConfig fileConfig{ args.inputDir, args.outputDir };
 		ConfigHandler configHandler(fileConfig.getConfigFilepath());
 		const EpochConfig config = configHandler.getConfig();
 
-		simulate(fileConfig, config);
+		simulate(fileConfig, config, args);
 	}
 	catch (const std::exception& e) {
 		spdlog::error(e.what());
@@ -33,7 +47,7 @@ int main(int argc, char* argv[]) {
 }
 
 
-void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
+void simulate(const FileConfig& fileConfig, const EpochConfig& config, const CommandlineArgs& args) {
 	spdlog::info("Loading Simulator");
 
 	SiteData siteData = readSiteData(fileConfig.getSiteDataFilepath());
@@ -49,6 +63,11 @@ void simulate(const FileConfig& fileConfig, const EpochConfig& config) {
 		writeTimeSeriesToCSV(fp, *result.report_data);
 	}
 
-	spdlog::info(resultToString(result));
-
+	if (args.format == OutputFormat::Json) {
+		nlohmann::json j = result;
+		std::cout << j.dump(2) << '\n';
+	}
+	else {
+		spdlog::info(resultToString(result));
+	}
 }

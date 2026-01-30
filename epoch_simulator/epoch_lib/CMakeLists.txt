@@ -18,6 +18,8 @@ add_library(Epoch_lib STATIC
 	"io/TaskDataJson.hpp"
 	"io/SiteDataJson.hpp"
 	"io/SiteDataJson.cpp"
+	"io/CostModelJson.cpp" 
+	"io/ResultJson.cpp"
 
 	"Simulation/ASHP.hpp"
 	"Simulation/ASHPambient.hpp"
@@ -52,7 +54,9 @@ add_library(Epoch_lib STATIC
 	"Simulation/Costs/NetPresentValue.cpp"
 	"Simulation/Costs/Usage.cpp"
 	"Simulation/Costs/Usage.hpp"
- "Portfolio/Portfolio.cpp" "io/CostModelJson.cpp")
+
+	"Portfolio/Portfolio.cpp" 
+)
 
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)
