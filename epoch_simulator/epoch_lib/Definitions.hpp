@@ -10,7 +10,7 @@
 
 // Elemental Power definitions
 
-const std::string EPOCH_VERSION = "3.10.0";
+const std::string EPOCH_VERSION = "3.11.0";
 
 using year_TS = Eigen::VectorXf;
 
