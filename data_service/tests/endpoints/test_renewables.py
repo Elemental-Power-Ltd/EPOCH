@@ -25,7 +25,7 @@ async def upload_hh_meter_data(client: httpx.AsyncClient) -> dict[str, Jsonable]
     elec_data = parse_half_hourly("./tests/data/test_elec.csv")
     elec_data["start_ts"] = elec_data.index
     metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
-    records = json.loads(elec_data.to_json(orient="records"))
+    records = json.loads(elec_data.to_json(orient="records", date_format="iso"))
     elec_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
     return cast(dict[str, Jsonable], elec_result)
@@ -39,7 +39,7 @@ async def upload_monthly_meter_data(client: httpx.AsyncClient) -> dict[str, Json
     elec_data["start_ts"] = elec_data.index
     elec_data["end_ts"] = elec_data.index + pd.Timedelta(days=28)
     metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "manual"}
-    records = json.loads(elec_data.to_json(orient="records"))
+    records = json.loads(elec_data.to_json(orient="records", date_format="iso"))
     elec_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
     return cast(dict[str, Jsonable], elec_result)
