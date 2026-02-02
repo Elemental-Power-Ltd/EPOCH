@@ -1,0 +1,77 @@
+x-shared: &shared
+  environment:
+    EP_OPTIMISATION_SERVICE_URL: "http://optimisation:8761"
+    EP_DATA_SERVICE_URL: "http://data:8762"
+    EP_DATABASE_HOST: "db"
+
+services:
+  gui:
+    image: epoch_gui:local
+    <<: *shared
+    ports:
+      - "80:80"
+    # We can't start the gui until the data and optimisation services are running
+    # As NGINX is unable to resolve service names if they are not running
+    depends_on:
+      - data
+      - optimisation
+    build:
+      context: "epoch_gui"
+      dockerfile: "./docker/Dockerfile"
+
+
+  optimisation:
+    image: epoch_optimisation:local
+    <<: *shared
+    build:
+      dockerfile: "./optimisation_service/docker/Dockerfile"
+
+  data:
+    image: epoch_data:local
+    environment:
+      EP_POSTGRES_PASSWORD_FILE: /run/secrets/EP_POSTGRES_PASSWORD
+      EP_VISUAL_CROSSING_API_KEY_FILE: /run/secrets/EP_VISUAL_CROSSING_API_KEY
+      EP_RENEWABLES_NINJA_API_KEY_FILE: /run/secrets/EP_RENEWABLES_NINJA_API_KEY
+      EP_RE24_API_KEY_FILE: /run/secrets/EP_RE24_API_KEY
+    secrets:
+      - EP_POSTGRES_PASSWORD
+      - EP_VISUAL_CROSSING_API_KEY
+      - EP_RENEWABLES_NINJA_API_KEY
+      - EP_RE24_API_KEY
+    <<: *shared
+    depends_on:
+      db:
+        condition: service_healthy
+    build:
+      dockerfile: "./data_service/Dockerfile"
+
+  db:
+    image: postgres:16.6
+    environment:
+      - POSTGRES_USER=python
+      - PG_USER=python
+      - POSTGRES_PASSWORD=elemental
+      - POSTGRES_DB=elementaldb
+    volumes:
+      - ./data_service/migrations:/migrations:ro
+      - ./data_service/migrations/copy_up_migrations.sh:/docker-entrypoint-initdb.d/000000-copy-migrations.sh
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d elementaldb -U python" ]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+volumes:
+  postgres_data:
+
+secrets:
+  EP_POSTGRES_PASSWORD:
+    file: ./EP_POSTGRES_PASSWORD_FILE.txt
+  EP_VISUAL_CROSSING_API_KEY:
+    file: ./EP_VISUAL_CROSSING_API_KEY_FILE.txt
+  EP_RENEWABLES_NINJA_API_KEY:
+    file: ./EP_RENEWABLES_NINJA_API_KEY_FILE.txt
+  EP_RE24_API_KEY:
+    file: ./EP_RE24_API_KEY_FILE.txt

@@ -17,6 +17,7 @@ RUN apt-get update \
         curl \
         g++ \
         git \
+        libtool \
         make \
         pkg-config \
         python3.13 \
@@ -27,39 +28,47 @@ RUN apt-get update \
         
 RUN git clone https://github.com/microsoft/vcpkg.git
 WORKDIR /vcpkg
-RUN git checkout c82f74667287d3dc386bce81e44964370c91a289
+
 RUN ./bootstrap-vcpkg.sh
-# RUN ./bootstrap-vcpkg.sh
+
 ENV VCPKG_ROOT="/vcpkg"
 ENV PATH="$VCPKG_ROOT:$PATH"
 
 WORKDIR /code
-COPY Epoch Epoch
-WORKDIR /code/Epoch
+COPY ./epoch_simulator epoch
+WORKDIR /code/epoch
 # Build python bindings and copy the file from its horrible location to somewhere saner
 RUN rm -rf ./build \
     && cmake . --preset=python-linux -DCMAKE_CXX_COMPILER=g++ -DCMAKE_MAKE_PROGRAM=make -Wno-dev \
     && cmake --build --preset=python-rel-linux -j \
-    && cp /code/Epoch/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/
+    && cp /code/epoch/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/
 
 # Put the FastAPI and python sections in their own container
 FROM ubuntu:25.04
 
 WORKDIR /code
 RUN apt-get update && apt-get install -y --no-install-recommends python3.13 python3.13-venv
+
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy requirements
+COPY uv.lock pyproject.toml ./
+
+# We're using Ubuntu instead of the python image, so install UV in a venv to avoid mangling the default one
+RUN python3.13 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrade pip uv \
+    && ./venv/bin/uv sync --frozen --no-dev
+
+# UV installs into .venv so we add this to the path
+ENV PATH="/code/.venv/bin:$PATH"
+
 # Add /code/install to both PATH and PYTHONPATH so that we don't have to know the relative path to Epoch
 ENV PATH="/code/install:$PATH"
 ENV PYTHONPATH="/code/install:${PYTHONPATH}"
 
-# We're using Ubuntu instead of the python image, so put the
-# dependencies for our app in a venv to avoid mangling the default ones
-COPY requirements.txt .
-COPY requirements requirements
-RUN python3.13 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrade -r requirements.txt
-
 # Copy the python bindings and executable
-COPY app app
+COPY ./optimisation_service/app app
 COPY --from=epoch-build /code/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/install/
 
 EXPOSE 8761
-CMD ["./venv/bin/python", "-m", "fastapi", "run", "./app/main.py", "--port", "8761"]
+#CMD ["./.venv/bin/python", "-m", "fastapi", "run", "./app/main.py", "--port", "8761"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8761"]

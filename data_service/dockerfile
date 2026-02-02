@@ -1,14 +1,22 @@
 FROM python:3.13-slim-bookworm
 
-# Set working directory in the container
-# WORKDIR /app
+WORKDIR /app
 
-# Copy the requirements file into the container
-COPY requirements.txt .
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# Set up UV
+RUN pip install --no-cache-dir --upgrade pip uv
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy requirements
+COPY uv.lock pyproject.toml ./
+
+# Install deps
+RUN uv sync --frozen --no-dev
+
 # Copy the rest of the application code
-COPY . .
+COPY data_service/ ./
+
+# UV installs into .venv so we add this to the path
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose the port the app runs on
 EXPOSE 8762
