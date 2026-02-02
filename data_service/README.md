@@ -1,4 +1,4 @@
-# Optimisation Elemental
+# Data Elemental
 ***Matt Bailey, Will Drouard and Jon Warren***
 
 This is a set of API endpoints that provide data services for Elemental Power.
@@ -10,11 +10,7 @@ the FastAPI wrapping endpoints.
 
 ## Getting Started
 
-To get started with this repository, run
-```
-    git clone git@github.com:Elemental-Power-Ltd/data_elemental.git
-```
-It is then easiest to run these services in a Docker compose set of containers, which will keep the database and API running together.
+It is then easiest to run this services in a Docker compose set of containers, which will keep the database and API running together.
 To do so, run
 ```
     docker compose up --build
@@ -79,98 +75,90 @@ This may change in future.
 
 If your message fails validation, you will receive a `422 Unprocessable Entity` response, with details about what failed.
 
+# Elemental Database
+
+The database used in this repository is a PostgreSQL database hosted in a Docker container.
+In this document the word _schema_ in italics refers to the PostgreSQL table namespace concept (e.g. `CREATE SCHEMA`),
+and the word schema in roman type refers to the structure of a given table.
+
+## Database Users
+
+The main user that you will use is the `python` user. 
+This is a relatively powerful superuser account, so please don't accidentally mangle any existing data.
 
 ## Database Structure
 
-See `README_DATABASE.md` for information on how the database is structured.
+### Client Data
+Client data is stored under the `client_info` _schema_.
+This is split into two tables: `client_info.clients` and `client_info.site_info`.
+The general structure is that a given client will have many sites, and will have a unique database ID and a human readable name.
+Each site will also have a unique database ID, have a foreign key linking to a site, and some metadata about their position including an address and coordinates.
+When creating a site ID, please pick something all lower case, joined by underscores, that is reasonably memorable from the name of the site.
+For example, "Foobar House" might become `foobar_house`.
+If there is a risk of name collision, please prefix with the name of the client (e.g. `quux_foobar_house`).
 
-## Contributing
+### Datasets
 
-### Coding Style
-The coding style for this repository is enforced by `mypy` and `ruff`.
-All of your functions should be type-hinted, with all parameters and return objects specified until `mypy` is happy.
-Ruff has a long list of rules set in `pyproject.toml`, and you should use it as both a formatter and a linter.
-Before committing your code, please run
-```
-    ruff format . --preview && ruff check . --preview
-```
-and fix any results that it complains about (you can use ruff to autofix results with `ruff check . --preview --fix`).
+Most of the information in this database will be in the form of "datasets".
+A single dataset is a grouping of generally timestamped data for a single source, for example a dataset might be gas meter readings from Foobar House from 2024-01-01 to 2025-01-01.
+The datasets are stored by type under relevant named _schemas_, which tend to align with the endpoints that access them (but not perfectly).
+The current _schemas_ are:
+* `carbon_intensity`
+* `client_meters`
+* `heating`
+* `renewables`
+* `tariffs`
+* `weather`
 
-### Tests
-Please write as many tests as you think is reasonable using `pytest`, and place them in the `./tests` directory.
-Group your tests into classes, and use fixtures for generating consistent requirements or datasets.
+Each of these has a `metadata` table in it, which have varying schemas but will generally contain the site ID that this dataset was generated for, the time it was generated at and some hyperparameters used in the data generation.
+The `metadata` table will contain unique dataset IDs, which are randomly generated UUIDv4s. 
+These will key into another table in that _schema_, again with its own schema depending on the problem at hand (for example, a gas meter table might have columns `consumption_kwh`, but a solar PV table might have columns `generation_kwh`).
+You should be prepared to write custom SQL queries for each type of table you have to access.
+Each time series table uses the convention of `start_ts`, `end_ts` where a timestamp should be `start_ts <= timestamp < end_ts`.
 
-Try to keep your tests relatively fast, and use a test database (called `testdb` in PostgreSQL) for your tests.
-This test database will be wiped and re-established with some test data, so don't rely on things persisting between runs. 
-Please make sure you don't introduce any coupling between tests through this test database.
+### Optimisation Tasks
 
-If your test is unavoidably slow, mark it with the pytest decorator `@pytest.mark.slow`.
-These will be skipped by default, but can be run if you execute
-```
-    pytest -v -m "not slow"
-```
+Optimisation tasks are filed in the database when they enter the queue, and their results are also added to the database.
+The current structure is to have an `optimisation` _schema_ with tables 
+* `task_config`
+* `task_results`
+* `portfolio_results`
+* `site_results`
 
+The `task_config` table contains a specification of the task that was entered into the queue, with a JSONB column for the search space parameters (these may change over time as the software develops, so don't have their own columns).
+The `task_results` table then contains metadata about the completed optimisation task, e.g. how long it took and how many site combinations were assessed.
+The `portfolio_results` table has rows with a unique _portfolio ID_ and a shared _task ID_ linking it back to the original optimisation task.
+One task generates many portfolio results, which contain information about the optimisation metrics *e.g.* carbon balance, CAPEX.
+The `site_results` table contains the individual site level optimistaion metrics for a given portfolio, one portfolio result links to many site results.
+A given site result is uniquely identified by a _site ID_, _portfolio ID_ pair and sites must be unique within a portfolio.
 
-### Pull Requests
-Please contribute to this repository using a pull request system, and do not commit directly to `main`.
-Make a branch with your work off `main` with one of the following tags:
+## Migrations
 
-* `feature/$BRANCH_NAME` for contributions of new features
-* `bugfix/$BRANCH_NAME` for bugfixes (ideally linked to a github issue if one exists)
-* `refactor/$BRANCH_NAME` for refactoring projects
+Database updates are applied via migrations files, stored in the `./migrations/` directory.
+These come as a pair of numbered up and down migration files, in the form `123456_your_migration.up.sql` and `123456_your_migration.down.sql`.
+The up migrations will be applied in ascending numeric order, starting from a blank database.
+The down migrations will only be used in case of emergencies, but should be correct SQL code to un-do the corresponding up changes.
+Up migrations are applied by the test runner, and by the docker image builder, so you should get a database with consistent state.
 
-Other tags are fine if you find that these don't work for you.
-If `main` has changed since you branched off it, it is best to rebase onto main to get up to date and keep the git tree clean.
-Merge commits are acceptable if they will keep the history cleaner and avoid git mangling.
+### Client Data as Migration
+You may need a database filled with client data for certain tests.
+We don't want to commit client data to git, but we can treat it as a final stage migration.
+To add customer data, get a database dump of the rows from the table in SQL format and place it in the migrations directory as `999999_client_data.up.sql`.
 
-### Continuous Integration
+### Writing Migration Files
 
-Every push to github will run a set of type checks, linting, and running unit tests.
-Your pull request will not be merged until all of these are green, even minor failures.
-Please run all of the relevant checks offline before submitting.
+Migration files should contain the minimal SQL code required to change the database structure, and be checked into git.
+All migration files should be wrapped in `BEGIN;` `END;` transaction blocks to ensure that a half-completed migration doesn't affect the database structure.
+An ideal migration is idempotent, and can be applied twice without changing the database (this takes the form of lots of `IF EXISTS` statements, or similar).
+Migrations should be minimally destructive, and favour renaming columns and tables over dropping and re-creating.
+If you're adding a new column, think carefully about whether it should have a default entry for old rows.
 
-### Docstrings
-
-Every function should have a docstring, and the CI will enforce this.
-Your docstring should be in the numpy style, documented here: https://numpydoc.readthedocs.io/en/latest/format.html
-
-An example docstring might look like:
-```
-def frobnicate(spam: int, eggs: str | None = None) -> BreakfastResponse:
-    """
-    Frobnicate some spam and eggs, with the first sentence in imperative style.
-
-    Some more detail about how and why one would want to frobnicate spam and eggs,
-    and what edge cases callers might expect (this will show up in FastAPI docs sometimes).
-
-    Parameters
-    ----------
-    *spam*
-        Compressed meat in a can, documenting a parameter
-    *eggs*
-        Hard calciferous parameter two, if None will construct a hens egg later on.
-
-    Returns
-    -------
-    *breakfast_response*
-        Spam and eggs combined, documenting what you should expect as a return
-
-    Raises
-    ------
-    *AttributeError*
-        Non-obvious exceptions that might be raised here
-    """
-    ...
-```
-
-### Async Style
-As we're using FastAPI, you should expect your endpoints and any IO bound functions to be asynchronous.
-Where possible, use `asyncpg` as the database driver and `httpx` as the HTTP request library.
-If you are using these, there is a shared connection pool available via the FastAPI dependency injection framework.
-To get a database connection from the pool, use the `DatabaseConnDep` or `DatabasePoolDep` attribute as follows:
-```
-async with pool.acquire() as conn:
-        foo = await conn.execute(...)
-```
-An `httpx.AsyncClient` is available similarly as `request.state.http_client`.
-Please make sure you don't accidentally close these in your functions.
+### Applying Migrations to Production
+To apply migrations to production, we have been using the `golang-migrate` package (https://github.com/golang-migrate/migrate).
+This maintains a table in the production database that tracks which migrations have been applied and enables easy rollback.
+To activate it, run this command
+`migrate -database postgres://$PG_USERNAME:$PG_PASSWORD@localhost:5432/elementaldb -path ./migrations up`
+from the data_elemental base directory (*i.e.* the migrations should be a subdirectory of where you are).
+You may have to install the package, which is installed to `$HOME/go/bin` by default. 
+Follow the instructions here:
+https://github.com/golang-migrate/migrate/tree/master/cmd/migrate
