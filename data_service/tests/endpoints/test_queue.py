@@ -47,7 +47,7 @@ async def upload_gas_data(client: httpx.AsyncClient) -> dict[str, Jsonable]:
     gas_data = parse_half_hourly("./tests/data/test_gas.csv")
     gas_data["start_ts"] = gas_data.index
     metadata = {"fuel_type": "gas", "site_id": "demo_london", "reading_type": "halfhourly"}
-    records = json.loads(gas_data.to_json(orient="records"))
+    records = json.loads(gas_data.to_json(orient="records", date_format="iso"))
     gas_result = await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
     assert gas_result.is_success
     return cast(dict[str, Jsonable], gas_result.json())
@@ -59,7 +59,7 @@ async def upload_elec_data(client: httpx.AsyncClient) -> dict[str, Jsonable]:
     elec_data = parse_half_hourly("./tests/data/test_elec.csv")
     elec_data["start_ts"] = elec_data.index
     metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
-    records = json.loads(elec_data.to_json(orient="records"))
+    records = json.loads(elec_data.to_json(orient="records", date_format="iso"))
     elec_result = await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
     assert elec_result.is_success
     return cast(dict[str, Jsonable], elec_result.json())

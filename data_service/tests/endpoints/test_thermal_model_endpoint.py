@@ -29,7 +29,7 @@ async def uploaded_elec_data(client: httpx.AsyncClient) -> httpx.Response:
         "reading_type": "halfhourly",
         "is_synthetic": False,
     }
-    records = json.loads(data.to_json(orient="records"))
+    records = json.loads(data.to_json(orient="records", date_format="iso"))
     return await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
 
 
@@ -46,7 +46,7 @@ async def uploaded_gas_data(client: httpx.AsyncClient) -> httpx.Response:
         "reading_type": "halfhourly",
         "is_synthetic": False,
     }
-    records = json.loads(data.to_json(orient="records"))
+    records = json.loads(data.to_json(orient="records", date_format="iso"))
     return await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
 
 

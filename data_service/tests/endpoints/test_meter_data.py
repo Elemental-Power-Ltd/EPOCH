@@ -23,7 +23,7 @@ class TestUploadMeterData:
             "reading_type": "halfhourly",
             "is_synthetic": False,
         }
-        records = json.loads(data.to_json(orient="records"))
+        records = json.loads(data.to_json(orient="records", date_format="iso"))
         result = await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
 
         assert result.status_code == 200, result.text
@@ -36,7 +36,7 @@ class TestUploadMeterData:
         data = parse_half_hourly("./tests/data/test_elec.csv")
         data["start_ts"] = data.index
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
-        records = json.loads(data.to_json(orient="records"))
+        records = json.loads(data.to_json(orient="records", date_format="iso"))
         result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
         assert datetime.datetime.fromisoformat(result["created_at"]) > datetime.datetime.now(datetime.UTC) - datetime.timedelta(
             minutes=1
@@ -48,7 +48,7 @@ class TestUploadMeterData:
         data = parse_half_hourly("./tests/data/test_elec.csv")
         data["start_ts"] = data.index
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
-        records = json.loads(data.to_json(orient="records"))
+        records = json.loads(data.to_json(orient="records", date_format="iso"))
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
         result = (await client.post("/get-meter-data", json={"dataset_id": upload_result["dataset_id"]})).json()
@@ -67,7 +67,7 @@ class TestUploadMeterData:
         data = parse_half_hourly("./tests/data/test_elec.csv")
         data["start_ts"] = data.index
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
-        records = json.loads(data.to_json(orient="records"))
+        records = json.loads(data.to_json(orient="records", date_format="iso"))
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
         result = (
@@ -88,7 +88,7 @@ class TestUploadMeterData:
         data = parse_half_hourly("./tests/data/test_elec.csv")
         data["start_ts"] = data.index
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "manual"}
-        records = json.loads(data.to_json(orient="records"))
+        records = json.loads(data.to_json(orient="records", date_format="iso"))
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
         result = await client.post(
@@ -114,7 +114,7 @@ class TestUploadMeterData:
             "reading_type": "manual",
             "is_synthetic": False,
         }
-        records = json.loads(data.to_json(orient="records"))
+        records = json.loads(data.to_json(orient="records", date_format="iso"))
         result = await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
 
         assert result.status_code == 200, result.text

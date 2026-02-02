@@ -26,7 +26,7 @@ class TestUploadMeterData:
             "site_id": "demo_london",
             "reading_type": "halfhourly",
         }
-        records = json.loads(raw_data.to_json(orient="records"))
+        records = json.loads(raw_data.to_json(orient="records", date_format="iso"))
         meta_result = await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})
         assert meta_result.is_success, meta_result.text
 
@@ -67,7 +67,7 @@ class TestUploadMeterData:
             "site_id": "demo_london",
             "reading_type": "manual",
         }
-        records = json.loads(data.to_json(orient="records"))
+        records = json.loads(data.to_json(orient="records", date_format="iso"))
         meta_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
         elec_result = await client.post(
@@ -85,7 +85,7 @@ class TestUploadMeterData:
         data = parse_half_hourly("./tests/data/test_gas.csv")
         data["start_ts"] = data.index
         metadata = {"fuel_type": "gas", "site_id": "demo_london", "reading_type": "halfhourly"}
-        records = json.loads(data.to_json(orient="records"))
+        records = json.loads(data.to_json(orient="records", date_format="iso"))
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
         result = await client.post(
@@ -114,7 +114,7 @@ class TestUploadMeterData:
 
         demo_start_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
         demo_end_ts = datetime.datetime(year=2021, month=1, day=1, tzinfo=datetime.UTC)
-        records = list(json.loads(data.to_json(orient="index")).values())
+        records = list(json.loads(data.to_json(orient="index", date_format="iso")).values())
         upload_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
         generate_result = await client.post(
             "/generate-electricity-load",
@@ -156,7 +156,7 @@ class TestGetBlendedData:
         elec_data = parse_half_hourly("./tests/data/test_elec.csv")
         elec_data["start_ts"] = elec_data.index
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "halfhourly"}
-        records = json.loads(elec_data.to_json(orient="records"))
+        records = json.loads(elec_data.to_json(orient="records", date_format="iso"))
         elec_result = (await client.post("/upload-meter-entries", json={"metadata": metadata, "data": records})).json()
 
         demo_start_ts = elec_data.start_ts.min().replace(month=1, day=1)
