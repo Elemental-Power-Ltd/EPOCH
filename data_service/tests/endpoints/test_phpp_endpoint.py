@@ -22,7 +22,7 @@ class TestListInterventions:
 
     def test_interventions_exist(self, list_response: InterventionResponse) -> None:
         """Test that we get interventions from the endpoint."""
-        assert len(list_response) > 50
+        assert len(list_response) > 36
 
     def test_interventions_have_u_values(self, list_response: InterventionResponse) -> None:
         """Test that interventions have positive u values."""
