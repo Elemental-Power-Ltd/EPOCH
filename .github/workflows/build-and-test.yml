@@ -91,7 +91,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: epoch_simulator_test
-          path: build/epoch_test/epoch_test
+          path: epoch_simulator/build/epoch_test/epoch_test
           overwrite: true
 
       - name: Save vcpkg binary cache
@@ -129,7 +129,7 @@ jobs:
       run: |
         uv run pytest . -m "not slow"
 
-  test_epoch_simulator:
+  run_simulator_tests:
     needs: buildepoch
     runs-on: ubuntu-latest
     steps:

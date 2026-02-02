@@ -128,10 +128,10 @@ async def simulate(request: SimulationRequest) -> SimulationResult:
     result = simulator.simulate_scenario(task_data, request.full_reporting)
 
     return SimulationResult(
-        comparison=result.comparison,
-        metrics=result.metrics,
-        baseline_metrics=result.baseline_metrics,
-        scenario_capex_breakdown=result.scenario_capex_breakdown,
+        comparison=result.comparison,  # type: ignore
+        metrics=result.metrics,  # type: ignore
+        baseline_metrics=result.baseline_metrics,  # type: ignore
+        scenario_capex_breakdown=result.scenario_capex_breakdown,  # type: ignore
         report_data=report_data_to_dict(result.report_data) if request.full_reporting else None,
     )
 

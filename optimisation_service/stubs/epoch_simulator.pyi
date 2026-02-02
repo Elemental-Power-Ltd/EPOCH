@@ -6,8 +6,10 @@ to identify the types involve, so we write them out manually here.
 You can't import this file, but it's useful for static analysis.
 """
 
-import typing
 from enum import Enum
+
+import numpy as np
+import numpy.typing as npt
 
 __version__: str
 
@@ -67,12 +69,57 @@ class ScenarioComparison:
     combined_carbon_balance: float
     carbon_cost: float
 
+class ReportData:
+    Actual_import_shortfall: npt.NDArray[np.floating]
+    Actual_curtailed_export: npt.NDArray[np.floating]
+    Heat_shortfall: npt.NDArray[np.floating]
+    CH_shortfall: npt.NDArray[np.floating]
+    DHW_Shortfall: npt.NDArray[np.floating]
+    Heat_surplus: npt.NDArray[np.floating]
+    Hotel_load: npt.NDArray[np.floating]
+    Heatload: npt.NDArray[np.floating]
+    CH_demand: npt.NDArray[np.floating]
+    DHW_demand: npt.NDArray[np.floating]
+    PVdcGen: npt.NDArray[np.floating]
+    PVacGen: npt.NDArray[np.floating]
+    EV_targetload: npt.NDArray[np.floating]
+    EV_actualload: npt.NDArray[np.floating]
+    ESS_charge: npt.NDArray[np.floating]
+    ESS_discharge: npt.NDArray[np.floating]
+    ESS_resulting_SoC: npt.NDArray[np.floating]
+    ESS_AuxLoad: npt.NDArray[np.floating]
+    ESS_RTL: npt.NDArray[np.floating]
+    Data_centre_target_load: npt.NDArray[np.floating]
+    Data_centre_actual_load: npt.NDArray[np.floating]
+    Data_centre_target_heat: npt.NDArray[np.floating]
+    Data_centre_available_hot_heat: npt.NDArray[np.floating]
+    Grid_Import: npt.NDArray[np.floating]
+    Grid_Export: npt.NDArray[np.floating]
+    MOP_load: npt.NDArray[np.floating]
+    GasCH_load: npt.NDArray[np.floating]
+    DHW_load: npt.NDArray[np.floating]
+    DHW_charging: npt.NDArray[np.floating]
+    DHW_SoC: npt.NDArray[np.floating]
+    DHW_Standby_loss: npt.NDArray[np.floating]
+    DHW_ave_temperature: npt.NDArray[np.floating]
+    DHW_immersion_top_up: npt.NDArray[np.floating]
+    DHW_diverter_load: npt.NDArray[np.floating]
+    DHW_resistive_load: npt.NDArray[np.floating]
+    ASHP_elec_load: npt.NDArray[np.floating]
+    ASHP_DHW_output: npt.NDArray[np.floating]
+    ASHP_CH_output: npt.NDArray[np.floating]
+    ASHP_free_heat: npt.NDArray[np.floating]
+    ASHP_used_hotroom_heat: npt.NDArray[np.floating]
+    _TempSum_elec_e: npt.NDArray[np.floating]
+    _TempSum_heat_h: npt.NDArray[np.floating]
+    _TempSum_DHW_load_h: npt.NDArray[np.floating]
+
 class SimulationResult:
     comparison: ScenarioComparison
     metrics: SimulationMetrics
     baseline_metrics: SimulationMetrics
     scenario_capex_breakdown: CapexBreakdown
-    report_data: typing.Any
+    report_data: ReportData
 
 class Config:
     capex_limit: float

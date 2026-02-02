@@ -20,6 +20,7 @@ from app.models.simulate import (
     RunSimulationRequest,
 )
 from app.models.site_data import EpochSiteData, site_metadata_t
+from epoch_simulator import ReportData as EpochReportData
 from epoch_simulator import Simulator, TaskData
 
 router = APIRouter()
@@ -143,8 +144,9 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic, config
     report_data_pydantic = report_data_to_pydantic(res.report_data) if res.report_data is not None else None
 
     metrics = simulation_result_to_pydantic(res)
-    if report_data_pydantic is not None:
-        days_of_interest = detect_days_of_interest(
+
+    days_of_interest = (
+        detect_days_of_interest(
             report_data=report_data_pydantic,
             site_data=epoch_data,
             task_data=task_data,
@@ -152,8 +154,10 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic, config
                 epoch_data.start_ts, epoch_data.end_ts - pd.Timedelta(minutes=30), freq=pd.Timedelta(minutes=30)
             ),
         )
-    else:
-        days_of_interest = []
+        if report_data_pydantic is not None
+        else []
+    )
+
     return FullResult(
         report_data=report_data_pydantic,
         metrics=metrics,
@@ -163,7 +167,7 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic, config
     )
 
 
-def report_data_to_dict(report_data: ReportData) -> dict[str, list[float]]:
+def report_data_to_dict(report_data: ReportData | EpochReportData) -> dict[str, list[float]]:
     """
     Convert the ReportData type returned as part of a SimulationResult into a more generic dict type.
 
@@ -210,7 +214,7 @@ def report_data_to_dict(report_data: ReportData) -> dict[str, list[float]]:
     return report_dict
 
 
-def report_data_to_pydantic(report_data: ReportData) -> ReportData:
+def report_data_to_pydantic(report_data: ReportData | EpochReportData) -> ReportData:
     """
     Convert the C++ / Pybind report_data type into a pydantic model (via a json dict).
 
