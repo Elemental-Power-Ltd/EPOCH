@@ -286,11 +286,3 @@ THIRD_PARTY_INTERVENTIONS = {
     ),
     "Internal Blinds and controls": CostedIntervention(acts_on={StructuralArea.WindowArea}, cost=148.70, u_value=None),
 }
-
-# Generic Interventions
-THIRD_PARTY_INTERVENTIONS["loft"] = THIRD_PARTY_INTERVENTIONS["Insulation to ceiling void"]
-THIRD_PARTY_INTERVENTIONS["double_glazing"] = THIRD_PARTY_INTERVENTIONS["Replacement External Windows"]
-THIRD_PARTY_INTERVENTIONS["cladding"] = THIRD_PARTY_INTERVENTIONS["External Overbuild"]
-
-# Make it case insensitive
-THIRD_PARTY_INTERVENTIONS |= {key.lower(): value for key, value in THIRD_PARTY_INTERVENTIONS.items()}
