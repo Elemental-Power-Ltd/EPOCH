@@ -1,7 +1,7 @@
 [project]
-name = "testing-final-repo"
-version = "0.1.0"
-description = "Add your description here"
+name = "epoch"
+version = "1.0.0"
+description = "Elemental Power Optimiser with Clean Heat"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

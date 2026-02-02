@@ -1,19 +1,13 @@
-# Optimisation
+# Optimisation Elemental
 ***Matt Bailey, Will Drouard and Jon Warren***
 
 This is a set of API endpoints that provide optimisation services for Elemental Power.
 
-It is implemented using FastAPI and leverages EPOCH for simulations.
+It is implemented using FastAPI and leverages Epoch Simulator for simulations.
 
 ## Getting Started
 
-Running the service requires some data services to be created first.
-Instructions on how to do so can be found here: https://github.com/Elemental-Power-Ltd/data_elemental
-
-Then, to get started with this repository, run
-```
-    git clone git@github.com:Elemental-Power-Ltd/optimisation_elemental.git
-```
+Running the service requires the data services to be running first, and a built copy of Epoch Simulator.
 It is then easiest to run these services in a container.
 To do so, run
 ```
@@ -102,7 +96,7 @@ Currently only `year` durations are functional.
 Once an optimisation run is concluded, the results are directly transmited to the data service.
 They can be retrieved from the data service by using the task's unique `task_id`.
 
-### Canceling Optimisation Tasks
+### Cancelling Optimisation Tasks
 
 Optimisation Tasks that are still in the services queue can be cancelled.
 This can either be done by cancelling individual tasks the `cancel-task` endpoint as shown above or by cancelling all tasks in queue with the `clear-queue` endpoint.
