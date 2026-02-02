@@ -84,7 +84,7 @@ jobs:
           VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
           VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
         with:
-          cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+          cmakeListsTxtPath: '${{ github.workspace }}/epoch_simulator/CMakeLists.txt'
           configurePreset: 'test-linux'
           buildPreset: 'test-linux'
       - name: Upload Test Executable
@@ -174,7 +174,7 @@ jobs:
       run: |
         uv run mypy --warn-unused-configs --disallow-any-generics  --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --disallow-untyped-decorators --warn-redundant-casts --warn-unused-ignores --warn-return-any --no-implicit-reexport --strict-equality --extra-checks --disable-error-code type-arg ./
 
- typecheck_server:
+  typecheck_server:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
