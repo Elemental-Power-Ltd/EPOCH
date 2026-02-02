@@ -1,24 +1,73 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "Elemental Python"
-version = "0.1"
-authors = [
-  { name="Matt Bailey", email="matthew@elementalpower.co.uk"},
-  { name="William Drouard", email="william@elementalpower.co.uk" },
-]
-description = "A small example package"
+name = "testing-final-repo"
+version = "0.1.0"
+description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
+dependencies = [
+    "aiohttp>=3.13.3",
+    "aiometer>=1.0.0",
+    "anyio>=4.12.1",
+    "asyncpg>=0.31.0",
+    "bayesian-optimization>=3.2.0",
+    "botorch>=0.16.1",
+    "fastapi[standard]>=0.128.0",
+    "httpx>=0.28.1",
+    "matplotlib>=3.10.8",
+    "numba>=0.63.1",
+    "numpy>=2.3.5",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.0",
+    "paretoset>=1.2.5",
+    "pydantic>=2.12.5",
+    "pymoo>=0.6.1.6",
+    "pytest-mock>=3.15.1",
+    "python-multipart>=0.0.22",
+    "scikit-learn>=1.8.0",
+    "scipy>=1.17.0",
+    "sklego>=0.0",
+    "statsmodels>=0.14.6",
+    "torch>=2.10.0",
+    "uvicorn>=0.40.0",
 ]
 
+[dependency-groups]
+dev = [
+    "asyncpg-stubs>=0.31.1",
+    "datamodel-code-generator>=0.53.0",
+    "ipykernel>=7.1.0",
+    "joblib-stubs>=1.5.3.1.20260117",
+    "mypy>=1.19.1",
+    "networkx-stubs>=0.0.1",
+    "pandas-stubs>=2.3.3.260113",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.14.14",
+    "scipy-stubs>=1.17.0.2",
+    "sqlfluff>=4.0.0",
+    "testing-common-database>=2.0.3",
+    "testing-postgresql>=1.3.0",
+    "types-networkx>=3.6.1.20251220",
+    "types-openpyxl>=3.1.5.20250919",
+    "types-protobuf>=6.32.1.20251210",
+    "types-requests>=2.32.4.20260107",
+    "types-tensorflow>=2.18.0.20260121",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu" },
+]
+
+
 [tool.ruff]
-exclude = ["*.ipynb", "app/models/epoch_types/"]
+exclude = ["*.ipynb", "data_service/app/models/epoch_types/", "optimisation_service/app/models/epoch_types/", "epoch_simulator/", "epoch_gui/"]
 line-length = 128
 
 [tool.ruff.format]
@@ -77,7 +126,14 @@ ignore = [
     "ANN002",  # Missing type annotation for args
     "ANN003", # Missing type annotation for kwargs
     "ANN401", #  (typing.Any)
+    "RUF067", # init module should only contain docstrings
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"data_service/app/models/*" = ["D100"]
+"optimisation_service/tests/*.py" = ["D", "SIM118", "ARG001", "ASYNC240", "ASYNC251"]
+"optimisation_service/*" = ["D100", "D101", "D104", "D105", "ARG001", "ARG002", "NPY002", "SIM102"]
+"epoch_server/*" = ["D100", "D101", "D103", "D104", "D105"]
 
 [tool.ruff.lint.flake8-annotations]
 mypy-init-return = true
