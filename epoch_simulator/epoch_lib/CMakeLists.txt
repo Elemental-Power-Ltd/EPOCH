@@ -59,7 +59,7 @@ add_library(Epoch_lib STATIC
 )
 
 find_package(Eigen3 CONFIG REQUIRED)
-target_link_libraries(Epoch_lib PRIVATE Eigen3::Eigen)
+target_link_libraries(Epoch_lib PUBLIC Eigen3::Eigen)
 # disallow LGPL code in Eigen
 add_compile_definitions("EIGEN_MPL2_ONLY")
 

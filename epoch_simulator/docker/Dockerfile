@@ -11,6 +11,12 @@ RUN apt-get update && \
     g++-13 \
     cmake \
     ninja-build \
+    autoconf \
+    automake \
+    autoconf-archive \
+    libtool \
+    m4 \
+    make \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
