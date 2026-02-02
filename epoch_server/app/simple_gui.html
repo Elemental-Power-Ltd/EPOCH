@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Simulation GUI</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --muted:#93a4c7; --text:#e9eefc; --accent:#6ea8fe; --danger:#ff6b6b; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 16px 64px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    p  { margin: 0 0 18px; color: var(--muted); }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .card { background: var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; padding: 14px; }
+    .card h2 { margin:0 0 10px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    label { display:block; font-size: 12px; color: var(--muted); margin: 10px 0 6px; }
+    input[type="text"], input[type="number"], select {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--text);
+      padding: 10px 10px;
+      border-radius: 10px;
+      outline: none;
+    }
+    input[type="checkbox"] { transform: scale(1.05); }
+    .row { display:flex; gap: 10px; align-items:center; }
+    .row > * { flex: 1; }
+    .row .tiny { flex: 0 0 auto; }
+    button {
+      background: var(--accent);
+      border: 0;
+      color: #061020;
+      padding: 10px 12px;
+      font-weight: 800;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      font-weight: 650;
+    }
+    button.danger {
+      background: rgba(255,107,107,.14);
+      color: var(--danger);
+      border: 1px solid rgba(255,107,107,.35);
+      font-weight: 800;
+    }
+    .actions { display:flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+    .footer-actions { display:flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+    .pill {
+      display:inline-flex; gap: 8px; align-items:center;
+      padding: 6px 10px; border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .split { display:grid; grid-template-columns: 1.15fr .85fr; gap: 14px; }
+    @media (max-width: 980px) { .grid, .split { grid-template-columns: 1fr; } }
+
+    /* Result styles */
+    .result-wrap { display:flex; flex-direction: column; gap: 12px; }
+    .kpi-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 980px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+    .kpi {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .kpi .label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+    .kpi .value { font-size: 16px; font-weight: 800; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+    }
+    th, td {
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      font-size: 12px;
+      vertical-align: top;
+    }
+    th { text-align: left; color: var(--muted); font-weight: 800; }
+    tr:last-child td { border-bottom: none; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    details {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      background: rgba(0,0,0,.25);
+      padding: 10px 12px;
+    }
+    summary { cursor: pointer; color: var(--muted); font-weight: 800; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 10px 0 0;
+      font-size: 12px;
+      color: rgba(233,238,252,.92);
+    }
+
+    .status {
+      display:flex; align-items:center; justify-content: space-between; gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .status .tag {
+      font-size: 12px; font-weight: 900;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+    }
+    .status .tag.ok { border-color: rgba(110,168,254,.45); }
+    .status .tag.err { border-color: rgba(255,107,107,.55); color: var(--danger); }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>Simulation GUI</h1>
+    <p>Fill inputs, click <b>Run simulation</b>, and get a readable summary.</p>
+
+    <div class="split">
+      <div class="card">
+        <h2>Inputs</h2>
+
+        <div class="grid">
+          <div>
+            <label for="location">Location</label>
+            <select id="location">
+              <option value="Cardiff" selected>Cardiff</option>
+              <option value="London">London</option>
+              <option value="Edinburgh">Edinburgh</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="building">Building Type</label>
+            <select id="building">
+              <option value="Domestic" selected>Domestic</option>
+              <option value="TownHall">TownHall</option>
+              <option value="LeisureCentre">LeisureCentre</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height: 14px"></div>
+
+        <div class="grid">
+          <div class="card" style="padding: 12px;">
+            <h2>Heat</h2>
+            <label for="heat_power">Heat Power (&gt; 0)</label>
+            <input id="heat_power" type="number" step="0.01" value="10.0" min="0"/>
+
+            <label for="heat_source">Heat Source</label>
+            <select id="heat_source">
+              <option value="Boiler" selected>Boiler</option>
+              <option value="HeatPump">HeatPump</option>
+            </select>
+          </div>
+
+          <div class="card" style="padding: 12px;">
+            <h2>Insulation</h2>
+
+            <label class="row" style="margin: 10px 0 0;">
+              <span>Double glazing</span>
+              <span class="tiny"><input id="double_glazing" type="checkbox" checked/></span>
+            </label>
+
+            <label class="row" style="margin: 10px 0 0;">
+              <span>Cladding</span>
+              <span class="tiny"><input id="cladding" type="checkbox"/></span>
+            </label>
+
+            <label class="row" style="margin: 10px 0 0;">
+              <span>Loft</span>
+              <span class="tiny"><input id="loft" type="checkbox" checked/></span>
+            </label>
+          </div>
+        </div>
+
+        <div style="height: 14px"></div>
+
+        <div class="card" style="padding: 12px;">
+          <h2>PV Panels</h2>
+
+          <div id="panels"></div>
+
+          <div class="actions">
+            <button class="secondary" type="button" onclick="addPanelRow()">+ Add panel</button>
+          </div>
+        </div>
+
+        <div style="height: 14px"></div>
+
+        <div class="card" style="padding: 12px;">
+          <h2>Battery</h2>
+
+          <div class="row">
+            <span class="pill">
+              <input id="battery_enabled" type="checkbox" onchange="toggleBattery()"/>
+              <span>Enable battery</span>
+            </span>
+          </div>
+
+          <div id="battery_fields" style="margin-top: 12px; display: none;">
+            <div class="grid">
+              <div>
+                <label for="battery_capacity">Capacity (&gt; 0)</label>
+                <input id="battery_capacity" type="number" step="0.01" value="10.0" min="0"/>
+              </div>
+              <div>
+                <label for="battery_power">Power (&gt; 0)</label>
+                <input id="battery_power" type="number" step="0.01" value="5.0" min="0"/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-actions">
+          <button type="button" onclick="runSimulation()">Run simulation</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Result</h2>
+        <div id="result" class="result-wrap">
+          <div class="status">
+            <div style="color: var(--muted); font-weight: 700;">No result yet</div>
+            <span class="tag">Idle</span>
+          </div>
+          <div style="color: var(--muted); font-size: 12px;">Click “Run simulation” to generate a summary.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---------- UI helpers ----------
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function fmt(x, decimals=2) {
+    if (x === null || x === undefined) return "—";
+    if (typeof x !== "number" || Number.isNaN(x)) return String(x);
+    return x.toLocaleString(undefined, { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+  }
+
+  function fmtInt(x) {
+    if (x === null || x === undefined) return "—";
+    if (typeof x !== "number" || Number.isNaN(x)) return String(x);
+    return x.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  function badge(text, ok=true) {
+    return `<span class="tag ${ok ? "ok" : "err"}">${escapeHtml(text)}</span>`;
+  }
+
+  function kpi(label, value, suffix="") {
+    return `
+      <div class="kpi">
+        <div class="label">${escapeHtml(label)}</div>
+        <div class="value">${escapeHtml(value)}${suffix ? " " + escapeHtml(suffix) : ""}</div>
+      </div>
+    `;
+  }
+
+  function renderKVTable(title, obj, opts={}) {
+    const rows = Object.entries(obj || {}).map(([k,v]) => {
+      const isNum = typeof v === "number" && !Number.isNaN(v);
+      const shown = isNum ? fmt(v, opts.decimals ?? 2) : (v === null || v === undefined ? "—" : String(v));
+      return `<tr><td>${escapeHtml(k)}</td><td class="num">${escapeHtml(shown)}</td></tr>`;
+    }).join("");
+
+    return `
+      <div class="card" style="padding: 12px;">
+        <h2>${escapeHtml(title)}</h2>
+        <table>
+          <thead><tr><th>Metric</th><th style="text-align:right;">Value</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderMetricsTables(metrics, title) {
+    if (!metrics) return "";
+
+    const groups = [
+      { name: "Energy (Electricity)", keys: [
+        "total_electricity_imported", "total_electricity_generated", "total_electricity_exported",
+        "total_electricity_curtailed", "total_electricity_used"
+      ]},
+      { name: "Energy (Gas)", keys: ["total_gas_used"] },
+      { name: "Heat Loads", keys: ["total_heat_load", "total_dhw_load", "total_ch_load"] },
+      { name: "Shortfalls", keys: [
+        "total_electrical_shortfall", "total_heat_shortfall",
+        "total_ch_shortfall", "total_dhw_shortfall", "peak_hload_shortfall"
+      ]},
+      { name: "Costs", keys: [
+        "total_capex", "total_gas_import_cost", "total_electricity_import_cost",
+        "total_electricity_export_gain", "total_meter_cost", "total_operating_cost",
+        "total_annualised_cost", "total_net_present_value"
+      ]},
+      { name: "Emissions", keys: [
+        "total_scope_1_emissions", "total_scope_2_emissions", "total_combined_carbon_emissions"
+      ]},
+      { name: "Environmental Rating", keys: ["environmental_impact_score", "environmental_impact_grade"] },
+    ];
+
+    const cards = groups.map(g => {
+      const obj = {};
+      for (const k of g.keys) obj[k] = metrics[k];
+      return renderKVTable(g.name, obj);
+    }).join("");
+
+    return `
+      <div class="card" style="padding: 12px;">
+        <h2>${escapeHtml(title)}</h2>
+        <div style="display:flex; flex-direction: column; gap: 12px;">${cards}</div>
+      </div>
+    `;
+  }
+
+  function renderCapex(capex) {
+    if (!capex) return "";
+
+    const summaryKeys = [
+      "building_fabric_capex", "dhw_capex", "ev_charger_cost", "ev_charger_install",
+      "gas_heater_capex", "grid_capex", "heatpump_capex",
+      "ess_pcs_capex", "ess_enclosure_capex", "ess_enclosure_disposal",
+      "pv_panel_capex", "pv_roof_capex", "pv_ground_capex", "pv_BoP_capex",
+      "boiler_upgrade_scheme_funding", "general_grant_funding", "total_capex"
+    ];
+
+    const summaryObj = {};
+    for (const k of summaryKeys) summaryObj[k] = capex[k];
+
+    const fabricRows = (capex.fabric_cost_breakdown || []).map(item => {
+      return `
+        <tr>
+          <td>${escapeHtml(item.name ?? "")}</td>
+          <td class="num">${escapeHtml(item.area === null || item.area === undefined ? "—" : fmt(item.area, 2))}</td>
+          <td class="num">${escapeHtml(fmt(item.cost, 2))}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const fabricTable = `
+      <div class="card" style="padding: 12px;">
+        <h2>Fabric cost breakdown</h2>
+        <table>
+          <thead><tr><th>Name</th><th style="text-align:right;">Area</th><th style="text-align:right;">Cost</th></tr></thead>
+          <tbody>${fabricRows || `<tr><td colspan="3" style="color:var(--muted);">No fabric breakdown items</td></tr>`}</tbody>
+        </table>
+      </div>
+    `;
+
+    return `
+      <div class="card" style="padding: 12px;">
+        <h2>CAPEX breakdown</h2>
+        ${renderKVTable("CAPEX totals", summaryObj)}
+        ${fabricTable}
+      </div>
+    `;
+  }
+
+  function renderComparison(comp) {
+    if (!comp) return "";
+
+    const kpis = `
+      <div class="kpi-grid">
+        ${kpi("Meter balance", fmt(comp.meter_balance, 2))}
+        ${kpi("Operating balance", fmt(comp.operating_balance, 2))}
+        ${kpi("Cost balance", fmt(comp.cost_balance, 2))}
+        ${kpi("NPV balance", fmt(comp.npv_balance, 2))}
+        ${kpi("Payback horizon (years)", fmt(comp.payback_horizon_years, 2))}
+        ${kpi("ROI", comp.return_on_investment === null || comp.return_on_investment === undefined ? "—" : fmt(comp.return_on_investment, 2))}
+        ${kpi("Scope 1 carbon", fmt(comp.carbon_balance_scope_1, 2))}
+        ${kpi("Scope 2 carbon", fmt(comp.carbon_balance_scope_2, 2))}
+        ${kpi("Combined carbon", fmt(comp.combined_carbon_balance, 2))}
+        ${kpi("Carbon cost", fmt(comp.carbon_cost, 2))}
+      </div>
+    `;
+
+    return `
+      <div class="card" style="padding: 12px;">
+        <h2>Scenario comparison</h2>
+        ${kpis}
+      </div>
+    `;
+  }
+
+  function renderResultUI(resultObj) {
+    const resultDiv = document.getElementById("result");
+
+    // Result banner
+    const okBanner = `
+      <div class="status">
+        <div style="font-weight: 800;">Simulation complete</div>
+        ${badge("OK", true)}
+      </div>
+    `;
+
+    const comparisonHtml = renderComparison(resultObj.comparison);
+    const metricsHtml = renderMetricsTables(resultObj.metrics, "Scenario metrics");
+    const baselineHtml = renderMetricsTables(resultObj.baseline_metrics, "Baseline metrics");
+    const capexHtml = renderCapex(resultObj.scenario_capex_breakdown);
+
+    const raw = escapeHtml(JSON.stringify(resultObj, null, 2));
+    const rawHtml = `
+      <details>
+        <summary>Raw JSON (click to expand)</summary>
+        <pre>${raw}</pre>
+      </details>
+    `;
+
+    resultDiv.innerHTML = `
+      ${okBanner}
+      ${comparisonHtml}
+      ${metricsHtml}
+      ${baselineHtml}
+      ${capexHtml}
+      ${rawHtml}
+    `;
+  }
+
+  function renderErrorUI(status, statusText, payloadText) {
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = `
+      <div class="status">
+        <div style="font-weight: 900;">Simulation failed</div>
+        ${badge("ERROR", false)}
+      </div>
+      <div class="card" style="padding:12px;">
+        <h2>HTTP ${escapeHtml(status)} ${escapeHtml(statusText)}</h2>
+        <pre>${escapeHtml(payloadText)}</pre>
+      </div>
+    `;
+  }
+
+  // ---------- Panel rows (dynamic) ----------
+  function panelRowTemplate(idx) {
+    return `
+      <div class="card" style="padding: 10px; margin-bottom: 10px;" data-panel-row="${idx}">
+        <div class="row">
+          <div>
+            <label>Solar Peak (>= 0)</label>
+            <input type="number" step="0.01" min="0" value="1.0" data-panel-solar-peak />
+          </div>
+          <div>
+            <label>Direction</label>
+            <select data-panel-direction>
+              <option value="North">North</option>
+              <option value="East">East</option>
+              <option value="South" selected>South</option>
+              <option value="West">West</option>
+            </select>
+          </div>
+          <div class="tiny" style="flex: 0 0 auto; padding-top: 22px;">
+            <button class="danger" type="button" onclick="removePanelRow(${idx})">Remove</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  let panelCounter = 0;
+
+  function addPanelRow() {
+    panelCounter += 1;
+    const panelsDiv = document.getElementById("panels");
+    const html = panelRowTemplate(panelCounter);
+    panelsDiv.insertAdjacentHTML("beforeend", html);
+  }
+
+  function removePanelRow(idx) {
+    const el = document.querySelector(`[data-panel-row="${idx}"]`);
+    if (el) el.remove();
+  }
+
+  // Add one panel by default
+  addPanelRow();
+
+  // ---------- Battery toggle ----------
+  function toggleBattery() {
+    const enabled = document.getElementById("battery_enabled").checked;
+    document.getElementById("battery_fields").style.display = enabled ? "block" : "none";
+  }
+
+  // ---------- Build request payload ----------
+  function buildPayload() {
+    const location = document.getElementById("location").value;
+    const building = document.getElementById("building").value;
+
+    const heat_power = Number(document.getElementById("heat_power").value);
+    const heat_source = document.getElementById("heat_source").value;
+
+    const insulation = {
+      double_glazing: document.getElementById("double_glazing").checked,
+      cladding: document.getElementById("cladding").checked,
+      loft: document.getElementById("loft").checked
+    };
+
+    // Panels
+    const panelEls = [...document.querySelectorAll("#panels [data-panel-row]")];
+    const panels = panelEls.map(row => {
+      const solarPeakEl = row.querySelector("[data-panel-solar-peak]");
+      const dirEl = row.querySelector("[data-panel-direction]");
+      return {
+        solar_peak: Number(solarPeakEl.value),
+        direction: dirEl.value
+      };
+    });
+
+    // Battery (optional)
+    const battery_enabled = document.getElementById("battery_enabled").checked;
+    let battery = null;
+    if (battery_enabled) {
+      battery = {
+        capacity: Number(document.getElementById("battery_capacity").value),
+        power: Number(document.getElementById("battery_power").value)
+      };
+    }
+
+    return {
+      location,
+      building,
+      panels,
+      heat: { heat_power, heat_source },
+      insulation,
+      battery
+    };
+  }
+
+  // ---------- Run simulation ----------
+  async function runSimulation() {
+    const resultDiv = document.getElementById("result");
+
+    resultDiv.innerHTML = `
+      <div class="status">
+        <div style="font-weight: 800;">Running simulation…</div>
+        <span class="tag">Loading</span>
+      </div>
+      <div style="color: var(--muted); font-size: 12px;">Please wait for the API response.</div>
+    `;
+
+    let payload;
+    try {
+      payload = buildPayload();
+    } catch (e) {
+      renderErrorUI("—", "Bad payload", String(e));
+      return;
+    }
+
+    try {
+      const res = await fetch("/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const text = await res.text();
+
+      // try parse JSON
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch {}
+
+      if (!res.ok) {
+        renderErrorUI(res.status, res.statusText, parsed ? JSON.stringify(parsed, null, 2) : text);
+        return;
+      }
+
+      // render pretty UI
+      renderResultUI(parsed ?? { raw: text });
+    } catch (err) {
+      renderErrorUI("—", "Request failed", String(err));
+    }
+  }
+</script>
+
+</body>
+</html>
