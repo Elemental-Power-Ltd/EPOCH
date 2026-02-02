@@ -1,0 +1,15 @@
+{
+  "dependencies": [
+    "argparse",
+    "date",
+    "eigen3",
+    "gtest",
+    "mimalloc",
+    "nlohmann-json",
+    {
+      "name": "pybind11",
+      "version>=": "3.0.0"
+    },
+    "spdlog"
+  ]
+}

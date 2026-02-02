@@ -1,0 +1,143 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base-macos",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_POSITION_INDEPENDENT_CODE": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "python-macos",
+      "inherits": "base-macos",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "PYBIND": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "base-windows",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "generator": "Ninja Multi-Config",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "base-linux",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_POSITION_INDEPENDENT_CODE": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "headless-windows",
+      "inherits": "base-windows",
+      "binaryDir": "${sourceDir}/build/headless",
+      "installDir": "${sourceDir}/install/headless"
+    },
+    {
+      "name": "headless-linux",
+      "inherits": "base-linux",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "python-windows",
+      "inherits": "base-windows",
+      "binaryDir": "${sourceDir}/build/epoch_py",
+      "installDir": "${sourceDir}/install/epoch_py",
+      "cacheVariables": {
+        "PYBIND": "ON"
+      }
+    },
+    {
+      "name": "python-linux",
+      "inherits": "base-linux",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "PYBIND": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "test-linux",
+      "inherits": "base-linux",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "PYBIND": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "python-rel-macos",
+      "displayName": "Python Bindings (macOS)",
+      "configurePreset": "python-macos",
+      "targets": ["epoch_simulator"]
+    },
+    {
+      "name": "headless-rel-windows",
+      "displayName": "Headless Release (Windows)",
+      "configurePreset": "headless-windows",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "headless-debug-windows",
+      "displayName": "Headless Debug (Windows)",
+      "configurePreset": "headless-windows",
+      "configuration": "Debug"
+    },
+    {
+      "name": "python-rel-windows",
+      "displayName": "Python Bindings (Windows)",
+      "configurePreset": "python-windows",
+      "configuration": "Release"
+    },
+    {
+      "name": "headless-rel-linux",
+      "displayName": "Headless Release (Linux)",
+      "configurePreset": "headless-linux",
+      "targets":  ["Epoch"]
+    },
+    {
+      "name": "python-rel-linux",
+      "displayName": "Python Bindings (Linux)",
+      "configurePreset": "python-linux",
+      "targets": ["epoch_simulator"]
+    },
+    {
+      "name": "test-linux",
+      "displayName": "Test Suite (Linux)",
+      "configurePreset": "test-linux",
+      "targets": ["epoch_test"]
+    }
+  ]
+}

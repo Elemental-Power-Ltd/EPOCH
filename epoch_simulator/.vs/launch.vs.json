@@ -1,0 +1,35 @@
+{
+  "version": "0.2.1",
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "Epoch.exe (epoch_main\\Debug\\Epoch.exe)",
+      "name": "Epoch.exe (epoch_main\\Debug\\Epoch.exe)",
+      "currentDir": "${workspaceRoot}",
+      "args": []
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "Epoch.exe (epoch_main\\RelWithDebInfo\\Epoch.exe)",
+      "name": "Epoch.exe (epoch_main\\RelWithDebInfo\\Epoch.exe)",
+      "currentDir": "${workspaceRoot}",
+      "args": []
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "epoch_test.exe (epoch_test\\Debug\\epoch_test.exe)",
+      "name": "epoch_test.exe (epoch_test\\Debug\\epoch_test.exe)",
+      "currentDir": "${workspaceRoot}/epoch_test"
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "epoch_test.exe (epoch_test\\RelWithDebInfo\\epoch_test.exe)",
+      "name": "epoch_test.exe (epoch_test\\RelWithDebInfo\\epoch_test.exe)",
+      "currentDir": "${workspaceRoot}/epoch_test"
+    }
+  ]
+}

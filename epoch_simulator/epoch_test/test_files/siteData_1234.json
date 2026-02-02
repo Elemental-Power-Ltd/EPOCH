@@ -1,0 +1,73 @@
+{
+  "start_ts": "2022-01-01T00:00:00.000Z",
+  "end_ts": "2023-01-01T00:00:00.000Z",
+  "baseline": {
+    "building": {
+      "scalar_heat_load": 1,
+      "scalar_electrical_load": 1,
+      "fabric_intervention_index": 0,
+      "incumbent": true,
+      "age": 0,
+      "lifetime": 30
+    },
+    "gas_heater": {
+      "maximum_output": 150,
+      "gas_type": "NATURAL_GAS",
+      "boiler_efficiency": 0.9,
+      "fixed_gas_price": 0.068,
+      "incumbent": true,
+      "age": 0,
+      "lifetime": 10
+    },
+    "grid": {
+      "grid_export": 100,
+      "grid_import": 140,
+      "import_headroom": 0.25,
+      "tariff_index": 0,
+      "export_tariff": 0.05,
+      "incumbent": true,
+      "age": 0,
+      "lifetime": 25
+    }
+  },
+  "timestep_interval_s": 1800,
+  "building_eload": [ 1, 2, 3, 4 ],
+  "building_hload": [ 1, 2, 3, 4 ],
+  "ev_eload": [ 1, 2, 3, 4 ],
+  "dhw_demand": [ 1, 2, 3, 4 ],
+  "air_temperature": [ 1, 2, 3, 4 ],
+  "grid_co2": [ 1, 2, 3, 4 ],
+
+  "solar_yields": [
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ]
+  ],
+
+  "import_tariffs": [
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ],
+    [ 1, 2, 3, 4 ]
+  ],
+
+  "fabric_interventions": [
+    {
+      "cost": 10000,
+      "reduced_hload": [ 1, 2, 3, 4 ]
+    },
+    {
+      "cost": 250000,
+      "reduced_hload": [ 1, 2, 3, 4 ]
+    }
+  ],
+
+  "ashp_input_table": [
+    [ 3, 4 ],
+    [ 5, 6 ]
+  ],
+  "ashp_output_table": [
+    [ 3, 4 ],
+    [ 5, 6 ]
+  ]
+}
