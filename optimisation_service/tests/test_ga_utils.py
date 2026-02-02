@@ -1,0 +1,343 @@
+from copy import deepcopy
+
+import numpy as np
+import pytest
+
+from app.internal.constraints import count_constraints
+from app.internal.ga_utils import (
+    ProblemInstance,
+    RoundingAndDegenerateRepair,
+    SimpleIntMutation,
+    evaluate_constraints,
+)
+from app.internal.site_range import REPEAT_COMPONENTS, count_parameters_to_optimise
+from app.models.constraints import Constraints
+from app.models.core import Site
+from app.models.epoch_types.config import Config
+from app.models.epoch_types.site_range_type import (
+    Building as BuildingRange,
+)
+from app.models.epoch_types.site_range_type import (
+    DomesticHotWater as DomesticHotWaterRange,
+)
+from app.models.epoch_types.site_range_type import (
+    Grid as GridRange,
+)
+from app.models.epoch_types.site_range_type import (
+    HeatPump as HeatPumpRange,
+)
+from app.models.epoch_types.site_range_type import (
+    HeatSourceEnum as HeatSourceEnumRange,
+)
+from app.models.epoch_types.site_range_type import (
+    SiteRange,
+)
+from app.models.epoch_types.site_range_type import (
+    SolarPanel as SolarPanelRange,
+)
+from app.models.ga_utils import AnnotatedTaskData
+from app.models.metrics import _METRICS, _OBJECTIVES, Metric, MetricValues
+from app.models.result import PortfolioSolution
+
+from .conftest import site_generator
+
+
+class TestProblemInstance:
+    def test_init(
+        self, default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]
+    ) -> None:
+        ProblemInstance(default_objectives, default_constraints, default_portfolio)
+
+    def test_split_solution(self, default_problem_instance: ProblemInstance) -> None:
+        splits = {}
+        for site in default_problem_instance.portfolio:
+            splits[site.name] = np.arange(count_parameters_to_optimise(site.site_range))
+        x = np.concatenate(list(splits.values()))
+        res = default_problem_instance.split_solution(x)
+        assert [x == y for x, y in zip(splits, res, strict=False)]
+
+    @pytest.mark.parametrize("x_value", [0, 1])
+    def test_convert_chromosome_to_site_scenario(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
+        for site in default_problem_instance.portfolio:
+            x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
+            td_pydantic = default_problem_instance.convert_site_chromosome_to_site_scenario(x, site.name)
+            for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
+                if asset_name == "config":
+                    pass
+                elif asset_name in REPEAT_COMPONENTS:
+                    # for repeat components, we count how many subcomponents we expect to find then check this matches
+                    repeat_count = 0
+                    for sub_asset in asset:
+                        if x_value or sub_asset["COMPONENT_IS_MANDATORY"]:
+                            repeat_count += 1
+                    assert (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count) or (
+                        repeat_count == 0 and not hasattr(td_pydantic, asset_name)
+                    )
+                # for singleton components, we check whether the component should be present or not
+                elif not x_value and not asset["COMPONENT_IS_MANDATORY"]:
+                    assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
+                else:
+                    assert hasattr(td_pydantic, asset_name)
+
+    @pytest.mark.parametrize("x_value", [0, 1])
+    def test_convert_site_scenario_to_chromosome(self, x_value: int, default_problem_instance: ProblemInstance) -> None:
+        for site in default_problem_instance.portfolio:
+            x = np.array([x_value] * count_parameters_to_optimise(site.site_range))
+            site_scenario = default_problem_instance.convert_site_chromosome_to_site_scenario(x, site.name)
+            chromosome = default_problem_instance.convert_site_scenario_to_chromosome(site_scenario, site.name)
+            assert all(chromosome == x)
+
+    @pytest.mark.parametrize("x_value", [0, 1])
+    def test_convert_portfolio_chromosome_to_portfolio_scenario(
+        self, x_value: int, default_problem_instance: ProblemInstance
+    ) -> None:
+        portfolio = default_problem_instance.portfolio
+        x = np.array([x_value] * sum(count_parameters_to_optimise(site.site_range) for site in portfolio))
+        portfolio_scenario = default_problem_instance.convert_portfolio_chromosome_to_portfolio_scenario(x)
+        for site in portfolio:
+            td_pydantic: AnnotatedTaskData = portfolio_scenario[site.name]
+            for asset_name, asset in site.site_range.model_dump(exclude_none=True).items():
+                if asset_name == "config":
+                    pass
+                elif asset_name in REPEAT_COMPONENTS:
+                    repeat_count = 0
+                    for sub_asset in asset:
+                        if x_value or sub_asset["COMPONENT_IS_MANDATORY"]:
+                            repeat_count += 1
+                    assert (hasattr(td_pydantic, asset_name) and len(getattr(td_pydantic, asset_name)) == repeat_count) or (
+                        repeat_count == 0 and not hasattr(td_pydantic, asset_name)
+                    )
+                elif not x_value and not asset["COMPONENT_IS_MANDATORY"]:
+                    assert not hasattr(td_pydantic, asset_name) or getattr(td_pydantic, asset_name) is None
+                else:
+                    assert hasattr(td_pydantic, asset_name)
+
+    def test_apply_directions(self, default_problem_instance: ProblemInstance) -> None:
+        metric_values: MetricValues = dict.fromkeys(_OBJECTIVES, 10)
+        res = default_problem_instance.apply_directions(deepcopy(metric_values))
+        assert res[Metric.annualised_cost] == metric_values[Metric.annualised_cost]
+        assert res[Metric.capex] == metric_values[Metric.capex]
+        assert res[Metric.carbon_cost] == metric_values[Metric.carbon_cost]
+        assert res[Metric.payback_horizon] == metric_values[Metric.payback_horizon]
+        assert res[Metric.carbon_balance_scope_1] == -metric_values[Metric.carbon_balance_scope_1]
+        assert res[Metric.carbon_balance_scope_2] == -metric_values[Metric.carbon_balance_scope_2]
+        assert res[Metric.cost_balance] == -metric_values[Metric.cost_balance]
+
+    def test_evaluate_constraint_violations(
+        self, default_problem_instance: ProblemInstance, dummy_portfolio_solution: PortfolioSolution
+    ) -> None:
+        n_constraints = count_constraints(default_problem_instance.constraints)
+        for site in default_problem_instance.portfolio:
+            n_constraints += count_constraints(site.constraints)
+
+        assert len(default_problem_instance.evaluate_constraint_violations(dummy_portfolio_solution)) == n_constraints
+
+
+class TestEvaluateExcess:
+    def test_it_works(self, default_constraints: Constraints) -> None:
+        metric_values: MetricValues = dict.fromkeys(_METRICS, 10)
+
+        excess = []
+        for metric, bounds in default_constraints.items():
+            min_value = bounds.get("min", None)
+            max_value = bounds.get("max", None)
+
+            if min_value is not None and max_value is not None:
+                metric_values[metric] = min_value - 1
+                excess.extend([1.0, -max_value])
+            elif min_value is not None:
+                metric_values[metric] = min_value - 1
+                excess.append(1.0)
+            elif max_value is not None:
+                metric_values[metric] = max_value + 1
+                excess.append(1.0)
+
+        assert evaluate_constraints(metric_values=metric_values, constraints=default_constraints) == excess
+
+
+class TestSimpleIntMutation:
+    def test_mut_simple_int_works(self) -> None:
+        """
+        Test mut_simple_int works with good inputs.
+        """
+        X = np.array([[1, 1], [2, 2], [0, 2]])
+        xl = np.array([0, 0])
+        xu = np.array([2, 2])
+        prob = np.array([1, 0.5, 0])
+        Xp = SimpleIntMutation.mut_simple_int(X, xl, xu, prob)
+        assert np.min(Xp) >= 0
+        assert np.max(Xp) <= 2
+        assert not np.array_equal(X, Xp)
+
+
+class TestRoundingAndDegenerateRepair:
+    def test_rounding(self, default_objectives: list[Metric], default_constraints: Constraints) -> None:
+        building = BuildingRange(
+            COMPONENT_IS_MANDATORY=True,
+            scalar_heat_load=[1],
+            scalar_electrical_load=[1],
+            fabric_intervention_index=[0],
+            incumbent=False,
+            age=0,
+            lifetime=30,
+        )
+        domestic_hot_water = DomesticHotWaterRange(
+            COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
+        )
+        grid = GridRange(
+            COMPONENT_IS_MANDATORY=True,
+            grid_export=[60],
+            grid_import=[60],
+            import_headroom=[0.5],
+            tariff_index=[0, 1, 2, 3],
+            export_tariff=[0.05],
+            incumbent=False,
+            age=0,
+            lifetime=25,
+        )
+        heat_pump = HeatPumpRange(
+            COMPONENT_IS_MANDATORY=False,
+            heat_power=[100, 200],
+            heat_source=[HeatSourceEnumRange.AMBIENT_AIR],
+            send_temp=[70],
+            incumbent=False,
+            age=0,
+            lifetime=10,
+        )
+        site_range = SiteRange(building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump)
+        config = Config(
+            capex_limit=99999999999,
+            use_boiler_upgrade_scheme=False,
+            general_grant_funding=0,
+            npv_time_horizon=10,
+            npv_discount_factor=0.0,
+        )
+        portfolio = [site_generator("amcott_house", site_range, config)]
+        pi = ProblemInstance(default_objectives, default_constraints, portfolio)
+
+        rdr = RoundingAndDegenerateRepair()
+
+        X = np.array([[0, 1, 1, 1, 1], [1, 0, 0, 0, 1], [1, 1, 0, 1, 0]])
+
+        res = rdr._do(pi, X)
+        assert res.dtype == int
+        assert res.shape == X.shape
+
+    def test_degeneracy(self, default_objectives: list[Metric], default_constraints: Constraints) -> None:
+        building = BuildingRange(
+            COMPONENT_IS_MANDATORY=True,
+            scalar_heat_load=[1],
+            scalar_electrical_load=[1],
+            fabric_intervention_index=[0],
+            incumbent=False,
+            age=0,
+            lifetime=30,
+        )
+        domestic_hot_water = DomesticHotWaterRange(
+            COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
+        )
+        grid = GridRange(
+            COMPONENT_IS_MANDATORY=True,
+            grid_export=[60],
+            grid_import=[60],
+            import_headroom=[0.5],
+            tariff_index=[0, 1, 2, 3],
+            export_tariff=[0.05],
+            incumbent=False,
+            age=0,
+            lifetime=25,
+        )
+        heat_pump = HeatPumpRange(
+            COMPONENT_IS_MANDATORY=False,
+            heat_power=[100, 200],
+            heat_source=[HeatSourceEnumRange.AMBIENT_AIR],
+            send_temp=[70],
+            incumbent=False,
+            age=0,
+            lifetime=10,
+        )
+        site_range = SiteRange(building=building, domestic_hot_water=domestic_hot_water, grid=grid, heat_pump=heat_pump)
+        config = Config(
+            capex_limit=99999999999,
+            use_boiler_upgrade_scheme=False,
+            general_grant_funding=0,
+            npv_time_horizon=10,
+            npv_discount_factor=0.0,
+        )
+        portfolio = [site_generator("amcott_house", site_range, config)]
+        pi = ProblemInstance(default_objectives, default_constraints, portfolio)
+
+        rdr = RoundingAndDegenerateRepair()
+
+        X = np.array([[0, 1, 1, 1, 1], [1, 0, 1, 1, 1], [1, 1, 0, 1, 1], [1, 1, 1, 0, 1], [1, 1, 1, 1, 0]])
+
+        res = rdr._do(pi, X)
+        assert res.shape == X.shape
+        assert (res == np.array([[0, 0, 1, 1, 1], [1, 0, 1, 1, 1], [1, 1, 0, 1, 1], [1, 1, 1, 0, 0], [1, 1, 1, 1, 0]])).all
+
+    def test_degeneracy_with_renewables(self, default_objectives: list[Metric], default_constraints: Constraints) -> None:
+        building = BuildingRange(
+            COMPONENT_IS_MANDATORY=True,
+            scalar_heat_load=[1],
+            scalar_electrical_load=[1],
+            fabric_intervention_index=[0, 1],
+            incumbent=False,
+            age=0,
+            lifetime=30,
+        )
+        domestic_hot_water = DomesticHotWaterRange(
+            COMPONENT_IS_MANDATORY=False, cylinder_volume=[100, 200], incumbent=False, age=0, lifetime=12
+        )
+        grid = GridRange(
+            COMPONENT_IS_MANDATORY=True,
+            grid_export=[60],
+            grid_import=[60],
+            import_headroom=[0.5],
+            tariff_index=[0, 1, 2, 3],
+            export_tariff=[0.05],
+            incumbent=False,
+            age=0,
+            lifetime=25,
+        )
+        panel = SolarPanelRange(
+            COMPONENT_IS_MANDATORY=False, yield_scalar=[100, 200], yield_index=[0], incumbent=False, age=0, lifetime=25
+        )
+
+        site_range = SiteRange(
+            building=building,
+            domestic_hot_water=domestic_hot_water,
+            grid=grid,
+            solar_panels=[panel],
+        )
+        config = Config(capex_limit=99999999999, use_boiler_upgrade_scheme=False, general_grant_funding=0)
+        portfolio = [site_generator("amcott_house", site_range, config)]
+        pi = ProblemInstance(default_objectives, default_constraints, portfolio)
+
+        rdr = RoundingAndDegenerateRepair()
+
+        X = np.array(
+            [
+                [0, 1, 1, 1, 1, 1],
+                [1, 0, 1, 1, 1, 1],
+                [1, 1, 0, 1, 1, 1],
+                [1, 1, 1, 0, 1, 1],
+                [1, 1, 1, 1, 0, 1],
+                [1, 1, 1, 1, 1, 0],
+            ]
+        )
+
+        res = rdr._do(pi, X)
+        assert res.shape == X.shape
+        assert (
+            res
+            == np.array(
+                [
+                    [0, 0, 1, 1, 1, 1],
+                    [1, 0, 1, 1, 1, 1],
+                    [1, 1, 0, 1, 1, 1],
+                    [1, 1, 1, 0, 0, 1],
+                    [1, 1, 1, 1, 0, 1],
+                    [1, 1, 1, 1, 1, 0],
+                ]
+            )
+        ).all

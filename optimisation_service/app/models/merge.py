@@ -1,0 +1,40 @@
+"""Pydantic models associdated to merge.py."""
+
+from pydantic import BaseModel
+
+from app.models.constraints import Constraints
+from app.models.core import Task
+from app.models.database import bundle_id_t, site_id_t
+from app.models.epoch_types.config import Config
+from app.models.epoch_types.site_range_type import SiteRange
+from app.models.ga_utils import AnnotatedTaskData
+from app.models.metrics import Metric
+
+
+class SiteInfo(BaseModel):
+    """Site level information required to merge site scenairos into portfolio scenarios."""
+
+    site_id: site_id_t
+    bundle_id: bundle_id_t
+    constraints: Constraints
+    site_range: SiteRange
+    config: Config
+    scenarios: list[AnnotatedTaskData]
+
+
+class PortfolioMergeRequest(BaseModel):
+    """Information required to merge site scenairos into portfolio scenarios."""
+
+    sites: list[SiteInfo]
+    client_id: str
+    task_name: str
+    objectives: list[Metric]
+
+
+class MergeOperator(BaseModel):
+    name: str = "MergeOperator"
+    hyperparameters: None = None
+
+
+class MergeTask(Task):
+    optimiser: MergeOperator = MergeOperator()  # type: ignore[assignment]

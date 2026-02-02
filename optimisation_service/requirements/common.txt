@@ -1,0 +1,18 @@
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
+aiohttp==3.12.15
+anyio==4.10.0
+botorch==0.15.0
+fastapi[standard]==0.116.1
+httpx==0.28.1
+numba==0.61.2
+numpy==2.2.6
+pandas==2.3.1
+paretoset==1.2.5
+pymoo==0.6.1.5
+pydantic==2.11.7
+scipy==1.16.1
+torch==2.8.0
+uvicorn==0.35.0
+pytest-mock==3.15.0

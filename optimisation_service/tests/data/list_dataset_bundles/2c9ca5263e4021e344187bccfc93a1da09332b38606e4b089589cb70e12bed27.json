@@ -1,0 +1,26 @@
+[
+    {
+        "available_datasets": [
+            "GasMeterData",
+            "ElectricityMeterData",
+            "ASHPData",
+            "HeatingLoad",
+            "HeatingLoad",
+            "HeatingLoad",
+            "HeatingLoad",
+            "ImportTariff",
+            "ImportTariff",
+            "ImportTariff",
+            "ImportTariff",
+            "RenewablesGeneration",
+            "ElectricityMeterDataSynthesised",
+            "CarbonIntensity"
+        ],
+        "bundle_id": "019905c2-7592-700c-9775-fa40e0982281",
+        "created_at": "2025-09-01T14:50:54.226972Z",
+        "end_ts": "2023-01-01T00:00:00Z",
+        "name": null,
+        "site_id": "bircotes_leisure_centre",
+        "start_ts": "2022-01-01T00:00:00Z"
+    }
+]
