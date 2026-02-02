@@ -1,0 +1,6 @@
+.optimiser-key-details {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 1em;
+}

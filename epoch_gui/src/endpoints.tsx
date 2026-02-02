@@ -1,0 +1,679 @@
+import {Site, OptimisationTaskListRequest, Client, OptimisationTaskListResponse} from "./State/types";
+import {
+    EpochSiteData,
+    BundleHint,
+    ListBundlesResponse,
+    OptimisationResultsResponse,
+    ReproduceSimulationRequest,
+    SimulationResult,
+    SubmitOptimisationRequest,
+    SubmitOptimisationResponse,
+    SubmitSimulationRequest,
+    SiteDataWithHints,
+    FuelType,
+    SolarLocation,
+    UploadMeterFileResponse,
+    PhppMetadata,
+    addSiteRequest, CostModelResponse, CostModelRequest, IsInterventionFeasible
+} from "./Models/Endpoints";
+import dayjs, {Dayjs} from "dayjs";
+import {TaskData} from "./Components/TaskDataViewer/TaskData.ts";
+
+
+export const submitOptimisationJob = async(request: SubmitOptimisationRequest): Promise<ApiResponse<SubmitOptimisationResponse>> => {
+    try {
+        const response = await fetch("/api/optimisation/submit-portfolio-task", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            return {success: false, data: null, error};
+        }
+
+        const data: SubmitOptimisationResponse = await response.json();
+        return {success: true, data};
+
+    } catch (error) {
+        console.error("Failed to submit configuration:", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const submitSimulation = async(request: SubmitSimulationRequest): Promise<ApiResponse<SimulationResult>> => {
+    try {
+        const response = await fetch("/api/optimisation/run-simulation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const data: SimulationResult = await response.json();
+        return {success: true, data};
+    } catch (error) {
+        console.error("Failed to run simulation", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const reproduceSimulation = async(request: ReproduceSimulationRequest): Promise<ApiResponse<SimulationResult>> => {
+    try {
+        const response = await fetch("/api/optimisation/reproduce-simulation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const data: SimulationResult = await response.json();
+        return {success: true, data};
+
+    } catch (error) {
+        console.error("Failed to reproduce simulation", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+
+export type PrepochWorkerStatus = {
+    name: string,
+    exception: string | null,
+    is_running: boolean,
+    current_job: string,
+    current_job_id: number,
+    started_at: string,
+    coro: null,
+    ctx: null
+};
+
+
+export type PrepochQueueItem = {
+    site_id?: string;
+    bundle_metadata?: {
+        bundle_id: string;
+        dataset_type: string;
+        dataset_subtype: string | string[] | null;
+    }
+}
+
+// export type PrepochQueueContents = [Record<string, PrepochQueueItem>]
+
+export type PrepochQueueStatusData = {
+    workers: PrepochWorkerStatus[];
+    queue: PrepochQueueItem[];
+};
+
+export type PrepochStatus = 'OFFLINE' | PrepochQueueStatusData;
+
+// This function calls two endpoints
+//      - /list-queue-workers for information on what the data services workers are _currently_ working on
+//      - /list-queue-contents for information on queued work
+// we only return data when both succeed, otherwise we deem the data service to be Offline
+// because these are separate endpoints, there is minor race-condition that could display inconsistent data between them
+// (but this doesn't matter as it will likely be resolved next time we fetch them)
+export const getPrepochStatus = async(): Promise<PrepochStatus> => {
+    try {
+        const workersResponse = await fetch("/api/data/list-queue-workers", {method: "GET"});
+
+        const queueResponse = await fetch("/api/data/list-queue-contents", {method: "POST"});
+
+        if(!workersResponse.ok) {
+            throw new Error(`HTTP error in list-queue-workers! Status: ${workersResponse.status}`);
+        }
+
+        if (!queueResponse.ok) {
+            throw new Error(`HTTP error in list-queue-contents! Status: ${queueResponse.status}`);
+        }
+
+        const worker_data: [PrepochWorkerStatus] = await workersResponse.json();
+        const queue_contents: [PrepochQueueItem] = await queueResponse.json();
+
+        return {workers: worker_data, queue: queue_contents};
+    } catch (error) {
+        console.error("Failed to get status:", error);
+        return "OFFLINE"
+    }
+}
+
+
+export type ApiResponse<T> = {
+    success: boolean;
+    data: T | null;
+    error?: string;
+};
+
+export type TaskState = "queued" | "running" | "cancelled";
+
+export interface QueueElem {
+  state: TaskState;
+  added_at: string;
+}
+
+export type DatasetId = string;
+
+export interface QueueStatus {
+  queue: Record<DatasetId, QueueElem>;
+  service_uptime: string; // iso timedelta
+}
+
+export type OptimiserStatus = 'OFFLINE' | QueueStatus;
+
+export const getStatus = async (): Promise<OptimiserStatus> => {
+  try {
+    const response = await fetch("/api/optimisation/queue-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = `HTTP error! Status: ${response.status}`;
+      console.error(error);
+      return 'OFFLINE';
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get status", error);
+    return 'OFFLINE';
+  }
+};
+
+export const listClients = async (): Promise<ApiResponse<Client[]>> => {
+    try {
+        const response = await fetch("/api/data/list-clients", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const data: Client[] = await response.json();
+        return {success: true, data};
+    } catch (error) {
+        console.error("Failed to list clients", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+};
+
+export const listSites = async (client_id: string): Promise<ApiResponse<Site[]>> => {
+    const payload = {client_id: client_id};
+
+    try {
+        const response = await fetch("/api/data/list-sites", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const data: Site[] = await response.json();
+        return {success: true, data};
+    } catch (error) {
+        console.error("Failed to list sites", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+};
+
+
+export const listOptimisationTasks = async(
+    request: OptimisationTaskListRequest): Promise<ApiResponse<OptimisationTaskListResponse>> => {
+    try {
+        const response = await fetch("/api/data/list-optimisation-tasks", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(request)
+        });
+
+        if(!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error: error};
+        }
+
+        const data = await response.json();
+        return {success: true, data};
+
+    } catch (error) {
+        console.error("Failed to list tasks", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const getOptimisationResults = async(task_id: string): Promise<ApiResponse<OptimisationResultsResponse>> => {
+    const payload = {task_id: task_id};
+
+    try {
+        const response = await fetch("/api/data/get-optimisation-results", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+
+        if(!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const data: OptimisationResultsResponse = await response.json();
+        return {success: true, data};
+
+    } catch (error) {
+        console.error("Failed to list sites", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const generateAllData = async (site_id: string, start_ts: string, end_ts: string) => {
+    const payload = { site_id, start_ts, end_ts };
+  
+    try {
+      const response = await fetch("/api/data/generate-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+      }
+  
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to generate data:", error);
+      throw error;
+    }
+}
+
+export const getLatestSiteData = async (site_id: string, start_ts: Dayjs, end_ts: Dayjs): Promise<ApiResponse<SiteDataWithHints>> => {
+    try {
+        // 1. Find the appropriate bundle
+        const listBundlesResponse = await fetch("/api/data/list-dataset-bundles", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({site_id: site_id})
+        })
+
+        if(!listBundlesResponse.ok) {
+            const error = `HTTP error! Status: ${listBundlesResponse.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        // 2. Filter to the appropriate bundle
+        const allBundles: ListBundlesResponse[] = await listBundlesResponse.json();
+
+        const validBundles = allBundles.filter(
+            (bundle) => bundle.is_complete && !bundle.is_error
+        );
+
+        const matchingBundles = validBundles.filter(
+            (bundle) => dayjs(bundle.start_ts).isSame(start_ts) && dayjs(bundle.end_ts).isSame(end_ts)
+        );
+
+        if (matchingBundles.length === 0) {
+            return {success: false, data: null, error: "No valid bundles for this site"};
+        }
+
+        const latestBundle = matchingBundles.sort(
+            (a, b) => dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf())[0]
+
+
+        // 3. Fetch the bundle hints and SiteData for that bundle
+
+        const bundleHintsResponse = await fetch(`/api/data/get-bundle-hints?bundle_id=${latestBundle.bundle_id}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+        })
+
+        const siteDataResponse = await fetch("/api/optimisation/get-latest-site-data", {
+            method: "POST",
+            headers: {"Content-Type": "application/json" },
+            body: JSON.stringify({site_id: site_id, bundle_id: latestBundle.bundle_id})
+        });
+
+        if (!bundleHintsResponse.ok) {
+            const error = `HTTP error! Status: ${bundleHintsResponse.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        if (!siteDataResponse.ok) {
+            const error = `HTTP error! Status: ${siteDataResponse.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const bundleHints: BundleHint = await bundleHintsResponse.json();
+        const siteData: EpochSiteData = await siteDataResponse.json();
+
+        const siteWithHints: SiteDataWithHints = {
+            siteData: siteData,
+            hints: bundleHints,
+        }
+
+        return {success: true, data: siteWithHints};
+
+    } catch (error) {
+        console.error("Failed to fetch site data", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const getSiteBaseline = async (site_id: string): Promise<ApiResponse<TaskData>> => {
+    const payload = {
+        site_id: site_id
+    }
+
+    try {
+        const response = await fetch("/api/data/get-site-baseline", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const baseline: TaskData = await response.json();
+        return {success: true, data: baseline};
+    } catch (error) {
+        console.error("Failed to get site baseline", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const uploadMeterFile = async (file: File, site_id: string, fuelType: FuelType): Promise<ApiResponse<UploadMeterFileResponse>> => {
+
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("site_id", site_id);
+        formData.append("fuel_type", fuelType);
+        // formData.append("disaggregation_info", JSON.stringify(null));
+
+        const response = await fetch("/api/data/upload-meter-file", {
+            method: "POST",
+            body: formData
+        })
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const json: UploadMeterFileResponse = await response.json();
+        return {success: true, data: json};
+    } catch (error) {
+        console.error("Failed to upload meter file", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+
+export const uploadPhpp = async (file: File, site_id: string): Promise<ApiResponse<PhppMetadata>> => {
+
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("site_id", site_id);
+
+        const response = await fetch("/api/data/upload-phpp", {
+            method: "POST",
+            body: formData
+        })
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const json: PhppMetadata = await response.json();
+        return {success: true, data: json};
+    } catch (error) {
+        console.error("Failed to upload PHPP file", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+
+export const addSolarLocation = async (solarInfo: SolarLocation): Promise<ApiResponse<SolarLocation>> => {
+    try {
+        const response = await fetch("/api/data/add-solar-location", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(solarInfo)
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const location: SolarLocation = await response.json()
+        return {success: true, data: location};
+    } catch (error) {
+        console.error("Failed to add location", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const addSiteBaseline = async(site: string, baseline: TaskData): Promise<ApiResponse<string>> => {
+    const payload = {
+        site_id: {site_id: site},
+        baseline: baseline
+    }
+
+    try {
+        const response = await fetch("/api/data/add-site-baseline", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        })
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const baseline_id = await response.json();
+        return {success: true, data: baseline_id}
+    } catch (error) {
+        console.error("Failed to add baseline", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+
+export const addSite = async (siteInfo: addSiteRequest): Promise<ApiResponse<addSiteRequest>> => {
+    try {
+        const response = await fetch("/api/data/add-site", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(siteInfo)
+        });
+
+        if (!response.ok) {
+            let error = `HTTP error! Status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                if (errorData.detail) {
+                    if (typeof errorData.detail === 'string') {
+                        error = errorData.detail;
+                    // If we've got a load of pydantic messages, return them all helpfully here.
+                    } else if (Array.isArray(errorData.detail)) {
+                        
+                        const messages = errorData.detail.map((err: any) => err.msg).filter(Boolean);
+                        error = messages.join(', ');
+                    } else {
+                        error = JSON.stringify(errorData.detail);
+                    }
+                }
+            } catch {
+                // If JSON parsing fails, keep the default error message
+            }
+            console.error(error);
+            return {success: false, data: null, error: error};
+        }
+
+        const json: [addSiteRequest, string] = await response.json();
+        return {success: true, data: json[0]};
+    } catch (error) {
+        console.error("Failed to add site", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+};
+
+
+export const listCostModels = async (): Promise<ApiResponse<CostModelResponse[]>> => {
+
+  try {
+    const response = await fetch("/api/data/list-cost-models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const error = `HTTP error! Status: ${response.status}`;
+      console.error(error);
+      return { success: false, data: null, error };
+    }
+
+    const models: CostModelResponse[] = await response.json();
+    return { success: true, data: models };
+  } catch (error) {
+    console.error("Failed to list cost models", error);
+    return { success: false, data: null, error: error instanceof Error ? error.message : String(error) };
+  }
+};
+
+
+export const addCostModel = async (model: CostModelRequest): Promise<ApiResponse<CostModelResponse>> => {
+
+    try {
+        const response = await fetch("/api/data/add-cost-model", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(model),
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const created: CostModelResponse = await response.json();
+        return {success: true, data: created};
+    } catch (error) {
+        console.error("Failed to add cost model", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+};
+
+export const getCostModel = async (cost_model_id: string): Promise<ApiResponse<CostModelResponse>> => {
+
+    try {
+        const response = await fetch(
+            `/api/data/get-cost-model?cost_model_id=${encodeURIComponent(cost_model_id)}`,
+            {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+            });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const model: CostModelResponse = await response.json();
+        return {success: true, data: model};
+    } catch (error) {
+        console.error("Failed to get cost model", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+};
+
+
+export const listFeasibleInterventions = async (site_id: string): Promise<ApiResponse<IsInterventionFeasible[]>> => {
+    try {
+        const response = await fetch("/api/data/list-feasible-interventions", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({site_id: site_id}),
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const interventions = await response.json();
+        return { success: true, data: interventions };
+    } catch (error) {
+        console.error("Failed to list feasible interventions", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+// set the feasible interventions for a given site, returns all permutations of those interventions
+export const addFeasibleInterventions = async (site_id: string, interventions: string[]): Promise<ApiResponse<string[][]>> => {
+    try {
+        const response = await fetch("/api/data/add-feasible-interventions", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({site_id: {site_id: site_id}, interventions: interventions}),
+        })
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const permutations = await response.json();
+        return {success: true, data: permutations };
+    } catch (error) {
+        console.error("Failed to add feasible interventions", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}

@@ -1,0 +1,588 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task Data",
+  "type": "object",
+  "properties": {
+    "building": {
+      "type": "object",
+      "title": "Building",
+      "description": "A component to represent the physical building structure and its usage demands.",
+      "properties": {
+        "scalar_heat_load": {
+          "type": "number",
+          "title": "Scalar Heat Load",
+          "minimum": 0,
+          "description": "Scalar multiplier applied to the baseline heat load.",
+          "default": 1.0
+        },
+        "scalar_electrical_load": {
+          "type": "number",
+          "title": "Scalar Electrical Load",
+          "minimum": 0,
+          "description": "Scalar multiplier applied to the baseline electrical load.",
+          "default": 1.0
+        },
+        "fabric_intervention_index": {
+          "type": "integer",
+          "title": "Fabric Intervention Index",
+          "minimum": 0,
+          "description": "Index mapping to a fabric intervention option specified in the SiteData.",
+          "default": 0
+        },
+        "floor_area": {
+          "type": ["number", "null"],
+          "title": "Floor Area",
+          "description": "Floor area of the site in metres squared.",
+          "exclusiveMinimum": 0,
+          "default": null
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 30,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "scalar_heat_load",
+        "scalar_electrical_load",
+        "fabric_intervention_index",
+        "floor_area",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "data_centre": {
+      "type": "object",
+      "title": "Data Centre",
+      "description": "A Data Centre",
+      "properties": {
+        "maximum_load": {
+          "type": "number",
+          "title": "Maximum Load",
+          "minimum": 0,
+          "description": "The maximum load for the Data Centre in kW",
+          "default": 50.0
+        },
+        "hotroom_temp": {
+          "type": "number",
+          "title": "Hotroom Temperature",
+          "description": "Operating temperature of the Data Centre in degrees Celsius.",
+          "default": 43.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "maximum_load",
+        "hotroom_temp",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "domestic_hot_water": {
+      "type": "object",
+      "title": "Domestic Hot Water",
+      "properties": {
+        "cylinder_volume": {
+          "type": "number",
+          "title": "Cylinder Volume",
+          "description": "The volume of the cylinder in metres cubed",
+          "minimum": 0,
+          "default": 100.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 12,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "cylinder_volume",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "electric_vehicles": {
+      "type": "object",
+      "title": "EV Chargers",
+      "properties": {
+        "flexible_load_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "title": "Flexible Load Ratio",
+          "description": "The decimal fraction of the load that must be met.",
+          "maximum": 1,
+          "default": 0.5
+        },
+        "small_chargers": {
+          "type": "integer",
+          "title": "Small Chargers",
+          "description": "The quantity of small chargers.",
+          "minimum": 0,
+          "default": 0
+        },
+        "fast_chargers": {
+          "type": "integer",
+          "title": "Fast Chargers",
+          "description": "The quantity of fast chargers.",
+          "minimum": 0,
+          "default": 3
+        },
+        "rapid_chargers": {
+          "type": "integer",
+          "title": "Rapid Chargers",
+          "description": "The quantity of rapid chargers.",
+          "minimum": 0,
+          "default": 0
+        },
+        "ultra_chargers": {
+          "type": "integer",
+          "title": "Ultra Chargers",
+          "description": "The quantity of ultra chargers.",
+          "minimum": 0,
+          "default": 0
+        },
+        "scalar_electrical_load": {
+          "type": "number",
+          "title": "Scalar Electrical Load",
+          "description": "Scalar multiplier for the EV Charging load.",
+          "minimum": 0,
+          "default": 3.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 15,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "flexible_load_ratio",
+        "small_chargers",
+        "fast_chargers",
+        "rapid_chargers",
+        "ultra_chargers",
+        "scalar_electrical_load",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "energy_storage_system": {
+      "type": "object",
+      "title": "Energy Storage System",
+      "properties": {
+        "capacity": {
+          "type": "number",
+          "title": "Capacity",
+          "description": "Battery capacity in kWh.",
+          "exclusiveMinimum": 0,
+          "default": 20.0
+        },
+        "charge_power": {
+          "type": "number",
+          "title": "Charge Power",
+          "description": "Instantaneous charge power in kW.",
+          "exclusiveMinimum": 0,
+          "default": 10.0
+        },
+        "discharge_power": {
+          "type": "number",
+          "title": "Discharge Power",
+          "description": "Instantaneous discharge power in kW.",
+          "exclusiveMinimum": 0,
+          "default": 10.0
+        },
+        "battery_mode": {
+          "type": "string",
+          "title": "Battery Mode",
+          "description": "The algorithmic mode that determines when the battery charges/discharges.",
+          "enum": ["CONSUME", "CONSUME_PLUS"],
+          "default": "CONSUME"
+        },
+        "initial_charge": {
+          "type": "number",
+          "title": "Initial Charge",
+          "description": "Initial charge of the battery in kWh.",
+          "minimum": 0,
+          "default": 0.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 15,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "capacity",
+        "charge_power",
+        "discharge_power",
+        "battery_mode",
+        "initial_charge",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "gas_heater": {
+      "type": "object",
+      "title": "Gas Heater",
+      "properties": {
+        "maximum_output": {
+          "type": "number",
+          "title": "Maximum Output",
+          "description": "The maximum heat output in kW.",
+          "exclusiveMinimum": 0,
+          "default": 40.0
+        },
+        "gas_type": {
+          "type": "string",
+          "title": "Gas Type",
+          "description": "The type of gas used to power this boiler.",
+          "enum": ["NATURAL_GAS", "LIQUID_PETROLEUM_GAS"],
+          "default": "NATURAL_GAS"
+        },
+        "boiler_efficiency": {
+          "type": "number",
+          "title": "Boiler Efficiency",
+          "description": "The decimal efficiency of the boiler.",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "default": 0.9
+        },
+        "fixed_gas_price": {
+          "type": "number",
+          "title": "Fixed Gas Price",
+          "description": "The price of gas in £/kWh.",
+          "minimum": 0,
+          "default": 0.068
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "maximum_output",
+        "gas_type",
+        "boiler_efficiency",
+        "fixed_gas_price",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "grid": {
+      "type": "object",
+      "title": "Grid",
+      "properties": {
+        "grid_export": {
+          "type": "number",
+          "title": "Grid Export",
+          "description": "The maximum power the grid can export in kW.",
+          "minimum": 0,
+          "default": 23.0
+        },
+        "grid_import": {
+          "type": "number",
+          "title": "Grid Import",
+          "description": "The maximum power the grid can import in kW.",
+          "minimum": 0,
+          "default": 23.0
+        },
+        "import_headroom": {
+          "type": "number",
+          "title": "Import Headroom",
+          "description": "The decimal fraction of the peak electrical load that must be reserved.",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.25
+        },
+        "tariff_index": {
+          "type": "integer",
+          "title": "Tariff Index",
+          "description": "Index mapping to an electricity tariff option defined within SiteData.",
+          "minimum": 0,
+          "default": 0
+        },
+        "export_tariff": {
+          "type": "number",
+          "title": "Export Tariff",
+          "description": "Fixed price export tariff in £/kWh.",
+          "default": 0.05
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 25,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "grid_export",
+        "grid_import",
+        "import_headroom",
+        "tariff_index",
+        "export_tariff",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "heat_pump": {
+      "type": "object",
+      "title": "Heat Pump",
+      "properties": {
+        "heat_power": {
+          "type": "number",
+          "title": "Heat Power",
+          "description": "The maximum power output this heat pump can produce in kW.",
+          "minimum": 0,
+          "default": 20.0
+        },
+        "heat_source": {
+          "type": "string",
+          "title": "Heat Source",
+          "description": "The source of the air the heat pump draws from.",
+          "enum": ["AMBIENT_AIR", "HOTROOM"],
+          "default": "AMBIENT_AIR"
+        },
+        "send_temp": {
+          "type": "number",
+          "title": "Send Temperature",
+          "description": "The flow temperature the heat pump operates at in degrees Celsius.",
+          "default": 70.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "heat_power",
+        "heat_source",
+        "send_temp",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "mop": {
+      "type": "object",
+      "title": "Mop",
+      "description": "A generic component to consume excess heat.",
+      "properties": {
+        "maximum_load": {
+          "type": "number",
+          "title": "Maximum Load",
+          "description": "The maximum heat power this component will draw in kW.",
+          "minimum": 0,
+          "default": 300.0
+        },
+        "incumbent": {
+          "type": "boolean",
+          "title": "Incumbent",
+          "default": false,
+          "description": "Whether this component has already been installed and paid for or not."
+        },
+        "age": {
+          "type": "number",
+          "title": "Age",
+          "minimum": 0,
+          "default": 0,
+          "description": "The age of this component."
+        },
+        "lifetime": {
+          "type": "number",
+          "title": "Lifetime",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "The typical length of time this component will last before it needs replacing."
+        }
+      },
+      "required": [
+        "maximum_load",
+        "incumbent",
+        "age",
+        "lifetime"
+      ]
+    },
+    "solar_panels": {
+      "type": "array",
+      "title": "Solar Panels",
+      "items": {
+        "type": "object",
+        "title": "Solar Panel",
+        "properties": {
+          "yield_scalar": {
+            "type": "number",
+            "title": "Yield Scalar",
+            "description": "The peak solar generation capability of these panels in kW.",
+            "minimum": 0,
+            "default": 20.0
+          },
+          "yield_index": {
+            "type": "integer",
+            "title": "Yield Index",
+            "description": "Index mapping to a solar yield array in SiteData.",
+            "minimum": 0,
+            "default": 0
+          },
+          "incumbent": {
+            "type": "boolean",
+            "title": "Incumbent",
+            "default": false,
+            "description": "Whether this component has already been installed and paid for or not."
+          },
+          "age": {
+            "type": "number",
+            "title": "Age",
+            "minimum": 0,
+            "default": 0,
+            "description": "The age of this component."
+          },
+          "lifetime": {
+            "type": "number",
+            "title": "Lifetime",
+            "exclusiveMinimum": 0,
+            "default": 25,
+            "description": "The typical length of time this component will last before it needs replacing."
+          }
+        },
+        "required": [
+          "yield_scalar",
+          "yield_index",
+          "incumbent",
+          "age",
+          "lifetime"
+        ]
+      }
+    }
+  }
+}

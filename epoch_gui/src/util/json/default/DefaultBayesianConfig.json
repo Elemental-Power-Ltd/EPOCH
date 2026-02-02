@@ -1,0 +1,26 @@
+{
+    "n_per_sub_portfolio": 1,
+    "n_generations": 10,
+    "batch_size": 4,
+    "n_initialisation_points": 5,
+    "num_restarts": 10,
+    "raw_samples": 512,
+    "mc_samples": 128,
+    "NSGA2_param": {
+        "pop_size": 256,
+        "n_offsprings": 128,
+        "prob_crossover": 0.2,
+        "n_crossover": 2,
+        "prob_mutation": 0.8,
+        "std_scaler": 1.0,
+        "tol": 0.1,
+        "period": 50,
+        "cv_tol": 0.001,
+        "cv_period": 100,
+        "n_max_gen": 1000,
+        "n_max_evals": 1000000,
+        "sampling": "RANDOM",
+        "pop_size_incr_scalar": 0.1,
+        "pop_size_incr_threshold": 0.9
+        }
+}

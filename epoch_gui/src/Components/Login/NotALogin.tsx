@@ -1,0 +1,40 @@
+import {Container, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent} from '@mui/material';
+
+import {useEpochStore} from "../../State/Store";
+
+const NotALogin = () => {
+    const availableClients = useEpochStore((state) => state.global.availableClients);
+    const setSelectedClient = useEpochStore((state) => state.setSelectedClient);
+    const selectedClient = useEpochStore((state) => state.global.selectedClient);
+
+    // Handle dropdown change event
+    const handleChange = (event: SelectChangeEvent) => {
+        const client = availableClients.find((client) => client.client_id === event.target.value);
+        if (client) {
+            setSelectedClient(client);
+        }
+    };
+
+    return (
+        <Container maxWidth={"xs"}>
+            <FormControl fullWidth>
+                <InputLabel id="client-selector-label">Select Client</InputLabel>
+                <Select
+                    labelId="client-selector-label"
+                    id="client-selector"
+                    value={selectedClient ? selectedClient.client_id : ''}
+                    onChange={handleChange}
+                    label="Select Client"
+                >
+                    {availableClients.map((client) => (
+                        <MenuItem key={client.client_id} value={client.client_id}>
+                            {client.name}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+        </Container>
+    );
+};
+
+export default NotALogin;

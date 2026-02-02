@@ -1,0 +1,9 @@
+{
+    "title": "Grid Search",
+    "type": "object",
+    "properties": {
+      "produceExhaustiveOutput": {"type": "boolean", "title": "Produce Exhaustive Output"},
+      "leagueTableCapacity": {"type": "integer", "title": "League Table Capacity", "minimum": 1}
+    },
+    "required": ["produceExhaustiveOutput", "leagueTableCapacity"]
+}
