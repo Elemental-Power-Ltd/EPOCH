@@ -124,7 +124,7 @@ def monthly_to_daily_eload(monthly_df: NonHHDataFrame) -> DailyDataFrame:
     # To get daily readings, interpolate between the usage per day from this month and the next one
 
     m_df = monthly_df.copy().sort_index()
-    m_df["days_in_reading"] = (m_df["end_ts"] - m_df["start_ts"]) / pd.Timedelta(days=1)
+    m_df["days_in_reading"] = (m_df["end_ts"] - m_df["start_ts"]) / pd.Timedelta(days=1)  # type: ignore
     m_df["consumption_kwh"] /= m_df["days_in_reading"]
 
     # Create a new daily index of every day between the first and last readings

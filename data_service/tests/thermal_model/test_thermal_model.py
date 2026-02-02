@@ -4,7 +4,6 @@ import datetime
 
 import numpy as np
 import pytest
-
 from app.internal.thermal_model import HeatNetwork, add_heating_system_to_graph, add_structure_to_graph, initialise_outdoors
 from app.internal.thermal_model.building_elements import BuildingElement
 from app.internal.thermal_model.heat_loss import (

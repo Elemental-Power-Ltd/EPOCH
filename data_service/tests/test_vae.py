@@ -7,11 +7,10 @@ import datetime
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import StandardScaler  # type: ignore
-
 from app.dependencies import load_vae
 from app.internal.elec_meters.model_utils import ScalerTypeEnum, load_all_scalers
 from app.internal.elec_meters.vae import VAE
+from sklearn.preprocessing import StandardScaler  # type: ignore
 
 
 class TestVAE:

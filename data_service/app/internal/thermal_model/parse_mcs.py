@@ -12,7 +12,6 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, TypedDict
 
 import openpyxl
-import openpyxl.worksheet
 import openpyxl.worksheet.worksheet
 
 from ..utils.conversions import try_convert_float

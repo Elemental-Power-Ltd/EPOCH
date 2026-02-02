@@ -1,5 +1,12 @@
 from pathlib import Path
 
+from app.internal.epoch.converters import (
+    convert_TaskData_to_pydantic,
+    simulation_result_to_metric_dict,
+)
+from app.models.epoch_types.config import Config
+from app.models.metrics import _METRICS
+
 from epoch_simulator import (
     Building,
     DataCentre,
@@ -12,13 +19,6 @@ from epoch_simulator import (
     SolarPanel,
     TaskData,
 )
-
-from app.internal.epoch.converters import (
-    convert_TaskData_to_pydantic,
-    simulation_result_to_metric_dict,
-)
-from app.models.epoch_types.config import Config
-from app.models.metrics import _METRICS
 
 from .conftest import _DATA_PATH, load_epoch_data_from_file
 

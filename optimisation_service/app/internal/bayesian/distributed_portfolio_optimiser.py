@@ -1,7 +1,6 @@
 from typing import cast
 
 import numpy as np
-
 from app.internal.constraints import is_in_constraints
 from app.internal.NSGA2 import NSGA2
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
@@ -209,10 +208,7 @@ class DistributedPortfolioOptimiser:
                     mask = is_in_constraints(constraints, all_combinations)
                     all_combinations = cast(list[PortfolioSolution], np.array(all_combinations)[mask].tolist())
 
-                if len(all_combinations) > 0:
-                    new_combinations = portfolio_pareto_front(all_combinations, objectives)
-                else:
-                    new_combinations = []
+                new_combinations = portfolio_pareto_front(all_combinations, objectives) if len(all_combinations) > 0 else []
 
             new_combinations = list(set(new_combinations) - self.sub_portfolio_combinations[i])
 

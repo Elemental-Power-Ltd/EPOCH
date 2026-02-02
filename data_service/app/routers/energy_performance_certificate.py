@@ -1,11 +1,10 @@
 """Endpoint to get energy performance certificates for a given site."""
 
-from fastapi import APIRouter
-
 from app.dependencies import DatabasePoolDep, HttpClientDep
 from app.internal.energy_performance_certificate import get_cepc_by_lmk, get_dec_by_lmk
 from app.models.core import SiteID
 from app.models.energy_performance_certificate import CertificateType, NonDomesticDEC, NonDomesticEPC
+from fastapi import APIRouter
 
 from .client_data import get_site_data
 

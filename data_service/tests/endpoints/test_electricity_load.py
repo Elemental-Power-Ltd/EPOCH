@@ -8,7 +8,6 @@ import httpx
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.utils.uuid import uuid7
 
@@ -107,7 +106,8 @@ class TestUploadMeterData:
         month_ends = raw_data[["end_ts"]].resample("1MS").max()
         data = raw_data[["consumption"]].resample("1MS").sum()
         data["end_ts"] = np.minimum(
-            month_ends.to_numpy()[:, 0], (data.index + pd.offsets.MonthEnd() + pd.Timedelta(days=1)).to_numpy()
+            month_ends.to_numpy()[:, 0],
+            (data.index + pd.offsets.MonthEnd() + pd.Timedelta(days=1)).to_numpy(),  # type: ignore
         )
         data["start_ts"] = np.maximum(month_starts.to_numpy()[:, 0], (data.index).to_numpy())
         metadata = {"fuel_type": "elec", "site_id": "demo_london", "reading_type": "manual"}

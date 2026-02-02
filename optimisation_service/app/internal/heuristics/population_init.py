@@ -105,8 +105,8 @@ def generate_asset_from_heuristics(asset_name: str, asset: asset_t, estimates: d
             # fixed_parameters are forwarded as is, there's no choice to make
             task_data_asset[attribute_name] = attribute_values
         elif (
-            asset_name in estimates.keys()
-            and attribute_name in estimates[asset_name].keys()
+            asset_name in estimates
+            and attribute_name in estimates[asset_name]
             and isinstance(attribute_values, list)
             and len(attribute_values) > 1
         ):
@@ -151,6 +151,4 @@ def normal_choice(estimate: float | int, attribute_values: list[float] | list[in
     probabilities = np.exp(-0.5 * ((np.array(attribute_values) - estimate) / std_dev) ** 2)
     probabilities /= probabilities.sum()
 
-    selected = random.choices(population=attribute_values, weights=probabilities)[0]
-
-    return selected
+    return random.choices(population=attribute_values, weights=probabilities)[0]

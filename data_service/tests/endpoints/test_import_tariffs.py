@@ -6,7 +6,6 @@ import datetime
 import httpx
 import pandas as pd
 import pytest
-
 from app.internal.import_tariffs.re24 import get_re24_approximate_ppa
 from app.models.core import SiteIDWithTime
 from app.models.import_tariffs import GSPEnum
@@ -61,6 +60,7 @@ class TestSyntheticTariffs:
         assert all(len(set(data)) > 10 for data in result.json()["data"])
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_fixed(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -94,6 +94,8 @@ class TestSyntheticTariffs:
         assert all(len(set(data)) == 1 for data in result.json()["data"])
 
     @pytest.mark.asyncio
+    @pytest.mark.external
+    @pytest.mark.external
     async def test_generate_overnight(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -127,6 +129,7 @@ class TestSyntheticTariffs:
         assert all(len(set(data)) == 2 for data in result.json()["data"])
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_peak(
         self, client: httpx.AsyncClient, demo_start_ts: datetime.datetime, demo_end_ts: datetime.datetime
     ) -> None:
@@ -251,6 +254,7 @@ class TestImportTariffs:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
+    @pytest.mark.external
     async def test_generate_and_get_wholesale(
         self,
         client: httpx.AsyncClient,
@@ -288,6 +292,7 @@ class TestImportTariffs:
             assert len(set(data)) >= 23
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_and_get_peak(
         self,
         client: httpx.AsyncClient,
@@ -327,8 +332,8 @@ class TestImportTariffs:
             assert hi == pytest.approx(mid * 1.5)
             assert lo == pytest.approx(mid * 0.49)
 
-    @pytest.mark.external
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_and_get_ppa(
         self,
         client: httpx.AsyncClient,
@@ -402,6 +407,7 @@ class TestImportTariffs:
         assert sum(item == 0.1 for item in tariff_result["data"][0]) == sum(item == 0.2 for item in tariff_result["data"][0])
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_list_import_tariffs(self, client: httpx.AsyncClient) -> None:
         start_ts = datetime.datetime(year=2019, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
@@ -427,6 +433,7 @@ class TestImportTariffs:
         assert len(selected_result.json()) > 2
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_past_import_tariff(self, client: httpx.AsyncClient) -> None:
         start_ts = datetime.datetime(year=2019, month=1, day=1, tzinfo=datetime.UTC)
         end_ts = datetime.datetime(year=2020, month=1, day=1, tzinfo=datetime.UTC)
@@ -700,14 +707,14 @@ class TestGSPLookup:
         """Test that we get the right results for Matt's house."""
         async with MockedHttpClient() as client:
             resp = await get_gsp_code_from_postcode("SW1A 0AA", client)
-            assert resp.region_code == GSPEnum.A
+            assert resp.region_code == GSPEnum.C
 
     @pytest.mark.asyncio
     async def test_provided_inbound(self) -> None:
         """Test that we're fine if you provide only an inbound postcode."""
         async with MockedHttpClient() as client:
             resp = await get_gsp_code_from_postcode("SW1A", client)
-            assert resp.region_code == GSPEnum.A
+            assert resp.region_code == GSPEnum.C
 
     @pytest.mark.asyncio
     async def test_provided_isle_of_man(self) -> None:

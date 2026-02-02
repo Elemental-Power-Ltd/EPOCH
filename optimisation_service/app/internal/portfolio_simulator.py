@@ -4,13 +4,13 @@ import logging
 from typing import Any
 
 import numpy as np
-from epoch_simulator import SimulationResult, Simulator, TaskData, aggregate_site_results
 
 from app.internal.epoch.converters import simulation_result_to_metric_dict
 from app.models.epoch_types.config import Config as PydanticConfig
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.result import PortfolioSolution, SiteSolution
 from app.models.site_data import EpochSiteData
+from epoch_simulator import SimulationResult, Simulator, TaskData, aggregate_site_results
 
 logger = logging.getLogger("default")
 
@@ -105,7 +105,7 @@ class PortfolioSimulator:
         """
         site_scenarios = {}
         results = []
-        for name in portfolio_scenarios.keys():
+        for name in portfolio_scenarios:
             annotated_task = portfolio_scenarios[name]
             site_scenario = TaskData.from_json(annotated_task.model_dump_json(exclude_none=True))
             sim = self.sims[name]

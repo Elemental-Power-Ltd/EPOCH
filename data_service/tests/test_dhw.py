@@ -3,7 +3,6 @@
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.internal.epl_typing import HHDataFrame
 from app.internal.gas_meters import (
     assign_hh_dhw_even,

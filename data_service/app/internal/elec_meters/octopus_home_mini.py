@@ -183,9 +183,9 @@ async def get_home_mini_readings(
 
     # Turn this into a dataframe, with all the type conversions that entails.
     df = pd.DataFrame.from_records(all_data).rename(columns={"readAt": "start_ts"})
-    df.start_ts = pd.to_datetime(df.start_ts)
-    df.consumption = df.consumption.astype(float)
-    df.export = df.export.astype(float)
-    df.demand = df.demand.astype(float)
-    df.consumptionDelta = df.consumptionDelta.astype(float)
-    return df.set_index(df.start_ts).sort_index()
+    df["start_ts"] = pd.to_datetime(df["start_ts"])
+    df["consumption"] = df["consumption"].astype(float)
+    df["export"] = df["export"].astype(float)
+    df["demand"] = df["demand"].astype(float)
+    df["consumptionDelta"] = df["consumptionDelta"].astype(float)
+    return df.set_index(df["start_ts"]).sort_index()

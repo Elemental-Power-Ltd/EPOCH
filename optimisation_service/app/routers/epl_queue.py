@@ -88,7 +88,7 @@ async def clear_queue(queue: QueueDep) -> str:
         Indicative string about what we just did
     """
     logger.info("Clearing queue.")
-    for task_id in queue.q.keys():
+    for task_id in queue.q:
         if queue.q[task_id].state != task_state.RUNNING:
             queue.cancel(task_id)
     return "Queue cleared."

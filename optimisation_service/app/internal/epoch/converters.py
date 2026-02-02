@@ -3,11 +3,10 @@
 import json
 from typing import cast
 
-from epoch_simulator import CapexBreakdown, SimulationResult, TaskData
-
 from app.models.core import CostInfo, Grade, SimulationMetrics
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric, MetricValues
+from epoch_simulator import CapexBreakdown, SimulationResult, TaskData
 
 type Jsonable = float | int | str | dict[str, Jsonable]
 

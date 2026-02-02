@@ -11,7 +11,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.internal.utils import check_latitude_longitude, chunk_time_period, split_into_sessions
 from app.internal.utils.bank_holidays import UKCountryEnum, get_bank_holidays
 from app.internal.utils.database_utils import get_migration_files

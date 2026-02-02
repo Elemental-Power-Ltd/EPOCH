@@ -54,8 +54,8 @@ def _build_day_grouping(timestamps: pd.DatetimeIndex) -> DayGrouping:
 
 
 def _best_day_by_sum(
-        values: NDArray[np.float32] | list[float],
-        groups: DayGrouping, require_positive: bool = True) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    values: NDArray[np.float32] | list[float], groups: DayGrouping, require_positive: bool = True
+) -> tuple[pd.Timestamp, pd.Timestamp] | None:
     """
     Group values in the provided timeseries per day and return the maximum.
 
@@ -334,12 +334,7 @@ def detect_max_cost_day(
         return None
 
     start_ts, end_ts = res
-    return DayOfInterest(
-        day_type=DayOfInterestType.MaxCost,
-        name="Most Expensive Day",
-        start_ts=start_ts,
-        end_ts=end_ts
-    )
+    return DayOfInterest(day_type=DayOfInterestType.MaxCost, name="Most Expensive Day", start_ts=start_ts, end_ts=end_ts)
 
 
 def detect_max_eload_day(report_data: ReportData, groups: DayGrouping) -> DayOfInterest | None:
@@ -389,12 +384,7 @@ def detect_max_eload_day(report_data: ReportData, groups: DayGrouping) -> DayOfI
 
     start_ts, end_ts = res
 
-    return DayOfInterest(
-        day_type=DayOfInterestType.MaxDemand,
-        name="Maximum Electrical Load",
-        start_ts=start_ts,
-        end_ts=end_ts
-    )
+    return DayOfInterest(day_type=DayOfInterestType.MaxDemand, name="Maximum Electrical Load", start_ts=start_ts, end_ts=end_ts)
 
 
 def detect_max_elec_shortfall_day(report_data: ReportData, groups: DayGrouping) -> DayOfInterest | None:

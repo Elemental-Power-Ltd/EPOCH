@@ -1,4 +1,4 @@
-# ruff: noqa: D100, D101
+# ruff: noqa: D101
 import datetime
 
 import pydantic

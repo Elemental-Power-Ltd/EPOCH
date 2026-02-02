@@ -1,9 +1,8 @@
 import pytest
-from pydantic import ValidationError
-
 from app.internal.site_range import count_parameters_in_asset, count_parameters_to_optimise
 from app.models.core import Site
 from app.models.epoch_types.site_range_type import Building, HeatPump, HeatSourceEnum, SiteRange, SolarPanel
+from pydantic import ValidationError
 
 
 class TestCountParametersToOptimise:

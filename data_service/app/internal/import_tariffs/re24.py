@@ -152,7 +152,7 @@ async def get_re24_approximate_ppa(
     # Load the generation profiles and normalise them to being a fraction of total generation
     # (do this before resampling or we'll get artefacts if we've resampled to the summer or winter)
     raw_weather_df = pd.read_csv(profile_path)
-    raw_weather_df.index = pd.to_datetime(raw_weather_df["timestamp"], format="ISO8601")  # type: ignore
+    raw_weather_df.index = pd.to_datetime(raw_weather_df["timestamp"], format="ISO8601")
     raw_weather_df["wind_generation"] /= raw_weather_df["wind_generation"].max()
     raw_weather_df["solar_generation"] /= raw_weather_df["solar_generation"].max()
 

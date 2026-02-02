@@ -1,5 +1,4 @@
 import pytest
-
 from app.internal.ga_utils import ProblemInstance
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.models.constraints import Constraints

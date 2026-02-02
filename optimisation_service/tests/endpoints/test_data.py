@@ -2,10 +2,9 @@ from typing import Any
 
 import httpx
 import pytest
-from pytest_mock import MockerFixture
-
 from app.dependencies import CachedAsyncClient
 from app.internal.database.utils import _DB_URL
+from pytest_mock import MockerFixture
 
 
 class TestClearBundleCache:

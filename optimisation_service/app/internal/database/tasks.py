@@ -1,10 +1,9 @@
 import logging
 
 import httpx
+from app.models.core import Task
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
-
-from app.models.core import Task
 
 from .utils import _DB_URL
 

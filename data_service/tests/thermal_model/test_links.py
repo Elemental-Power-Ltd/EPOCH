@@ -4,7 +4,6 @@
 from collections.abc import Callable
 
 import pytest
-
 from app.internal.thermal_model.links import (
     ConductiveLink,
     ConvectiveLink,

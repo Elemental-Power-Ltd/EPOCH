@@ -15,7 +15,6 @@ import logging
 from typing import cast
 
 import pandas as pd
-
 from app.dependencies import DatabasePoolDep
 from app.internal.epl_typing import RecordMapping
 from app.internal.thermal_model.costs import calculate_intervention_costs_params

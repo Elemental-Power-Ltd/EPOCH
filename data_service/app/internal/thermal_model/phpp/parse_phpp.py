@@ -9,13 +9,12 @@ from typing import BinaryIO, TypedDict
 
 import numpy as np
 import pandas as pd
-from openpyxl.cell import Cell, MergedCell
-from openpyxl.reader.excel import load_workbook
-from openpyxl.worksheet.worksheet import Worksheet
-
 from app.internal.thermal_model.heat_capacities import AIR_HEAT_CAPACITY
 from app.internal.thermal_model.phpp.interventions import THIRD_PARTY_INTERVENTIONS, StructuralArea
 from app.models.heating_load import FabricCostBreakdown
+from openpyxl.cell import Cell, MergedCell
+from openpyxl.reader.excel import load_workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 type ExcelRow = Sequence[Cell | MergedCell]
 
@@ -381,7 +380,9 @@ def phpp_fabric_intervention_cost(
     # First, assign all the "structural" interventions that replace fabric interventions.
     for intervention_name in interventions:
         if intervention_name not in THIRD_PARTY_INTERVENTIONS:
-            raise ValueError(f"Bad intervention `{intervention_name}`; check THIRD_PARTY_INTERVENTIONS for a list of good ones.")
+            raise ValueError(
+                f"Bad intervention `{intervention_name}`; check THIRD_PARTY_INTERVENTIONS for a list of good ones."
+            )
         intervention_u_value = THIRD_PARTY_INTERVENTIONS[intervention_name]["u_value"]
         if intervention_u_value is None:
             continue

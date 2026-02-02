@@ -54,7 +54,7 @@ def givenergy_records_to_dataframe(raw_data: list[GivEnergyDict]) -> pd.DataFram
     unpacked_records = []
     for row in raw_data:
         default_nan: dict[str, float] = defaultdict(lambda: float("NaN"))
-        solar = row.get("power", {}).get("solar", {}).get("arrays", [default_nan, default_nan])  # type: ignore
+        solar = row.get("power", {}).get("solar", {}).get("arrays", [default_nan, default_nan])
 
         grid = row.get("power", {}).get("grid", default_nan)
         battery = row.get("power", {}).get("battery", default_nan)

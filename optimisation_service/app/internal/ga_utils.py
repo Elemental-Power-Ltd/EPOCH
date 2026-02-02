@@ -82,7 +82,7 @@ class ProblemInstance(ElementwiseProblem):
                         cast(list[asset_t], site_range[asset_name]).append(cast(asset_t, parsed_asset.ranged))
                         num_attr_values.extend(parsed_asset.num_values)
 
-                        for attr_name in parsed_asset.ranged.keys():
+                        for attr_name in parsed_asset.ranged:
                             asset_parameters.append(  # noqa: PERF401
                                 AssetParameter(asset_name=asset_name, attr_name=attr_name, repeat_index=i)
                             )
@@ -95,7 +95,7 @@ class ProblemInstance(ElementwiseProblem):
                     num_attr_values.extend(parsed_asset.num_values)
 
                     # add the asset,attribute pairings to asset_parameters
-                    for attr_name in parsed_asset.ranged.keys():
+                    for attr_name in parsed_asset.ranged:
                         asset_parameters.append(AssetParameter(asset_name=asset_name, attr_name=attr_name))  # noqa: PERF401
 
             site_name = site.site_data.site_id
@@ -249,9 +249,7 @@ class ProblemInstance(ElementwiseProblem):
             A dictionnary of site solutions indexed on the site ids.
         """
         x_dict = self.split_solution(x)
-        portfolio_scenarios = {name: self.convert_site_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
-
-        return portfolio_scenarios
+        return {name: self.convert_site_chromosome_to_site_scenario(x, name) for name, x in x_dict.items()}
 
     def convert_site_scenario_to_chromosome(self, site_scenario: AnnotatedTaskData, site_name: str) -> npt.NDArray[np.floating]:
         """
@@ -315,7 +313,7 @@ class ProblemInstance(ElementwiseProblem):
         metric_values
             Dictionary of metric names and metric values with directions applied.
         """
-        for metric in metric_values.keys():
+        for metric in metric_values:
             metric_values[metric] *= MetricDirection[metric]
         return metric_values
 
@@ -413,11 +411,10 @@ class EstimateBasedSampling(Sampling):
                 epoch_data=site._epoch_data,
                 pop_size=n_samples,
             )
-            site_pops.append(
-                [problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios]
-            )
-        portfolio_pop = np.concatenate(site_pops, axis=1)
-        return portfolio_pop
+            site_pops.append([
+                problem.convert_site_scenario_to_chromosome(site_scenario, site_name) for site_scenario in site_scenarios
+            ])
+        return np.concatenate(site_pops, axis=1)
 
 
 class SimpleIntMutation(Mutation):
@@ -429,9 +426,7 @@ class SimpleIntMutation(Mutation):
     def _do(self, problem: ProblemInstance, X: npt.NDArray[np.floating], **kwargs: Never) -> npt.NDArray[np.floating]:
         X.astype(float)
         prob_var = self.get_prob_var(problem, size=len(X))
-        Xp = self.mut_simple_int(X, problem.xl, problem.xu, prob_var)
-
-        return Xp
+        return self.mut_simple_int(X, problem.xl, problem.xu, prob_var)
 
     @staticmethod
     def mut_simple_int(

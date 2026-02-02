@@ -4,9 +4,8 @@ from pathlib import Path
 
 import asyncpg
 import pytest
-from testing.postgresql import Database, PostgresqlFactory  # type: ignore
-
 from app.internal.utils.database_utils import MigrationDirection, extract_number_from_migration, get_migration_files
+from testing.postgresql import Database, PostgresqlFactory  # type: ignore
 
 db_factory = PostgresqlFactory(cache_initialized_db=True)
 

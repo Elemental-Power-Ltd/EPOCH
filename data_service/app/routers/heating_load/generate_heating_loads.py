@@ -21,8 +21,6 @@ from typing import Any, cast
 
 import numpy as np
 import pandas as pd
-from fastapi import HTTPException
-
 from app.dependencies import DatabasePoolDep, HttpClientDep
 from app.internal.epl_typing import HHDataFrame, NonHHDataFrame, RecordMapping, WeatherDataFrame, db_pool_t
 from app.internal.gas_meters import assign_hh_dhw_poisson, fit_bait_and_model, get_poisson_weights, hh_gas_to_monthly
@@ -30,7 +28,7 @@ from app.internal.site_manager.bundles import file_self_with_bundle
 from app.internal.site_manager.dataset_lists import list_thermal_models
 from app.internal.thermal_model import apply_fabric_interventions, building_adjusted_internal_temperature
 from app.internal.thermal_model.bait import weather_dataset_to_dataframe
-from app.internal.thermal_model.costs import calculate_THIRD_PARTY_intervention_costs, calculate_intervention_costs_params
+from app.internal.thermal_model.costs import calculate_intervention_costs_params, calculate_THIRD_PARTY_intervention_costs
 from app.internal.thermal_model.fitting import simulate_parameters
 from app.internal.thermal_model.phpp.interventions import THIRD_PARTY_INTERVENTIONS
 from app.internal.thermal_model.phpp.parse_phpp import (
@@ -52,6 +50,7 @@ from app.routers.heating_load.phpp import get_phpp_dataframe_from_database, list
 from app.routers.heating_load.router import api_router
 from app.routers.heating_load.thermal_model import get_thermal_model
 from app.routers.weather import get_weather
+from fastapi import HTTPException
 
 
 def apply_intervention_count_cost_offset(total_cost: float, interventions: list[Any]) -> float:

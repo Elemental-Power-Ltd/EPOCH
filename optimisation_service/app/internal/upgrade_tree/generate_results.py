@@ -7,10 +7,6 @@ This includes functions to check for what the combinations should be.
 import itertools
 import logging
 
-import epoch_simulator as eps
-from epoch_simulator import SimulationResult
-from epoch_simulator import TaskData as EpochTaskData
-
 from app.models.epoch_types.config import Config
 from app.models.epoch_types.task_data_type import (
     Building,
@@ -26,6 +22,10 @@ from app.models.epoch_types.task_data_type import (
 )
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.site_data import EpochSiteData
+
+import epoch_simulator as eps
+from epoch_simulator import SimulationResult
+from epoch_simulator import TaskData as EpochTaskData
 
 type AnyComponent = (
     Building

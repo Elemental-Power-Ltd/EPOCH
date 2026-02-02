@@ -152,6 +152,50 @@ jobs:
       run: |
         uv run mypy --warn-unused-configs --disallow-any-generics  --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --disallow-untyped-decorators --warn-redundant-casts --warn-unused-ignores --warn-return-any --no-implicit-reexport --strict-equality --extra-checks --disable-error-code type-arg ./
 
+  typecheck_opt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: ".python-version"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.9.27"
+        enable-cache: true
+    - name: Install mypy
+      run: uv add --dev mypy
+    - name: Install dependencies
+      run: uv sync --locked --all-extras --dev
+    - name: Typecheck Optimisation
+      working-directory: ./optimisation_service/
+      run: |
+        uv run mypy --warn-unused-configs --disallow-any-generics  --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --disallow-untyped-decorators --warn-redundant-casts --warn-unused-ignores --warn-return-any --no-implicit-reexport --strict-equality --extra-checks --disable-error-code type-arg ./
+
+ typecheck_server:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: ".python-version"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.9.27"
+        enable-cache: true
+    - name: Install mypy
+      run: uv add --dev mypy
+    - name: Install dependencies
+      run: uv sync --locked --all-extras --dev
+    - name: Typecheck EPOCH server
+      working-directory: ./epoch_server/
+      run: |
+        uv run mypy --warn-unused-configs --disallow-any-generics  --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --disallow-untyped-decorators --warn-redundant-casts --warn-unused-ignores --warn-return-any --no-implicit-reexport --strict-equality --extra-checks --disable-error-code type-arg ./
+
 
   run_opt_tests:
     needs: buildepoch

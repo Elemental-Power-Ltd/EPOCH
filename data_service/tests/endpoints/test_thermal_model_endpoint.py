@@ -7,7 +7,6 @@ import httpx
 import numpy as np
 import pytest
 import pytest_asyncio
-
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetTypeEnum

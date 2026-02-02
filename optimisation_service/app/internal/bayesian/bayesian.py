@@ -6,24 +6,6 @@ from typing import TypedDict, cast
 import numpy as np
 import numpy.typing as npt
 import torch
-from botorch import fit_gpytorch_mll  # type: ignore
-from botorch.acquisition.multi_objective.logei import (  # type: ignore
-    qLogExpectedHypervolumeImprovement,
-)
-from botorch.exceptions import BadInitialCandidatesWarning  # type: ignore
-from botorch.exceptions.warnings import UserInputWarning  # type: ignore
-from botorch.models.gp_regression import SingleTaskGP  # type: ignore
-from botorch.models.gpytorch import GPyTorchModel  # type: ignore
-from botorch.models.model_list_gp_regression import ModelListGP  # type: ignore
-from botorch.models.transforms.input import Normalize  # type: ignore
-from botorch.models.transforms.outcome import Standardize  # type: ignore
-from botorch.optim.optimize import optimize_acqf  # type: ignore
-from botorch.sampling.normal import IIDNormalSampler  # type: ignore
-from botorch.utils.multi_objective.box_decompositions.non_dominated import (  # type: ignore
-    FastNondominatedPartitioning,
-)
-from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood  # type: ignore
-
 from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser
 from app.internal.pareto_front import portfolio_pareto_front
 from app.models.algorithms import Algorithm
@@ -32,6 +14,23 @@ from app.models.core import Site
 from app.models.metrics import Metric, MetricDirection
 from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
+from botorch import fit_gpytorch_mll
+from botorch.acquisition.multi_objective.logei import (
+    qLogExpectedHypervolumeImprovement,
+)
+from botorch.exceptions import BadInitialCandidatesWarning
+from botorch.exceptions.warnings import UserInputWarning
+from botorch.models.gp_regression import SingleTaskGP
+from botorch.models.gpytorch import GPyTorchModel
+from botorch.models.model_list_gp_regression import ModelListGP
+from botorch.models.transforms.input import Normalize
+from botorch.models.transforms.outcome import Standardize
+from botorch.optim.optimize import optimize_acqf
+from botorch.sampling.normal import IIDNormalSampler
+from botorch.utils.multi_objective.box_decompositions.non_dominated import (
+    FastNondominatedPartitioning,
+)
+from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood  # type: ignore
 
 logger = logging.getLogger("default")
 
@@ -255,8 +254,7 @@ def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -
     sub_portfolios
         A list of portfolios.
     """
-    sub_portfolios = [portfolio[i : i + n_per_sub_portfolio] for i in range(0, len(portfolio), n_per_sub_portfolio)]
-    return sub_portfolios
+    return [portfolio[i : i + n_per_sub_portfolio] for i in range(0, len(portfolio), n_per_sub_portfolio)]
 
 
 def generate_random_candidates(n: int, max_capexs: list[float], capex_limit: float) -> npt.NDArray[np.floating]:
@@ -365,8 +363,7 @@ def create_capex_allocation_bounds(min_capexs: list[float], max_capexs: list[flo
     bounds
         A 2 x d tensor of lower and upper bounds for each of the train_x's d columns (Bounds on the sites' CAPEX allocations).
     """
-    bounds = torch.tensor(np.array([min_capexs, max_capexs]), **_TKWARGS)
-    return bounds
+    return torch.tensor(np.array([min_capexs, max_capexs]), **_TKWARGS)
 
 
 def optimize_acquisition_func_and_get_candidate(
@@ -419,7 +416,7 @@ def optimize_acquisition_func_and_get_candidate(
     acq_func = qLogExpectedHypervolumeImprovement(
         model=model,
         ref_point=ref_point,
-        partitioning=partitioning,
+        partitioning=partitioning,  # type: ignore
         sampler=sampler,
     )
     n_sub_portfolios = train_x.shape[-1]
@@ -469,11 +466,10 @@ def extract_sub_portfolio_capex_allocations(
     capex_allocations_per_sub
         A list of the sub portfolio CAPEX allocations.
     """
-    capex_allocations_per_sub = [
+    return [
         sum(solution.scenario[site_id].metric_values[Metric.capex] for site_id in portfolio)
         for portfolio in sub_portfolio_site_ids
     ]
-    return capex_allocations_per_sub
 
 
 def convert_solution_list_to_tensor(

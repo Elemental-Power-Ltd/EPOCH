@@ -4,9 +4,6 @@ import time
 from pathlib import Path
 
 import pytest
-from fastapi.encoders import jsonable_encoder
-from httpx import AsyncClient
-
 from app.internal.database.results import process_results
 from app.models.core import Task
 from app.models.epoch_types.site_range_type import (
@@ -21,6 +18,8 @@ from app.models.epoch_types.site_range_type import (
     SolarPanel,
 )
 from app.models.result import OptimisationResult
+from fastapi.encoders import jsonable_encoder
+from httpx import AsyncClient
 
 
 class TestSubmitPortfolioTask:

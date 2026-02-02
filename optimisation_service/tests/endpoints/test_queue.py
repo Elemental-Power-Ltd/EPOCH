@@ -1,13 +1,12 @@
 from collections import OrderedDict
 
 import pytest
-from fastapi.encoders import jsonable_encoder
-from httpx import AsyncClient
-
 from app.internal.queue import IQueue
 from app.internal.uuid7 import uuid7
 from app.models.core import Task
 from app.models.epl_queue import task_state
+from fastapi.encoders import jsonable_encoder
+from httpx import AsyncClient
 
 
 class TestQueueEndpoint:

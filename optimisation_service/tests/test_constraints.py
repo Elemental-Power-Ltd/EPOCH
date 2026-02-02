@@ -1,5 +1,4 @@
 import pytest
-
 from app.internal.constraints import (
     apply_default_constraints,
     are_metrics_in_constraints,
@@ -22,8 +21,7 @@ from .conftest import gen_dummy_sim_result
 @pytest.fixture
 def dummy_metric_values() -> MetricValues:
     sim_result = gen_dummy_sim_result()
-    metric_values = simulation_result_to_metric_dict(sim_result)
-    return metric_values
+    return simulation_result_to_metric_dict(sim_result)
 
 
 class TestCountConstraints:

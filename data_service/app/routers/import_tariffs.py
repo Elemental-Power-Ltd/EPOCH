@@ -11,9 +11,8 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException
-
 from app.internal.epl_typing import RecordMapping
+from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HttpClientDep
 from ..internal.client_data import get_postcode

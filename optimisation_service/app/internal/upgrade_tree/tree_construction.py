@@ -3,7 +3,6 @@ from collections.abc import Hashable, Iterable
 from typing import Any, cast
 
 import networkx as nx
-
 from app.models.core import PortfolioOptimisationResult
 
 type ResultsDict = dict[str, PortfolioOptimisationResult]
@@ -100,8 +99,7 @@ def generate_label(key: str, possible_components: Iterable[str]) -> str:
     str
         Components installed at each node, linked by newlines
     """
-    label = ",\n".join(comp for c, comp in zip(key, possible_components, strict=False) if bool(int(c)))
-    return label
+    return ",\n".join(comp for c, comp in zip(key, possible_components, strict=False) if bool(int(c)))
 
 
 def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> nx.DiGraph[str]:
@@ -171,7 +169,7 @@ def generate_graph(all_results: ResultsDict, possible_components: list[str]) -> 
     # We use the CAPEX values when animating the graph
     nx.set_node_attributes(
         cast(nx.Graph[Hashable], dG),
-        values={key: all_results[key].metrics.capex for key in all_results.keys()},
+        values={key: all_results[key].metrics.capex for key in all_results},
         name="capex",
     )
 
@@ -224,7 +222,7 @@ def find_maximising_path(G: nx.Graph[str], source: str, sink: str, weight: str, 
     """
     curr_node = source
     path = [curr_node]
-    while curr_node != sink and G.neighbors(curr_node):
+    while curr_node != sink and G.neighbors(curr_node):  # type: ignore
         neighbours = sorted(G[curr_node])
         if not neighbours:
             break

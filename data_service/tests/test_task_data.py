@@ -2,7 +2,6 @@
 
 import pydantic
 import pytest
-
 from app.models.epoch_types.task_data_type import Building
 
 

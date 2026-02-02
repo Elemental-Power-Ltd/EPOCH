@@ -16,10 +16,9 @@ import aiometer
 import numpy as np
 import pandas as pd
 import pydantic
-from fastapi import APIRouter, HTTPException
-
 from app.internal.epl_typing import RecordMapping
 from app.internal.utils import split_into_sessions
+from fastapi import APIRouter, HTTPException
 
 from ..dependencies import DatabasePoolDep, HTTPClient, HttpClientDep
 from ..internal.client_data import get_postcode
@@ -618,8 +617,7 @@ async def get_grid_co2(params: DatasetIDWithTime, pool: DatabasePoolDep) -> Epoc
     carbon_df = pd.DataFrame.from_records(
         cast(RecordMapping, res), columns=["start_ts", "forecast", "actual"], coerce_float=True
     )
-    carbon_df.index = pd.to_datetime(carbon_df["start_ts"])  # type: ignore
-
+    carbon_df.index = pd.to_datetime(carbon_df["start_ts"])
     carbon_df["GridCO2"] = carbon_df["actual"].astype(float).fillna(carbon_df["forecast"].astype(float))
     carbon_df["GridCO2"] = carbon_df["GridCO2"].interpolate(method="time")
     return EpochCarbonEntry(timestamps=carbon_df["start_ts"].tolist(), data=carbon_df["GridCO2"].to_list())

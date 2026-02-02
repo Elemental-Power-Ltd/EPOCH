@@ -22,8 +22,6 @@ import httpx
 import pytest
 import pytest_asyncio
 import testing.postgresql  # type: ignore
-from httpx import ASGITransport, AsyncClient
-
 from app.dependencies import (
     Database,
     DBConnection,
@@ -39,6 +37,7 @@ from app.internal.utils.utils import url_to_hash
 from app.job_queue import TerminateTaskGroup, TrackingQueue, process_jobs
 from app.lifespan import get_job_queue
 from app.main import app
+from httpx import ASGITransport, AsyncClient
 
 # apply a windows-specific patch for database termination (we can't use SIGINT)
 if sys.platform.startswith("win"):

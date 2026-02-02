@@ -20,12 +20,11 @@ import aiometer
 import httpx
 import pandas as pd
 import pydantic
-from fastapi import APIRouter
-
 from app.dependencies import DatabasePoolDep, HTTPClient, HttpClientDep, SecretsDep
 from app.epl_secrets import get_secrets_environment
 from app.internal.utils import RateLimiter, split_into_sessions
 from app.models.weather import WeatherDataProvider, WeatherDatasetEntry, WeatherRequest
+from fastapi import APIRouter
 
 router = APIRouter()
 

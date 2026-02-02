@@ -10,7 +10,6 @@ from typing import cast
 import httpx
 import pytest
 import pytest_asyncio
-
 from app.dependencies import get_secrets_dep, get_thread_pool, load_vae
 from app.epl_secrets import SecretDict
 from app.internal.elec_meters.vae import VAE

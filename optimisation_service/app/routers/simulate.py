@@ -4,7 +4,6 @@ import logging
 from typing import Annotated
 
 import pandas as pd
-from epoch_simulator import Simulator, TaskData
 from fastapi import APIRouter, Body
 
 from app.dependencies import HttpClientDep
@@ -21,6 +20,7 @@ from app.models.simulate import (
     RunSimulationRequest,
 )
 from app.models.site_data import EpochSiteData, site_metadata_t
+from epoch_simulator import Simulator, TaskData
 
 router = APIRouter()
 logger = logging.getLogger("default")
@@ -140,10 +140,7 @@ def do_simulation(epoch_data: EpochSiteData, task_data: TaskDataPydantic, config
 
     res = sim.simulate_scenario(pytd, fullReporting=True)
 
-    if res.report_data is not None:
-        report_data_pydantic = report_data_to_pydantic(res.report_data)
-    else:
-        report_data_pydantic = None
+    report_data_pydantic = report_data_to_pydantic(res.report_data) if res.report_data is not None else None
 
     metrics = simulation_result_to_pydantic(res)
     if report_data_pydantic is not None:

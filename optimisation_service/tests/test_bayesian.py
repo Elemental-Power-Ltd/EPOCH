@@ -1,7 +1,5 @@
 import pytest
 import torch
-from epoch_simulator import SimulationResult
-
 from app.internal.bayesian.bayesian import (
     _TKWARGS,
     Bayesian,
@@ -20,6 +18,8 @@ from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import Metric
 from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
+
+from epoch_simulator import SimulationResult
 
 
 class TestBayesian:

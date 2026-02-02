@@ -337,20 +337,22 @@ def fit_to_gas_usage(
     opt = BayesianOptimization(
         # There's a minus in here as BayesianOptimisation tries to maximise,
         # and we want to minimize the loss.
-        f=lambda scale_factor, ach, u_value, boiler_power, setpoint, dhw_usage: -parameters_to_loss(
-            scale_factor,
-            ach=ach,
-            u_value=u_value,
-            boiler_power=boiler_power,
-            setpoint=setpoint,
-            dhw_usage=dhw_usage,
-            gas_df=gas_df,
-            weather_df=weather_df,
-            elec_df=elec_df,
-            start_ts=None,  # calculate automatically from gas meters
-            end_ts=None,  # calculate automatically from gas meters
-            u_values_path=u_values_path,
-            seed=seed,
+        f=lambda scale_factor, ach, u_value, boiler_power, setpoint, dhw_usage: (
+            -parameters_to_loss(
+                scale_factor,
+                ach=ach,
+                u_value=u_value,
+                boiler_power=boiler_power,
+                setpoint=setpoint,
+                dhw_usage=dhw_usage,
+                gas_df=gas_df,
+                weather_df=weather_df,
+                elec_df=elec_df,
+                start_ts=None,  # calculate automatically from gas meters
+                end_ts=None,  # calculate automatically from gas meters
+                u_values_path=u_values_path,
+                seed=seed,
+            )
         ),
         pbounds=pbounds,
         bounds_transformer=SequentialDomainReductionTransformer(),

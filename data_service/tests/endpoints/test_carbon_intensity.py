@@ -7,16 +7,16 @@ import itertools
 import pydantic
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
-
 from app.internal.utils.uuid import uuid7
 from app.routers.carbon_intensity import fetch_carbon_intensity, postcode_to_db_gsp
+from httpx import AsyncClient
 
 from .conftest import MockedHttpClient, get_internal_client_hack, get_pool_hack
 
 
 class TestGSPFromPostcode:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_national(self) -> None:
         """Test that we get the right DB GSP for a None postcode."""
         async with MockedHttpClient() as client:
@@ -24,6 +24,7 @@ class TestGSPFromPostcode:
             assert resp == "uk"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_matt(self) -> None:
         """Test that we get the right code region for Matt's house."""
         async with MockedHttpClient() as client:
@@ -31,6 +32,7 @@ class TestGSPFromPostcode:
             assert resp == "A"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_provided_inbound(self) -> None:
         """Test that we're fine if you provide only an inbound postcode."""
         async with MockedHttpClient() as client:
@@ -38,6 +40,7 @@ class TestGSPFromPostcode:
             assert resp == "A"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_provided_isle_of_man(self) -> None:
         """Test that we're fine if you provided a non-mainland postcode."""
         async with MockedHttpClient() as client:
@@ -45,6 +48,7 @@ class TestGSPFromPostcode:
             assert resp == "G"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_provided_bad_postcode(self) -> None:
         """Test that we fail if you provided a bad postcode."""
         with pytest.raises(ValueError):
@@ -111,6 +115,7 @@ async def grid_co2_metadata(
 @pytest.mark.slow
 class TestCarbonIntensity:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_nonzero_seconds(self, client: AsyncClient, demo_site_id: str) -> None:
         """
         Test that we handle a case with nonzero seconds correctly.
@@ -124,6 +129,7 @@ class TestCarbonIntensity:
         assert result.status_code == 200, result.text
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_nonzero_minutes(self, client: AsyncClient, demo_site_id: str) -> None:
         """
         Test that we handle a case with nonzero minutes correctly.
@@ -137,6 +143,7 @@ class TestCarbonIntensity:
         assert result.status_code == 200, result.text
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_nonzero_hours(self, client: AsyncClient, demo_site_id: str) -> None:
         """
         Test that we handle a case with nonzero hours correctly.
@@ -150,6 +157,7 @@ class TestCarbonIntensity:
         assert result.status_code == 200, result.text
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate(self, grid_co2_metadata: pydantic.Json, demo_site_id: str) -> None:
         """Test that the generation succeeds and returns some sensible metadata."""
         assert datetime.datetime.fromisoformat(grid_co2_metadata["created_at"]) > datetime.datetime.now(
@@ -159,6 +167,7 @@ class TestCarbonIntensity:
         assert grid_co2_metadata["is_regional"]
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_generate_and_retrieve(
         self,
         grid_co2_metadata: pydantic.Json,
@@ -183,6 +192,7 @@ class TestCarbonIntensity:
         assert len(grid_co2_result["timestamps"]) == expected_entries, "Not enough entries in timestamps"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_check_right_length(
         self,
         grid_co2_metadata: pydantic.Json,
@@ -212,6 +222,7 @@ class TestCarbonIntensityChunking:
     """Test the chunking algorithm in the requests, which should split requests into 14 day chunks and over year boundaries."""
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_check_right_length_at_end_of_year(
         self,
         client: AsyncClient,
@@ -267,6 +278,7 @@ class TestCarbonIntensityChunking:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_check_right_length_one_day_into_next_year(
         self,
         client: AsyncClient,
@@ -325,6 +337,7 @@ class TestFetchCarbonIntensity:
     """Tests for the specific fetching function."""
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_bad_dates(self, client: AsyncClient) -> None:
         """Test that we fill in missing data between 2023-10-20T21:30:00Z and 2023-10-22T15:00:00Z."""
         bad_start_ts = datetime.datetime(year=2023, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
@@ -341,6 +354,7 @@ class TestFetchCarbonIntensity:
         assert len(res) == 3 * 48, "Not enough results in response"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_not_use_regional(self, client: AsyncClient) -> None:
         """Test that we fill in missing data between 2023-10-20T21:30:00Z and 2023-10-22T15:00:00Z without regional data."""
         bad_start_ts = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
@@ -357,6 +371,7 @@ class TestFetchCarbonIntensity:
             assert first["end_ts"] == second["start_ts"]
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_use_regional(self, client: AsyncClient) -> None:
         """Test that we get good regional data for a period without holes."""
         start_ts = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
@@ -373,6 +388,7 @@ class TestFetchCarbonIntensity:
             assert first["end_ts"] == second["start_ts"]
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_caching_faster(self, client: AsyncClient) -> None:
         """Test that making a second request is faster."""
         start_ts = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)
@@ -405,6 +421,7 @@ class TestFetchCarbonIntensity:
         assert (t2 - t1) + datetime.timedelta(seconds=10) > t3 - t2, "Second cached call was slower than first uncached call"
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_caching_overlaps(self, client: AsyncClient) -> None:
         """Test that getting cached overlaps is fine."""
         start_1 = datetime.datetime(year=2024, month=10, day=20, hour=0, minute=0, tzinfo=datetime.UTC)

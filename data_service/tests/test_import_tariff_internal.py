@@ -3,13 +3,13 @@
 # ruff: noqa: D101, D102
 import datetime
 
+import app.internal.import_tariffs as it
 import httpx
 import numpy as np
 import pandas as pd
 import pytest
-
-import app.internal.import_tariffs as it
 from app.models.import_tariffs import GSPEnum
+
 from tests.endpoints.conftest import MockedHttpClient
 
 
@@ -57,6 +57,7 @@ class TestTariffToNewDates:
 
 class TestGetFixedRates:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_loyalty_tariff(self) -> None:
         """Test that we get good day rates for a known loyalty tariff."""
         async with MockedHttpClient() as client:
@@ -64,6 +65,7 @@ class TestGetFixedRates:
         assert pytest.approx(27.0745) == result
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_bad_tariff(self) -> None:
         """Test that we raise the correct error for a bad tariff.."""
         with pytest.raises(ValueError, match="NOT_A_REAL_TARIFF"):
@@ -71,6 +73,7 @@ class TestGetFixedRates:
                 _ = await it.get_fixed_rates("NOT_A_REAL_TARIFF", region_code=GSPEnum.C, client=client)
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_agile_tariff(self) -> None:
         """Test that we don't try to get single costs for agile tariffs."""
         with pytest.raises(ValueError, match=r"use `get_octopus_tariff` for agile or varying tariffs."):
@@ -80,6 +83,7 @@ class TestGetFixedRates:
 
 class TestGetDayNightRates:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_loyalty_tariff(self) -> None:
         """Test that we get good day rates for a known loyalty tariff."""
         async with MockedHttpClient() as client:
@@ -88,6 +92,7 @@ class TestGetDayNightRates:
         assert pytest.approx(34.1549) == day
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_bad_tariff(self) -> None:
         """Test that we raise the correct error for a bad tariff.."""
         with pytest.raises(ValueError, match="NOT_A_REAL_TARIFF"):
@@ -95,6 +100,7 @@ class TestGetDayNightRates:
                 _ = await it.get_day_and_night_rates("NOT_A_REAL_TARIFF", region_code=GSPEnum.C, client=client)
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_agile_tariff(self) -> None:
         """Test that we can't get day/night costs for agile tariffs."""
         with pytest.raises(ValueError, match="AGILE-FLEX-22-11-25"):
@@ -104,6 +110,7 @@ class TestGetDayNightRates:
 
 class TestShapeShifterTariffs:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_shapeshifter_rates(self) -> None:
         """Test that we get sensible results for a shapeshifter tariff."""
         async with MockedHttpClient() as client:
@@ -114,6 +121,7 @@ class TestShapeShifterTariffs:
         assert result["night"] <= result["day"] <= result["peak"]
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_real_non_shapeshifter(self) -> None:
         """Test that we get a useful error for a non-shapeshifter tariff."""
         with pytest.raises(ValueError, match="AGILE-FLEX-22-11-25"):
@@ -123,6 +131,7 @@ class TestShapeShifterTariffs:
                 )
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_real_bad_tariff(self) -> None:
         """Test that we get a useful error for a bad tariff."""
         with pytest.raises(ValueError, match="NOT_A_REAL_TARIFF"):
@@ -130,6 +139,7 @@ class TestShapeShifterTariffs:
                 await it.get_shapeshifters_rates(postcode="SW1A 0AA", client=client, underlying_tariff="NOT_A_REAL_TARIFF")
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_real_bad_postcode(self) -> None:
         """Test that we get a useful error for a bad postcode."""
         with pytest.raises(ValueError, match="BAD_POSTCODE"):
@@ -139,6 +149,7 @@ class TestShapeShifterTariffs:
                 )
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_create_tariff_from_rates(self) -> None:
         """Test that we create a meaningful tariff from the rates."""
         async with MockedHttpClient() as client:
@@ -195,6 +206,7 @@ class TestSyntheticTariffs:
         assert np.all(np.logical_or.reduce([df["cost"] == fixed_cost, df["cost"] == night_cost, df["cost"] == peak_premium]))
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_create_elexon(self) -> None:
         """Test that we can create a tariff using Elexon wholesale data."""
         start_ts = datetime.datetime(year=2025, month=1, day=1, tzinfo=datetime.UTC)
@@ -243,6 +255,7 @@ class TestGetWholesale:
 
 class TestRE24Tariffs:
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_can_get_past(self) -> None:
         async with httpx.AsyncClient() as client:
             df = await it.get_re24_wholesale_tariff(
@@ -254,6 +267,7 @@ class TestRE24Tariffs:
         assert len(df) >= 31 * 2 * 24
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_can_get_now(self) -> None:
         async with httpx.AsyncClient() as client:
             df = await it.get_re24_wholesale_tariff(
@@ -268,6 +282,7 @@ class TestRE24Tariffs:
         assert len(df) >= 7 * 2 * 24
 
     @pytest.mark.asyncio
+    @pytest.mark.external
     async def test_units_correct(self) -> None:
         """Test that we've got the correct units for external consumption."""
         async with httpx.AsyncClient() as client:

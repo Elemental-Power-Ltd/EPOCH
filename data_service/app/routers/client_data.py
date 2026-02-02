@@ -12,11 +12,10 @@ from logging import getLogger
 from typing import cast
 
 import asyncpg
+from app.routers.heating_load.phpp import list_phpp
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pydantic_core._pydantic_core import ValidationError
-
-from app.routers.heating_load.phpp import list_phpp
 
 from ..dependencies import DatabasePoolDep
 from ..internal.utils.uuid import uuid7

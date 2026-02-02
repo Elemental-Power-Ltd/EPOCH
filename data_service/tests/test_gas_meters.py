@@ -3,7 +3,6 @@
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.internal.epl_typing import HHDataFrame, NonHHDataFrame, WeatherDataFrame
 from app.internal.gas_meters import assign_hh_dhw_even, hh_gas_to_monthly, monthly_to_hh_hload
 

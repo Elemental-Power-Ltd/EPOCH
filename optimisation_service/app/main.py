@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -32,10 +32,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             task = tg.create_task(process_tasks(queue=queue, http_client=http_client))
             yield
             # Shutdown events
-            try:
+            with suppress(TimeoutError):
                 await asyncio.wait_for(queue.join(), timeout=10.0)
-            except TimeoutError:
-                print("Failed to shutdown queue.")
             task.cancel()
     except* Exception as eg:
         for e in eg.exceptions:

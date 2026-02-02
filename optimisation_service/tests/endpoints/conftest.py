@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import datetime
 import json
 from collections.abc import AsyncGenerator
@@ -8,9 +9,6 @@ from typing import Any, cast
 import httpx
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from pandas.core.api import DataFrame as DataFrame
-
 from app.dependencies import CachedAsyncClient, HTTPClient, Jsonable, get_http_client, get_queue, url_to_hash
 from app.internal.database.utils import _DB_URL
 from app.internal.queue import IQueue
@@ -24,6 +22,8 @@ from app.models.optimisers import (
     NSGA2Optimiser,
     OptimiserStr,
 )
+from httpx import ASGITransport, AsyncClient
+from pandas.core.api import DataFrame as DataFrame
 
 _http_client = AsyncClient(headers=[("Connection", "close")], timeout=60.0)
 
@@ -52,10 +52,9 @@ class MockedHttpClient(CachedAsyncClient):
         stored_result_configuration = Path(storage_path, f"{url_params}.json")
         if stored_result_configuration.exists():
             return cast(Jsonable, json.loads(stored_result_configuration.read_text()))
-        else:
-            data = (await _http_client.post(url, **kwargs)).json()
-            stored_result_configuration.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
+        data = (await _http_client.post(url, **kwargs)).json()
+        stored_result_configuration.write_text(json.dumps(data, indent=4, sort_keys=True))
+        return cast(Jsonable, data)
 
     def transmit_task(self) -> None:
         pass
@@ -67,10 +66,9 @@ class MockedHttpClient(CachedAsyncClient):
         stored_dataset_bundles_list = Path(storage_path, f"{url_params}.json")
         if stored_dataset_bundles_list.exists():
             return cast(Jsonable, json.loads(stored_dataset_bundles_list.read_text()))
-        else:
-            data = (await _http_client.post(url, **kwargs)).json()
-            stored_dataset_bundles_list.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
+        data = (await _http_client.post(url, **kwargs)).json()
+        stored_dataset_bundles_list.write_text(json.dumps(data, indent=4, sort_keys=True))
+        return cast(Jsonable, data)
 
     async def get_dataset_bundle(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("params"))
@@ -79,10 +77,9 @@ class MockedHttpClient(CachedAsyncClient):
         stored_dataset_bundle = Path(storage_path, f"{url_params}.json")
         if stored_dataset_bundle.exists():
             return cast(Jsonable, json.loads(stored_dataset_bundle.read_text()))
-        else:
-            data = (await _http_client.post(url, **kwargs)).json()
-            stored_dataset_bundle.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
+        data = (await _http_client.post(url, **kwargs)).json()
+        stored_dataset_bundle.write_text(json.dumps(data, indent=4, sort_keys=True))
+        return cast(Jsonable, data)
 
     async def get_bundle_contents_list(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("params"))
@@ -91,10 +88,9 @@ class MockedHttpClient(CachedAsyncClient):
         stored_bundle_contents_list = Path(storage_path, f"{url_params}.json")
         if stored_bundle_contents_list.exists():
             return cast(Jsonable, json.loads(stored_bundle_contents_list.read_text()))
-        else:
-            data = (await _http_client.post(url, **kwargs)).json()
-            stored_bundle_contents_list.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
+        data = (await _http_client.post(url, **kwargs)).json()
+        stored_bundle_contents_list.write_text(json.dumps(data, indent=4, sort_keys=True))
+        return cast(Jsonable, data)
 
     async def get_specific_datasets(self, url: str, **kwargs: Any) -> Jsonable:
         url_params = url_to_hash(url, kwargs.get("json"))
@@ -103,10 +99,9 @@ class MockedHttpClient(CachedAsyncClient):
         stored_specific_datasets = Path(storage_path, f"{url_params}.json")
         if stored_specific_datasets.exists():
             return cast(Jsonable, json.loads(stored_specific_datasets.read_text()))
-        else:
-            data = (await _http_client.post(url, **kwargs)).json()
-            stored_specific_datasets.write_text(json.dumps(data, indent=4, sort_keys=True))
-            return cast(Jsonable, data)
+        data = (await _http_client.post(url, **kwargs)).json()
+        stored_specific_datasets.write_text(json.dumps(data, indent=4, sort_keys=True))
+        return cast(Jsonable, data)
 
     async def post(self, url: str | httpx._urls.URL, **kwargs: Any) -> httpx._models.Response:
         """Mock known posts requests by loading the data from files."""
@@ -117,27 +112,27 @@ class MockedHttpClient(CachedAsyncClient):
             self.transmit_results(**kwargs)
             return httpx.Response(status_code=200)
 
-        elif url == _DB_URL + "/get-result-configuration":
+        if url == _DB_URL + "/get-result-configuration":
             stored_result_configuration = await self.get_result_configuration(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_result_configuration)
 
-        elif url == _DB_URL + "/add-optimisation-task":
+        if url == _DB_URL + "/add-optimisation-task":
             self.transmit_task()
             return httpx.Response(status_code=200)
 
-        elif url == _DB_URL + "/list-dataset-bundles":
+        if url == _DB_URL + "/list-dataset-bundles":
             stored_dataset_bundles_list = await self.get_dataset_bundles_list(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_dataset_bundles_list)
 
-        elif url == _DB_URL + "/get-dataset-bundle":
+        if url == _DB_URL + "/get-dataset-bundle":
             stored_dataset_bundle = await self.get_dataset_bundle(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_dataset_bundle)
 
-        elif url == _DB_URL + "/list-bundle-contents":
+        if url == _DB_URL + "/list-bundle-contents":
             stored_bundle_contents_list = await self.get_bundle_contents_list(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_bundle_contents_list)
 
-        elif url == _DB_URL + "/get-specific-datasets":
+        if url == _DB_URL + "/get-specific-datasets":
             stored_specific_datasets = await self.get_specific_datasets(url=url, **kwargs)
             return httpx.Response(status_code=200, json=stored_specific_datasets)
 
@@ -182,10 +177,8 @@ async def client(result_tmp_path: Path) -> AsyncGenerator[AsyncClient]:
             )
         )
         yield client
-        try:
+        with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(queue.join(), timeout=10.0)
-        except TimeoutError:
-            print("Failed to shutdown queue.")
         task.cancel()
 
 

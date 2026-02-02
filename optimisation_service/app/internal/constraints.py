@@ -193,7 +193,7 @@ def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01, dhw_tole
     ch_max = max(heat_tolerance * hload, 1.0)
     dhw_max = max(dhw_tolerance * dhw_load, 1.0)
 
-    constraints = {
+    return {
         Metric.total_electrical_shortfall: Bounds(max=1),
         Metric.total_ch_shortfall: Bounds(max=ch_max),
         Metric.total_dhw_shortfall: Bounds(max=dhw_max),
@@ -201,7 +201,6 @@ def get_shortfall_constraints(site: Site, heat_tolerance: float = 0.01, dhw_tole
         Metric.total_heat_shortfall: Bounds(max=ch_max + dhw_max),
         Metric.peak_hload_shortfall: Bounds(max=0),
     }
-    return constraints
 
 
 def apply_default_constraints(

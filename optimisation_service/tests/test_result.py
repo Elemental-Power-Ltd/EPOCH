@@ -1,5 +1,4 @@
 import pytest
-
 from app.internal.result import get_baseline_portfolio_solution
 from app.models.core import Site
 from app.models.result import OptimisationResult

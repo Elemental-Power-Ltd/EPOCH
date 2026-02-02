@@ -5,14 +5,13 @@ from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
 import pytest
-from numpy.testing import assert_array_almost_equal
-
 from app.internal.utils.conversions import (
     celsius_to_kelvin,
     m3_to_kwh,
     millibar_to_megapascal,
     relative_to_specific_humidity,
 )
+from numpy.testing import assert_array_almost_equal
 
 FloatOrArray = float | npt.NDArray[np.floating]
 

@@ -6,10 +6,9 @@ import itertools
 import numpy as np
 import pytest
 import pytest_asyncio
+from app.internal.utils.uuid import uuid7
 from httpx import AsyncClient
 from pydantic import Json
-
-from app.internal.utils.uuid import uuid7
 
 
 @pytest.fixture

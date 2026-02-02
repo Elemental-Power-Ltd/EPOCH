@@ -207,9 +207,7 @@ class SiteData(pydantic.BaseModel):
     name: str = pydantic.Field(
         examples=["Demo - London", "Demonstration Offices"], description="Human readable name of this site"
     )
-    location: str = pydantic.Field(
-        examples=["London", "Worksop"], description="Nearest town or weather station to this site."
-    )
+    location: str = pydantic.Field(examples=["London", "Worksop"], description="Nearest town or weather station to this site.")
     coordinates: tuple[float, float] = pydantic.Field(
         examples=[(51.499669471331015, -0.1248477037277857884), (51.46347923229967686, -3.162713781953953301)]
     )

@@ -175,7 +175,8 @@ def parse_daily_readings(fname: os.PathLike | str | BinaryIO) -> NonHHDataFrame:
         (start_ts, end_ts, consumption) half hourly data
     """
     readings_df = (
-        pd.read_csv(fname, skipinitialspace=True)
+        pd
+        .read_csv(fname, skipinitialspace=True)
         .rename(columns=lambda x: x.strip())
         .rename(
             columns={"Read Type": "reading_type", "Read": "reading", "Date": "timestamp", "Consumption (m^3)": "consumption_m3"}
@@ -468,7 +469,8 @@ def parse_square_half_hourly(fname: os.PathLike | str | BinaryIO) -> HHDataFrame
         (start_ts, end_ts, consumption) half hourly data
     """
     square_df = (
-        pd.read_csv(fname, skipinitialspace=True)
+        pd
+        .read_csv(fname, skipinitialspace=True)
         .rename(columns=lambda x: x.strip().lower())
         .rename(
             columns={

@@ -1,9 +1,8 @@
 import datetime
 
 import pytest
-from pydantic import ValidationError
-
 from app.models.site_data import EpochSiteData
+from pydantic import ValidationError
 
 
 class TestSiteDataLength:

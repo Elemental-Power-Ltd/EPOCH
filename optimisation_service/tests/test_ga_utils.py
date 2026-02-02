@@ -2,7 +2,6 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
-
 from app.internal.constraints import count_constraints
 from app.internal.ga_utils import (
     ProblemInstance,
@@ -315,29 +314,25 @@ class TestRoundingAndDegenerateRepair:
 
         rdr = RoundingAndDegenerateRepair()
 
-        X = np.array(
-            [
-                [0, 1, 1, 1, 1, 1],
-                [1, 0, 1, 1, 1, 1],
-                [1, 1, 0, 1, 1, 1],
-                [1, 1, 1, 0, 1, 1],
-                [1, 1, 1, 1, 0, 1],
-                [1, 1, 1, 1, 1, 0],
-            ]
-        )
+        X = np.array([
+            [0, 1, 1, 1, 1, 1],
+            [1, 0, 1, 1, 1, 1],
+            [1, 1, 0, 1, 1, 1],
+            [1, 1, 1, 0, 1, 1],
+            [1, 1, 1, 1, 0, 1],
+            [1, 1, 1, 1, 1, 0],
+        ])
 
         res = rdr._do(pi, X)
         assert res.shape == X.shape
         assert (
             res
-            == np.array(
-                [
-                    [0, 0, 1, 1, 1, 1],
-                    [1, 0, 1, 1, 1, 1],
-                    [1, 1, 0, 1, 1, 1],
-                    [1, 1, 1, 0, 0, 1],
-                    [1, 1, 1, 1, 0, 1],
-                    [1, 1, 1, 1, 1, 0],
-                ]
-            )
+            == np.array([
+                [0, 0, 1, 1, 1, 1],
+                [1, 0, 1, 1, 1, 1],
+                [1, 1, 0, 1, 1, 1],
+                [1, 1, 1, 0, 0, 1],
+                [1, 1, 1, 1, 0, 1],
+                [1, 1, 1, 1, 1, 0],
+            ])
         ).all

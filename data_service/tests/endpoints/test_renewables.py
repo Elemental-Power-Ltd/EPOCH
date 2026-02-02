@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import pytest_asyncio
-
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.pvgis import get_pvgis_optima

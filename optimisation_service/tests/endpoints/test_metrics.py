@@ -2,9 +2,8 @@ from typing import cast
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
-
 from app.models.metrics import MetricDirection
+from httpx import AsyncClient
 
 
 class TestMain:

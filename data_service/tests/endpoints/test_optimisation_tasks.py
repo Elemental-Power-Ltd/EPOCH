@@ -10,8 +10,6 @@ import numpy as np
 import pydantic
 import pytest
 import pytest_asyncio
-from fastapi.encoders import jsonable_encoder
-
 from app.internal.utils.uuid import uuid7
 from app.models.epoch_types import TaskDataPydantic
 from app.models.epoch_types.task_data_type import Building, Grid
@@ -27,6 +25,7 @@ from app.models.optimisation import (
     TaskResult,
 )
 from app.models.site_manager import SiteDataEntry
+from fastapi.encoders import jsonable_encoder
 
 from .conftest import get_pool_hack
 

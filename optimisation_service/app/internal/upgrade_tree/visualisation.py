@@ -3,9 +3,8 @@ import itertools
 import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import networkx as nx
-from matplotlib.axes import Axes
-
 from app.models.core import PortfolioOptimisationResult
+from matplotlib.axes import Axes
 
 from .tree_construction import find_maximising_path, is_in_elec_shortfall, is_in_heat_shortfall
 
@@ -51,8 +50,8 @@ def draw_upgrade_tree(
         Nicely drawn upgrade tree
     """
     heat_thresh = 150
-    shortfall_nodes = [key for key in all_results.keys() if is_in_elec_shortfall(key, all_results, 0.0)]
-    heat_shortfall_nodes = [key for key in all_results.keys() if is_in_heat_shortfall(key, all_results, heat_thresh)]
+    shortfall_nodes = [key for key in all_results if is_in_elec_shortfall(key, all_results, 0.0)]
+    heat_shortfall_nodes = [key for key in all_results if is_in_heat_shortfall(key, all_results, heat_thresh)]
 
     shortest_path = find_maximising_path(G, source, sink, weight="operating_cost", sign=1)
     shortest_path_components = [{possible_components[idx] for idx, val in enumerate(s) if val == "1"} for s in shortest_path]
@@ -60,8 +59,8 @@ def draw_upgrade_tree(
 
     if ax is None:
         _, ax = plt.subplots()
-    pos: dict[str, tuple[float, float]] = nx.get_node_attributes(G, "pos")
-    labels: dict[str, str] = nx.get_node_attributes(G, "label")
+    pos: dict[str, tuple[float, float]] = nx.get_node_attributes(G, "pos")  # type: ignore
+    labels: dict[str, str] = nx.get_node_attributes(G, "label")  # type: ignore
     in_cost_nodes = list(G.nodes)
     nx.draw_networkx_nodes(G, pos=pos, node_size=node_size, nodelist=in_cost_nodes, ax=ax)
     nx.draw_networkx_nodes(G, pos=pos, node_size=node_size, nodelist=shortfall_nodes, node_color="#DD0000", ax=ax)
@@ -76,10 +75,10 @@ def draw_upgrade_tree(
     nx.draw_networkx_edge_labels(
         G,
         pos=pos,
-        edge_labels={k: f"£{v:.2f}" for k, v in nx.get_edge_attributes(G, "operating_cost").items()},
+        edge_labels={k: f"£{v:.2f}" for k, v in nx.get_edge_attributes(G, "operating_cost").items()},  # type: ignore
         font_size=8,
     )
-    operating_costs: dict[str, float] = nx.get_node_attributes(G, "operating_cost")
+    operating_costs: dict[str, float] = nx.get_node_attributes(G, "operating_cost")  # type: ignore
     ax.set_title(" -> ".join(order) + "\n" + f"Operating cost: £{operating_costs[sink]:.2f}")
     min_x, max_x = min(item[0] for item in pos.values()) * 1.1, max(item[0] for item in pos.values()) * 1.1
 

@@ -4,7 +4,6 @@
 from copy import deepcopy
 
 import pytest
-
 from app.internal.thermal_model import apply_fabric_interventions
 from app.internal.thermal_model.building_fabric import apply_thermal_model_fabric_interventions
 from app.internal.thermal_model.costs import calculate_intervention_costs_params

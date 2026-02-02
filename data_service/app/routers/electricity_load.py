@@ -10,8 +10,6 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException
-
 from app.dependencies import DatabasePoolDep, ThreadPoolDep, VaeDep
 from app.internal.elec_meters import daily_to_hh_eload, day_type, monthly_to_daily_eload
 from app.internal.elec_meters.model_utils import OffsetMethodEnum
@@ -23,6 +21,7 @@ from app.internal.utils.uuid import uuid7
 from app.models.core import DatasetIDWithTime, DatasetTypeEnum, FuelEnum
 from app.models.electricity_load import ElectricalLoadMetadata, ElectricalLoadRequest, EpochElectricityEntry
 from app.models.meter_data import ReadingTypeEnum
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 

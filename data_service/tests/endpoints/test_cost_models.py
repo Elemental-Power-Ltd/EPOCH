@@ -4,7 +4,6 @@ from typing import Any
 
 import httpx
 import pytest
-
 from app.internal.utils.uuid import uuid7
 
 

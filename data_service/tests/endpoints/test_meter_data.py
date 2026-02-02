@@ -6,7 +6,6 @@ import json
 
 import httpx
 import pytest
-
 from app.internal.gas_meters import parse_half_hourly, try_meter_parsing
 from app.internal.utils.uuid import uuid7
 

@@ -94,9 +94,8 @@ class IQueue(asyncio.Queue[Task]):
         if self.q[task.task_id].state == task_state.QUEUED:
             self.q[task.task_id].state = task_state.RUNNING
             return task
-        else:
-            self.mark_task_done(task)
-            return await self.get()
+        self.mark_task_done(task)
+        return await self.get()
 
     def mark_task_done(self, task: Task) -> None:
         """

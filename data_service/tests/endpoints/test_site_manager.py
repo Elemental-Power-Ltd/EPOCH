@@ -10,7 +10,6 @@ import httpx
 import numpy as np
 import pytest
 import pytest_asyncio
-
 from app.internal.epl_typing import Jsonable
 from app.internal.gas_meters import parse_half_hourly
 from app.internal.site_manager.bundles import insert_dataset_bundle
@@ -311,6 +310,7 @@ class TestGenerateAll:
 
 class TestGetLatestElectricity:
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_get_blended_latest_elec(
         self, client: httpx.AsyncClient, upload_meter_data: tuple[dict[str, Jsonable], dict[str, Jsonable]]
     ) -> None:

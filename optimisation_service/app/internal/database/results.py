@@ -1,8 +1,6 @@
 import datetime
 import logging
 
-from fastapi.encoders import jsonable_encoder
-
 from app.dependencies import HTTPClient
 from app.internal.epoch.converters import simulation_result_to_pydantic
 from app.internal.ga_utils import strip_annotations
@@ -16,6 +14,7 @@ from app.models.core import (
 from app.models.database import dataset_id_t
 from app.models.result import OptimisationResult
 from app.models.simulate import LegacyResultReproConfig, NewResultReproConfig, result_repro_config_t
+from fastapi.encoders import jsonable_encoder
 
 from .utils import _DB_URL
 

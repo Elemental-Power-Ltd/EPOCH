@@ -1,7 +1,6 @@
 from itertools import combinations
 
 import pytest
-
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.models.core import Site
 from app.models.metrics import _OBJECTIVES, Metric, MetricDirection

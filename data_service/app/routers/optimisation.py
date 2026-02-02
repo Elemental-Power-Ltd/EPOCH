@@ -15,9 +15,6 @@ from typing import cast
 
 import asyncpg
 import numpy as np
-from fastapi import APIRouter, HTTPException
-from fastapi.encoders import jsonable_encoder
-
 from app.dependencies import DatabasePoolDep
 from app.internal.epl_typing import Jsonable
 from app.internal.optimisation import pick_highlighted_results
@@ -56,6 +53,8 @@ from app.models.optimisation import (
 from app.models.site_manager import BundleHints, SiteDataEntry
 from app.models.site_range import SiteRange
 from app.routers.site_manager import get_bundle_hints
+from fastapi import APIRouter, HTTPException
+from fastapi.encoders import jsonable_encoder
 
 router = APIRouter()
 

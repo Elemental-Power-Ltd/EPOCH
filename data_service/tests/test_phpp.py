@@ -5,7 +5,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.internal.thermal_model.phpp.interventions import StructuralArea
 from app.internal.thermal_model.phpp.parse_phpp import (
     StructuralInfo,
@@ -93,7 +92,7 @@ class TestHeatLossAndInterventions:
         """Test that we can apply interventions to the PHPP to get new U values."""
         parsed_df = parsed_phpp[0]
         new_df = apply_phpp_intervention(parsed_df, intervention)
-        assert new_df is not parsed_phpp, "Intervention dataframe didn't get copied"
+        assert new_df is not parsed_phpp[0], "Intervention dataframe didn't get copied"
         assert (new_df["u_value"] <= parsed_df["u_value"]).all(), "U values have increased"
         assert (new_df["u_value"] < parsed_df["u_value"]).any(), "U values have not lowered"
 

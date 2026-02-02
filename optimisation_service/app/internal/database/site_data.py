@@ -4,10 +4,6 @@ import operator
 from datetime import datetime
 from typing import cast
 
-from fastapi import HTTPException
-from fastapi.encoders import jsonable_encoder
-from pydantic import UUID7, AwareDatetime
-
 from app.dependencies import HTTPClient
 from app.models.core import Site, Task
 from app.models.database import BundleMetadata, bundle_id_t, dataset_id_t
@@ -21,6 +17,9 @@ from app.models.site_data import (
     SiteMetaData,
     site_metadata_t,
 )
+from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
+from pydantic import UUID7, AwareDatetime
 
 from .results import get_result_configuration
 from .utils import _DB_URL
@@ -93,9 +92,7 @@ async def get_latest_site_data_bundle(site_data: site_metadata_t, http_client: H
 
     site_data_entries = await get_bundled_data(bundle_id=bundle_id, http_client=http_client)
 
-    epoch_data = site_data_entries_to_epoch_site_data(site_data_entries, start_ts, end_ts)
-
-    return epoch_data
+    return site_data_entries_to_epoch_site_data(site_data_entries, start_ts, end_ts)
 
 
 async def get_latest_bundle_metadata(
@@ -217,7 +214,7 @@ def site_data_entries_to_epoch_site_data(
     site_data
         EPOCH ingestable data.
     """
-    site_data = EpochSiteData(
+    return EpochSiteData(
         start_ts=start_ts,
         end_ts=end_ts,
         baseline=site_data_entries.baseline,
@@ -234,7 +231,6 @@ def site_data_entries_to_epoch_site_data(
         ashp_input_table=site_data_entries.ashp_input.data,
         ashp_output_table=site_data_entries.ashp_output.data,
     )
-    return site_data
 
 
 async def get_saved_epoch_input(portfolio_id: dataset_id_t, site_id: str, http_client: HTTPClient) -> EpochInputData:

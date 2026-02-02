@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pytest
-
 from app.internal.epl_typing import WeatherDataFrame
 from app.internal.thermal_model import building_adjusted_internal_temperature
 from app.internal.utils import relative_to_specific_humidity

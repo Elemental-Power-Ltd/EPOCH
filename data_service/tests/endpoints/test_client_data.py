@@ -5,10 +5,9 @@
 import json
 
 import pytest
-from httpx import AsyncClient
-
 from app.internal.utils.uuid import uuid7
 from app.models.core import ClientData, SiteData
+from httpx import AsyncClient
 
 from .conftest import get_pool_hack
 
@@ -40,9 +39,8 @@ class TestClientData:
     async def test_list_sites(self, client: AsyncClient) -> None:
         response = await client.post("/list-sites", json={"client_id": "demo"})
         assert response.is_success
-        assert len(response.json()) == 2
-        assert response.json()[0]["site_id"] == "demo_cardiff"
-        assert response.json()[1]["site_id"] == "demo_london"
+        assert len(response.json()) == 3
+        assert {item["site_id"] for item in response.json()} == {"demo_cardiff", "demo_edinburgh", "demo_london"}
 
     @pytest.mark.asyncio
     async def test_add_site(self, client: AsyncClient) -> None:
@@ -177,9 +175,7 @@ class TestSiteBaseline:
             "solar_panels": [{"yield_scalar": 100, "yield_index": 0}, {"yield_scalar": 200, "yield_index": 1}],
             "heat_pump": {"heat_power": 300},
         }
-        response = await client.post(
-            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
-        )
+        response = await client.post("/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline})
         assert response.is_success, response.text
         response = await client.post("/get-site-baseline", json={"site_id": "demo_london"})
         assert response.is_success, response.text
@@ -231,9 +227,7 @@ class TestSiteBaseline:
         baseline = {
             "building": {"floor_area": 89.0},
         }
-        response = await client.post(
-            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
-        )
+        response = await client.post("/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline})
         response = await client.post("/get-site-baseline", json={"site_id": "demo_london"})
         assert response.is_success
         data = response.json()
@@ -247,9 +241,7 @@ class TestBaselineTariff:
         baseline = {
             "building": {"floor_area": 89.0},
         }
-        response = await client.post(
-            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
-        )
+        response = await client.post("/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline})
         assert response.is_success
         baseline_id = response.json()
         response = await client.post("/get-site-baseline", json={"dataset_id": baseline_id})
@@ -278,9 +270,7 @@ class TestBaselineTariff:
         baseline = {
             "building": {"floor_area": 89.0},
         }
-        response = await client.post(
-            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
-        )
+        response = await client.post("/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline})
         assert response.is_success
         baseline_id = response.json()
 
@@ -302,9 +292,7 @@ class TestBaselineTariff:
         baseline = {
             "building": {"floor_area": 90.0},
         }
-        response = await client.post(
-            "/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline}
-        )
+        response = await client.post("/add-site-baseline", json={"site_id": {"site_id": "demo_london"}, "baseline": baseline})
         list_resp = await client.post("/list-site-baselines", json={"site_id": "demo_london"})
         assert list_resp.is_success, list_resp.text
         list_data = list_resp.json()

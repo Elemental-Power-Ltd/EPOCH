@@ -7,7 +7,6 @@ from typing import cast
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.dependencies import load_vae
 from app.internal.elec_meters import daily_to_hh_eload
 from app.internal.elec_meters.preprocessing import hh_to_square
@@ -214,7 +213,7 @@ class TestObservedData:
     ) -> None:
         """Test that we can use observed data from a different period."""
         square_df = hh_to_square(hh_df).ffill().bfill()
-        square_df.index -= pd.Timedelta(days=365)
+        square_df.index -= pd.Timedelta(days=365)  # type: ignore
         # This should return okay
         new_df = daily_to_hh_eload(daily_df=daily_df, model=vae_model, target_hh_observed_df=square_df, rng=rng)
         assert isinstance(new_df, pd.DataFrame)

@@ -164,7 +164,7 @@ def clean_time_series(
     # freq = df_clean.index.to_series().diff().mode()[0]
     diffs = df_clean.index.to_series().diff()
     modes = diffs.mode()
-    if not modes.empty and isinstance(modes[0], pd.Timedelta):
+    if not modes.empty and isinstance(modes[0], pd.Timedelta):  # type: ignore
         freq: pd.Timedelta = modes[0]  # type: ignore
     else:
         freq = pd.Timedelta(minutes=30)  # default to half-hourly
@@ -186,7 +186,7 @@ def clean_time_series(
         if mad == 0:
             z_scores = np.abs((df_clean[value_column] - df_clean[value_column].median()) / df_clean[value_column].std())
         else:
-            z_scores = np.abs((df_clean[value_column] - df_clean[value_column].median()) / mad)  # type: ignore
+            z_scores = np.abs((df_clean[value_column] - df_clean[value_column].median()) / mad)
 
         # Identify outliers
         outliers = z_scores > z_score_threshold

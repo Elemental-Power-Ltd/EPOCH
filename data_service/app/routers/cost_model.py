@@ -5,11 +5,10 @@ A cost model is a set of piecewise linear functions used by EPOCH to estimate co
 
 import json
 
-from fastapi import APIRouter, HTTPException
-
 from app.dependencies import DatabasePoolDep
 from app.models.core import dataset_id_t
 from app.models.cost_model import CostModelResponse
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 

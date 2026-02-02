@@ -213,7 +213,8 @@ class VAE(nn.Module):  # noqa: D101
         lstm_input = torch.cat(
             [
                 lstm_input,
-                torch.Tensor(np.arange(1, seq_len + 1, dtype=np.float64) / seq_len)
+                torch
+                .Tensor(np.arange(1, seq_len + 1, dtype=np.float64) / seq_len)
                 .unsqueeze(0)
                 .unsqueeze(2)  # Shape: (1, seq_len, 1)
                 .expand(lstm_input.shape[0], -1, -1)  # Shape: (batch_size * n_days, seq_len, 1)

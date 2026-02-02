@@ -4,7 +4,6 @@
 
 import httpx
 import pytest
-
 from app.internal.energy_performance_certificate import get_cepc_by_lmk, get_dec_by_lmk
 
 
