@@ -1,0 +1,99 @@
+name: Lint and Test Data Service
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["data_service/**"]
+
+jobs:
+  typecheck_data:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: ".python-version"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.9.27"
+        enable-cache: true
+    - name: Install mypy
+      run: uv add --dev mypy
+    - name: Install dependencies
+      run: uv sync --locked --all-extras --dev
+    - name: Typecheck Data
+      working-directory: ./data_service/
+      run: |
+        uv run mypy --warn-unused-configs --disallow-any-generics  --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --disallow-untyped-decorators --warn-redundant-casts --warn-unused-ignores --warn-return-any --no-implicit-reexport --strict-equality --extra-checks --disable-error-code type-arg ./
+  
+  run_data_tests:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: ".python-version"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.9.27"
+        enable-cache: true
+    - name: Install dependencies
+      run: uv sync --locked --all-extras --dev
+    - name: Run Pytest
+      working-directory: ./data_service/
+      run: |
+        uv run pytest . -m "not external and not slow" -v
+
+  lint_sql:
+      runs-on: ubuntu-latest
+      timeout-minutes: 5
+      steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.27"
+          enable-cache: true
+      - name: Install SQLFluff
+        run: uv tool install sqlfluff
+      - name: Run SQLFluff
+        run: uv tool run sqlfluff lint ./data_service/migrations/
+
+  check_migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Check for duplicate migration numbers
+        run: |
+          up_nums=($(ls ./data_service/migrations/*.up.sql 2>/dev/null | sed 's/_.*//'))
+          duplicates=$(printf '%s\n' "${up_nums[@]}" | sort | uniq -d)
+          if [ -n "$duplicates" ]; then
+            exit 1
+          fi
+
+      - name: Check migration counts match
+        run: |
+          up_count=$(ls ./data_service/migrations/*.up.sql 2>/dev/null | wc -l)
+          down_count=$(ls ./data_service/migrations/*.down.sql 2>/dev/null | wc -l)
+          if [ "$up_count" -ne "$down_count" ]; then
+            exit 1
+          fi
+
+      - name: Check each up migration has corresponding down migration
+        run: |
+          up_nums=($(ls ./data_service/migrations/*.up.sql 2>/dev/null | sed 's/_.*//'))
+          down_nums=($(ls ./data_service/migrations/*.down.sql 2>/dev/null | sed 's/_.*//'))
+          up_sorted=$(printf '%s\n' "${up_nums[@]}" | sort)
+          down_sorted=$(printf '%s\n' "${down_nums[@]}" | sort)
+          if [ "$up_sorted" != "$down_sorted" ]; then
+            exit 1
+          fi
