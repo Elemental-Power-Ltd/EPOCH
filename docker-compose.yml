@@ -17,14 +17,14 @@ services:
       - optimisation
     build:
       context: "epoch_gui"
-      dockerfile: "./docker/Dockerfile"
+      dockerfile: "./Dockerfile"
 
 
   optimisation:
     image: epoch_optimisation:local
     <<: *shared
     build:
-      dockerfile: "./optimisation_service/docker/Dockerfile"
+      dockerfile: "./optimisation_service/Dockerfile"
 
   data:
     image: epoch_data:local

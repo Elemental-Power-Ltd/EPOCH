@@ -1,7 +1,0 @@
-services:
-  frontend:
-    image: epoch-gui:latest
-    build:
-      context: ".."
-      dockerfile: docker/Dockerfile
-    network_mode: "host"
