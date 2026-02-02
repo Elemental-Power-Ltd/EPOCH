@@ -144,4 +144,4 @@ jobs:
       # this is to allow the tests to read files from this directory
       # (this isn't a good approach and should be fixed)
       working-directory: ./epoch_simulator/epoch_test
-      run: ./epoch_simulator/epoch_test/epoch_test
+      run: epoch_test
