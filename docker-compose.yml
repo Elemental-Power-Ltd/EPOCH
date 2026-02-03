@@ -25,6 +25,7 @@ services:
     environment:
       <<: *shared-env
     build:
+      context: .
       dockerfile: "./optimisation_service/Dockerfile"
 
   data:
@@ -44,6 +45,7 @@ services:
       db:
         condition: service_healthy
     build:
+      context: .
       dockerfile: "./data_service/Dockerfile"
 
   db:
