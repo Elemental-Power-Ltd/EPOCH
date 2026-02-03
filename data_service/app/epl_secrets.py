@@ -49,9 +49,17 @@ def load_secret_from_file(fpath: Path) -> str:
 
     Returns
     -------
-    stripped string of the contents of the file.
+    str
+        stripped string of the contents of the file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the path doesn't exist
     """
-    return fpath.read_text().strip()
+    if fpath.is_file():
+        return fpath.read_text().strip()
+    raise FileNotFoundError(f"Couldn't find a valid file at {fpath} to read a secret from.")
 
 
 def load_dotenv(fname: Path = Path(".env")) -> dict[str, str]:
