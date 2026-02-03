@@ -222,7 +222,7 @@ def find_maximising_path(G: nx.Graph[str], source: str, sink: str, weight: str, 
     """
     curr_node = source
     path = [curr_node]
-    while curr_node != sink and G.neighbors(curr_node):  # type: ignore
+    while curr_node != sink and G.neighbors(curr_node):
         neighbours = sorted(G[curr_node])
         if not neighbours:
             break
