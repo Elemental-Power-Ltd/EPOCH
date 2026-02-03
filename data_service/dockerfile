@@ -1,17 +1,20 @@
-FROM python:3.13-slim-bookworm
+FROM astral/uv:python3.13-trixie-slim
 
-# Set working directory in the container
-# WORKDIR /app
+WORKDIR /app
 
-# Copy the requirements file into the container
-COPY requirements.txt .
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy requirements
+COPY uv.lock pyproject.toml ./
+
+# Install deps
+RUN uv sync --frozen --no-dev
+
 # Copy the rest of the application code
-COPY . .
+COPY data_service/ ./
 
 # Expose the port the app runs on
 EXPOSE 8762
 
 # Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8762", "--workers", "1", "--timeout-graceful-shutdown", "120"]
+CMD ["uv", "run", "fastapi", "run", "./app/main.py", "--host", "0.0.0.0", "--port", "8762"]
