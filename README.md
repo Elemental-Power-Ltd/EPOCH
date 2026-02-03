@@ -2,6 +2,20 @@
 
 EPOCH is a set of tools to simulate local site energy systems, and to find optimal combinations of components.
 
+## Usage
+
+EPOCH comes in two forms: a full optimisation system and an individual calculator.
+
+The full optimisation system allows you to upload data from your utility meters and combines it with tariff, weather and solar generation data to get a clear half hourly picture of your site's energy demands.
+<img width="1424" height="1243" alt="image" src="https://github.com/user-attachments/assets/013922d5-3202-4b07-81bc-153de6d365c9" />
+
+You can then specify a range of components such as heat pumps, solar panels and batteries that you're interested in
+<img width="1354" height="1190" alt="image" src="https://github.com/user-attachments/assets/3daead84-430b-4471-8f00-c636cff91c31" />
+
+These are passed through a smart optimiser which will find the best combination of assets to meet your cost and carbon needs on that site, providing detailed recommendations and analysis of how much they'll save.
+<img width="1085" height="722" alt="image" src="https://github.com/user-attachments/assets/2aa451d8-7839-498d-a8fc-21827a4c0fa9" />
+
+
 ## Components
 
 EPOCH is split into a number of components centered around a main simulator.
