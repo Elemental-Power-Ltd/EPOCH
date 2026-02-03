@@ -3,7 +3,7 @@ name: Lint and Test Optimisation Service
 on:
   push:
     branches: ["**"]
-    paths: ["optimisation_service/**"]
+    paths: ["optimisation_service/**", ".github/workflows/lint-opt.yml"]
 
 jobs:
   lint:
