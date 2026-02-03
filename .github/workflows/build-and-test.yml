@@ -140,11 +140,17 @@ jobs:
       with:
         name: epoch_simulator_test
         path: ./epoch_simulator/epoch_test/
-    - name: Mark simulator test as executable
-      run: chmod +x ./epoch_simulator/epoch_test/epoch_simulator_test
+    - name: List downloaded files to find EPOCH simulator
+      run: |
+        echo "Contents of download directory:"
+        ls -la ./epoch_simulator/epoch_test/
+        echo "Recursive listing:"
+        find ./epoch_simulator/epoch_test/ -type f
+    - name: Make executable
+      run: chmod +x ./epoch_simulator/epoch_test/epoch_test
     - name: Run Test
       # For now we set the working-directory to be the test folder
       # this is to allow the tests to read files from this directory
       # (this isn't a good approach and should be fixed)
       working-directory: ./epoch_simulator/epoch_test/
-      run: ./epoch_simulator_test
+      run: ./epoch_test
