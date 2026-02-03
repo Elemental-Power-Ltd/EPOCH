@@ -1,9 +1,7 @@
-FROM python:3.13-slim-bookworm
+FROM astral/uv:python3.13-trixie-slim
 
 WORKDIR /app
 
-# Set up UV
-RUN pip install --no-cache-dir --upgrade pip uv
 ENV UV_COMPILE_BYTECODE=1
 
 # Copy requirements
@@ -15,11 +13,8 @@ RUN uv sync --frozen --no-dev
 # Copy the rest of the application code
 COPY data_service/ ./
 
-# UV installs into .venv so we add this to the path
-ENV PATH="/app/.venv/bin:$PATH"
-
 # Expose the port the app runs on
 EXPOSE 8762
 
 # Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8762", "--workers", "1", "--timeout-graceful-shutdown", "120"]
+CMD ["uv", "run", "fastapi", "run", "./app/main.py", "--host", "0.0.0.0", "--port", "8762"]
