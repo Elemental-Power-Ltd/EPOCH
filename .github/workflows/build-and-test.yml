@@ -140,12 +140,6 @@ jobs:
       with:
         name: epoch_simulator_test
         path: ./epoch_simulator/epoch_test/
-    - name: List downloaded files to find EPOCH simulator
-      run: |
-        echo "Contents of download directory:"
-        ls -la ./epoch_simulator/epoch_test/
-        echo "Recursive listing:"
-        find ./epoch_simulator/epoch_test/ -type f
     - name: Make executable
       run: chmod +x ./epoch_simulator/epoch_test/epoch_test
     - name: Run Test
