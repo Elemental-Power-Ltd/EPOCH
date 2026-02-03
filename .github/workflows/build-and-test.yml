@@ -3,7 +3,7 @@ name: Build EPOCH and Test Optimisation
 on:
   push:
     branches: ["**"]
-    paths: ["optimisation_service/**", "epoch_simulator/**"]
+    paths: ["optimisation_service/**", "epoch_simulator/**", ".github/workflows/build-and-test.yml"]
 
 permissions:
   contents: read
@@ -93,6 +93,7 @@ jobs:
           name: epoch_simulator_test
           path: epoch_simulator/build/epoch_test/epoch_test
           overwrite: true
+          if-no-files-found: error
 
       - name: Save vcpkg binary cache
         if: steps.vcpkg-cache-restore.outputs.cache-hit != 'true'
@@ -134,14 +135,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
-    - name: "Get Epoch simulator artefact"
+    - name: "Get test executable artefact"
       uses: actions/download-artifact@v7
       with:
         name: epoch_simulator_test
         path: ./epoch_simulator/epoch_test/
+    - name: Make executable
+      run: chmod +x ./epoch_simulator/epoch_test/epoch_test
     - name: Run Test
       # For now we set the working-directory to be the test folder
       # this is to allow the tests to read files from this directory
       # (this isn't a good approach and should be fixed)
-      working-directory: ./epoch_simulator/epoch_test
-      run: epoch_test
+      working-directory: ./epoch_simulator/epoch_test/
+      run: ./epoch_test

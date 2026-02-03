@@ -2,7 +2,7 @@ name: Lint and Test EPOCH Server
 on:
   push:
     branches: ["**"]
-    paths: ["epoch_server/**"]
+    paths: ["epoch_server/**", ".github/workflows/lint-server.yml"]
 
 jobs:  
   lint:
