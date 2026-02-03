@@ -135,15 +135,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
-    - name: "Get Epoch simulator artefact"
+    - name: "Get test executable artefact"
       uses: actions/download-artifact@v7
-      id: download
       with:
         name: epoch_simulator_test
-        path: $GITHUB_WORKSPACE/epoch_simulator/epoch_test/
+        path: ./epoch_simulator/epoch_test/
+    - name: Mark simulator test as executable
+      run: chmod +x ./epoch_simulator/epoch_test/epoch_simulator_test
     - name: Run Test
       # For now we set the working-directory to be the test folder
       # this is to allow the tests to read files from this directory
       # (this isn't a good approach and should be fixed)
-      working-directory: ${{ steps.download.outputs.download-path }}
+      working-directory: ./epoch_simulator/epoch_test/
       run: ./epoch_simulator_test
