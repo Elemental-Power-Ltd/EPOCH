@@ -1,8 +1,8 @@
-name: Lint and Test EPOCH Server
+name: Lint and Test EPOCH Demonstrator
 on:
   push:
     branches: ["**"]
-    paths: ["epoch_server/**", ".github/workflows/lint-server.yml"]
+    paths: ["epoch_demonstrator/**", ".github/workflows/lint-server.yml"]
 
 jobs:  
   lint:
@@ -43,7 +43,7 @@ jobs:
       run: uv add --dev mypy
     - name: Install dependencies
       run: uv sync --locked --all-extras --dev
-    - name: Typecheck EPOCH server
-      working-directory: ./epoch_server/
+    - name: Typecheck EPOCH demonstrator
+      working-directory: ./epoch_demonstrator/
       run: |
         uv run mypy --warn-unused-configs --disallow-any-generics  --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --disallow-untyped-decorators --warn-redundant-casts --warn-unused-ignores --warn-return-any --no-implicit-reexport --strict-equality --extra-checks --disable-error-code type-arg ./

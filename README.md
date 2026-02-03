@@ -28,7 +28,7 @@ These are passed through a smart optimiser which will find the best combination 
 ## Components
 
 EPOCH is split into a number of components centered around a main simulator.
-You can either run the "Epoch Server" for a quickstart to run individual simulators, or the whole set for optimisation and web hosting.
+You can either run the "Epoch Demonstrator" for a quickstart to run individual simulators, or the whole set for optimisation and web hosting.
 
 ### Epoch Simulator
 Epoch Simulator is the core energy simulation tool: it is a C++ programme (or library) that takes in time series energy consumption data, 
@@ -46,13 +46,13 @@ This requires a built version of the Epoch Simulator python library.
 
 ### Epoch GUI
 
-The GUI is different to Epoch Server: this is the fully-featured GUI with optimisation and data upload capabilities.
+The GUI is different to Epoch Demonstrator: this is the fully-featured GUI with optimisation and data upload capabilities.
 This requires the data and optimisation components to be running.
 
-### Epoch Server
-Epoch Server is a standalone tool to run individual simulations in simplified cases.
+### Epoch Demonstrator
+Epoch Demonstrator is a standalone tool to run individual simulations in simplified cases.
 This requires a built version of the Epoch Simulator python library and provides a simple FastAPI interface.
-You can run it with `fastapi run` in the `epoch_server` directory.
+You can run it with `fastapi run` in the `epoch_demonstrator` directory.
 
 We have pre-baked some example data for three sites representing reasonable energy consumption, solar generation and heat demands across a sample year.
 

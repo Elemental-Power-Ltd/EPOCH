@@ -46,7 +46,7 @@ DATA_PATHS = {
 
 def make_site_data(location: Location, building: BuildingType) -> str:
     """Make site data json for Epoch ingestion from pre-canned data."""
-    return Path(f"./epoch_server/data/{DATA_PATHS[location, building]}").read_text()
+    return Path(f"./epoch_demonstrator/data/{DATA_PATHS[location, building]}").read_text()
 
 
 def make_task_data(
