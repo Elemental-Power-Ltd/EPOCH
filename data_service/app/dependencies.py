@@ -71,6 +71,12 @@ class Database:
             logger.warning("Pool aready created for DB")
             return
 
+        if self.dsn is None and self.password is None:
+            raise RuntimeError(
+                "No password or DSN provided for the postgresql database."
+                " Have you provided a valid EP_POSTGRES_PASSWORD_FILE.txt?"
+            )
+
         try:
             if self.dsn is not None:
                 # Use this for the local tests, where the DSN is provided by the testing framework
@@ -86,6 +92,11 @@ class Database:
         except ConnectionRefusedError as ex:
             raise RuntimeError(
                 f"Connection refused to postgresql database={self.database}" + f" at host={self.host} with user={self.user}."
+            ) from ex
+        except asyncpg.exceptions.InvalidPasswordError as ex:
+            raise RuntimeError(
+                f"Connection refused to postgresql database ={self.database}"
+                + f" at host={self.host} with user={self.user} due to an invalid password. Check EP_POSTGRES_PASSWORD_FILE.txt?"
             ) from ex
         assert self.pool is not None, "Could not create database pool"
 
