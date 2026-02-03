@@ -1,13 +1,13 @@
-x-shared: &shared
-  environment:
-    EP_OPTIMISATION_SERVICE_URL: "http://optimisation:8761"
-    EP_DATA_SERVICE_URL: "http://data:8762"
-    EP_DATABASE_HOST: "db"
+x-shared: &shared-env
+  EP_OPTIMISATION_SERVICE_URL: "http://optimisation:8761"
+  EP_DATA_SERVICE_URL: "http://data:8762"
+  EP_DATABASE_HOST: "db"
 
 services:
   gui:
     image: epoch_gui:local
-    <<: *shared
+    environment:
+      <<: *shared-env
     ports:
       - "80:80"
     # We can't start the gui until the data and optimisation services are running
@@ -22,13 +22,15 @@ services:
 
   optimisation:
     image: epoch_optimisation:local
-    <<: *shared
+    environment:
+      <<: *shared-env
     build:
       dockerfile: "./optimisation_service/Dockerfile"
 
   data:
     image: epoch_data:local
     environment:
+      <<: *shared-env
       EP_POSTGRES_PASSWORD_FILE: /run/secrets/EP_POSTGRES_PASSWORD
       EP_VISUAL_CROSSING_API_KEY_FILE: /run/secrets/EP_VISUAL_CROSSING_API_KEY
       EP_RENEWABLES_NINJA_API_KEY_FILE: /run/secrets/EP_RENEWABLES_NINJA_API_KEY
@@ -38,7 +40,6 @@ services:
       - EP_VISUAL_CROSSING_API_KEY
       - EP_RENEWABLES_NINJA_API_KEY
       - EP_RE24_API_KEY
-    <<: *shared
     depends_on:
       db:
         condition: service_healthy
