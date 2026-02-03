@@ -3,7 +3,7 @@ name: Lint and Test Data Service
 on:
   push:
     branches: ["**"]
-    paths: ["data_service/**"]
+    paths: ["data_service/**", ".github/workflows/lint-data.yml"]
 
 jobs:
   typecheck_data:
