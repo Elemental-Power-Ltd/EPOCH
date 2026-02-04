@@ -369,6 +369,45 @@ class ProblemInstance(ElementwiseProblem):
         out["F"] = list(directed_results.values())
 
 
+class ScalarProblemInstance(ProblemInstance):
+    def __init__(
+        self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site], weights: dict[Metric, float]
+    ) -> None:
+
+        self.weights = weights
+
+        super().__init__(objectives, constraints, portfolio)
+
+        self.n_obj = 1
+
+    def _evaluate(self, x: npt.NDArray[np.floating], out: dict[str, list[float]]) -> None:
+        """
+        Evaluate a candidate portfolio solution.
+
+        Parameters
+        ----------
+        x
+            A candidate portfolio solution (array of parameter values).
+        out
+            Dictionary provided by pymoo to store infeasibility scores (G) and objective values (F).
+
+        Returns
+        -------
+        None
+        """
+        portfolio_scenarios = self.convert_portfolio_chromosome_to_portfolio_scenario(x=x)
+
+        portfolio_solution = self.sim.simulate_portfolio(portfolio_scenarios=portfolio_scenarios)
+        constraint_violations = self.evaluate_constraint_violations(portfolio_solution)
+
+        out["G"] = constraint_violations
+        selected_results = {
+            metric: portfolio_solution.metric_values[metric] * self.weights[metric] for metric in self.objectives
+        }
+        directed_results = self.apply_directions(selected_results)
+        out["F"] = sum(directed_results.values())
+
+
 def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) -> list[float]:
     """
     Measures by how much the metric values exceed the constraints.
