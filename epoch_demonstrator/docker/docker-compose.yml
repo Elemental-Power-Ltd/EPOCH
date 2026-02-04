@@ -3,7 +3,7 @@ services:
     image: epoch_demonstrator:latest
     build:
       context: "../.."
-      dockerfile: epoch_server/docker/Dockerfile
+      dockerfile: epoch_demonstrator/docker/Dockerfile
     ports:
       - "8763:8763"
     network_mode: "host"

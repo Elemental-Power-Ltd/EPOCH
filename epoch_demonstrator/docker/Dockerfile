@@ -35,7 +35,7 @@ ENV PATH="$VCPKG_ROOT:$PATH"
 
 WORKDIR /code
 
-# this is a horrible bunch of copying, but it avoid cache-busting from changes to epoch_server
+# this is a horrible bunch of copying, but it avoid cache-busting from changes to epoch_demonstrator
 COPY epoch_lib Epoch/epoch_lib
 COPY epoch_py Epoch/epoch_py
 COPY epoch_test Epoch/epoch_test
@@ -62,9 +62,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3.13 pyth
 ENV PATH="/code/install:$PATH"
 ENV PYTHONPATH="/code/install:${PYTHONPATH}"
 
-COPY epoch_server epoch_server
-RUN python3.13 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrade -r epoch_server/requirements.txt
+COPY epoch_demonstrator epoch_demonstrator
+RUN python3.13 -m venv ./venv/ && ./venv/bin/pip install --no-cache-dir --upgrade -r epoch_demonstrator/requirements.txt
 
 COPY --from=epoch-build /code/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/install/
 EXPOSE 8763
-CMD ["./venv/bin/python", "-m", "fastapi", "run", "./epoch_server/app/main.py", "--port", "8763"]
+CMD ["./venv/bin/python", "-m", "fastapi", "run", "./epoch_demonstrator/app/main.py", "--port", "8763"]
