@@ -30,7 +30,7 @@ async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, p
     Replace a solar generation dataset in the database.
 
     Provide the dataset_id of the old dataset that you want to replace, and upload a file which should be a CSV
-    with columns "start_ts", "end_ts" and "data", where the timestamps are in ISO-8601 format and "data" should be
+    with columns "start_ts", "end_ts" and "data", where the timestamps are in ISO-8601 format and "solar_pv" should be
     fraction of peak generation at that timestamp.
 
     Parameters
@@ -38,8 +38,8 @@ async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, p
     dataset_id
         ID of the old dataset you wish to replace
     data
-         CSV with columns "start_ts", "end_ts" and "data", where the timestamps are in ISO-8601 format and "data" should be
-    fraction of peak generation at that timestamp.
+         CSV with columns "start_ts", "end_ts" and "solar_pv", where the timestamps are in ISO-8601 format
+         and "solar_pv" should be fraction of peak generation at that timestamp.
 
     Returns
     -------
@@ -47,7 +47,7 @@ async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, p
         Information about the new dataset you've uploaded.
     """
     old_metadata = await pool.fetchrow(
-        """SELECT site_id, renewables_location_id FROM renewables.metadata WHERE dataset_id = $1 LIMIT 1"""
+        """SELECT site_id, renewables_location_id FROM renewables.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id
     )
     if old_metadata is None:
         raise HTTPException(404, f"Couldn't find a solar dataset with ID {dataset_id} to replace.")
@@ -55,7 +55,7 @@ async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, p
 
     provided_df = pd.read_csv(
         data.file,
-        names=["start_ts", "end_ts", "data"],
+        usecols=["start_ts", "end_ts", "solar_pv"],
         header=0,
         parse_dates=["start_ts", "end_ts"],
         nrows=17521,
@@ -66,9 +66,9 @@ async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, p
         raise HTTPException(400, f"Got {len(provided_df)} rows instead of expected 17520.")
     if provided_df.isna().any().any():
         raise HTTPException(400, "Got NA in replacement data.")
-    if (provided_df["data"] < 0).any():
-        raise HTTPException(400, "Got negative entries in the replacement. data, must all be >0.")
-    if (provided_df["data"] > 1.0).any():
+    if (provided_df["solar_pv"] < 0).any():
+        raise HTTPException(400, "Got negative entries in the replacement data, must all be >0.")
+    if (provided_df["solar_pv"] > 1.0).any():
         raise HTTPException(400, "Got entries with value >1 in the replacement data, must all be normalised.")
 
     metadata = RenewablesMetadata(
@@ -76,7 +76,7 @@ async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, p
         site_id=site_id,
         data_source=data.filename if data.filename is not None else "custom",
         created_at=datetime.datetime.now(datetime.UTC),
-        parameters=None,
+        parameters="{}",
         renewables_location_id=renewables_location_id,
     )
     async with pool.acquire() as conn, conn.transaction():
@@ -110,17 +110,17 @@ async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, p
             columns=["dataset_id", "start_ts", "end_ts", "solar_generation"],
             records=zip(
                 repeat(metadata.dataset_id, len(provided_df)),
-                provided_df.start_ts,
-                provided_df.end_ts,
-                provided_df.data,
+                provided_df["start_ts"],
+                provided_df["end_ts"],
+                provided_df["solar_pv"],
                 strict=True,
             ),
         )
-        # Replace this entry in the bundle with
-        # the new dataset
-        await conn.execute(
-            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", dataset_id, metadata.dataset_id
+        # Replace this entry in the bundle with the new dataset
+        update_resp = await conn.execute(
+            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", metadata.dataset_id, dataset_id
         )
+        assert update_resp == "UPDATE 1", update_resp
     return metadata
 
 
@@ -146,7 +146,7 @@ async def replace_import_tariff(dataset_id: dataset_id_t, data: UploadFile, pool
     TariffMetadata
         Information about the new dataset you've uploaded.
     """
-    site_id = await pool.fetchval("""SELECT site_id FROM import_tariffs.metadata WHERE dataset_id = $1 LIMIT 1""")
+    site_id = await pool.fetchval("""SELECT site_id FROM import_tariffs.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id)
     if site_id is None:
         raise HTTPException(404, f"Couldn't find an import tariff dataset with ID {dataset_id} to replace.")
 
@@ -227,11 +227,11 @@ async def replace_import_tariff(dataset_id: dataset_id_t, data: UploadFile, pool
             ),
             columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
         )
-        # Replace this entry in the bundle with
-        # the new dataset
-        await conn.execute(
-            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", dataset_id, metadata.dataset_id
+        # Replace this entry in the bundle with the new dataset
+        update_resp = await conn.execute(
+            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", metadata.dataset_id, dataset_id
         )
+        assert update_resp == "UPDATE 1", update_resp
     return metadata
 
 
@@ -257,7 +257,7 @@ async def replace_electricity_load(dataset_id: dataset_id_t, data: UploadFile, p
     ElectricalLoadMetadata
         Information about the new dataset you've uploaded.
     """
-    site_id = await pool.fetchval("""SELECT site_id FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""")
+    site_id = await pool.fetchval("""SELECT site_id FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id)
     if site_id is None:
         raise HTTPException(404, f"Couldn't find an import tariff dataset with ID {dataset_id} to replace.")
 
@@ -319,11 +319,11 @@ async def replace_electricity_load(dataset_id: dataset_id_t, data: UploadFile, p
             ),
             columns=["dataset_id", "start_ts", "end_ts", "consumption_kwh"],
         )
-        # Replace this entry in the bundle with
-        # the new dataset
-        await conn.execute(
-            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", dataset_id, metadata.dataset_id
+        # Replace this entry in the bundle with the new dataset
+        update_resp = await conn.execute(
+            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", metadata.dataset_id, dataset_id
         )
+        assert update_resp == "UPDATE 1", update_resp
     return metadata
 
 
@@ -357,7 +357,7 @@ async def replace_heat_load(
     HeatingLoadMetadata
         Information about the new dataset you've uploaded.
     """
-    site_id = await pool.fetchval("""SELECT site_id FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""")
+    site_id = await pool.fetchval("""SELECT site_id FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id)
     if site_id is None:
         raise HTTPException(404, f"Couldn't find a heat load dataset with ID {dataset_id} to replace.")
 
@@ -421,13 +421,14 @@ async def replace_heat_load(
             ),
         )
         # Replace this entry in the bundle with the new dataset
-        await conn.execute(
-            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", dataset_id, metadata.dataset_id
+        update_resp = await conn.execute(
+            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", metadata.dataset_id, dataset_id
         )
+        assert update_resp == "UPDATE 1", update_resp
     return metadata
 
 
-@router.route("/replace-dataset")
+@router.post("/replace-dataset")
 async def replace_dataset(
     dataset_id: dataset_id_t,
     data: UploadFile,
@@ -468,7 +469,9 @@ async def replace_dataset(
     RenewablesMetadata | TariffMetadata | ElectricalLoadMetadata | HeatingLoadMetadata
         Metadata about the new dataset we've written to the database.
     """
-    dataset_type = await pool.fetchval("""SELECT dataset_type FROM data_bundles.dataset_links WHERE dataset_id = $1 LIMIT 1""")
+    dataset_type = await pool.fetchval(
+        """SELECT dataset_type FROM data_bundles.dataset_links WHERE dataset_id = $1 LIMIT 1""", dataset_id
+    )
     if dataset_type is None:
         raise HTTPException(400, f"Couldn't find a dataset with id {dataset_id} to replace.")
     try:

@@ -364,13 +364,14 @@ async def get_renewables_generation(params: MultipleDatasetIDWithTime, pool: Dat
         renewables_df = pd.DataFrame.from_records(
             cast(RecordMapping, dataset), columns=["start_ts", "end_ts", "solar_generation"], index="start_ts"
         )
+        # Turn this into kWh per timestep instead of kW
+        renewables_df["solar_generation"] *= pd.Timedelta(minutes=30) / (renewables_df["end_ts"] - renewables_df.index)
         renewables_df = renewables_df.reindex(
             index=pd.date_range(params.start_ts, params.end_ts, freq=pd.Timedelta(minutes=30), inclusive="left")
         )
 
         renewables_df["solar_generation"] = renewables_df["solar_generation"].interpolate(method="time").ffill().bfill()
-        # Turn this into kWh per timestep instead of kW
-        renewables_df["solar_generation"] *= pd.Timedelta(minutes=30) / pd.Timedelta(minutes=60)
+
         return renewables_df
 
     try:

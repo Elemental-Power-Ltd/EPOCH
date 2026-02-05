@@ -29,6 +29,7 @@ from .routers import (
     meter_data,
     optimisation,
     renewables,
+    replace_datasets,
     site_manager,
     weather,
 )
@@ -58,6 +59,7 @@ app.include_router(air_source_heat_pump.router)
 app.include_router(import_tariffs.router)
 app.include_router(site_manager.router)
 app.include_router(electricity_load.router)
+app.include_router(replace_datasets.router)
 
 
 @app.get("/list-queue-workers")
