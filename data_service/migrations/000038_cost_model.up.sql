@@ -12,7 +12,7 @@ ALTER TABLE optimisation.site_task_config ADD COLUMN site_config JSONB;
 
 INSERT INTO optimisation.cost_models (cost_model_id, model_name, capex_model, opex_model)
 VALUES (
-    uuidv7(),
+    gen_random_uuid(),
     'Default Cost Model',
     '{
     "dhw_prices": {
