@@ -354,6 +354,8 @@ class NSGA2(Algorithm):
             ]
             if len(portfolio_solutions) > 1:
                 portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
+            else:
+                portfolio_solutions_pf = portfolio_solutions
 
         return OptimisationResult(
             solutions=portfolio_solutions_pf,

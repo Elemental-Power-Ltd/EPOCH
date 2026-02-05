@@ -370,11 +370,9 @@ class ProblemInstance(ElementwiseProblem):
 
 
 class ScalarProblemInstance(ProblemInstance):
-    def __init__(
-        self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site], weights: dict[Metric, float]
-    ) -> None:
+    def __init__(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site], weights: list[float]) -> None:
 
-        self.weights = weights
+        self.weights = dict(zip(objectives, weights, strict=True))
 
         super().__init__(objectives, constraints, portfolio)
 
