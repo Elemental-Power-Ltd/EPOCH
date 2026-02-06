@@ -52,7 +52,7 @@ class Database:
         if password is None:
             # If we didn't get a password from the environment, it might be None anyway
             # (this can sometimes bite us when importing, as we'll do this bit first!)
-            self.password = get_secrets_environment().get("EP_POSTGRES_PASSWORD", None)
+            self.password = get_secrets_environment().get("EP_POSTGRES_PASSWORD", 'elemental')
         else:
             self.password = password
 
