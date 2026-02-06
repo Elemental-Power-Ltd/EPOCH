@@ -9,7 +9,7 @@ services:
     environment:
       <<: *shared-env
     ports:
-      - "80:80"
+      - "8760:80"
     # We can't start the gui until the data and optimisation services are running
     # As NGINX is unable to resolve service names if they are not running
     depends_on:
