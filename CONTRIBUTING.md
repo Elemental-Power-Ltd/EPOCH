@@ -106,7 +106,7 @@ To get a database connection from the pool, use the `DatabasePoolDep` attribute 
 ```
 ## Contributing: C++
 
-The C++ code lives in `epoch_simulator` and relies on C++20.
+The C++ code lives in `core_simulator` and relies on C++20.
 
 ### Coding Style
 

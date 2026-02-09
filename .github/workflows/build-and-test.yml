@@ -3,7 +3,7 @@ name: Build EPOCH and Test Optimisation
 on:
   push:
     branches: ["**"]
-    paths: ["optimisation_service/**", "epoch_simulator/**", ".github/workflows/build-and-test.yml"]
+    paths: ["optimisation_service/**", "core_simulator/**", ".github/workflows/build-and-test.yml"]
 
 permissions:
   contents: read
@@ -63,7 +63,7 @@ jobs:
           VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
           VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
         with:
-          cmakeListsTxtPath: '${{ github.workspace }}/epoch_simulator/CMakeLists.txt'
+          cmakeListsTxtPath: '${{ github.workspace }}/core_simulator/CMakeLists.txt'
           configurePreset: 'python-linux'
           configurePresetAdditionalArgs: "['-DCMAKE_POSITION_INDEPENDENT_CODE=ON']"
           buildPreset: 'python-rel-linux'
@@ -71,7 +71,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: epoch_simulator
-          path: epoch_simulator/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so
+          path: core_simulator/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so
           overwrite: true
       
       # This mangles the build directory! so do it after uploading the last artefact.

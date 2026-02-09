@@ -35,7 +35,7 @@ ENV VCPKG_ROOT="/vcpkg"
 ENV PATH="$VCPKG_ROOT:$PATH"
 
 WORKDIR /code
-COPY ./epoch_simulator epoch
+COPY ./core_simulator epoch
 WORKDIR /code/epoch
 # Build python bindings and copy the file from its horrible location to somewhere saner
 RUN rm -rf ./build \

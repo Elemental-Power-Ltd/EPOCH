@@ -30,7 +30,7 @@ These are passed through a smart optimiser which will find the best combination 
 EPOCH is split into a number of components centered around a main simulator.
 You can either run the "Epoch Demonstrator" for a quickstart to run individual simulators, or the whole set for optimisation and web hosting.
 
-### Epoch Simulator
+### Core Simulator
 Epoch Simulator is the core energy simulation tool: it is a C++ programme (or library) that takes in time series energy consumption data, 
 specified local site energy components, and outputs new costs and carbon emissions.
 
