@@ -84,14 +84,14 @@ jobs:
           VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
           VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
         with:
-          cmakeListsTxtPath: '${{ github.workspace }}/epoch_simulator/CMakeLists.txt'
+          cmakeListsTxtPath: '${{ github.workspace }}/core_simulator/CMakeLists.txt'
           configurePreset: 'test-linux'
           buildPreset: 'test-linux'
       - name: Upload Test Executable
         uses: actions/upload-artifact@v6
         with:
           name: epoch_simulator_test
-          path: epoch_simulator/build/epoch_test/epoch_test
+          path: core_simulator/build/epoch_test/epoch_test
           overwrite: true
           if-no-files-found: error
 
@@ -139,12 +139,12 @@ jobs:
       uses: actions/download-artifact@v7
       with:
         name: epoch_simulator_test
-        path: ./epoch_simulator/epoch_test/
+        path: ./core_simulator/epoch_test/
     - name: Make executable
-      run: chmod +x ./epoch_simulator/epoch_test/epoch_test
+      run: chmod +x ./core_simulator/epoch_test/epoch_test
     - name: Run Test
       # For now we set the working-directory to be the test folder
       # this is to allow the tests to read files from this directory
       # (this isn't a good approach and should be fixed)
-      working-directory: ./epoch_simulator/epoch_test/
+      working-directory: ./core_simulator/epoch_test/
       run: ./epoch_test
