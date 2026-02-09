@@ -59,7 +59,7 @@ We have pre-baked some example data for three sites representing reasonable ener
 ## First-time setup
 1. Install Docker
 2. Provide the following [secrets](https://github.com/Elemental-Power-Ltd/EPOCH/development):
-    - Create a VisualCrossing account and place the API Key in a file called `./EP_RENEWABLES_NINJA_API_KEY_FILE.txt`
+    - Create a RenewablesNinja account and place the API Key in a file called `./EP_RENEWABLES_NINJA_API_KEY_FILE.txt`
     - Create an OpenMeteo account and place the API Key in a filed called `./OPEN_METEO_API_KEY_FILE.txt`
     - Create a filed called `./EP_POSTGRES_PASSWORD_FILE.txt` with the password `elemental`
 3. Build the services with `docker compose build` and then run with `docker compose up`
