@@ -2,6 +2,7 @@ import logging
 import typing
 from pathlib import Path
 
+from epoch_simulator import Simulator, TaskData
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
@@ -26,7 +27,6 @@ from app.models import (
     SimulationResult,
 )
 from app.utils import report_data_to_dict
-from epoch_simulator import Simulator, TaskData
 
 logging.basicConfig(
     filename="errors.log",
