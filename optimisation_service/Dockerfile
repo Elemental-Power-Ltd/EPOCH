@@ -61,5 +61,6 @@ ENV PYTHONPATH="/code/install:${PYTHONPATH}"
 COPY ./optimisation_service/app app
 COPY --from=epoch-build /code/epoch/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/install/
 
+ENV UV_NO_SYNC=1
 EXPOSE 8761
 CMD ["uv", "run", "fastapi", "run", "./app/main.py", "--port", "8761"]
