@@ -143,7 +143,7 @@ async def get_heating_load(params: MultipleDatasetIDWithTime, pool: DatabasePool
             # We've store the total cost correctly, but not the breakdown, so just give the total back.
             return metadata["fabric_cost_total"], []
 
-        if metadata is not None and "thermal_model_dataset_id" in metadata["params"]:
+        if metadata is not None and metadata.get("params") is not None and "thermal_model_dataset_id" in metadata["params"]:
             logger.warning(
                 f"Got a thermal model dataset_id for {dataset_id} but no pre-calculated breakdown."
                 " Returning a newly calculated breakdown."

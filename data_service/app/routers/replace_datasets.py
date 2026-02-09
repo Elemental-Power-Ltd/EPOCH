@@ -138,26 +138,31 @@ async def replace_import_tariff(dataset_id: dataset_id_t, data: UploadFile, pool
     dataset_id
         ID of the old dataset you wish to replace
     data
-         CSV with columns "start_ts", "end_ts" and "data", where the timestamps are in ISO-8601 format and "data" should be
-    fraction of peak generation at that timestamp.
+        CSV with columns "start_ts", "end_ts" and "unit_cost", where the timestamps are in ISO-8601 format
+        and "unit_cost" should be cost in pence per kwh at that timestep.
 
     Returns
     -------
     TariffMetadata
         Information about the new dataset you've uploaded.
     """
-    site_id = await pool.fetchval("""SELECT site_id FROM import_tariffs.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id)
+    site_id = await pool.fetchval("""SELECT site_id FROM tariffs.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id)
     if site_id is None:
         raise HTTPException(404, f"Couldn't find an import tariff dataset with ID {dataset_id} to replace.")
 
-    price_df = pd.read_csv(
-        data.file,
-        names=["start_ts", "end_ts", "data"],
-        header=0,
-        parse_dates=["start_ts", "end_ts"],
-        nrows=17521,
-        date_format="ISO8601",
-    )
+    try:
+        price_df = pd.read_csv(
+            data.file,
+            usecols=["start_ts", "end_ts", "unit_cost"],
+            header=0,
+            parse_dates=["start_ts", "end_ts"],
+            nrows=17521,
+            date_format="ISO8601",
+        )
+    except ValueError as ex:
+        raise HTTPException(
+            422, f"Couldn't parse your file due to '{ex}' Does it have columns `start_ts`, `end_ts` and `unit_cost`?"
+        ) from ex
 
     if len(price_df) < 17520:
         raise HTTPException(400, f"Got {len(price_df)} rows instead of expected 17520.")
@@ -172,9 +177,9 @@ async def replace_import_tariff(dataset_id: dataset_id_t, data: UploadFile, pool
         product_name=data.filename if data.filename is not None else "custom",
         tariff_name=data.filename if data.filename is not None else "custom",
         # Just pick some data from there to make it look reasonable.
-        day_cost=max(price_df["data"].mode()),
-        night_cost=price_df["data"].min(),
-        peak_cost=price_df["data"].max(),
+        day_cost=max(price_df["unit_cost"].mode()),
+        night_cost=price_df["unit_cost"].min(),
+        peak_cost=price_df["unit_cost"].max(),
         valid_from=None,
         valid_to=None,
     )
@@ -222,7 +227,7 @@ async def replace_import_tariff(dataset_id: dataset_id_t, data: UploadFile, pool
                 repeat(metadata.dataset_id, len(price_df)),
                 price_df["start_ts"],
                 price_df["end_ts"],
-                price_df["cost"],
+                price_df["unit_cost"],
                 strict=True,
             ),
             columns=["dataset_id", "start_ts", "end_ts", "unit_cost"],
@@ -261,14 +266,19 @@ async def replace_electricity_load(dataset_id: dataset_id_t, data: UploadFile, p
     if site_id is None:
         raise HTTPException(404, f"Couldn't find an import tariff dataset with ID {dataset_id} to replace.")
 
-    synthetic_hh_df = pd.read_csv(
-        data.file,
-        names=["start_ts", "end_ts", "consumption_kwh"],
-        header=0,
-        parse_dates=["start_ts", "end_ts"],
-        nrows=17521,
-        date_format="ISO8601",
-    )
+    try:
+        synthetic_hh_df = pd.read_csv(
+            data.file,
+            usecols=["start_ts", "end_ts", "consumption_kwh"],
+            header=0,
+            parse_dates=["start_ts", "end_ts"],
+            nrows=17521,
+            date_format="ISO8601",
+        )
+    except ValueError as ex:
+        raise HTTPException(
+            422, f"Couldn't parse your file due to {ex} Does it have columns `start_ts`, `end_ts` and `consumption_kwh`?"
+        ) from ex
 
     if len(synthetic_hh_df) < 17520:
         raise HTTPException(400, f"Got {len(synthetic_hh_df)} rows instead of expected 17520.")
@@ -357,18 +367,31 @@ async def replace_heat_load(
     HeatingLoadMetadata
         Information about the new dataset you've uploaded.
     """
-    site_id = await pool.fetchval("""SELECT site_id FROM client_meters.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id)
+    site_id = await pool.fetchval("""SELECT site_id FROM heating.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id)
     if site_id is None:
         raise HTTPException(404, f"Couldn't find a heat load dataset with ID {dataset_id} to replace.")
 
-    heating_df = pd.read_csv(
-        data.file,
-        names=["start_ts", "end_ts", "heating", "dhw", "air_temperature"],
-        header=0,
-        parse_dates=["start_ts", "end_ts"],
-        nrows=17521,
-        date_format="ISO8601",
-    )
+    try:
+        heating_df = pd.read_csv(
+            data.file,
+            usecols=["start_ts", "end_ts", "heating", "dhw", "air_temperature"],
+            header=0,
+            parse_dates=["start_ts", "end_ts"],
+            nrows=17521,
+            date_format="ISO8601",
+        )
+    except pd.errors.ParserError as ex:
+        raise HTTPException(
+            422,
+            f"Couldn't parse your file due to '{ex}'."
+            " Does it have columns `start_ts`, `end_ts`, `heating`, `dhw` and `air_temperature`?",
+        ) from ex
+    except ValueError as ex:
+        raise HTTPException(
+            422,
+            f"Couldn't parse your file due to '{ex}'."
+            " Does it have columns `start_ts`, `end_ts`, `heating`, `dhw` and `air_temperature`?",
+        ) from ex
 
     if len(heating_df) < 17520:
         raise HTTPException(400, f"Got {len(heating_df)} rows instead of expected 17520.")
@@ -379,9 +402,9 @@ async def replace_heat_load(
         dataset_id=uuid7(),
         site_id=site_id,
         created_at=datetime.datetime.now(datetime.UTC),
-        params=None,
-        interventions=[],
-        generation_method=HeatingLoadModelEnum.Regression,
+        params=json.dumps({"filename": data.filename}),
+        interventions=[item.name for item in fabric_cost_breakdown] if fabric_cost_breakdown else [],
+        generation_method=HeatingLoadModelEnum.Custom,
     )
 
     async with pool.acquire() as conn, conn.transaction():

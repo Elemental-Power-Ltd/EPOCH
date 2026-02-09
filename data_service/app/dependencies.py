@@ -248,6 +248,11 @@ def find_model_path(base_dir: Path = Path(".")) -> Path:
         if fpath.exists():
             return fpath.resolve()
         fpath = Path("..") / fpath
+    # If we're running from the root directory, try to pick up the models there instead.
+    fpath = Path("data_service", "models", "final")
+    if fpath.exists():
+        return fpath.resolve()
+
     raise FileNotFoundError(f"Could not find {final_dir}")
 
 

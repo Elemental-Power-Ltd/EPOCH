@@ -64,7 +64,7 @@ async def fetch_all_input_data(
             eload_task = (
                 tg.create_task(
                     get_blended_electricity_load(
-                        real_params=cast(DatasetIDWithTime | None, site_data_ids[DatasetTypeEnum.ElectricityMeterData]),
+                        real_params=cast(DatasetIDWithTime | None, site_data_ids.get(DatasetTypeEnum.ElectricityMeterData)),
                         synthetic_params=cast(
                             DatasetIDWithTime | None, site_data_ids.get(DatasetTypeEnum.ElectricityMeterDataSynthesised)
                         ),
@@ -80,7 +80,11 @@ async def fetch_all_input_data(
                 hload_req = cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.HeatingLoad])
             else:
                 hload_req = None
-            heat_task = tg.create_task(get_heating_load(hload_req, pool)) if hload_req is not None else DummyTask()
+            heat_task = (
+                tg.create_task(get_heating_load(hload_req, pool), name="Fetch Heating Loads")
+                if hload_req is not None
+                else DummyTask()
+            )
             dhw_task = (
                 tg.create_task(
                     get_dhw_load(
@@ -90,7 +94,8 @@ async def fetch_all_input_data(
                             end_ts=hload_req.end_ts,
                         ),
                         pool,
-                    )
+                    ),
+                    name="Fetch DHW",
                 )
                 if hload_req is not None
                 else DummyTask()
@@ -105,7 +110,8 @@ async def fetch_all_input_data(
                             end_ts=hload_req.end_ts,
                         ),
                         pool,
-                    )
+                    ),
+                    name="Fetch Air Temperature",
                 )
                 if hload_req is not None
                 else DummyTask()
@@ -115,7 +121,8 @@ async def fetch_all_input_data(
                 tg.create_task(
                     get_renewables_generation(
                         cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.RenewablesGeneration]), pool
-                    )
+                    ),
+                    name="Fetch Renewables",
                 )
                 if site_data_ids.get(DatasetTypeEnum.RenewablesGeneration) is not None
                 else DummyTask()
@@ -123,25 +130,33 @@ async def fetch_all_input_data(
 
             tariff_task = (
                 tg.create_task(
-                    get_import_tariffs(cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.ImportTariff]), pool)
+                    get_import_tariffs(cast(MultipleDatasetIDWithTime, site_data_ids[DatasetTypeEnum.ImportTariff]), pool),
+                    name="Fetch Import Tariffs",
                 )
                 if site_data_ids.get(DatasetTypeEnum.ImportTariff)
                 else DummyTask()
             )
 
             grid_co2_task = (
-                tg.create_task(get_grid_co2(cast(DatasetIDWithTime, site_data_ids[DatasetTypeEnum.CarbonIntensity]), pool))
+                tg.create_task(
+                    get_grid_co2(cast(DatasetIDWithTime, site_data_ids[DatasetTypeEnum.CarbonIntensity]), pool),
+                    name="Fetch Grid CO2",
+                )
                 if site_data_ids.get(DatasetTypeEnum.CarbonIntensity) is not None
                 else DummyTask()
             )
 
             ashp_input_task = (
-                tg.create_task(get_ashp_input(cast(DatasetIDWithTime, site_data_ids[DatasetTypeEnum.ASHPData])))
+                tg.create_task(
+                    get_ashp_input(cast(DatasetIDWithTime, site_data_ids[DatasetTypeEnum.ASHPData])), name="Fetch ASHP Input"
+                )
                 if site_data_ids.get(DatasetTypeEnum.ASHPData) is not None
                 else DummyTask()
             )
             ashp_output_task = (
-                tg.create_task(get_ashp_output(cast(DatasetIDWithTime, site_data_ids[DatasetTypeEnum.ASHPData])))
+                tg.create_task(
+                    get_ashp_output(cast(DatasetIDWithTime, site_data_ids[DatasetTypeEnum.ASHPData])), name="Fetch ASHP Output"
+                )
                 if site_data_ids.get(DatasetTypeEnum.ASHPData) is not None
                 else DummyTask()
             )
