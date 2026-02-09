@@ -32,6 +32,7 @@ type HTTPClient = httpx.AsyncClient
 # (which matches the POSTGRES_PASSWORD in docker-compose.yml)
 EP_DEFAULT_POSTGRES_PASSWORD = "elemental"
 
+
 class Database:
     """Shared database object that we'll re-use throughout the lifetime of this API."""
 
