@@ -58,7 +58,7 @@ ENV PATH="/code/install:$PATH"
 ENV PYTHONPATH="/code/install:${PYTHONPATH}"
 
 # Copy the python bindings and executable
-COPY ./epoch_server/app app
+COPY ./epoch_demonstrator/app app
 COPY --from=epoch-build /code/epoch/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/install/
 
 EXPOSE 8761
