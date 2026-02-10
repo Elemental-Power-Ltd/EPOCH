@@ -58,7 +58,7 @@ We have pre-baked some example data for three sites representing reasonable ener
 
 ## First-time setup
 1. Install Docker
-2. Provide the following [secrets](https://github.com/Elemental-Power-Ltd/EPOCH/development):
+2. Provide the following [secrets](https://github.com/Elemental-Power-Ltd/EPOCH/wiki/development):
     - Create a RenewablesNinja account and place the API Key in a file called `./EP_RENEWABLES_NINJA_API_KEY_FILE.txt`
     - Create a filed called `./EP_POSTGRES_PASSWORD_FILE.txt` with the password `elemental`
     - [OPTIONAL] Create an OpenMeteo or VisualCrossing account and place the API Key in `./OPEN_METEO_API_KEY_FILE.txt` or `./VISUAL_CROSSING_API_KEY_FILE.txt` respectively. The free tier of OpenMeteo will be used if neither are specified
@@ -69,4 +69,4 @@ We have pre-baked some example data for three sites representing reasonable ener
 
 ## Development, troubleshooting and more
 
-See the [development](https://github.com/Elemental-Power-Ltd/EPOCH/development) section of the Wiki
+See the [development](https://github.com/Elemental-Power-Ltd/EPOCH/wiki/development) section of the Wiki
