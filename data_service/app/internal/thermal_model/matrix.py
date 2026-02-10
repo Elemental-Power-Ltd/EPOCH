@@ -164,7 +164,7 @@ def network_to_energy_matrix(hm: HeatNetwork) -> np.ndarray[tuple[GraphSize, Gra
             radiative_arr[v_idx, v_idx] -= e_attrs["radiative"].power / e_attrs["radiative"].delta_t
 
         if isinstance(e_attrs.get("radiative"), BoilerRadiativeLink):
-            if e_attrs.get("radiative").is_on and v_attrs["temperature"] > u_attrs["temperature"]:
+            if e_attrs.get("radiative").is_on and v_attrs["temperature"] > u_attrs["temperature"]:  # type: ignore
                 boiler_power = e_attrs["radiative"].power / e_attrs["radiative"].delta_t
             else:
                 boiler_power = 0.0

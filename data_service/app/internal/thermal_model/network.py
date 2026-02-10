@@ -32,8 +32,8 @@ from .links import (
 class HeatNetwork(nx.DiGraph):
     """A Heat Network is a directed graph where nodes are fabric elements and edges are thermal links."""
 
-    node_attr_dict_factory = ThermalNodeAttrDict
-    edge_attr_dict_factory = ThermalEdgeAttrDict
+    node_attr_dict_factory = ThermalNodeAttrDict  # type: ignore
+    edge_attr_dict_factory = ThermalEdgeAttrDict  # type: ignore
 
 
 def initialise_outdoors() -> HeatNetwork:
