@@ -1,5 +1,6 @@
 """Functions for the matrix formulation of temperature flows."""
 
+# mypy: disable-error-code="unused-ignore"
 import copy
 import datetime
 from collections import defaultdict

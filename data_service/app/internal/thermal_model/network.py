@@ -1,5 +1,6 @@
 """Thermal network construction."""
 
+# mypy: disable-error-code="unused-ignore"
 import json
 from pathlib import Path
 

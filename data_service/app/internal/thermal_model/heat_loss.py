@@ -1,5 +1,6 @@
 """Peak Heat Loss calculation methods for comparison with MCS survey."""
 
+# mypy: disable-error-code="unused-ignore"
 from collections import defaultdict
 
 from .building_elements import BuildingElement

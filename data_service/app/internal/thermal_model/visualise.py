@@ -1,5 +1,6 @@
 """Drawn graphs and visualisations of the network."""
 
+# mypy: disable-error-code="unused-ignore"
 from collections import defaultdict
 from typing import Any
 
