@@ -1,5 +1,6 @@
 """Peak Heat Loss calculation methods for comparison with MCS survey."""
 
+# mypy: disable-error-code="unused-ignore"
 from collections import defaultdict
 
 from .building_elements import BuildingElement
@@ -173,7 +174,7 @@ def calculate_maximum_static_heat_loss_breakdown(
                 )
                 v_attrs = ThermalNodeAttrDict(
                     temperature=v_temperature, thermal_mass=graph.nodes[v]["thermal_mass"], energy_change=0.0
-                )
-                component_energy_changes[BuildingElement.InternalAir, v] = -link.step(u_attrs, v_attrs, dt=1.0)
+                )  # type: ignore
+                component_energy_changes[BuildingElement.InternalAir, v] = -link.step(u_attrs, v_attrs, dt=1.0)  # type: ignore
 
     return dict(component_energy_changes)
