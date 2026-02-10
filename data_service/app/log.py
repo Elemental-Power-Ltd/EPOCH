@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-LOG_DIR = Path("logs")
+LOG_DIR = Path("logs", "data_service")
 
 
 class EndpointFilter(logging.Filter):
