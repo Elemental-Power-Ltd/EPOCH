@@ -1,3 +1,4 @@
+# mypy: disable-error-code="unused-ignore"
 import itertools
 from collections.abc import Hashable, Iterable
 from typing import Any, cast
@@ -222,7 +223,7 @@ def find_maximising_path(G: nx.Graph[str], source: str, sink: str, weight: str, 
     """
     curr_node = source
     path = [curr_node]
-    while curr_node != sink and G.neighbors(curr_node):
+    while curr_node != sink and G.neighbors(curr_node):  # type: ignore[no-untyped-call]
         neighbours = sorted(G[curr_node])
         if not neighbours:
             break
