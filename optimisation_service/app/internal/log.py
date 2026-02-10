@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-LOG_DIR = Path("./", "app", "logs")
+LOG_DIR = Path("logs")
 
 
 class EndpointFilter(logging.Filter):
@@ -66,7 +66,15 @@ class EndpointFilter(logging.Filter):
 
 
 def configure_logging() -> None:
-    """Set up logging."""
+    """
+    Set up logging.
+
+    This involves pointing it do a directory, and adding file handlers as well as any filters required.
+
+    Returns
+    -------
+    None
+    """
     LOG_DIR.mkdir(exist_ok=True, parents=True)
     formatter_file = logging.Formatter("[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
     formatter_stream = logging.Formatter("[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
