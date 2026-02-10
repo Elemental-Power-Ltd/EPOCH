@@ -9,8 +9,8 @@ from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import _METRICS
 from app.models.result import PortfolioSolution
 from app.models.site_data import EpochSiteData
-
 from epoch_simulator import Building, Simulator, TaskData
+
 from tests.conftest import _DATA_PATH
 
 from .conftest import load_epoch_data_from_file

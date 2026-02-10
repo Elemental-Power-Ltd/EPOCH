@@ -29,9 +29,9 @@
 **/*.ipynb_checkpoints/**
 
 
-epoch_simulator/build/**
-epoch_simulator/install/**
-epoch_simulator/OutputData/**
+core_simulator/build/**
+core_simulator/install/**
+core_simulator/OutputData/**
 
 **/*.dll
 **/*.so
