@@ -69,4 +69,4 @@ We have pre-baked some example data for three sites representing reasonable ener
 
 ## Development, troubleshooting and more
 
-See the [development](https://github.com/Elemental-Power-Ltd/EPOCH/development) section of the Wiki
+See the [development](https://github.com/Elemental-Power-Ltd/EPOCH/wiki/Development) section of the Wiki
