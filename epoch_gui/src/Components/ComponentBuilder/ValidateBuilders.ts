@@ -13,18 +13,36 @@ export interface ValidationResult {
 }
 
 export const validateTaskData = (taskData: any): ValidationResult => {
-        const result = validator.validateFormData(taskData, TaskDataSchema as RJSFSchema);
+    const result = validator.validateFormData(taskData, TaskDataSchema as RJSFSchema);
 
-        return {
-            valid: result.errors.length === 0,
-            result: result,
-            stringErrors: errorsToStrings(result.errors)
-        };
+    return {
+        valid: result.errors.length === 0,
+        result: result,
+        stringErrors: errorsToStrings(result.errors)
     };
+};
 
 export const validateSiteRange = (siteRange: any): ValidationResult => {
     const result = validator.validateFormData(siteRange, SiteRangeSchema as RJSFSchema);
 
+    if (siteRange?.building) {
+        const building = siteRange.building;
+        const fabricIndex = building.fabric_intervention_index;
+        const isNotZeroArray = !(
+            Array.isArray(fabricIndex) && 
+            fabricIndex.length === 1 && 
+            fabricIndex[0] === 0
+        );
+        
+        if (isNotZeroArray && building.incumbent !== false) {
+            result.errors.push({
+                property: '.building.incumbent',
+                message: 'Building incumbent flag must be false when fabric_intervention_index is not [0]',
+                name: 'custom',
+                stack: '.building.incumbent: Building incumbent flag must be false when fabric_intervention_index is not [0]'
+            });
+        }
+    }
     // TODO
     //  SiteRange validation should be slightly more sophisticated
     //  If we succesfully validate against the 'HumanFriendly' site range,
