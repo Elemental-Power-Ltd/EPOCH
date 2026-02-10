@@ -40,6 +40,7 @@ services:
       - EP_POSTGRES_PASSWORD
       - EP_VISUAL_CROSSING_API_KEY
       - EP_RENEWABLES_NINJA_API_KEY
+      - OPEN_METEO_API_KEY
     depends_on:
       db:
         condition: service_healthy
