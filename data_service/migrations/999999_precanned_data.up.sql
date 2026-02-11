@@ -1,3 +1,6 @@
+-- This file is set to the highest migration number so it isn't included in tests, and 
+-- is applied after all the others.
+
 BEGIN;
 
 INSERT INTO client_info.site_baselines (baseline_id, site_id, baseline, created_at) VALUES
