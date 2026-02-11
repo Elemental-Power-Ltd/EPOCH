@@ -61,7 +61,7 @@ We have pre-baked some example data for three sites representing reasonable ener
 2. Provide the following [secrets](https://github.com/Elemental-Power-Ltd/EPOCH/development):
     - Create a RenewablesNinja account and place the API Key in a file called `./EP_RENEWABLES_NINJA_API_KEY_FILE.txt`
     - Create a filed called `./EP_POSTGRES_PASSWORD_FILE.txt` with the password `elemental`
-    - [OPTIONAL] Create an OpenMeteo or VisualCrossing account and place the API Key in `./OPEN_METEO_API_KEY_FILE.txt` or `./VISUAL_CROSSING_API_KEY_FILE.txt` respectively. The free tier of OpenMeteo will be used if neither are specified
+    - [OPTIONAL] Create an OpenMeteo or VisualCrossing account and place the API Key in `./OPEN_METEO_API_KEY_FILE.txt` or `./EP_VISUAL_CROSSING_API_KEY_FILE.txt` respectively. The free tier of OpenMeteo will be used if neither are specified
 3. Build the services with `docker compose build` and then run with `docker compose up`
     - Or alternatively combine into `docker compose up --build`
 4. Access the Epoch GUI on `localhost:8760`
