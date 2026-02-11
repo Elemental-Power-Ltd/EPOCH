@@ -1,3 +1,4 @@
+import json
 import logging
 import typing
 from pathlib import Path
@@ -19,14 +20,14 @@ from app.internal_models import (
 from app.models import (
     BatteryInfo,
     BuildingType,
+    DemoResult,
     HeatInfo,
     InsulationInfo,
     Location,
     PanelInfo,
     SimulationRequest,
-    SimulationResult,
 )
-from app.utils import report_data_to_dict
+from app.utils import report_data_to_pydantic, simulation_result_to_pydantic
 
 logging.basicConfig(
     filename="errors.log",
@@ -117,22 +118,42 @@ def make_config_data(use_boiler_upgrade_scheme: bool = False) -> str:
 
 
 @app.post("/simulate")
-async def simulate(request: SimulationRequest) -> SimulationResult:
+async def simulate(request: SimulationRequest) -> DemoResult:
+    """
+    Run A simulation.
+
+    Transform the simplified request into an EPOCH compatible TaskData,SiteData pair and simulate with them.
+
+    Parameters
+    ----------
+    request
+        A simplified set of options to modify a site
+
+    Returns
+    -------
+        The resulting simulation, in our GUI's format
+    """
     site_data_json = make_site_data(request.location, request.building)
     task_data_json = make_task_data(request.panels, request.heat, request.insulation, request.battery)
-    use_boiler_upgrade_scheme = bool(request.building == "Domestic")
+
+    # only apply the boiler upgrade scheme for domestic buildings
+    use_boiler_upgrade_scheme = request.building == "Domestic"
     config_json = make_config_data(use_boiler_upgrade_scheme)
 
     task_data = TaskData.from_json(task_data_json)
     simulator = Simulator.from_json(site_data_json, config_json)
     result = simulator.simulate_scenario(task_data, request.full_reporting)
 
-    return SimulationResult(
-        comparison=result.comparison,  # type: ignore
-        metrics=result.metrics,  # type: ignore
-        baseline_metrics=result.baseline_metrics,  # type: ignore
-        scenario_capex_breakdown=result.scenario_capex_breakdown,  # type: ignore
-        report_data=report_data_to_dict(result.report_data) if request.full_reporting else None,
+    report_data_pydantic = report_data_to_pydantic(result.report_data) if result.report_data is not None else None
+    metrics = simulation_result_to_pydantic(result)
+    days_of_interest = []
+
+    return DemoResult(
+        metrics=metrics,
+        task_data=json.loads(task_data_json),
+        site_data=json.loads(site_data_json) if request.full_reporting else None,
+        report_data=report_data_pydantic,
+        days_of_interest=days_of_interest,
     )
 
 
