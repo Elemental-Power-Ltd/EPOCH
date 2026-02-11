@@ -24,6 +24,7 @@ You can then specify a range of components such as heat pumps, solar panels and 
 These are passed through a smart optimiser which will find the best combination of assets to meet your cost and carbon needs on that site, providing detailed recommendations and analysis of how much they'll save.
 <img width="1085" height="722" alt="image" src="https://github.com/user-attachments/assets/2aa451d8-7839-498d-a8fc-21827a4c0fa9" />
 
+For a full walkthrough of how to use the software, check out the [EPOCH Walkthrough](https://github.com/Elemental-Power-Ltd/EPOCH/wiki/EPOCH-walkthrough) on the wiki.
 
 ## Components
 
