@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:demonstrator": "vite --config vite.demonstrator.config.ts",
     "dev:informed": "vite --config vite.informed.config.ts",
     "build": "tsc --noEmitOnError false && vite build",
     "build:informed": "vite build --config vite.informed.config.ts --emptyOutDir --manifest",
