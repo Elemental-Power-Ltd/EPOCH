@@ -838,8 +838,12 @@ async def generate_all(
     # with the subtly different "Wholesale" tariff
     if "EP_RE24_API_KEY_FILE" in secrets_env:
         CHOSEN_TARIFFS[1] = SyntheticTariffEnum.Agile
-    else:
+    elif params.start_ts >= datetime.datetime(year=2024, month=4, day=1, tzinfo=datetime.UTC):
+        # Elexon data doesn't go very far back!
         CHOSEN_TARIFFS[1] = SyntheticTariffEnum.Wholesale
+    else:
+        del CHOSEN_TARIFFS[1]
+
     tariff_reqs = []
     # Check if there are existing entries in this bundle, and start our counting off from there.
     # Note that this doesn't happen as a task as it might be affected by the previous jobs.
