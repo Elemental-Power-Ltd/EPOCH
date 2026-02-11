@@ -91,7 +91,7 @@ def make_task_data(
         )
         if battery
         else None,
-        gas_heater=GasHeater(maximum_output=heat.heat_power) if heat.heat_source == "Boiler" else None,
+        gas_heater=GasHeater(maximum_output=heat.heat_power, incumbent=True) if heat.heat_source == "Boiler" else None,
         heat_pump=HeatPump(heat_power=heat.heat_power) if heat.heat_source == "HeatPump" else None,
         solar_panels=[
             SolarPanel(
@@ -134,7 +134,16 @@ async def simulate(request: SimulationRequest) -> DemoResult:
         The resulting simulation, in our GUI's format
     """
     site_data_json = make_site_data(request.location, request.building)
+    sdj = json.loads(site_data_json)
+
+    # if the request is for a boiler, use the baseline boiler's values
+    baseline_boiler_output = sdj["baseline"]["gas_heater"]["maximum_output"]
+    if request.heat.heat_source == "Boiler":
+        # horrible mutation!
+        request.heat.heat_power = baseline_boiler_output
+
     task_data_json = make_task_data(request.panels, request.heat, request.insulation, request.battery)
+
 
     # only apply the boiler upgrade scheme for domestic buildings
     use_boiler_upgrade_scheme = request.building == "Domestic"
@@ -151,7 +160,7 @@ async def simulate(request: SimulationRequest) -> DemoResult:
     return DemoResult(
         metrics=metrics,
         task_data=json.loads(task_data_json),
-        site_data=json.loads(site_data_json) if request.full_reporting else None,
+        site_data=sdj if request.full_reporting else None,
         report_data=report_data_pydantic,
         days_of_interest=days_of_interest,
     )
