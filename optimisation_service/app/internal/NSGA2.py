@@ -23,7 +23,13 @@ from pymoo.termination.robust import RobustTermination  # type: ignore
 from pymoo.util.misc import at_least_2d_array  # type: ignore
 
 from app.internal.constraints import update_feasibility
-from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair, ScalarProblemInstance
+from app.internal.ga_utils import (
+    EstimateBasedSampling,
+    Normaliser,
+    ProblemInstance,
+    RoundingAndDegenerateRepair,
+    ScalarProblemInstance,
+)
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.result import get_baseline_portfolio_solution
@@ -294,6 +300,7 @@ class NSGA2(Algorithm):
         constraints: Constraints,
         portfolio: list[Site],
         weights: list[float] | None = None,
+        normalisers: list[Normaliser] | None = None,
         existing_solutions: list[PortfolioSolution] | None = None,
         save_history: bool = False,
     ) -> OptimisationResult:
@@ -321,7 +328,7 @@ class NSGA2(Algorithm):
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
         if weights:
-            pi = ScalarProblemInstance(objectives, constraints, portfolio, weights)
+            pi = ScalarProblemInstance(objectives, constraints, portfolio, weights, normalisers)
         else:
             pi = ProblemInstance(objectives, constraints, portfolio)
 

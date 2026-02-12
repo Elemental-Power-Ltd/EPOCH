@@ -369,10 +369,30 @@ class ProblemInstance(ElementwiseProblem):
         out["F"] = list(directed_results.values())
 
 
+class Normaliser:
+    def __init__(self, min_value, max_value):
+        self.min = min_value
+        self.max = max_value
+        if self.max == self.min:
+            self.min = 0
+
+    def __call__(self, x):
+        # Normalize x to [0, 1]
+        return (x - self.min) / (self.max - self.min)
+
+
 class ScalarProblemInstance(ProblemInstance):
-    def __init__(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site], weights: list[float]) -> None:
+    def __init__(
+        self,
+        objectives: list[Metric],
+        constraints: Constraints,
+        portfolio: list[Site],
+        weights: list[float],
+        normalisers: list[Normaliser],
+    ) -> None:
 
         self.weights = dict(zip(objectives, weights, strict=True))
+        self.normalisers = dict(zip(objectives, normalisers, strict=True))
 
         super().__init__(objectives, constraints, portfolio)
 
@@ -400,7 +420,8 @@ class ScalarProblemInstance(ProblemInstance):
 
         out["G"] = constraint_violations
         selected_results = {
-            metric: portfolio_solution.metric_values[metric] * self.weights[metric] for metric in self.objectives
+            metric: self.normalisers[metric](portfolio_solution.metric_values[metric]) * self.weights[metric]
+            for metric in self.objectives
         }
         directed_results = self.apply_directions(selected_results)
         out["F"] = sum(directed_results.values())
