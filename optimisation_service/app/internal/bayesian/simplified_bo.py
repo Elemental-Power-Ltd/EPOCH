@@ -7,6 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import torch
 from app.internal.bayesian.distributed_portfolio_optimiser import select_starting_solutions
+from app.internal.ga_utils import Normaliser
 from app.internal.NSGA2 import NSGA2
 from app.internal.pareto_front import (
     merge_list_of_portfolio_solutions,
@@ -137,6 +138,19 @@ class Bayesian(Algorithm):
         n_objectives = len(objectives)
         assert n_sub_portfolios > 1, "There must be at least two objectives."
 
+        self.normalisers_list = []
+        for sub_portfolio in self.sub_portfolios:
+            metrics = {objective: [] for objective in objectives}
+            for objective in objectives:
+                alg = NSGA2(**dict(self.NSGA2_param))
+                res = alg.run(objectives=[objective], constraints=constraints, portfolio=sub_portfolio)
+                for obj in objectives:
+                    metrics[obj].append(res.solutions[0].metric_values[obj])
+            normalisers = [
+                Normaliser(min_value=min(metrics[objective]), max_value=max(metrics[objective])) for objective in objectives
+            ]
+            self.normalisers_list.append(normalisers)
+
         self.objectives = objectives
         self.sub_portfolio_solutions = [[]] * n_sub_portfolios
         sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in self.sub_portfolios]
@@ -181,7 +195,6 @@ class Bayesian(Algorithm):
         inequality_constraints = create_inequality_constraints(
             capex_limit=capex_limit, n_sub_portfolios=n_sub_portfolios, n_objectives=n_objectives
         )
-        print(inequality_constraints)
 
         mll, model = initialise_model(train_x, train_y, bounds)
 
@@ -252,9 +265,10 @@ class Bayesian(Algorithm):
         solutions
             A list of new (unseen before) optimal solutions.
         """
-        print(capex_limits, weights_list)
         sub_portfolio_solutions = []
-        for i, (capex_limit, weights_dict) in enumerate(zip(capex_limits, weights_list, strict=True)):
+        for i, (capex_limit, weights, normalisers) in enumerate(
+            zip(capex_limits, weights_list, self.normalisers_list, strict=True)
+        ):
             alg = NSGA2(**dict(self.NSGA2_param))
             constraints = {Metric.capex: Bounds(max=capex_limit)}
 
@@ -270,7 +284,8 @@ class Bayesian(Algorithm):
                 objectives=self.objectives,
                 constraints=constraints,
                 portfolio=self.sub_portfolios[i],
-                weights=weights_dict,
+                weights=weights,
+                normalisers=normalisers,
                 # existing_solutions=selected_solutions,
             )
             self.n_evals += res.n_evals
@@ -336,17 +351,14 @@ def generate_random_candidates(
     candidates = []
     for _ in range(n):
         # get capex splits
-        capex_splits = rng.uniform(low=0, high=capex_limit, size=n_sub_portfolios)
-        capex_sum = sum(capex_splits)
-        if capex_sum > capex_limit:
-            capex_splits *= rng.uniform(0.01, capex_limit / capex_sum)
+        capex_splits = rng.dirichlet(np.ones(n_sub_portfolios))[:-1] * capex_limit
 
         # get objective weights
         obj_weights = []
         for _ in range(n_sub_portfolios):
             obj_weights.extend(rng.dirichlet(np.ones(n_objectives))[:-1])
 
-        candidate = np.concatenate([capex_splits[:-1], np.array(obj_weights)])
+        candidate = np.concatenate([capex_splits, np.array(obj_weights)])
         candidates.append(candidate)
 
     return np.array(candidates)
