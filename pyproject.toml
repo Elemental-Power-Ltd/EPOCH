@@ -55,6 +55,13 @@ dev = [
     "types-tensorflow>=2.18.0.20260121",
 ]
 
+demonstrator = [
+    "fastapi[standard]>=0.128.0",
+    "numpy>=2.3.5",
+    "pydantic>=2.12.5",
+]
+
+
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cpu" },

@@ -51,7 +51,7 @@ WORKDIR /code
 # Copy requirements
 COPY uv.lock pyproject.toml ./
 
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --only-group demonstrator
 
 # Add /code/install to both PATH and PYTHONPATH so that we don't have to know the relative path to Epoch
 ENV PATH="/code/install:$PATH"
