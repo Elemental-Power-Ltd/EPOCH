@@ -7,6 +7,7 @@ import SimulationResultViewer from "../src/Components/Results/SimulationResultVi
 import {SimulationResult} from "../src/Models/Endpoints";
 import DemoForm from "./DemoForm";
 import {SimulationRequest} from "./demo-endpoint";
+import {PresentationModeProvider} from "../src/PresentationMode";
 
 
 export const Demonstrator: React.FC = () => {
@@ -54,20 +55,21 @@ export const Demonstrator: React.FC = () => {
 
     return (
         <AppTheme isDarkMode={systemPrefersDark} >
+            <PresentationModeProvider defaultEnabled={true}>
+                <Container maxWidth="md" disableGutters>
+                    <DemoForm
+                        onSubmit={runSimulation}
+                        siteExpanded={siteExpanded}
+                        setSiteExpanded={setSiteExpanded}
+                        componentsExpanded={componentsExpanded}
+                        setComponentsExpanded={setComponentsExpanded}
+                    />
+                </Container>
 
-            <Container maxWidth="md" disableGutters>
-                <DemoForm
-                    onSubmit={runSimulation}
-                    siteExpanded={siteExpanded}
-                    setSiteExpanded={setSiteExpanded}
-                    componentsExpanded={componentsExpanded}
-                    setComponentsExpanded={setComponentsExpanded}
-                />
-            </Container>
-
-            {(result || error || loading) &&
-                <SimulationResultViewer isLoading={loading} error={error} result={result}/>
-            }
+                {(result || error || loading) &&
+                    <SimulationResultViewer isLoading={loading} error={error} result={result}/>
+                }
+            </PresentationModeProvider>
         </AppTheme>
     )
 }
