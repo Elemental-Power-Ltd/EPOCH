@@ -516,7 +516,7 @@ const DemoForm: React.FC<DemoFormProps> = ({
     );
 
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" disableGutters>
             {siteForm()}
             {componentsForm()}
             <Box my={1}>

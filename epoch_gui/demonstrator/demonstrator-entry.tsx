@@ -55,7 +55,7 @@ export const Demonstrator: React.FC = () => {
     return (
         <AppTheme isDarkMode={systemPrefersDark} >
 
-            <Container maxWidth="md">
+            <Container maxWidth="md" disableGutters>
                 <DemoForm
                     onSubmit={runSimulation}
                     siteExpanded={siteExpanded}
