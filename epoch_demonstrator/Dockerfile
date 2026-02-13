@@ -62,6 +62,6 @@ COPY ./epoch_demonstrator/app app
 COPY ./epoch_demonstrator/data data
 COPY --from=epoch-build /code/epoch/build/epoch_py/epoch_simulator.cpython-313-x86_64-linux-gnu.so /code/install/
 
-EXPOSE 8761
+EXPOSE 8763
 ENV UV_NO_SYNC=1
-CMD ["uv", "run", "fastapi", "run", "./app/main.py", "--port", "8761"]
+CMD ["uv", "run", "fastapi", "run", "./app/main.py", "--port", "8763"]
