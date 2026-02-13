@@ -2,7 +2,7 @@ import ReactDOM from "react-dom/client";
 import React from "react";
 
 import AppTheme from "../src/AppTheme";
-import {Button, Container} from "@mui/material";
+import {Container, useMediaQuery} from "@mui/material";
 import SimulationResultViewer from "../src/Components/Results/SimulationResultViewer";
 import {SimulationResult} from "../src/Models/Endpoints";
 import DemoForm from "./DemoForm";
@@ -50,8 +50,10 @@ export const Demonstrator: React.FC = () => {
     const [siteExpanded, setSiteExpanded] = React.useState<boolean>(true);
     const [componentsExpanded, setComponentsExpanded] = React.useState<boolean>(true);
 
+    const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
+
     return (
-        <AppTheme isDarkMode={false} >
+        <AppTheme isDarkMode={systemPrefersDark} >
 
             <Container maxWidth="md">
                 <DemoForm
