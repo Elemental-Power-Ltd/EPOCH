@@ -96,6 +96,7 @@ def make_task_data(
             capacity=battery.capacity,
             charge_power=battery.power,
             discharge_power=battery.power,
+            battery_mode="CONSUME_PLUS",
         )
         if battery
         else None,

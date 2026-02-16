@@ -285,7 +285,7 @@ const DemoForm: React.FC<DemoFormProps> = ({
         setBatteryPowerDirty(false);
         setRequest((r) => ({
             ...r,
-            battery: enabled ? {capacity: 10, power: 5} : null,
+            battery: enabled ? {capacity: 5, power: 2.5} : null,
         }));
     };
 
