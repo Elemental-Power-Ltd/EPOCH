@@ -1,785 +1,277 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Simulation Demonstrator</title>
-  <style>
-    :root {
-      --bg: #0b0c0f;
-      --card: #12141a;
-      --muted: #8b93a7;
-      --text: #e9edf6;
-      --border: #262a36;
-      --accent: #6ea8fe;
-      --danger: #ff6b6b;
-      --ok: #51cf66;
-    }
-    * { box-sizing: border-box; }
+    <meta charset="UTF-8">
+    <title>Simulation Form</title>
+<style>
     body {
-      margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background: radial-gradient(1200px 600px at 50% -10%, rgba(110,168,254,.18), transparent 60%),
-                  radial-gradient(900px 500px at 0% 20%, rgba(81,207,102,.10), transparent 55%),
-                  var(--bg);
-      color: var(--text);
-    }
-    .container {
-      max-width: 920px;
-      margin: 0 auto;
-      padding: 18px 14px 48px;
-    }
-    .header {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 18px;
-      letter-spacing: .2px;
-    }
-    .header .sub {
-      color: var(--muted);
-      font-size: 13px;
+        font-family: Arial, sans-serif;
+        margin: 40px;
     }
 
-    details.accordion {
-      border: 1px solid var(--border);
-      background: rgba(18,20,26,.75);
-      border-radius: 14px;
-      overflow: hidden;
-      margin-bottom: 10px;
-      backdrop-filter: blur(8px);
-    }
-    details.accordion > summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 12px 14px;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-    }
-    details.accordion > summary::-webkit-details-marker { display: none; }
-    details.accordion > summary .title {
-      font-weight: 650;
-      letter-spacing: .2px;
-    }
-    details.accordion > summary .chev {
-      position: absolute;
-      right: 12px;
-      width: 18px;
-      height: 18px;
-      opacity: .75;
-      transition: transform 160ms ease;
-    }
-    details[open].accordion > summary .chev { transform: rotate(180deg); }
-
-    .content { padding: 0 14px 14px; }
-
-    .hint {
-      color: var(--muted);
-      font-size: 12px;
-      margin: 8px 0 12px;
+    fieldset {
+        margin-bottom: 20px;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
     }
 
-    .row {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-    @media (min-width: 760px) {
-      .row.two { grid-template-columns: 1fr 1fr; }
-      .panel-line { grid-template-columns: 1fr 1fr auto; }
-      .battery-line { grid-template-columns: 1fr 1fr; }
+    legend {
+        font-weight: bold;
+        padding: 0 8px;
     }
 
-    .section {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(18,20,26,.60);
-      padding: 12px;
-    }
-    .section-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    .section-head .label {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 650;
-      letter-spacing: .25px;
-      text-transform: none;
+    /* Two fields per row */
+    fieldset {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px 25px;
     }
 
-    .toggle-group {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .toggle {
-      appearance: none;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.03);
-      color: var(--text);
-      padding: 9px 10px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: border-color 140ms ease, background 140ms ease;
-      min-width: 120px;
-      text-align: center;
-    }
-    .toggle[aria-pressed="true"] {
-      border-color: rgba(110,168,254,.75);
-      background: rgba(110,168,254,.14);
+    /* Make headings span full width */
+    fieldset h4 {
+        grid-column: 1 / -1;
+        margin-bottom: 5px;
     }
 
-    label.field {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    input[type="number"], select {
-      width: 100%;
-      padding: 10px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.04);
-      color: var(--text);
-      outline: none;
-    }
-    input[type="number"]::placeholder { color: rgba(233,237,246,.35); }
-    option { background: #11131a; }
-
-    .btn {
-      appearance: none;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.05);
-      color: var(--text);
-      padding: 9px 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 13px;
-      transition: transform 80ms ease, border-color 140ms ease, background 140ms ease;
-    }
-    .btn:active { transform: translateY(1px); }
-    .btn.primary {
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border-color: rgba(110,168,254,.45);
-      background: rgba(110,168,254,.16);
-    }
-    .btn.primary:hover { background: rgba(110,168,254,.22); }
-    .btn.outline:hover { background: rgba(255,255,255,.08); }
-
-    .icon-btn {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.04);
-      color: var(--text);
-      cursor: pointer;
+    /* Labels stack text + input vertically */
+    label {
+        display: flex;
+        flex-direction: column;
+        font-size: 14px;
     }
 
-    .panel-list {
-      display: grid;
-      gap: 10px;
+    input, select {
+        padding: 6px;
+        margin-top: 5px;
+        width: 100%;
+        box-sizing: border-box;
     }
-    .panel-line {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border);
-    }
-    .panel-line:first-child { border-top: none; padding-top: 0; }
 
-    .inline {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
+    button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
     }
-    .switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      user-select: none;
-      cursor: pointer;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 650;
-    }
-    .switch input {
-      width: 42px;
-      height: 24px;
-      appearance: none;
-      background: rgba(255,255,255,.08);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      position: relative;
-      outline: none;
-      cursor: pointer;
-      transition: background 160ms ease, border-color 160ms ease;
-    }
-    .switch input::after {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 3px;
-      width: 18px;
-      height: 18px;
-      border-radius: 999px;
-      transform: translateY(-50%);
-      background: rgba(233,237,246,.85);
-      transition: transform 160ms ease;
-    }
-    .switch input:checked {
-      background: rgba(81,207,102,.22);
-      border-color: rgba(81,207,102,.35);
-    }
-    .switch input:checked::after { transform: translate(18px, -50%); }
 
-    .results {
-      margin-top: 14px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(18,20,26,.75);
-      padding: 12px 14px;
+    table {
+        border-collapse: collapse;
+        margin-top: 30px;
+        width: 100%;
     }
-    .results h2 {
-      margin: 0 0 10px;
-      font-size: 14px;
-      letter-spacing: .2px;
-      color: var(--muted);
-      font-weight: 700;
+
+    th, td {
+        border: 1px solid #ccc;
+        padding: 10px 12px;
+        text-align: center;
     }
-    .kv {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
+
+    th {
+        background-color: #f4f4f4;
     }
-    @media (min-width: 760px) {
-      .kv { grid-template-columns: 1fr 1fr; }
+
+    #results {
+        display: none;
     }
-    .tile {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,.03);
+
+    @media (max-width: 700px) {
+    fieldset {
+        grid-template-columns: 1fr;
     }
-    .tile .k {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .tile .v {
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: .2px;
-    }
-    .status {
-      margin-top: 10px;
-      font-size: 13px;
-    }
-    .status.loading { color: var(--muted); }
-    .status.error { color: var(--danger); }
-  </style>
+}
+
+</style>
+
 </head>
-
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Simulation Demonstrator</h1>
-      <div class="sub">Posts to <code>/api/simulate</code> and shows two metrics</div>
-    </div>
 
-    <!-- SITE -->
-    <details class="accordion" id="siteAccordion" open>
-      <summary>
-        <span class="title">Site</span>
-        <svg class="chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </summary>
-      <div class="content">
-        <div class="hint">Choose a type of building and its location.</div>
+<h2>Energy Simulation</h2>
 
-        <div class="row two">
-          <div class="section">
-            <div class="section-head">
-              <div class="label">Location</div>
-            </div>
-            <div class="toggle-group" id="locationGroup"></div>
-          </div>
+<form id="simulationForm">
 
-          <div class="section">
-            <div class="section-head">
-              <div class="label">Building</div>
-            </div>
-            <div class="toggle-group" id="buildingGroup"></div>
-          </div>
-        </div>
-      </div>
-    </details>
+    <fieldset>
+        <legend>Site</legend>
+        <label>Location:
+            <select id="location">
+                <option value="Cardiff">Cardiff</option>
+                <option value="London">London</option>
+                <option value="Edinburgh">Edinburgh</option>
+            </select>
+        </label>
 
-    <!-- COMPONENTS -->
-    <details class="accordion" id="componentsAccordion" open>
-      <summary>
-        <span class="title">Components</span>
-        <svg class="chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </summary>
-      <div class="content">
-        <div class="hint">Choose the upgrades to make to your site.</div>
+        <label>Building Type:
+            <select id="building">
+                <option value="Domestic">Domestic</option>
+                <option value="TownHall">TownHall</option>
+                <option value="LeisureCentre">LeisureCentre</option>
+            </select>
+        </label>
+    </fieldset>
 
-        <div class="row" style="gap: 12px;">
-          <!-- SOLAR -->
-          <div class="section">
-            <div class="section-head">
-              <div class="label">Solar</div>
-              <button class="btn outline" id="addPanelBtn">Add panels</button>
-            </div>
+    <fieldset>
+        <legend>Solar Panels (2 arrays)</legend>
 
-            <div id="panelsEmpty" class="hint" style="margin:0;">No panels installed.</div>
-            <div class="panel-list" id="panelList" style="margin-top: 10px;"></div>
-          </div>
+        <h4>Panel 1</h4>
+        <label>Peak Power (kW):
+            <input type="number" id="solar1_peak" min="0" step="0.1" value="2.5" required>
+        </label>
+        <label>Direction:
+            <select id="solar1_direction">
+                <option>North</option>
+                <option>East</option>
+                <option selected>South</option>
+                <option>West</option>
+            </select>
+        </label>
 
-          <!-- HEAT -->
-          <div class="section">
-            <div class="section-head">
-              <div class="label">Heat</div>
-            </div>
+        <h4>Panel 2</h4>
+        <label>Peak Power (kW):
+            <input type="number" id="solar2_peak" min="0" step="0.1" value="1.0" required>
+        </label>
+        <label>Direction:
+            <select id="solar2_direction">
+                <option selected>North</option>
+                <option>East</option>
+                <option>South</option>
+                <option>West</option>
+            </select>
+        </label>
+    </fieldset>
 
-            <div class="toggle-group" id="heatSourceGroup">
-              <button class="toggle" data-value="Boiler" aria-pressed="true">Keep boiler</button>
-              <button class="toggle" data-value="HeatPump" aria-pressed="false">Install heat pump</button>
-            </div>
+    <fieldset>
+        <legend>Heating</legend>
+        <label>Heat Power (kW):
+            <input type="number" id="heat_power" min="0.1" step="0.1" value="10.0" required>
+        </label>
+        <label>Heat Source:
+            <select id="heat_source">
+                <option value="Boiler">Boiler</option>
+                <option value="HeatPump">HeatPump</option>
+            </select>
+        </label>
+    </fieldset>
 
-            <div id="heatPumpFields" style="margin-top: 10px; display:none;">
-              <label class="field" for="heatPower">Heat pump power</label>
-              <div class="inline" style="gap: 8px;">
-                <input id="heatPower" type="number" min="0" step="0.1" />
-                <span class="hint" style="margin:0;">kW</span>
-              </div>
-            </div>
-          </div>
+    <fieldset>
+        <legend>Insulation</legend>
+        <label><input type="checkbox" id="double_glazing"> Double Glazing</label>
+        <label><input type="checkbox" id="cladding"> Cladding</label>
+        <label><input type="checkbox" id="loft"> Loft Insulation</label>
+    </fieldset>
 
-          <!-- BATTERY -->
-          <div class="section">
-            <div class="section-head">
-              <div class="label">Battery</div>
-              <label class="switch" title="Toggle battery">
-                <span id="batteryOnOff">Off</span>
-                <input id="batteryEnabled" type="checkbox" />
-              </label>
-            </div>
+    <fieldset>
+        <legend>Battery (Optional)</legend>
+        <label>Capacity (kWh):
+            <input type="number" id="battery_capacity" min="0" step="0.1">
+        </label>
+        <label>Power (kW):
+            <input type="number" id="battery_power" min="0" step="0.1">
+        </label>
+    </fieldset>
 
-            <div id="batteryEmpty" class="hint" style="margin:0;">No Battery Installed.</div>
+    <fieldset>
+        <legend>Grid</legend>
+        <label>Import Tariff:
+            <select id="import_tariff">
+                <option>Fixed</option>
+                <option>Agile</option>
+                <option>Peak</option>
+                <option>Overnight</option>
+            </select>
+        </label>
 
-            <div id="batteryFields" style="margin-top: 10px; display:none;">
-              <div class="row battery-line">
-                <div>
-                  <label class="field" for="batteryCapacity">Capacity</label>
-                  <div class="inline" style="gap: 8px;">
-                    <input id="batteryCapacity" type="number" min="0" step="0.1" />
-                    <span class="hint" style="margin:0;">kWh</span>
-                  </div>
-                </div>
-                <div>
-                  <label class="field" for="batteryPower">Power <span id="batteryPowerAuto" class="hint" style="margin:0;">(auto)</span></label>
-                  <div class="inline" style="gap: 8px;">
-                    <input id="batteryPower" type="number" min="0" step="0.1" />
-                    <span class="hint" style="margin:0;">kW</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <label>Export Tariff (£/kWh):
+            <input type="number" id="export_tariff" min="0" step="0.01" value="0.05" required>
+        </label>
+    </fieldset>
 
-          <!-- INSULATION -->
-          <div class="section">
-            <div class="section-head">
-              <div class="label">Insulation</div>
-            </div>
-            <div class="toggle-group" id="insulationGroup">
-              <button class="toggle" data-key="double_glazing" aria-pressed="false">Double glazing</button>
-              <button class="toggle" data-key="cladding" aria-pressed="false">Cladding</button>
-              <button class="toggle" data-key="loft" aria-pressed="false">Loft</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </details>
+    <button type="submit">Run Simulation</button>
 
-    <div style="margin-top: 10px;">
-      <button class="btn primary" id="simulateBtn">Simulate</button>
-    </div>
+</form>
 
-    <div class="results" id="resultsBox" style="display:none;">
-      <h2>Result metrics</h2>
+<div id="results">
+    <h3>Simulation Results</h3>
+    <table>
+        <tr>
+            <th>Total Spend (£)</th>
+            <th>Scope 1 Carbon Savings (kgCO2e)</th>
+            <th>Scope 2 Carbon Savings (kgCO2e)</th>
+            <th>Return on Investment (%)</th>
+        </tr>
+        <tr>
+            <td id="capex"></td>
+            <td id="scope1"></td>
+            <td id="scope2"></td>
+            <td id="roi"></td>
+        </tr>
+    </table>
+</div>
 
-      <div class="kv">
-        <div class="tile">
-          <div class="k">result.metrics.return_on_investment</div>
-          <div class="v" id="roiValue">—</div>
-        </div>
-        <div class="tile">
-          <div class="k">result.metrics.carbon_balance_scope_1</div>
-          <div class="v" id="carbonValue">—</div>
-        </div>
-      </div>
+<script>
+document.getElementById("simulationForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
 
-      <div class="status loading" id="loadingLine" style="display:none;">Running simulation…</div>
-      <div class="status error" id="errorLine" style="display:none;"></div>
-    </div>
-  </div>
+    const batteryCapacity = document.getElementById("battery_capacity").value;
+    const batteryPower = document.getElementById("battery_power").value;
 
-  <script>
-    // ---- Types (informal) ----
-    // SimulationRequest:
-    // {
-    //   location: "Cardiff"|"London"|"Edinburgh",
-    //   building: "Domestic"|"TownHall"|"LeisureCentre",
-    //   panels: [{ solar_peak:number, direction:"North"|"East"|"South"|"West" }],
-    //   heat: { heat_power:number, heat_source:"Boiler"|"HeatPump" },
-    //   insulation: { double_glazing:boolean, cladding:boolean, loft:boolean },
-    //   battery: { capacity:number, power:number } | null,
-    //   full_reporting: boolean
-    // }
-
-    const LOCATIONS = ["Cardiff", "London", "Edinburgh"];
-    const BUILDINGS = [
-      { value: "Domestic", label: "Domestic" },
-      { value: "TownHall", label: "Town hall" },
-      { value: "LeisureCentre", label: "Leisure centre" }
-    ];
-    const DIRECTIONS = ["North", "East", "South", "West"];
-
-    function clampNonNeg(n) {
-      if (!Number.isFinite(n)) return 0;
-      return Math.max(0, n);
-    }
-
-    // ---- State ----
-    const state = {
-      request: {
-        location: "Cardiff",
-        building: "Domestic",
-        panels: [],
-        heat: { heat_power: 8, heat_source: "Boiler" },
-        insulation: { double_glazing: false, cladding: false, loft: false },
-        battery: null,
-        full_reporting: true
-      },
-      batteryPowerTouched: false,
-      loading: false,
-      error: null,
-      result: null
+    const requestBody = {
+        location: document.getElementById("location").value,
+        building: document.getElementById("building").value,
+        panels: [
+            {
+                solar_peak: parseFloat(document.getElementById("solar1_peak").value),
+                direction: document.getElementById("solar1_direction").value
+            },
+            {
+                solar_peak: parseFloat(document.getElementById("solar2_peak").value),
+                direction: document.getElementById("solar2_direction").value
+            }
+        ],
+        heat: {
+            heat_power: parseFloat(document.getElementById("heat_power").value),
+            heat_source: document.getElementById("heat_source").value
+        },
+        insulation: {
+            double_glazing: document.getElementById("double_glazing").checked,
+            cladding: document.getElementById("cladding").checked,
+            loft: document.getElementById("loft").checked
+        },
+        battery: batteryCapacity && batteryPower ? {
+            capacity: parseFloat(batteryCapacity),
+            power: parseFloat(batteryPower)
+        } : null,
+        grid: {
+            import_tariff: document.getElementById("import_tariff").value,
+            export_tariff: parseFloat(document.getElementById("export_tariff").value)
+        },
+        full_reporting: false
     };
 
-    // ---- DOM ----
-    const el = {
-      siteAccordion: document.getElementById("siteAccordion"),
-      componentsAccordion: document.getElementById("componentsAccordion"),
-
-      locationGroup: document.getElementById("locationGroup"),
-      buildingGroup: document.getElementById("buildingGroup"),
-
-      addPanelBtn: document.getElementById("addPanelBtn"),
-      panelsEmpty: document.getElementById("panelsEmpty"),
-      panelList: document.getElementById("panelList"),
-
-      heatSourceGroup: document.getElementById("heatSourceGroup"),
-      heatPumpFields: document.getElementById("heatPumpFields"),
-      heatPower: document.getElementById("heatPower"),
-
-      batteryEnabled: document.getElementById("batteryEnabled"),
-      batteryOnOff: document.getElementById("batteryOnOff"),
-      batteryEmpty: document.getElementById("batteryEmpty"),
-      batteryFields: document.getElementById("batteryFields"),
-      batteryCapacity: document.getElementById("batteryCapacity"),
-      batteryPower: document.getElementById("batteryPower"),
-      batteryPowerAuto: document.getElementById("batteryPowerAuto"),
-
-      insulationGroup: document.getElementById("insulationGroup"),
-
-      simulateBtn: document.getElementById("simulateBtn"),
-
-      resultsBox: document.getElementById("resultsBox"),
-      roiValue: document.getElementById("roiValue"),
-      carbonValue: document.getElementById("carbonValue"),
-      loadingLine: document.getElementById("loadingLine"),
-      errorLine: document.getElementById("errorLine")
-    };
-
-    // ---- Render helpers ----
-    function setToggleGroup(groupEl, currentValue, onChange) {
-      [...groupEl.querySelectorAll("button.toggle")].forEach(btn => {
-        const v = btn.getAttribute("data-value");
-        const pressed = (v === currentValue);
-        btn.setAttribute("aria-pressed", pressed ? "true" : "false");
-        btn.onclick = () => onChange(v);
-      });
-    }
-
-    function renderLocationBuilding() {
-      el.locationGroup.innerHTML = "";
-      LOCATIONS.forEach(loc => {
-        const b = document.createElement("button");
-        b.className = "toggle";
-        b.textContent = loc;
-        b.setAttribute("data-value", loc);
-        b.setAttribute("aria-pressed", (state.request.location === loc) ? "true" : "false");
-        b.onclick = () => {
-          state.request.location = loc;
-          renderLocationBuilding();
-        };
-        el.locationGroup.appendChild(b);
-      });
-
-      el.buildingGroup.innerHTML = "";
-      BUILDINGS.forEach(bld => {
-        const b = document.createElement("button");
-        b.className = "toggle";
-        b.textContent = bld.label;
-        b.setAttribute("data-value", bld.value);
-        b.setAttribute("aria-pressed", (state.request.building === bld.value) ? "true" : "false");
-        b.onclick = () => {
-          state.request.building = bld.value;
-          renderLocationBuilding();
-        };
-        el.buildingGroup.appendChild(b);
-      });
-    }
-
-    function renderPanels() {
-      const hasPanels = state.request.panels.length > 0;
-      el.panelsEmpty.style.display = hasPanels ? "none" : "block";
-      el.addPanelBtn.textContent = hasPanels ? "Add" : "Add panels";
-
-      el.panelList.innerHTML = "";
-      state.request.panels.forEach((p, idx) => {
-        const row = document.createElement("div");
-        row.className = "panel-line";
-
-        const peakWrap = document.createElement("div");
-        const peakLabel = document.createElement("label");
-        peakLabel.className = "field";
-        peakLabel.textContent = "Peak";
-        const peakInput = document.createElement("input");
-        peakInput.type = "number";
-        peakInput.min = "0";
-        peakInput.step = "0.1";
-        peakInput.value = String(p.solar_peak);
-        peakInput.oninput = (e) => {
-          const v = clampNonNeg(Number(e.target.value));
-          state.request.panels[idx].solar_peak = v;
-        };
-        peakWrap.appendChild(peakLabel);
-        peakWrap.appendChild(peakInput);
-        const peakUnit = document.createElement("div");
-        peakUnit.className = "hint";
-        peakUnit.style.margin = "6px 0 0";
-        peakUnit.textContent = "kWp";
-        peakWrap.appendChild(peakUnit);
-
-        const dirWrap = document.createElement("div");
-        const dirLabel = document.createElement("label");
-        dirLabel.className = "field";
-        dirLabel.textContent = "Direction";
-        const sel = document.createElement("select");
-        DIRECTIONS.forEach(d => {
-          const opt = document.createElement("option");
-          opt.value = d;
-          opt.textContent = d;
-          sel.appendChild(opt);
-        });
-        sel.value = p.direction;
-        sel.onchange = (e) => {
-          state.request.panels[idx].direction = e.target.value;
-        };
-        dirWrap.appendChild(dirLabel);
-        dirWrap.appendChild(sel);
-
-        const del = document.createElement("button");
-        del.className = "icon-btn";
-        del.title = "Remove panel";
-        del.innerHTML = "🗑️";
-        del.onclick = () => {
-          state.request.panels.splice(idx, 1);
-          renderPanels();
-        };
-
-        row.appendChild(peakWrap);
-        row.appendChild(dirWrap);
-        row.appendChild(del);
-
-        el.panelList.appendChild(row);
-      });
-    }
-
-    function renderHeat() {
-      const source = state.request.heat.heat_source;
-      setToggleGroup(el.heatSourceGroup, source, (v) => {
-        state.request.heat.heat_source = v;
-        renderHeat();
-      });
-
-      const show = (source === "HeatPump");
-      el.heatPumpFields.style.display = show ? "block" : "none";
-      el.heatPower.value = String(state.request.heat.heat_power ?? 0);
-
-      el.heatPower.oninput = (e) => {
-        state.request.heat.heat_power = clampNonNeg(Number(e.target.value));
-      };
-    }
-
-    function autoBatteryPowerIfNeeded() {
-      if (!state.request.battery) return;
-      if (state.batteryPowerTouched) return;
-
-      const cap = clampNonNeg(state.request.battery.capacity);
-      const desiredPower = cap / 2;
-
-      if (state.request.battery.power !== desiredPower) {
-        state.request.battery.power = desiredPower;
-      }
-    }
-
-    function renderBattery() {
-      const enabled = !!state.request.battery;
-      el.batteryEnabled.checked = enabled;
-      el.batteryOnOff.textContent = enabled ? "On" : "Off";
-
-      el.batteryEmpty.style.display = enabled ? "none" : "block";
-      el.batteryFields.style.display = enabled ? "block" : "none";
-
-      if (!enabled) return;
-
-      autoBatteryPowerIfNeeded();
-
-      el.batteryCapacity.value = String(state.request.battery.capacity);
-      el.batteryPower.value = String(state.request.battery.power);
-
-      el.batteryPowerAuto.style.opacity = state.batteryPowerTouched ? "0" : "1";
-
-      el.batteryCapacity.oninput = (e) => {
-        const v = clampNonNeg(Number(e.target.value));
-        state.request.battery.capacity = v;
-        autoBatteryPowerIfNeeded();
-        renderBattery(); // refresh power if auto
-      };
-
-      el.batteryPower.oninput = (e) => {
-        const v = clampNonNeg(Number(e.target.value));
-        state.batteryPowerTouched = true;
-        state.request.battery.power = v;
-        renderBattery();
-      };
-    }
-
-    function renderInsulation() {
-      [...el.insulationGroup.querySelectorAll("button.toggle")].forEach(btn => {
-        const key = btn.getAttribute("data-key");
-        const selected = !!state.request.insulation[key];
-        btn.setAttribute("aria-pressed", selected ? "true" : "false");
-        btn.onclick = () => {
-          state.request.insulation[key] = !state.request.insulation[key];
-          renderInsulation();
-        };
-      });
-    }
-
-    function renderResults() {
-      const show = !!state.result || !!state.error || state.loading;
-      el.resultsBox.style.display = show ? "block" : "none";
-
-      el.loadingLine.style.display = state.loading ? "block" : "none";
-      el.errorLine.style.display = state.error ? "block" : "none";
-      el.errorLine.textContent = state.error || "";
-
-      // Display ONLY the two requested fields
-      const roi = state.result?.metrics?.return_on_investment;
-      const carbon = state.result?.metrics?.carbon_balance_scope_1;
-
-      el.roiValue.textContent = (roi === 0 || roi) ? String(roi) : "—";
-      el.carbonValue.textContent = (carbon === 0 || carbon) ? String(carbon) : "—";
-    }
-
-    function renderAll() {
-      renderLocationBuilding();
-      renderPanels();
-      renderHeat();
-      renderBattery();
-      renderInsulation();
-      renderResults();
-    }
-
-    // ---- Events ----
-    el.addPanelBtn.onclick = () => {
-      state.request.panels.push({ solar_peak: 2.5, direction: "South" });
-      renderPanels();
-    };
-
-    el.batteryEnabled.onchange = (e) => {
-      const enabled = e.target.checked;
-      state.batteryPowerTouched = false;
-      state.request.battery = enabled ? { capacity: 10, power: 5 } : null;
-      renderBattery();
-    };
-
-    el.simulateBtn.onclick = async () => {
-      // match your React demonstrator behaviour:
-      state.loading = true;
-      state.error = null;
-      state.result = null;
-      el.siteAccordion.open = false;
-      el.componentsAccordion.open = false;
-      renderResults();
-
-      try {
-        const resp = await fetch("/simulate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(state.request)
+    try {
+        const response = await fetch("/simulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody)
         });
 
-        if (!resp.ok) {
-          state.loading = false;
-          state.error = `Network Error: ${resp.status} ${resp.statusText}`;
-          renderResults();
-          return;
+        if (!response.ok) {
+            throw new Error("Simulation failed");
         }
 
-        const data = await resp.json();
-        state.loading = false;
-        state.error = null;
-        state.result = data;
-        renderResults();
-      } catch (err) {
-        state.loading = false;
-        state.result = null;
-        state.error = "Invalid Simulation";
-        renderResults();
-      }
-    };
+        const data = await response.json();
 
-    // ---- Init ----
-    renderAll();
-  </script>
+        document.getElementById("capex").innerText = data.metrics.capex.toFixed(2);
+        document.getElementById("scope1").innerText = data.metrics.carbon_balance_scope_1.toFixed(2);
+        document.getElementById("scope2").innerText = data.metrics.carbon_balance_scope_2.toFixed(2);
+        document.getElementById("roi").innerText = data.metrics.return_on_investment.toFixed(2);
+
+        document.getElementById("results").style.display = "block";
+
+    } catch (error) {
+        alert("Error running simulation.");
+        console.error(error);
+    }
+});
+</script>
+
 </body>
 </html>
