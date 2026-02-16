@@ -1,4 +1,4 @@
-# Epoch Server
+# Epoch Demonstrator
 
 A minimal quickstart demonstrator to run single simulations with Epoch Simulator.
 

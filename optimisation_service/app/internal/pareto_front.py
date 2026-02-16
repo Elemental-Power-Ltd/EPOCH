@@ -2,12 +2,12 @@ from itertools import islice, product, starmap
 from typing import cast
 
 import numpy as np
+from epoch_simulator import aggregate_site_results
 from paretoset import paretoset  # type: ignore
 
 from app.internal.epoch.converters import simulation_result_to_metric_dict
 from app.models.metrics import Metric, MetricDirection
 from app.models.result import PortfolioSolution
-from epoch_simulator import aggregate_site_results
 
 
 def portfolio_pareto_front(portfolio_solutions: list[PortfolioSolution], objectives: list[Metric]) -> list[PortfolioSolution]:

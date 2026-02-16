@@ -67,7 +67,7 @@ torch = [
 
 
 [tool.ruff]
-exclude = ["*.ipynb", "data_service/app/models/epoch_types/", "optimisation_service/app/models/epoch_types/", "epoch_simulator/", "epoch_gui/"]
+exclude = ["*.ipynb", "data_service/app/models/epoch_types/", "optimisation_service/app/models/epoch_types/", "core_simulator/", "epoch_gui/"]
 line-length = 128
 
 [tool.ruff.format]
@@ -133,7 +133,7 @@ ignore = [
 "data_service/app/models/*" = ["D100"]
 "optimisation_service/tests/*.py" = ["D", "SIM118", "ARG001", "ASYNC240", "ASYNC251"]
 "optimisation_service/*" = ["D100", "D101", "D104", "D105", "ARG001", "ARG002", "NPY002", "SIM102"]
-"epoch_server/*" = ["D100", "D101", "D103", "D104", "D105"]
+"epoch_demonstrator/*" = ["D100", "D101", "D103", "D104", "D105"]
 
 [tool.ruff.lint.flake8-annotations]
 mypy-init-return = true

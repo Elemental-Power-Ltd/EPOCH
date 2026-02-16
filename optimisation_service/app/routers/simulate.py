@@ -4,6 +4,8 @@ import logging
 from typing import Annotated
 
 import pandas as pd
+from epoch_simulator import ReportData as EpochReportData
+from epoch_simulator import Simulator, TaskData
 from fastapi import APIRouter, Body
 
 from app.dependencies import HttpClientDep
@@ -20,8 +22,6 @@ from app.models.simulate import (
     RunSimulationRequest,
 )
 from app.models.site_data import EpochSiteData, site_metadata_t
-from epoch_simulator import ReportData as EpochReportData
-from epoch_simulator import Simulator, TaskData
 
 router = APIRouter()
 logger = logging.getLogger("default")
