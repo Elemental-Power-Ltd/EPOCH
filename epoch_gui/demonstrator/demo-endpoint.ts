@@ -26,6 +26,13 @@ export interface BatteryInfo {
     power: number;
 }
 
+export type Tariff = "Fixed" | "Agile" | "Peak" | "Overnight"
+
+export interface GridInfo {
+    import_tariff: Tariff;
+    export_tariff: number;
+}
+
 export interface SimulationRequest {
     location: Location;
     building: BuildingType;
@@ -34,6 +41,7 @@ export interface SimulationRequest {
     heat: HeatInfo;
     insulation: InsulationInfo;
     battery: BatteryInfo | null;
+    grid: GridInfo;
 
     full_reporting: boolean;
 }

@@ -39,6 +39,7 @@ import {
     BuildingType,
     PanelInfo,
     InsulationInfo,
+    GridInfo,
     SimulationRequest,
 } from "./demo-endpoint";
 
@@ -109,6 +110,7 @@ const DemoForm: React.FC<DemoFormProps> = ({
         heat: {heat_power: 8, heat_source: "Boiler"},
         insulation: {double_glazing: false, cladding: false, loft: false},
         battery: null,
+        grid: {import_tariff: "Fixed", export_tariff: 0.05},
         full_reporting: true,
     });
 
@@ -121,6 +123,9 @@ const DemoForm: React.FC<DemoFormProps> = ({
     const [batteryCapacityDirty, setBatteryCapacityDirty] = React.useState<boolean>(false);
     const [batteryPowerText, setBatteryPowerText] = React.useState<string>("");
     const [batteryPowerDirty, setBatteryPowerDirty] = React.useState<boolean>(false);
+    const [exportTariffText, setExportTariffText] = React.useState<string>("0.05");
+    const [exportTariffDirty, setExportTariffDirty] = React.useState<boolean>(false);
+
 
     React.useEffect(() => {
         setPanelPeakText((prev) => {
@@ -176,6 +181,15 @@ const DemoForm: React.FC<DemoFormProps> = ({
             setBatteryCapacityText(String(request.battery.capacity));
             setBatteryPowerText(String(request.battery.power));
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    React.useEffect(() => {
+        if (!exportTariffDirty) setExportTariffText(String(request.grid.export_tariff));
+    }, [request.grid.export_tariff, exportTariffDirty]);
+
+    React.useEffect(() => {
+        setExportTariffText(String(request.grid.export_tariff));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -236,6 +250,9 @@ const DemoForm: React.FC<DemoFormProps> = ({
             return next;
         });
     };
+
+
+
 
 
     const setBatteryEnabled = (enabled: boolean) => {
@@ -563,6 +580,63 @@ const DemoForm: React.FC<DemoFormProps> = ({
         </Section>
     );
 
+    const gridFormInner = () => (
+        <Section title="Grid">
+            <Stack spacing={1.25}>
+                <Stack direction={{xs: "column", md: "row"}} spacing={2}>
+                    <FormControl sx={{flex: 1, width: "100%"}} size="small">
+                        <InputLabel id="grid-import-tariff-label">Import tariff</InputLabel>
+                        <Select
+                            labelId="grid-import-tariff-label"
+                            label="Import tariff"
+                            value={request.grid.import_tariff}
+                            onChange={(e) =>
+                                setRequest((r) => ({
+                                    ...r,
+                                    grid: {...r.grid, import_tariff: e.target.value as Tariff},
+                                }))
+                            }
+                        >
+                            <MenuItem value="Fixed">Fixed</MenuItem>
+                            <MenuItem value="Agile">Agile</MenuItem>
+                            <MenuItem value="Peak">Peak</MenuItem>
+                            <MenuItem value="Overnight">Overnight</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    <TextField
+                        sx={{flex: 1, width: "100%"}}
+                        label="Export tariff"
+                        type="number"
+                        value={exportTariffText}
+                        onChange={(e) => {
+                            setExportTariffDirty(true);
+                            setExportTariffText(e.target.value);
+                        }}
+                        onBlur={() => {
+                            const raw = Number(exportTariffText);
+                            const clamped = Math.min(1.0, Math.max(0, Number.isFinite(raw) ? raw : 0));
+                            setExportTariffDirty(false);
+                            setExportTariffText(String(clamped));
+                            setRequest((r) => ({
+                                ...r,
+                                grid: {...r.grid, export_tariff: clamped},
+                            }));
+                        }}
+                        inputProps={{min: 0, max: 1.0, step: 0.01}}
+                        InputProps={{
+                            startAdornment: <InputAdornment position="start">£</InputAdornment>,
+                            endAdornment: <InputAdornment position="end">/kWh</InputAdornment>,
+                        }}
+                        size="small"
+                    />
+                </Stack>
+            </Stack>
+        </Section>
+    );
+
+
+
     const siteForm = () => (
         <Accordion
             expanded={siteExpanded}
@@ -618,6 +692,7 @@ const DemoForm: React.FC<DemoFormProps> = ({
                     {heatFormInner()}
                     {batteryFormInner()}
                     {insulationFormInner()}
+                    {gridFormInner()}
                 </Stack>
             </AccordionDetails>
         </Accordion>

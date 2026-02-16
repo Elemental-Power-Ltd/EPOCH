@@ -30,6 +30,12 @@ class BatteryInfo(BaseModel):
     power: float = Field(gt=0.0)
 
 
+Tariffs = Literal["Fixed", "Agile", "Peak", "Overnight"]
+
+class GridInfo(BaseModel):
+    import_tariff: Tariffs
+    export_tariff: float = Field(ge=0.0)
+
 Location = Literal["Cardiff", "London", "Edinburgh"]
 BuildingType = Literal["Domestic", "TownHall", "LeisureCentre"]
 
@@ -44,6 +50,7 @@ class SimulationRequest(BaseModel):
     heat: HeatInfo
     insulation: InsulationInfo
     battery: BatteryInfo | None
+    grid: GridInfo
 
     # Result configuration
     full_reporting: bool = False

@@ -22,12 +22,14 @@ from app.models import (
     BuildingType,
     DemoResult,
     HeatInfo,
+    GridInfo,
     InsulationInfo,
     Location,
     PanelInfo,
     SimulationRequest,
 )
 from app.utils import report_data_to_pydantic, simulation_result_to_pydantic
+
 
 logging.basicConfig(
     filename="errors.log",
@@ -58,6 +60,7 @@ def make_task_data(
     heat: HeatInfo,
     insulation: InsulationInfo,
     battery: BatteryInfo | None,
+    grid: GridInfo,
 ) -> str:
     """Make task data json for Epoch ingestion."""
     DIR_TO_YIELD_IDX = {"East": 0, "North": 1, "South": 2, "West": 3}
@@ -73,6 +76,8 @@ def make_task_data(
         ["loft", "cladding", "double_glazing"],  # index 7
     ]
 
+    TARIFF_MAP = {"Fixed": 0, "Agile": 1, "Peak": 2, "Overnight": 3}
+
     def insulation_to_index(insulation: InsulationInfo) -> int:
         interventions = []
         if insulation.loft:
@@ -86,7 +91,7 @@ def make_task_data(
 
     task_data = PydanticTaskData(
         building=Building(fabric_intervention_index=insulation_to_index(insulation)),
-        grid=Grid(grid_import=999),
+        grid=Grid(grid_import=999, tariff_index=TARIFF_MAP[grid.import_tariff], export_tariff=grid.export_tariff),
         energy_storage_system=EnergyStorageSystem(
             capacity=battery.capacity,
             charge_power=battery.power,
@@ -145,7 +150,7 @@ async def simulate(request: SimulationRequest) -> DemoResult:
         # horrible mutation!
         request.heat.heat_power = baseline_boiler_output
 
-    task_data_json = make_task_data(request.panels, request.heat, request.insulation, request.battery)
+    task_data_json = make_task_data(request.panels, request.heat, request.insulation, request.battery, request.grid)
 
 
     # only apply the boiler upgrade scheme for domestic buildings
