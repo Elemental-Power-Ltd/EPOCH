@@ -49,8 +49,6 @@ export const LineChartPanels: React.FC<LineChartPanelProps> = ({
 
     const [panelSelections, setPanelSelections] = useState(applyRandomFallbacks(lineChartDefaults, rangedData));
 
-    console.log(Object.keys(rangedData));
-
     const handleSelectChange = (panelIndex: number, selectedVar: string, isVar1: boolean) => {
         setPanelSelections((prev) =>
             prev.map((panel, idx) =>
