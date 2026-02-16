@@ -3,9 +3,10 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 
+from epoch_simulator import SimulationResult
+
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import MetricValues
-from epoch_simulator import SimulationResult
 
 
 @dataclass

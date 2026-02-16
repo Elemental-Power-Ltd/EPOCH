@@ -135,9 +135,6 @@ venv.bak/
 # VSCode
 .vscode/
 
-# Input Data
-InputData/
-*/InpuData/
 
 # Spyder project settings
 .spyderproject
@@ -195,8 +192,8 @@ epoch_gui/node_modules
 
 # Epoch Simulator files
 
-epoch_simulator/build/*
-epoch_simulator/install/*
+core_simulator/build/*
+core_simulator/install/*
 
 EP_POSTGRES_PASSWORD_FILE.txt
 EP_RE24_API_KEY_FILE.txt

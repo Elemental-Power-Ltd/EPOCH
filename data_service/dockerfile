@@ -16,5 +16,6 @@ COPY data_service/ ./
 # Expose the port the app runs on
 EXPOSE 8762
 
+ENV UV_NO_SYNC=1
 # Command to run the application
 CMD ["uv", "run", "fastapi", "run", "./app/main.py", "--host", "0.0.0.0", "--port", "8762"]

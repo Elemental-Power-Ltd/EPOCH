@@ -6,7 +6,6 @@ from app.internal.epoch.converters import (
 )
 from app.models.epoch_types.config import Config
 from app.models.metrics import _METRICS
-
 from epoch_simulator import (
     Building,
     DataCentre,

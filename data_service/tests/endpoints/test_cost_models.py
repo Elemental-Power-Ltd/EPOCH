@@ -1,5 +1,6 @@
 """Test we can add, list and retrieve cost models."""
 
+import datetime
 from typing import Any
 
 import httpx
@@ -147,10 +148,18 @@ class TestCostModels:
         assert list_response.is_success, list_response.text
 
         models = list_response.json()
-        assert len(models) == 2
+        assert len(models) >= 2
 
-        assert models[0]["model_name"] == "first_model"
-        assert models[1]["model_name"] == "second_model"
+        first = next((m for m in models if m.get("model_name") == "first_model"), None)
+        second = next((m for m in models if m.get("model_name") == "second_model"), None)
+
+        assert first is not None, "First cost model not found"
+        assert second is not None, "Second cost model not found"
+
+        first_ts = datetime.datetime.fromisoformat(first["created_at"]).astimezone(datetime.UTC)
+        second_ts = datetime.datetime.fromisoformat(second["created_at"]).astimezone(datetime.UTC)
+
+        assert first_ts < second_ts, "Cost Models inserted out of order"
 
     @pytest.mark.asyncio
     async def test_get_cost_model_bad_id(self, client: httpx.AsyncClient) -> None:

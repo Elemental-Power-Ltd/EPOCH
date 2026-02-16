@@ -1,7 +1,12 @@
 """Basic logging."""
 
+import datetime
 import logging
+import sys
+from pathlib import Path
 from typing import Any, cast
+
+LOG_DIR = Path("logs", "data_service")
 
 
 class EndpointFilter(logging.Filter):
@@ -63,7 +68,29 @@ class EndpointFilter(logging.Filter):
 
 
 def configure_logging() -> None:
-    """Set up some logging rules."""
+    """
+    Set up logging.
+
+    This involves pointing it do a directory, and adding file handlers as well as any filters required.
+
+    Returns
+    -------
+    None
+    """
+    LOG_DIR.mkdir(exist_ok=True, parents=True)
+    formatter_file = logging.Formatter("[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    formatter_stream = logging.Formatter("[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    handler_file = logging.FileHandler(LOG_DIR / f"{datetime.datetime.now(datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.log")
+    handler_stream = logging.StreamHandler(sys.stdout)
+    handler_file.setFormatter(formatter_file)
+    handler_stream.setFormatter(formatter_stream)
+
+    logger = logging.getLogger("default")
+    logger.setLevel(logging.DEBUG)
+
+    logger.addHandler(handler_file)
+    logger.addHandler(handler_stream)
+
     # Use this to squish the uvicorn "prepoch" queue logs
     uvicorn_logger = logging.getLogger("uvicorn.access")
     uvicorn_logger.addFilter(EndpointFilter(endpoint_path="/list-queue-contents", request_method="POST"))

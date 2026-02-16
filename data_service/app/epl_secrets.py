@@ -103,6 +103,16 @@ def load_dotenv(fname: Path = Path(".env")) -> dict[str, str]:
     return dict(os.environ.items())
 
 
+_WARNED_ONCE: set[str] = set()
+
+
+def _warn_once(key: str, msg: str) -> None:
+    """Log a warning only if we haven't already tried to access this key."""
+    if key not in _WARNED_ONCE:
+        _WARNED_ONCE.add(key)
+        logger.warning(msg)
+
+
 def get_secrets_environment(
     overrides: dict[str, str] | None = None, default_directory: Path | None = None
 ) -> SecretDict[str, str]:
@@ -138,21 +148,21 @@ def get_secrets_environment(
         total_environ["VISUAL_CROSSING_API_KEY"] = load_secret_from_file(vc_fpath)
     except FileNotFoundError:
         if "VISUAL_CROSSING_API_KEY" not in total_environ:
-            logger.warning(f"Could not find VisualCrossing key in environ, dotenv or {vc_fpath}")
+            _warn_once("VISUAL_CROSSING", f"Could not find VisualCrossing key in environ, dotenv or {vc_fpath}")
 
     rn_fpath = Path(total_environ.get("EP_RENEWABLES_NINJA_API_KEY_FILE", default_directory / "renewables_ninja_api_key"))
     try:
         total_environ["RENEWABLES_NINJA_API_KEY"] = load_secret_from_file(rn_fpath)
     except FileNotFoundError:
         if "RENEWABLES_NINJA_API_KEY" not in total_environ:
-            logger.warning(f"Could not find RenewablesNinja key in environ, dotenv or {rn_fpath}")
+            _warn_once("RENEWABLES_NINJA", f"Could not find RenewablesNinja key in environ, dotenv or {rn_fpath}")
 
     pg_fpath = Path(total_environ.get("EP_POSTGRES_PASSWORD_FILE", default_directory / "ep_postgres_password"))
     try:
         total_environ["EP_POSTGRES_PASSWORD"] = load_secret_from_file(pg_fpath)
     except FileNotFoundError:
         if "EP_POSTGRES_PASSWORD" not in total_environ:
-            logger.warning(f"Could not find Postgres key in environ, dotenv or {pg_fpath}")
+            _warn_once("POSTGRES", f"Could not find Postgres key in environ, dotenv or {pg_fpath}. Using default password")
 
     ge_fpath = Path(total_environ.get("EP_GIVENERGY_JWT_FILE", default_directory / "ep_givenergy_jwt"))
     try:
@@ -168,7 +178,7 @@ def get_secrets_environment(
         total_environ["EP_RE24_API_KEY"] = load_secret_from_file(re24_fpath)
     except FileNotFoundError:
         if "EP_RE24_API_KEY" not in total_environ:
-            logger.warning(f"Could not find RE24 key in environ, dotenv or {re24_fpath}")
+            _warn_once("RE24", f"Could not find RE24 key in environ, dotenv or {re24_fpath}")
 
     if overrides is not None:
         total_environ |= overrides
@@ -178,7 +188,7 @@ def get_secrets_environment(
         total_environ["OPEN_METEO_API_KEY"] = load_secret_from_file(openmeteo_fpath)
     except FileNotFoundError:
         if "OPEN_METEO_API_KEY" not in total_environ:
-            logger.info(f"Could not find OpenMeteo key in environ, dotenv or {openmeteo_fpath} but it's optional")
+            _warn_once("OPEN_METEO", f"Could not find OpenMeteo key in environ, dotenv or {openmeteo_fpath} but it's optional")
 
     if overrides is not None:
         total_environ |= overrides

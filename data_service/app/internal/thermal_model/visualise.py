@@ -1,5 +1,6 @@
 """Drawn graphs and visualisations of the network."""
 
+# mypy: disable-error-code="unused-ignore"
 from collections import defaultdict
 from typing import Any
 
@@ -63,8 +64,8 @@ def draw_heat_network(
     }
 
     if pos is None:
-        pos = nx.spring_layout(G, seed=seed)
-
+        pos = nx.spring_layout(G, seed=seed)  # type: ignore
+    assert pos is not None
     nx.draw_networkx(
         G,
         ax=ax,

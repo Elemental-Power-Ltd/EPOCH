@@ -27,7 +27,6 @@ from app.models.ga_utils import AnnotatedTaskData, asset_t, value_t
 from app.models.metrics import Metric
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
 from app.models.site_data import EpochSiteData, LegacySiteMetaData
-
 from epoch_simulator import SimulationResult, aggregate_site_results
 
 _DATA_PATH = Path("tests", "data")

@@ -28,6 +28,10 @@ logger = logging.getLogger("default")
 type DBConnection = asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
 type HTTPClient = httpx.AsyncClient
 
+# if no password is defined, we fall back to this
+# (which matches the POSTGRES_PASSWORD in docker-compose.yml)
+EP_DEFAULT_POSTGRES_PASSWORD = "elemental"
+
 
 class Database:
     """Shared database object that we'll re-use throughout the lifetime of this API."""
@@ -52,7 +56,7 @@ class Database:
         if password is None:
             # If we didn't get a password from the environment, it might be None anyway
             # (this can sometimes bite us when importing, as we'll do this bit first!)
-            self.password = get_secrets_environment().get("EP_POSTGRES_PASSWORD", None)
+            self.password = get_secrets_environment().get("EP_POSTGRES_PASSWORD", EP_DEFAULT_POSTGRES_PASSWORD)
         else:
             self.password = password
 
