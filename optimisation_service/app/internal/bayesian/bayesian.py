@@ -143,24 +143,24 @@ class Bayesian(Algorithm):
         n_sub_portfolios = len(sub_portfolios)
         assert n_sub_portfolios > 1, "There must be at least two sub portfolios."
 
+        max_capexs = [capex_limit] * n_sub_portfolios
+        sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in sub_portfolios]
+
         dpo = DistributedPortfolioOptimiser(
             sub_portfolios=sub_portfolios, objectives=objectives, constraints=constraints, NSGA2_param=self.NSGA2_param
         )
         solutions = dpo.init_solutions
 
-        # Add 25% extra CAPEX in case initialisation didn't converge
-        max_capexs = [1.25 * val if val > 0 else capex_limit for val in dpo.max_capexs]
+        train_x_list, train_y_list = [], []
 
-        sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in sub_portfolios]
-
-        train_x, train_y = convert_solution_list_to_tensor(
-            solutions=list(rng.choice(a=solutions, size=max(1, int(0.25 * len(solutions))), replace=False)),  # type: ignore
-            sub_portfolio_site_ids=sub_portfolio_site_ids,
-            objectives=objectives,
-        )
-
-        logger.debug(f"Currently have {len(solutions)} Pareto-optimal solutions.")
-        logger.debug(f"Currently have {len(train_x)} training points.")
+        if len(solutions) > 0:
+            train_x, train_y = convert_solution_list_to_tensor(
+                solutions=list(rng.choice(a=solutions, size=max(1, int(0.25 * len(solutions))), replace=False)),  # type: ignore
+                sub_portfolio_site_ids=sub_portfolio_site_ids,
+                objectives=objectives,
+            )
+            train_x_list.append(train_x)
+            train_y_list.append(train_y)
 
         candidates = generate_random_candidates(n=self.n_initialisation_points, max_capexs=max_capexs, capex_limit=capex_limit)
         for k, candidate in enumerate(candidates):
@@ -175,8 +175,11 @@ class Bayesian(Algorithm):
                     sub_portfolio_site_ids=sub_portfolio_site_ids,
                     objectives=objectives,
                 )
-                train_x = torch.cat([train_x, new_train_x])
-                train_y = torch.cat([train_y, new_train_y])
+                train_x_list.append(new_train_x)
+                train_y_list.append(new_train_y)
+
+        train_x = torch.cat(train_x_list)
+        train_y = torch.cat(train_y_list)
 
         logger.debug(f"Currently have {len(solutions)} Pareto-optimal solutions.")
         logger.debug(f"Currently have {len(train_x)} training points.")
