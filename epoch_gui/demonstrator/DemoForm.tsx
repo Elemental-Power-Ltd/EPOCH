@@ -112,6 +112,8 @@ const DemoForm: React.FC<DemoFormProps> = ({
         full_reporting: true,
     });
 
+    const [panelPeakText, setPanelPeakText] = React.useState<Record<number, string>>({});
+    const [panelPeakDirty, setPanelPeakDirty] = React.useState<Record<number, boolean>>({});
     const [batteryPowerTouched, setBatteryPowerTouched] = React.useState<boolean>(false);
     const [heatPowerText, setHeatPowerText] = React.useState<string>(String(8));
     const [heatPowerDirty, setHeatPowerDirty] = React.useState<boolean>(false);
@@ -119,6 +121,17 @@ const DemoForm: React.FC<DemoFormProps> = ({
     const [batteryCapacityDirty, setBatteryCapacityDirty] = React.useState<boolean>(false);
     const [batteryPowerText, setBatteryPowerText] = React.useState<string>("");
     const [batteryPowerDirty, setBatteryPowerDirty] = React.useState<boolean>(false);
+
+    React.useEffect(() => {
+        setPanelPeakText((prev) => {
+            const next = {...prev};
+            request.panels.forEach((p, idx) => {
+                if (!panelPeakDirty[idx]) next[idx] = String(p.solar_peak);
+            });
+            return next;
+        });
+    }, [request.panels, panelPeakDirty]);
+
 
     React.useEffect(() => {
         if (!request.battery) return;
@@ -195,6 +208,8 @@ const DemoForm: React.FC<DemoFormProps> = ({
             ...r,
             panels: [...r.panels, {solar_peak: 2.5, direction: "South"}],
         }));
+        setPanelPeakText((t) => ({...t, [request.panels.length]: "2.5"}));
+        setPanelPeakDirty((d) => ({...d, [request.panels.length]: false}));
     };
 
     const removePanel = (idx: number) => {
@@ -202,7 +217,26 @@ const DemoForm: React.FC<DemoFormProps> = ({
             ...r,
             panels: r.panels.filter((_, i) => i !== idx),
         }));
+        setPanelPeakText((t) => {
+            const next: Record<number, string> = {};
+            Object.keys(t).forEach((k) => {
+                const i = Number(k);
+                if (i < idx) next[i] = t[i];
+                if (i > idx) next[i - 1] = t[i];
+            });
+            return next;
+        });
+        setPanelPeakDirty((d) => {
+            const next: Record<number, boolean> = {};
+            Object.keys(d).forEach((k) => {
+                const i = Number(k);
+                if (i < idx) next[i] = d[i];
+                if (i > idx) next[i - 1] = d[i];
+            });
+            return next;
+        });
     };
+
 
     const setBatteryEnabled = (enabled: boolean) => {
         setBatteryPowerTouched(false);
@@ -301,11 +335,21 @@ const DemoForm: React.FC<DemoFormProps> = ({
                                     sx={{flex: 1, width: "100%"}}
                                     label="Peak"
                                     type="number"
-                                    value={p.solar_peak}
-                                    onChange={(e) => updatePanel(idx, {solar_peak: clampNonNeg(Number(e.target.value))})}
-                                    InputProps={{
-                                        endAdornment: <InputAdornment position="end">kWp</InputAdornment>,
+                                    value={panelPeakText[idx] ?? String(p.solar_peak)}
+                                    onChange={(e) => {
+                                        setPanelPeakDirty((d) => ({...d, [idx]: true}));
+                                        setPanelPeakText((t) => ({...t, [idx]: e.target.value}));
                                     }}
+                                    onBlur={() => {
+                                        const peak = clampNonNeg(Number(panelPeakText[idx]));
+                                        setPanelPeakDirty((d) => ({...d, [idx]: false}));
+                                        setPanelPeakText((t) => ({...t, [idx]: String(peak)}));
+                                        updatePanel(idx, {solar_peak: peak});
+                                    }}
+                                    inputProps={{min: 0, step: 0.1}}
+                                    InputProps={{
+                                    endAdornment: <InputAdornment position="end">kWp</InputAdornment>,
+                                }}
                                     size="small"
                                 />
 
