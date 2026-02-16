@@ -55,8 +55,8 @@ const AboutDemo: React.FC<AboutProps> = ({open, onClose}) => {
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary" paragraph>
-                    This demonstrator is a simplified version of <strong>EPOCH</strong>, our energy optimisation tool
-                    using pre-prepared data. Our full tool can also:
+                    This demonstrator uses pre-prepared data to provide a simplified version of <strong>EPOCH</strong>, our energy optimisation service.
+                     The full set of tools can also:
                 </Typography>
 
                 <Typography
