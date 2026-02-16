@@ -52,10 +52,12 @@ const BUILDING_LABEL: Record<BuildingType, string> = {
     LeisureCentre: "Leisure centre",
 };
 
-function clampNonNeg(n: number) {
-    if (!Number.isFinite(n)) return 0;
-    return Math.max(0, n);
+const clampMin = (n: number, min: number) => {
+    if (!Number.isFinite(n)) return min;
+    return Math.max(min, n);
 }
+
+const clampNonNeg = (n: number) => clampMin(n, 0);
 
 type DemoFormProps = {
     onSubmit: (request: SimulationRequest) => void;
@@ -111,13 +113,19 @@ const DemoForm: React.FC<DemoFormProps> = ({
     });
 
     const [batteryPowerTouched, setBatteryPowerTouched] = React.useState<boolean>(false);
+    const [heatPowerText, setHeatPowerText] = React.useState<string>(String(8));
+    const [heatPowerDirty, setHeatPowerDirty] = React.useState<boolean>(false);
+    const [batteryCapacityText, setBatteryCapacityText] = React.useState<string>("");
+    const [batteryCapacityDirty, setBatteryCapacityDirty] = React.useState<boolean>(false);
+    const [batteryPowerText, setBatteryPowerText] = React.useState<string>("");
+    const [batteryPowerDirty, setBatteryPowerDirty] = React.useState<boolean>(false);
 
     React.useEffect(() => {
         if (!request.battery) return;
         if (batteryPowerTouched) return;
 
-        const cap = clampNonNeg(request.battery.capacity);
-        const desiredPower = cap / 2;
+        const cap = clampMin(request.battery.capacity, 1.0);
+        const desiredPower = clampMin(cap / 2, 0.5);
 
         if (request.battery.power !== desiredPower) {
             setRequest((prev) => ({
@@ -126,6 +134,37 @@ const DemoForm: React.FC<DemoFormProps> = ({
             }));
         }
     }, [request.battery?.capacity, request.battery?.power, request.battery, batteryPowerTouched]);
+
+    React.useEffect(() => {
+        if (request.heat.heat_source !== "HeatPump") return;
+        if (heatPowerDirty) return;
+        setHeatPowerText(String(request.heat.heat_power));
+    }, [request.heat.heat_source, request.heat.heat_power, heatPowerDirty]);
+
+    React.useEffect(() => {
+        if (!request.battery) {
+            if (!batteryCapacityDirty) setBatteryCapacityText("");
+            if (!batteryPowerDirty) setBatteryPowerText("");
+            return;
+        }
+        if (!batteryCapacityDirty) setBatteryCapacityText(String(request.battery.capacity));
+        if (!batteryPowerDirty) setBatteryPowerText(String(request.battery.power));
+    }, [
+        request.battery,
+        request.battery?.capacity,
+        request.battery?.power,
+        batteryCapacityDirty,
+        batteryPowerDirty,
+    ]);
+
+    React.useEffect(() => {
+        setHeatPowerText(String(request.heat.heat_power));
+        if (request.battery) {
+            setBatteryCapacityText(String(request.battery.capacity));
+            setBatteryPowerText(String(request.battery.power));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const setLocation = (_: unknown, value: Location | null) => {
         if (!value) return;
@@ -167,6 +206,8 @@ const DemoForm: React.FC<DemoFormProps> = ({
 
     const setBatteryEnabled = (enabled: boolean) => {
         setBatteryPowerTouched(false);
+        setBatteryCapacityDirty(false);
+        setBatteryPowerDirty(false);
         setRequest((r) => ({
             ...r,
             battery: enabled ? {capacity: 10, power: 5} : null,
@@ -306,6 +347,7 @@ const DemoForm: React.FC<DemoFormProps> = ({
                     exclusive
                     onChange={(_, v: "boiler" | "ashp" | null) => {
                         if (!v) return;
+                        setHeatPowerDirty(false);
                         setRequest((r) => ({
                             ...r,
                             heat: {...r.heat, heat_source: v === "boiler" ? "Boiler" : "HeatPump"},
@@ -328,13 +370,21 @@ const DemoForm: React.FC<DemoFormProps> = ({
                             fullWidth
                             label="Heat pump power"
                             type="number"
-                            value={request.heat.heat_power}
-                            onChange={(e) =>
+                            value={heatPowerText}
+                            onChange={(e) => {
+                                setHeatPowerDirty(true);
+                                setHeatPowerText(e.target.value);
+                            }}
+                            onBlur={() => {
+                                const n = clampMin(Number(heatPowerText), 1.0);
+                                setHeatPowerDirty(false);
+                                setHeatPowerText(String(n));
                                 setRequest((r) => ({
                                     ...r,
-                                    heat: {...r.heat, heat_power: clampNonNeg(Number(e.target.value))},
-                                }))
-                            }
+                                    heat: {...r.heat, heat_power: n},
+                                }));
+                            }}
+                            inputProps={{min: 1.0, step: 0.5}}
                             InputProps={{
                                 endAdornment: <InputAdornment position="end">kW</InputAdornment>,
                             }}
@@ -369,14 +419,21 @@ const DemoForm: React.FC<DemoFormProps> = ({
                                 sx={{flex: 1}}
                                 label="Capacity"
                                 type="number"
-                                value={request.battery.capacity}
+                                value={batteryCapacityText}
                                 onChange={(e) => {
-                                    const capacity = clampNonNeg(Number(e.target.value));
+                                    setBatteryCapacityDirty(true);
+                                    setBatteryCapacityText(e.target.value);
+                                }}
+                                onBlur={() => {
+                                    const capacity = clampMin(Number(batteryCapacityText), 1.0);
+                                    setBatteryCapacityDirty(false);
+                                    setBatteryCapacityText(String(capacity));
                                     setRequest((r) => ({
                                         ...r,
                                         battery: r.battery ? {...r.battery, capacity} : r.battery,
                                     }));
                                 }}
+                                inputProps={{min: 1.0, step: 0.5}}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">kWh</InputAdornment>,
                                 }}
@@ -391,15 +448,22 @@ const DemoForm: React.FC<DemoFormProps> = ({
                                 }}
                                 label="Power"
                                 type="number"
-                                value={request.battery.power}
+                                value={batteryPowerText}
                                 onChange={(e) => {
-                                    const power = clampNonNeg(Number(e.target.value));
+                                    setBatteryPowerDirty(true);
                                     setBatteryPowerTouched(true);
+                                    setBatteryPowerText(e.target.value);
+                                }}
+                                onBlur={() => {
+                                    const power = clampMin(Number(batteryPowerText), 0.5);
+                                    setBatteryPowerDirty(false);
+                                    setBatteryPowerText(String(power));
                                     setRequest((r) => ({
                                         ...r,
                                         battery: r.battery ? {...r.battery, power} : r.battery,
                                     }));
                                 }}
+                                inputProps={{min: 0.5, step: 0.5}}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">kW</InputAdornment>,
                                 }}
