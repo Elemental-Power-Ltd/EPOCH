@@ -126,6 +126,21 @@ const DemoForm: React.FC<DemoFormProps> = ({
     const [exportTariffText, setExportTariffText] = React.useState<string>("0.05");
     const [exportTariffDirty, setExportTariffDirty] = React.useState<boolean>(false);
 
+    // provide relatively sensible ashp sizes for each building type as a starting point
+    // these aren't perfect because that wouldn't be interesting
+    const defaultHeatPumpPower = (building: BuildingType) => {
+        switch (building) {
+            case "Domestic":
+                return 5;
+            case "TownHall":
+                return 30;
+            case "LeisureCentre":
+                return 550;
+            default:
+                return 5;
+        }
+    };
+
 
     React.useEffect(() => {
         setPanelPeakText((prev) => {
@@ -200,8 +215,20 @@ const DemoForm: React.FC<DemoFormProps> = ({
 
     const setBuilding = (_: unknown, value: BuildingType | null) => {
         if (!value) return;
-        setRequest((r) => ({...r, building: value}));
+
+        setRequest((r) => {
+            const next: SimulationRequest = {...r, building: value};
+
+            // If heat pump is selected and the user changes building,
+            // give them a sensible starting point
+            if (r.heat.heat_source === "HeatPump") {
+                next.heat = {...r.heat, heat_power: defaultHeatPumpPower(value)};
+            }
+
+            return next;
+        });
     };
+
 
     const toggleInsulation = (key: keyof InsulationInfo) => {
         setRequest((r) => ({
@@ -250,9 +277,6 @@ const DemoForm: React.FC<DemoFormProps> = ({
             return next;
         });
     };
-
-
-
 
 
     const setBatteryEnabled = (enabled: boolean) => {
@@ -409,10 +433,18 @@ const DemoForm: React.FC<DemoFormProps> = ({
                     onChange={(_, v: "boiler" | "ashp" | null) => {
                         if (!v) return;
                         setHeatPowerDirty(false);
-                        setRequest((r) => ({
-                            ...r,
-                            heat: {...r.heat, heat_source: v === "boiler" ? "Boiler" : "HeatPump"},
-                        }));
+                        setRequest((r) => {
+                            if (v === "boiler") {
+                                return {
+                                    ...r,
+                                    heat: {...r.heat, heat_source: "Boiler"},
+                                };
+                            }
+                            return {
+                                ...r,
+                                heat: {...r.heat, heat_source: "HeatPump", heat_power: defaultHeatPumpPower(r.building)},
+                            };
+                        });
                     }}
                     fullWidth
                     size="small"
