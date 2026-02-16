@@ -18,6 +18,22 @@ interface PanelSelection {
     var2: string;
 }
 
+
+// the defaults might not exist, when that's the case, we'll replace them with something random
+const applyRandomFallbacks =
+    (lineChartDefaults: PanelSelection[],  rangedData: DataAnnotationMap): PanelSelection[] => {
+  const keys = Object.keys(rangedData);
+  if (keys.length === 0) return lineChartDefaults;
+
+  const randomKey = () => keys[Math.floor(Math.random() * keys.length)];
+
+  return lineChartDefaults.map(({ var1, var2 }) => ({
+    var1: rangedData[var1] ? var1 : randomKey(),
+    var2: rangedData[var2] ? var2 : randomKey(),
+  }));
+}
+
+
 export const LineChartPanels: React.FC<LineChartPanelProps> = ({
     rangedData, xValues, windowWidth
 }) => {
@@ -31,7 +47,9 @@ export const LineChartPanels: React.FC<LineChartPanelProps> = ({
         .filter(key => rangedData[key].type === 'Output')
         .map(key => ({value: key, label: rangedData[key].name}));
 
-    const [panelSelections, setPanelSelections] = useState(lineChartDefaults);
+    const [panelSelections, setPanelSelections] = useState(applyRandomFallbacks(lineChartDefaults, rangedData));
+
+    console.log(Object.keys(rangedData));
 
     const handleSelectChange = (panelIndex: number, selectedVar: string, isVar1: boolean) => {
         setPanelSelections((prev) =>
