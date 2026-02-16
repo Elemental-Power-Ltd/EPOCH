@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import typing
 from pathlib import Path
 
@@ -37,7 +38,16 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
-app = FastAPI()
+fastapi_kwargs = {}
+
+if os.environ.get("PRODUCTION", False):
+    fastapi_kwargs.update({
+        "docs_urls": None,
+        "redoc_url": None,
+        "openapi_url": None,
+    })
+
+app = FastAPI(**fastapi_kwargs)
 
 # we need relative paths from the project root for both the data files and the gui
 ROOT_DIR = Path(__file__).resolve().parent.parent
