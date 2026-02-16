@@ -30,6 +30,8 @@ export const Demonstrator: React.FC = () => {
                 const error = `Network Error: ${response.statusText}`;
                 setLoading(false);
                 setError(error);
+                setResult(null);
+                return;
             }
 
             const data: SimulationResult = await response.json()
