@@ -53,14 +53,25 @@ async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, p
         raise HTTPException(404, f"Couldn't find a solar dataset with ID {dataset_id} to replace.")
     site_id, renewables_location_id = old_metadata
 
-    provided_df = pd.read_csv(
-        data.file,
-        usecols=["start_ts", "end_ts", "solar_pv"],
-        header=0,
-        parse_dates=["start_ts", "end_ts"],
-        nrows=17521,
-        date_format="ISO8601",
-    )
+    try:
+        provided_df = pd.read_csv(
+            data.file,
+            usecols=["start_ts", "end_ts", "solar_pv"],
+            header=0,
+            parse_dates=["start_ts", "end_ts"],
+            nrows=17521,
+            date_format="ISO8601",
+        )
+    except pd.errors.ParserError as ex:
+        raise HTTPException(
+            422,
+            f"Couldn't parse your file due to '{ex}'. Does it have columns `start_ts`, `end_ts`, and `solar_pv`?",
+        ) from ex
+    except ValueError as ex:
+        raise HTTPException(
+            422,
+            f"Couldn't parse your file due to '{ex}'. Does it have columns `start_ts`, `end_ts`, and `solar_pv`?",
+        ) from ex
 
     if len(provided_df) < 17520:
         raise HTTPException(400, f"Got {len(provided_df)} rows instead of expected 17520.")

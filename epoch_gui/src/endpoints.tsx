@@ -14,11 +14,47 @@ import {
     SolarLocation,
     UploadMeterFileResponse,
     PhppMetadata,
-    addSiteRequest, CostModelResponse, CostModelRequest, IsInterventionFeasible
+    addSiteRequest, CostModelResponse, CostModelRequest, IsInterventionFeasible,
+    SubmitReplaceDatasetRequest, DatasetMetadataResponse, DatasetListResponse
 } from "./Models/Endpoints";
 import dayjs, {Dayjs} from "dayjs";
 import {TaskData} from "./Components/TaskDataViewer/TaskData.ts";
 
+
+export const submitReplaceDataset = async (
+    request: SubmitReplaceDatasetRequest
+): Promise<ApiResponse<DatasetMetadataResponse>> => {
+    try {
+        const formData = new FormData();
+        formData.append("dataset_id", request.dataset_id);
+        formData.append("data", request.data);
+        
+        if (request.fabric_cost_breakdown) {
+            formData.append("fabric_cost_breakdown", JSON.stringify(request.fabric_cost_breakdown));
+        }
+
+        const response = await fetch("/api/data/replace-dataset", {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return { success: false, data: null, error };
+        }
+
+        const data: DatasetMetadataResponse = await response.json();
+        return { success: true, data };
+    } catch (error) {
+        console.error("Failed to replace dataset", error);
+        return { 
+            success: false, 
+            data: null, 
+            error: error instanceof Error ? error.message : String(error) 
+        };
+    }
+};
 
 export const submitOptimisationJob = async(request: SubmitOptimisationRequest): Promise<ApiResponse<SubmitOptimisationResponse>> => {
     try {
@@ -674,6 +710,30 @@ export const addFeasibleInterventions = async (site_id: string, interventions: s
         return {success: true, data: permutations };
     } catch (error) {
         console.error("Failed to add feasible interventions", error);
+        return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
+    }
+}
+
+export const getBundleContents = async (bundle_id: string): Promise<ApiResponse<DatasetListResponse>> => {
+    const payload = {
+        bundle_id: bundle_id
+    }
+
+    try {
+        const response = await fetch(`/api/data/list-bundle-contents?bundle_id=${encodeURIComponent(bundle_id)}`, {
+            method: "POST",
+        });
+
+        if (!response.ok) {
+            const error = `HTTP error! Status: ${response.status}`;
+            console.error(error);
+            return {success: false, data: null, error};
+        }
+
+        const dataset_list: DatasetListResponse = await response.json();
+        return {success: true, data: dataset_list};
+    } catch (error) {
+        console.error("Failed to get bundle contents", error);
         return {success: false, data: null, error: error instanceof Error ? error.message : String(error)};
     }
 }
