@@ -166,7 +166,7 @@ class Bayesian(Algorithm):
         for k, candidate in enumerate(candidates):
             logger.debug(f"On random candidate {k + 1} / {self.n_initialisation_points}.")
 
-            capexs, weights = convert_candidate_capexs_and_weights(
+            capexs, weights = split_candidate_capexs_and_weights(
                 candidate=candidate, n_sub_portfolios=n_sub_portfolios, n_objectives=n_objectives, capex_limit=capex_limit
             )
 
@@ -218,7 +218,7 @@ class Bayesian(Algorithm):
 
             for k, candidate in enumerate(candidates):
                 logger.debug(f"On batch {k + 1} / {self.batch_size}.")
-                capexs, weights = convert_candidate_capexs_and_weights(
+                capexs, weights = split_candidate_capexs_and_weights(
                     candidate=candidate, n_sub_portfolios=n_sub_portfolios, n_objectives=n_objectives, capex_limit=capex_limit
                 )
                 new_solution = self.evaluate(capexs, weights)
@@ -296,9 +296,30 @@ class Bayesian(Algorithm):
         return merge_list_of_portfolio_solutions(sub_portfolio_solutions)
 
 
-def convert_candidate_capexs_and_weights(
+def split_candidate_capexs_and_weights(
     candidate: npt.NDArray, n_sub_portfolios: int, n_objectives: int, capex_limit: float
 ) -> tuple[list[float], list[list[float]]]:
+    """
+    Split a candidate solution into the CAPEX splits and objective weights.
+
+    Parameters
+    ----------
+    candidate
+        Candidate solution to split
+    n_sub_portfolios
+        Number of sub portfolios
+    n_objectives
+        Number of objectives
+    capex_limit
+        CAPEX upper bound
+
+    Returns
+    -------
+    capexs
+        List of n_sub_portfolios - 1 CAPEX splits
+    weights
+        n_sub_portfolios lists of n_objectives - 1 objective weights
+    """
     capexs = candidate[: n_sub_portfolios - 1].tolist()
     capexs.append(capex_limit - sum(capexs))
     weights = candidate[n_sub_portfolios - 1 :].reshape(n_sub_portfolios, (n_objectives - 1)).tolist()
