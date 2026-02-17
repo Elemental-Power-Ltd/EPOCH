@@ -327,7 +327,7 @@ class NSGA2(Algorithm):
             exec_time: Time taken for optimisation process to conclude.
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
-        if weights:
+        if weights and normalisers:
             pi = ScalarProblemInstance(objectives, constraints, portfolio, weights, normalisers)
         else:
             pi = ProblemInstance(objectives, constraints, portfolio)

@@ -140,7 +140,7 @@ class Bayesian(Algorithm):
 
         self.normalisers_list = []
         for sub_portfolio in self.sub_portfolios:
-            metrics = {objective: [] for objective in objectives}
+            metrics: dict[Metric, list[float | int]] = {objective: [] for objective in objectives}
             for objective in objectives:
                 alg = NSGA2(**dict(self.NSGA2_param))
                 res = alg.run(objectives=[objective], constraints=constraints, portfolio=sub_portfolio)
@@ -152,7 +152,7 @@ class Bayesian(Algorithm):
             self.normalisers_list.append(normalisers)
 
         self.objectives = objectives
-        self.sub_portfolio_solutions = [[]] * n_sub_portfolios
+        self.sub_portfolio_solutions: list[list[PortfolioSolution]] = [[]] * n_sub_portfolios
         sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in self.sub_portfolios]
 
         candidates = generate_random_candidates(
@@ -375,7 +375,7 @@ def generate_random_candidates(
         capex_splits = rng.dirichlet(np.ones(n_sub_portfolios))[:-1] * capex_limit
 
         # get objective weights
-        obj_weights = []
+        obj_weights: list[float] = []
         for _ in range(n_sub_portfolios):
             obj_weights.extend(rng.dirichlet(np.ones(n_objectives))[:-1])
 
@@ -486,7 +486,9 @@ def create_objective_weight_bounds(n_sub_portfolios: int, n_objectives: int) -> 
     return torch.tensor([[0], [1]], **_TKWARGS).repeat(1, n_sub_portfolios * (n_objectives - 1))
 
 
-def create_inequality_constraints(capex_limit: float, n_sub_portfolios: int, n_objectives: int) -> list[torch.Tensor]:
+def create_inequality_constraints(
+    capex_limit: float, n_sub_portfolios: int, n_objectives: int
+) -> list[tuple[torch.Tensor, torch.Tensor, float]]:
     """
     Create a list of inequality constraints for the features.
 
@@ -541,7 +543,7 @@ def optimize_acquisition_func_and_get_candidate(
     batch_size: int,
     num_restarts: int,
     raw_samples: int,
-    inequality_constraints: list[torch.Tensor],
+    inequality_constraints: list[tuple[torch.Tensor, torch.Tensor, float]],
 ) -> npt.NDArray[np.floating]:
     """
     Optimise the acquisition function and returns a new candidate.

@@ -447,7 +447,7 @@ class ScalarProblemInstance(ProblemInstance):
             for metric in self.objectives
         }
         directed_results = self.apply_directions(selected_results)
-        out["F"] = sum(directed_results.values())
+        out["F"] = sum(directed_results.values())  # type: ignore
 
 
 def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) -> list[float]:
