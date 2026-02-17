@@ -636,8 +636,11 @@ def convert_solution_to_tensors(
     objectives: list[Metric],
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    Convert a PortfolioSolutions into two feature (CAPEX allocations and objective wights) and observation (Objective values) tensors.
-    One is created from the proposed CAPEX limits, the second is generated from the actual CAPEX spends.
+    Convert a candidate and PortfolioSolution pair into pairs of feature and observation tensors.
+
+    The feature tensor contains CAPEX allocations and objective weights.
+    The observation tensor contains Objective values.
+    One pair is created from the proposed CAPEX limits, the second is generated from the actual CAPEX spends.
 
     Parameters
     ----------
