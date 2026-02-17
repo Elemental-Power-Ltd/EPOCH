@@ -370,14 +370,37 @@ class ProblemInstance(ElementwiseProblem):
 
 
 class Normaliser:
-    def __init__(self, min_value, max_value):
+    """Callable object for normalising numeric values to the range [0, 1]."""
+
+    def __init__(self, min_value: int | float, max_value: int | float) -> None:
+        """
+        Initialise the normaliser with minimum and maximum bounds.
+
+        Parameters
+        ----------
+        min_value
+            Minimum value of the input range.
+        max_value
+            Maximum value of the input range.
+        """
         self.min = min_value
         self.max = max_value
         if self.max == self.min:
             self.min = 0
 
-    def __call__(self, x):
-        # Normalize x to [0, 1]
+    def __call__(self, x: int | float) -> int | float:
+        """
+        Normalise x to [0, 1].
+
+        Parameters
+        ----------
+        x
+            Value to normalise.
+
+        Returns
+        -------
+            Normalised value
+        """
         return (x - self.min) / (self.max - self.min)
 
 
