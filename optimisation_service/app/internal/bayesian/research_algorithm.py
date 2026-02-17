@@ -6,14 +6,6 @@ from typing import TypedDict, cast
 import numpy as np
 import numpy.typing as npt
 import torch
-from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser
-from app.internal.pareto_front import portfolio_pareto_front
-from app.models.algorithms import Algorithm
-from app.models.constraints import Constraints
-from app.models.core import Site
-from app.models.metrics import Metric, MetricDirection
-from app.models.optimisers import NSGA2HyperParam
-from app.models.result import OptimisationResult, PortfolioSolution
 from botorch import fit_gpytorch_mll
 from botorch.acquisition.multi_objective.logei import (
     qLogExpectedHypervolumeImprovement,
@@ -31,6 +23,15 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import (
     FastNondominatedPartitioning,
 )
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood  # type: ignore
+
+from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser
+from app.internal.pareto_front import portfolio_pareto_front
+from app.models.algorithms import Algorithm
+from app.models.constraints import Constraints
+from app.models.core import Site
+from app.models.metrics import Metric, MetricDirection
+from app.models.optimisers import NSGA2HyperParam
+from app.models.result import OptimisationResult, PortfolioSolution
 
 logger = logging.getLogger("default")
 

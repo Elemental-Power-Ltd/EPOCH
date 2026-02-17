@@ -1,6 +1,6 @@
 import pytest
 import torch
-from app.internal.bayesian.bayesian import (
+from app.internal.bayesian.research_algorithm import (
     _TKWARGS,
     Bayesian,
     convert_solution_list_to_tensor,
@@ -18,6 +18,7 @@ from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import Metric
 from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution, SiteSolution
+
 from epoch_simulator import SimulationResult
 
 

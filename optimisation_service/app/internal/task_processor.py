@@ -4,7 +4,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from app.dependencies import HTTPClient
-from app.internal.bayesian.bayesian import Bayesian
+from app.internal.bayesian import Bayesian
 from app.internal.database.results import process_results, transmit_results
 from app.internal.NSGA2 import NSGA2, SeparatedNSGA2, SeparatedNSGA2xNSGA2
 from app.internal.portfolio_simulator import simulate_scenario
