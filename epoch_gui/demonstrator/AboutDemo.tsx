@@ -1,5 +1,5 @@
 import * as React from "react";
-import {Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography} from "@mui/material";
+import {Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Stack, Typography} from "@mui/material";
 
 
 type AboutProps = {
@@ -43,12 +43,26 @@ const AboutDemo: React.FC<AboutProps> = ({open, onClose}) => {
         );
     };
 
+    const devs = [
+        {name: "Jon Warren", link: "https://github.com/JonWarrenDev"},
+        {name: "Matt Bailey", link: "https://github.com/Matt-HJ-Bailey"},
+        {name: "Will Drouard", link: "https://github.com/WilliamGTD"},
+        {name: "Andy Scott", link: "https://github.com/AndyEPL"},
+        {name: "James Martin", link: "https://github.com/jsmartinstats"},
+        {name: "Simon Le Blond", link: "https://github.com/Simon-EPL"}
+    ]
+
+    // randomly order the devs, don't want to show favouritism!
+    const shuffledDevs = [...devs].sort(() => Math.random() - 0.5);
+
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>EPOCH Demonstrator</DialogTitle>
 
             <DialogContent dividers>
                 {howItWorks()}
+
+                <Divider sx={{ my: 2 }} />
 
                 <Typography variant="body1" sx={{fontWeight: 600, mt: 2}} gutterBottom>
                     About EPOCH
@@ -67,7 +81,7 @@ const AboutDemo: React.FC<AboutProps> = ({open, onClose}) => {
                     <li><Typography component="span" variant="body2">Synthesise half-hourly demand profiles from coarse
                         or
                         incomplete meter readings</Typography></li>
-                    <li><Typography component="span" variant="body2">Search large permutations to identify the best
+                    <li><Typography component="span" variant="body2">Search large numbers of permutations to identify the best
                         interventions</Typography></li>
                     <li><Typography component="span" variant="body2">Optimise across a portfolio with a shared
                         budget</Typography></li>
@@ -75,6 +89,38 @@ const AboutDemo: React.FC<AboutProps> = ({open, onClose}) => {
                         constraints</Typography></li>
                     <li><Typography component="span" variant="body2">Model a wider range of components and
                         behaviours</Typography></li>
+                </Typography>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography variant="body2" color="text.secondary">
+                  EPOCH was developed at Elemental Power Ltd by:{" "}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {shuffledDevs.map((dev, index) => (
+                    <span key={dev.link}>
+                      <Button
+                        component="a"
+                        href={dev.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="text"
+                        size="small"
+                        sx={{
+                          textTransform: "none",
+                          px: 0,
+                          minWidth: "auto",
+                          verticalAlign: "baseline",
+                        }}
+                      >
+                        {dev.name}
+                      </Button>
+
+                      {index < shuffledDevs.length - 2 && ", "}
+                      {index === shuffledDevs.length - 2 && " and "}
+                    </span>
+                  ))}
+                  .
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary">
