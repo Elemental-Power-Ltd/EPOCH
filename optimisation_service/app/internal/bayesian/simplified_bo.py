@@ -460,7 +460,7 @@ def create_capex_bounds(n_sub_portfolios: int, capex_limit: float) -> torch.Tens
     Returns
     -------
     bounds
-        A 2 x d tensor of lower and upper bounds for each of the models CAPEX parameters.
+        A 2 x d tensor of lower and upper bounds for each of the models CAPEX features.
     """
     return torch.tensor([[0], [capex_limit]], **_TKWARGS).repeat(1, n_sub_portfolios - 1)
 
@@ -481,14 +481,14 @@ def create_objective_weight_bounds(n_sub_portfolios: int, n_objectives: int) -> 
     Returns
     -------
     bounds
-        A 2 x d tensor of lower and upper bounds for each of the models weight parameters.
+        A 2 x d tensor of lower and upper bounds for each of the models weight features.
     """
     return torch.tensor([[0], [1]], **_TKWARGS).repeat(1, n_sub_portfolios * (n_objectives - 1))
 
 
 def create_inequality_constraints(capex_limit: float, n_sub_portfolios: int, n_objectives: int) -> list[torch.Tensor]:
     """
-    Create a list of inequality constraints for the model's parameters.
+    Create a list of inequality constraints for the features.
 
     The CAPEX splits are constrained to [0, capex_limit]. The objective weights are constrained to [0, 1].
 
@@ -506,8 +506,8 @@ def create_inequality_constraints(capex_limit: float, n_sub_portfolios: int, n_o
     inequality_constraints
         List of tuples defining inequality constraints.
         Each tuple defines:
-        - the indeces of the parameters to constrain
-        - the weight to apply to each parameter (always 1 for equal weighting)
+        - the indeces of the feature to constrain
+        - the weight to apply to each feature (always 1 for equal weighting)
         - the constraint value
     """
     inequality_constraints = []
