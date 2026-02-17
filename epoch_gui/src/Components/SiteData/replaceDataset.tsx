@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { getBundleContents } from "../../endpoints";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import {DatasetEntryResponse, DatasetListResponse} from "../../Models/Endpoints";
+import { Tooltip, IconButton, Typography } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 interface UploadDatasetDialogProps {
     open: boolean;
@@ -191,7 +193,43 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
 
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-            <DialogTitle>Upload Replacement Dataset</DialogTitle>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            Upload Replacement Dataset
+            <Tooltip
+                title={
+                    <Typography variant="body2" sx={{ p: 0.5 }}>
+                        You can replace certain types of datasets in the database with a custom .csv. They should be half
+                        hourly covering the same period and length as the main dataset (e.g. if your generated period is
+                        1st Jan 2022 to 1st Jan 2023, your provided CSV should also be half hourly from 1st Jan 2022 to
+                        1st Jan 2023). 
+                        Note that air temperatures, domestic hot water and heating loads are all stored and provided together.
+                        All replacement datasets should have <strong>"start_ts"</strong> and
+                        <strong>"end_ts"</strong> columns for each timestep in ISO-8601 format, and the following data columns:
+                        <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                            <li>Renewables: <strong>solar_pv</strong></li>
+                            <li>Import Tariff: <strong>unit_cost</strong></li>
+                            <li>ElectricalMeterDataSynthesised: <strong>consumption_kwh</strong></li>
+                            <li>HeatingLoad: <strong>heating</strong>, <strong>dhw</strong>, <strong>air_temperature</strong></li>
+                        </Box>
+                    </Typography>
+                }
+                arrow
+                placement="right"
+                componentsProps={{
+                    tooltip: {
+                        sx: {
+                            bgcolor: "grey.800",
+                            maxWidth: 340,
+                            "& .MuiTooltip-arrow": { color: "grey.800" },
+                        },
+                    },
+                }}
+            >
+                <IconButton size="small" sx={{ color: "text.secondary", ml: 0.5 }}>
+                    <InfoOutlinedIcon fontSize="small" />
+                </IconButton>
+            </Tooltip>
+        </DialogTitle>
             <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
                 {error && <Alert severity="error">{error}</Alert>}
 
