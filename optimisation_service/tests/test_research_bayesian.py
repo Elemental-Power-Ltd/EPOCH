@@ -2,7 +2,7 @@ import pytest
 import torch
 from app.internal.bayesian.research_algorithm import (
     _TKWARGS,
-    Bayesian,
+    BayesianResearch,
     convert_solution_list_to_tensor,
     create_capex_allocation_bounds,
     create_reference_point,
@@ -21,12 +21,12 @@ from app.models.result import OptimisationResult, PortfolioSolution, SiteSolutio
 from epoch_simulator import SimulationResult
 
 
-class TestBayesian:
+class TestBayesianResearch:
     def test_initialisation(self) -> None:
         """
         Test default algorithm initialisation.
         """
-        Bayesian()
+        BayesianResearch()
 
     @pytest.mark.slow
     def test_run(
@@ -35,7 +35,9 @@ class TestBayesian:
         """
         Test output of algorithm.
         """
-        alg = Bayesian(n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10))
+        alg = BayesianResearch(
+            n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10)
+        )
         res = alg.run(default_objectives, default_constraints, default_portfolio)
         assert isinstance(res, OptimisationResult)
 
