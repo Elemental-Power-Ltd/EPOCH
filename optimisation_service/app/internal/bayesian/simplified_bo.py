@@ -481,7 +481,7 @@ def create_objective_weight_bounds(n_sub_portfolios: int, n_objectives: int) -> 
     Returns
     -------
     bounds
-        A 2 x d tensor of lower and upper bounds for each of the train_x's  columns (Bounds on the sites' CAPEX allocations).
+        A 2 x d tensor of lower and upper bounds for each of the models weight parameters.
     """
     return torch.tensor([[0], [1]], **_TKWARGS).repeat(1, n_sub_portfolios * (n_objectives - 1))
 
