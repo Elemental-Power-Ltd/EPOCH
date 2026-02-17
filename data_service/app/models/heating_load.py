@@ -94,6 +94,7 @@ class HeatingLoadModelEnum(StrEnum):
     ThermalModel = "thermal_model"
     PHPP = "phpp"
     Auto = "auto"
+    Custom = "custom"
 
 
 class HeatingLoadRequest(RequestBase):

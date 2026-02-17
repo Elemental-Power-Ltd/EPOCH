@@ -14,8 +14,8 @@ from app.internal.epoch import get_epoch_version
 from app.internal.uuid7 import uuid7
 from app.models.constraints import Constraints
 from app.models.database import dataset_id_t
-from app.models.epoch_types import SiteRange
 from app.models.epoch_types.config import Config
+from app.models.epoch_types.site_range_type import SiteRange as SiteRangeInternal
 from app.models.epoch_types.task_data_type import TaskData as TaskDataPydantic
 from app.models.metrics import Metric
 from app.models.optimisers import OptimiserTypes
@@ -26,7 +26,7 @@ logger = logging.getLogger("default")
 
 class Site(BaseModel):
     name: str = Field(description="Human readable name for a building. Must be unique to portfolio.")
-    site_range: SiteRange = Field(description="Site range to optimise over.")
+    site_range: SiteRangeInternal = Field(description="Site range to optimise over.")
     site_data: site_metadata_t = Field(
         examples=[{"site_id": "amcott_house", "start_ts": "2022-01-01T00:00:00+00:00", "end_ts": "2022-01-01T00:00:00+00:00"}],
         description="Data to fetch for EPOCH to ingest.",

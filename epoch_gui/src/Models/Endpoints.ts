@@ -283,3 +283,73 @@ export interface IsInterventionFeasible {
     name: string;
     is_feasible: boolean;
 }
+
+export interface FabricCostBreakdown {
+    cost: number;
+    area: number;
+    name: string;
+}
+
+export interface SubmitReplaceDatasetRequest {
+    dataset_id: string;
+    data: File;
+    fabric_cost_breakdown?: FabricCostBreakdown[];
+}
+
+export interface RenewablesMetadata {
+    data_source: string;
+    created_at: string;
+    dataset_id: string;
+    site_id: string;
+    parameters: any;
+    renewables_location_id: string;
+}
+
+
+export interface ElectricalLoadMetadata {
+    dataset_id: string;
+    created_at: string;
+    site_id: string;
+    fuel_type: string;
+    reading_type: string;
+    filename?: string;
+    is_synthesised: boolean;
+    start_ts?: string;
+    end_ts?: string;
+
+};
+
+
+export type DatasetMetadataResponse = RenewablesMetadata | TariffMetadata | ElectricalLoadMetadata | HeatingLoadMetadata;
+
+export interface DatasetEntryResponse {
+    dataset_id: string;
+    dataset_type: string;
+    created_at: string;
+    start_ts?: string;
+    end_ts?: string;
+    num_entries?: number;
+    resolution?: string;
+    dataset_subtype: any;
+}
+
+export interface DatasetListResponse {
+    site_id: string;
+    start_ts: string;
+    end_ts: string;
+    is_complete: boolean;
+    is_error: boolean;
+    bundle_id: string;
+    SiteBaseline?: DatasetEntryResponse
+    HeatingLoad?: DatasetEntryResponse[] | DatasetEntryResponse
+    ASHPData?: DatasetEntryResponse[] | DatasetEntryResponse
+    CarbonIntensity?: DatasetEntryResponse[] | DatasetEntryResponse
+    ElectricityMeterData?: DatasetEntryResponse[] | DatasetEntryResponse
+    ElectricityMeterDataSynthesised?: DatasetEntryResponse[] | DatasetEntryResponse
+    ImportTariff?: DatasetEntryResponse[] | DatasetEntryResponse
+    Weather?: DatasetEntryResponse[] | DatasetEntryResponse
+    GasMeterData?: DatasetEntryResponse[] | DatasetEntryResponse
+    RenewablesGeneration?: DatasetEntryResponse[] | DatasetEntryResponse
+    ThermalModel?: DatasetEntryResponse[] | DatasetEntryResponse
+    PHPP?: DatasetEntryResponse[] | DatasetEntryResponse
+}

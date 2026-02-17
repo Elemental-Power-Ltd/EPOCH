@@ -338,6 +338,8 @@ async def generate_heating_load(
             return await generate_thermal_model_heating_load(pool=pool, http_client=http_client, params=params)
         case HeatingLoadModelEnum.PHPP:
             return await generate_heating_load_phpp(pool=pool, http_client=http_client, params=params)
+        case HeatingLoadModelEnum.Custom:
+            raise HTTPException(400, "Can't generate a heating load with a custom model!")
 
 
 async def generate_heating_load_regression_impl(

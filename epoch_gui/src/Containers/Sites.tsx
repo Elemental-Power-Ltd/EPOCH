@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import dayjs, {Dayjs} from "dayjs";
-import {Button, CircularProgress, Container, Grid, MenuItem, TextField} from '@mui/material';
+import {Button, CircularProgress, Container, Grid, MenuItem, TextField, Box} from '@mui/material';
 
 import {useEpochStore} from "../State/Store";
 import {SiteDataWithHints} from "../Models/Endpoints";
@@ -9,8 +9,7 @@ import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import {DateTimePicker} from "@mui/x-date-pickers/DateTimePicker";
 import {getLatestSiteData} from "../endpoints";
 import {ErrorLoadingSiteData, SiteDataViewer} from "../Components/SiteData/SiteDataViewer";
-
-
+import UploadDatasetDialog from "../Components/SiteData/replaceDataset"
 // A container for viewing information about the different Sites that belong to the client
 
 // There is a large amount of overlap between this and the DatasetGeneration container from a UI perspective
@@ -30,6 +29,7 @@ const SitesContainer = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [siteWithHints, setSiteWithHints] = useState<SiteDataWithHints | null>(null);
     const [error, setError] = useState<String | null>(null);
+    const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
     const fetchSiteData = async () => {
         setIsLoading(true);
@@ -106,7 +106,25 @@ const SitesContainer = () => {
             </Container>
 
             {error && <ErrorLoadingSiteData/>}
-            {siteWithHints && <SiteDataViewer siteData={siteWithHints.siteData} hints={siteWithHints.hints}/>}
+            {siteWithHints && (
+                <>
+                    <SiteDataViewer siteData={siteWithHints.siteData} hints={siteWithHints.hints}/>
+                    <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+                        <Button
+                            variant="outlined"
+                            onClick={() => setUploadDialogOpen(true)}
+                        >
+                            Upload Replacement Dataset
+                        </Button>
+                    </Box>
+                </>
+            )}
+            <UploadDatasetDialog
+                open={uploadDialogOpen}
+                onClose={() => setUploadDialogOpen(false)}
+                bundleId={siteWithHints?.hints?.bundle_id || null}
+                onUploadSuccess={fetchSiteData}
+            />
         </Container>
     )
 }

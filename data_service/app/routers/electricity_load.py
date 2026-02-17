@@ -414,6 +414,8 @@ async def get_blended_electricity_load(
         except HTTPException as ex:
             logger.info(f"Couldn't get electricity load data for {real_params}, returning only synthetic. Due to {ex}")
             real_data = EpochElectricityEntry(timestamps=[], data=[])
+    else:
+        real_data = EpochElectricityEntry(timestamps=[], data=[])
 
     if synthetic_params is not None:
         synth_data = await get_electricity_load(synthetic_params, pool=pool)
@@ -422,8 +424,9 @@ async def get_blended_electricity_load(
         logger.info(f"Got no synthetic data, returning only {real_params}")
         return real_data
 
-    for idx, timestamp in enumerate(synth_data.timestamps):
-        if timestamp in real_data.timestamps:
-            synth_data.data[idx] = real_data.data[real_data.timestamps.index(timestamp)]
+    if real_data.timestamps:
+        for idx, timestamp in enumerate(synth_data.timestamps):
+            if timestamp in real_data.timestamps:
+                synth_data.data[idx] = real_data.data[real_data.timestamps.index(timestamp)]
 
     return synth_data
