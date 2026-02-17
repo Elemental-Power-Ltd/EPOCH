@@ -55,6 +55,9 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
+    // track whether we've changed anything so that we know whether to refresh the SiteData upon close or not
+    const [bundleChanged, setBundleChanged] = useState<boolean>(false);
+
     const loadBundleContents = async () => {
         setLoading(true);
         setError(null);
@@ -119,6 +122,7 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
         }
 
         setSubmitting(true);
+        setBundleChanged(true);
         setError(null);
 
         const formData = new FormData();
@@ -164,6 +168,12 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
     };
 
     const handleClose = async () => {
+        if (!bundleChanged) {
+            // no changes, we don't need to refresh
+            onClose();
+            return;
+        }
+
         try {
             await fetch("/api/optimisation/clear-bundle-cache", {
                 method: "POST",
@@ -180,7 +190,7 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
     const datasetIds = getDatasetIds();
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
             <DialogTitle>Upload Replacement Dataset</DialogTitle>
             <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
                 {error && <Alert severity="error">{error}</Alert>}
