@@ -42,18 +42,6 @@ class TestBayesianResearch:
         assert isinstance(res, OptimisationResult)
 
 
-class TestCreateReferencePoint:
-    def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]) -> None:
-        sub_portfolio_site_ids = [[site_id] for site_id in dummy_portfolio_solutions[0].scenario.keys()]
-        _, train_y = convert_solution_list_to_tensor(
-            solutions=dummy_portfolio_solutions,
-            sub_portfolio_site_ids=sub_portfolio_site_ids,
-            objectives=default_objectives,
-        )
-        ref_point = create_reference_point(train_y)
-        assert len(ref_point) == train_y.shape[1]
-
-
 class TestCreateCapexAllocationBounds:
     def test_good_inputs(self) -> None:
         max_capexs = [1000.0, 500.0]

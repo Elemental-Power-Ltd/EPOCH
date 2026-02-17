@@ -1,5 +1,9 @@
 from app.internal.bayesian.common import extract_sub_portfolio_capex_allocations, initialise_model
-from app.internal.bayesian.research_algorithm import convert_solution_list_to_tensor, create_capex_allocation_bounds
+from app.internal.bayesian.research_algorithm import (
+    convert_solution_list_to_tensor,
+    create_capex_allocation_bounds,
+    create_reference_point,
+)
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import Metric
 from app.models.result import PortfolioSolution, SiteSolution
@@ -19,6 +23,18 @@ class TestInitializeModel:
         min_capexs = [0.0] * len(max_capexs)
         bounds = create_capex_allocation_bounds(min_capexs, max_capexs)
         initialise_model(train_x, train_y, bounds)
+
+
+class TestCreateReferencePoint:
+    def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]) -> None:
+        sub_portfolio_site_ids = [[site_id] for site_id in dummy_portfolio_solutions[0].scenario.keys()]
+        _, train_y = convert_solution_list_to_tensor(
+            solutions=dummy_portfolio_solutions,
+            sub_portfolio_site_ids=sub_portfolio_site_ids,
+            objectives=default_objectives,
+        )
+        ref_point = create_reference_point(train_y)
+        assert len(ref_point) == train_y.shape[1]
 
 
 class TestExtractSubPortfolioCapexAllocations:
