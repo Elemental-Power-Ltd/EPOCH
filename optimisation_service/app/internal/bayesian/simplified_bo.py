@@ -460,7 +460,7 @@ def create_capex_bounds(n_sub_portfolios: int, capex_limit: float) -> torch.Tens
     Returns
     -------
     bounds
-        A 2 x d tensor of lower and upper bounds for each of the train_x's capex columns (Bounds on the sites' CAPEX allocations).
+        A 2 x d tensor of lower and upper bounds for each of the models CAPEX parameters.
     """
     return torch.tensor([[0], [capex_limit]], **_TKWARGS).repeat(1, n_sub_portfolios - 1)
 
