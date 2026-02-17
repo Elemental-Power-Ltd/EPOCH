@@ -1,8 +1,8 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Box, CircularProgress, Alert } from "@mui/material";
 import { useState, useEffect } from "react";
-import { getBundleContents } from "../../endpoints"; // adjust import path
+import { getBundleContents } from "../../endpoints";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { DatasetListResponse } from "../../Models/Endpoints";
+import {DatasetEntryResponse, DatasetListResponse} from "../../Models/Endpoints";
 
 interface UploadDatasetDialogProps {
     open: boolean;
@@ -12,20 +12,48 @@ interface UploadDatasetDialogProps {
 }
 
 const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: UploadDatasetDialogProps) => {
+
+    const META_KEYS = [
+        "site_id",
+        "start_ts",
+        "end_ts",
+        "is_complete",
+        "is_error",
+        "bundle_id",
+    ] as const;
+    type MetaKey = typeof META_KEYS[number];
+    type DatasetKey = Exclude<keyof DatasetListResponse, MetaKey>;
+
+    const isDatasetEntry = (v: unknown): v is DatasetEntryResponse => {
+        return typeof v === "object" && v !== null && "dataset_id" in v;
+    };
+
+    const isDatasetEntryArray = (v: unknown): v is DatasetEntryResponse[] => {
+        return Array.isArray(v) && v.every(isDatasetEntry);
+    };
+
+    const HIDDEN_DATASET_KEYS = [
+        "ASHPData",
+        "GasMeterData",
+        "ElectricityMeterData",
+        "CarbonIntensity",
+        "Weather",
+        "ThermalModel",
+        "PHPP"
+    ] as const;
+
+    type HiddenDatasetKey = typeof HIDDEN_DATASET_KEYS[number];
+    type VisibleDatasetKey = Exclude<DatasetKey, HiddenDatasetKey>;
+
+
     const [bundleContents, setBundleContents] = useState<DatasetListResponse | null>(null);
     const [loading, setLoading] = useState(false);
-    const [selectedDatasetType, setSelectedDatasetType] = useState<string>("");
+    const [selectedDatasetType, setSelectedDatasetType] = useState<VisibleDatasetKey | "">("");
     const [selectedDatasetId, setSelectedDatasetId] = useState<string>("");
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [fabricCostBreakdown, setFabricCostBreakdown] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
-
-    useEffect(() => {
-        if (open && bundleId) {
-            loadBundleContents();
-        }
-    }, [open, bundleId]);
 
     const loadBundleContents = async () => {
         setLoading(true);
@@ -39,30 +67,43 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
         setLoading(false);
     };
 
-    const getDatasetTypes = (): string[] => {
+    useEffect(() => {
+        if (open && bundleId) {
+            loadBundleContents();
+        }
+    }, [open, bundleId]);
+
+    const getDatasetTypes = (): VisibleDatasetKey[] => {
         if (!bundleContents) return [];
-        const types = Object.keys(bundleContents).filter(
-            (key) => bundleContents[key as keyof DatasetListResponse] && !["site_id", "start_ts", "end_ts", "is_complete", "is_error", "bundle_id", "ASHPData", "GasMeterData", "ElectricityMeterData", "CarbonIntensity"].includes(key)
-        );
-        return types;
+
+        return (Object.keys(bundleContents) as Array<keyof DatasetListResponse>)
+            .filter((k): k is VisibleDatasetKey => {
+                if ((META_KEYS as readonly string[]).includes(k as string)) return false;
+                if ((HIDDEN_DATASET_KEYS as readonly string[]).includes(k as string)) return false;
+                return true;
+            });
     };
 
     const getDatasetIds = (): Array<{ id: string; label: string }> => {
         if (!bundleContents || !selectedDatasetType) return [];
-        const datasets = bundleContents[selectedDatasetType as keyof DatasetListResponse];
-        if (!datasets) return [];
-        
-        if (Array.isArray(datasets)) {
-            return datasets.map((d) => ({
+
+        const value = bundleContents[selectedDatasetType];
+
+        if (isDatasetEntryArray(value)) {
+            return value.map((d) => ({
                 id: d.dataset_id,
-                label: d.dataset_subtype || d.dataset_id
+                label: d.dataset_subtype || d.dataset_id,
             }));
-        } else {
+        }
+
+        if (isDatasetEntry(value)) {
             return [{
-                id: datasets.dataset_id,
-                label: datasets.dataset_subtype || datasets.dataset_id
+                id: value.dataset_id,
+                label: value.dataset_subtype || value.dataset_id,
             }];
         }
+
+        return [];
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,7 +196,7 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
                             label="Dataset Type"
                             value={selectedDatasetType}
                             onChange={(e) => {
-                                setSelectedDatasetType(e.target.value);
+                                setSelectedDatasetType(e.target.value as VisibleDatasetKey);
                                 setSelectedDatasetId(""); // Reset dataset ID when type changes
                             }}
                             fullWidth

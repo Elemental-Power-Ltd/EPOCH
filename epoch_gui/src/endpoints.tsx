@@ -715,10 +715,6 @@ export const addFeasibleInterventions = async (site_id: string, interventions: s
 }
 
 export const getBundleContents = async (bundle_id: string): Promise<ApiResponse<DatasetListResponse>> => {
-    const payload = {
-        bundle_id: bundle_id
-    }
-
     try {
         const response = await fetch(`/api/data/list-bundle-contents?bundle_id=${encodeURIComponent(bundle_id)}`, {
             method: "POST",
