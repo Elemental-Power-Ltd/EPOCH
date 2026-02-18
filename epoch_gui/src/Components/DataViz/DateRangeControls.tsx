@@ -6,7 +6,7 @@ import {Dayjs} from 'dayjs';
 import 'dayjs/locale/en-gb';
 
 import {
-    Grid,
+    GridLegacy as Grid,
     FormControl,
     InputLabel,
     MenuItem,

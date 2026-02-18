@@ -3,7 +3,7 @@
  */
 
 import React from "react";
-import { Grid, TextField, MenuItem } from "@mui/material";
+import { GridLegacy as Grid, TextField, MenuItem } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";

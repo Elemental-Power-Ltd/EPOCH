@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 import {
     Button,
-    Grid,
+    GridLegacy as Grid,
     Container,
     Stepper, Step, StepButton
 } from '@mui/material';

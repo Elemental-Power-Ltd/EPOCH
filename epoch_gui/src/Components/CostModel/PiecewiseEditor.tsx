@@ -7,7 +7,7 @@ import {
   CardHeader,
   Chip,
   Divider,
-  Grid,
+  GridLegacy as Grid,
   IconButton,
   Paper,
   Stack,

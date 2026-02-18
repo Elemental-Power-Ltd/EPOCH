@@ -1,7 +1,7 @@
 import React from "react";
 // @ts-ignore
 import Plot from "react-plotly.js"
-import {Box, Grid, useTheme} from "@mui/material";
+import {Box, GridLegacy as Grid, useTheme} from "@mui/material";
 
 interface yEntry {
     name: string,

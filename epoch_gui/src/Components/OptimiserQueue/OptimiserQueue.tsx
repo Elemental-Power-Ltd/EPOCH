@@ -1,5 +1,5 @@
 import React from 'react';
-import {Card, CardContent, Typography, Grid, Container} from '@mui/material';
+import {Card, CardContent, Typography, GridLegacy as Grid, Container} from '@mui/material';
 
 import {OptimiserStatus, QueueElem} from "../../endpoints.tsx";
 import {parseISODuration} from "../../util/displayFunctions.ts";

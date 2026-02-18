@@ -1,5 +1,5 @@
 import React from 'react';
-import {Card, CardContent, Typography, Grid, Container} from '@mui/material';
+import {Card, CardContent, Typography, GridLegacy as Grid, Container} from '@mui/material';
 import {PrepochQueueItem, PrepochStatus, PrepochWorkerStatus} from "../../endpoints.tsx";
 import dayjs from "dayjs";
 

@@ -3,7 +3,7 @@ import {
     Box,
     Button,
     CircularProgress,
-    Grid,
+    GridLegacy as Grid,
     Stack,
     Typography,
 } from '@mui/material';

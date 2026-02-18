@@ -1,7 +1,7 @@
 import {ChangeEvent} from 'react';
 import {
   Button,
-  Grid,
+  GridLegacy as Grid,
   Typography,
   CircularProgress
 } from '@mui/material';
