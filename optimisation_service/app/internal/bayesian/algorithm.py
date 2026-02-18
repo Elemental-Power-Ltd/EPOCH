@@ -227,7 +227,7 @@ class Bayesian(Algorithm):
 
         return OptimisationResult(solutions, self.n_evals, total_exec_time)
 
-    def init_evaluator(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> None:
+    def init_evaluator(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> int:
         """
         Initialise the algorithms candidate evaluator.
 
