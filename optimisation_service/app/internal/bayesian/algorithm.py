@@ -140,22 +140,9 @@ class Bayesian(Algorithm):
         n_objectives = len(objectives)
         assert n_sub_portfolios > 1, "There must be at least two objectives."
 
-        self.normalisers_list = []
-        for sub_portfolio in self.sub_portfolios:
-            metrics: dict[Metric, list[float | int]] = {objective: [] for objective in objectives}
-            for objective in objectives:
-                alg = NSGA2(**dict(self.NSGA2_param))
-                res = alg.run(objectives=[objective], constraints=constraints, portfolio=sub_portfolio)
-                for obj in objectives:
-                    metrics[obj].append(res.solutions[0].metric_values[obj])
-            normalisers = [
-                Normaliser(min_value=min(metrics[objective]), max_value=max(metrics[objective])) for objective in objectives
-            ]
-            self.normalisers_list.append(normalisers)
-
-        self.objectives = objectives
-        self.sub_portfolio_solutions: list[list[PortfolioSolution]] = [[]] * n_sub_portfolios
         sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in self.sub_portfolios]
+
+        self.init_evaluator(objectives=objectives, constraints=constraints, n_sub_portfolios=n_sub_portfolios)
 
         candidates = generate_random_candidates(
             n=self.n_initialisation_points,
@@ -252,6 +239,38 @@ class Bayesian(Algorithm):
         total_exec_time = datetime.datetime.now(datetime.UTC) - start_time
 
         return OptimisationResult(solutions, self.n_evals, total_exec_time)
+
+    def init_evaluator(self, objectives: list[Metric], constraints: Constraints, n_sub_portfolios: int) -> None:
+        """
+        Initialise the algorithms candidate evaluator.
+
+        Parameters
+        ----------
+        objectives
+            List of metrics to maximise or minimise
+        constraints
+            Limitations on which solutions are acceptable
+        n_sub_portfolios
+            Number of sub portfolios.
+        """
+        self.objectives = objectives
+
+        # init Normalisers
+        self.normalisers_list = []
+        for sub_portfolio in self.sub_portfolios:
+            metrics: dict[Metric, list[float | int]] = {objective: [] for objective in objectives}
+            for objective in objectives:
+                alg = NSGA2(**dict(self.NSGA2_param))
+                res = alg.run(objectives=[objective], constraints=constraints, portfolio=sub_portfolio)
+                for obj in objectives:
+                    metrics[obj].append(res.solutions[0].metric_values[obj])
+            normalisers = [
+                Normaliser(min_value=min(metrics[objective]), max_value=max(metrics[objective])) for objective in objectives
+            ]
+            self.normalisers_list.append(normalisers)
+
+        # init sub_portfolio_solution library
+        self.sub_portfolio_solutions: list[list[PortfolioSolution]] = [[]] * n_sub_portfolios
 
     def evaluate(self, capex_limits: list[float], weights_list: list[list[float]]) -> PortfolioSolution:
         """
