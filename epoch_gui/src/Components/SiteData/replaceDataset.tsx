@@ -206,10 +206,11 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
                         All replacement datasets should have <strong>"start_ts"</strong> and
                         <strong>"end_ts"</strong> columns for each timestep in ISO-8601 format, and the following data columns:
                         <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
-                            <li>Renewables: <strong>solar_pv</strong></li>
-                            <li>Import Tariff: <strong>unit_cost</strong></li>
-                            <li>ElectricalMeterDataSynthesised: <strong>consumption_kwh</strong></li>
-                            <li>HeatingLoad: <strong>heating</strong>, <strong>dhw</strong>, <strong>air_temperature</strong></li>
+                            <li>Renewables: <strong>solar_pv</strong> (a fraction of the total production between 0.0 and 1.0)</li>
+                            <li>Import Tariff: <strong>unit_cost</strong> (in p / kwh)</li>
+                            <li>ElectricalMeterDataSynthesised: <strong>consumption_kwh</strong> (in kwh)</li>
+                            <li>HeatingLoad: <strong>heating</strong>, <strong>dhw</strong>, <strong>air_temperature</strong> (in kWh, kWh and Celsius respectively)</li>
+                            <li>CarbonIntensity: <strong>grid_co2</strong> (in gCO2e/kWh)</li>
                         </Box>
                     </Typography>
                 }
