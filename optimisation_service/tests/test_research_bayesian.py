@@ -1,15 +1,12 @@
 import pytest
 import torch
+from app.internal.bayesian.common import _TKWARGS, create_reference_point, initialise_model, split_into_sub_portfolios
 from app.internal.bayesian.research_algorithm import (
-    _TKWARGS,
     BayesianResearch,
     convert_solution_list_to_tensor,
     create_capex_allocation_bounds,
-    create_reference_point,
     generate_random_candidates,
-    initialise_model,
     optimize_acquisition_func_and_get_candidate,
-    split_into_sub_portfolios,
 )
 from app.models.constraints import Constraints
 from app.models.core import Site
