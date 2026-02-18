@@ -13,6 +13,7 @@ from itertools import repeat
 import pandas as pd
 from app.dependencies import DatabasePoolDep
 from app.internal.utils.uuid import uuid7
+from app.models.carbon_intensity import CarbonIntensityMetadata
 from app.models.core import DatasetTypeEnum, FuelEnum, dataset_id_t
 from app.models.electricity_load import ElectricalLoadMetadata
 from app.models.heating_load import FabricCostBreakdown, HeatingLoadMetadata, HeatingLoadModelEnum
@@ -24,13 +25,121 @@ from fastapi import APIRouter, HTTPException, UploadFile
 router = APIRouter(tags=["replace", "db"])
 
 
+@router.post("/replace-carbon-intensity")
+async def replace_carbon_intensity(
+    dataset_id: dataset_id_t, data: UploadFile, pool: DatabasePoolDep
+) -> CarbonIntensityMetadata:
+    """
+    Replace a carbon intensity dataset in the database.
+
+    Provide the dataset_id of the old dataset that you want to replace, and upload a file which should be a CSV
+    with columns "start_ts", "end_ts" and "grid_co2", where the timestamps are in ISO-8601 format and "grid_co2" should be
+    in grams CO2e per kWh to match the outputs of https://api.carbonintensity.org.uk/intensity
+
+    Parameters
+    ----------
+    dataset_id
+        ID of the old dataset you wish to replace
+    data
+         CSV with columns "start_ts", "end_ts" and "solar_pv", where the timestamps are in ISO-8601 format
+         and "grid_co2" should be in gCO2e
+
+    Returns
+    -------
+    CarbonIntensityMetadata
+        Information about the new dataset you've uploaded.
+    """
+    try:
+        provided_df = pd.read_csv(
+            data.file,
+            usecols=["start_ts", "end_ts", "grid_co2"],
+            header=0,
+            parse_dates=["start_ts", "end_ts"],
+            nrows=17521,
+            date_format="ISO8601",
+        )
+    except pd.errors.ParserError as ex:
+        raise HTTPException(
+            422,
+            f"Couldn't parse your file due to '{ex}'. Does it have columns `start_ts`, `end_ts`, and `grid_co2`?",
+        ) from ex
+    except ValueError as ex:
+        raise HTTPException(
+            422,
+            f"Couldn't parse your file due to '{ex}'. Does it have columns `start_ts`, `end_ts`, and `grid_co2`?",
+        ) from ex
+
+    if len(provided_df) < 17520:
+        raise HTTPException(400, f"Got {len(provided_df)} rows instead of expected 17520.")
+    if provided_df.isna().any().any():
+        raise HTTPException(400, "Got NA in replacement data.")
+    if (provided_df["grid_co2"] < 0).any():
+        raise HTTPException(400, "Got negative entries in the replacement data, must all be >0.")
+    if (provided_df["grid_co2"] < 1.0).all():
+        raise HTTPException(400, "Grid CO2 all under 1.0; these should be in gCO2e / kWh, so closer to 100.")
+
+    site_id = await pool.fetchval("""SELECT site_id FROM carbon_intensity.metadata WHERE dataset_id = $1 LIMIT 1""", dataset_id)
+    if site_id is None:
+        raise HTTPException(422, f"Couldn't find a carbon intensity metadata entry for {dataset_id}.")
+    metadata = CarbonIntensityMetadata(
+        dataset_id=uuid7(),
+        created_at=datetime.datetime.now(datetime.UTC),
+        data_source=data.filename if data.filename is not None else "custom",
+        is_regional=True,
+        site_id=site_id,
+    )
+
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            """
+                INSERT INTO
+                    carbon_intensity.metadata (
+                        dataset_id,
+                        created_at,
+                        data_source,
+                        is_regional,
+                        site_id)
+                VALUES ($1, $2, $3, $4, $5)""",
+            metadata.dataset_id,
+            metadata.created_at,
+            metadata.data_source,
+            metadata.is_regional,
+            metadata.site_id,
+        )
+
+        await conn.copy_records_to_table(
+            schema_name="carbon_intensity",
+            table_name="grid_co2",
+            columns=[
+                "dataset_id",
+                "start_ts",
+                "end_ts",
+                "actual",
+            ],
+            records=zip(
+                repeat(metadata.dataset_id, len(provided_df)),
+                provided_df["start_ts"],
+                provided_df["end_ts"],
+                provided_df["grid_co2"],
+                strict=True,
+            ),
+        )
+
+        # Replace this entry in the bundle with the new dataset
+        update_resp = await conn.execute(
+            """UPDATE data_bundles.dataset_links SET dataset_id = $1 WHERE dataset_id = $2""", metadata.dataset_id, dataset_id
+        )
+        assert update_resp == "UPDATE 1", update_resp
+    return metadata
+
+
 @router.route("/replace-solar-generation")
 async def replace_solar_generation(dataset_id: dataset_id_t, data: UploadFile, pool: DatabasePoolDep) -> RenewablesMetadata:
     """
     Replace a solar generation dataset in the database.
 
     Provide the dataset_id of the old dataset that you want to replace, and upload a file which should be a CSV
-    with columns "start_ts", "end_ts" and "data", where the timestamps are in ISO-8601 format and "solar_pv" should be
+    with columns "start_ts", "end_ts" and "solar_pv", where the timestamps are in ISO-8601 format and "solar_pv" should be
     fraction of peak generation at that timestamp.
 
     Parameters
@@ -468,7 +577,7 @@ async def replace_dataset(
     data: UploadFile,
     pool: DatabasePoolDep,
     fabric_cost_breakdown: list[FabricCostBreakdown] | None = None,
-) -> RenewablesMetadata | TariffMetadata | ElectricalLoadMetadata | HeatingLoadMetadata:
+) -> RenewablesMetadata | TariffMetadata | ElectricalLoadMetadata | HeatingLoadMetadata | CarbonIntensityMetadata:
     """
     Replace a dataset in the database by ID.
 
@@ -500,7 +609,7 @@ async def replace_dataset(
 
     Returns
     -------
-    RenewablesMetadata | TariffMetadata | ElectricalLoadMetadata | HeatingLoadMetadata
+    RenewablesMetadata | TariffMetadata | ElectricalLoadMetadata | HeatingLoadMetadata | CarbonIntensityMetadata
         Metadata about the new dataset we've written to the database.
     """
     dataset_type = await pool.fetchval(
@@ -522,5 +631,7 @@ async def replace_dataset(
             return await replace_import_tariff(dataset_id, data, pool)
         case DatasetTypeEnum.RenewablesGeneration:
             return await replace_solar_generation(dataset_id, data, pool)
+        case DatasetTypeEnum.CarbonIntensity:
+            return await replace_carbon_intensity(dataset_id, data, pool)
         case _:
             raise HTTPException(400, f"Can't replace a dataset of type {dataset_type}.")

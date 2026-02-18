@@ -521,3 +521,90 @@ class TestReplaceDatasets:
             data = resp.json()["eload"]["data"]
             # curse this design decision
             assert all(item == 1.00 for item in data)
+
+    @pytest.mark.asyncio
+    async def test_can_replace_carbon_intensity(self, client: AsyncClient) -> None:
+        """Test that we can replace a grid CO2 dataframe in the database."""
+        pool = await get_pool_hack(client)
+
+        old_dataset_id = uuid7()
+
+        bundle_meta = BundleEntryMetadata(
+            bundle_id=uuid7(), dataset_id=old_dataset_id, dataset_type=DatasetTypeEnum.CarbonIntensity
+        )
+        start_ts = pd.Timestamp(year=2022, month=1, day=1, tzinfo=datetime.UTC)
+        old_co2_df = pd.DataFrame(
+            index=pd.date_range(
+                start_ts, end=start_ts + pd.Timedelta(hours=365 * 24), freq=pd.Timedelta(hours=1), inclusive="left"
+            ),
+            data={"grid_co2": [1.0 for _ in range(365 * 24)]},
+        )
+        old_co2_df["start_ts"] = old_co2_df.index
+        old_co2_df["end_ts"] = old_co2_df.index + pd.Timedelta(minutes=30)
+        # First we create our fake renewables dataframe
+        async with pool.acquire() as conn, conn.transaction():
+            await insert_dataset_bundle(
+                DatasetBundleMetadata(
+                    bundle_id=bundle_meta.bundle_id,
+                    name="Test Replace Elec Load",
+                    site_id="demo_london",
+                    start_ts=old_co2_df.index.min(),
+                    end_ts=old_co2_df.index.max(),
+                ),
+                pool=pool,
+            )
+
+            await conn.execute(
+                """
+                    INSERT INTO
+                        carbon_intensity.metadata (
+                            dataset_id,
+                            created_at,
+                            data_source,
+                            is_regional,
+                            site_id)
+                    VALUES ($1, $2, $3, $4, $5)""",
+                old_dataset_id,
+                datetime.datetime.now(datetime.UTC),
+                "custom",
+                True,
+                "demo_london",
+            )
+            await conn.copy_records_to_table(
+                schema_name="carbon_intensity",
+                table_name="grid_co2",
+                records=zip(
+                    repeat(old_dataset_id, len(old_co2_df)),
+                    old_co2_df["start_ts"],
+                    old_co2_df["end_ts"],
+                    old_co2_df["grid_co2"],
+                    strict=True,
+                ),
+                columns=["dataset_id", "start_ts", "end_ts", "actual"],
+            )
+            await file_self_with_bundle(pool, bundle_meta)
+
+        with tempfile.TemporaryFile() as tfile:
+            new_df = pd.DataFrame(
+                index=pd.date_range(
+                    start_ts, end=start_ts + pd.Timedelta(hours=365 * 24), freq=pd.Timedelta(minutes=30), inclusive="left"
+                ),
+                data={"grid_co2": [2.0 for _ in range(365 * 24 * 2)]},
+            )
+            new_df["start_ts"] = new_df.index
+            new_df["end_ts"] = new_df.index + pd.Timedelta(minutes=30)
+
+            new_df.to_csv(tfile, index=False)
+
+            resp = await client.post(
+                "/replace-dataset",
+                params={"dataset_id": str(old_dataset_id)},
+                files={"data": (str(tfile.name), tfile, "text/csv")},
+            )
+            assert resp.is_success, resp.text
+            assert resp.json()["dataset_id"] != str(old_dataset_id)
+
+            resp = await client.post("/get-dataset-bundle", params={"bundle_id": str(bundle_meta.bundle_id)})
+            assert resp.is_success, resp.text
+            data = resp.json()["grid_co2"]["data"]
+            assert all(item == 2.00 for item in data)

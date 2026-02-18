@@ -38,7 +38,7 @@ const UploadDatasetDialog = ({ open, onClose, bundleId, onUploadSuccess }: Uploa
         "ASHPData",
         "GasMeterData",
         "ElectricityMeterData",
-        "CarbonIntensity",
+        "SiteBaseline",
         "Weather",
         "ThermalModel",
         "PHPP"
