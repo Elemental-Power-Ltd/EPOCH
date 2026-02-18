@@ -319,8 +319,15 @@ export interface ElectricalLoadMetadata {
 
 };
 
+export interface CarbonIntensityMetadata {
+    dataset_id: string;
+    created_at: string;
+    data_source: string;
+    is_regional: boolean;
+    site_id: string;
+}
 
-export type DatasetMetadataResponse = RenewablesMetadata | TariffMetadata | ElectricalLoadMetadata | HeatingLoadMetadata;
+export type DatasetMetadataResponse = RenewablesMetadata | TariffMetadata | ElectricalLoadMetadata | HeatingLoadMetadata | CarbonIntensityMetadata;
 
 export interface DatasetEntryResponse {
     dataset_id: string;
