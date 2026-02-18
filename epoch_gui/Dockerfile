@@ -4,7 +4,7 @@ FROM node:25 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY tsconfig.json tsconfig.node.json ./
-RUN npm install
+RUN npm ci
 COPY . .
 RUN npm run build
 
