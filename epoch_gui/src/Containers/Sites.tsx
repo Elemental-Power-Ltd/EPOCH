@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import dayjs, {Dayjs} from "dayjs";
-import {Button, CircularProgress, Container, Grid, MenuItem, TextField, Box} from '@mui/material';
+import {Button, CircularProgress, Container, GridLegacy as Grid, MenuItem, TextField, Box} from '@mui/material';
 
 import {useEpochStore} from "../State/Store";
 import {SiteDataWithHints} from "../Models/Endpoints";

@@ -1,6 +1,6 @@
 import React from "react";
 import dayjs, { Dayjs } from "dayjs";
-import { Grid, Button, Tooltip, Typography } from "@mui/material";
+import { GridLegacy as Grid, Button, Tooltip, Typography } from "@mui/material";
 import { DayOfInterest } from "../../Models/Endpoints";
 
 interface DayOfInterestSelectorProps {

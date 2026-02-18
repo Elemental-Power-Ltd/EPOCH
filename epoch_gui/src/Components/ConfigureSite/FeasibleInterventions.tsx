@@ -10,7 +10,7 @@ import {
     DialogContentText,
     DialogTitle,
     DialogActions,
-    Grid,
+    GridLegacy as Grid,
     Paper,
     Table,
     TableBody,

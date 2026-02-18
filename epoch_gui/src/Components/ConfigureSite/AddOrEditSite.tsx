@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
 import {
-    Grid,
+    GridLegacy as Grid,
     Typography,
     RadioGroup,
     FormControlLabel,

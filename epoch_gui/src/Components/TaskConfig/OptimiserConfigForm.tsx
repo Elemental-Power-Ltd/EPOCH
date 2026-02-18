@@ -2,7 +2,7 @@ import React from "react";
 
 import {
   TextField,
-  Grid,
+  GridLegacy as Grid,
   Checkbox,
   Container,
   FormLabel,

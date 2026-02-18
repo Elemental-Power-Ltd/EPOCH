@@ -164,8 +164,8 @@ def clean_time_series(
     # freq = df_clean.index.to_series().diff().mode()[0]
     diffs = df_clean.index.to_series().diff()
     modes = diffs.mode()
-    if not modes.empty and isinstance(modes[0], pd.Timedelta):  # type: ignore
-        freq: pd.Timedelta = modes[0]  # type: ignore
+    if not modes.empty and isinstance(modes[0], pd.Timedelta):
+        freq: pd.Timedelta = modes[0]
     else:
         freq = pd.Timedelta(minutes=30)  # default to half-hourly
 

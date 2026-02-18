@@ -1,5 +1,5 @@
 import React from "react";
-import {Grid, TextField, MenuItem, Container} from "@mui/material";
+import {GridLegacy as Grid, TextField, MenuItem, Container} from "@mui/material";
 import dayjs, {Dayjs} from "dayjs";
 import 'dayjs/locale/en-gb';
 import utc from "dayjs/plugin/utc";

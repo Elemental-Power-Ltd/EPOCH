@@ -1,6 +1,6 @@
 import {useComponentBuilderState} from "../ComponentBuilder/useComponentBuilderState.ts";
 import {GasType, TaskData} from "../TaskDataViewer/TaskData.ts";
-import {Button, CircularProgress, Grid, Typography} from "@mui/material";
+import {Button, CircularProgress, GridLegacy as Grid, Typography} from "@mui/material";
 import ComponentBuilderForm from "../ComponentBuilder/ComponentBuilderForm.tsx";
 import {addSiteBaseline} from "../../endpoints.tsx";
 
