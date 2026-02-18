@@ -10,14 +10,12 @@ from app.internal.bayesian.algorithm import (
     optimize_acquisition_func_and_get_candidate,
     split_candidate_capexs_and_weights,
 )
-from app.internal.bayesian.common import create_reference_point, initialise_model, _TKWARGS
+from app.internal.bayesian.common import _TKWARGS, create_reference_point, initialise_model
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
 from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
-
-from app.internal.bayesian
 
 
 class TestGenerateRandomCandidates:

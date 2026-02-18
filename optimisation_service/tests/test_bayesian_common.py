@@ -7,7 +7,6 @@ from app.internal.bayesian.research_algorithm import (
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import Metric
 from app.models.result import PortfolioSolution, SiteSolution
-
 from epoch_simulator import SimulationResult
 
 
