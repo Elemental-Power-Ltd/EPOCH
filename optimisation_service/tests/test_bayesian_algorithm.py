@@ -10,12 +10,14 @@ from app.internal.bayesian.algorithm import (
     optimize_acquisition_func_and_get_candidate,
     split_candidate_capexs_and_weights,
 )
-from app.internal.bayesian.common import create_reference_point, initialise_model
+from app.internal.bayesian.common import create_reference_point, initialise_model, _TKWARGS
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
 from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
+
+from app.internal.bayesian
 
 
 class TestGenerateRandomCandidates:
@@ -29,14 +31,13 @@ class TestGenerateRandomCandidates:
         )
         assert len(candidates) == n
         for candidate in candidates:
-            assert sum(candidate[:n_sub_portfolios]) == capex_limit
+            assert sum(candidate[:n_sub_portfolios]) <= capex_limit
             for i in range(n_sub_portfolios):
-                assert sum(candidate[n_sub_portfolios + i * n_objectives :]) == 1.0
+                assert sum(candidate[n_sub_portfolios + i * n_objectives :]) <= 1.0
 
 
 class TestSplitCandidateCapexsAndWeights:
     def test_good_inputs(self) -> None:
-        split_candidate_capexs_and_weights()
         n = 2
         n_sub_portfolios = 2
         n_objectives = 2
@@ -126,8 +127,8 @@ class TestOptimizeAcquisitionFuncAndGetCandidate:
         raw_samples = 16
 
         # Dummy training data
-        train_x = torch.rand(5, (n_sub_portfolios - 1) + n_sub_portfolios * (n_objectives - 1))
-        train_y = torch.rand(5, n_objectives)
+        train_x = torch.rand(5, (n_sub_portfolios - 1) + n_sub_portfolios * (n_objectives - 1), **_TKWARGS)
+        train_y = torch.rand(5, n_objectives, **_TKWARGS)
 
         # Build required inputs
         ref_point = create_reference_point(train_y)

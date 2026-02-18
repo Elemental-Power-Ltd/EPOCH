@@ -1,7 +1,7 @@
 import datetime
 import logging
 import warnings
-from typing import TypedDict, cast
+from typing import cast
 
 import numpy as np
 import numpy.typing as npt
@@ -20,6 +20,8 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import (
 )
 
 from app.internal.bayesian.common import (
+    _TDEVICE,
+    _TKWARGS,
     create_reference_point,
     extract_sub_portfolio_capex_allocations,
     initialise_model,
@@ -40,17 +42,6 @@ from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
 
 logger = logging.getLogger("default")
-
-
-class TKWARGS(TypedDict):
-    """Torch keyword arguments which we need for optimisation."""
-
-    dtype: torch.dtype
-    device: torch.device
-
-
-_TDEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-_TKWARGS = TKWARGS(dtype=torch.double, device=_TDEVICE)
 
 
 warnings.filterwarnings("ignore", category=BadInitialCandidatesWarning)
@@ -133,16 +124,12 @@ class Bayesian(Algorithm):
         assert constraints[Metric.capex].get("max", None) is not None, "The constraints must define an upper CAPEX limit."
         capex_limit = constraints[Metric.capex]["max"]
 
-        self.sub_portfolios = split_into_sub_portfolios(portfolio, self.n_per_sub_portfolio)
-        n_sub_portfolios = len(self.sub_portfolios)
-        assert n_sub_portfolios > 1, "There must be at least two sub portfolios."
-
         n_objectives = len(objectives)
-        assert n_sub_portfolios > 1, "There must be at least two objectives."
+        assert n_objectives > 1, "There must be at least two objectives."
+
+        n_sub_portfolios = self.init_evaluator(objectives=objectives, constraints=constraints, portfolio=portfolio)
 
         sub_portfolio_site_ids = [[site.site_data.site_id for site in portfolio] for portfolio in self.sub_portfolios]
-
-        self.init_evaluator(objectives=objectives, constraints=constraints, n_sub_portfolios=n_sub_portfolios)
 
         candidates = generate_random_candidates(
             n=self.n_initialisation_points,
@@ -240,7 +227,7 @@ class Bayesian(Algorithm):
 
         return OptimisationResult(solutions, self.n_evals, total_exec_time)
 
-    def init_evaluator(self, objectives: list[Metric], constraints: Constraints, n_sub_portfolios: int) -> None:
+    def init_evaluator(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> None:
         """
         Initialise the algorithms candidate evaluator.
 
@@ -252,8 +239,17 @@ class Bayesian(Algorithm):
             Limitations on which solutions are acceptable
         n_sub_portfolios
             Number of sub portfolios.
+
+        Returns
+        -------
+        n_sub_portfolios
+            Number of sub portfolios.
         """
         self.objectives = objectives
+
+        # split sub_portfolios
+        self.sub_portfolios = split_into_sub_portfolios(portfolio, self.n_per_sub_portfolio)
+        n_sub_portfolios = len(self.sub_portfolios)
 
         # init Normalisers
         self.normalisers_list = []
@@ -271,6 +267,8 @@ class Bayesian(Algorithm):
 
         # init sub_portfolio_solution library
         self.sub_portfolio_solutions: list[list[PortfolioSolution]] = [[]] * n_sub_portfolios
+
+        return n_sub_portfolios
 
     def evaluate(self, capex_limits: list[float], weights_list: list[list[float]]) -> PortfolioSolution:
         """

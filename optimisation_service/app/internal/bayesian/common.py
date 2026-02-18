@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 import torch
 from botorch.models.gp_regression import SingleTaskGP
 from botorch.models.model_list_gp_regression import ModelListGP
@@ -8,6 +10,17 @@ from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood  
 from app.models.core import Site
 from app.models.metrics import Metric
 from app.models.result import PortfolioSolution
+
+
+class TKWARGS(TypedDict):
+    """Torch keyword arguments which we need for optimisation."""
+
+    dtype: torch.dtype
+    device: torch.device
+
+
+_TDEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+_TKWARGS = TKWARGS(dtype=torch.double, device=_TDEVICE)
 
 
 def split_into_sub_portfolios(portfolio: list[Site], n_per_sub_portfolio: int) -> list[list[Site]]:

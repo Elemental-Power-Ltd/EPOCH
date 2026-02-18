@@ -1,7 +1,7 @@
 import datetime
 import logging
 import warnings
-from typing import TypedDict, cast
+from typing import cast
 
 import numpy as np
 import numpy.typing as npt
@@ -20,6 +20,8 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import (
 )
 
 from app.internal.bayesian.common import (
+    _TDEVICE,
+    _TKWARGS,
     create_reference_point,
     extract_sub_portfolio_capex_allocations,
     initialise_model,
@@ -35,17 +37,6 @@ from app.models.optimisers import NSGA2HyperParam
 from app.models.result import OptimisationResult, PortfolioSolution
 
 logger = logging.getLogger("default")
-
-
-class TKWARGS(TypedDict):
-    """Torch keyword arguments which we need for optimisation."""
-
-    dtype: torch.dtype
-    device: torch.device
-
-
-_TDEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-_TKWARGS = TKWARGS(dtype=torch.double, device=_TDEVICE)
 
 
 warnings.filterwarnings("ignore", category=BadInitialCandidatesWarning)
