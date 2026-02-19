@@ -48,12 +48,12 @@ class TestSplitCandidateCapexsAndWeights:
             capexs, weights_lists = split_candidate_capexs_and_weights(
                 candidate=candidate, n_sub_portfolios=n_sub_portfolios, n_objectives=n_objectives, capex_limit=capex_limit
             )
-            assert len(capexs) == n_sub_portfolios - 1
+            assert len(capexs) == n_sub_portfolios
             assert sum(capexs) <= capex_limit
             assert sum(capexs) >= 0
             assert len(weights_lists) == n_sub_portfolios
             for weights in weights_lists:
-                assert len(weights) == n_objectives - 1
+                assert len(weights) == n_objectives
                 assert sum(weights) <= 1
                 assert sum(weights) >= 0
 
