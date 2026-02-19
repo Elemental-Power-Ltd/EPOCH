@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
 from app.internal_models import (
+    BatteryMode,
     Building,
     Config,
     EnergyStorageSystem,
@@ -37,7 +38,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
-fastapi_kwargs = {}
+fastapi_kwargs: dict[str, typing.Any] = {}
 
 if os.environ.get("PRODUCTION", False):
     fastapi_kwargs.update({
@@ -105,7 +106,7 @@ def make_task_data(
             capacity=battery.capacity,
             charge_power=battery.power,
             discharge_power=battery.power,
-            battery_mode="CONSUME_PLUS",
+            battery_mode=BatteryMode.CONSUME_PLUS,
         )
         if battery
         else None,
@@ -172,7 +173,7 @@ async def simulate(request: SimulationRequest) -> DemoResult:
 
     report_data_pydantic = report_data_to_pydantic(result.report_data) if result.report_data is not None else None
     metrics = simulation_result_to_pydantic(result)
-    days_of_interest = []
+    days_of_interest: list[typing.Any] = []
 
     return DemoResult(
         metrics=metrics,

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from epoch_simulator import ReportData as EpochReportData
+from typing import TYPE_CHECKING, Any
 
 from app.models import CostInfo, Grade, ReportData, SimulationMetrics
 
 if TYPE_CHECKING:
-    from epoch_simulator import ReportData, SimulationResult
+    from epoch_simulator import CapexBreakdown as EpochCapexBreakdown
+    from epoch_simulator import ReportData as EpochReportData
+    from epoch_simulator import SimulationResult
 
 
-def convert_capex_breakdown_to_pydantic(capex_breakdown: dict[str, any]) -> list[CostInfo]:
+def convert_capex_breakdown_to_pydantic(capex_breakdown: EpochCapexBreakdown) -> list[CostInfo]:
     """
     Convert an Epoch CapexBreakdown into a pydantic list of CostInfo objects.
 
@@ -210,7 +210,7 @@ def simulation_result_to_pydantic(sim_result: SimulationResult) -> SimulationMet
     )
 
 
-def report_data_to_dict(report_data: any) -> dict[str, list[float]]:
+def report_data_to_dict(report_data: Any) -> dict[str, list[float]]:
     """
     Convert the ReportData type returned as part of a SimulationResult into a more generic dict type.
 
