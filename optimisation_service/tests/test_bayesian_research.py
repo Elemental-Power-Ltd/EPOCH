@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 import torch
-from app.internal.bayesian import BayesianResearch
 from app.internal.bayesian.common import _TKWARGS, create_reference_point, initialise_model
 from app.internal.bayesian.research import (
+    BayesianResearch,
     create_capex_bounds,
     create_inequality_constraints,
     create_objective_weight_bounds,
