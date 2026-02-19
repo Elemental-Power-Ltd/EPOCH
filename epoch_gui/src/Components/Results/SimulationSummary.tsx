@@ -221,7 +221,14 @@ const SimulationSummary: React.FC<SimulationSummaryProps> = ({ result, scenario,
           <JsonViewer data={result?.metrics} name={"Site Result"}/>
         </Box>
 
-        <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
+        <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            sx={{ mb: 2 }}
+            variant="scrollable"
+            scrollButtons
+            allowScrollButtonsMobile
+        >
           <Tab label={"Overview"}/>
           <Tab label={"Electricity"}/>
           <Tab label={"Heat"}/>

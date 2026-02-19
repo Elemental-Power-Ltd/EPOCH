@@ -627,6 +627,11 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+demonstrator = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "numpy" },
+    { name = "pydantic" },
+]
 dev = [
     { name = "asyncpg-stubs" },
     { name = "datamodel-code-generator" },
@@ -679,6 +684,11 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+demonstrator = [
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.128.0" },
+    { name = "numpy", specifier = ">=2.3.5" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+]
 dev = [
     { name = "asyncpg-stubs", specifier = ">=0.31.1" },
     { name = "datamodel-code-generator", specifier = ">=0.54.0" },

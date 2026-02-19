@@ -5,6 +5,7 @@ import SimulationSummary from "./SimulationSummary";
 import DataViz from "../DataViz/DataViz";
 import {SimulationResult} from "../../Models/Endpoints";
 import {Button, Container} from "@mui/material";
+import {SmallScreenRotationGuard} from "../../util/RotationGuard.tsx";
 
 interface SimulationResultViewerProps {
 
@@ -35,7 +36,11 @@ const SimulationResultViewer: React.FC<SimulationResultViewerProps> = ({isLoadin
                     <Button onClick={toggleAnalysis} variant="outlined" disabled={result.report_data === null}>
                         {showAnalysis ? "Hide Analysis" : "Show Analysis"}
                     </Button>
-                    {showAnalysis && <DataViz result={result}/>}
+                    {showAnalysis &&
+                        <SmallScreenRotationGuard message={"To view analysis, please rotate to landscape."}>
+                            <DataViz result={result}/>
+                        </SmallScreenRotationGuard>
+                    }
                 </>
             }
         </>

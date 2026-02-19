@@ -1,0 +1,10 @@
+
+
+services:
+  epoch_demonstrator:
+    image: epoch_demonstrator:latest
+    build:
+      context: ".."
+      dockerfile: "epoch_demonstrator/Dockerfile"
+    ports:
+      - "8763:8763"

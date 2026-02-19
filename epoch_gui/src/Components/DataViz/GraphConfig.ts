@@ -100,8 +100,11 @@ export const daysOptions = [
     { value: 365, label: "1 Year" }
 ];
 
+
+type PanelSelection = { var1: string; var2: string };
+
 // the default variables for each line plot
-export const lineChartDefaults = [
+export const lineChartDefaults: PanelSelection[] = [
     {var1: 'DHW_load', var2: 'DHW_charging'},
     {var1: 'DHW_SoC', var2: 'DHW_charging'},
     {var1: 'PVacGen', var2: 'Grid_Import'},

@@ -2,6 +2,7 @@ import {Box, Dialog, DialogContent, DialogTitle, IconButton, Tooltip} from "@mui
 import * as React from "react";
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import {usePresentationMode} from "../../PresentationMode.tsx";
 
 
 interface JsonViewerProps {
@@ -26,6 +27,11 @@ const JsonViewer: React.FC<JsonViewerProps> = ({data, name}) => {
         }
     }, [data]);
 
+    const { enabled: isPresentationMode } = usePresentationMode();
+    if (isPresentationMode) {
+        // only show the JSON Viewer when we're not in Presentation Mode
+        return null;
+    }
 
     return (
         <>

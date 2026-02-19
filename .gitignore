@@ -189,6 +189,7 @@ vcpkg_installed/
 
 # Gui files
 epoch_gui/node_modules
+epoch_gui/dist-demonstrator
 
 # Epoch Simulator files
 

@@ -55,6 +55,13 @@ dev = [
     "types-tensorflow>=2.18.0.20260121",
 ]
 
+demonstrator = [
+    "fastapi[standard]>=0.128.0",
+    "numpy>=2.3.5",
+    "pydantic>=2.12.5",
+]
+
+
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cpu" },
@@ -138,6 +145,7 @@ ignore = [
 "optimisation_service/tests/*.py" = ["D", "SIM118", "ARG001", "ASYNC240", "ASYNC251"]
 "optimisation_service/*" = ["D100", "D101", "D104", "D105", "ARG001", "ARG002", "NPY002", "SIM102"]
 "epoch_demonstrator/*" = ["D100", "D101", "D103", "D104", "D105"]
+"epoch_demonstrator/app/models.py" = ["E501"]
 
 [tool.ruff.lint.flake8-annotations]
 mypy-init-return = true
