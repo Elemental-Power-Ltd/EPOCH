@@ -1,8 +1,8 @@
-from app.internal.bayesian.common import create_reference_point, extract_sub_portfolio_capex_allocations, initialise_model
-from app.internal.bayesian.research_algorithm import (
+from app.internal.bayesian.bayesian import (
     convert_solution_list_to_tensor,
     create_capex_allocation_bounds,
 )
+from app.internal.bayesian.common import create_reference_point, extract_sub_portfolio_capex_allocations, initialise_model
 from app.models.ga_utils import AnnotatedTaskData
 from app.models.metrics import Metric
 from app.models.result import PortfolioSolution, SiteSolution

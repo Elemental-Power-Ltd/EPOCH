@@ -11,6 +11,7 @@ class OptimiserStr(StrEnum):
     Bayesian = "Bayesian"
     SeparatedNSGA2 = "SeparatedNSGA2"
     SeparatedNSGA2xNSGA2 = "SeparatedNSGA2xNSGA2"
+    BayesianResearch = "BayesianResearch"
 
 
 class NSGA2HyperParam(BaseModel):

@@ -1,13 +1,13 @@
 import pytest
 import torch
-from app.internal.bayesian.common import _TKWARGS, create_reference_point, initialise_model, split_into_sub_portfolios
-from app.internal.bayesian.research_algorithm import (
-    BayesianResearch,
+from app.internal.bayesian.bayesian import (
+    Bayesian,
     convert_solution_list_to_tensor,
     create_capex_allocation_bounds,
     generate_random_candidates,
     optimize_acquisition_func_and_get_candidate,
 )
+from app.internal.bayesian.common import _TKWARGS, create_reference_point, initialise_model, split_into_sub_portfolios
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.ga_utils import AnnotatedTaskData
@@ -22,7 +22,7 @@ class TestBayesianResearch:
         """
         Test default algorithm initialisation.
         """
-        BayesianResearch()
+        Bayesian()
 
     @pytest.mark.slow
     def test_run(
@@ -31,9 +31,7 @@ class TestBayesianResearch:
         """
         Test output of algorithm.
         """
-        alg = BayesianResearch(
-            n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10)
-        )
+        alg = Bayesian(n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10))
         res = alg.run(default_objectives, default_constraints, default_portfolio)
         assert isinstance(res, OptimisationResult)
 

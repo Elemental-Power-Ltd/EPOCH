@@ -44,7 +44,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=UserInputWarning)
 
 
-class BayesianResearch(Algorithm):
+class Bayesian(Algorithm):
     """
     Optimise a single or multi objective portfolio problem by optimising the CAPEX allocations.
 

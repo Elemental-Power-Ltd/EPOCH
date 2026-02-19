@@ -49,7 +49,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=UserInputWarning)
 
 
-class Bayesian(Algorithm):
+class BayesianResearch(Algorithm):
     """Optimise a multi objective portfolio problem by optimising the CAPEX allocations."""
 
     def __init__(

@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
 import torch
-from app.internal.bayesian import Bayesian
-from app.internal.bayesian.algorithm import (
+from app.internal.bayesian import BayesianResearch
+from app.internal.bayesian.common import _TKWARGS, create_reference_point, initialise_model
+from app.internal.bayesian.research import (
     create_capex_bounds,
     create_inequality_constraints,
     create_objective_weight_bounds,
@@ -10,7 +11,6 @@ from app.internal.bayesian.algorithm import (
     optimize_acquisition_func_and_get_candidate,
     split_candidate_capexs_and_weights,
 )
-from app.internal.bayesian.common import _TKWARGS, create_reference_point, initialise_model
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.metrics import Metric
@@ -173,7 +173,7 @@ class TestBayesian:
         """
         Test default algorithm initialisation.
         """
-        Bayesian()
+        BayesianResearch()
 
     def test_init_evaluator(
         self, default_objectives: list[Metric], default_constraints: Constraints, default_portfolio: list[Site]
@@ -181,7 +181,9 @@ class TestBayesian:
         """
         Test initialisation of evaluator.
         """
-        alg = Bayesian(n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10))
+        alg = BayesianResearch(
+            n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10)
+        )
         n_sub_portfolios = alg.init_evaluator(
             objectives=default_objectives, constraints=default_constraints, portfolio=default_portfolio
         )
@@ -193,7 +195,9 @@ class TestBayesian:
         """
         Test output of algorithm.
         """
-        alg = Bayesian(n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10))
+        alg = BayesianResearch(
+            n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10)
+        )
         n_sub_portfolios = alg.init_evaluator(
             objectives=default_objectives, constraints=default_constraints, portfolio=default_portfolio
         )
@@ -217,6 +221,8 @@ class TestBayesian:
         """
         Test output of algorithm.
         """
-        alg = Bayesian(n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10))
+        alg = BayesianResearch(
+            n_generations=2, NSGA2_param=NSGA2HyperParam(pop_size=512, n_offsprings=256, n_max_gen=2, period=10)
+        )
         res = alg.run(default_objectives, default_constraints, default_portfolio)
         assert isinstance(res, OptimisationResult)
