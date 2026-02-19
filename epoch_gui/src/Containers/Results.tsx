@@ -21,15 +21,9 @@ function ResultsContainer() {
 
     const client_id = useEpochStore((state) => state.global.selectedClient?.client_id);
 
-    const {
-        results: state,
-        setOptimiserServiceStatus,
-        setTasks,
-    } = useEpochStore((state) => ({
-        results: state.results,
-        setOptimiserServiceStatus: state.setOptimiserServiceStatus,
-        setTasks: state.setTasks,
-    }));
+    const state = useEpochStore((s) => s.results);
+    const setOptimiserServiceStatus = useEpochStore((s) => s.setOptimiserServiceStatus);
+    const setTasks = useEpochStore((s) => s.setTasks);
 
     // pagination state for the tasks list
     const [page, setPage] = useState(0);
