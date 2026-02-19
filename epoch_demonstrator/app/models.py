@@ -32,9 +32,11 @@ class BatteryInfo(BaseModel):
 
 Tariffs = Literal["Fixed", "Agile", "Peak", "Overnight"]
 
+
 class GridInfo(BaseModel):
     import_tariff: Tariffs
     export_tariff: float = Field(ge=0.0)
+
 
 Location = Literal["Cardiff", "London", "Edinburgh"]
 BuildingType = Literal["Domestic", "TownHall", "LeisureCentre"]

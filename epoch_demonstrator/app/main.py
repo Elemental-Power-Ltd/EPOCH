@@ -22,15 +22,14 @@ from app.models import (
     BatteryInfo,
     BuildingType,
     DemoResult,
-    HeatInfo,
     GridInfo,
+    HeatInfo,
     InsulationInfo,
     Location,
     PanelInfo,
     SimulationRequest,
 )
 from app.utils import report_data_to_pydantic, simulation_result_to_pydantic
-
 
 logging.basicConfig(
     filename="errors.log",
@@ -162,7 +161,6 @@ async def simulate(request: SimulationRequest) -> DemoResult:
         request.heat.heat_power = baseline_boiler_output
 
     task_data_json = make_task_data(request.panels, request.heat, request.insulation, request.battery, request.grid)
-
 
     # only apply the boiler upgrade scheme for domestic buildings
     use_boiler_upgrade_scheme = request.building == "Domestic"

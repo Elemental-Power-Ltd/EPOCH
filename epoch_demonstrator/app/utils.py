@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.models import CostInfo, Grade, ReportData, SimulationMetrics
 from epoch_simulator import ReportData as EpochReportData
+
+from app.models import CostInfo, Grade, ReportData, SimulationMetrics
 
 if TYPE_CHECKING:
     from epoch_simulator import ReportData, SimulationResult
