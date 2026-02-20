@@ -173,7 +173,6 @@ migrations/999999_*.sql
 # WSL guff
 *:Zone.Identifier
 
-.vs/
 *.aps
 *.pdb
 *.user
@@ -195,6 +194,9 @@ epoch_gui/dist-demonstrator
 
 core_simulator/build/*
 core_simulator/install/*
+
+core_simulator/.vs/*
+!core_simulator/.vs/launch.vs.json
 
 EP_POSTGRES_PASSWORD_FILE.txt
 EP_RE24_API_KEY_FILE.txt
