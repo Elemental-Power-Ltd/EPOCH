@@ -131,7 +131,7 @@ const DemoForm: React.FC<DemoFormProps> = ({
     const defaultHeatPumpPower = (building: BuildingType) => {
         switch (building) {
             case "Domestic":
-                return 5;
+                return 15;
             case "TownHall":
                 return 30;
             case "LeisureCentre":
