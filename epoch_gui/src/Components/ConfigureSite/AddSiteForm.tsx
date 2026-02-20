@@ -21,8 +21,11 @@ interface AddSiteFormProps {
     siteLocation: string;
     setSiteLocation: (value: string) => void;
 
-    coordinates: [number, number] | null;
-    setCoordinates: (value: [number, number] | null) => void;
+    latitude: number | null;
+    setLatitude: (value: number | null) => void;
+
+    longitude: number | null;
+    setLongitude: (value: number | null) => void;
 
     address: string;
     setAddress: (value: string) => void;
@@ -81,8 +84,10 @@ const AddSiteForm = ({
                          setSiteName,
                          siteLocation,
                          setSiteLocation,
-                         coordinates,
-                         setCoordinates,
+                         latitude,
+                         setLatitude,
+                         longitude,
+                         setLongitude,
                          address,
                          setAddress,
                          postcode,
@@ -111,22 +116,31 @@ const AddSiteForm = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [derivedSiteId]);
 
-    const handleCoordinateChange =
-        (index: 0 | 1) => (e: ChangeEvent<HTMLInputElement>) => {
-            const raw = e.target.value;
+    const handleLatChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value;
+        if (raw === "") {
+            setLatitude(null);
+            return;
+        }
 
-            if (raw === "") {
-                setCoordinates(null);
-                return;
-            }
+        const num = Number(raw);
+        if (Number.isNaN(num)) return;
 
-            const num = Number(raw);
-            if (Number.isNaN(num)) return;
+        setLatitude(num);
+    }
 
-            const next: [number, number] = coordinates ?? [0, 0];
-            next[index] = num;
-            setCoordinates([next[0], next[1]]);
-        };
+    const handleLonChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value;
+        if (raw === "") {
+            setLongitude(null);
+            return;
+        }
+
+        const num = Number(raw);
+        if (Number.isNaN(num)) return;
+
+        setLongitude(num);
+    }
 
     // EPC: only A-G (optional)
     const handleEpcChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -172,7 +186,7 @@ const AddSiteForm = ({
             !!siteLocation &&
             !!address &&
             !!postcode &&
-            coordinates !== null &&
+            latitude !== null && longitude !== null &&
             derivedSiteId.length > 0 &&
             !siteLoading &&
             epcValid &&
@@ -192,7 +206,7 @@ const AddSiteForm = ({
             site_id: derivedSiteId,
             name: siteName,
             location: siteLocation,
-            coordinates: coordinates!,
+            coordinates: [latitude!, longitude!],
             address: `${address}, ${postcode}`,
             epc_lmk: epcLmk,
             dec_lmk: decLmk,
@@ -252,8 +266,8 @@ const AddSiteForm = ({
                                 fullWidth
                                 label="Latitude"
                                 type="number"
-                                value={coordinates ? coordinates[0] : ""}
-                                onChange={handleCoordinateChange(0)}
+                                value={latitude ?? ""}
+                                onChange={handleLatChange}
                             />
                         </Grid>
 
@@ -262,8 +276,8 @@ const AddSiteForm = ({
                                 fullWidth
                                 label="Longitude"
                                 type="number"
-                                value={coordinates ? coordinates[1] : ""}
-                                onChange={handleCoordinateChange(1)}
+                                value={longitude ?? ""}
+                                onChange={handleLonChange}
                             />
                         </Grid>
                     </Grid>

@@ -37,12 +37,12 @@ const AddOrEditSite = ({selectedSite, setSelectedSite, onSuccess}: AddOrEditSite
     const [mode, setMode] = useState<Mode>(defaultMode);
     useEffect(() => setMode(defaultMode), [defaultMode]);
 
-    // --- AddSiteForm state (owned here) ---
     const [clientId, setClientId] = useState<string>(selectedClient?.client_id ?? "");
     const [siteId, setSiteId] = useState<string>("");
     const [siteName, setSiteName] = useState<string>("");
     const [siteLocation, setSiteLocation] = useState<string>("");
-    const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
+    const [latitude, setLatitude] = useState<number | null>(null);
+    const [longitude, setLongitude] = useState<number | null>(null);
     const [address, setAddress] = useState<string>("");
     const [postcode, setPostcode] = useState<string>("");
     const [epcLmk, setEpcLmk] = useState<string | null>(null);
@@ -76,7 +76,8 @@ const AddOrEditSite = ({selectedSite, setSelectedSite, onSuccess}: AddOrEditSite
         setSiteId("");
         setSiteName("");
         setSiteLocation("");
-        setCoordinates(null);
+        setLatitude(null);
+        setLongitude(null);
         setAddress("");
         setPostcode("");
         setEpcLmk(null);
@@ -146,8 +147,10 @@ const AddOrEditSite = ({selectedSite, setSelectedSite, onSuccess}: AddOrEditSite
                     setSiteName={setSiteName}
                     siteLocation={siteLocation}
                     setSiteLocation={setSiteLocation}
-                    coordinates={coordinates}
-                    setCoordinates={setCoordinates}
+                    latitude={latitude}
+                    setLatitude={setLatitude}
+                    longitude={longitude}
+                    setLongitude={setLongitude}
                     address={address}
                     setAddress={setAddress}
                     postcode={postcode}
