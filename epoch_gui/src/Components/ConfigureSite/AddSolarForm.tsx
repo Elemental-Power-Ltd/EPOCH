@@ -26,6 +26,7 @@ interface AddSolarLocationSectionProps {
   setSolarLoading: (value: boolean) => void;
   solarError: string | null;
   setSolarError: (value: string | null) => void;
+  onSuccess: (message: string) => void;
 }
 
 const AddSolarLocationForm = ({
@@ -43,7 +44,8 @@ const AddSolarLocationForm = ({
   solarLoading,
   setSolarLoading,
   solarError,
-  setSolarError
+  setSolarError,
+  onSuccess
 }: AddSolarLocationSectionProps) => {
 
   const handleNumberChange = (setter: (value: number | null) => void) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -85,6 +87,8 @@ const AddSolarLocationForm = ({
       setSolarLoading(false);
       if (res.success) {
         setSolarError(null);
+        const name = res.data!.name;
+        onSuccess(`${name} successfully added`);
       } else {
         setSolarError(res.error ?? "Unknown Error");
       }

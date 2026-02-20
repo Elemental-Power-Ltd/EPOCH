@@ -11,6 +11,7 @@ interface BaselineFormProps {
     setBaselineLoading: (value: boolean) => void;
     baselineError: string | null;
     setBaselineError: (value: string | null) => void;
+    onSuccess: (message: string) => void;
 }
 
 
@@ -19,7 +20,8 @@ const BaselineForm = ({
                           baselineLoading,
                           setBaselineLoading,
                           baselineError,
-                          setBaselineError
+                          setBaselineError,
+                          onSuccess,
                       }: BaselineFormProps) => {
 
 
@@ -68,7 +70,9 @@ const BaselineForm = ({
 
         try {
             const res = await addSiteBaseline(selectedSite, getTaskData());
-            if (!res.success) {
+            if (res.success) {
+                onSuccess("Baseline added successfully!");
+            } else {
                 setBaselineError(res.error ?? "Unknown error");
             }
         } catch (error) {

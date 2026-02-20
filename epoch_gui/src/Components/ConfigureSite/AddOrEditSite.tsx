@@ -19,9 +19,10 @@ type Mode = "existing" | "add";
 interface AddOrEditSiteProps {
     selectedSite: string;
     setSelectedSite: (siteId: string) => void;
+    onSuccess: (message: string) => void;
 }
 
-const AddOrEditSite = ({selectedSite, setSelectedSite}: AddOrEditSiteProps) => {
+const AddOrEditSite = ({selectedSite, setSelectedSite, onSuccess}: AddOrEditSiteProps) => {
     const selectedClient = useEpochStore((s) => s.global.selectedClient);
     const sites = useEpochStore((s) => s.global.client_sites);
     const addClientSite = useEpochStore((s) => s.addClientSite);
@@ -69,6 +70,7 @@ const AddOrEditSite = ({selectedSite, setSelectedSite}: AddOrEditSiteProps) => {
         const s: Site = {site_id: site.site_id, name: site.name};
         addClientSite(s);
         setSelectedSite(site.site_id);
+        onSuccess(`${site.name} added successfully!`)
 
         // reset the state after adding a site
         setSiteId("");
