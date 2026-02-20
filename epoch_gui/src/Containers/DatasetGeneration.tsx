@@ -3,7 +3,7 @@ import {
     Button,
     GridLegacy as Grid,
     Container,
-    Stepper, Step, StepButton
+    Stepper, Step, StepButton, Snackbar, Alert
 } from '@mui/material';
 import dayjs, {Dayjs} from 'dayjs';
 import 'dayjs/locale/en-gb';
@@ -22,6 +22,11 @@ import {PrepochStatusDisplay} from "../Components/PrepochQueue/PrepochQueue.tsx"
 import FeasibleInterventions from "../Components/ConfigureSite/FeasibleInterventions.tsx";
 
 dayjs.extend(utc);
+
+type SnackbarState = {
+    open: boolean;
+    message: string;
+};
 
 const DatasetGenerationContainer = () => {
 
@@ -73,6 +78,18 @@ const DatasetGenerationContainer = () => {
 
     const [prepochQueueStatus, setPrepochQueueStatus] = useState<any>('OFFLINE');
 
+    const [snackbar, setSnackbar] = useState<SnackbarState>({open: false, message: ''});
+
+    const handleCloseSnackbar = (_event?: unknown, reason?: string) => {
+        if (reason === 'clickaway') return;
+
+        setSnackbar((s) => ({ ...s, open: false }));
+    };
+
+    const showSuccess = (message: string) => {
+        setSnackbar({open: true, message});
+    };
+
     useEffect(() => {
         let cancelled = false;
 
@@ -114,7 +131,7 @@ const DatasetGenerationContainer = () => {
             </Stepper>
 
             {step === 0 && (
-                <AddOrEditSite selectedSite={selectedSite} setSelectedSite={setSelectedSite}/>
+                <AddOrEditSite selectedSite={selectedSite} setSelectedSite={setSelectedSite} onSuccess={showSuccess}/>
             )}
 
 
@@ -130,6 +147,7 @@ const DatasetGenerationContainer = () => {
                     setMeterFileLoading={setMeterFileLoading}
                     meterFileError={meterFileError}
                     setMeterFileError={setMeterFileError}
+                    onSuccess={showSuccess}
                 />
             )}
 
@@ -150,6 +168,7 @@ const DatasetGenerationContainer = () => {
                     setSolarLoading={setSolarLoading}
                     solarError={solarError}
                     setSolarError={setSolarError}
+                    onSuccess={showSuccess}
                 />
             )}
 
@@ -160,6 +179,7 @@ const DatasetGenerationContainer = () => {
                     setBaselineLoading={setBaselineLoading}
                     baselineError={baselineError}
                     setBaselineError={setBaselineError}
+                    onSuccess={showSuccess}
                 />
             )}
 
@@ -175,6 +195,7 @@ const DatasetGenerationContainer = () => {
                     setPhppError={setPhppError}
                     phppMetadata={phppMetadata}
                     setPhppMetadata={setPhppMetadata}
+                    onSuccess={showSuccess}
                 />
             )}
 
@@ -226,6 +247,17 @@ const DatasetGenerationContainer = () => {
                     </Button>
                 </Grid>
             </Grid>
+
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={5000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{vertical: 'bottom', horizontal: 'center'}}
+            >
+                <Alert severity="success" onClose={handleCloseSnackbar} variant="filled">
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 };
