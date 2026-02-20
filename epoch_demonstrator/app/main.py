@@ -12,6 +12,7 @@ from app.internal_models import (
     BatteryMode,
     Building,
     Config,
+    DomesticHotWater,
     EnergyStorageSystem,
     GasHeater,
     Grid,
@@ -66,6 +67,7 @@ def make_site_data(location: Location, building: BuildingType) -> str:
 
 
 def make_task_data(
+    building: BuildingType,
     panels: list[PanelInfo],
     heat: HeatInfo,
     insulation: InsulationInfo,
@@ -112,6 +114,10 @@ def make_task_data(
         else None,
         gas_heater=GasHeater(maximum_output=heat.heat_power, incumbent=True) if heat.heat_source == "Boiler" else None,
         heat_pump=HeatPump(heat_power=heat.heat_power) if heat.heat_source == "HeatPump" else None,
+        # The hot water cylinder logic only really makes sense for domestic sites
+        # (DHW is a much smaller component of the other sites' demands - we assume they have an alternative arrangement)
+        # For this demonstrator, it means their DHW demands will be met by resistive heating
+        domestic_hot_water=DomesticHotWater(cylinder_volume=100) if building == "Domestic" else None,
         solar_panels=[
             SolarPanel(
                 yield_scalar=panel.solar_peak,
@@ -161,7 +167,8 @@ async def simulate(request: SimulationRequest) -> DemoResult:
         # horrible mutation!
         request.heat.heat_power = baseline_boiler_output
 
-    task_data_json = make_task_data(request.panels, request.heat, request.insulation, request.battery, request.grid)
+    task_data_json = make_task_data(
+        request.building, request.panels, request.heat, request.insulation, request.battery, request.grid)
 
     # only apply the boiler upgrade scheme for domestic buildings
     use_boiler_upgrade_scheme = request.building == "Domestic"
