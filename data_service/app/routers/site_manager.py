@@ -400,7 +400,7 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
             (
                 COALESCE(array_length(ANY_VALUE(dl.dataset_type), 1), 0) > 0
                 AND BOOL_AND(COALESCE(js.job_status, 'completed') = 'completed')
-            ) AS is_complete,            
+            ) AS is_complete,
             COALESCE(BOOL_OR(js.job_status = 'error'), false) AS is_error
         FROM data_bundles.metadata AS m
         LEFT JOIN (
