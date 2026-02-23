@@ -48,7 +48,7 @@ class Bayesian(Algorithm):
     """
     Optimise a single or multi objective portfolio problem by optimising the CAPEX allocations.
 
-    This does so across the portfolio with a Bayesian optimiser as follows:
+    This does so across the portfolio with a Pseudo Bayesian optimiser as follows:
         1. Split the portfolio into N sub-portfolios
         2. Initialise the optimiser by optimising each sub-portfolio individually with NSGA-II for maximum CAPEX, recombining
            the sub-portfolio solutions into feasible portfolio solutions.
@@ -107,7 +107,7 @@ class Bayesian(Algorithm):
 
     def run(self, objectives: list[Metric], constraints: Constraints, portfolio: list[Site]) -> OptimisationResult:
         """
-        Run the Bayesian optimiser.
+        Run the Pseudo Bayesian optimiser.
 
         Parameters
         ----------
