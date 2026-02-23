@@ -19,6 +19,7 @@ interface UploadPhppFormProps {
   setPhppError: (value: string | null) => void;
   phppMetadata: PhppMetadata | null;
   setPhppMetadata: (value: PhppMetadata | null) => void;
+  onSuccess: (message: string) => void;
 }
 
 const UploadPhppForm = ({
@@ -31,7 +32,8 @@ const UploadPhppForm = ({
   phppError,
   setPhppError,
   phppMetadata,
-  setPhppMetadata
+  setPhppMetadata,
+  onSuccess,
 }: UploadPhppFormProps) => {
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +64,7 @@ const UploadPhppForm = ({
       if (res.success) {
         setPhppError(null);
         setPhppMetadata(res.data ?? null);
+        onSuccess("PHPP upload successfully!");
       } else {
         setPhppError(res.error ?? "Unknown Error");
       }

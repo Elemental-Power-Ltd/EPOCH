@@ -21,6 +21,7 @@ interface UploadMeterFileSectionProps {
   setMeterFileLoading: (value: boolean) => void;
   meterFileError: string | null;
   setMeterFileError: (value: string | null) => void;
+  onSuccess: (message: string) => void;
 }
 
 const UploadMeterFileForm = ({
@@ -33,7 +34,8 @@ const UploadMeterFileForm = ({
   meterFileLoading,
   setMeterFileLoading,
   meterFileError,
-  setMeterFileError
+  setMeterFileError,
+  onSuccess
 }: UploadMeterFileSectionProps) => {
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +64,8 @@ const UploadMeterFileForm = ({
       setMeterFileLoading(false);
       if (res.success) {
         setMeterFileError(null);
+        const fuelName = fuelType === "gas" ? "Gas meter data" : "Electricity meter data"
+        onSuccess(`${fuelName} uploaded successfully.`);
       } else {
         setMeterFileError(res.error ?? "Unknown Error");
       }
