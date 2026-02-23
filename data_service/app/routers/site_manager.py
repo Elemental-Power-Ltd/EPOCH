@@ -89,7 +89,7 @@ async def list_bundle_contents(bundle_id: dataset_id_t, pool: DatabasePoolDep) -
             ARRAY_AGG(dataset_type ORDER BY dataset_order ASC) AS dataset_types,
             ARRAY_AGG(dataset_subtype ORDER BY dataset_order ASC) AS dataset_subtypes,
             ARRAY_AGG(dataset_id ORDER BY dataset_order ASC) AS dataset_ids,
-            ANY_VALUE(dm.is_complete) AS is_complete,
+            (COUNT(dl.dataset_id) > 0) AND ANY_VALUE(dm.is_complete) AS is_complete,
             ANY_VALUE(dm.is_error) AS is_error
         FROM (
             SELECT
@@ -397,7 +397,10 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
             ANY_VALUE(created_at) AS created_at,
             ANY_VALUE(dataset_type) AS available_datasets,
             ARRAY_AGG(js.job_status) AS job_status,
-            BOOL_AND(COALESCE(js.job_status, 'completed') = 'completed') AS is_complete,
+            (
+                COALESCE(array_length(ANY_VALUE(dl.dataset_type), 1), 0) > 0
+                AND BOOL_AND(COALESCE(js.job_status, 'completed') = 'completed')
+            ) AS is_complete,            
             COALESCE(BOOL_OR(js.job_status = 'error'), false) AS is_error
         FROM data_bundles.metadata AS m
         LEFT JOIN (
