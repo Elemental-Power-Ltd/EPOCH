@@ -101,6 +101,11 @@ def make_task_data(
 
         return INTERVENTIONS_LIST.index(interventions)
 
+    # The hot water cylinder logic only really makes sense for domestic sites
+    # (DHW is a much smaller component of the other sites' demands - we assume they have an alternative arrangement)
+    # For this demonstrator, it means their DHW demands will be met by resistive heating
+    install_cylinder = heat.heat_source == "HeatPump" and building == "Domestic"
+
     task_data = PydanticTaskData(
         building=Building(fabric_intervention_index=insulation_to_index(insulation)),
         grid=Grid(grid_import=999, tariff_index=TARIFF_MAP[grid.import_tariff], export_tariff=grid.export_tariff),
@@ -114,10 +119,7 @@ def make_task_data(
         else None,
         gas_heater=GasHeater(maximum_output=heat.heat_power, incumbent=True) if heat.heat_source == "Boiler" else None,
         heat_pump=HeatPump(heat_power=heat.heat_power) if heat.heat_source == "HeatPump" else None,
-        # The hot water cylinder logic only really makes sense for domestic sites
-        # (DHW is a much smaller component of the other sites' demands - we assume they have an alternative arrangement)
-        # For this demonstrator, it means their DHW demands will be met by resistive heating
-        domestic_hot_water=DomesticHotWater(cylinder_volume=100) if building == "Domestic" else None,
+        domestic_hot_water=DomesticHotWater(cylinder_volume=100) if install_cylinder else None,
         solar_panels=[
             SolarPanel(
                 yield_scalar=panel.solar_peak,
