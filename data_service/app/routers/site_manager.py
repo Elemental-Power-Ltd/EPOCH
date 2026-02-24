@@ -630,8 +630,6 @@ async def generate_all(
         end_ts=params.end_ts,
         available_datasets=[],  # Leave this empty to start and we'll fill it in as we go along
     )
-    # File the metadata before we do anything else
-    await insert_dataset_bundle(bundle_metadata=bundle_metadata, pool=pool)
 
     async with asyncio.TaskGroup() as tg:
         gas_dataset_task = tg.create_task(
@@ -689,6 +687,9 @@ async def generate_all(
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset_id is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
+
+    # File the metadata once we've checked we have meter data, but before doing anything else
+    await insert_dataset_bundle(bundle_metadata=bundle_metadata, pool=pool)
 
     # Attach the two meter datasets we've used to this bundle, as well as the metadata about which
     # baselines we're using.
