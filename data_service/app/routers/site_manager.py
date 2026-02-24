@@ -89,7 +89,7 @@ async def list_bundle_contents(bundle_id: dataset_id_t, pool: DatabasePoolDep) -
             ARRAY_AGG(dataset_type ORDER BY dataset_order ASC) AS dataset_types,
             ARRAY_AGG(dataset_subtype ORDER BY dataset_order ASC) AS dataset_subtypes,
             ARRAY_AGG(dataset_id ORDER BY dataset_order ASC) AS dataset_ids,
-            ANY_VALUE(dm.is_complete) AS is_complete,
+            (COUNT(dl.dataset_id) > 0) AND ANY_VALUE(dm.is_complete) AS is_complete,
             ANY_VALUE(dm.is_error) AS is_error
         FROM (
             SELECT
@@ -397,13 +397,17 @@ async def list_dataset_bundles(site_id: SiteID, pool: DatabasePoolDep) -> list[D
             ANY_VALUE(created_at) AS created_at,
             ANY_VALUE(dataset_type) AS available_datasets,
             ARRAY_AGG(js.job_status) AS job_status,
-            BOOL_AND(COALESCE(js.job_status, 'completed') = 'completed') AS is_complete,
+            (
+                COALESCE(ANY_VALUE(dl.has_datasets), false)
+                AND BOOL_AND(COALESCE(js.job_status, 'completed') = 'completed')
+            ) AS is_complete,
             COALESCE(BOOL_OR(js.job_status = 'error'), false) AS is_error
         FROM data_bundles.metadata AS m
         LEFT JOIN (
             SELECT
                 bundle_id,
-                ARRAY_AGG(dataset_type) AS dataset_type
+                ARRAY_AGG(dataset_type) AS dataset_type,
+                COUNT(dataset_type) > 0 AS has_datasets
             FROM data_bundles.dataset_links
             GROUP BY bundle_id
         ) AS dl
@@ -626,8 +630,6 @@ async def generate_all(
         end_ts=params.end_ts,
         available_datasets=[],  # Leave this empty to start and we'll fill it in as we go along
     )
-    # File the metadata before we do anything else
-    await insert_dataset_bundle(bundle_metadata=bundle_metadata, pool=pool)
 
     async with asyncio.TaskGroup() as tg:
         gas_dataset_task = tg.create_task(
@@ -685,6 +687,9 @@ async def generate_all(
         raise HTTPException(400, f"No gas meter data for {params.site_id}.")
     if elec_meter_dataset_id is None:
         raise HTTPException(400, f"No electrical meter data for {params.site_id}.")
+
+    # File the metadata once we've checked we have meter data, but before doing anything else
+    await insert_dataset_bundle(bundle_metadata=bundle_metadata, pool=pool)
 
     # Attach the two meter datasets we've used to this bundle, as well as the metadata about which
     # baselines we're using.

@@ -235,8 +235,12 @@ const NoSiteDataToView = () => {
 
 }
 
-export const ErrorLoadingSiteData = () => (
+interface ErrorLoadingSiteDataProps {
+    error?: string;
+}
+
+export const ErrorLoadingSiteData = ({error}: ErrorLoadingSiteDataProps) => (
     <Container maxWidth={"sm"} sx={{padding: "1em"}}>
-        <Alert severity="error">Failed to load data for this site.</Alert>
+        <Alert severity="error">{error ?? "Failed to load data for this site."}</Alert>
     </Container>
-)
+);

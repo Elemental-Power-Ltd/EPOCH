@@ -28,17 +28,17 @@ const SitesContainer = () => {
 
     const [isLoading, setIsLoading] = useState(false);
     const [siteWithHints, setSiteWithHints] = useState<SiteDataWithHints | null>(null);
-    const [error, setError] = useState<String | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
     const fetchSiteData = async () => {
-        setIsLoading(true);
-        setError(null);
-        setSiteWithHints(null);
-
         if (!selectedSite || !startDate || !endDate) {
             return
         }
+
+        setIsLoading(true);
+        setError(null);
+        setSiteWithHints(null);
 
         const siteDataResponse = await getLatestSiteData(selectedSite, startDate, endDate);
 
@@ -105,7 +105,7 @@ const SitesContainer = () => {
                 </Grid>
             </Container>
 
-            {error && <ErrorLoadingSiteData/>}
+            {error && <ErrorLoadingSiteData error={error}/>}
             {siteWithHints && (
                 <>
                     <SiteDataViewer siteData={siteWithHints.siteData} hints={siteWithHints.hints}/>
