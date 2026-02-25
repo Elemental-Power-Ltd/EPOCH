@@ -44,6 +44,8 @@ Optional arguments:
   -H, --human    Output a human readable summary
 ```
 
+The JSON and Human-readable modes are mutually exclusive, defaulting to human-readable.
+
 ### Python Bindings
 Exposes the core Simulator as a Python module
 See the [Python Bindings README](epoch_py/README.md) for more information.
