@@ -5,18 +5,6 @@ This is a set of API endpoints that provide optimisation services for Elemental 
 
 It is implemented using FastAPI and leverages Epoch Simulator for simulations.
 
-## Getting Started
-
-Running the service requires the data services to be running first, and a built copy of Epoch Simulator.
-It is then easiest to run these services in a container.
-To do so, run
-```
-    docker compose -f docker/docker-compose.yml up
-```
-in your terminal.
-
-By default, the optimisation service will run on port `8761`.
-
 ## Using the Endpoints
 
 The endpoints provided here all take unauthenticated `POST` requests with a JSON body containing the parameters.

@@ -8,16 +8,6 @@ client utilities data (electricity, gas, occupancy, other sensors) and simulatio
 It is implemented using FastAPI, wrapping around a PostgreSQL database. All database interaction should happen via
 the FastAPI wrapping endpoints.
 
-## Getting Started
-
-It is then easiest to run this services in a Docker compose set of containers, which will keep the database and API running together.
-To do so, run
-```
-    docker compose up --build
-```
-in your terminal or command prompt. 
-
-By default, the data service will run on port `8762` and the database on port `5432`.
 
 ## Using These Endpoints
 
