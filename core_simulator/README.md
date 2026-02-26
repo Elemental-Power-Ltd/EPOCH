@@ -1,6 +1,8 @@
 # EPOCH
 Elemental Power Optimiser with Clean Heat
 
+This is the Core Simulator, written in C++ and exposed as python bindings.
+
 ## Building and Running Epoch
 
 Epoch uses CMake and configurations are defined with CMakePresets.json
@@ -8,32 +10,41 @@ Epoch uses CMake and configurations are defined with CMakePresets.json
 For detailed instructions, including Visual Studio usage, see [INSTALLATION.md](INSTALLATION.md)
 
 
-## Project modes
-
-There are currently 2 different modes for EPOCH
-
 ### Headless
-configure the search space through a JSON file
 
-The following Commandline arguments are accepted
+The pure C++ version of EPOCH runs headlessly.
 
-##### Filepaths
+##### Input Data
 
-`--input`:     specify a path to a directory containing the necessary input data for Epoch
+Epoch expects to find three input files within the same input directory
+- `taskData.json` to define the site components for this simulation
+- `siteData.json` to define the characteristics of the site (energy demands, solar potential, air temperature etc...)
+- `epochConfig.json` for general configuration
 
-`--output`:    specify a path to a directory to write the output files to
+By default, EPOCH expects these will be in `./InputData`
+
+#### Output Data
+
+Epoch writes some results to file. By default, these are written to `./OutputData`
 
 ##### Operation
 
-`-sim` / `--simulation`:        run a single simulation, as defined by `taskData.json`
+Use `-h` for the full set of options
 
-`-opt` / `--optimisation`:        run optimisation over a search space defined in `inputParameters.json`
+```
+Usage: Epoch [--help] [--version] [--input VAR] [--output VAR] [--verbose] [[--json]|[--human]]
 
-If neither mode is specified, you will be prompted to select interactively with the keyboard.
+Optional arguments:
+  -h, --help     shows help message and exits
+  -v, --version  prints version information and exits
+  -i, --input    The directory containing all input files [nargs=0..1] [default: "./InputData"]
+  -o, --output   The directory to write all output files to [nargs=0..1] [default: "./OutputData"]
+  --verbose      Set logging to verbose
+  -J, --json     Output JSON to stdout. Automatically quiets all logs
+  -H, --human    Output a human readable summary
+```
 
-##### Other
-
-`--verbose`:   enable verbose logging
+The JSON and Human-readable modes are mutually exclusive, defaulting to human-readable.
 
 ### Python Bindings
 Exposes the core Simulator as a Python module
