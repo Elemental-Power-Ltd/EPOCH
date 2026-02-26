@@ -21,7 +21,7 @@ Epoch expects to find three input files within the same input directory
 - `siteData.json` to define the characteristics of the site (energy demands, solar potential, air temperature etc...)
 - `epochConfig.json` for general configuration
 
-By default, EPOCH expexts these will be in `./InputData`
+By default, EPOCH expects these will be in `./InputData`
 
 #### Output Data
 
