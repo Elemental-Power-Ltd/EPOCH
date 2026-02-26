@@ -369,6 +369,87 @@ class ProblemInstance(ElementwiseProblem):
         out["F"] = list(directed_results.values())
 
 
+class Normaliser:
+    """Callable object for normalising numeric values to the range [0, 1]."""
+
+    def __init__(self, min_value: int | float, max_value: int | float) -> None:
+        """
+        Initialise the normaliser with minimum and maximum bounds.
+
+        Parameters
+        ----------
+        min_value
+            Minimum value of the input range.
+        max_value
+            Maximum value of the input range.
+        """
+        self.min = min_value
+        self.max = max_value
+        if self.max == self.min:
+            self.min = 0
+
+    def __call__(self, x: int | float) -> int | float:
+        """
+        Normalise x to [0, 1].
+
+        Parameters
+        ----------
+        x
+            Value to normalise.
+
+        Returns
+        -------
+            Normalised value
+        """
+        return (x - self.min) / (self.max - self.min)
+
+
+class ScalarProblemInstance(ProblemInstance):
+    def __init__(
+        self,
+        objectives: list[Metric],
+        constraints: Constraints,
+        portfolio: list[Site],
+        weights: list[float],
+        normalisers: list[Normaliser],
+    ) -> None:
+
+        self.weights = dict(zip(objectives, weights, strict=True))
+        self.normalisers = dict(zip(objectives, normalisers, strict=True))
+
+        super().__init__(objectives, constraints, portfolio)
+
+        self.n_obj = 1
+
+    def _evaluate(self, x: npt.NDArray[np.floating], out: dict[str, list[float]]) -> None:
+        """
+        Evaluate a candidate portfolio solution.
+
+        Parameters
+        ----------
+        x
+            A candidate portfolio solution (array of parameter values).
+        out
+            Dictionary provided by pymoo to store infeasibility scores (G) and objective values (F).
+
+        Returns
+        -------
+        None
+        """
+        portfolio_scenarios = self.convert_portfolio_chromosome_to_portfolio_scenario(x=x)
+
+        portfolio_solution = self.sim.simulate_portfolio(portfolio_scenarios=portfolio_scenarios)
+        constraint_violations = self.evaluate_constraint_violations(portfolio_solution)
+
+        out["G"] = constraint_violations
+        selected_results = {
+            metric: self.normalisers[metric](portfolio_solution.metric_values[metric]) * self.weights[metric]
+            for metric in self.objectives
+        }
+        directed_results = self.apply_directions(selected_results)
+        out["F"] = sum(directed_results.values())  # type: ignore
+
+
 def evaluate_constraints(metric_values: MetricValues, constraints: Constraints) -> list[float]:
     """
     Measures by how much the metric values exceed the constraints.

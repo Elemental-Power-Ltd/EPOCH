@@ -1,17 +1,13 @@
 import pytest
 import torch
 from app.internal.bayesian.bayesian import (
-    _TKWARGS,
     Bayesian,
     convert_solution_list_to_tensor,
     create_capex_allocation_bounds,
-    create_reference_point,
-    extract_sub_portfolio_capex_allocations,
     generate_random_candidates,
-    initialise_model,
     optimize_acquisition_func_and_get_candidate,
-    split_into_sub_portfolios,
 )
+from app.internal.bayesian.common import _TKWARGS, create_reference_point, initialise_model, split_into_sub_portfolios
 from app.models.constraints import Constraints
 from app.models.core import Site
 from app.models.ga_utils import AnnotatedTaskData
@@ -21,7 +17,7 @@ from app.models.result import OptimisationResult, PortfolioSolution, SiteSolutio
 from epoch_simulator import SimulationResult
 
 
-class TestBayesian:
+class TestBayesianResearch:
     def test_initialisation(self) -> None:
         """
         Test default algorithm initialisation.
@@ -40,18 +36,6 @@ class TestBayesian:
         assert isinstance(res, OptimisationResult)
 
 
-class TestCreateReferencePoint:
-    def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]) -> None:
-        sub_portfolio_site_ids = [[site_id] for site_id in dummy_portfolio_solutions[0].scenario.keys()]
-        _, train_y = convert_solution_list_to_tensor(
-            solutions=dummy_portfolio_solutions,
-            sub_portfolio_site_ids=sub_portfolio_site_ids,
-            objectives=default_objectives,
-        )
-        ref_point = create_reference_point(train_y)
-        assert len(ref_point) == train_y.shape[1]
-
-
 class TestCreateCapexAllocationBounds:
     def test_good_inputs(self) -> None:
         max_capexs = [1000.0, 500.0]
@@ -60,20 +44,6 @@ class TestCreateCapexAllocationBounds:
         assert bounds.shape == (2, len(max_capexs))
         assert bounds[0].sum() == 0
         assert all(bounds[1] == torch.tensor(max_capexs, **_TKWARGS))
-
-
-class TestInitializeModel:
-    def test_good_inputs(self, dummy_portfolio_solutions: list[PortfolioSolution], default_objectives: list[Metric]) -> None:
-        sub_portfolio_site_ids = [[site_id] for site_id in dummy_portfolio_solutions[0].scenario.keys()]
-        train_x, train_y = convert_solution_list_to_tensor(
-            solutions=dummy_portfolio_solutions,
-            sub_portfolio_site_ids=sub_portfolio_site_ids,
-            objectives=default_objectives,
-        )
-        max_capexs = [1000.0, 500.0]
-        min_capexs = [0.0] * len(max_capexs)
-        bounds = create_capex_allocation_bounds(min_capexs, max_capexs)
-        initialise_model(train_x, train_y, bounds)
 
 
 class TestOptimizeAcquisitionFuncAndGetCandidate:
@@ -110,25 +80,6 @@ class TestOptimizeAcquisitionFuncAndGetCandidate:
         )
         assert candidates_arr.shape[0] == batch_size
         assert candidates_arr.shape[1] == len(sub_portfolios)
-
-
-class TestExtractSubPortfolioCapexAllocations:
-    def test_good_inputs(self) -> None:
-        sub_portfolio_site_ids = [["a", "b"], ["c", "d"], ["e"]]
-        capex_a, capex_b, capex_c, capex_d, capex_e = 10, 20, 30, 40, 50
-        solution = PortfolioSolution(
-            scenario={
-                "a": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_a}, SimulationResult()),
-                "b": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_b}, SimulationResult()),
-                "c": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_c}, SimulationResult()),
-                "d": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_d}, SimulationResult()),
-                "e": SiteSolution(AnnotatedTaskData(), {Metric.capex: capex_e}, SimulationResult()),
-            },
-            metric_values={},
-            simulation_result=SimulationResult(),
-        )
-        capex_allocations = extract_sub_portfolio_capex_allocations(solution, sub_portfolio_site_ids)
-        assert capex_allocations == [capex_a + capex_b, capex_c + capex_d, capex_e]
 
 
 class TestConvertSolutionListToTensor:

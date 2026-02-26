@@ -1,6 +1,7 @@
 from typing import cast
 
 import numpy as np
+
 from app.internal.constraints import is_in_constraints
 from app.internal.NSGA2 import NSGA2
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front

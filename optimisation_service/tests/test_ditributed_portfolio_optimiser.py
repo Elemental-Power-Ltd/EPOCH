@@ -1,4 +1,4 @@
-from app.internal.bayesian.bayesian import split_into_sub_portfolios
+from app.internal.bayesian.common import split_into_sub_portfolios
 from app.internal.bayesian.distributed_portfolio_optimiser import DistributedPortfolioOptimiser, select_starting_solutions
 from app.models.constraints import Constraints
 from app.models.core import Site

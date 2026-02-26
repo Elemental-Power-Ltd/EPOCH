@@ -72,6 +72,36 @@ def _merge_solutions(sol1: PortfolioSolution, sol2: PortfolioSolution) -> Portfo
     )
 
 
+def merge_list_of_portfolio_solutions(portfolio_solutions: list[PortfolioSolution]) -> PortfolioSolution:
+    """
+    Merge two Portfolio Solutions into one.
+
+    Parameters
+    ----------
+    sol1
+        The first PortfolioSolution to merge.
+    sol2
+        The second PortfolioSolution to merge.
+
+    Returns
+    -------
+    PortfolioSolution
+        The combined PortfolioSolution.
+    """
+    all_sites = [site.simulation_result for solution in portfolio_solutions for site in solution.scenario.values()]
+
+    combined_result = aggregate_site_results(all_sites)
+
+    is_feasible = all(solution.is_feasible for solution in portfolio_solutions)
+
+    return PortfolioSolution(
+        scenario={k: v for d in portfolio_solutions for k, v in d.scenario.items()},
+        simulation_result=combined_result,
+        metric_values=simulation_result_to_metric_dict(combined_result),
+        is_feasible=is_feasible,
+    )
+
+
 def merge_and_optimise_two_portfolio_solution_lists(
     list1: list[PortfolioSolution],
     list2: list[PortfolioSolution],

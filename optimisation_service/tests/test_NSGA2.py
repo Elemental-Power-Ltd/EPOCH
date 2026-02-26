@@ -46,7 +46,12 @@ class TestNSGA2:
         dummy_portfolio_solutions: list[PortfolioSolution],
     ) -> None:
         alg = NSGA2(pop_size=512, n_offsprings=256, n_max_gen=10)
-        res = alg.run(default_objectives, default_constraints, default_portfolio, dummy_portfolio_solutions)
+        res = alg.run(
+            objectives=default_objectives,
+            constraints=default_constraints,
+            portfolio=default_portfolio,
+            existing_solutions=dummy_portfolio_solutions,
+        )
         assert isinstance(res, OptimisationResult)
 
 

@@ -23,7 +23,13 @@ from pymoo.termination.robust import RobustTermination  # type: ignore
 from pymoo.util.misc import at_least_2d_array  # type: ignore
 
 from app.internal.constraints import update_feasibility
-from app.internal.ga_utils import EstimateBasedSampling, ProblemInstance, RoundingAndDegenerateRepair
+from app.internal.ga_utils import (
+    EstimateBasedSampling,
+    Normaliser,
+    ProblemInstance,
+    RoundingAndDegenerateRepair,
+    ScalarProblemInstance,
+)
 from app.internal.pareto_front import merge_and_optimise_two_portfolio_solution_lists, portfolio_pareto_front
 from app.internal.portfolio_simulator import simulate_scenario
 from app.internal.result import get_baseline_portfolio_solution
@@ -293,6 +299,8 @@ class NSGA2(Algorithm):
         objectives: list[Metric],
         constraints: Constraints,
         portfolio: list[Site],
+        weights: list[float] | None = None,
+        normalisers: list[Normaliser] | None = None,
         existing_solutions: list[PortfolioSolution] | None = None,
         save_history: bool = False,
     ) -> OptimisationResult:
@@ -319,7 +327,11 @@ class NSGA2(Algorithm):
             exec_time: Time taken for optimisation process to conclude.
             n_evals: Number of simulation evaluations taken for optimisation process to conclude.
         """
-        pi = ProblemInstance(objectives, constraints, portfolio)
+        if weights and normalisers:
+            pi = ScalarProblemInstance(objectives, constraints, portfolio, weights, normalisers)
+        else:
+            pi = ProblemInstance(objectives, constraints, portfolio)
+
         if existing_solutions is not None and len(existing_solutions) > 0:
             self._load_existing_solutions(existing_solutions, pi)
         res = minimize(
@@ -347,7 +359,10 @@ class NSGA2(Algorithm):
                 )
                 for portfolio_solution in portfolio_solutions
             ]
-            portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
+            if len(portfolio_solutions) > 1:
+                portfolio_solutions_pf = portfolio_pareto_front(portfolio_solutions=portfolio_solutions, objectives=objectives)
+            else:
+                portfolio_solutions_pf = portfolio_solutions
 
         return OptimisationResult(
             solutions=portfolio_solutions_pf,
